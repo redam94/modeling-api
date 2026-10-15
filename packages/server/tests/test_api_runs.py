@@ -203,3 +203,20 @@ async def test_logs_and_events_pages(client: httpx.AsyncClient, ctx: ServerConte
     assert events == {"items": [], "next_cursor": None}
     assert (await client.get("/v1/runs/run_missing/events")).status_code == 404
     assert (await client.get("/v1/runs/run_missing/logs")).status_code == 404
+
+
+async def test_run_endpoints_are_scoped_to_the_project(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """A run of another project is invisible by id on every run endpoint (plots included)."""
+    spec_id = await _spec(client, ctx)
+    run = (
+        await client.post("/v1/runs", json={"kind": "fit", "spec_id": spec_id, "revision": 1})
+    ).json()
+    async with ctx.db.session() as s:
+        row = await s.get(m.Run, run["id"])
+        assert row is not None
+        row.project_id = "someone-else"
+    for path in ("", "/plots", "/logs", "/events"):
+        r = await client.get(f"/v1/runs/{run['id']}{path}")
+        assert r.status_code == 404, (path, r.status_code, r.text)

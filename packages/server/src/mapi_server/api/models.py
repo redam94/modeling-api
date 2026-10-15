@@ -232,7 +232,7 @@ async def redirect_model_ui(
 
 async def _score_result(ctx: ServerContext, run_id: str) -> ScoreCallResult:
     async with ctx.db.session() as session:
-        run = await load_run(session, None, run_id)
+        run = await load_run(session, ctx.scope, run_id)
         view = await run_view(session, run)
         outputs: list[ArtifactLink] = []
         done = RunState(run.state).terminal

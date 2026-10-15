@@ -376,7 +376,7 @@ async def list_run_plots(
     The control plane decodes nothing but this size-capped JSON, read at the generation the
     finalizer verified.
     """
-    run = await load_run(session, None, run_id)
+    run = await load_run(session, ctx.scope, run_id)
     if run.state != RunState.SUCCEEDED.value:
         return Page[PlotSpec](items=[], next_cursor=None)
     att = await session.get(m.RunAttempt, (run.id, run.attempt))
