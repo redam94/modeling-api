@@ -94,6 +94,19 @@ def _spec_size(spec: Any) -> int:
     return len(json.dumps(spec, separators=(",", ":"), ensure_ascii=False).encode())
 
 
+def _without_arrow_payloads(doc: dict[str, Any]) -> dict[str, Any]:
+    """The document with inline Arrow payloads blanked: they are capped by the envelope
+    (``InlineArrow.data`` max length) and the document size, not the per-string limit."""
+    datasets = doc.get("datasets")
+    if not isinstance(datasets, dict):
+        return doc
+    blank = {
+        k: ({**v, "data": ""} if isinstance(v, dict) and isinstance(v.get("data"), str) else v)
+        for k, v in datasets.items()
+    }
+    return {**doc, "datasets": blank}
+
+
 def _run(
     plot: PlotInput, limits: SanitizeLimits, validate_schema: bool
 ) -> tuple[PlotSpec | None, SanitizeReport]:
@@ -114,7 +127,7 @@ def _run(
     if not isinstance(doc, dict):
         report.error(SanitizeRule.ENVELOPE, "", "a plot document must be a JSON object")
         return None, report
-    if not check_structure(doc, "", report):
+    if not check_structure(_without_arrow_payloads(doc), "", report):
         return None, report
     try:
         size = _spec_size(doc)
