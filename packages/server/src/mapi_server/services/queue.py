@@ -2,7 +2,8 @@
 
 The reconciler hands every run that reaches ``FINALIZING`` to :class:`ProcrastinateQueue`;
 the ``finalize_run`` task runs :meth:`Finalizer.finalize` with retries (storage hiccups),
-serialised per run by a procrastinate ``lock``. :class:`InlineFinalizeQueue` runs the same
+serialised per run by a procrastinate ``lock``. Jobs a dead worker left in ``doing`` are
+re-queued whenever the reconciler re-defers the run. :class:`InlineFinalizeQueue` runs the same
 finalizer in-process (single-process ``dev`` mode and tests).
 """
 
@@ -24,6 +25,8 @@ __all__ = ["FINALIZE_QUEUE", "InlineFinalizeQueue", "ProcrastinateQueue"]
 log = logging.getLogger(__name__)
 
 FINALIZE_QUEUE = "finalize"
+STALLED_WORKER_S = 30.0
+"""A worker that missed heartbeats this long is dead (procrastinate's own default)."""
 
 
 class ProcrastinateQueue:
@@ -67,9 +70,31 @@ class ProcrastinateQueue:
         )
         return bool(row and row["n"])
 
+    async def recover_stalled(self, lock: str | None = None) -> int:
+        """Re-queue finalize jobs left in ``doing`` by a dead worker (optionally one lock).
+
+        procrastinate only prunes a dead worker's row (``worker_id`` becomes NULL); its job
+        stays ``doing`` forever and, through its ``lock``, blocks every later job of the run.
+        A job counts as stalled when its worker is gone or has missed heartbeats for
+        ``STALLED_WORKER_S``. The finalizer is idempotent, so a retry is safe.
+        """
+        manager = self.app.job_manager
+        stalled = await manager.get_stalled_jobs(
+            queue=FINALIZE_QUEUE, seconds_since_heartbeat=STALLED_WORKER_S
+        )
+        n = 0
+        for job in stalled:
+            if lock is not None and job.lock != lock:
+                continue
+            log.warning("re-queueing stalled finalize job %s (%s)", job.id, job.lock)
+            await manager.retry_job(job)
+            n += 1
+        return n
+
     async def defer_finalize(self, run_id: str, attempt: int) -> None:
         await self.open()
         lock = f"finalize:{run_id}"
+        await self.recover_stalled(lock)
         if await self._active(lock):
             return
         with contextlib.suppress(AlreadyEnqueued):
