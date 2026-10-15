@@ -58,8 +58,9 @@ users, services and sandboxes.
 ## Hashes in the forms object stores report
 
 CRC32C and MD5 are recorded base64-encoded, the way Google Cloud Storage computes them on
-upload. The hosted platform will bind a manifest to the object generations and server-computed
-hashes, so an uploaded artifact cannot be swapped or replayed. SHA-256 is recorded too, for
+upload. The platform binds a signed manifest to the object generations and server-computed
+hashes, so an uploaded artifact cannot be swapped or replayed (see
+[Storage and integrity](architecture.md#storage-and-integrity)). SHA-256 is recorded too, for
 content addressing.
 
 ## Lineage

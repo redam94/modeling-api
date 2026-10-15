@@ -34,7 +34,9 @@ flowchart TB
 The split between the two halves matters. The **contracts** are JSON in, JSON out; the
 platform's API depends only on them, so it can validate any spec and any score request without
 importing your code or decoding your arrays. The **runtime** touches arrays and runs plugins;
-it lives in notebooks and, later, in sandboxed runner images.
+it lives in notebooks and in the sandboxed runner. How the platform puts the two halves
+together is in the [Architecture overview](architecture.md), and what keeps it safe in the
+[Security model](security.md).
 
 ## The ideas
 

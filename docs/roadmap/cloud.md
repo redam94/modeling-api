@@ -1,8 +1,10 @@
-# Cloud execution <span class="mapi-badge mapi-badge--soon">coming in v0.3</span>
+# Cloud and multi-tenant core <span class="mapi-badge mapi-badge--soon">coming in v0.3</span>
 
-!!! abstract "Status"
-    Planned. v0.3 runs fits and scores in the cloud, one fresh sandbox per run, and makes the
-    platform multi-tenant for a private beta.
+!!! abstract "Status: next (milestone M2)"
+    v0.3 runs fits and scores in the cloud, one fresh sandbox per run, and makes the platform
+    multi-tenant for a private beta. The run protocol it uses (bootstrap object, signed
+    events, verified outputs, signed bundle manifests) already runs locally in
+    [v0.2](platform-api.md); v0.3 replaces the local pieces with their cloud counterparts.
 
 ## One sandbox per run
 
@@ -28,12 +30,23 @@ flowchart TB
   manifest that does not match is rejected as `INTEGRITY_FAILURE`.
 - **Progress you can trust.** Only the supervisor writes events, each line HMAC-signed and
   sequence-numbered; the executor's own status decides whether a run is alive.
-- **Resumable long fits.** Segmented PyMC sampling (available today) checkpoints to the run's
-  prefix, so a preempted fit resumes where it stopped.
+- **Resumable long fits.** Segmented PyMC sampling checkpoints to the run's prefix, so a
+  preempted fit resumes where it stopped. (Checkpoints, `partial` runs and resume already work
+  locally in v0.2.)
+
+| Local in v0.2 | In the cloud in v0.3 |
+|---|---|
+| `local-process` / `docker` executor | Cloud Run Jobs, a fixed inventory of base image × resource class |
+| Worker as your user (`DEV_MODE_ISOLATION`) | Worker under its own uid, `no_new_privs`, in a microVM |
+| GCS shim with emulated principals | Cloud Storage with IAM, VPC Service Controls |
+| Events from the supervisor's stdout pipe | Cloud Logging → Pub/Sub push → `POST /internal/events` |
+| EC P-256 key in `.local/keys/` | Cloud KMS asymmetric signatures, same bytes |
+| No authentication, `127.0.0.1` only | OIDC for people, scoped tokens for programs |
 
 ## Multi-tenant core
 
-- Tenants and projects with role-based access; row-level security in Postgres on every table.
+- Tenants and projects with role-based access; row-level security in Postgres on every table
+  (every row and storage key already carries `tenant_id` and `project_id` in v0.2).
 - Scoped API tokens with their own budgets; per-tenant quotas in vCPU-seconds; interactive and
   batch priority classes so one big sweep cannot starve everyone's scoring.
 - A per-run cost ledger shown in the UI.

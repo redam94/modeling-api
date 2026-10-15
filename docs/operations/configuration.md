@@ -1,0 +1,235 @@
+---
+description: Every environment variable the platform reads - the shared topology, mapi-server, the runner, the GCS shim, the CLI and Python client, make dev, the web app, Docker Compose, the images and the tests.
+---
+
+# Configuration reference <span class="mapi-badge">v0.2</span>
+
+Every component is configured through **environment variables**; no component reads a config
+file except the CLI and the Python client (`~/.config/mapi/config.toml`) and Docker Compose
+(`.env`). This page lists every `MAPI_*` variable in the code base, grouped by who reads it.
+A test (`conformance/tests/test_docs_platform.py`) scans the source tree and fails when a
+variable is missing here, and the full [server settings table](../reference/generated/server-settings.md)
+is generated from the code.
+
+!!! tip "The short version"
+    For a local stack you only ever need the four addresses, and only when a port is taken:
+    `MAPI_API_URL`, `MAPI_GCS_ENDPOINT`, `MAPI_WEB_ORIGIN` and `MAPI_PLOTS_ORIGIN`. Export the
+    same values in every shell that runs `make dev`, `make seed`, `make e2e`, `mapi` or the
+    Python client. [Troubleshooting](troubleshooting.md#port-conflicts) has an example.
+
+## Topology (every component)
+
+These come from `mapi_spec.localdev.LocalDev`, the one contract the API, worker, runner,
+GCS shim, `make dev`, `make seed`, the end-to-end tests and (through `VITE_*`) the web app
+share, so they cannot disagree about where things are.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_ENV` | `local` | Environment name; buckets are `mapi-{env}-quarantine`, `-bootstrap`, `-runs`, `-bundles`, `-data` |
+| `DATABASE_URL` (or `MAPI_DATABASE_URL`) | unset | A `postgresql://` URL. Unset: `make dev` and `mapi serve` start an embedded PostgreSQL 16 (`pgserver`) in `$MAPI_DATA_DIR/pg` |
+| `MAPI_API_URL` | `http://127.0.0.1:8000` | Where the API listens and is reached. `make dev` derives the API's host and port from it |
+| `MAPI_GCS_ENDPOINT` | `http://127.0.0.1:4443` | The object store (the GCS shim). Signed URLs point here |
+| `MAPI_WEB_ORIGIN` | `http://127.0.0.1:5173` | The web app's origin. The API and the shim allow it for CORS |
+| `MAPI_PLOTS_ORIGIN` | `http://127.0.0.1:5174` | The plot sandbox's origin. **Must differ from `MAPI_WEB_ORIGIN`**: every component refuses a configuration where they are equal |
+| `MAPI_DATA_DIR` | `.local` | Local state: `pg/`, `gcs/` (objects and the shim's keys), `keys/` (the bundle-signing key), `executions/`, `dev/` |
+
+## `mapi-server` (API and worker)
+
+`mapi-server api`, `worker`, `migrate` and `dev` read `mapi_server.settings.Settings`: each
+field is the variable `MAPI_<FIELD>`. Besides the topology above:
+
+**Identity and API**
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_PROFILE` | `single-tenant` | `single-tenant` or `multi-tenant`. The `local-process` executor refuses `multi-tenant` |
+| `MAPI_TENANT_ID`, `MAPI_PROJECT_ID` | `default` | The single tenant and project of an M1 install |
+| `MAPI_API_HOST`, `MAPI_API_PORT` | `127.0.0.1`, `8000` | Bind address of `mapi-server api` when started without `--host`/`--port` |
+| `MAPI_DEBUG` | `false` | Put tracebacks into problem documents' `untrusted_text`. Never in production |
+| `MAPI_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
+| `MAPI_INTERNAL_TOKEN` | unset | If set, `POST /internal/events` (simulated Pub/Sub pushes) requires this bearer token |
+| `MAPI_SSE_HEARTBEAT_S` | `15` | Seconds between `: keepalive` comments on event streams |
+| `MAPI_SSE_POLL_S` | `5` | Fallback poll of an event stream when no PostgreSQL `NOTIFY` arrives |
+| `MAPI_MAX_SIDECAR_BYTES` | 8 MiB | Largest JSON sidecar (`plots.json`, `diagnostics.json`, …) the control plane will parse |
+
+!!! warning "`MAPI_PROFILE` means two things"
+    The CLI and the Python client read `MAPI_PROFILE` as the name of a *config-file profile*;
+    the server reads it as the *deployment profile*. Do not export a client profile name in a
+    shell that starts `make dev` or `mapi-server`: the server refuses any value other than
+    `single-tenant` or `multi-tenant`.
+
+**Database**
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_DB_POOL_SIZE` | `10` | Connections per process (plus as many overflow connections) |
+| `MAPI_DB_ECHO` | `false` | Log every SQL statement |
+
+**Object storage**
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_OBJECT_STORE` | `shim` | `shim` (the GCS shim at `MAPI_GCS_ENDPOINT`) or `memory` (tests only) |
+| `MAPI_GCS_PUBLIC_ENDPOINT` | `MAPI_GCS_ENDPOINT` | The base URL put into signed URLs, when browsers or containers reach the shim under another host name |
+| `MAPI_GCS_ROOT` | `$MAPI_DATA_DIR/gcs` | The shim's state directory; the server reads the principals' key files under `_shim/keys/` |
+| `MAPI_GCS_KEY_FILE` | `$MAPI_GCS_ROOT/_shim/keys/control.json` | Key file of the control plane's principal |
+| `MAPI_EXEC_TOKEN` | from `exec.json` | Bearer token of the shim's `exec` principal, handed to local runs (local executors only, never in the cloud) |
+
+**Executors**
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_EXECUTOR` | `local-process` | `local-process`, `docker` or `docker-gvisor` |
+| `MAPI_RUNNER_COMMAND` | `mapi-runner` next to the interpreter | The supervisor's command line (shell-quoted) for `local-process` |
+| `MAPI_EXECUTOR_WORKDIR` | `$MAPI_DATA_DIR/executions` | Per-run scratch of the local executor |
+| `MAPI_DOCKER_IMAGE` | `mapi/base-bayes:local` | Runner image of the docker executors |
+| `MAPI_DOCKER_NETWORK` | `none` | `none`, or an internal network that contains only the shim |
+| `MAPI_DOCKER_RUNTIME_GVISOR` | `runsc` | The OCI runtime of `docker-gvisor` |
+| `MAPI_CANCEL_GRACE_S` | `10` | Seconds between SIGTERM and SIGKILL when a run is cancelled |
+
+**Dispatcher and reconciler**
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_DISPATCH_RATE_PER_MINUTE`, `MAPI_DISPATCH_BURST` | `180`, `10` | Token bucket in front of the executor (Cloud Run's `jobs.run` quota) |
+| `MAPI_DISPATCH_BATCH`, `MAPI_DISPATCH_POLL_S` | `10`, `1` | Queued runs leased per pass, and the pause between passes |
+| `MAPI_DISPATCH_LEASE_S` | `120` | How long a dispatcher's lease on a run lasts |
+| `MAPI_RECONCILE_INTERVAL_S` | `10` | The reconciler's level-triggered loop |
+| `MAPI_STALL_INTERVALS` | `15` | A run is `stalled` (a warning) after this many progress intervals of silence |
+| `MAPI_COMPLETE_EVENT_GRACE_S` | `60` | How long to wait for a run's `complete` event after the executor reports an exit |
+| `MAPI_LOST_EXECUTION_GRACE_S` | `60` | How long an execution may be missing from the executor before the attempt is lost |
+| `MAPI_DEADLINE_GRACE_S` | `60` | Slack after a run's timeout before the reconciler stops it |
+| `MAPI_MAX_INFRA_RETRIES` | `2` | Automatic retries after infrastructure failures |
+| `MAPI_AUTO_RETRY_WINDOW_S` | `1800` | No automatic retry of a run that has been going for longer than this |
+| `MAPI_FINALIZE_MAX_ATTEMPTS` | `5` | Attempts of the finalizer job before a run fails |
+
+**Catalog and signing**
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_CATALOG_PATH` | unset | A catalog JSON exported at image build; unset: the worker queues a sandboxed `describe` run |
+| `MAPI_IMAGE_DIGEST` | `sha256` of `uv.lock` | The runner image digest the catalog is cached under |
+| `MAPI_UV_LOCK_PATH` | found above the working directory | The `uv.lock` whose hash is the local image digest |
+| `MAPI_SIGNING_KEY_PATH` | `$MAPI_DATA_DIR/keys/bundle-signing-p256.pem` | The EC P-256 key that signs bundle manifests (standing in for Cloud KMS); created on first use |
+
+## The runner (per run)
+
+Executors start `mapi-runner` with exactly these variables, and nothing secret in its
+arguments. Never set them by hand.
+
+| Variable | Meaning |
+|---|---|
+| `MAPI_RUN_ID`, `MAPI_NONCE` | The run, and the 256-bit nonce of its one-time bootstrap object |
+| `MAPI_BOOTSTRAP_URL` | A template with `{nonce}`: where the supervisor reads (and deletes) the bootstrap object |
+| `MAPI_EXEC_TOKEN` | Local executors only: the shim's `exec` principal, which may only get and delete bootstrap objects |
+| `MAPI_WORKER_PYTHON` | The worker's interpreter (default: the supervisor's) |
+| `MAPI_BASE_IMAGE` | The base image recorded in the run's lineage |
+
+The supervisor passes the untrusted worker only an allow-list of variables
+(`mapi_spec.run.WORKER_ENV_ALLOWLIST`: `PATH`, `HOME`, `TMPDIR`, locale and thread-count
+variables, `NUMBA_CACHE_DIR`, `PYTENSOR_FLAGS`, `XLA_FLAGS`, …). Every `MAPI_*` is scrubbed.
+
+Inside the runner images, `MAPI_CACHE_SEED` (`/opt/mapi/cache`) is the baked, read-only
+PyTensor and Numba cache and `MAPI_CACHE_DIR` (`/tmp/mapi-cache`) the writable symlink farm
+the entry point builds over it ([Container images](images.md#compile-caches-and-the-read-only-root-filesystem)).
+
+## The GCS shim
+
+`mapi-gcs-shim serve` takes its defaults from the topology: `MAPI_DATA_DIR` (state in
+`$MAPI_DATA_DIR/gcs`), `MAPI_ENV` (bucket names), `MAPI_GCS_ENDPOINT` (host and port) and
+`MAPI_WEB_ORIGIN` (the CORS origin). Each has a command-line flag; see the
+[GCS shim reference](../reference/gcs-shim.md).
+
+## The CLI and the Python client
+
+| Variable | Meaning |
+|---|---|
+| `MAPI_URL` | The API (falls back to `MAPI_API_URL`, then the profile, then `http://127.0.0.1:8000`) |
+| `MAPI_TOKEN` | A bearer token. Never sent over plain HTTP to a non-loopback host |
+| `MAPI_PROFILE` | The profile of the config file to use (see the warning above) |
+| `MAPI_CONFIG` | The config file (default `$XDG_CONFIG_HOME/mapi/config.toml`, else `~/.config/mapi/config.toml`) |
+
+Arguments (`--url`, `--token`, `--profile`, or `Client(base_url=…, token=…)`) win over the
+environment, which wins over the file. `mapi config show` prints the result and where each
+value came from.
+
+## `make dev`
+
+`scripts/dev.py` reads the topology variables and:
+
+| Variable | Meaning |
+|---|---|
+| `MAPI_DEV_<NAME>_CMD` | Replace one service's command (shell-quoted). `<NAME>` is `GCS_SHIM`, `MIGRATE`, `API`, `WORKER`, `WEB` or `PLOTS`, e.g. `MAPI_DEV_API_CMD="uvicorn mapi_server.app:app --reload --port 8000"` |
+| `NO_COLOR`, `FORCE_COLOR` | Disable or force coloured service prefixes |
+
+`make dev ONLY=api` and `make dev WITHOUT=web,plots` choose services; `make seed SIZE=full`
+loads the large demo. These are `make` arguments, not environment variables.
+
+## The web app and the plot sandbox
+
+Vite build-time variables. `make dev` sets them from the topology; set them yourself for a
+production build.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `VITE_API_BASE` | `http://127.0.0.1:8000` | The API the app calls (it must allow the app's origin) |
+| `VITE_PLOTS_ORIGIN` | `http://127.0.0.1:5174` | The plot sandbox; must differ from the app origin |
+| `VITE_STORAGE_ORIGINS` | `http://127.0.0.1:4443` | Origins of signed storage URLs, allowed by the app's CSP `connect-src` |
+| `VITE_APP_ORIGINS` (sandbox) | `http://127.0.0.1:5173,http://localhost:5173` | Origins allowed to frame the sandbox and talk to it |
+
+The sandbox's `index.html` carries a `%MAPI_CSP%` placeholder that its Vite build replaces
+with the Content-Security-Policy; it is not a variable you set.
+
+## Docker Compose
+
+Compose reads `.env` in the repository root (copy `.env.example`).
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `POSTGRES_PASSWORD` | **required** | The database password; compose refuses to start without it |
+| `MAPI_VERSION` | the workspace version | The `mapi/*` image tag (`make compose-up` sets it) |
+| `MAPI_ENV` | `local` | As above |
+| `MAPI_EXECUTOR` | `local-process` | The worker's executor |
+| `MAPI_WORKER_TMPFS`, `MAPI_WORKER_MEMORY`, `MAPI_WORKER_CPUS` | `4g`, `12g`, `4` | The worker's `/tmp` (the scratch of every local-process run), memory limit and CPUs |
+| `DOCKER_GID` | `0` | With the docker executor override: the group that owns the Docker socket |
+
+## The `mapi/web` image (nginx)
+
+Rendered into the nginx configuration when the container starts (only `MAPI_*` variables
+are substituted).
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_WEB_ORIGIN`, `MAPI_PLOTS_ORIGIN`, `MAPI_API_URL`, `MAPI_GCS_ENDPOINT` | the local defaults | Origins written into the CSP and `frame-ancestors` headers |
+| `MAPI_API_UPSTREAM` | `http://api:8000` | Where `/v1/` is proxied (a URL without a path) |
+| `MAPI_WEB_SCRIPT_SRC_EXTRA` | empty | Extra `script-src` sources for the app. Widening the CSP needs a review |
+| `NGINX_ENVSUBST_TEMPLATE_DIR` | `/etc/nginx/templates/all` | `…/web` or `…/plots` serves only one of the two apps |
+
+## Image build arguments
+
+`docker build --build-arg NAME=value` (the Makefile passes `VERSION`, `VCS_REF` and
+`BUILD_DATE`). The defaults define what each image is; change them only to build a variant.
+
+| Argument | Meaning |
+|---|---|
+| `MAPI_PACKAGES` | The workspace packages installed into the image (`mapi-runner mapi-steps mapi-pymc …`) |
+| `MAPI_WORKER_PACKAGES` | What the `worker` target adds to `base-bayes` (`mapi-plugin-ts mapi-server[docker]`) |
+| `MAPI_NO_INSTALL` | Distributions never installed (the 300 MB `nvidia-nccl-cu13`) |
+| `MAPI_APT_PACKAGES` | System packages of the runtime stage (`tini`, and `g++` for PyTensor) |
+| `MAPI_ASSERT_PRESENT`, `MAPI_ASSERT_ABSENT` | Distributions that must, and must not, be installed; the build fails otherwise |
+| `MAPI_IMAGE_NAME`, `MAPI_DESCRIPTION` | OCI labels, and the name the catalog export records |
+| `PYTHON_IMAGE` (and the other base images) | Base images, pinned by tag *and* digest (`make docker-pin`) |
+
+## Tests
+
+| Variable | Meaning |
+|---|---|
+| `MAPI_E2E` | Set by `pnpm --filter @mapi/web e2e`: run the Playwright `@e2e` suite against a running stack |
+| `MAPI_UPDATE_SNAPSHOTS` | `1` regenerates the contract snapshot of `mapi_spec` |
+| `MAPI_HYPOTHESIS_EXAMPLES` | Examples per property in the wire-format round-trip tests (default 60) |
+
+## Documentation
+
+| Variable | Meaning |
+|---|---|
+| `MAPI_DOCS_SPEC` | The spec `scripts/docs_screenshots.mjs` (`make docs-screenshots`) opens and fits, default `eu-geo-mmm`. The script also reads `MAPI_WEB_ORIGIN` |
