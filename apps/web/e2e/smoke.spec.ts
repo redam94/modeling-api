@@ -184,6 +184,12 @@ test("scoring returns outputs that open as a table and a sandboxed chart", async
   await expect(page.getByRole("table", { name: "ui/plotdata/ppc_fan.arrow" })).toContainText("week");
   const frame = page.locator('iframe[data-testid="plot-frame"]');
   await expect(frame.contentFrame().locator("svg.marks")).toBeVisible({ timeout: 20_000 });
+  // Downloading an output saves a file and keeps the results on screen.
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download summary.json" }).click();
+  expect((await download).suggestedFilename()).toBe("summary.json");
+  await expect(page).toHaveURL(/\/score\?/);
+  await expect(page.getByText("ui/plotdata/ppc_fan.arrow")).toBeVisible();
 });
 
 test("score form errors are marked on their fields and focus the first one", async ({ page }) => {
