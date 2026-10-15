@@ -752,7 +752,7 @@ def _settings_env_names() -> dict[str, str]:
 
 def test_env_example_covers_the_server_settings() -> None:
     """mapi-server reads every Settings field from MAPI_<NAME>: all are documented, and a
-    documented scalar default (``# MAPI_X=value``) is the real default."""
+    documented scalar default (``# MAPI_<NAME>=value``) is the real default."""
     from enum import Enum
 
     from mapi_server.settings import Settings
