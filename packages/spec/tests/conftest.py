@@ -80,6 +80,7 @@ STEPS: list[dict[str, Any]] = [
         effect={"template_params": ["vars"], "updates": {"{*vars as v}": {"units": "1"}}},
         var_params=["vars"],
         dim_params=["over"],
+        provides=["scaling"],
     ),
     _step(
         id="core.lag_tensor",
@@ -106,6 +107,7 @@ STEPS: list[dict[str, Any]] = [
         context={"along": "{along}", "n": "{l_max}", "within": "{within}", "min_lag": 0},
         var_params=["vars"],
         dim_params=["along", "within"],
+        provides=["carryover"],
     ),
     _step(
         id="core.lag",
@@ -135,7 +137,7 @@ STEPS: list[dict[str, Any]] = [
             "min_lag": "{min:lags}",
         },
         var_params=["vars"],
-        dim_params=["along", "within"],
+        dim_params=["along"],  # within: dims (dense) or variables along ``along`` (long)
     ),
     _step(
         id="core.fourier",

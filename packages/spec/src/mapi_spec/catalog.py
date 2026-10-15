@@ -69,6 +69,11 @@ class StepCatalogEntry(StrictModel):
     var_params: list[str] = Field(default_factory=list)
     dim_params: list[str] = Field(default_factory=list)
     side_table_params: list[str] = Field(default_factory=list)
+    provides: list[Literal["scaling", "carryover"]] = Field(
+        default_factory=list,
+        description="Preprocessing a model may declare it owns (ModelManifest owns); such a "
+        "step is rejected on the target/media variables of a model that owns it",
+    )
     summary: str | None = Field(None, max_length=500)
     summary_plain: str | None = Field(None, max_length=500)
     yanked: bool = False

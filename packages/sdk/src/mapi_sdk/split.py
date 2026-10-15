@@ -40,6 +40,9 @@ class SplitResult:
     holdout: xr.Dataset
     holdout_mask: xr.DataArray | None = None
     kind: str = ""
+    lead: int = 0
+    """Leading holdout labels along the split dim that are only scored for continuity
+    (an ``as_of`` ``gap``): their targets are masked and metrics never count them."""
 
     @property
     def is_masked(self) -> bool:
@@ -68,6 +71,16 @@ def _cut(ds: xr.Dataset, dim: str, train_idx: np.ndarray, hold_idx: np.ndarray) 
     if hold_idx.size == 0:
         raise _err("the split leaves no holdout data")
     return SplitResult(ds.isel({dim: train_idx}), ds.isel({dim: hold_idx}))
+
+
+def _mask_lead(ds: xr.Dataset, dim: str, k: int, schema: DataSchema | None) -> xr.Dataset:
+    """Mask the target in the first ``k`` labels of ``dim``."""
+    lead = xr.DataArray(np.arange(ds.sizes[dim]) < k, dims=[dim])
+    out = ds.copy()
+    for t in schema.targets if schema is not None else []:
+        if t in out and dim in out[t].dims:
+            out[t] = out[t].where(~lead)
+    return out
 
 
 def _targets(schema: DataSchema | None, ds: xr.Dataset) -> list[str]:
@@ -112,7 +125,14 @@ def split_dataset(
             coords = np.asarray(ds[split.dim].values) if split.dim in ds.coords else np.arange(n)
             cut = int(np.sum(coords <= _coerce(split.as_of, coords)))
             idx = np.arange(n)
-            result = _cut(ds, split.dim, idx[:cut], idx[cut + split.gap :])
+            if idx[cut + split.gap :].size == 0:
+                raise _err("the split leaves no holdout data")
+            # the gap periods stay in the holdout so scoring continues the fitted range
+            # without a hole; their targets are masked and metrics skip them (``lead``)
+            result = _cut(ds, split.dim, idx[:cut], idx[cut:])
+            if split.gap:
+                result.holdout = _mask_lead(result.holdout, split.dim, split.gap, schema)
+                result.lead = split.gap
         case LeaveGroupOutSplit():
             n = _require_dim(ds, split.dim)
             levels = np.asarray(ds[split.dim].values) if split.dim in ds.coords else np.arange(n)

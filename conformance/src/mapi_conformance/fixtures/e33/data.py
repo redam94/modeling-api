@@ -87,3 +87,10 @@ def payload_weekly_plan(data: xr.Dataset, seed: int, size: Size) -> xr.Dataset:
 def payload_window(data: xr.Dataset, seed: int, size: Size) -> xr.Dataset:
     """The last four weeks of the fit data."""
     return data.isel(date=slice(-28, None))
+
+
+def payload_window_tv_plan(data: xr.Dataset, seed: int, size: Size) -> xr.Dataset:
+    """The last four weeks with tv spend raised 20% (a counterfactual scenario dataset)."""
+    window = payload_window(data, seed, size)
+    tv = window["channel"] == "tv"
+    return window.assign(spend_local=window["spend_local"].where(~tv, window["spend_local"] * 1.2))

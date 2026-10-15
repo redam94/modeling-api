@@ -562,6 +562,7 @@ class LagTensorStep(Step[LagTensorSettings, StepState]):
     version = "1.0.0"
     kind = StepKind.FEATURE
     Settings = LagTensorSettings
+    provides = ("carryover",)
     depends_on_target = True
     target_vars_param = "vars"
     var_params = ("vars", "mask")

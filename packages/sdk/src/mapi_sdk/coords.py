@@ -200,6 +200,12 @@ def canonicalise_coords(
         cur = np.asarray(ds[dim].values)
         ctx = _context_labels(marks, dim)
         requested = cur[~np.isin(cur, ctx)] if ctx.size else cur
+        if ctx.size:
+            # long-layout context rows carry synthetic labels outside the fit set
+            # (``-k..-1``); they are dropped after scoring and must not be judged (or
+            # ordered) as score coordinates. Dense context labels are fit labels and stay.
+            synthetic = np.isin(cur, ctx) & ~np.isin(cur, fit)
+            cur = cur[~synthetic]
         unseen = cur[~np.isin(cur, fit)]
         new = np.array([], dtype=cur.dtype)
         match spec.policy:
@@ -224,10 +230,11 @@ def canonicalise_coords(
                 order = np.concatenate([fit, unseen]) if unseen.size else fit
             case _:
                 order = _extend_order(dim, spec.max_extension, fit, cur, schema, pad_extend)
-        padded = not np.array_equal(order, cur)
+        labels = np.asarray(ds[dim].values)
+        padded = not np.array_equal(order, labels)
         if padded:
             out = _reindex(out, dim, order, targets, pad_fill)
-            out = _remap_index_vars(out, ds, dim, cur, order, schema)
+            out = _remap_index_vars(out, ds, dim, labels, order, schema)
         flags = {f"{dim}__requested": (dim, np.isin(order, requested))}
         if spec.policy is DimPolicy.NEW_LEVELS:
             flags[f"{dim}__is_new"] = (dim, np.isin(order, new))

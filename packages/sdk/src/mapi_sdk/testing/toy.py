@@ -80,6 +80,7 @@ class FxStep(Step[FxSettings, StepState]):
     kind = StepKind.VALUE
     Settings = FxSettings
     invertible = True
+    additive = True
     var_params = ("vars",)
     side_table_params = ("table",)
     effect_template: ClassVar[dict[str, JsonValue]] = {
@@ -182,6 +183,8 @@ class ScaleStep(Step[ScaleSettings, ScaleState]):
     Settings = ScaleSettings
     State = ScaleState
     invertible = True
+    additive = True
+    provides = ("scaling",)
     var_params = ("vars",)
     dim_params = ("over",)
     unseen_levels_param = "unseen_levels"

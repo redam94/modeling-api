@@ -171,6 +171,7 @@ class AdstockStep(Step[AdstockSettings, StepState]):
     version = "1.0.0"
     kind = StepKind.VALUE
     Settings = AdstockSettings
+    provides = ("carryover",)
     var_params = ("vars", "mask")
     dim_params = ("along", "by")
     effect_template: ClassVar[dict[str, JsonValue]] = {

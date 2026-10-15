@@ -28,23 +28,37 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from mapi_spec.capabilities import REPRESENTATION_RULES, OutputSelector, Representation
-from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
+from mapi_spec.errors import CoordPlanError, ErrorCode, Issue, MapiError, Severity
 from mapi_spec.loader import load_model_spec, load_score_request
-from mapi_spec.schema import DataSchema, Role
-from mapi_spec.spec import FitMode, ModelSpec, ScorePolicy, ScoreRequest
+from mapi_spec.schema import DataSchema, DimPolicy, Role
+from mapi_spec.spec import (
+    FitMode,
+    LastPerGroupSplit,
+    ModelSpec,
+    ScorePolicy,
+    ScoreRequest,
+    Split,
+)
 from mapi_spec.validate import ResolvedSpec, apply_defaults, validate_spec
 
 from mapi_sdk._util import json_safe, normalise_dataset
 from mapi_sdk.binding import BindingMap
 from mapi_sdk.bundle import Bundle, MetricsReport, assert_no_pickle, new_manifest
 from mapi_sdk.context import drop_context
-from mapi_sdk.coords import CoordPlan, canonicalise_coords, horizon_frame, next_label
+from mapi_sdk.coords import (
+    CanonicalPlan,
+    CoordPlan,
+    canonicalise_coords,
+    horizon_frame,
+    next_label,
+)
 from mapi_sdk.errors import SchemaValidationError, StepError
 from mapi_sdk.metrics import compute_metrics, elpd
 from mapi_sdk.models import PREDICTIONS, FitContext, FitOutput, Fitted, ModelPlugin, ScoreContext
-from mapi_sdk.pipeline import RAW, FitTrace, Pipeline
+from mapi_sdk.pipeline import RAW, FitTrace, Pipeline, ReplayTrace
 from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.schema import check_dataset, infer_schema
 from mapi_sdk.split import SplitResult, split_dataset
@@ -147,7 +161,9 @@ def _resolve(
     catalog = registry.catalog()
     schema = _raw_schema(spec, data, raw_schema)
     result = validate_spec(spec, catalog, schema)
-    if raw_schema is None and result.resolved is not None:
+    # the model's template decides the target roles whatever schema was given (validation
+    # already judged target dependence by them); the stored raw schema says so too
+    if result.resolved is not None:
         model_schema = result.resolved.model.input_schema
         if model_schema is not None and model_schema.targets:
             fixed = _with_targets(schema, model_schema.targets, BindingMap(spec.data.bind))
@@ -258,6 +274,7 @@ def fit_spec(
     )
     hooks.check()
     sr = split_dataset(prefix.data, split, schema=resolved.stages.get(split_stage), seed=env.seed)
+    _check_recursion(resolved, split, sr)
     hooks.progress(0.15, "split the data")
     evaluation = _fit_from(
         env, prefix, sr.train, start=split_stage, role="evaluation", progress=(0.15, 0.45)
@@ -285,6 +302,36 @@ def fit_spec(
     _add_elpd(env, production)
     hooks.progress(1.0, "fit complete")
     return production
+
+
+def _check_recursion(rs: ResolvedSpec, split: Split, sr: SplitResult) -> None:
+    """Reject target lags shorter than the holdout once its length is known.
+
+    Static validation can only judge ``time_holdout: last``; ``fraction``/``after`` and
+    ``as_of`` (plus its ``gap``) holdouts are measured here, before the evaluation scores
+    the holdout with its own observed targets feeding the lags.
+    """
+    fdim = split.forecast_dim
+    if fdim is None or sr.is_masked or "recursion" in rs.model.capabilities.owns:
+        return
+    if isinstance(split, LastPerGroupSplit):
+        periods = split.last
+    elif fdim in sr.holdout.dims:
+        periods = int(sr.holdout.sizes[fdim])  # an as_of gap is part of the holdout
+    else:
+        return
+    for idx, s in enumerate(rs.steps):
+        ctx = s.context
+        if not s.depends_on_target or ctx is None or ctx.along != fdim:
+            continue
+        min_lag = ctx.min_lag if ctx.min_lag is not None else 1
+        if periods > min_lag:
+            raise MapiError(
+                f"step {s.id!r} lags the target by {min_lag} along {fdim!r} but the holdout "
+                f"spans {periods} periods; recursive forecasting is not supported in v1",
+                code=ErrorCode.RECURSIVE_UNSUPPORTED,
+                pointer=f"/pipeline/{idx}",
+            )
 
 
 def _add_elpd(env: _FitEnv, bundle: Bundle) -> None:
@@ -538,8 +585,19 @@ def _var_sources(fitted: Fitted, schema: DataSchema | None) -> dict[str, str]:
     return out
 
 
+def _decompositions(fitted: Fitted) -> list[str]:
+    """Outputs that decompose a prediction along a ``component`` dim (contributions)."""
+    return [n for n, d in fitted.manifest.outputs.items() if "component" in d.dims]
+
+
 def _residuals(env: _FitEnv, bundle: Bundle, model_ds: xr.Dataset) -> dict[str, xr.DataArray]:
-    """Model-space in-sample residuals for Duan's smearing retransformation."""
+    """Model-space in-sample residuals for Duan's smearing retransformation.
+
+    Only *target-shaped* outputs (same dims as their source variable) give residuals, and
+    the first such output per source wins: a decomposition such as
+    ``contributions(component, ...)`` also inherits the target's units but its cells are
+    not predictions of the target.
+    """
     rs = env.resolved
     req = _internal_request(env.spec, "predict", rs.model_stage, OutputSelector(units="model"))
     canon, plan = canonicalise_coords(
@@ -553,7 +611,9 @@ def _residuals(env: _FitEnv, bundle: Bundle, model_ds: xr.Dataset) -> dict[str, 
     pred = plan.restore(_predictions(tree))
     out: dict[str, xr.DataArray] = {}
     for var, src in _var_sources(bundle.model, rs.model.input_schema).items():
-        if var not in pred or src not in model_ds:
+        if var not in pred or src not in model_ds or src in out:
+            continue
+        if set(pred[var].dims) != set(model_ds[src].dims):
             continue
         r = (model_ds[src] - pred[var]).values.reshape(-1)
         r = r[np.isfinite(r)]
@@ -594,14 +654,29 @@ def _evaluate(env: _FitEnv, evaluation: Bundle, sr: SplitResult, split_stage: st
     )
     req = _internal_request(env.spec, mode, split_stage, output, seed=env.seed)
     names = list(env.spec.evaluate.metrics) or list(DEFAULT_EVAL_METRICS)
+    payload, observed = sr.holdout, None
+    mask = sr.holdout_mask
+    split = env.spec.data.split
+    if sr.lead and split is not None and split.forecast_dim in sr.holdout.dims:
+        fdim = str(split.forecast_dim)
+        mask = xr.DataArray(
+            np.arange(sr.holdout.sizes[fdim]) >= sr.lead,
+            dims=[fdim],
+            coords={fdim: sr.holdout[fdim].values} if fdim in sr.holdout.coords else None,
+        )
+    if sr.is_masked and any(s.depends_on_target for s in env.resolved.steps):
+        # cell-level split: held-out targets must not feed target-dependent features
+        # (lags of y) - score the target-masked data, compare against the full data
+        payload, observed = sr.train, sr.holdout
     tree = score_bundle(
         evaluation,
         req,
-        sr.holdout,
+        payload,
         side_tables=env.side_tables,
         registry=env.registry,
         metrics=[m for m in names if not m.startswith("elpd_")],
-        metric_mask=sr.holdout_mask,
+        metric_mask=mask,
+        observed=observed,
     )
     report = MetricsReport.model_validate_json(tree.attrs["metrics"])
     report.split = json_safe(
@@ -691,6 +766,38 @@ def _horizon_payload(bundle: Bundle, req: ScoreRequest) -> xr.Dataset:
     return horizon_frame(stage_coords, hdim, until=end, freq=sfreq)
 
 
+def _order_payload(ds: xr.Dataset, schema: DataSchema | None) -> xr.Dataset:
+    """Sort a score payload along its ordered dims before any step runs.
+
+    Look-back steps (lags, adstock, forward fill) shift by *position*, so a payload whose
+    time labels arrive out of order would silently get wrong features. Dims that are
+    ``time``, ``ordered`` or ``extend`` at the entry stage are sorted; duplicate labels
+    there are rejected (``COORD_NOT_ALLOWED``).
+    """
+    if schema is None:
+        return ds
+    for d in list(ds.dims):
+        dim = str(d)
+        spec = schema.dims.get(dim)
+        if spec is None or dim not in ds.coords:
+            continue
+        if not (spec.kind == "time" or spec.ordered or spec.policy is DimPolicy.EXTEND):
+            continue
+        values = np.asarray(ds[dim].values)
+        if values.dtype.kind not in "iufM" or values.size < 2:
+            continue
+        index = pd.Index(values)
+        if index.has_duplicates:
+            raise CoordPlanError(
+                f"score coords of {dim!r} repeat labels; an ordered dim needs unique labels",
+                code=ErrorCode.COORD_NOT_ALLOWED,
+                pointer="/data",
+            )
+        if not index.is_monotonic_increasing:
+            ds = ds.sortby(dim)
+    return ds
+
+
 @dataclass(slots=True)
 class _Scored:
     pred: xr.Dataset
@@ -704,6 +811,7 @@ def score_bundle(
     request: ScoreRequest | str,
     data: xr.Dataset | None = None,
     *,
+    scenario: xr.Dataset | None = None,
     side_tables: Mapping[str, xr.Dataset] | None = None,
     registry: Registry | None = None,
     max_draws: int | None = None,
@@ -711,14 +819,22 @@ def score_bundle(
     metrics: Sequence[str] | None = None,
     metric_mask: xr.DataArray | None = None,
     hooks: FitHooks | None = None,
+    observed: xr.Dataset | None = None,
 ) -> xr.DataTree:
     """Score a fitted bundle; returns a ``DataTree``.
+
+    ``data`` is the request's ``data`` payload and ``scenario`` its ``scenario`` payload.
+    Outside counterfactuals a scenario simply *is* the payload. A counterfactual scores
+    the scenario (or the data, when no scenario is given) with the interventions applied
+    against the **baseline** ``data``; a scenario without baseline data is rejected.
 
     Groups: ``summary`` (stats along a ``stat`` dim), ``draws`` (when requested; joint,
     from the bundle thinning index), ``predictions`` (full representation, when
     ``return_full``), and for counterfactuals ``baseline/...`` and ``delta/...``. Root
     attrs carry the representation, output kind, units/output space, retransformation
-    labels, non-error issues and - in ``evaluate`` mode - the metrics.
+    labels, non-error issues and - in ``evaluate`` mode - the metrics. ``observed``
+    (evaluation of cell-level splits) gives the observed targets for metrics when ``data``
+    has them masked.
     """
     req = load_score_request(request) if isinstance(request, str) else request
     registry = registry or default_registry()
@@ -732,6 +848,21 @@ def score_bundle(
     pipeline = bundle.pipeline(registry)
     pipeline.index(req.inputs_stage)
 
+    counterfactual = req.mode == "counterfactual"
+    if counterfactual and req.scenario is not None and scenario is None:
+        raise MapiError(
+            "the counterfactual names a scenario dataset but none was supplied",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer="/scenario",
+        )
+    if counterfactual and scenario is not None and data is None:
+        raise MapiError(
+            "a counterfactual with a scenario needs the baseline in 'data'",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer="/data",
+        )
+    if not counterfactual and scenario is not None:
+        data, scenario = scenario, None  # the scenario is the payload
     if data is None:
         if req.horizon is None:
             raise MapiError(
@@ -740,12 +871,24 @@ def score_bundle(
                 pointer="/data",
             )
         data = _horizon_payload(bundle, req)
-    data = binding.apply(normalise_dataset(data), missing="ignore")
+    entry_schema = rs.stages.get(req.inputs_stage)
+    data = _order_payload(binding.apply(normalise_dataset(data), missing="ignore"), entry_schema)
 
-    issues = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws).check(data)
+    plan = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws)
+    issues = plan.check(data)
+    derived = _requested_derived(bundle, req)
+    if scenario is not None:
+        scenario = binding.apply(normalise_dataset(scenario), missing="ignore")
+        scenario = _order_payload(scenario, entry_schema)
+        issues += [i for i in plan.check(scenario) if i not in issues]
+    # pinned tables always replay the version stored at fit; callers only supply the others
     tables = {
+        **{
+            k: normalise_dataset(v)
+            for k, v in (side_tables or {}).items()
+            if rs.side_tables.get(k) is not ScorePolicy.PINNED
+        },
         **bundle.side_tables,
-        **{k: normalise_dataset(v) for k, v in (side_tables or {}).items()},
     }
     needed = sorted({t for s in rs.steps_after(req.inputs_stage) for t in s.side_tables})
     for t in needed:
@@ -758,7 +901,7 @@ def score_bundle(
     seed = req.seed if req.seed is not None else (bundle.model.fit_config.seed or 0)
     targets = rs.model.input_schema.targets if rs.model.input_schema is not None else []
 
-    def run(ds: xr.Dataset) -> _Scored:
+    def prepare(ds: xr.Dataset) -> tuple[ReplayTrace, xr.Dataset, CanonicalPlan]:
         hooks.check()
         trace = pipeline.transform(
             ds,
@@ -768,15 +911,25 @@ def score_bundle(
             seed=seed,
             cancel=hooks.cancel,
             log=hooks.log,
+            fit_coords=bundle.fit_coords,
         )
-        model_ds = trace.data
         canon, plan = canonicalise_coords(
-            model_ds,
+            trace.data,
             bundle.fit_coords[rs.model_stage],
             rs.model.input_schema,
             pad_extend=bool(getattr(plugin, "pad_extend", True)),
             marks=trace.marks,
         )
+        return trace, canon, plan
+
+    def observe(trace: ReplayTrace, plan: CanonicalPlan) -> xr.Dataset:
+        model_ds = trace.data
+        return plan.restore(
+            drop_context(model_ds[[t for t in targets if t in model_ds]], trace.marks)
+        )
+
+    def run(ds: xr.Dataset) -> _Scored:
+        trace, canon, plan = prepare(ds)
         ctx = ScoreContext(
             mode=req.mode,
             kind=req.output.kind,
@@ -799,9 +952,7 @@ def score_bundle(
                 untrusted_text=f"{type(exc).__name__}: {exc}"[:8000],
             ) from exc
         pred = plan.restore(drop_context(_predictions(tree), trace.marks))
-        observed = plan.restore(
-            drop_context(model_ds[[t for t in targets if t in model_ds]], trace.marks)
-        )
+        observed = observe(trace, plan)
         extra = {
             name: child.to_dataset(inherit=False)
             for name, child in tree.children.items()
@@ -809,10 +960,20 @@ def score_bundle(
         }
         return _Scored(pred, observed, extra, trace.issues)
 
-    scenario = _apply_interventions(data, req, binding) if req.interventions else data
-    main = run(scenario)
+    scored = data if scenario is None else scenario
+    if req.interventions:
+        scored = _apply_interventions(scored, req, binding)
+    main = run(scored)
     issues += main.issues
-    baseline = run(data) if req.mode == "counterfactual" else None
+    if observed is not None:
+        # cell-level evaluation: features come from the target-masked payload, the
+        # observed targets for metrics from the full one
+        obs_in = binding.apply(normalise_dataset(observed), missing="ignore")
+        obs_trace, _, obs_plan = prepare(_order_payload(obs_in, entry_schema))
+        main.observed = observe(obs_trace, obs_plan)
+    baseline = run(data) if counterfactual else None
+
+    kept_reported: set[str] = set()
 
     def finish(pred: xr.Dataset) -> tuple[xr.Dataset, dict[str, str], dict[str, str]]:
         if req.select:
@@ -835,10 +996,25 @@ def score_bundle(
                 else "median",
                 residuals=bundle.residuals,
                 side_tables=tables,
+                decompositions=_decompositions(bundle.model),
             )
             pred, space, retrans = inv.data, inv.space, inv.retransform
+            for var, steps in inv.kept.items():
+                if var in kept_reported:
+                    continue
+                kept_reported.add(var)
+                issues.append(
+                    Issue(
+                        code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                        severity=Severity.WARNING,
+                        pointer="/output/units",
+                        message=f"{var!r} is an additive decomposition; it stays in the space "
+                        f"of stage {space.get(var)!r} because inverting {steps} per component "
+                        "would no longer sum to the prediction",
+                    )
+                )
         elif "inverse_units" in caps.owns:
-            space = {str(v): "model-owned" for v in pred.data_vars}
+            pred, space = _model_owned(pred, bundle)
         else:
             space = {str(v): rs.model_stage for v in pred.data_vars}
         return pred, space, retrans
@@ -908,11 +1084,64 @@ def score_bundle(
         attrs["metrics"] = report.model_dump_json()
         if return_full:
             groups["observed"] = _observed_output(bundle, pipeline, main, tables)
+    for name, cached in derived.items():
+        groups[f"derived/{name}"] = cached
     if req.output.names == "dataset":
         groups = {k: binding.reverse(v) for k, v in groups.items()}
     nodes: dict[str, xr.Dataset] = {"/": xr.Dataset(attrs=attrs)}
     nodes.update({f"/{k}": v for k, v in groups.items()})
     return xr.DataTree.from_dict(nodes)
+
+
+def _model_owned(pred: xr.Dataset, bundle: Bundle) -> tuple[xr.Dataset, dict[str, str]]:
+    """Label outputs of a model that owns ``inverse_units``, per variable.
+
+    Such a model inverts its own scaling, so its outputs are in the units of its input:
+    the declared ``units``, else those of ``units_of`` at the model stage (the raw units
+    when no platform step changed them).
+    """
+    rs = bundle.resolved
+    stage = rs.stages.get(rs.model_stage)
+    outputs = bundle.model.manifest.outputs
+    updates: dict[str, xr.DataArray] = {}
+    space: dict[str, str] = {}
+    for v in pred.data_vars:
+        name = str(v)
+        decl = outputs.get(name)
+        units = decl.units if decl is not None else None
+        src = decl.units_of if decl is not None else None
+        if units is None and src is not None and stage is not None and src in stage.vars:
+            units = stage.vars[src].units
+        attrs = {**pred[v].attrs, "output_space": "model-owned"}
+        if units is not None:
+            attrs["units"] = units
+        updates[name] = pred[v].assign_attrs(attrs)
+        space[name] = "model-owned"
+    return pred.assign(updates), space
+
+
+def _requested_derived(bundle: Bundle, req: ScoreRequest) -> dict[str, xr.Dataset]:
+    """Derived quantities named in ``output.vars``: the fit-cached copies in the bundle.
+
+    A declared quantity the bundle does not cache (``cache: on_demand``, or not listed in
+    the spec's ``outputs.derived``) cannot be computed by a score run yet, so it is refused
+    rather than silently left out of the result.
+    """
+    declared = set(bundle.resolved.model.derived) - set(bundle.model.manifest.outputs)
+    out: dict[str, xr.Dataset] = {}
+    for j, name in enumerate(req.output.vars):
+        if name not in declared:
+            continue
+        cached = bundle.model.derived.get(name)
+        if cached is None:
+            raise MapiError(
+                f"derived quantity {name!r} is not cached in this bundle; only quantities "
+                "with cache 'fit' listed in outputs.derived can be returned",
+                code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                pointer=f"/output/vars/{j}",
+            )
+        out[name] = cached
+    return out
 
 
 def _labels(ds: xr.Dataset, dim: str, values: Sequence[Any]) -> np.ndarray:

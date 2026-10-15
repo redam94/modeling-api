@@ -10,7 +10,7 @@ invertible VALUE steps up to the last RESHAPE step and labels the output space.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -99,6 +99,8 @@ class InverseResult:
     data: xr.Dataset
     space: dict[str, str] = field(default_factory=dict)
     retransform: dict[str, str] = field(default_factory=dict)
+    kept: dict[str, list[str]] = field(default_factory=dict)
+    """Decompositions left in model space -> the non-additive steps that blocked them."""
 
 
 class Pipeline:
@@ -294,11 +296,14 @@ class Pipeline:
         cancel: CancelToken | None = None,
         log: Callable[[str], None] | None = None,
         keep_stages: bool = False,
+        fit_coords: Mapping[str, xr.Dataset] | None = None,
     ) -> ReplayTrace:
         """Replay stored states from ``start`` to ``end``; never learns.
 
         With ``replay=True`` each step's stored context is prepended (per group, checked
         for contiguity) before it runs; the returned marks say which rows to drop later.
+        ``fit_coords`` (per-stage fitted coordinates) let a replay tell an in-sample window
+        that starts with the fitted series from one that loses look-back history.
         """
         marks: list[ContextMark] = []
         issues: list[Issue] = []
@@ -312,7 +317,20 @@ class Pipeline:
             if replay and state.context is not None:
                 need = state.context_need or ps.need
                 freq = self._freq(ps, need, state.context)
-                ds, mark, found = prepend_context(ds, state.context, need, freq=freq, step_id=ps.id)
+                replayed = (
+                    np.concatenate([m.labels for m in marks if m.dim == need.along])
+                    if need is not None and any(m.dim == need.along for m in marks)
+                    else None
+                )
+                ds, mark, found = prepend_context(
+                    ds,
+                    state.context,
+                    need,
+                    freq=freq,
+                    step_id=ps.id,
+                    replayed=replayed,
+                    fit_start=self._fit_start(ps, need, fit_coords),
+                )
                 issues += found
                 if mark is not None:
                     marks.append(mark)
@@ -324,6 +342,22 @@ class Pipeline:
             if keep_stages:
                 stages[ps.id] = ds
         return ReplayTrace(ds, marks, issues, stages)
+
+    def _fit_start(
+        self,
+        ps: PipelineStep,
+        need: ContextNeed | None,
+        fit_coords: Mapping[str, xr.Dataset] | None,
+    ) -> Any:
+        if need is None or fit_coords is None:
+            return None
+        coords = fit_coords.get(self.input_stage(ps.id))
+        if coords is None or need.along not in coords.coords:
+            return None
+        values = np.asarray(coords[need.along].values)
+        if values.size == 0 or values.dtype.kind not in "Miuf":
+            return None
+        return values.min()
 
     def _freq(self, ps: PipelineStep, need: ContextNeed | None, context: xr.Dataset) -> str | None:
         if need is None:
@@ -370,6 +404,7 @@ class Pipeline:
         retransform: Retransform = "median",
         residuals: Mapping[str, xr.DataArray] | None = None,
         side_tables: Mapping[str, xr.Dataset] | None = None,
+        decompositions: Collection[str] = (),
     ) -> InverseResult:
         """Map output variables back to their output space.
 
@@ -378,7 +413,13 @@ class Pipeline:
         RESHAPE stage) or at the first non-invertible step that touched the variable.
         Point outputs through a non-linear inverse are labelled ``median`` (plain inverse)
         or use Duan's smearing over stored model-space ``residuals``; moments use the
-        delta method for ``sd``.
+        first-order delta method (``g(mu)``, ``|g'(mu)| sd`` with a central difference).
+
+        ``decompositions`` name additive decompositions (``contributions(component, ...)``).
+        They are inverted component by component only through *additive* steps
+        (``Step.additive``); through any other inverse (``expm1``, ``x * sd + mean``) the
+        components would no longer sum to the inverted prediction, so inversion stops right
+        after that step and :attr:`InverseResult.kept` says why.
         """
         target_stage = self.last_reshape_stage if to_stage is None else to_stage
         out = ds.copy()
@@ -401,13 +442,24 @@ class Pipeline:
             da = ds[out_var]
             nonlinear = any(not ps.step.linear for ps in chain)
             label = "exact"
+            if out_var in decompositions:
+                # invert through the newest additive steps only; stop right after the
+                # first step whose inverse would break the sum of the components
+                k = next((j for j, ps in enumerate(chain) if not ps.step.additive), None)
+                if k is not None:
+                    result.kept[out_var] = [ps.id for ps in chain[k:] if not ps.step.additive]
+                    reached = chain[k].id
+                    chain = chain[:k]
             if not chain:
                 inv = da
                 label = "none"
             elif representation is Representation.MOMENTS and "moment" in da.dims:
                 mean, sd = da.sel(moment="mean", drop=True), da.sel(moment="sd", drop=True)
-                m = run(mean)
-                sd_out = abs(run(mean + sd) - m)
+                m = run(mean)  # g(mu): the first-order delta-method mean
+                # delta method: |g'(mu)| * sd, with a central difference for g'
+                h = 1e-5 * (abs(mean) + 1.0)
+                slope = (run(mean + h) - run(mean - h)) / (2 * h)
+                sd_out = abs(slope) * sd
                 inv = xr.concat([m, sd_out], dim="moment").assign_coords(moment=["mean", "sd"])
                 inv = inv.transpose(*da.dims)
                 label = "delta_method" if nonlinear else "exact"

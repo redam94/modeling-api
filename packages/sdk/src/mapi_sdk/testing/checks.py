@@ -15,7 +15,6 @@ import tempfile
 import traceback
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -37,7 +36,7 @@ from mapi_spec.schema import DataSchema, DimPolicy
 from mapi_spec.spec import AsOfSplit, ModelSpec, ScorePolicy, ScoreRequest, TimeHoldoutSplit
 
 from mapi_sdk._util import dtype_family
-from mapi_sdk.bundle import BUNDLE_FILE, Bundle, assert_no_pickle
+from mapi_sdk.bundle import Bundle, assert_no_pickle
 from mapi_sdk.context import drop_context, extract_context, prepend_context
 from mapi_sdk.harness import fit_spec, score_bundle
 from mapi_sdk.metrics import point_estimate
@@ -45,7 +44,7 @@ from mapi_sdk.pipeline import Pipeline
 from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.schema import infer_schema
 from mapi_sdk.steps import Step, StepContext, StepSettings, StepState, states_equal
-from mapi_sdk.wire import read_datatree_zip, write_datatree_zip, write_zarr_zip, zip_entries
+from mapi_sdk.wire import read_datatree_zip, write_datatree_zip, write_zarr_zip
 
 __all__ = [
     "CheckResult",
@@ -563,10 +562,8 @@ def check_model(
         with tempfile.TemporaryDirectory() as tmp:
             b.write(tmp)
             back = Bundle.read(tmp, reg)
-            entries = zip_entries(Path(tmp) / BUNDLE_FILE)
-            bad = [n for n in entries if n.lower().endswith((".pkl", ".pickle", ".joblib"))]
-            if bad:
-                raise AssertionError(f"bundle contains pickle-like entries {bad}")
+            # native artifacts keep their names in attrs (the archive keys are zarr paths),
+            # so the check runs on the read-back artifacts: names, opcodes, npy, archives
             assert_no_pickle(back.model.native)
         w = window()
         a = score_on(b, _request(), w)
@@ -822,11 +819,14 @@ def check_model(
         notes = []
         for var, stage in space.items():
             decl = manifest.outputs.get(var)
-            if decl is None or decl.units_of is None or stage == "model-owned":
+            if decl is None or decl.units_of is None:
                 continue
-            sch = b.resolved.stages.get(stage)
+            # a model owning inverse_units reports the units of its own input
+            sch = b.resolved.stages.get(b.model_stage if stage == "model-owned" else stage)
             want = (
-                sch.vars[decl.units_of].units
+                decl.units
+                if decl.units is not None
+                else sch.vars[decl.units_of].units
                 if sch is not None and decl.units_of in sch.vars
                 else None
             )

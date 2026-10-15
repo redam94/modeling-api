@@ -23,7 +23,13 @@ def test_fixtures_are_registered() -> None:
 def test_e33_requests_cover_horizon_new_market_plan_and_counterfactual() -> None:
     fx = load_fixture("e33")
     cases = {c.name: c for c in fx.cases}
-    assert list(cases) == ["forecast_8w", "new_market", "weekly_eur_plan", "counterfactual_tv"]
+    assert list(cases) == [
+        "forecast_8w",
+        "new_market",
+        "weekly_eur_plan",
+        "counterfactual_tv",
+        "counterfactual_tv_plan",
+    ]
     stages = {c.score_request().inputs_stage for c in fx.cases}
     assert stages == {"raw", "weekly"}
     # a planner's weekly EUR budget needs no FX table: it enters after the conversion
@@ -31,6 +37,9 @@ def test_e33_requests_cover_horizon_new_market_plan_and_counterfactual() -> None
     assert all(c.side_tables for n, c in cases.items() if n != "weekly_eur_plan")
     assert cases["new_market"].expect["issues"] == ["UNSEEN_LEVELS"]
     assert cases["counterfactual_tv"].score_request().mode == "counterfactual"
+    # the same uplift as a scenario dataset, scored against the baseline data
+    plan = cases["counterfactual_tv_plan"]
+    assert plan.scenario == "window_tv_plan" and plan.score_request().scenario is not None
 
 
 def test_e33_payloads() -> None:
@@ -58,6 +67,30 @@ def test_pymc_marketing_requests() -> None:
     schema = fx.raw_schema(data)
     # pymc-marketing cannot score panel levels unseen at fit
     assert schema.dims["market"].policy == "fixed"
+
+
+def test_pymc_marketing_owns_scaling_and_carryover() -> None:
+    """``owns: [scaling, carryover]``: platform scaling/carry-over on the target or media
+    is rejected statically instead of silently double-scaling (plan §4.3)."""
+    from mapi_sdk.registry import default_registry
+    from mapi_spec import load_model_spec, validate_spec
+    from mapi_spec.errors import ErrorCode
+
+    fx = load_fixture("pymc_marketing")
+    data, _ = fx.generate(0, "tiny")
+    schema = fx.raw_schema(data)
+    catalog = default_registry().catalog()
+    assert validate_spec(fx.spec("tiny"), catalog, schema).ok
+    extra = {
+        "scaling": "  - {id: scale_y, use: core.mean_scale@^1, with: {vars: [y], over: [time]}}\n",
+        "carryover": "  - {id: ads, use: core.adstock@^1, with: {vars: [spend], along: time, "
+        "alpha: 0.5, l_max: 3}}\n",
+    }
+    for what, step in extra.items():
+        text = fx.spec_text.replace("\nmodel:\n", "\n" + step + "\nmodel:\n", 1)
+        res = validate_spec(load_model_spec(text), catalog, schema)
+        errs = [i for i in res.errors if i.code is ErrorCode.CAPABILITY_UNSUPPORTED]
+        assert errs and f"owns {what}" in errs[0].message, res.issues
 
 
 @pytest.mark.parametrize("fixture_id", ["e33", "pymc_marketing"])

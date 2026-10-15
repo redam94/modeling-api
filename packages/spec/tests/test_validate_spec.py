@@ -283,7 +283,8 @@ def test_model_dtype_kind_and_role_mismatch(catalog: Catalog) -> None:
     res = _run(catalog, _e33(), raw)
     msgs = [(i.severity, i.message) for i in res.issues]
     assert any("dtype float64" in m for s, m in msgs if s is Severity.ERROR)
-    assert any("expects role 'target'" in m for s, m in msgs if s is Severity.WARNING)
+    # the model's template decides the target role; the override is reported, not warned
+    assert any("treated as role 'target'" in m for s, m in msgs if s is Severity.INFO)
     assert any("kind 'categorical'" in m for _, m in msgs)
 
 
@@ -439,6 +440,19 @@ def test_recursive_forecasting_rejected(catalog: Catalog) -> None:
     assert res.resolved is None
 
 
+def test_recursion_detected_when_raw_schema_does_not_mark_the_target(catalog: Catalog) -> None:
+    """Target dependence follows the model's template roles, not only the raw schema's."""
+    raw = copy.deepcopy(E33_RAW)
+    raw["vars"]["revenue_local"]["role"] = "covariate"  # e.g. an inferred schema
+    res = _run(catalog, _target_lag_spec(8, [1, 2]), raw)
+    issue = _find(res, ErrorCode.RECURSIVE_UNSUPPORTED)
+    assert issue.pointer == "/pipeline/4" and issue.severity is Severity.ERROR
+    ok = _run(catalog, _target_lag_spec(8, [8, 12]), raw)
+    rs = ok.raise_for_errors()
+    assert rs.stages["raw"] is not None and rs.stages["raw"].vars["y"].role.value == "target"
+    assert not any("role" in i.message for i in ok.issues if i.severity is not Severity.INFO)
+
+
 def test_recursion_ok_when_lag_covers_holdout(catalog: Catalog) -> None:
     rs = _run(catalog, _target_lag_spec(8, [8, 12])).raise_for_errors()
     ylag = next(s for s in rs.steps if s.id == "ylag")
@@ -452,6 +466,66 @@ def test_recursion_ok_when_model_owns_it(catalog: Catalog) -> None:
             m["manifest"]["capabilities"]["owns"] = ["recursion"]
     owning = Catalog.model_validate(data)
     assert _run(owning, _target_lag_spec(8, [1])).ok
+
+
+def _owning(catalog: Catalog, owns: list[str]) -> Catalog:
+    data = catalog.model_dump(mode="json")
+    for m in data["models"]:
+        if m["manifest"]["id"] == "mmm.hierarchical_geo":
+            m["manifest"]["capabilities"]["owns"] = owns
+    return Catalog.model_validate(data)
+
+
+def test_platform_scaling_rejected_when_the_model_owns_it(catalog: Catalog) -> None:
+    """``owns: [scaling]``: a platform scaling step on the target/media would double-scale."""
+    res = _run(_owning(catalog, ["scaling", "inverse_units"]), _e33())
+    errs = {i.pointer: i for i in res.errors if i.code is ErrorCode.CAPABILITY_UNSUPPORTED}
+    assert set(errs) == {"/pipeline/2", "/pipeline/3"}  # scale_spend (spend), scale_y (y)
+    assert "owns scaling" in errs["/pipeline/3"].message
+    assert res.resolved is None
+    # without ownership the same pipeline is fine
+    assert _run(catalog, _e33()).ok
+
+
+def test_platform_carryover_rejected_when_the_model_owns_it(catalog: Catalog) -> None:
+    res = _run(_owning(catalog, ["carryover"]), _e33())
+    errs = [i for i in res.errors if i.code is ErrorCode.CAPABILITY_UNSUPPORTED]
+    assert [i.pointer for i in errs] == ["/pipeline/4"]  # lags: lag_tensor on spend
+    assert "owns carryover" in errs[0].message
+
+
+LONG_RAW: dict[str, Any] = {
+    "dims": {"obs": {"kind": "index"}, "county": {"kind": "categorical"}},
+    "vars": {
+        "y": {"dims": ["obs"], "dtype": "float64", "role": "target"},
+        "county_idx": {"dims": ["obs"], "dtype": "int64", "role": "index", "index_of": "county"},
+        "x": {"dims": ["obs"], "dtype": "float64"},
+        "w": {"dims": ["county"], "dtype": "float64"},
+    },
+}
+
+
+def _long_lag(within: list[str]) -> dict[str, Any]:
+    d = _e33()
+    d["data"] = {"dataset": "dataset://growth/radon@latest"}
+    d["model"]["fit"]["mode"] = "train_only"
+    d["pipeline"] = [
+        {
+            "id": "xlag",
+            "use": "core.lag@^1",
+            "with": {"vars": ["x"], "along": "obs", "within": within, "lags": [1]},
+        }
+    ]
+    return d
+
+
+def test_long_layout_context_groups_are_variables_along_the_row_dim(catalog: Catalog) -> None:
+    """``lag(along=obs, within=[county_idx])``: groups of a long layout are row variables."""
+    res = _run(catalog, _long_lag(["county_idx"]), LONG_RAW)
+    assert not [i for i in res.issues if "context" in i.message], res.issues
+    for bad in (["nope"], ["w"]):  # unknown, or not a variable along the row dim
+        res = _run(catalog, _long_lag(bad), LONG_RAW)
+        assert any("context group" in i.message for i in res.errors), res.issues
 
 
 def test_recursion_unknown_horizon_warns(catalog: Catalog) -> None:

@@ -230,6 +230,51 @@ def test_registry_plots_and_entry_points(monkeypatch: pytest.MonkeyPatch) -> Non
     assert [s.id for s in custom.steps()] == ["toy.fx"]
 
 
+def test_entry_points_never_shadow_registered_or_builtin_ids(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A distribution exporting an id that is already registered (or that sits in a
+    built-in namespace it does not own) is reported, never silently swapped in."""
+
+    class _Dist:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    class EP:
+        def __init__(self, name: str, obj: Any, dist: str | None) -> None:
+            self.name, self._obj = name, obj
+            self.dist = None if dist is None else _Dist(dist)
+
+        def load(self) -> Any:
+            return self._obj
+
+    class _Shadow(toy.ScaleStep):
+        """Claims toy.scale@1.0.0 from another distribution."""
+
+    class _CoreShadow(toy.ScaleStep):
+        id = "core.mean_scale"
+
+    eps = {
+        "mapi.steps": [
+            EP("scale", toy.ScaleStep, "mapi-sdk"),
+            EP("again", toy.ScaleStep, "mapi-sdk"),  # the same class twice is fine
+            EP("shadow", _Shadow, "evil-dist"),
+            EP("core", _CoreShadow, "evil-dist"),
+            EP("own", toy.LagStep, "tenant-dist"),
+        ],
+    }
+    monkeypatch.setattr(importlib.metadata, "entry_points", lambda group: eps.get(group, []))
+    reg = Registry()
+    errors = reg.load_entry_points()
+    assert reg.step("toy.scale@^1") is toy.ScaleStep
+    assert reg.step("toy.lag@^1") is toy.LagStep
+    with pytest.raises(MapiError):
+        reg.step("core.mean_scale@^1")
+    assert len(errors) == 2 and errors == reg.load_errors
+    assert any("shadow" in e and "already registered" in e for e in errors)
+    assert any("core" in e and "reserved" in e for e in errors)
+
+
 def test_scale_step_rejects_missing_var_at_fit() -> None:
     step = toy.ScaleStep()
     with pytest.raises(MapiError, match="missing"):

@@ -352,15 +352,30 @@ def _check_step_inputs(
                     )
                 )
     if context is not None and not issues:
-        for d in [context.along, *context.within]:
-            if d not in schema.dims:
-                issues.append(
-                    Issue(
-                        code=ErrorCode.SCHEMA_INVALID,
-                        pointer=join_pointer(ptr, "with"),
-                        message=f"context dim {d!r} does not exist at this step's input stage",
-                    )
+        if context.along not in schema.dims:
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer=join_pointer(ptr, "with"),
+                    message=f"context dim {context.along!r} does not exist at this step's "
+                    "input stage",
                 )
+            )
+        for d in context.within:
+            # dense layout: a dim; long layout: a variable along the row dim (``hh(obs)``)
+            if d in schema.dims:
+                continue
+            var = schema.vars.get(d)
+            if var is not None and list(var.dims) == [context.along]:
+                continue
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer=join_pointer(ptr, "with"),
+                    message=f"context group {d!r} is neither a dim nor a variable along "
+                    f"{context.along!r} at this step's input stage",
+                )
+            )
     return issues
 
 
@@ -373,6 +388,62 @@ def _depends_on_target(
         return True
     names = {n for _, n in _names(settings.get(entry.target_vars_param))}
     return bool(names & set(schema.targets))
+
+
+_OWNED_ROLES = frozenset({Role.TARGET, Role.MEDIA, Role.SPEND})
+
+
+def _check_owned(
+    caps: Capabilities,
+    candidates: Sequence[tuple[int, str, list[str], list[str]]],
+    issues: list[Issue],
+) -> None:
+    """A model that ``owns`` scaling or carry-over does it itself (plan §4.3): the same
+    platform preprocessing on its target/media variables would apply it twice."""
+    for idx, step_id, provides, touched in candidates:
+        for what in provides:
+            if what not in caps.owns:
+                continue
+            issues.append(
+                Issue(
+                    code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                    pointer=json_pointer("pipeline", idx),
+                    message=f"the model owns {what}; step {step_id!r} would apply {what} to "
+                    f"{sorted(touched)} a second time",
+                    suggested_action=f"Remove the step: the model does its own {what}.",
+                )
+            )
+
+
+def _template_targets(spec: ModelSpec, catalog: Catalog) -> list[str]:
+    """Canonical target variables of the model's resolved schema template (best effort)."""
+    entry = catalog.resolve_model(spec.model.use)
+    if entry is None:
+        return []
+    man = entry.manifest
+    settings = apply_defaults(man.settings_schema, spec.model.plugin_settings)
+    model_schema, _ = man.schema_template.try_resolve(settings)
+    return list(model_schema.targets) if model_schema is not None else []
+
+
+def _mark_targets(schema: DataSchema, targets: Sequence[str], issues: list[Issue]) -> DataSchema:
+    """``schema`` with the variables named in ``targets`` given role ``target``."""
+    names = [t for t in targets if t in schema.vars and schema.vars[t].role is not Role.TARGET]
+    if not names:
+        return schema
+    data = schema.model_dump()
+    for n in names:
+        issues.append(
+            Issue(
+                code=ErrorCode.SCHEMA_INVALID,
+                severity=Severity.INFO,
+                pointer="/model",
+                message=f"variable {n!r} is the model's target; it is treated as role "
+                f"'target' (the data declares {schema.vars[n].role.value!r})",
+            )
+        )
+        data["vars"][n]["role"] = Role.TARGET
+    return DataSchema.model_validate(data)
 
 
 def _metric_known(name: str) -> bool:
@@ -392,10 +463,16 @@ def validate_spec(spec: ModelSpec, catalog: Catalog, raw_schema: DataSchema) -> 
 
     # 1. binding ------------------------------------------------------------------------
     current = _apply_binding(spec.data.bind, raw_schema, issues)
+    if current is not None:
+        # the model's template decides what the target is, whatever the raw schema says
+        # (an inferred schema marks nothing as target); target dependence, recursion and
+        # leakage checks below follow these roles
+        current = _mark_targets(current, _template_targets(spec, catalog), issues)
     stages: list[Stage] = [Stage(RESERVED_STAGE, current)]
 
     # 2-5. steps ------------------------------------------------------------------------
     resolved_steps: list[ResolvedStep | None] = []
+    owned_candidates: list[tuple[int, str, list[str], list[str]]] = []
     for i, call in enumerate(spec.pipeline):
         ptr = json_pointer("pipeline", i)
         input_stage = stages[-1].name
@@ -460,6 +537,15 @@ def validate_spec(spec: ModelSpec, catalog: Catalog, raw_schema: DataSchema) -> 
         # Best effort when the input stage is unknown (e.g. after a dynamic step): judge target
         # dependence against the last statically known stage.
         input_schema = next((st.schema for st in reversed(stages[:-1]) if st.schema), None)
+        if entry.provides and input_schema is not None:
+            touched = [
+                name
+                for param in entry.var_params
+                for _, name in _names(settings.get(param))
+                if name in input_schema.vars and input_schema.vars[name].role in _OWNED_ROLES
+            ]
+            if touched:
+                owned_candidates.append((i, call.id, list(entry.provides), touched))
         resolved_steps.append(
             ResolvedStep(
                 id=call.id,
@@ -481,6 +567,8 @@ def validate_spec(spec: ModelSpec, catalog: Catalog, raw_schema: DataSchema) -> 
 
     # 7-8. model ------------------------------------------------------------------------
     resolved_model = _check_model(spec, catalog, stages[-1].schema, resolved_steps, issues)
+    if resolved_model is not None:
+        _check_owned(resolved_model.capabilities, owned_candidates, issues)
 
     resolved: ResolvedSpec | None = None
     if not has_errors(issues) and resolved_model is not None and all(resolved_steps):
@@ -971,6 +1059,17 @@ def validate_score_request(
                     f"the model has no side table named {name!r}",
                 )
             )
+        elif rs.side_tables[name] is ScorePolicy.PINNED:
+            issues.append(
+                _issue(
+                    ErrorCode.SIDE_TABLE_COVERAGE,
+                    json_pointer("side_tables", name),
+                    f"side table {name!r} has score_policy 'pinned': scoring replays the "
+                    "version used at fit, so it cannot be supplied",
+                    suggested_action="Drop it from side_tables, or refit with score_policy "
+                    "'latest' or 'supplied'.",
+                )
+            )
     for name in sorted(needed):
         if rs.side_tables.get(name) is ScorePolicy.SUPPLIED and name not in req.side_tables:
             issues.append(
@@ -1031,10 +1130,41 @@ def validate_score_request(
                         )
                     )
 
-    # future covariates ----------------------------------------------------------------
+    # extension past the fit carried by the payload itself (no horizon needed) ---------
     inputs_ptr = "/scenario" if req.scenario is not None else "/data"
+    extension: dict[str, int] = {}
+    if inputs is not None and stage_schema is not None:
+        extension = _payload_extension(req, meta, inputs, stage_schema, canon)
+    if req.horizon is None and "recursion" not in caps.owns:
+        for step in executed:
+            ctx = step.context
+            if not step.depends_on_target or ctx is None or ctx.along not in extension:
+                continue
+            step_stage = rs.stages.get(step.input_stage)
+            sdim = step_stage.dims.get(ctx.along) if step_stage is not None else None
+            if (
+                stage_schema is None
+                or sdim is None
+                or (sdim.freq != stage_schema.dims[ctx.along].freq)
+            ):
+                continue  # a different frequency at the step's stage; judged in the sandbox
+            min_lag = ctx.min_lag if ctx.min_lag is not None else 1
+            periods = extension[ctx.along]
+            if periods > min_lag:
+                issues.append(
+                    _issue(
+                        ErrorCode.RECURSIVE_UNSUPPORTED,
+                        inputs_ptr,
+                        f"step {step.id!r} lags the target by {min_lag}; input data reaching "
+                        f"{periods} periods past the fit along {ctx.along!r} would need "
+                        "recursive forecasting (unsupported in v1)",
+                    )
+                )
+
+    # future covariates ----------------------------------------------------------------
     supplied = {canon(v) for v in inputs.vars} if inputs is not None else set()
-    if req.horizon is not None and stage_schema is not None:
+    extends = req.horizon is not None or any(v > 0 for v in extension.values())
+    if extends and stage_schema is not None:
         required = {n for n, v in stage_schema.vars.items() if v.future_required}
         if model_schema is not None:
             required |= {
@@ -1053,7 +1183,7 @@ def validate_score_request(
                     suggested_action="Provide them in a scenario dataset.",
                 )
             )
-        elif required and inputs is not None:
+        elif required and inputs is not None and req.horizon is not None:
             _check_horizon_coverage(req, meta, inputs, canon, inputs_ptr, issues)
 
     # input coords ---------------------------------------------------------------------
@@ -1244,6 +1374,31 @@ def validate_score_request(
                     )
                 )
     return issues
+
+
+def _payload_extension(
+    req: ScoreRequest,
+    meta: ScoreMetadata,
+    inputs: DataSummary,
+    stage_schema: DataSchema,
+    canon: Any,
+) -> dict[str, int]:
+    """Periods the payload reaches past the fit along each ``extend`` dim of the entry
+    stage (positive entries only)."""
+    out: dict[str, int] = {}
+    fit_stage = meta.fit_coords.get(req.inputs_stage, {})
+    for raw_dim, cs in inputs.coords.items():
+        dim = canon(raw_dim)
+        spec = stage_schema.dims.get(dim)
+        fit = fit_stage.get(dim)
+        if spec is None or spec.policy is not DimPolicy.EXTEND or fit is None:
+            continue
+        if cs.end is None or fit.end is None:
+            continue
+        e, fe = cs.ordinal(cs.end), fit.ordinal(fit.end)
+        if e is not None and fe is not None and e > fe:
+            out[dim] = e - fe
+    return out
 
 
 def _model_view(rs: ResolvedSpec) -> DataSchema | None:

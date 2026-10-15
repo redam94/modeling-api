@@ -19,6 +19,7 @@ from __future__ import annotations
 import io
 import json
 import math
+import re
 import stat
 import zipfile
 from collections.abc import Hashable, Mapping, Sequence
@@ -125,6 +126,14 @@ class WireLimits:
     max_zip_entries: int = 200_000
     max_uncompressed_bytes: int = 4 * 1024**3
     max_array_bytes: int = 2 * 1024**3
+    max_store_elements: int = 256 * 1024**2
+    """zarr zips: elements every array of the store may declare in total."""
+    max_expansion: int = 4096
+    """zarr zips: declared (decoded) bytes may exceed the archive's stored bytes by at most
+    this factor (beyond a small floor), since missing chunks decode to the fill value."""
+    max_decoded_bytes: int = 64 * 1024**2
+    """XrJSON: bytes the decoded arrays may take (fixed-width strings cost ``4 * longest``
+    per element, so one long string among many short ones cannot blow up memory)."""
 
 
 DEFAULT_LIMITS = WireLimits()
@@ -258,11 +267,20 @@ class _Budget:
     def __init__(self, limits: WireLimits) -> None:
         self.limits = limits
         self.elements = 0
+        self.decoded = 0
 
     def take(self, n: int) -> None:
         self.elements += n
         if self.elements > self.limits.max_elements:
             raise PayloadLimitError(f"payload has more than {self.limits.max_elements} elements")
+
+    def take_bytes(self, n: int, name: str) -> None:
+        self.decoded += n
+        if self.decoded > self.limits.max_decoded_bytes:
+            raise PayloadLimitError(
+                f"{name}: the payload would decode to more than "
+                f"{self.limits.max_decoded_bytes} bytes"
+            )
 
 
 def _shape_and_leaves(
@@ -318,6 +336,20 @@ def _infer_dtype(leaves: Sequence[Any], name: str) -> str:
     raise WireFormatError(f"{name}: values have mixed or unsupported types; give an explicit dtype")
 
 
+_ISO_DATE = re.compile(
+    r"^[0-9]{4}-[0-9]{2}(-[0-9]{2}([T ][0-9]{2}(:[0-9]{2}(:[0-9]{2}(\.[0-9]{1,9})?)?)?)?)?$"
+)
+
+
+def _decoded_size(entry: _Entry) -> int:
+    """Bytes the decoded array takes (``<U{longest}`` for strings: 4 bytes per char)."""
+    n = len(entry.leaves)
+    if entry.dtype == "str":
+        longest = max((len(v) for v in entry.leaves if isinstance(v, str)), default=1)
+        return n * max(longest, 1) * 4
+    return n * 8
+
+
 def _decode_values(leaves: list[Any], shape: list[int], dtype: str, name: str) -> np.ndarray:
     try:
         match dtype:
@@ -326,7 +358,10 @@ def _decode_values(leaves: list[Any], shape: list[int], dtype: str, name: str) -
                     raise WireFormatError(f"{name}: dtype str needs string values (no nulls)")
                 arr = np.array(leaves, dtype=str) if leaves else np.array([], dtype="<U1")
             case "datetime64[ns]":
-                if not all(v is None or isinstance(v, str) for v in leaves):
+                if not all(
+                    v is None or (isinstance(v, str) and _ISO_DATE.match(v)) for v in leaves
+                ):
+                    # numpy also parses 'now'/'today': payloads must not depend on the clock
                     raise WireFormatError(f"{name}: datetimes must be ISO-8601 strings or null")
                 arr = np.array(
                     [np.datetime64("NaT") if v is None else np.datetime64(v, "ns") for v in leaves],
@@ -434,6 +469,10 @@ def from_xrjson(obj: Mapping[str, Any], *, limits: WireLimits = DEFAULT_LIMITS) 
         for d, n in declared.items():
             if not isinstance(n, int) or isinstance(n, bool) or n < 0:
                 raise WireFormatError(f"dim {str(d)[:64]!r} has an invalid declared size")
+            if n > limits.max_elements:
+                raise PayloadLimitError(
+                    f"dim {str(d)[:64]!r} declares {n} entries; at most {limits.max_elements}"
+                )
             if d in sizes and sizes[d] != n:
                 raise WireFormatError(f"dim {d!r} declared with size {n} but data has {sizes[d]}")
             sizes.setdefault(str(d), n)
@@ -446,6 +485,7 @@ def from_xrjson(obj: Mapping[str, Any], *, limits: WireLimits = DEFAULT_LIMITS) 
         ]
         if math.prod(shape) != len(entry.leaves):
             raise WireFormatError(f"{name}: data does not match the sizes of its dims")
+        budget.take_bytes(_decoded_size(entry), name)
         values = _decode_values(entry.leaves, shape, entry.dtype, name)
         (coords if is_coord else data_vars)[name] = xr.Variable(entry.dims, values, entry.attrs)
     attrs = _check_attrs(obj.get("attrs") or {}, limits, "dataset")
@@ -628,8 +668,19 @@ def zip_entries(
     return out
 
 
+_EXPANSION_FLOOR = 256 * 1024**2
+
+
 def _check_zarr_metadata(entries: Mapping[str, bytes], limits: WireLimits) -> None:
+    """Validate every ``zarr.json`` before any chunk is decoded.
+
+    The declared shapes are what decoding allocates (a missing chunk becomes its fill
+    value), so they are budgeted as a whole: element count (``max_store_elements``),
+    decoded bytes (``max_uncompressed_bytes``) and expansion over the bytes the archive
+    actually stores (``max_expansion``).
+    """
     total_elements = 0
+    total_bytes = 0
     for name, raw in entries.items():
         base = name.rsplit("/", 1)[-1]
         if base in (".zarray", ".zgroup", ".zattrs", ".zmetadata"):
@@ -672,6 +723,7 @@ def _check_zarr_metadata(entries: Mapping[str, bytes], limits: WireLimits) -> No
             raise PayloadLimitError(f"{name[:200]!r}: too many dims")
         n = math.prod(shape)
         total_elements += n
+        total_bytes += n * _ZARR_ITEMSIZE[dtype]
         if n * _ZARR_ITEMSIZE[dtype] > limits.max_array_bytes:
             raise PayloadLimitError(f"{name[:200]!r}: array exceeds the size limit")
         attrs = meta.get("attributes") or {}
@@ -680,8 +732,28 @@ def _check_zarr_metadata(entries: Mapping[str, bytes], limits: WireLimits) -> No
             cal = attrs.get("calendar", "standard")
             if cal not in _STANDARD_CALENDARS:
                 raise WireFormatError(f"{name[:200]!r}: calendar {str(cal)[:40]!r} unsupported")
-    if total_elements * 8 > limits.max_uncompressed_bytes * 4:
+    if total_elements > limits.max_store_elements:
+        raise PayloadLimitError(
+            f"store declares {total_elements} elements; at most {limits.max_store_elements}"
+        )
+    if total_bytes > limits.max_uncompressed_bytes:
         raise PayloadLimitError("store declares more data than allowed")
+    stored = sum(len(v) for v in entries.values())
+    if total_bytes > max(limits.max_expansion * stored, _EXPANSION_FLOOR):
+        raise PayloadLimitError(
+            f"store declares {total_bytes} bytes of data but the archive holds only {stored}"
+        )
+
+
+def _check_strings(ds: xr.Dataset, limits: WireLimits, where: str) -> None:
+    """vlen-utf8 lengths are not in the metadata: enforce ``max_string_chars`` after decode."""
+    for name, var in ds.variables.items():
+        dt = var.dtype
+        if dt.kind == "U" and dt.itemsize // 4 > limits.max_string_chars:
+            label = (where + str(name))[:200]
+            raise PayloadLimitError(
+                f"{label}: a string exceeds {limits.max_string_chars} characters"
+            )
 
 
 def _memory_store(entries: Mapping[str, bytes]) -> MemoryStore:
@@ -706,7 +778,9 @@ def read_zarr_zip(
         ).load()
     except (ValueError, KeyError, TypeError, OSError, zarr.errors.BaseZarrError) as exc:
         raise WireFormatError(f"zarr store could not be decoded: {exc}") from None
-    return _decode(ds)
+    out = _decode(ds)
+    _check_strings(out, limits, "")
+    return out
 
 
 def read_datatree_zip(
@@ -728,6 +802,8 @@ def read_datatree_zip(
     except (ValueError, KeyError, TypeError, OSError, zarr.errors.BaseZarrError) as exc:
         raise WireFormatError(f"zarr tree could not be decoded: {exc}") from None
     nodes = {node.path: _decode(node.to_dataset(inherit=False)) for node in tree.subtree}
+    for path, node_ds in nodes.items():
+        _check_strings(node_ds, limits, path.rstrip("/") + "/")
     return xr.DataTree.from_dict(nodes)
 
 

@@ -431,6 +431,9 @@
       },
       "id": "core.adstock",
       "kind": "value",
+      "provides": [
+        "carryover"
+      ],
       "settings_schema": {
         "additionalProperties": false,
         "properties": {
@@ -1862,6 +1865,9 @@
       },
       "id": "core.lag_tensor",
       "kind": "feature",
+      "provides": [
+        "carryover"
+      ],
       "settings_schema": {
         "additionalProperties": false,
         "properties": {
@@ -2063,6 +2069,9 @@
       "id": "core.max_abs_scale",
       "invertible": true,
       "kind": "value",
+      "provides": [
+        "scaling"
+      ],
       "settings_schema": {
         "additionalProperties": false,
         "properties": {
@@ -2141,6 +2150,9 @@
       "id": "core.mean_scale",
       "invertible": true,
       "kind": "value",
+      "provides": [
+        "scaling"
+      ],
       "settings_schema": {
         "additionalProperties": false,
         "properties": {
@@ -2725,6 +2737,9 @@
       "id": "core.standardize",
       "invertible": true,
       "kind": "value",
+      "provides": [
+        "scaling"
+      ],
       "settings_schema": {
         "additionalProperties": false,
         "properties": {

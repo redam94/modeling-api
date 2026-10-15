@@ -33,9 +33,13 @@ opt-in groups (``prior``/``prior_predictive``, ``log_likelihood``, a thinned
 * ``output.kind = predictive`` returns draws of the observed variable through
   ``icdf(dist, U)`` with **frozen** uniforms ``U`` seeded by ``(seed, name, shape)``. A
   counterfactual's scenario and baseline therefore share their noise (common random
-  numbers) and the delta's variance is not inflated. Distributions without an inverse CDF
-  (Poisson, negative binomial, ...) fall back to the seeded sampler stream, which also
-  matches across the two runs (same seed, same shapes).
+  numbers) and the delta's variance is not inflated. Discrete distributions without a
+  symbolic inverse CDF (Poisson, negative binomial, binomial) sample their parameters and
+  push the same frozen uniforms through a numeric inverse CDF (``noise = crn_ppf``), so a
+  change in one cell's mean never reshuffles the noise of the others. Only distributions
+  with neither fall back to the seeded sampler stream (``seeded_stream``), whose draws in
+  *unchanged* cells can still differ between a scenario and its baseline - prefer
+  ``kind: expected`` deltas for those.
 """
 
 from __future__ import annotations
@@ -45,11 +49,13 @@ import logging
 import warnings
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Any, ClassVar
 
 import numpy as np
 import pymc as pm
 import pytensor.tensor as pt
+import scipy.stats
 import xarray as xr
 from mapi_sdk.models import PREDICTIONS, CustomModel, FitContext, FitOutput, Fitted, ScoreContext
 from mapi_spec.capabilities import Capabilities, Diagnostic, ModelManifest, Representation
@@ -276,6 +282,7 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
         ctx.check_cancelled()
         wanted = self._targets(model, ctx.kind)
         noise: dict[str, str] = {}
+        discrete: dict[str, _DiscreteCrn] = {}
         with model:
             for out, (var, how) in list(wanted.items()):
                 if how != "predictive":
@@ -285,10 +292,18 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
                 if crn is not None:
                     wanted[out] = (crn, how)
                     noise[out] = "crn_icdf"
+                    continue
+                disc = _add_discrete_crn(model, var, bctx)
+                if disc is not None:
+                    discrete[out] = disc
+                    wanted[out] = (disc.params[0], how)
+                    noise[out] = "crn_ppf"
                 else:
                     noise[out] = "seeded_stream"
         trace, freeze = _trace(model, fitted.posterior, bctx)
-        var_names = sorted({v for v, _ in wanted.values()})
+        var_names = sorted(
+            {v for v, _ in wanted.values()} | {p for d in discrete.values() for p in d.params}
+        )
         with _quiet():
             pp = pm.sample_posterior_predictive(
                 trace,
@@ -303,6 +318,8 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
         arrays: dict[str, xr.DataArray] = {}
         for name, (var, how) in wanted.items():
             da = preds[var].rename(None)
+            if name in discrete:
+                da = discrete[name].draw(preds, trace, da)
             da = da.assign_coords({d: ds[d].values for d in da.dims if d in ds.coords})
             da.attrs = {"kind": how, "noise": noise[name]}
             arrays[name] = da
@@ -460,6 +477,53 @@ def _add_crn(model: pm.Model, obs: str, bctx: BuildContext) -> str | None:
     u = bctx.frozen_noise(f"{obs}{CRN_U_SUFFIX}", dims=dims, kind="uniform")
     pm.Deterministic(f"{obs}{CRN_SUFFIX}", pm.icdf(rv, u, warn_rvs=False), dims=dims)
     return f"{obs}{CRN_SUFFIX}"
+
+
+_DISCRETE_PPF: dict[str, Callable[..., np.ndarray]] = {
+    "poisson": lambda u, mu: scipy.stats.poisson.ppf(u, mu),
+    "negative_binomial": lambda u, n, p: scipy.stats.nbinom.ppf(u, n, p),
+    "binomial": lambda u, n, p: scipy.stats.binom.ppf(u, n, p),
+}
+
+
+@dataclass(frozen=True, slots=True)
+class _DiscreteCrn:
+    """Common random numbers for a discrete observed variable without a symbolic icdf:
+    its parameters are sampled as Deterministics and the frozen uniforms ``u`` go through
+    the family's numeric inverse CDF (``scipy.stats.<family>.ppf``)."""
+
+    family: str
+    params: tuple[str, ...]
+    u: str
+
+    def draw(self, preds: xr.Dataset, trace: xr.Dataset, like: xr.DataArray) -> xr.DataArray:
+        args = [np.asarray(preds[p].transpose(*like.dims).values) for p in self.params]
+        u = np.asarray(trace[self.u].values).reshape(args[0].shape)
+        with np.errstate(invalid="ignore"):
+            values = _DISCRETE_PPF[self.family](u, *args)
+        return like.copy(data=np.asarray(values, dtype=np.float64))
+
+
+def _add_discrete_crn(model: pm.Model, obs: str, bctx: BuildContext) -> _DiscreteCrn | None:
+    """Register sampled parameters and frozen uniforms for a known discrete family."""
+    rv = model[obs]
+    dims = model.named_vars_to_dims.get(obs)
+    op = getattr(rv.owner, "op", None)
+    family = getattr(op, "name", None)
+    if not dims or op is None or family not in _DISCRETE_PPF:
+        return None
+    try:
+        params = op.dist_params(rv.owner)
+    except (AttributeError, TypeError, ValueError):
+        return None
+    names: list[str] = []
+    for i, param in enumerate(params):
+        name = f"{obs}{CRN_SUFFIX}_p{i}"
+        pm.Deterministic(name, pt.broadcast_to(param, rv.shape), dims=dims)
+        names.append(name)
+    u = f"{obs}{CRN_U_SUFFIX}"
+    bctx.frozen_noise(u, dims=dims, kind="uniform")
+    return _DiscreteCrn(str(family), tuple(names), u)
 
 
 def _trace(

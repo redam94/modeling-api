@@ -80,7 +80,11 @@ def test_prepend_dense_contiguity(weekly_panel: Callable[..., xr.Dataset]) -> No
     assert mark2 is not None and len(mark2.labels) == 1
     early = ds.isel(time=slice(0, 3))
     _, mark3, issues3 = prepend_context(early, ctx, NEED, freq="W-SUN")
-    assert mark3 is None and issues3[0].severity is Severity.INFO
+    assert mark3 is None and issues3[0].severity is Severity.WARNING
+    # a window that starts with the fitted series loses nothing (no history at fit either)
+    first = ds["time"].values[0]
+    _, _, issues4 = prepend_context(early, ctx, NEED, freq="W-SUN", fit_start=first)
+    assert issues4 == []
     # new and missing groups: context reindexed to the score groups (NaN for new ones)
     regroup = future.isel(geo=[0]).assign_coords(geo=["zz"])
     regroup = xr.concat([future.isel(geo=[1]), regroup], dim="geo")
@@ -205,7 +209,9 @@ def test_time_holdout_and_as_of(weekly_panel: Callable[..., xr.Dataset]) -> None
     r = split_dataset(ds, TimeHoldoutSplit(kind="time_holdout", dim="time", after="2024-02-04"))
     assert r.train.time.values[-1] == np.datetime64("2024-02-04")
     r = split_dataset(ds, AsOfSplit(kind="as_of", dim="time", as_of="2024-02-04", gap=2))
-    assert r.holdout.time.values[0] == np.datetime64("2024-02-25")
+    # the gap weeks stay in the holdout (scoring continues the fit) but are never evaluated
+    assert r.lead == 2 and r.holdout.time.values[0] == np.datetime64("2024-02-11")
+    assert r.holdout.time.values[r.lead] == np.datetime64("2024-02-25")
     with pytest.raises(MapiError) as err:
         split_dataset(ds, TimeHoldoutSplit(kind="time_holdout", dim="time", last=10))
     assert err.value.code is ErrorCode.SPLIT_INVALID

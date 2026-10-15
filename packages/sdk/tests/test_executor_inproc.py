@@ -23,6 +23,7 @@ from mapi_spec.executor import (
     RunKind,
     RunSubmit,
 )
+from mapi_spec.spec import ScorePolicy
 
 SCORE = {
     "apiVersion": "mapi/v1",
@@ -147,7 +148,11 @@ async def test_payload_side_tables_win_over_request_refs(
 ) -> None:
     """A score run whose payload supplies a side table never resolves the request's ref
     for it (the request may name a dataset only the control plane knows)."""
-    h = await executor.submit(_fit_submit(e33_spec(metrics="rmse")), nonce="nonce-fit-tbl01")
+    spec = e33_spec(metrics="rmse")
+    tables = dict(spec.data.side_tables)
+    tables["fx"] = tables["fx"].model_copy(update={"score_policy": ScorePolicy.SUPPLIED})
+    spec = spec.model_copy(update={"data": spec.data.model_copy(update={"side_tables": tables})})
+    h = await executor.submit(_fit_submit(spec), nonce="nonce-fit-tbl01")
     assert (await executor.wait(h, timeout=60)).state is ExecState.SUCCEEDED
     executor.put_bundle("tbl", executor.result(h))
     request = {**SCORE, "side_tables": {"fx": "dataset://growth/fx_unknown@v9"}}

@@ -106,6 +106,7 @@ class FxConvertStep(Step[FxConvertSettings, StepState]):
     kind = StepKind.VALUE
     Settings = FxConvertSettings
     invertible = True
+    additive = True  # x * rate
     var_params = ("vars",)
     dim_params = ("along", "currency_dim")
     side_table_params = ("table",)
@@ -278,6 +279,8 @@ class _ScaleStep(Step[ScaleSettings, StepState]):
     Settings = ScaleSettings
     State = StepState
     invertible = True
+    additive = True  # x * scale
+    provides = ("scaling",)
     var_params = ("vars",)
     dim_params = ("over",)
     unseen_levels_param = "unseen_levels"
@@ -375,6 +378,8 @@ class StandardizeStep(Step[StandardizeSettings, StepState]):
     Settings = StandardizeSettings
     State = StepState
     invertible = True
+    additive = True  # x * scale
+    provides = ("scaling",)
     var_params = ("vars",)
     dim_params = ("over",)
     unseen_levels_param = "unseen_levels"
