@@ -143,6 +143,13 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   exists. The orchestrator's report exports `mapi_executor_running_executions{executor}` from
   the run table; `MapiRunningExecutions70` and a Cloud Monitoring policy on
   `run.googleapis.com/job/running_executions` fire above 700.
+- **ops**: three Prometheus rule fixes.
+  - `MapiQuota70` is now `MapiQuotaRejections`. It fires on rejections, not at 70 %, and it
+    aggregates `by (scope)`, so its summary names the scope.
+  - `MapiNoProgressIngested` also fires when no event was ever accepted (`or vector(0)`).
+  - Clearing the spend cap now resets `mapi_global_spend_micros` and
+    `mapi_global_spend_cap_micros` to 0, both at once and at every admission. The spend
+    ratio ignores a cap of 0, so `MapiGlobalSpendCap90` stops firing.
 - **cli**: `mapi logout --revoke` revokes the token in the project it is bound to (it was
   refused with 403 when another project was selected) and forgets the local credentials even
   when the revocation fails, then exits 1.

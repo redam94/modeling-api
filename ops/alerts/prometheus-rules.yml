@@ -12,9 +12,10 @@ groups:
   - name: mapi.recording
     interval: 30s
     rules:
-      # Fraction of the global spend cap currently consumed (0..1); NaN when no cap is set.
+      # Fraction of the global spend cap currently consumed (0..1). No value when no cap is
+      # set: the server publishes cap 0 then, and `> 0` drops that series.
       - record: mapi:global_spend_ratio
-        expr: mapi_global_spend_micros / clamp_min(mapi_global_spend_cap_micros, 1)
+        expr: mapi_global_spend_micros / (mapi_global_spend_cap_micros > 0)
       # Per-minute rates of the signals the alerts below page on.
       - record: mapi:integrity_failures:rate5m
         expr: sum(rate(mapi_integrity_failures_total[5m]))
@@ -122,13 +123,14 @@ groups:
             across exec projects/regions before submissions start failing (§8.8).
           runbook: ops/runbooks/stuck-runs.md
 
-      - alert: MapiQuota70
-        # A tenant sustained above ~70% of its allowance (rejections are the visible signal).
-        expr: sum(rate(mapi_quota_rejections_total{code="QUOTA_EXCEEDED"}[15m])) > 0.05
+      - alert: MapiQuotaRejections
+        # Callers keep hitting a quota (a limit is reached: rejections are what the server
+        # exports; it does not export usage against each limit, so there is no 70 % signal).
+        expr: sum by (scope) (rate(mapi_quota_rejections_total{code="QUOTA_EXCEEDED"}[15m])) > 0.05
         for: 15m
         labels: { severity: ticket, team: platform-ops }
         annotations:
-          summary: "Quota rejections sustained ({{ $labels.scope }})"
+          summary: "Quota rejections sustained at the {{ $labels.scope }} level"
           description: "A tenant/token is hitting its quota; confirm it is expected, not abuse."
           runbook: ops/runbooks/incident-response.md
 
@@ -159,7 +161,9 @@ groups:
 
       - alert: MapiNoProgressIngested
         # The events service upserts progress; a flatline means the ingest path is down.
-        expr: sum(rate(mapi_events_ingested_total{result="accepted"}[10m])) == 0
+        # `or vector(0)`: the accepted counter has no series before the first accepted event,
+        # so an ingest path broken since deploy would otherwise read as "no data".
+        expr: (sum(rate(mapi_events_ingested_total{result="accepted"}[10m])) or vector(0)) == 0
           and sum(mapi_runs_active{state=~"running|provisioning"}) > 0
         for: 10m
         labels: { severity: page, team: platform-ops }

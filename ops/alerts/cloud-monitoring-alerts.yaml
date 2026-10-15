@@ -127,7 +127,7 @@ conditions:
   - displayName: "spend ratio >= 0.70"
     conditionPrometheusQueryLanguage:
       query: >
-        (mapi_global_spend_micros / clamp_min(mapi_global_spend_cap_micros, 1)) >= 0.70
+        (mapi_global_spend_micros / (mapi_global_spend_cap_micros > 0)) >= 0.70
       duration: 300s
       evaluationInterval: 60s
 severity: WARNING
@@ -144,7 +144,7 @@ conditions:
   - displayName: "spend ratio >= 0.90"
     conditionPrometheusQueryLanguage:
       query: >
-        (mapi_global_spend_micros / clamp_min(mapi_global_spend_cap_micros, 1)) >= 0.90
+        (mapi_global_spend_micros / (mapi_global_spend_cap_micros > 0)) >= 0.90
       duration: 60s
       evaluationInterval: 60s
 severity: CRITICAL
@@ -168,7 +168,7 @@ conditions:
 severity: CRITICAL
 
 ---
-displayName: "mapi — quota rejections at 70%"
+displayName: "mapi — quota rejections sustained"
 documentation:
   content: "Sustained quota rejections. Confirm expected usage vs abuse. Runbook: ops/runbooks/incident-response.md"
   mimeType: text/markdown
@@ -176,7 +176,7 @@ combiner: OR
 conditions:
   - displayName: "QUOTA_EXCEEDED rejections sustained"
     conditionPrometheusQueryLanguage:
-      query: sum(rate(mapi_quota_rejections_total{code="QUOTA_EXCEEDED"}[15m])) > 0.05
+      query: sum by (scope) (rate(mapi_quota_rejections_total{code="QUOTA_EXCEEDED"}[15m])) > 0.05
       duration: 900s
       evaluationInterval: 60s
 severity: WARNING

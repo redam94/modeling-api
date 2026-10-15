@@ -128,7 +128,7 @@ def test_prometheus_rules_parse_as_yaml() -> None:
         "MapiGlobalSpendCap70",
         "MapiGlobalSpendCap90",
         "MapiStalledRateHigh",
-        "MapiQuota70",
+        "MapiQuotaRejections",
     ):
         assert required in alerts, f"missing required alert {required}"
 
@@ -202,6 +202,33 @@ def test_running_executions_alert_at_70_percent_of_the_quota() -> None:
         if "conditionThreshold" in c
     ]
     assert thresholds == [700]
+
+
+def test_quota_rejection_alert_names_its_scope_and_does_not_claim_70_percent() -> None:
+    rules = _rules()
+    assert "MapiQuota70" not in rules  # it fires on rejections (100 % used), not at 70 %
+    rule = rules["MapiQuotaRejections"]
+    expr = str(rule["expr"])
+    assert "sum by (scope)" in expr.replace("  ", " ")
+    assert "$labels.scope" in str(rule["annotations"]["summary"])  # type: ignore[index]
+    assert not [name for name in _policies() if "quota rejections at 70%" in name]
+
+
+def test_no_progress_alert_fires_when_ingestion_never_started() -> None:
+    """``mapi_events_ingested_total{result="accepted"}`` has no series until the first
+    accepted event, so a push path broken since deploy must not read as 'no data'."""
+    expr = str(_rules()["MapiNoProgressIngested"]["expr"])
+    left = expr.split(" and ")[0]
+    assert "or vector(0)" in left
+
+
+def test_spend_ratio_has_no_value_without_a_cap() -> None:
+    """A cleared cap publishes 0; ``clamp_min(cap, 1)`` turned that into spend / 1."""
+    expr = str(_rules()["mapi:global_spend_ratio"]["expr"])
+    assert "clamp_min" not in expr and "mapi_global_spend_cap_micros > 0" in expr
+    for name in ("mapi — global spend cap 70%", "mapi — global spend cap 90%"):
+        query = _policies()[name]["conditions"][0]["conditionPrometheusQueryLanguage"]["query"]
+        assert "clamp_min" not in query and "mapi_global_spend_cap_micros > 0" in query
 
 
 def test_runbook_links_resolve() -> None:

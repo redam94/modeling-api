@@ -307,7 +307,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "mapi_global_spend_micros / clamp_min(mapi_global_spend_cap_micros, 1)",
+          "expr": "mapi_global_spend_micros / (mapi_global_spend_cap_micros > 0)",
           "refId": "A",
           "format": "time_series"
         }

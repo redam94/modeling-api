@@ -43,10 +43,12 @@ from mapi_server.api.tenancy import audit_page, tenant_dto
 from mapi_server.auth.identity import invite_user
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
+from mapi_server.observability import metrics as obs_metrics
 from mapi_server.services.audit import write_audit
 from mapi_server.services.quotas import (
     DISPATCHED_STATES,
     KILL_SWITCHES_KEY,
+    global_spend,
     kill_switches,
     policy_dto,
 )
@@ -350,6 +352,10 @@ async def admin_put_kill_switches(
         .on_conflict_do_update(index_elements=["key"], set_={"value": value, "updated_at": ts})
     )
     cancelled = await _cancel_untrusted_runs(system) if body.cancel_untrusted_runs else None
+    # publish the cap now, not at the next admission: a cleared cap must stop the alerts
+    cap = updated.global_spend_cap_micros
+    spent = 0 if cap is None else await global_spend(system, updated, now=ts)
+    obs_metrics.set_global_spend(spent, cap or 0)
     await write_audit(
         ctx.db,
         [

@@ -187,6 +187,22 @@ async def test_kill_switches_refuse_new_compute(
     assert _sample("mapi_global_spend_cap_micros") == 1000
     switches = (await client.get("/v1/admin/kill-switches")).json()
     assert switches["global_spend_cap_micros"] == 1000 and switches["reason"] == "beta cap"
+    # clearing the cap clears the gauges, or MapiGlobalSpendCap90 would keep firing
+    r = await client.put(
+        "/v1/admin/kill-switches", json={"clear_spend_cap": True, "reason": "beta over"}
+    )
+    assert r.status_code == 200 and r.json()["global_spend_cap_micros"] is None
+    assert _sample("mapi_global_spend_micros") == 0
+    assert _sample("mapi_global_spend_cap_micros") == 0
+    obs_metrics.set_global_spend(5000, 1000)  # a stale value from another code path
+    assert (await client.post("/v1/runs", json=fit)).status_code == 201
+    assert _sample("mapi_global_spend_cap_micros") == 0  # admission refreshes it too
+    # a new cap is published at once, before the next admission
+    await client.put(
+        "/v1/admin/kill-switches", json={"global_spend_cap_micros": 2000, "reason": "again"}
+    )
+    assert _sample("mapi_global_spend_cap_micros") == 2000
+    assert _sample("mapi_global_spend_micros") == 5000
 
 
 async def test_tenant_request_rate_limit(ctx: ServerContext, client: httpx.AsyncClient) -> None:

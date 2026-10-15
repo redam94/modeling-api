@@ -85,7 +85,7 @@ Everything operators need is in `ops/` at the root of the repository:
 - `ops/alerts/`: Prometheus rules and Cloud Monitoring policies. They cover jobs.run 429s, any
   integrity failure, a failed security probe, spend at 70 % and 90 % of the cap, Cloud Run
   running executions at 70 % of the quota, a rising
-  `STALLED` rate, quota use at 70 %, slow time-to-`RUNNING` and a silent event path.
+  `STALLED` rate, sustained quota rejections, slow time-to-`RUNNING` and a silent event path.
 - `ops/runbooks/`: incident response, a confirmed sandbox escape (kill switch, rotate keys,
   quarantine, notify), stuck runs, database failover, and rotating the HMAC and signing keys.
 

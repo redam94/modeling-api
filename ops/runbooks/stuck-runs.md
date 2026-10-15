@@ -48,7 +48,7 @@ rising; possibly **MapiJobsRun429**.
    - spread load: shard across exec projects or regions at ~70% of quota (§8.8);
    - batch homogeneous children as one execution with `taskCount` (already done for sweeps).
    The alert counts `mapi_executor_submit_throttled_total`, Cloud Run's own 429s; tenants
-   hitting their quotas (`POST /v1/runs` → 429) are a different signal (**MapiQuota70**).
+   hitting their quotas (`POST /v1/runs` → 429) are a different signal (**MapiQuotaRejections**).
 3. **Running executions near the quota (MapiRunningExecutions70):** the exec project has
    more than 700 of its 1,000 running executions. Lower the global `concurrent_runs` policy
    (`PUT /v1/admin/quotas`, scope `global`) or the busiest tenants' caps, and plan the next
