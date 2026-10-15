@@ -227,6 +227,7 @@ def canonicalise_coords(
         padded = not np.array_equal(order, cur)
         if padded:
             out = _reindex(out, dim, order, targets, pad_fill)
+            out = _remap_index_vars(out, ds, dim, cur, order, schema)
         flags = {f"{dim}__requested": (dim, np.isin(order, requested))}
         if spec.policy is DimPolicy.NEW_LEVELS:
             flags[f"{dim}__is_new"] = (dim, np.isin(order, new))
@@ -285,6 +286,37 @@ def _extend_order(
     if pad_extend:
         return np.union1d(fit, cur)
     return np.sort(cur)
+
+
+def _remap_index_vars(
+    out: xr.Dataset,
+    ds: xr.Dataset,
+    dim: str,
+    cur: np.ndarray,
+    order: np.ndarray,
+    schema: DataSchema,
+) -> xr.Dataset:
+    """Long layout: index variables hold positions into ``dim``; re-point them at ``order``.
+
+    ``county_idx(obs)`` indexes the *payload's* ``county`` labels. After reindexing the
+    labels to the fit order (plus appended new levels) the positions must follow, otherwise
+    every observation would silently point at the wrong level. Out-of-range positions are
+    left untouched (array-level validation reports them).
+    """
+    names = [n for n, v in schema.vars.items() if v.index_of == dim and n in out.data_vars]
+    if not names or not any(n in ds.data_vars for n in names):
+        return out
+    mapping = pd.Index(order).get_indexer(cur)
+    updates: dict[str, xr.DataArray] = {}
+    for name in names:
+        da = out[name]
+        if da.dtype.kind not in "iu":
+            continue
+        idx = np.asarray(da.values)
+        valid = (idx >= 0) & (idx < cur.size)
+        moved = np.where(valid, mapping[np.clip(idx, 0, max(cur.size - 1, 0))], idx)
+        updates[name] = da.copy(data=moved.astype(idx.dtype))
+    return out.assign(updates)
 
 
 def _reindex(

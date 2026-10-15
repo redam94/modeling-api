@@ -230,3 +230,42 @@ def test_coordplan_checks_score_requests(
         ok.check(radio)
     assert err2.value.code is ErrorCode.UNSEEN_LEVELS
     assert ok.metadata().fit_coords["weekly"]["time"].freq == "W-SUN"
+
+
+LONG = DataSchema.model_validate(
+    {
+        "layout": "long",
+        "dims": {
+            "obs": {"kind": "index", "policy": "extend"},
+            "county": {
+                "kind": "categorical",
+                "policy": "new_levels",
+                "new_level_strategy": "pooled",
+            },
+        },
+        "vars": {
+            "y": {"dims": ["obs"], "dtype": "float64", "role": "target", "missing": "allow"},
+            "county_idx": {
+                "dims": ["obs"],
+                "dtype": "int64",
+                "role": "index",
+                "index_of": "county",
+            },
+        },
+    }
+)
+
+
+def test_long_layout_index_variables_follow_the_canonical_order() -> None:
+    fit = xr.Dataset(coords={"obs": np.arange(4), "county": ["a", "b", "c"]})
+    payload = xr.Dataset(
+        {"county_idx": (("obs",), np.array([0, 1, 2, 0]))},
+        coords={"obs": np.arange(4, 8), "county": ["c", "new", "a"]},
+    )
+    canon, plan = canonicalise_coords(payload, fit, LONG, pad_extend=False)
+    assert list(canon["county"].values) == ["a", "b", "c", "new"]
+    labels = canon["county"].values[canon["county_idx"].values]
+    # every observation still points at the county it named in the payload
+    assert list(labels) == ["c", "new", "a", "c"]
+    assert canon["county_idx"].dtype == np.int64
+    assert list(plan.dims["county"].new) == ["new"]
