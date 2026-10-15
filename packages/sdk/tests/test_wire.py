@@ -390,3 +390,18 @@ def test_arrow_view_roundtrip_and_limits() -> None:
 def test_restore_multiindex_rejects_bad_attr() -> None:
     with pytest.raises(WireFormatError):
         wire.restore_multiindex(xr.Dataset(attrs={wire.MULTIINDEX_ATTR: {"z": "bad"}}))
+
+
+def test_zarr_zip_opens_with_zarr_zipstore(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """Our deterministic zips are plain zarr v3 ZipStores (range-readable by the runner)."""
+    from zarr.storage import ZipStore
+
+    ds = _panel()
+    path = tmp_path / "d.zarr.zip"
+    wire.write_zarr_zip(ds, path)
+    store = ZipStore(path, mode="r")
+    try:
+        back = xr.open_zarr(store, zarr_format=3, consolidated=False, chunks=None).load()
+    finally:
+        store.close()
+    xr.testing.assert_identical(normalise_dataset(back.drop_encoding()), normalise_dataset(ds))

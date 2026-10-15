@@ -157,8 +157,11 @@ def _subtree(tree: xr.DataTree, path: str) -> xr.DataTree:
     return sub
 
 
+_CHECKSUM: Any = google_crc32c.Checksum  # untyped third-party API
+
+
 def _crc32c(data: bytes) -> bytes:
-    digest: bytes = google_crc32c.Checksum(data).digest()  # type: ignore[no-untyped-call]
+    digest: bytes = _CHECKSUM(data).digest()
     return digest
 
 
