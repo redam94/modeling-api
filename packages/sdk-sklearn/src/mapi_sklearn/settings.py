@@ -38,6 +38,11 @@ __all__ = [
     "QuantileSettings",
     "QuantileUncertainty",
     "SklearnSettings",
+    "TabularBootstrapSettings",
+    "TabularClassifierSettings",
+    "TabularConformalSettings",
+    "TabularPointSettings",
+    "TabularQuantileSettings",
 ]
 
 Name = Annotated[str, Field(pattern=r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")]
@@ -187,7 +192,6 @@ class PointSettings(SklearnSettings):
     ``none``.
     """
 
-    estimator: EstimatorChoice
     uncertainty: NoUncertainty = Field(default_factory=NoUncertainty)
     contributions: ContributionMethod = "auto"
 
@@ -195,14 +199,12 @@ class PointSettings(SklearnSettings):
 class QuantileSettings(SklearnSettings):
     """``sklearn.tabular_quantiles``: conditional quantiles."""
 
-    estimator: EstimatorChoice
     uncertainty: QuantileUncertainty = Field(default_factory=QuantileUncertainty)
 
 
 class BootstrapSettings(SklearnSettings):
     """``sklearn.tabular_bootstrap``: a bootstrap ensemble giving joint draws."""
 
-    estimator: EstimatorChoice
     uncertainty: BootstrapUncertainty = Field(default_factory=BootstrapUncertainty)
     contributions: ContributionMethod = "auto"
 
@@ -217,7 +219,6 @@ class BootstrapSettings(SklearnSettings):
 class ConformalSettings(SklearnSettings):
     """``sklearn.tabular_conformal``: split-conformal prediction intervals."""
 
-    estimator: EstimatorChoice
     uncertainty: ConformalUncertainty = Field(default_factory=ConformalUncertainty)
 
     @model_validator(mode="after")
@@ -233,7 +234,40 @@ class ClassifierSettings(SklearnSettings):
     ``positive_class`` defaults to the larger of the two target labels.
     """
 
-    estimator: EstimatorChoice
     uncertainty: NoUncertainty = Field(default_factory=NoUncertainty)
     positive_class: float | None = None
     contributions: Literal["none", "zeroing"] = "none"
+
+
+# The built-in ``sklearn.*`` plugins take the estimator from settings, so it is required there
+# (and checked statically); authors who return one from ``estimator()`` use the classes above.
+
+
+class TabularPointSettings(PointSettings):
+    """Settings of ``sklearn.tabular_regressor``."""
+
+    estimator: EstimatorChoice
+
+
+class TabularQuantileSettings(QuantileSettings):
+    """Settings of ``sklearn.tabular_quantiles``."""
+
+    estimator: EstimatorChoice
+
+
+class TabularBootstrapSettings(BootstrapSettings):
+    """Settings of ``sklearn.tabular_bootstrap``."""
+
+    estimator: EstimatorChoice
+
+
+class TabularConformalSettings(ConformalSettings):
+    """Settings of ``sklearn.tabular_conformal``."""
+
+    estimator: EstimatorChoice
+
+
+class TabularClassifierSettings(ClassifierSettings):
+    """Settings of ``sklearn.tabular_classifier``."""
+
+    estimator: EstimatorChoice

@@ -24,11 +24,11 @@ from mapi_sklearn.model import (
     SklearnQuantileModel,
 )
 from mapi_sklearn.settings import (
-    BootstrapSettings,
-    ClassifierSettings,
-    ConformalSettings,
-    PointSettings,
-    QuantileSettings,
+    TabularBootstrapSettings,
+    TabularClassifierSettings,
+    TabularConformalSettings,
+    TabularPointSettings,
+    TabularQuantileSettings,
 )
 
 __all__ = [
@@ -43,9 +43,10 @@ __all__ = [
 VERSION = "1.0.0"
 
 
-class TabularRegressor(SklearnModel[PointSettings]):
+class TabularRegressor(SklearnModel[TabularPointSettings]):
     """Point predictions from an allow-listed regressor."""
 
+    Settings = TabularPointSettings
     id = "sklearn.tabular_regressor"
     version = VERSION
     description = (
@@ -55,9 +56,10 @@ class TabularRegressor(SklearnModel[PointSettings]):
     )
 
 
-class TabularQuantiles(SklearnQuantileModel[QuantileSettings]):
+class TabularQuantiles(SklearnQuantileModel[TabularQuantileSettings]):
     """Conditional quantiles (xgboost multi-quantile or one sklearn model per level)."""
 
+    Settings = TabularQuantileSettings
     id = "sklearn.tabular_quantiles"
     version = VERSION
     description = (
@@ -66,9 +68,10 @@ class TabularQuantiles(SklearnQuantileModel[QuantileSettings]):
     )
 
 
-class TabularBootstrap(SklearnBootstrapModel[BootstrapSettings]):
+class TabularBootstrap(SklearnBootstrapModel[TabularBootstrapSettings]):
     """A bootstrap ensemble giving joint draws."""
 
+    Settings = TabularBootstrapSettings
     id = "sklearn.tabular_bootstrap"
     version = VERSION
     description = (
@@ -77,9 +80,10 @@ class TabularBootstrap(SklearnBootstrapModel[BootstrapSettings]):
     )
 
 
-class TabularConformal(SklearnConformalModel[ConformalSettings]):
+class TabularConformal(SklearnConformalModel[TabularConformalSettings]):
     """Split-conformal prediction intervals."""
 
+    Settings = TabularConformalSettings
     id = "sklearn.tabular_conformal"
     version = VERSION
     description = (
@@ -88,9 +92,10 @@ class TabularConformal(SklearnConformalModel[ConformalSettings]):
     )
 
 
-class TabularClassifier(SklearnClassifier[ClassifierSettings]):
+class TabularClassifier(SklearnClassifier[TabularClassifierSettings]):
     """Binary class probabilities."""
 
+    Settings = TabularClassifierSettings
     id = "sklearn.tabular_classifier"
     version = VERSION
     description = "Binary classification: the probability that the target is the positive class."

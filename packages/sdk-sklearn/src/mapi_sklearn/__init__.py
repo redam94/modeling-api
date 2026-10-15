@@ -33,6 +33,11 @@ from mapi_sklearn.settings import (
     PointSettings,
     QuantileSettings,
     SklearnSettings,
+    TabularBootstrapSettings,
+    TabularClassifierSettings,
+    TabularConformalSettings,
+    TabularPointSettings,
+    TabularQuantileSettings,
 )
 
 __version__ = "0.0.0"
@@ -54,8 +59,13 @@ __all__ = [
     "SklearnQuantileModel",
     "SklearnSettings",
     "TabularBootstrap",
+    "TabularBootstrapSettings",
     "TabularClassifier",
+    "TabularClassifierSettings",
     "TabularConformal",
+    "TabularConformalSettings",
+    "TabularPointSettings",
+    "TabularQuantileSettings",
     "TabularQuantiles",
     "TabularRegressor",
     "__version__",
