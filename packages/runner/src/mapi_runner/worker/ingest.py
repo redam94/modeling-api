@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -82,7 +83,9 @@ def _sniff(path: Path) -> str:
 def _coerce_dim(series: pd.Series, spec: DimSpec, pointer: str) -> pd.Series:
     try:
         if spec.kind == "time":
-            return pd.to_datetime(series, errors="raise")
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                return pd.to_datetime(series, errors="raise")
         if spec.kind in ("integer", "index"):
             return pd.to_numeric(series, errors="raise").astype("int64")
         if spec.kind == "float":
@@ -108,7 +111,17 @@ def _coerce_var(series: pd.Series) -> pd.Series:
     numeric = pd.to_numeric(series, errors="coerce")
     if numeric.notna().sum() == series.notna().sum() and series.notna().any():
         return numeric.astype("float64")
-    return series.astype("string").astype(object).where(series.notna(), None)
+    return series.fillna("").astype(str)
+
+
+def _text_vars(ds: xr.Dataset) -> xr.Dataset:
+    """Text variables as fixed-width strings; cells a dense cube had to invent become ''."""
+    for name in list(ds.data_vars):
+        if ds[name].dtype == object:
+            values = np.asarray(ds[name].values, dtype=object)
+            text = np.where([isinstance(v, str) for v in values.ravel()], values.ravel(), "")
+            ds[name] = (ds[name].dims, text.astype(str).reshape(values.shape))
+    return ds
 
 
 def dataset_from_table(df: pd.DataFrame, mapping: IngestMapping) -> tuple[xr.Dataset, DataSchema]:
@@ -143,7 +156,7 @@ def dataset_from_table(df: pd.DataFrame, mapping: IngestMapping) -> tuple[xr.Dat
             f"{int(dup.sum())} rows repeat a ({', '.join(dims)}) combination, e.g. {first}",
             "/mapping/dims",
         )
-    ds = frame.set_index(dims).sort_index().to_xarray()
+    ds = _text_vars(frame.set_index(dims).sort_index().to_xarray())
     for name in dims:  # categorical labels as plain str coords
         if mapping.dims[name].spec.kind not in ("time", "integer", "index", "float"):
             ds = ds.assign_coords({name: np.asarray(ds[name].values, dtype=str)})
