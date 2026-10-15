@@ -19,7 +19,7 @@ In production they are static files, served with the headers described below (th
 | Datasets | Create a dataset, preview a CSV locally, map columns to dims and variables, upload through a signed PUT, follow the ingest run; schema tables, coordinate browser, missingness heatmap and preview (`preview.json`, `profile.json`) |
 | Build | Monaco YAML editor bound to `/v1/schemas/modelspec.json` with live `:validate` diagnostics at their JSON pointers; the pipeline as step cards with the schema at each stage, the split and context markers; save a revision, dry-run, fit, revision diff |
 | Runs | Filters by state and kind; live progress over SSE (resumes with `Last-Event-ID`), per-chain lanes, the `STALLED` banner, event timeline, logs; cancel, resume a partial run, retry one resource class up after `RESOURCE_EXHAUSTED` |
-| Inspect | Scorecard, per-variable diagnostics, the DataTree browser (`ui/tree_index.json`), lineage, signature and bundle objects, the plot gallery |
+| Inspect | Scorecard, per-variable diagnostics, the DataTree browser (`ui/tree_index.json`), the preprocessing state viewer (`ui/preprocess.json`), lineage, signature and bundle objects, the plot gallery |
 | Score | Mode limited to the model's capabilities, horizon, `inputs_stage`, input and scenario datasets, the spec's side tables (supplied ones default to the version the fit used; pinned ones are replayed), interventions, output selector; `Prefer: wait=30`, then the run over SSE; the run's own plots (`GET /v1/runs/{id}/plots`, sanitized) in the sandbox, Arrow outputs as a table (summaries pivoted by statistic) and a quick chart |
 | Catalog, Settings | Steps, models and plots of the image; theme, persona and connection health |
 

@@ -329,6 +329,7 @@ and each carries a `format` tag:
 | `preview.json` | `mapi.preview/v1` | `PreviewView`: dim columns then variable columns, the first rows, `total_rows` |
 | `profile.json` | `mapi.profile/v1` | `ProfileView`: per-variable statistics and a missingness grid along the time-like dim (at most 1,000 binned columns) |
 | `ui/tree_index.json` | `mapi.tree-index/v1` | `TreeIndexView`: every DataTree node's dims, coordinates (values for small ones), variables and scalar attributes; no arrays |
+| `ui/preprocess.json` | `mapi.preprocess/v1` | `PreprocessView`: every pipeline step in order (`id`, resolved `use`, `kind`, `stateful`), its learned JSON (capped at 16 KB, `learned_truncated`) and its numeric state arrays of at most two dims and 10,000 cells with their labels; larger arrays are named in `omitted` |
 
 ## Storage layout
 

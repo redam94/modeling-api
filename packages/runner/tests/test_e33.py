@@ -15,6 +15,7 @@ from mapi_spec.api import ValidateResponse
 from mapi_spec.executor import RunKind
 from mapi_spec.loader import canonical_json, load_model_spec
 from mapi_spec.run import ErrorPayload, OutputManifest, RunnerExit, verify_output_objects
+from mapi_spec.views import PreprocessView
 from runner_helpers import Result, assert_signed_stream, make_run, run_supervisor
 from shimgcs import ShimGcs
 
@@ -83,6 +84,19 @@ def test_e33_validate_fit_derive_score_evaluate_render(
         for ref in plot["datasets"].values():
             if ref["kind"] == "data_ref":
                 assert ref["path"] in names
+    pre = PreprocessView.model_validate_json(fit.output("ui/preprocess.json"))
+    assert [s.id for s in pre.steps] == [
+        "to_eur",
+        "weekly",
+        "scale_spend",
+        "scale_y",
+        "lags",
+        "season",
+        "hols",
+    ]
+    scale = next(s for s in pre.steps if s.id == "scale_spend")
+    heat = next(a for a in scale.arrays if a.name == "scale__spend")
+    assert scale.stateful and len(heat.dims) == 2 and set(heat.dims) == {"geo", "channel"}
     thin = read_datatree_zip(fit.output("ui/thin.zarr.zip"))
     assert thin["posterior"].to_dataset().sizes["sample"] == 100
     bundle_inputs = {

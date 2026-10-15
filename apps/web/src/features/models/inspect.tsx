@@ -208,7 +208,7 @@ function StateArrayView({ array }: { array: StateArray }) {
     <div className="grid gap-1">
       <p className="text-xs">
         <Mono className="font-medium">{array.name}</Mono>
-        <span className="text-muted-foreground"> ({array.dims.join(", ")})</span>
+        <span className="text-muted-foreground"> ({array.dims.join(", ")}){array.units ? `, ${array.units}` : ""}</span>
       </p>
       <PlotFrame kind="vega-lite" spec={plot.spec} datasets={plot.datasets} title={`${array.name} state`} exportName={array.name} height={220} />
     </div>
@@ -221,6 +221,7 @@ export function PreprocessViewer({ mv }: { mv: ModelVersion }) {
   if (!present) return <p className="text-muted-foreground">This bundle has no preprocessing view (ui/preprocess.json).</p>;
   if (query.isPending) return <LoadingRows rows={4} />;
   if (query.isError) return <ErrorNotice error={query.error} title="The preprocessing state could not be loaded" />;
+  if (!query.data.steps.length) return <p className="text-muted-foreground">This model has no preprocessing steps.</p>;
   return (
     <div className="grid gap-4">
       {query.data.steps.map((s) => (
@@ -237,8 +238,14 @@ export function PreprocessViewer({ mv }: { mv: ModelVersion }) {
           </CardHeader>
           <CardContent className="grid gap-4">
             {Object.keys(s.learned).length ? <JsonBlock value={s.learned} maxHeight="10rem" /> : null}
+            {s.learnedTruncated ? <p className="text-xs text-muted-foreground">Some learned values are too large to show here; they are in the bundle.</p> : null}
             {s.arrays.map((a) => <StateArrayView key={a.name} array={a} />)}
-            {!s.arrays.length && !Object.keys(s.learned).length ? <p className="text-muted-foreground">No learned state.</p> : null}
+            {s.omitted.length ? (
+              <p className="text-xs text-muted-foreground">
+                Not shown (too large or more than two dimensions): <Mono>{s.omitted.join(", ")}</Mono>
+              </p>
+            ) : null}
+            {!s.arrays.length && !s.omitted.length && !Object.keys(s.learned).length ? <p className="text-muted-foreground">No learned state.</p> : null}
           </CardContent>
         </Card>
       ))}
