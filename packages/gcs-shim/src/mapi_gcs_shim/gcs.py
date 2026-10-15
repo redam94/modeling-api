@@ -6,15 +6,24 @@ the shim and its client never need it. The synchronous library calls run in work
 This driver is exercised only with mocks in this repository — it has **not** been run against
 live GCP (see the package README).
 
-Signing: V4 signed URLs use ``Blob.generate_signed_url``; POST policies are built here (the
-library's helper pins an exact ``key``, while the platform needs a key *prefix*) and signed
-with ``signing_credentials.sign_bytes`` (a service-account key or impersonated credentials).
-On Cloud Run, pass ``service_account_email`` and ``access_token`` for IAM ``signBlob``-based
-URL signing.
+Signing: with a :class:`~mapi_gcs_shim.gcs_signing.BlobSigner` (``blob_signer``), V4 signed
+URLs and POST policies are built here and only the string to sign goes to the signer — on
+Cloud Run an :class:`~mapi_gcs_shim.gcs_signing.IamSignBlobSigner` (IAM ``signBlob`` with a
+refreshing token; :meth:`GcsObjectStore.for_cloud_run`). Without one, signed URLs fall back
+to ``Blob.generate_signed_url`` (``signing_credentials``, or ``service_account_email`` +
+a static ``access_token``). POST policies are always built here: the library's helper pins
+an exact ``key``, while the platform needs a key *prefix*.
+
+Integrity: every write is checked against the CRC32C/MD5 GCS computed (a mismatch deletes
+that generation and raises ``INTEGRITY_FAILURE``); copies pin the source generation with
+``ifSourceGenerationMatch`` and compare the destination's size and CRC32C with the source's;
+signed GETs are generation-pinned and signed PUTs carry a signed
+``x-goog-if-generation-match`` (write-once by default).
 """
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Any, NoReturn, TypeVar
@@ -33,9 +42,19 @@ from mapi_spec.storage import (
     StorageError,
     check_object_name,
     check_ttl,
+    crc32c,
+    crc32c_to_base64,
+    md5_base64,
 )
 
 from mapi_gcs_shim.client import InvalidRange
+from mapi_gcs_shim.gcs_signing import (
+    RSA_ALGORITHM,
+    BlobSigner,
+    IamSignBlobSigner,
+    google_token_provider,
+    rsa_signed_url,
+)
 from mapi_gcs_shim.signing import build_post_policy
 
 __all__ = ["GCS_API_ENDPOINT", "GcsObjectStore", "map_gcs_error"]
@@ -43,7 +62,6 @@ __all__ = ["GCS_API_ENDPOINT", "GcsObjectStore", "map_gcs_error"]
 T = TypeVar("T")
 
 GCS_API_ENDPOINT = "https://storage.googleapis.com"
-RSA_ALGORITHM = "GOOG4-RSA-SHA256"
 
 
 def _import_storage() -> Any:
@@ -122,8 +140,11 @@ class GcsObjectStore:
             bucket, used for ``create_only`` POST policies. GCS POST forms have no generation
             precondition; an upload by a principal that cannot delete cannot overwrite.
             [verify M2: provisioned by Terraform]
-        api_endpoint: base URL for POST policies.
-        clock: ``now()`` for POST-policy timestamps (tests).
+        blob_signer: signs V4 URLs and POST policies (preferred over the library path).
+        uploader_signer: the ``create_only`` POST-policy signer (same role as
+            ``uploader_credentials``; either may be given).
+        api_endpoint: base URL for signed URLs and POST policies.
+        clock: ``now()`` for signing timestamps (tests).
     """
 
     def __init__(
@@ -135,6 +156,8 @@ class GcsObjectStore:
         service_account_email: str | None = None,
         access_token: str | None = None,
         uploader_credentials: Any | None = None,
+        blob_signer: BlobSigner | None = None,
+        uploader_signer: BlobSigner | None = None,
         api_endpoint: str = GCS_API_ENDPOINT,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
@@ -145,8 +168,36 @@ class GcsObjectStore:
         self._sa_email = service_account_email
         self._access_token = access_token
         self._uploader_credentials = uploader_credentials
+        self._blob_signer = blob_signer
+        self._uploader_signer = uploader_signer
         self._api_endpoint = api_endpoint.rstrip("/")
         self._clock = clock or (lambda: datetime.now(UTC))
+
+    @classmethod
+    def for_cloud_run(
+        cls,
+        client: Any | None = None,
+        *,
+        service_account_email: str,
+        uploader_service_account_email: str | None = None,
+        token: Callable[[], str] | None = None,
+        project: str | None = None,
+    ) -> GcsObjectStore:
+        """The production wiring: URLs signed with IAM ``signBlob`` as the control-plane
+        service account; ``create_only`` POST policies as an uploader account that has
+        ``storage.objects.create`` but no ``delete`` (so its uploads cannot overwrite)."""
+        provider = token or google_token_provider()
+        uploader = (
+            IamSignBlobSigner(uploader_service_account_email, provider)
+            if uploader_service_account_email
+            else None
+        )
+        return cls(
+            client,
+            project=project,
+            blob_signer=IamSignBlobSigner(service_account_email, provider),
+            uploader_signer=uploader,
+        )
 
     async def _call(self, fn: Callable[[], T], *, bucket: str | None, name: str | None) -> T:
         try:
@@ -183,19 +234,38 @@ class GcsObjectStore:
     ) -> ObjectMeta:
         check_object_name(name)
 
+        payload = bytes(data)
+        want_crc = crc32c_to_base64(crc32c(payload))
+        want_md5 = md5_base64(payload)
+
         def run() -> ObjectMeta:
             blob = self._blob(bucket, name)
             if metadata:
                 blob.metadata = dict(metadata)
             blob.upload_from_string(
-                bytes(data),
+                payload,
                 content_type=content_type or "application/octet-stream",
                 if_generation_match=if_generation_match,
                 checksum="crc32c",
             )
-            return _blob_meta(blob)
+            meta = _blob_meta(blob)
+            md5_bad = meta.md5_hash is not None and meta.md5_hash != want_md5
+            if meta.crc32c != want_crc or meta.size != len(payload) or md5_bad:
+                self._discard(bucket, name, meta.generation)
+                raise StorageError(
+                    "the stored object does not match the uploaded bytes (CRC32C/MD5/size)",
+                    bucket=bucket,
+                    name=name,
+                    code=ErrorCode.INTEGRITY_FAILURE,
+                )
+            return meta
 
         return await self._call(run, bucket=bucket, name=name)
+
+    def _discard(self, bucket: str, name: str, generation: int) -> None:
+        """Best-effort delete of exactly ``generation`` (a corrupt write or copy)."""
+        with contextlib.suppress(Exception):
+            self._blob(bucket, name, generation).delete(if_generation_match=generation)
 
     async def get(
         self,
@@ -308,16 +378,30 @@ class GcsObjectStore:
     ) -> ObjectMeta:
         check_object_name(src_name)
         check_object_name(dst_name)
+        source = await self.stat(src_bucket, src_name, generation=source_generation)
 
         def run() -> ObjectMeta:
-            src = self._blob(src_bucket, src_name, source_generation)
+            src = self._blob(src_bucket, src_name, source.generation)
             dst = self._blob(dst_bucket, dst_name)
-            token, _, _ = dst.rewrite(src, if_generation_match=if_generation_match)
+            pins = {
+                "if_generation_match": if_generation_match,
+                "if_source_generation_match": source.generation,
+            }
+            token, _, _ = dst.rewrite(src, **pins)
             while token is not None:
-                token, _, _ = dst.rewrite(src, token=token, if_generation_match=if_generation_match)
+                token, _, _ = dst.rewrite(src, token=token, **pins)
             if dst.generation is None:
                 dst.reload()
-            return _blob_meta(dst)
+            meta = _blob_meta(dst)
+            if meta.size != source.size or meta.crc32c != source.crc32c:
+                self._discard(dst_bucket, dst_name, meta.generation)
+                raise StorageError(
+                    "the copy does not match its source generation (size/CRC32C)",
+                    bucket=dst_bucket,
+                    name=dst_name,
+                    code=ErrorCode.INTEGRITY_FAILURE,
+                )
+            return meta
 
         return await self._call(run, bucket=dst_bucket, name=dst_name)
 
@@ -329,6 +413,17 @@ class GcsObjectStore:
         now = self._clock()
 
         def run() -> str:
+            if self._blob_signer is not None:
+                return rsa_signed_url(
+                    self._blob_signer,
+                    method="GET",
+                    bucket=bucket,
+                    name=name,
+                    expires_in=expires_in,
+                    endpoint=self._api_endpoint,
+                    now=now,
+                    query={"generation": str(meta.generation)},
+                )
             blob = self._blob(bucket, name, meta.generation)
             url: str = blob.generate_signed_url(
                 expiration=expires_in,
@@ -371,6 +466,20 @@ class GcsObjectStore:
         now = self._clock()
 
         def run() -> str:
+            if self._blob_signer is not None:
+                signed_headers = dict(extra)
+                if content_type is not None:
+                    signed_headers["content-type"] = content_type
+                return rsa_signed_url(
+                    self._blob_signer,
+                    method="PUT",
+                    bucket=bucket,
+                    name=name,
+                    expires_in=expires_in,
+                    endpoint=self._api_endpoint,
+                    now=now,
+                    headers=signed_headers,
+                )
             url: str = self._blob(bucket, name).generate_signed_url(
                 expiration=expires_in,
                 method="PUT",
@@ -406,16 +515,19 @@ class GcsObjectStore:
         check_object_name(prefix)
         if not prefix.endswith("/"):
             raise ValueError("a POST policy prefix must end with '/'")
-        if create_only and self._uploader_credentials is None:
+        uploader = self._uploader_signer or self._uploader_credentials
+        if create_only and uploader is None:
             raise NotImplementedError(
                 "a create_only POST policy on GCS needs uploader_credentials: a signer without "
                 "storage.objects.delete on the bucket (GCS POST forms take no generation "
                 "precondition)"
             )
         creds = (
-            self._uploader_credentials
+            uploader
             if create_only
-            else self._signing_credentials or getattr(self._client, "_credentials", None)
+            else self._blob_signer
+            or self._signing_credentials
+            or getattr(self._client, "_credentials", None)
         )
         sign_bytes = getattr(creds, "sign_bytes", None)
         signer_email = getattr(creds, "signer_email", None) or (
