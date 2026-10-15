@@ -2129,6 +2129,12 @@ dependencies = [
     { name = "xarray" },
 ]
 
+[package.dev-dependencies]
+test = [
+    { name = "mapi-conformance" },
+    { name = "mapi-gcs-shim" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
@@ -2139,6 +2145,12 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.2" },
     { name = "pyarrow", specifier = ">=17" },
     { name = "xarray", specifier = ">=2025.1" },
+]
+
+[package.metadata.requires-dev]
+test = [
+    { name = "mapi-conformance", editable = "conformance" },
+    { name = "mapi-gcs-shim", editable = "packages/gcs-shim" },
 ]
 
 [[package]]

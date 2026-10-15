@@ -20,6 +20,11 @@ dependencies = [
   "xarray>=2025.1",
 ]
 
+[dependency-groups]
+# Test-only: the local GCS emulator (pytest fixtures) and the conformance fixtures the
+# end-to-end tests ingest, fit and score. Never runtime dependencies of the runner image.
+test = ["mapi-gcs-shim", "mapi-conformance"]
+
 [project.scripts]
 mapi-runner = "mapi_runner.__main__:main"
 
@@ -32,5 +37,7 @@ packages = ["src/mapi_runner"]
 
 [tool.uv.sources]
 mapi-spec = { workspace = true }
+mapi-gcs-shim = { workspace = true }
+mapi-conformance = { workspace = true }
 mapi-sdk = { workspace = true }
 mapi-plots = { workspace = true }
