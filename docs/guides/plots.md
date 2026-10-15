@@ -21,19 +21,7 @@ uv add mapi-plots              # sanitizer and templates only (JSON in, JSON out
 A recipe is a function from a fitted bundle or a score output to a `PlotSpec`:
 
 ```python
-from mapi_plots.recipes import get_recipe
-from mapi_sdk import Bundle, score_bundle
-
-bundle = Bundle.read("bundles/geo-v1", registry)
-tree = bundle.to_tree()                                   # model/posterior, observed_data, ...
-
-plot = get_recipe("core.convergence").render(tree)        # R-hat/ESS, worst parameters, traces
-print(plot.caption_plain)
-# e.g. "2 of 6 parameters have not converged (R-hat above 1.01 or fewer than 200 effective
-#       samples), for example beta[tv], ... Run the sampler longer ..."
-
-forecast = score_bundle(bundle, request, future, registry=registry)
-fan = get_recipe("core.ppc_fan").render(forecast, facet="market", levels=[0.5, 0.9])
+--8<-- "plots.py:recipe"
 ```
 
 Inputs are flexible: an `xr.DataTree` (bundle or score output), an `xr.Dataset`, or a plain
@@ -54,11 +42,7 @@ Every plot carries:
     recipe, built with xarray only:
 
     ```python
-    from mapi_plots.examples import example_inputs
-    from mapi_plots.recipes import get_recipe
-
-    for recipe_id, (data, options) in example_inputs().items():
-        plot = get_recipe(recipe_id).render(data, **options)
+    --8<-- "plots.py:all"
     ```
 
 ## The standard catalog
@@ -107,14 +91,7 @@ per `store × sku`, coloured by the facet dim).
 Build with Altair or Plotly as usual, then wrap it:
 
 ```python
-import altair as alt
-from mapi_plots import from_altair, from_plotly
-
-chart = alt.Chart(df).mark_line().encode(x="week:T", y="revenue:Q", color="market:N")
-plot = from_altair(chart, id="my.revenue", caption_plain="Revenue by market.")
-
-import plotly.express as px
-plot = from_plotly(px.scatter_3d(df, x="tv", y="search", z="revenue"), id="my.surface")
+--8<-- "plots.py:altair"
 ```
 
 - `from_altair` moves Altair's inline data (and any `data.values`) into named Arrow datasets
@@ -132,12 +109,7 @@ A template binds channels to **roles and dims** instead of one model's variable 
 "target over time, one line per geo" plot applies to every model of a family:
 
 ```python
-from mapi_plots.recipes import builtin_templates, render_template
-
-tmpl = builtin_templates()["tmpl.target_over_time"]
-tmpl.bindings            # x="dim:time", y="role:target", color="dim:geo"
-plot = render_template(tmpl, dataset)                      # schema from attrs or inferred
-plot = render_template(tmpl, single_market, optional=["color"])   # degrade gracefully
+--8<-- "plots.py:template"
 ```
 
 Inside a template spec, `{"$bind": "y"}` becomes a Vega-Lite field definition and `"{{y}}"`
@@ -168,8 +140,5 @@ depth, node count and string length. See the [plots reference](../reference/plot
 full rule list and error codes.
 
 ```python
-from mapi_plots import sanitize_plot, check_plot
-
-result = sanitize_plot(plot_json)        # -> SanitizeResult(plot, changes); raises SanitizeError
-issues = check_plot(plot_json)           # editor-friendly: every error and change, no raise
+--8<-- "plots.py:sanitize"
 ```

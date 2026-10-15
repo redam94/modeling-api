@@ -197,21 +197,7 @@ checks that no pickle-like entry exists.
 Implement `estimator()` and pick a base class for the representation you want:
 
 ```python
-from typing import ClassVar
-from mapi_spec.capabilities import Capabilities
-from mapi_sklearn import PointSettings, SklearnModel, capabilities_for
-from sklearn.linear_model import Ridge
-
-
-class LinearDemand(SklearnModel[PointSettings]):
-    id = "t.acme.linear_demand"
-    version = "1.0.0"
-    capabilities: ClassVar[Capabilities] = capabilities_for("none").model_copy(
-        update={"contribution_scale": "additive"}
-    )
-
-    def estimator(self, s: PointSettings):
-        return Ridge(alpha=0.5)       # must be exactly an allow-listed class
+--8<-- "plugin_sklearn.py:model"
 ```
 
 `estimator()` may return an allow-listed instance, a `{kind, params}` mapping or a choice
@@ -222,23 +208,7 @@ classes: `SklearnModel` (point), `SklearnQuantileModel`, `SklearnBootstrapModel`
 Run the contract kit on synthetic data before you publish:
 
 ```python
-from mapi_sdk.testing import ModelFixture, check_model
-from mapi_sklearn.testing import demand_dataset, demand_registry, demand_schema, demand_spec
-
-data = demand_dataset()                      # store x sku x week demand panel
-registry = demand_registry()
-registry.register_model(LinearDemand)
-report = check_model(
-    LinearDemand,
-    ModelFixture(
-        spec=demand_spec("t.acme.linear_demand@^1", {"estimator": None}),
-        data=data,
-        raw_schema=demand_schema(data),
-        registry=registry,
-    ),
-)
-print(report.summary())    # bundle round trip, shuffled/subset/new-level scoring, typed errors,
-                           # context-window equivalence, evaluate == score path, additivity ...
+--8<-- "plugin_sklearn.py:check"
 ```
 
 ## Limits in v1

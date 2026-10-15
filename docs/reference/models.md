@@ -7,6 +7,8 @@ and has a conformance fixture (see [Conformance corpus](../guides/conformance.md
 
 | Plugin | Package | Representation | Score modes | Corpus fixture |
 |---|---|---|---|---|
+| `mmm.hierarchical_geo@1` | `mapi-plugin-mmm` | draws | predict, forecast, counterfactual, simulate, evaluate | `e33` |
+| `mmm.pymc_marketing@1` | `mapi-plugin-mmm` | draws | predict, forecast, counterfactual, evaluate | `pymc_marketing` |
 | `ts.hsgp_trend@1` | `mapi-plugin-ts` | draws | predict, forecast, evaluate | `c08` |
 | `ts.gaussian_hmm@1` | `mapi-plugin-ts` | draws | predict, forecast, filter, evaluate | `e24` |
 | `tabular.hierarchical_glm@1` | `mapi-plugin-tabular` | draws | predict, counterfactual, evaluate | `e02` |
@@ -15,6 +17,43 @@ and has a conformance fixture (see [Conformance corpus](../guides/conformance.md
 Plugins use **canonical names** for their inputs; bind your dataset's names onto them in the
 spec's `data.bind` block. Outputs come back under your names (reverse binding) unless they
 are new variables such as `y_hat`.
+
+The `mapi-sklearn` package also registers five general-purpose tabular plugins,
+`sklearn.tabular_regressor`, `sklearn.tabular_quantiles`, `sklearn.tabular_bootstrap`,
+`sklearn.tabular_conformal` and `sklearn.tabular_classifier`; see
+[Tabular models](../guides/sklearn.md).
+
+!!! tip "Every setting, generated"
+    The [models catalog](generated/models-catalog.md) is generated from the installed
+    manifests: capabilities, outputs, derived quantities, every setting with its default and
+    Guided-mode level, and the input data contract.
+
+## `mmm.hierarchical_geo`: geo marketing mix
+
+A hierarchical marketing-mix model: adstock over a `core.lag_tensor` spend tensor, logistic or
+Hill saturation, channel effects partially pooled across geos, a hierarchical intercept and
+controls. New geos are drawn from the fitted hyperprior. Contributions are additive and, with
+`outputs.derived`, the fit caches contributions, per-draw response curves and marginal costs
+**in original units**. It declares a decision objective for budget optimisation.
+
+**Inputs.** `y(geo, time)`, `spend(geo, channel, time, lag)` from `core.lag_tensor` (the
+`adstock.l_max` setting must equal the step's `l_max`), and any other numeric variable along
+time as a control. `geo` is `new_levels` (hyperprior), `channel` is `fixed`, `time` extends.
+
+**Outputs.** `y_hat(geo, time)` and `contributions(component, geo, time)` (one component per
+channel, `baseline` and one per control; they sum to `y_hat`).
+
+Read the [marketing-mix guide](../guides/mmm.md) for the model, its priors and a complete
+spec.
+
+## `mmm.pymc_marketing`: the pymc-marketing adapter
+
+Runs `pymc_marketing.mmm.MMM` behind the platform. The model scales data, carries spend over
+and reports original units itself, so the plugin declares `owns: [scaling, carryover,
+inverse_units]` and the platform skips its own versions of those. Bundles store the posterior,
+pymc-marketing's `fit_data` and its JSON model description, never a pickle. Markets are a
+`fixed` dim: pymc-marketing cannot score a market it has not seen. See
+[the adapter section](../guides/mmm.md#the-pymc-marketing-adapter).
 
 ## `ts.hsgp_trend` — smooth trend with seasonality
 
