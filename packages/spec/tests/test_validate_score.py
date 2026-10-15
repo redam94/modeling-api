@@ -108,8 +108,7 @@ def test_dataset_names_are_bound_at_any_entry_stage(e33_meta: ScoreMetadata) -> 
         {
             "vars": [to_dataset.get(v, v) for v in canonical.vars],
             "coords": {
-                to_dataset.get(d, d): c.model_dump(mode="json")
-                for d, c in canonical.coords.items()
+                to_dataset.get(d, d): c.model_dump(mode="json") for d, c in canonical.coords.items()
             },
         }
     )
