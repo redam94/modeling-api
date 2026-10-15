@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from types import ModuleType
 from typing import Any
 
@@ -224,6 +225,26 @@ def test_spec_yaml_points_at_seeded_versions(seed: ModuleType) -> None:
     assert "dataset://default/eu_media_daily@v7" in text
     assert "project: default" in text
     dto.SpecCreate(yaml=text)  # within the API's size limits
+
+
+def test_export_writes_uploadable_files_and_a_matching_spec(
+    seed: ModuleType, tmp_path: Path
+) -> None:
+    from mapi_sdk.wire import read_zarr_zip
+    from mapi_spec import load_document
+
+    out = seed.export_files(tmp_path / "demo")
+    names = {name for name, _ in seed.DATASETS.values()} | set(seed.EXPORT_PAYLOADS)
+    assert set(out) == names | {seed.SPEC_NAME}
+    data = read_zarr_zip(out["eu_media_daily"])
+    assert "revenue_local" in data and data.attrs.get(seed.DATASET_SCHEMA_ATTR)
+    future = read_zarr_zip(out["eu_media_future"])
+    assert "spend_local" in future and "revenue_local" not in future
+    text = out[seed.SPEC_NAME].read_text()
+    for name, _ in seed.DATASETS.values():
+        assert f"dataset://default/{name}@latest" in text
+    assert load_document(text).metadata.name == seed.SPEC_NAME
+    assert seed.main(["--export", str(tmp_path / "again")]) == 0
 
 
 def test_full_flow_and_idempotent_rerun(seed: ModuleType) -> None:
