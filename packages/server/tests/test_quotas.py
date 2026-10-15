@@ -327,6 +327,40 @@ async def test_executor_health_is_reported(ctx: ServerContext, client: httpx.Asy
     assert (await client.get("/v1/admin/executors/nope")).status_code == 404
 
 
+async def test_cloud_run_throttling_reaches_the_admin_console(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """The cloudrun-jobs executor's own 429 alarm and submit rate feed the dispatcher's
+    report, so operators see jobs.run throttling in /v1/admin/executors."""
+    from mapi_server.executors.cloudrun import CloudRunJobsExecutor
+    from mapi_server.executors.fake_cloudrun import FakeCloudRun
+    from mapi_server_testkit.conformance import INVENTORY
+
+    executor = CloudRunJobsExecutor(
+        FakeCloudRun.for_inventory(INVENTORY), INVENTORY, submits_per_minute=120, burst=5
+    )
+    for _ in range(2):
+        executor.throttled.record()
+    await Dispatcher(ctx, executor).report()
+    health = (await client.get("/v1/admin/executors/cloudrun-jobs")).json()
+    assert health["status"] == "degraded" and health["throttled_last_hour"] == 2
+    assert health["submit_rate_limit_per_minute"] == 120
+    assert "429" in health["message"]
+
+
+def test_dispatcher_backs_off_on_a_cloud_run_429(ctx: ServerContext) -> None:
+    """A jobs.run 429 the executor could not absorb (``CloudRunRateLimited``) puts the
+    dispatcher into back-off, honouring Retry-After, and counts toward its health."""
+    from mapi_server.executors.cloudrun import CloudRunError, CloudRunRateLimited
+
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    assert dispatcher._throttled(CloudRunError("boom", status=500)) is None
+    assert dispatcher._throttled(CloudRunRateLimited("429", retry_after=7.0)) == 7.0
+    first = dispatcher._throttled(CloudRunRateLimited("429"))
+    second = dispatcher._throttled(CloudRunRateLimited("429"))
+    assert first is not None and second is not None and second >= first
+
+
 async def test_runs_admitted_under_looser_limits_wait_at_dispatch(
     ctx: ServerContext, tenants: None
 ) -> None:
