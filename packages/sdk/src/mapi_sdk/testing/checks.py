@@ -170,6 +170,49 @@ def _schema_shape(schema: DataSchema) -> dict[str, Any]:
     }
 
 
+#: dim kinds the output can reveal (an unlabelled ``index`` dim looks like any numeric one)
+_KIND_FAMILY = {"time": "time", "categorical": "categorical"}
+
+
+def _same_freq(a: str, b: str) -> bool:
+    try:
+        return bool(pd.tseries.frequencies.to_offset(a) == pd.tseries.frequencies.to_offset(b))
+    except ValueError:
+        return a == b
+
+
+def _schema_metadata_problems(
+    declared: DataSchema, actual: DataSchema, out: xr.Dataset
+) -> list[str]:
+    """Metadata the control plane takes from a SchemaEffect that the output contradicts.
+
+    Horizon generation, contiguity and ``max_extension`` checks use the declared ``freq``;
+    output units come from the declared ``units``. Compared where the output carries them:
+    a dim's kind family and inferred frequency, a variable's ``units`` (and ``role``) attrs.
+    """
+    problems: list[str] = []
+    for name, want in declared.dims.items():
+        got = actual.dims.get(name)
+        if got is None:
+            continue
+        wk, gk = _KIND_FAMILY.get(want.kind, "numeric"), _KIND_FAMILY.get(got.kind, "numeric")
+        if want.kind != "index" and wk != gk:  # positional dims may carry any labels
+            problems.append(f"dim {name!r}: declared kind {want.kind!r}, output is {got.kind!r}")
+        if want.freq and got.freq and not _same_freq(want.freq, got.freq):
+            problems.append(f"dim {name!r}: declared freq {want.freq!r}, output has {got.freq!r}")
+    for name, var in declared.vars.items():
+        if name not in out.data_vars:
+            continue
+        attrs = out[name].attrs
+        units = attrs.get("units")
+        if units is not None and units != var.units:
+            problems.append(f"var {name!r}: declared units {var.units!r}, output has {units!r}")
+        role = attrs.get("role")
+        if role is not None and role != var.role.value:
+            problems.append(f"var {name!r}: declared role {var.role.value!r}, output has {role!r}")
+    return problems
+
+
 def check_step(
     step: type[Step[Any, Any]] | Step[Any, Any],
     ds: xr.Dataset,
@@ -298,7 +341,12 @@ def check_step(
         want, got = _schema_shape(expected), _schema_shape(actual)
         if want != got:
             raise AssertionError(f"declared effect gives {want} but the output is {got}")
-        return "output schema matches the declared SchemaEffect"
+        problems = _schema_metadata_problems(expected, actual, out)
+        if problems:
+            raise AssertionError(
+                "the declared effect disagrees with the output: " + "; ".join(problems)
+            )
+        return "output schema (names, dims, dtypes, freq, units) matches the declared SchemaEffect"
 
     def absent_target() -> str:
         targets = [t for t in in_schema.targets if t in ds]

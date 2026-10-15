@@ -133,6 +133,50 @@ class _HiddenDefault(toy.Log1pStep):
     Settings = _HiddenDefaultSettings
 
 
+class _FreqLiar(toy.ResampleStep):
+    """Declares monthly output while resampling to the configured (weekly) frequency."""
+
+    id = "test.freqliar"
+    effect_template: ClassVar[dict[str, JsonValue]] = {
+        "template_params": ["dim"],
+        "transforms_dims": {"{dim}": {"kind": "time", "policy": "extend", "freq": "MS"}},
+    }
+
+
+class _UnitsLiar(toy.Log1pStep):
+    """Relabels the units of its output without declaring it in the effect."""
+
+    id = "test.unitsliar"
+
+    def transform(self, ds: xr.Dataset, s: Any, st: StepState, ctx: StepContext) -> xr.Dataset:
+        out = super().transform(ds, s, st, ctx)
+        for v in s.vars:
+            if v in out:
+                out[v].attrs["units"] = "EUR"
+        return out
+
+
+def test_effect_check_compares_freq_and_units(
+    weekly: xr.Dataset, raw_target_schema: Callable[[xr.Dataset], DataSchema]
+) -> None:
+    daily = weekly.resample(time="D").ffill()
+    report = check_step(_FreqLiar, daily, {"dim": "time", "freq": "W-SUN"}, raise_on_failure=False)
+    detail = report.get("effect_matches_output").detail
+    assert not report.get("effect_matches_output").passed and "freq" in detail, detail
+    honest = check_step(
+        toy.ResampleStep, daily, {"dim": "time", "freq": "W-SUN"}, raise_on_failure=False
+    )
+    assert honest.get("effect_matches_output").passed, honest.summary()
+    units = check_step(
+        _UnitsLiar,
+        weekly,
+        {"vars": ["y"]},
+        schema=raw_target_schema(weekly),
+        raise_on_failure=False,
+    )
+    assert "units" in units.get("effect_matches_output").detail, units.summary()
+
+
 def test_broken_steps_fail_specific_checks(
     weekly: xr.Dataset, raw_target_schema: Callable[[xr.Dataset], DataSchema]
 ) -> None:
@@ -144,6 +188,8 @@ def test_broken_steps_fail_specific_checks(
         (_BadInverse, {"vars": ["y"]}, "inverse_roundtrip"),
         (_NeedsTarget, {"vars": ["y"]}, "absent_target_tolerated"),
         (_HiddenDefault, {"vars": ["y"]}, "catalog_entry"),
+        (_FreqLiar, {"dim": "time", "freq": "W-SUN"}, "effect_matches_output"),
+        (_UnitsLiar, {"vars": ["y"]}, "effect_matches_output"),
     ]
     for step, settings, failing in cases:
         report = check_step(
