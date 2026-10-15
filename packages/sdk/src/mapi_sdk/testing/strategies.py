@@ -14,7 +14,11 @@ FLOATS = st.one_of(
     st.floats(allow_nan=False, allow_infinity=False, width=64, min_value=-1e12, max_value=1e12),
     st.just(float("nan")),
 )
-TEXT = st.text(alphabet=st.characters(codec="utf-8"), min_size=0, max_size=8)
+# no NUL: numpy's fixed-width ``<U`` strips trailing NULs, so 'a' and 'a\x00' would collapse
+# into one label (duplicate coords) after normalisation
+TEXT = st.text(
+    alphabet=st.characters(codec="utf-8", exclude_characters="\x00"), min_size=0, max_size=8
+)
 JSON_SCALARS = st.one_of(
     st.none(),
     st.booleans(),
