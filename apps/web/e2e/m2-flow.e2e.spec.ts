@@ -193,16 +193,17 @@ test.describe("@e2e M2: tenants, run cost, tokens and the kill switch in the UI"
     page.on("pageerror", (err) => {
       throw err;
     });
-    // operator (the global setup's account): make the tenant a shared-tier customer ...
+    // operator (the global setup's account): make the tenant a non-internal one that the
+    // local executor can still place (verified would be refused for placement first) ...
     await page.goto("/admin");
     const tenants = page.getByRole("table", { name: "Tenants" });
     await expect(tenants.getByText(seeded.tenant_name)).toBeVisible();
     await tenants.getByRole("button", { name: `Edit ${seeded.tenant_name}` }).click();
     const edit = page.getByRole("dialog", { name: `Edit ${seeded.tenant_name}` });
-    await edit.getByLabel("Trust tier").selectOption("verified");
+    await edit.getByLabel("Trust tier").selectOption("self-hosted-trusted");
     await edit.getByRole("button", { name: "Save changes" }).click();
     await expect(edit).toBeHidden();
-    await expect(tenants.getByRole("row").filter({ hasText: seeded.tenant_name }).getByText("Verified")).toBeVisible();
+    await expect(tenants.getByRole("row").filter({ hasText: seeded.tenant_name }).getByText("Self-hosted")).toBeVisible();
 
     // ... and cap today's platform spend below what has been spent
     await page.getByRole("tab", { name: "Kill switches" }).click();

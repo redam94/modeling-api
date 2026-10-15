@@ -715,8 +715,9 @@ def test_the_spend_cap_kill_switch_holds_dispatch(
         assert r.status_code in (200, 201, 202), r.text
         queued = r.json()["id"]
         assert r.json()["state"] == "queued"
-        # the operator makes acme a shared-tier tenant and caps platform spend below today's
-        operator.admin.update_tenant(acme.tenant, {"trust_tier": "verified"})
+        # the operator makes acme a non-internal tenant (one the local executor can still
+        # place, so only the cap holds it) and caps platform spend below today's
+        operator.admin.update_tenant(acme.tenant, {"trust_tier": "self-hosted-trusted"})
         switches = operator.admin.set_kill_switches(
             {"global_spend_cap_micros": 1, "reason": "m2 e2e: spend cap drill"}
         )
@@ -724,8 +725,7 @@ def test_the_spend_cap_kill_switch_holds_dispatch(
     finally:
         os.kill(pid, signal.SIGCONT)
     try:
-        # dispatch: held (were it leased, placement would fail it at once: verified tenants
-        # need gVisor, and the local stack only has local-process)
+        # dispatch: held (nothing else would stop local-process from leasing it)
         _held(acme, queued, seconds=6.0)
         # admission: new runs of the capped tenant are refused
         r = raw.post("/v1/runs", headers=acme.headers(), json=body)
