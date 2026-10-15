@@ -88,7 +88,7 @@ _VERIFIER_RE = re.compile(r"^[A-Za-z0-9\-._~]{43,128}$")
 
 def pkce_challenge(verifier: str) -> str:
     """The S256 ``code_challenge`` of ``verifier``: ``BASE64URL(SHA256(verifier))``."""
-    if not _VERIFIER_RE.match(verifier):
+    if not _VERIFIER_RE.fullmatch(verifier):
         raise ValueError("a code_verifier is 43-128 characters of [A-Za-z0-9-._~]")
     digest = hashlib.sha256(verifier.encode("ascii")).digest()
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
@@ -108,7 +108,7 @@ def safe_return_to(value: str | None, default: str = "/") -> str:
     Only absolute *paths* are accepted: no scheme, no host, no ``//`` or ``/\\`` prefix,
     no control characters. Anything else yields ``default``.
     """
-    if value is None or not _RETURN_TO_RE.match(value):
+    if value is None or not _RETURN_TO_RE.fullmatch(value):
         return default
     return value
 

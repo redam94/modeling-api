@@ -229,7 +229,7 @@ def parse_scope(value: str) -> tuple[ScopeName, str | None]:
     if value in _FIXED_SCOPES:
         return ScopeName(value), None
     family, sep, target = value.partition(":")
-    if family == ScopeName.SCORE.value and sep and _ENDPOINT_TARGET.match(target):
+    if family == ScopeName.SCORE.value and sep and _ENDPOINT_TARGET.fullmatch(target):
         return ScopeName.SCORE, target
     raise ValueError(
         f"unknown scope {value[:80]!r}; expected one of "

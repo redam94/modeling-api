@@ -289,6 +289,8 @@ def test_new_contract_modules_do_not_import_array_libraries() -> None:
     code = (
         "import sys\n"
         "import mapi_spec.run, mapi_spec.storage, mapi_spec.api, mapi_spec.jsonschema_export\n"
+        "import mapi_spec.tenancy, mapi_spec.tokens, mapi_spec.quotas, mapi_spec.cost\n"
+        "import mapi_spec.audit, mapi_spec.admin, mapi_spec.auth, mapi_spec.conformance_executor\n"
         "bad = sorted(m for m in ('numpy', 'xarray', 'pandas', 'pyarrow', 'fastapi',"
         " 'sqlalchemy', 'mapi_sdk', 'mapi_server', 'mapi_runner') if m in sys.modules)\n"
         "assert not bad, bad\n"
@@ -297,3 +299,110 @@ def test_new_contract_modules_do_not_import_array_libraries() -> None:
         [sys.executable, "-c", code], capture_output=True, text=True, timeout=60, check=False
     )
     assert proc.returncode == 0, proc.stderr
+
+
+# ------------------------------------------------------------------------- M2 table and scoping
+
+_NO_BODY_SUCCESS = (204, 302)
+
+
+def test_m2_endpoint_table_is_consistent() -> None:
+    from mapi_spec.api import ENDPOINTS, M2_ENDPOINTS
+
+    assert ENDPOINTS == M1_ENDPOINTS + M2_ENDPOINTS
+    keys = [(e.method, e.path) for e in ENDPOINTS]
+    assert len(keys) == len(set(keys))
+    ops = [e.operation_id for e in ENDPOINTS]
+    assert len(ops) == len(set(ops))
+    for e in M2_ENDPOINTS:
+        assert e.path.startswith(("/v1/", "/auth/", "/internal/")), e.path
+        assert e.success in (200, 201, 202, 204, 302), e
+        assert (e.success in _NO_BODY_SUCCESS) <= (e.response is None), e
+        for param in re.findall(r"\{([^}]+)\}", e.path):
+            assert re.fullmatch(r"[a-z_]+", param), e.path
+        if e.request is not None:
+            assert e.method in ("POST", "PUT", "PATCH"), e
+            _resolve(e.request)
+        if e.response is not None:
+            _resolve(e.response)
+        assert e.paginated == (e.response or "").startswith("Page["), e
+        if e.paginated:
+            assert "limit" in e.query, e
+        if e.method == "PATCH":
+            assert e.request is not None, e
+    assert not [e for e in M2_ENDPOINTS if e.streaming]
+
+
+def test_every_operation_has_route_access_and_a_real_permission() -> None:
+    from mapi_spec.api import ENDPOINTS, ROUTE_ACCESS, RouteScope, route_access
+    from mapi_spec.tenancy import OPERATOR_PERMISSIONS, PERMISSIONS, Level
+
+    assert set(ROUTE_ACCESS) == {e.operation_id for e in ENDPOINTS}
+    for e in ENDPOINTS:
+        acc = route_access(e.operation_id)
+        pairs = [(acc.resource, acc.action)] if acc.resource is not None else []
+        pairs += list(acc.also)
+        for res, act in pairs:
+            assert (res, act) in PERMISSIONS, (e.operation_id, res, act)
+        if acc.scope is RouteScope.PLATFORM:
+            assert e.path.startswith("/v1/admin/"), e.path
+            assert (acc.resource, acc.action) in OPERATOR_PERMISSIONS, e.operation_id
+        if e.path.startswith("/v1/admin/"):
+            assert acc.scope is RouteScope.PLATFORM, e.operation_id
+        if acc.scope is RouteScope.INTERNAL:
+            assert e.path.startswith("/internal/")
+            rule = PERMISSIONS[(acc.resource, acc.action)]  # type: ignore[index]
+            assert rule.level is Level.INTERNAL
+        if acc.scope is RouteScope.TENANT:
+            assert e.path.startswith("/v1/tenants/{tenant_id}"), e.path
+        if acc.scope is RouteScope.PUBLIC:
+            assert e.path in ("/healthz", "/readyz", "/v1/schemas/{name}") or e.path.startswith(
+                "/auth/"
+            ), e.path
+        if acc.scope is RouteScope.PROJECT and acc.resource is not None:
+            rule = PERMISSIONS[(acc.resource, acc.action)]  # type: ignore[index]
+            assert rule.level is Level.PROJECT, e.operation_id
+    with pytest.raises(KeyError):
+        route_access("nope")
+
+
+def test_every_m1_data_endpoint_is_project_scoped() -> None:
+    from mapi_spec.api import ROUTE_ACCESS, RouteScope
+
+    for e in M1_ENDPOINTS:
+        if e.path.startswith(("/v1/datasets", "/v1/specs", "/v1/runs", "/v1/models", "/v1/plots")):
+            assert ROUTE_ACCESS[e.operation_id].scope is RouteScope.PROJECT, e.operation_id
+
+
+def test_route_access_rejects_half_specified_permissions() -> None:
+    from mapi_spec.api import RouteAccess, RouteScope
+    from mapi_spec.tenancy import ResourceKind
+
+    with pytest.raises(ValueError):
+        RouteAccess(RouteScope.PROJECT, ResourceKind.RUN, None)
+
+
+def test_reference_docs_list_every_m2_endpoint_and_the_scoping_rules() -> None:
+    from mapi_spec.api import M2_ENDPOINTS
+    from mapi_spec.tenancy import PROJECT_HEADER
+
+    docs = _docs_dir()
+    if docs is None:  # pragma: no cover - sdist without the docs tree
+        pytest.skip("docs/ not available")
+    text = (docs / "http-api.md").read_text("utf-8")
+    for e in M2_ENDPOINTS:
+        assert f"`{e.method} {e.path}`" in text, f"http-api.md is missing {e.method} {e.path}"
+        for dto in filter(None, (e.request, e.response)):
+            assert dto.removeprefix("Page[").removesuffix("]") in text, dto
+    assert PROJECT_HEADER in text
+    concepts = docs.parent / "concepts"
+    tenancy = (concepts / "tenancy-and-auth.md").read_text("utf-8")
+    quotas = (concepts / "quotas-and-cost.md").read_text("utf-8")
+    from mapi_spec.tenancy import ProjectRole, TrustTier
+
+    for role in ProjectRole:
+        assert f"`{role.value}`" in tenancy, role
+    for tier in TrustTier:
+        assert f"`{tier.value}`" in tenancy, tier
+    for needle in ("QUOTA_EXCEEDED", "RATE_LIMITED", "interactive", "batch", "vCPU-second"):
+        assert needle in quotas, needle
