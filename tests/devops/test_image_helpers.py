@@ -242,6 +242,23 @@ class TestRunnerEntrypoint:
         self._run(env)  # already seeded: not redone
         assert not linked.exists()
 
+    def test_as_root_the_cache_is_handed_to_the_worker_uid(self, tmp_path: Path) -> None:
+        """The docker executor starts the supervisor as root so it can drop the worker to
+        uid 10001; the worker must still be able to write PyTensor's compiledir."""
+        env = _entrypoint_env(tmp_path)
+        bindir = Path(env["PATH"].split(":")[0])
+        log = tmp_path / "chown.log"
+        (bindir / "id").write_text("#!/bin/sh\necho 0\n")
+        (bindir / "chown").write_text(f'#!/bin/sh\necho "$*" >> {log}\n')
+        for name in ("id", "chown"):
+            (bindir / name).chmod(0o755)
+        assert self._run(env).returncode == 0
+        assert log.read_text().split() == ["-hR", "10001:10001", env["MAPI_CACHE_DIR"]]
+        log.unlink()
+        (bindir / "id").write_text("#!/bin/sh\necho 10001\n")
+        assert self._run(env).returncode == 0
+        assert not log.exists()  # not root: nothing to hand over
+
     def test_missing_seed_degrades_with_a_warning(self, tmp_path: Path) -> None:
         env = _entrypoint_env(tmp_path)
         shutil.rmtree(env["MAPI_CACHE_SEED"])

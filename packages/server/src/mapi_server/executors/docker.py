@@ -5,8 +5,17 @@ Each attempt is a fresh container from the base image that ships the run's model
 image; everything else uses ``image``) with: no network (only usable with a non-network
 bootstrap transport), the GCS shim's network namespace (``container:<shim>``, the compose
 setup) or an internal network holding only the shim, a read-only root filesystem with a size-capped
-``/tmp`` tmpfs, all capabilities dropped, ``no-new-privileges``, a non-root user, pids/CPU/
-memory limits from the resource class, and optionally the gVisor runtime (``runsc``).
+``/tmp`` tmpfs, ``no-new-privileges``, pids/CPU/memory limits from the resource class, and
+optionally the gVisor runtime (``runsc``).
+
+**Uid split (plan §8.1).** The supervisor starts as root with every capability dropped except
+the few the split needs (``CHOWN``/``FOWNER`` for the worker's scratch directory,
+``SETUID``/``SETGID`` to start the worker as uid 10001, ``KILL`` to stop it, and
+``DAC_OVERRIDE`` to read its outputs). The worker then runs as 10001 with no capabilities and
+cannot signal, ptrace or read the environment of the supervisor or the init process.
+``MAPI_REQUIRE_ISOLATION=1`` makes the supervisor fail the run (``SANDBOX_VIOLATION``) rather
+than fall back to dev mode. A non-root ``user`` cannot split uids, so the executor then reports
+``PROCESS`` isolation only, never gVisor.
 Identifiers travel in the environment only; the container's stdout is the event pipe.
 The Docker SDK is synchronous, so every call runs in a worker thread.
 """
@@ -33,9 +42,16 @@ from mapi_spec.executor import (
     RunSubmit,
 )
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
-from mapi_spec.run import InvalidEvent, RunnerEnv, decode_event_line
+from mapi_spec.run import ENV_REQUIRE_ISOLATION, InvalidEvent, RunnerEnv, decode_event_line
 
-__all__ = ["LABEL_ATTEMPT", "LABEL_NONCE", "LABEL_RUN", "DockerExecutor", "docker_available"]
+__all__ = [
+    "LABEL_ATTEMPT",
+    "LABEL_NONCE",
+    "LABEL_RUN",
+    "SUPERVISOR_CAPS",
+    "DockerExecutor",
+    "docker_available",
+]
 
 log = logging.getLogger(__name__)
 
@@ -43,6 +59,8 @@ LABEL_NONCE = "dev.mapi.nonce"
 LABEL_RUN = "dev.mapi.run_id"
 LABEL_ATTEMPT = "dev.mapi.attempt"
 _TMPFS_FRACTION = 1.0  # the scratch budget is the tmpfs size
+SUPERVISOR_CAPS = ("CHOWN", "DAC_OVERRIDE", "FOWNER", "KILL", "SETGID", "SETUID")
+"""The only capabilities a run container keeps: what the supervisor needs for the uid split."""
 
 
 def docker_available() -> bool:
@@ -82,7 +100,7 @@ class DockerExecutor:
         network: str = "none",
         gvisor: bool = False,
         gvisor_runtime: str = "runsc",
-        user: str = "10001:10001",
+        user: str = "0:0",
         cancel_grace_s: float = 10.0,
         client_factory: Callable[[], Any] | None = None,
     ) -> None:
@@ -126,9 +144,15 @@ class DockerExecutor:
         return self._client
 
     # ------------------------------------------------------------------ protocol
+    @property
+    def splits_uids(self) -> bool:
+        """True when the supervisor starts as root and can drop the worker to its own uid."""
+        return self._user.split(":", 1)[0] in ("0", "root")
+
     def caps(self) -> ExecutorCaps:
+        strong = self._gvisor and self.splits_uids  # dev mode is never a gVisor-grade boundary
         return ExecutorCaps(
-            isolation=Isolation.GVISOR if self._gvisor else Isolation.PROCESS,
+            isolation=Isolation.GVISOR if strong else Isolation.PROCESS,
             egress_enforced=self._network == "none",
             dns_enforced=self._network == "none",
             max_runtime=Duration(24 * 3600),
@@ -148,6 +172,7 @@ class DockerExecutor:
             run_id=rs.run_id, nonce=nonce, bootstrap_url=self._template, exec_token=self._token
         ).to_environ()
         env["PYTHONUNBUFFERED"] = "1"
+        env[ENV_REQUIRE_ISOLATION] = "1"
         scratch = spec.scratch_bytes or 1024**3
         opts: dict[str, Any] = {
             "image": self.image_for(rs),
@@ -157,6 +182,7 @@ class DockerExecutor:
             "read_only": True,
             "tmpfs": {"/tmp": f"rw,noexec,nosuid,size={int(scratch * _TMPFS_FRACTION)}"},
             "cap_drop": ["ALL"],
+            "cap_add": list(SUPERVISOR_CAPS),
             "security_opt": ["no-new-privileges:true"],
             "user": self._user,
             "pids_limit": 512,

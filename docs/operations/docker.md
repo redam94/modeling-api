@@ -167,6 +167,14 @@ only the shim also works, provided `MAPI_GCS_ENDPOINT` names the shim on that ne
 `none` would leave the runner with nothing to fetch its bootstrap object from, so the worker
 refuses to start with it.
 
+**Worker isolation in run containers.** A run container starts its supervisor as root, with
+every Linux capability dropped except the few the uid split needs, and with
+`no-new-privileges`. The supervisor then starts the untrusted worker as uid 10001, which has no
+capabilities at all. So the worker cannot signal the supervisor, read its or the init
+process's environment, or write to its event pipe. The executor also sets
+`MAPI_REQUIRE_ISOLATION=1`, which makes the supervisor fail the run with `SANDBOX_VIOLATION`
+rather than run the worker under its own uid.
+
 Neither mode is a multi-tenant boundary. Both are single-tenant local stacks, and the
 local-process executor is meant to refuse any multi-tenant profile. The worker's `/tmp` is the
 scratch space for local-process runs. Size it with `MAPI_WORKER_TMPFS`, `MAPI_WORKER_MEMORY` and

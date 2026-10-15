@@ -221,7 +221,12 @@ def test_docker_container_options_lock_the_sandbox_down() -> None:
     opts = ex.container_options(rs, "a" * 64)
     assert opts["network_mode"] == "none" and opts["read_only"] is True
     assert opts["cap_drop"] == ["ALL"] and "no-new-privileges:true" in opts["security_opt"]
-    assert opts["user"] == "10001:10001" and opts["pids_limit"] == 512
+    # the supervisor starts as root with only what the uid split needs; the worker runs as
+    # 10001 with no capabilities at all (plan §8.1), and the runner refuses dev mode
+    assert opts["user"] == "0:0" and opts["pids_limit"] == 512
+    caps = ["CHOWN", "DAC_OVERRIDE", "FOWNER", "KILL", "SETGID", "SETUID"]
+    assert sorted(opts["cap_add"]) == caps
+    assert opts["environment"]["MAPI_REQUIRE_ISOLATION"] == "1"
     assert opts["mem_limit"] == 16 * 1024**3 and opts["nano_cpus"] == 4_000_000_000
     assert opts["tmpfs"]["/tmp"].endswith(f"size={6 * 1024**3}")
     assert set(opts["environment"]) == {
@@ -229,6 +234,7 @@ def test_docker_container_options_lock_the_sandbox_down() -> None:
         "MAPI_NONCE",
         "MAPI_BOOTSTRAP_URL",
         "MAPI_EXEC_TOKEN",
+        "MAPI_REQUIRE_ISOLATION",
         "PYTHONUNBUFFERED",
     }
     assert "runtime" not in opts and "command" not in opts
@@ -238,6 +244,12 @@ def test_docker_container_options_lock_the_sandbox_down() -> None:
     assert gopts["runtime"] == "runsc" and gopts["network_mode"] == "sb"
     assert gv.name == "docker-gvisor" and gv.caps().isolation is Isolation.GVISOR
     assert not gv.caps().egress_enforced
+    # a non-root supervisor cannot split uids: never claim gVisor (public placement) then
+    rootless = DockerExecutor(
+        image="img:1", bootstrap_url_template=TEMPLATE, gvisor=True, user="10001:10001"
+    )
+    assert rootless.caps().isolation is Isolation.PROCESS
+    assert not rootless.caps().allows_public_tenants()
 
 
 def test_docker_image_is_chosen_per_plugin() -> None:
