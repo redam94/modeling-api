@@ -118,3 +118,18 @@ def test_malicious_plugin_runs_probes_but_is_not_registered() -> None:
     # it must NOT be discoverable through the mapi.models entry point
     registered = {ep.value for ep in md.entry_points(group="mapi.models")}
     assert not any("mapi_security_plugin" in v for v in registered)
+
+
+def test_the_cloud_profile_only_runs_inside_a_cloud_run_job(capsys) -> None:
+    """A "cloud" report made on a laptop or CI runner would describe the wrong sandbox."""
+    from mapi_security.__main__ import main
+    from mapi_security.runner import CloudExecutionRequired, evaluate, in_cloud_run_job
+
+    assert not in_cloud_run_job({})
+    assert not in_cloud_run_job({"CLOUD_RUN_JOB": "mapi-dev-base-bayes-s"})
+    assert in_cloud_run_job({"CLOUD_RUN_JOB": "j", "CLOUD_RUN_EXECUTION": "j-abc12"})
+    with pytest.raises(CloudExecutionRequired):
+        evaluate("cloud", environ={})
+    if not in_cloud_run_job():
+        assert main(["run", "--executor", "cloud"]) == 2
+        assert "Cloud Run Jobs execution" in capsys.readouterr().err

@@ -6,15 +6,18 @@ no uid split, no egress firewall and no seccomp — so it measures what untruste
 there. For the ``docker`` / ``docker-gvisor`` executors the isolation probes must run *inside*
 the container to be meaningful; :class:`DockerProbeRunner` does that when a Docker daemon is
 available and auto-skips the isolation probes otherwise (platform probes always run in
-process, since they are control-plane checks independent of the sandbox).
+process, since they are control-plane checks independent of the sandbox). The ``cloud``
+profile also runs in process, so it is only accepted inside a Cloud Run Jobs execution.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from mapi_spec.executor import Isolation
@@ -23,9 +26,12 @@ from mapi_security.outcomes import Category, Outcome, ProbeResult
 from mapi_security.probes import ALL_PROBES, get_probe
 
 __all__ = [
+    "CLOUD_RUN_JOB_ENV",
     "EXECUTORS",
+    "CloudExecutionRequired",
     "ExecutorProfile",
     "evaluate",
+    "in_cloud_run_job",
     "isolation_for",
     "run_probes",
     "run_probes_in_docker",
@@ -142,9 +148,35 @@ def _ordered(results: list[ProbeResult]) -> list[ProbeResult]:
     return sorted(results, key=lambda r: order.get(r.probe_id, 1_000))
 
 
-def evaluate(executor: str, *, image: str | None = None) -> list[ProbeResult]:
-    """Run the corpus for ``executor`` (in process, or in a container for docker executors)."""
+CLOUD_RUN_JOB_ENV: tuple[str, ...] = ("CLOUD_RUN_JOB", "CLOUD_RUN_EXECUTION")
+"""Variables Cloud Run sets in every Job execution (the ``cloud`` profile's precondition)."""
+
+
+class CloudExecutionRequired(RuntimeError):
+    """``--executor cloud`` was asked for outside a Cloud Run Jobs execution."""
+
+
+def in_cloud_run_job(environ: Mapping[str, str] | None = None) -> bool:
+    env = os.environ if environ is None else environ
+    return all(env.get(name) for name in CLOUD_RUN_JOB_ENV)
+
+
+def evaluate(
+    executor: str, *, image: str | None = None, environ: Mapping[str, str] | None = None
+) -> list[ProbeResult]:
+    """Run the corpus for ``executor`` (in process, or in a container for docker executors).
+
+    ``cloud`` probes the process it runs in, so it must run *inside* a Cloud Run Jobs
+    execution of a base image; anywhere else the report would describe the wrong sandbox
+    and :class:`CloudExecutionRequired` is raised.
+    """
     profile = EXECUTORS[executor]
+    if profile.isolation is Isolation.MICROVM and not in_cloud_run_job(environ):
+        raise CloudExecutionRequired(
+            "--executor cloud probes the sandbox it runs in: run it as a Cloud Run Jobs "
+            "execution of a base image (CLOUD_RUN_JOB and CLOUD_RUN_EXECUTION are not set "
+            "here). See docs/operations/m2-verification.md"
+        )
     if profile.docker:
         return run_probes_in_docker(profile, image=image or "mapi/worker:latest")
     return run_probes()

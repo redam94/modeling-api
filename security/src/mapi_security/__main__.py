@@ -18,7 +18,13 @@ from pathlib import Path
 
 from mapi_security.probes import ALL_PROBES
 from mapi_security.report import build_report
-from mapi_security.runner import EXECUTORS, _main_json, evaluate, isolation_for
+from mapi_security.runner import (
+    EXECUTORS,
+    CloudExecutionRequired,
+    _main_json,
+    evaluate,
+    isolation_for,
+)
 
 __all__ = ["main"]
 
@@ -32,7 +38,11 @@ def _cmd_list() -> int:
 
 
 def _cmd_run(executor: str, image: str | None, json_path: str | None, metrics: str | None) -> int:
-    results = evaluate(executor, image=image)
+    try:
+        results = evaluate(executor, image=image)
+    except CloudExecutionRequired as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     report = build_report(executor, isolation_for(executor), results)
     print(report.table())
     if json_path:

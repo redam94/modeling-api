@@ -77,8 +77,13 @@ never is. This matrix is what lets an executor take `verified` and `public` tena
   (`--network none`, read-only root, non-root user, no capabilities, `no-new-privileges`, and
   `--runtime runsc` for gVisor). Without a Docker daemon they report SKIPPED, and the platform
   probes still run.
-- **cloud:** the probes ship in the base images and run as a real Cloud Run Jobs execution.
-  The authoritative DNS-exfiltration check reads the query logs of a zone we control
+- **cloud:** the probes must run *inside* a Cloud Run Jobs execution of a base image, judged
+  against the `MICROVM` row. `--executor cloud` therefore refuses to run (exit status 2)
+  anywhere `CLOUD_RUN_JOB` and `CLOUD_RUN_EXECUTION` are not set, because a report made on a
+  laptop or a CI runner would describe the wrong sandbox. The base images do not ship the
+  suite yet and Terraform defines no probe Job, so the nightly cloud run is still to be wired
+  up: see [M2 verification](m2-verification.md#what-remains-for-real-gcp). The authoritative
+  DNS-exfiltration check reads the query logs of a zone we control
   ([security hardening](security-hardening.md)).
 
 `security/THREAT-MODEL.md` maps each probe to its threat and to the control expected to stop
