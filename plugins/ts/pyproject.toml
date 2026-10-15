@@ -7,9 +7,16 @@ requires-python = ">=3.12"
 license = "Apache-2.0"
 authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
 dependencies = [
+  "mapi-sdk",
   "mapi-pymc",
   "mapi-steps",
+  "numpy>=2.0",
+  "pandas>=2.2",
+  "xarray>=2025.1",
 ]
+
+[project.entry-points."mapi.models"]
+ts = "mapi_plugin_ts:PLUGINS"
 
 [build-system]
 requires = ["hatchling>=1.25"]
@@ -19,5 +26,6 @@ build-backend = "hatchling.build"
 packages = ["src/mapi_plugin_ts"]
 
 [tool.uv.sources]
+mapi-sdk = { workspace = true }
 mapi-pymc = { workspace = true }
 mapi-steps = { workspace = true }

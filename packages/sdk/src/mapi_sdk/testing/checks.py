@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from jsonschema import Draft202012Validator
 from mapi_spec.capabilities import (
@@ -499,6 +500,13 @@ def check_model(
                 return binding_dim(name)
         return None
 
+    def raw_time_freq() -> str | None:
+        raw = fit_once().resolved.stages.get("raw")
+        for d in raw.dims.values() if raw is not None else []:
+            if d.policy is DimPolicy.EXTEND and d.kind == "time":
+                return d.freq
+        return None
+
     def window() -> xr.Dataset:
         tdim = raw_time_dim()
         if tdim is None:
@@ -552,6 +560,34 @@ def check_model(
         xr.testing.assert_allclose(_summary(a), _summary(c))
         return "scores match after write/read"
 
+    def long_index(name: str) -> tuple[str, list[str]] | None:
+        """Long layout: ``(row dim, index variables)`` pointing into dataset dim ``name``.
+
+        Index variables hold positions into ``name``; reordering or subsetting its labels
+        must move them too, and new levels arrive as new rows pointing at a new label.
+        """
+        raw = fit_once().resolved.stages.get("raw")
+        if raw is None:
+            return None
+        canon = next((c for c in raw.dims if binding_dim(c) == name), None)
+        if canon is None:
+            return None
+        idx = [
+            binding_dim(v)
+            for v, spec in raw.vars.items()
+            if spec.index_of == canon and binding_dim(v) in data
+        ]
+        if not idx:
+            return None
+        return str(data[idx[0]].dims[0]), idx
+
+    def populated_level(w: xr.Dataset, idx: list[str], prefer: int = 0) -> int:
+        """A level of the index variables that has rows in ``w`` (``prefer`` if possible)."""
+        used = np.unique(np.asarray(w[idx[0]].values))
+        if not used.size:
+            raise _Skip("the scoring window has no rows")
+        return prefer if prefer in used else int(used[min(prefer, used.size - 1)])
+
     def c_shuffled() -> str:
         dims = categorical_dims()
         if not dims:
@@ -560,7 +596,13 @@ def check_model(
         base = _summary(score(_request(), w))
         for _, name, _, _ in dims:
             perm = np.arange(w.sizes[name])[::-1]
-            got = _summary(score(_request(), w.isel({name: perm})))
+            shuffled = w.isel({name: perm})
+            long = long_index(name)
+            if long is not None:
+                inv = np.argsort(perm)
+                for v in long[1]:
+                    shuffled[v] = w[v].copy(data=inv[np.asarray(w[v].values)])
+            got = _summary(score(_request(), shuffled))
             if name in base.dims:
                 got = got.sel({name: base[name].values})
             xr.testing.assert_allclose(got, base)
@@ -573,10 +615,51 @@ def check_model(
         w = window()
         base = _summary(score(_request(), w))
         _, name, _, _ = dims[0]
-        sub = w.isel({name: [1]})
+        long = long_index(name)
+        if long is None:
+            sub = w.isel({name: [1]})
+            got = _summary(score(_request(), sub))
+            xr.testing.assert_allclose(got, base.isel({name: [1]}))
+            return f"subset of {name!r}"
+        row, idx = long
+        level = populated_level(w, idx, prefer=1)
+        rows = np.flatnonzero(np.asarray(w[idx[0]].values) == level)
+        sub = w.isel({name: [level], row: rows})
+        for v in idx:
+            sub[v] = sub[v].copy(data=np.zeros(rows.size, dtype=sub[v].dtype))
         got = _summary(score(_request(), sub))
-        xr.testing.assert_allclose(got, base.isel({name: [1]}))
-        return f"subset of {name!r}"
+        want = base.sel({row: w[row].values[rows]}) if row in base.dims else base
+        xr.testing.assert_allclose(got, want)
+        return f"subset of {name!r} ({rows.size} {row} rows, long layout)"
+
+    def with_new_level(w: xr.Dataset, name: str) -> tuple[xr.Dataset, dict[str, Any]]:
+        """``w`` plus a level ``__contract_new__`` copied from an existing one; returns the
+        selection that picks the new level's outputs."""
+        long = long_index(name)
+        if long is None:
+            new = w.isel({name: [0]}).assign_coords({name: ["__contract_new__"]})
+            mixed = xr.concat(
+                [w, new], dim=name, data_vars="minimal", coords="minimal", compat="override"
+            )
+            return mixed, {name: "__contract_new__"}
+        row, idx = long
+        n = int(w.sizes[name])
+        level = populated_level(w, idx)
+        labels = [*np.asarray(w[name].values).tolist(), "__contract_new__"]
+        ext = w.isel({name: [*range(n), level]}).assign_coords({name: labels})
+        rows = np.flatnonzero(np.asarray(w[idx[0]].values) == level)
+        extra = ext.isel({row: rows})
+        for v in idx:
+            extra[v] = extra[v].copy(data=np.full(rows.size, n, dtype=extra[v].dtype))
+        if row in w.coords:
+            last = np.asarray(w[row].values).max()
+            if np.asarray(w[row].values).dtype.kind not in "iu":
+                raise _Skip(f"new rows need integer {row!r} labels")
+            extra = extra.assign_coords({row: last + 1 + np.arange(rows.size)})
+        mixed = xr.concat(
+            [ext, extra], dim=row, data_vars="minimal", coords="minimal", compat="override"
+        )
+        return mixed, {row: np.asarray(extra[row].values)}
 
     def c_new_levels() -> str:
         dims = categorical_dims()
@@ -585,13 +668,10 @@ def check_model(
         w = window()
         notes = []
         for _, name, pol, strat in dims:
-            new = w.isel({name: [0]}).assign_coords({name: ["__contract_new__"]})
-            mixed = xr.concat(
-                [w, new], dim=name, data_vars="minimal", coords="minimal", compat="override"
-            )
+            mixed, pick = with_new_level(w, name)
             if pol is DimPolicy.NEW_LEVELS and strat != "error":
                 out = _summary(score(_request(), mixed))
-                vals = out.sel({name: "__contract_new__"})
+                vals = out.sel(pick)
                 for v in vals.data_vars:
                     if not bool(np.isfinite(vals[v]).all()):
                         raise AssertionError(f"new level of {name!r} gave non-finite {v!r}")
@@ -612,13 +692,23 @@ def check_model(
         coords = data[tdim].values
         if coords.dtype.kind != "M" or len(coords) < 4:
             raise _Skip("extend checks need a datetime dim")
-        step = coords[1] - coords[0]
         n = len(coords)
+
+        def shifted(values: np.ndarray, periods: int) -> np.ndarray:
+            # calendar frequencies (MS, QS, ...) have no fixed step: shift by whole periods
+            freq = raw_time_freq()
+            if freq is not None:
+                offset = pd.tseries.frequencies.to_offset(freq)
+                return np.array(
+                    [np.datetime64(pd.Timestamp(v) + periods * offset, "ns") for v in values]
+                )
+            return np.asarray(values + (coords[1] - coords[0]) * periods)
+
         gap = data.isel({tdim: slice(n // 2, None)}).assign_coords(
-            {tdim: coords[n // 2 :] + step * (n + 30)}
+            {tdim: shifted(coords[n // 2 :], n + 30)}
         )
         notes = [_expect_code(ErrorCode.NON_CONTIGUOUS_EXTENSION, lambda: score(_request(), gap))]
-        before = data.isel({tdim: slice(0, 3)}).assign_coords({tdim: coords[:3] - step * 400})
+        before = data.isel({tdim: slice(0, 3)}).assign_coords({tdim: shifted(coords[:3], -400)})
         notes.append(_expect_code(ErrorCode.COORD_NOT_ALLOWED, lambda: score(_request(), before)))
         return "; ".join(notes)
 

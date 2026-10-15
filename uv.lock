@@ -2052,14 +2052,24 @@ name = "mapi-plugin-tabular"
 version = "0.0.0"
 source = { editable = "plugins/tabular" }
 dependencies = [
+    { name = "mapi-pymc" },
+    { name = "mapi-sdk" },
     { name = "mapi-sklearn" },
     { name = "mapi-steps" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "xarray" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "mapi-pymc", editable = "packages/sdk-pymc" },
+    { name = "mapi-sdk", editable = "packages/sdk" },
     { name = "mapi-sklearn", editable = "packages/sdk-sklearn" },
     { name = "mapi-steps", editable = "packages/steps-core" },
+    { name = "numpy", specifier = ">=2.0" },
+    { name = "pandas", specifier = ">=2.2" },
+    { name = "xarray", specifier = ">=2025.1" },
 ]
 
 [[package]]
@@ -2068,13 +2078,21 @@ version = "0.0.0"
 source = { editable = "plugins/ts" }
 dependencies = [
     { name = "mapi-pymc" },
+    { name = "mapi-sdk" },
     { name = "mapi-steps" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "xarray" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "mapi-pymc", editable = "packages/sdk-pymc" },
+    { name = "mapi-sdk", editable = "packages/sdk" },
     { name = "mapi-steps", editable = "packages/steps-core" },
+    { name = "numpy", specifier = ">=2.0" },
+    { name = "pandas", specifier = ">=2.2" },
+    { name = "xarray", specifier = ">=2025.1" },
 ]
 
 [[package]]

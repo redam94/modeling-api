@@ -5,6 +5,7 @@ SHELL := /bin/bash
 UV ?= uv
 PNPM ?= pnpm
 PY_DIRS := packages plugins conformance
+CORPUS_SIZE ?= tiny
 
 .DEFAULT_GOAL := help
 
@@ -27,9 +28,10 @@ fmt: ## Auto-format Python code
 	$(UV) run ruff format $(PY_DIRS)
 
 .PHONY: typecheck
-typecheck: ## mypy over every type-checked package (spec, sdk, steps, pymc, sklearn, plots, mmm)
+typecheck: ## mypy over every type-checked package (spec, sdk, steps, pymc, sklearn, plots, plugins, corpus)
 	$(UV) run mypy packages/spec/src packages/sdk/src packages/steps-core/src packages/sdk-pymc/src \
-		packages/sdk-sklearn/src packages/plots-core/src plugins/mmm/src
+		packages/sdk-sklearn/src packages/plots-core/src plugins/mmm/src plugins/ts/src \
+		plugins/tabular/src conformance/src
 
 ## ---------------------------------------------------------------- tests
 .PHONY: test
@@ -39,6 +41,10 @@ test: ## Run the default local test suite (no docker/cloud/e2e)
 .PHONY: test-fast
 test-fast: ## Unit tests only, skipping slow MCMC tests
 	$(UV) run pytest -q -m "not slow and not docker and not cloud and not e2e"
+
+.PHONY: conformance
+conformance: ## Run the conformance corpus (CORPUS_SIZE=tiny|full, FIXTURE=<id> to pick one)
+	$(UV) run python -m mapi_conformance run --size $(CORPUS_SIZE) $(if $(FIXTURE),--fixture $(FIXTURE))
 
 ## ---------------------------------------------------------------- docs
 .PHONY: docs-serve

@@ -556,3 +556,52 @@ def test_fit_context_carries_the_stage_schema(
     assert stage is not None and {"spend", "spend_lag", "fourier"} <= set(stage.vars)
     assert stage.vars["y"].role.value == "target"
     assert seen[0].schema is not None and "spend" not in seen[0].schema.vars
+
+
+def test_outputs_with_their_own_units_are_not_inverted(
+    registry: Registry, panel: tuple[xr.Dataset, xr.Dataset]
+) -> None:
+    """Only outputs on the target's scale go through the target's inverse transforms: an
+    output that declares its own units (a probability, a share) is returned as scored."""
+    from typing import ClassVar
+
+    from mapi_sdk.models import PREDICTIONS, Fitted, ScoreContext
+    from mapi_sdk.testing import toy
+    from mapi_spec.spec import ScoreRequest
+
+    class _Share(toy.LinearModel):
+        id = "test.share"
+        outputs: ClassVar[dict[str, Any]] = {
+            "y_hat": {"dims": ["geo", "time"]},
+            "share": {"dims": ["geo", "time"], "units": "1"},
+        }
+
+        def score(
+            self, fitted: Fitted, ds: xr.Dataset, req: ScoreRequest, ctx: ScoreContext
+        ) -> xr.DataTree:
+            node = super().score(fitted, ds, req, ctx)[PREDICTIONS]
+            assert isinstance(node, xr.DataTree)
+            y_hat = node.to_dataset()["y_hat"]
+            share = xr.full_like(y_hat, 0.5)
+            return xr.DataTree.from_dict(
+                {PREDICTIONS: xr.Dataset({"y_hat": y_hat, "share": share})}
+            )
+
+    reg = registry.copy()
+    reg.register_model(_Share)
+    spec = load_model_spec(
+        LOG_SPEC.replace("__RT__", "median").replace("toy.linear@^1", "test.share@^1")
+    )
+    bundle = fit_spec(spec, panel[0][["revenue_local"]], None, reg)
+    out = score_bundle(
+        bundle,
+        req("mode: forecast\nhorizon: {dim: time, periods: 2}\noutput: {names: canonical}\n"),
+        None,
+        registry=reg,
+        return_full=True,
+    )
+    pred = out["predictions"].to_dataset()
+    assert bool((pred["share"] == 0.5).all())  # not expm1(0.5)
+    assert not bool((pred["y_hat"] == 0.5).all())
+    space = json.loads(out.attrs["output_space"])
+    assert "share" not in space and "y_hat" in space

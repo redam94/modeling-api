@@ -1,0 +1,21 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: radon-hierarchical, project: environment, labels: {corpus: e02}}
+data:
+  dataset: dataset://environment/radon_homes@latest
+  bind:
+    dims: {obs: home}
+    vars: {y: log_radon}
+model:
+  use: tabular.hierarchical_glm@^1
+  settings: {group_dim: county, covariates: [floor], group_covariates: [log_uranium]}
+  fit:
+    mode: train_only
+    seed: 3
+    tune: 1000
+    draws: 1000
+    chains: 4
+    engine: pymc
+    keep: {log_likelihood: true, posterior_predictive: {thin: 5}}
+evaluate: {metrics: [elpd_loo, rmse, coverage_90]}
+outputs: {plots: [core.convergence, core.posterior_forest]}

@@ -523,13 +523,17 @@ def _fit_derived(
 
 
 def _var_sources(fitted: Fitted, schema: DataSchema | None) -> dict[str, str]:
-    """Output variable -> input variable whose units/transforms it inherits."""
+    """Output variable -> input variable whose units/transforms it inherits.
+
+    Outputs without ``units_of`` inherit the single target's transforms unless they declare
+    their own ``units`` (a probability or a count of states is never on the target scale).
+    """
     out: dict[str, str] = {}
     targets = schema.targets if schema is not None else []
     for name, decl in fitted.manifest.outputs.items():
         if decl.units_of is not None:
             out[name] = decl.units_of
-        elif len(targets) == 1:
+        elif decl.units is None and len(targets) == 1:
             out[name] = targets[0]
     return out
 
