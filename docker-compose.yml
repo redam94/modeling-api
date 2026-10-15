@@ -63,7 +63,7 @@ services:
       start_period: 10s
 
   gcs-shim:
-    image: mapi/gcs-shim:${MAPI_VERSION:-0.1.0}
+    image: mapi/gcs-shim:${MAPI_VERSION:-0.2.0}
     build:
       context: .
       dockerfile: images/gcs-shim/Dockerfile
@@ -90,7 +90,7 @@ services:
       start_period: 10s
 
   migrate:
-    image: mapi/server:${MAPI_VERSION:-0.1.0}
+    image: mapi/server:${MAPI_VERSION:-0.2.0}
     build:
       context: .
       dockerfile: images/server/Dockerfile
@@ -111,7 +111,7 @@ services:
       disable: true             # one-shot: compose waits for it to exit 0 instead
 
   api:
-    image: mapi/server:${MAPI_VERSION:-0.1.0}
+    image: mapi/server:${MAPI_VERSION:-0.2.0}
     <<: *hardening
     user: "10001:10001"
     command: ["api", "--host", "0.0.0.0", "--port", "8000"]
@@ -138,7 +138,7 @@ services:
       start_period: 20s
 
   worker:
-    image: mapi/worker:${MAPI_VERSION:-0.1.0}
+    image: mapi/worker:${MAPI_VERSION:-0.2.0}
     build:
       context: .
       dockerfile: images/base-bayes/Dockerfile
@@ -176,7 +176,7 @@ services:
       start_period: 30s
 
   web:
-    image: mapi/web:${MAPI_VERSION:-0.1.0}
+    image: mapi/web:${MAPI_VERSION:-0.2.0}
     build:
       context: .
       dockerfile: images/web/Dockerfile
@@ -204,7 +204,7 @@ services:
       start_period: 5s
 
   plot-sandbox:
-    image: mapi/web:${MAPI_VERSION:-0.1.0}
+    image: mapi/web:${MAPI_VERSION:-0.2.0}
     <<: *hardening
     user: "101:101"
     environment:

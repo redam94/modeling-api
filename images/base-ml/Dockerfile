@@ -9,7 +9,7 @@
 # not included because its `tabular.hierarchical_glm` model is a PyMC model; it ships in
 # base-bayes. Build from the repository root:
 #
-#   docker build -f images/base-ml/Dockerfile -t mapi/base-ml:0.1.0 .
+#   docker build -f images/base-ml/Dockerfile -t mapi/base-ml:0.2.0 .
 #
 # See docs/operations/docker.md.
 

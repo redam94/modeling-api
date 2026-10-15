@@ -28,7 +28,7 @@ Start the stack and load the demo first: `make dev`, `make seed`,
 ```
 
 ```text
-{"status":"ok","version":"0.1.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
+{"status":"ok","version":"0.2.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
 mmm.hierarchical_geo@1.3.0  draws
 mmm.pymc_marketing@1.0.0  draws
 sklearn.tabular_bootstrap@1.0.0  draws

@@ -5,6 +5,38 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.2.0] — M1: local vertical slice — 2026-10-15
+
+The platform now runs end to end on one machine. From the Expert web app (or the CLI, the Python
+client or plain HTTP) you can upload data, write and validate a spec, fit an E33-style
+hierarchical geo MMM, inspect it, and score it: an 8-week forecast, a new market, a weekly EUR
+plan and counterfactuals. Real Cloud Run and multi-tenancy come in M2 (v0.3.0). In summary:
+
+- **server** (`mapi-server`): a single-tenant FastAPI control plane on PostgreSQL with
+  procrastinate. It includes a dispatcher, a level-triggered reconciler, a metadata-only
+  finalizer with signed bundle manifests, HMAC-verified run events, SSE with resume, and
+  `local-process` and `docker` executors. It never imports plugin code or array libraries.
+- **runner** (`mapi-runner`): a trusted supervisor and an untrusted worker harness for ingest,
+  describe, validate, fit, score, evaluate, derive and render runs. It produces signed events,
+  checkpoints, partial manifests and the `ui/` views the web app reads.
+- **gcs-shim** (`mapi-gcs-shim`): a local Cloud Storage emulator. It provides generations,
+  server-side CRC32C/MD5, V4 signed URLs and POST policies, per-principal permissions and a
+  write-once bundles bucket.
+- **web** and **plot-sandbox**: the Expert web app (YAML editor with live validation, runs with
+  live progress and logs, model inspection, scoring) and a separate-origin, CSP-locked plot
+  renderer.
+- **client** and **cli**: a typed sync/async Python client for every v1 endpoint, and `mapi`
+  for local and remote work.
+- **devops**: `make dev` (the whole stack without Docker), digest-pinned images, docker
+  compose, `make seed`, `make e2e` and `make release-check`.
+- **conformance**: the corpus also runs through the live stack (`run --stack URL`), and a
+  sklearn conformal fixture is added (7 fixtures in all).
+- **docs**: a 10-minute quickstart, guides to the web app, CLI, client and HTTP API, a
+  deployment section, an architecture overview and a security model.
+
+Every workspace package and both web apps are versioned 0.2.0. Contract v0.1 gains only
+additive changes.
+
 ### Added
 - **spec**: the M1 shared contracts, so the API, runner, executors, GCS shim, web app and plot
   sandbox can be built in parallel against one source of truth:
@@ -184,6 +216,95 @@ milestone releases are tagged on `main`.
   hyperlink injection, no `MarkupError` aborting `mapi fit`).
 - **devops**: `.env.example` documents every `mapi-server` setting, and the devops test now
   derives the list from `Settings`.
+
+### Fixed (M1 review: spec, runner, shim and plots)
+- **runner**: fit runs write `ui/preprocess.json` (`mapi_spec.views.PreprocessView`,
+  `mapi.preprocess/v1`): each step's resolved plugin, learned JSON and small numeric state
+  arrays, so the web app's Preprocessing tab is no longer empty.
+- **runner**: an `INFRA_ERROR` reported by the worker fails the run as a user error. Only
+  failures the supervisor sees itself are retried automatically as infrastructure failures.
+- **runner**: every string the worker sends has ANSI, control and bidi characters stripped. The
+  CLI's `strip_control` also removes the bidi ranges.
+- **server**, **gcs-shim**: the artifacts upload policy is create-only
+  (`post_policy(create_only=True)` signs `x-goog-if-generation-match: 0`, and the shim answers
+  412 for an existing key).
+- **plots**: recipes draw from `mapi_plots.palette`, whose dark variants keep at least 3:1
+  contrast, and the plot sandbox swaps them in dark mode. The decomposition legend is titled
+  "component" when baseline or controls join the channels. Faceted fans and MMM curves give
+  each panel its own axes, in coordinate order.
+- **conformance**: new `sklearn_store_demand` fixture. Fixtures not yet ported are listed in
+  `DEFERRED` with reasons (`list --deferred`). `run --stack URL` drives fixtures through the API.
+
+### Fixed (M1 review: server)
+- `GET /v1/runs/{id}/plots` and score results are scoped to the caller's tenant and project.
+- Runner JSON is parsed with a nesting limit, and deep nesting is reported as
+  `INTEGRITY_FAILURE`.
+- Bundle inputs are verified again at dispatch and on `:retry`.
+- The API refuses unexpected `Host` headers (`MAPI_ALLOWED_HOSTS`), nginx answers only
+  `MAPI_WEB_SERVER_NAMES` and the GCS shim checks hosts too, which guards against DNS
+  rebinding.
+- Ingest and spec validation enforce the per-resource-class data caps (`PAYLOAD_TOO_LARGE`).
+- An omitted fit seed is pinned to `0` at submission, so lineage records the seed actually
+  used.
+- Run lifecycle:
+  - A cancelled checkpointed fit ends `PARTIAL` and can be resumed (new
+    `CANCELLING --complete--> FINALIZING` edge).
+  - `:cancel` on a finalizing run is a no-op.
+  - A run stopped at its deadline fails as `TIMEOUT` or finalizes as `PARTIAL`.
+  - An exit counts only after its event backlog is ingested.
+  - A restarted reconciler re-adopts live executions.
+  - Stalled finalize jobs are re-queued.
+  - Executor cancels no longer block the reconcile pass.
+- SSE reads the run state before its events, and a run never shows another attempt's progress.
+- Docker executor:
+  - Each plugin namespace gets its own versioned `mapi/base-*` image (`MAPI_DOCKER_IMAGES`).
+  - Run containers join the shim's network namespace; `none` is refused.
+  - The supervisor and the worker run under separate uids (10001 for the worker), and
+    `MAPI_REQUIRE_ISOLATION=1` fails a run closed rather than falling back to dev mode.
+- The import-linter contract also forbids plugin packages, plot recipes and columnar libraries
+  in `mapi_server`.
+- Docs: invalid submissions are refused without a run, and `REJECTED` is reserved.
+
+### Fixed (M1 review: web)
+- Plots:
+  - The plot host accepts a sandbox `exported` reply only for an export the app requested.
+  - Downloading a score output saves a checksum-verified file instead of leaving the app.
+- Run pages:
+  - Live `progress` and `log` SSE frames, which the server sends without an id, are delivered.
+  - The live log view follows the tail.
+- Performance: Monaco and Arrow are no longer in first paint, and routes are lazy-loaded. A
+  build-time budget keeps first-paint JavaScript under 640 KiB (it was 4.26 MB; now about
+  515 KB).
+- Spec editor:
+  - It never replaces unsaved edits when a newer revision appears.
+  - Save sends the revision the text came from as `parent_revision`.
+- Accessibility:
+  - No sideways scroll at phone width, and the compact nav shows every page.
+  - Status colours and form borders meet WCAG AA.
+  - Score form errors are marked on their fields and announced.
+- The Score page resets its form and results when the version changes, and shows a loading
+  state while the version loads.
+
+### Fixed (integration)
+- **tests**: a devops docstring no longer names a fake `MAPI_` variable that the configuration
+  reference test picked up.
+- **web**: `openapi.json` and `schema.d.ts` are regenerated (the cancel endpoint documents the
+  finalizing no-op).
+- **docs**: pages written before the review fixes landed now describe the shared compose
+  signing key, `ui/preprocess.json`, the docker executor's network and images, and the new
+  `MAPI_ALLOWED_HOSTS`, `MAPI_WEB_SERVER_NAMES`, `MAPI_DOCKER_IMAGES`,
+  `MAPI_SIGNING_KEY_CREATE` and `MAPI_REQUIRE_ISOLATION` settings.
+
+### Known gaps
+- The docker executor, the compose stack and the new compose smoke test have not run against
+  a real Docker daemon yet.
+- Under the `local-process` executor, run code shares the orchestrator's uid and can read its
+  key files. The uid split is M2.
+- `MAPI_PROFILE` means a config profile to the CLI and client, but the deployment profile to
+  the server.
+- The API's built-in `/docs` and `/redoc` pages load assets from a public CDN.
+- Conformance fixtures E13, E84-lite, E82-slim and E45 are deferred: they need new plugins or
+  run kinds.
 
 ## [0.1.0] — M0: contract layer — 2026-10-15
 
