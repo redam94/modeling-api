@@ -42,7 +42,7 @@ from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.spec import DEFAULT_FIT_SEED, ModelSpec, ScoreRequest
-from mapi_spec.tenancy import ResourceKind
+from mapi_spec.tenancy import ResourceKind, TrustTier
 from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -206,9 +206,12 @@ async def admit(
 async def _check_placement(
     session: AsyncSession, ctx: ServerContext, run: m.Run, rc: ResourceClass
 ) -> None:
-    """Refuse at admission what no running executor could place (tier, class, residency),
-    rather than queueing a run the dispatcher can only fail as INFRA_ERROR. Executors are
-    known from their dispatchers' recent reports; without any, the dispatcher decides."""
+    """Refuse at admission (403) what no running executor could place for good: the
+    resource class or the tenant's residency. Executors are known from their dispatchers'
+    recent reports; without any, the dispatcher decides. A trust tier no executor can take
+    *now* (isolation, egress and DNS enforcement, shared-tier evidence) is a platform state,
+    not the tenant's: :func:`mapi_server.services.evidence.placement_problem` refuses it with
+    503."""
     tenant = await session.get(m.Tenant, run.tenant_id)
     if tenant is None:
         return
@@ -217,14 +220,14 @@ async def _check_placement(
         offered = await reported_caps(system, max_age=max_age)
     why = placement_refusal(
         offered,
-        trust_tier=tenant.trust_tier,
+        trust_tier=TrustTier.INTERNAL.value,  # no isolation requirement: class and residency
         resource_class=rc,
         residency=tenant.data_residency,
     )
     if why is not None:
         raise PlacementRefused(
             f"no executor of this platform can run this tenant's work ({why}); "
-            "an operator must change the tenant's residency or tier"
+            "an operator must change the tenant's residency"
         )
 
 
