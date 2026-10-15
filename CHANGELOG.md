@@ -41,15 +41,20 @@ milestone releases are tagged on `main`.
   - `mmm.pymc_marketing` 1.0.0, an adapter around pymc-marketing 1.2's `MMM` (verified on PyMC 6.3) that owns scaling, carry-over and units and never pickles.
   - Declarative priors in pymc-marketing's dict form, typed per parameter so wrong priors fail static validation; a synthetic E33 simulator with known parameters and a parameter-recovery test.
 - **`mapi-sdk`**: `outputs.derived` with `cache: fit` is computed on the production fit through the plugin's `derive` hook; `ScoreContext.to_original` maps model-stage arrays to the output space.
-- Conformance fixtures `e33` and `pymc_marketing` (`mapi_conformance.fixtures`): spec, named score requests, data generator and expectations each.
 - Cross-package conformance suites:
   - the plan's xgboost spec through real steps, models and plots;
   - an E33-shaped `core.*` pipeline in front of a PyMC model.
 - **`mapi-plugin-ts`**: `ts.hsgp_trend` (C08: HSGP trend + seasonality whose domain comes from the anticipated coords; `HORIZON_EXCEEDS_FIT` past `max_extension`; sentinel months left out of the likelihood) and `ts.gaussian_hmm` (E24: forward-algorithm HMM over padded tracks with a `terminal_state` group, forecast and filter modes, relabelling postprocess, LOO declared invalid).
 - **`mapi-plugin-tabular`**: `tabular.hierarchical_glm` (E02: partially pooled GLM in long layout, hyperprior new groups, group-level covariates, four families) and `tabular.regressor` (plan §6.2 store demand: quantile regression restricted to the registry's quantile-capable estimators).
-- **`mapi-conformance`**: the corpus runner `python -m mapi_conformance run [--size tiny|full] [--fixture id]` (validate, fit, score requests, evaluate, contract kit, plots, expectations; summary table and JSON) with the `e02`, `c08`, `e24` and `xgb_store_demand` fixtures; `pytest -m conformance` and `make conformance`.
+- **`mapi-conformance`**: the corpus runner `python -m mapi_conformance run [--size tiny|full] [--fixture id]` (validate, fit, score requests, evaluate, contract kit, plots, expectations; summary table and JSON) with the `e02`, `c08`, `e24`, `xgb_store_demand`, `e33` and `pymc_marketing` fixtures; `pytest -m conformance`, `make conformance` (tiny) and `make conformance-full`.
+  - Score cases can opt out of side tables (`side_tables: false`, e.g. a weekly EUR plan entering after the FX step).
+  - Expectation hooks that declare `ctx` receive a `FixtureContext` (seed, size, registry, side tables and earlier score results).
 - Docs: spec format, SDK, built-in steps and plots references; guides for plugins, PyMC, tabular models and plots.
-- Docs: built-in models reference, forecasting and sequential models guide, conformance corpus guide.
+- Docs: built-in models reference, marketing-mix models guide, forecasting and sequential models guide, conformance corpus guide.
+
+### Changed
+- The workspace runs numpy 2.4 (pymc-marketing 1.2 requires numpy < 2.5).
+- `make typecheck` also covers `plugins/mmm`, `plugins/ts`, `plugins/tabular` and `conformance`.
 
 ### Fixed (integration)
 - The plan's xgboost example names the real quantile plugin (`sklearn.tabular_quantiles`). A new `ml.feature_importance` recipe covers its plot list.
@@ -58,3 +63,6 @@ milestone releases are tagged on `main`.
 - Holdout metrics no longer invert the predictions of models that own `inverse_units` a second time.
 - Score outputs that declare their own `units` (e.g. state probabilities) no longer go through the target's inverse transforms.
 - The contract kit runs its shuffled, subset and new-level checks on long layouts (index variables are remapped) and shifts calendar-frequency time coords by whole periods.
+- The in-process executor no longer resolves a score request's side-table refs when the run payload already supplies those tables.
+- The contract kit's score requests name the spec's `score_policy: supplied` side tables, so models with supplied tables (E33's FX) pass the scoring checks.
+- The E33 and pymc-marketing fixtures use the corpus runner's fixture layout and run in `python -m mapi_conformance run`.
