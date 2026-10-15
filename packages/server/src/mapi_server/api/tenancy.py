@@ -116,6 +116,8 @@ async def visible_projects(
             if not grants:
                 continue
             stmt = stmt.where(m.Project.id.in_([g for g in grants if g is not None]))
+        if auth.token is not None:  # a token sees its own project only
+            stmt = stmt.where(m.Project.id == auth.token.project_id)
         for p in (await s.execute(stmt.order_by(m.Project.id))).scalars():
             out.append((p, _role_at(auth.memberships, tenant_id, p.id)))
     return out

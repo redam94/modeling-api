@@ -100,6 +100,7 @@ __all__ = [
     "SSE_HEARTBEAT",
     "SSE_HEARTBEAT_SECONDS",
     "SSE_RETRY_MS",
+    "TOKEN_TENANT_ROUTES",
     "ApiToken",
     "ArtifactLink",
     "AuditEvent",
@@ -2121,6 +2122,16 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
 Acting on *other principals'* tokens (``list_tokens?all=true``, revoking someone else's
 token) additionally needs ``manage`` on ``token``. A ``create_run`` for a model version
 (score, evaluate, derive, render) additionally needs ``run`` on ``model``.
+"""
+
+
+TOKEN_TENANT_ROUTES: Final[frozenset[str]] = frozenset({"get_tenant", "list_tenant_projects"})
+"""The tenant-scoped operations an API token may call: read-only views of the token's own
+tenant (projects narrowed to the token's project).
+
+A token is bound to one project of one tenant, so tenant administration (members, project
+create/delete, tenant audit and billing) needs a signed-in session, whatever the token's
+scopes and its owner's tenant role.
 """
 
 

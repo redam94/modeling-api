@@ -124,6 +124,12 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   mount; before, every isolation probe ended in ERROR on a host with Docker.
   - `--executor cloud` refuses to run outside a Cloud Run Jobs execution.
 
+### Fixed (M2 review: spec, server and auth)
+- **server**: an API token can no longer administer its tenant. Tokens are bound to one
+  project, so tenant members, project create and delete, the tenant audit log and tenant usage
+  now need a signed-in session (`403` for any token). A token may still read its own tenant
+  and list its own project (`mapi_spec.api.TOKEN_TENANT_ROUTES`).
+
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
 The platform now runs end to end on one machine. From the Expert web app (or the CLI, the Python

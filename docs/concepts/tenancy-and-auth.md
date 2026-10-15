@@ -138,6 +138,11 @@ Every resource of v0.2 (datasets, specs, runs, models, plots) now lives in a pro
 unambiguous. Tokens are bound to one project and may omit the header; naming another project
 with a token is `403 FORBIDDEN`. A local single-tenant install falls back to `default/default`.
 
+Because a token is bound to one project, it cannot administer its tenant: tenant members,
+creating or deleting projects, the tenant audit log and tenant usage need a signed-in session
+(`403 FORBIDDEN` for any token, whatever its scopes and its owner's role). A token may still
+read its own tenant (`GET /v1/tenants/{tenant}`) and list its own project.
+
 ```python
 --8<-- "concepts_tenancy.py:project"
 ```

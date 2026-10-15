@@ -31,7 +31,7 @@ from enum import StrEnum
 from typing import Any, Final
 
 from fastapi import Request
-from mapi_spec.api import ROUTE_ACCESS, RouteAccess, RouteScope
+from mapi_spec.api import ROUTE_ACCESS, TOKEN_TENANT_ROUTES, RouteAccess, RouteScope
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome, make_audit_event
 from mapi_spec.auth import CookieSpec
 from mapi_spec.errors import ErrorCode, MapiError
@@ -457,6 +457,12 @@ async def _resolve(
         tenant_id = str(request.path_params.get("tenant_id", ""))
         if token is not None and token.tenant_id != tenant_id:
             raise MapiError("this token is bound to a different tenant", code=ErrorCode.FORBIDDEN)
+        if token is not None and auth.operation_id not in TOKEN_TENANT_ROUTES:
+            raise MapiError(
+                "API tokens are bound to one project; tenant administration needs a "
+                "signed-in session",
+                code=ErrorCode.FORBIDDEN,
+            )
         tenant = await s.get(m.Tenant, tenant_id) if tenant_id else None
         member = any(mm.tenant_id == tenant_id for mm in memberships)
         if tenant is None or not (member or who.operator):
