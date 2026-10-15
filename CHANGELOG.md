@@ -124,6 +124,37 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   mount; before, every isolation probe ended in ERROR on a host with Docker.
   - `--executor cloud` refuses to run outside a Cloud Run Jobs execution.
 
+### Fixed (M2 review: executors, cloud and infrastructure)
+- **infra**: the deployed stack can run work at all. Terraform creates a create-only
+  `url-uploader` account (`MAPI_URL_UPLOADER`), without which every run failed at dispatch;
+  the server refuses `MAPI_OBJECT_STORE=gcs` without a distinct uploader.
+- **infra**: checkpoint policies may overwrite their own checkpoints (conditional
+  `storage.objects.delete` under `.../checkpoints/` only), so PARTIAL bundles and resume see
+  every segment on real GCS.
+- **server**: verified and public tenants are placed only on an executor with passing,
+  unexpired conformance and security-suite reports for its current caps
+  (`PUT /v1/admin/executors/{name}/evidence`, `MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S`); the admin
+  console, CLI and web show the real state. Runs that no executor can place are refused at
+  submission (503) instead of failing at lease, and the docs say that verified tenants need
+  DNS enforcement verified first.
+- **server**: `docker-gvisor` can qualify for shared tiers on a network declared isolated
+  (`MAPI_DOCKER_NETWORK_ISOLATED`).
+- **server**: the API and events services run platform sessions as the new `mapi_gateway`
+  role (migration 0004: no `BYPASSRLS`, narrow grants, insert-only audit); only the
+  orchestrator holds the role that passes row-level security (`MAPI_DB_PLATFORM`,
+  `MAPI_DATABASE_GATEWAY_URL`). Pushed events are written through tenant sessions.
+- **server**: Cloud Run 429s requeue a run without using up an infrastructure retry, leases
+  are renewed while a batch is submitted (for at most ten lease lengths per submit), and
+  `Retry-After` is capped. The executor's per-process bookkeeping is bounded.
+- **sdk**: zip artifacts (skops) are no longer rejected as pickles depending on the second
+  they were written.
+- **infra**: user log and progress events are excluded from the exec projects' `_Default`
+  log bucket; the API identity only reads the quarantine bucket.
+- **deploy**: the deploy workflow is valid (no `runner` context in job env; CI runs
+  actionlint); `rollback.sh --previous` picks the release before the deployed one (records
+  are named after their images, rollbacks are marked); dry runs no longer claim what they did
+  not do.
+
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
 The platform now runs end to end on one machine. From the Expert web app (or the CLI, the Python
