@@ -317,7 +317,7 @@ def _check_recursion(rs: ResolvedSpec, split: Split, sr: SplitResult) -> None:
     if isinstance(split, LastPerGroupSplit):
         periods = split.last
     elif fdim in sr.holdout.dims:
-        periods = int(sr.holdout.sizes[fdim]) + int(getattr(split, "gap", 0) or 0)
+        periods = int(sr.holdout.sizes[fdim])  # an as_of gap is part of the holdout
     else:
         return
     for idx, s in enumerate(rs.steps):
@@ -650,6 +650,15 @@ def _evaluate(env: _FitEnv, evaluation: Bundle, sr: SplitResult, split_stage: st
     req = _internal_request(env.spec, mode, split_stage, output, seed=env.seed)
     names = list(env.spec.evaluate.metrics) or list(DEFAULT_EVAL_METRICS)
     payload, observed = sr.holdout, None
+    mask = sr.holdout_mask
+    split = env.spec.data.split
+    if sr.lead and split is not None and split.forecast_dim in sr.holdout.dims:
+        fdim = str(split.forecast_dim)
+        mask = xr.DataArray(
+            np.arange(sr.holdout.sizes[fdim]) >= sr.lead,
+            dims=[fdim],
+            coords={fdim: sr.holdout[fdim].values} if fdim in sr.holdout.coords else None,
+        )
     if sr.is_masked and any(s.depends_on_target for s in env.resolved.steps):
         # cell-level split: held-out targets must not feed target-dependent features
         # (lags of y) - score the target-masked data, compare against the full data
@@ -661,7 +670,7 @@ def _evaluate(env: _FitEnv, evaluation: Bundle, sr: SplitResult, split_stage: st
         side_tables=env.side_tables,
         registry=env.registry,
         metrics=[m for m in names if not m.startswith("elpd_")],
-        metric_mask=sr.holdout_mask,
+        metric_mask=mask,
         observed=observed,
     )
     report = MetricsReport.model_validate_json(tree.attrs["metrics"])

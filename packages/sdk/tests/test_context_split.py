@@ -205,7 +205,9 @@ def test_time_holdout_and_as_of(weekly_panel: Callable[..., xr.Dataset]) -> None
     r = split_dataset(ds, TimeHoldoutSplit(kind="time_holdout", dim="time", after="2024-02-04"))
     assert r.train.time.values[-1] == np.datetime64("2024-02-04")
     r = split_dataset(ds, AsOfSplit(kind="as_of", dim="time", as_of="2024-02-04", gap=2))
-    assert r.holdout.time.values[0] == np.datetime64("2024-02-25")
+    # the gap weeks stay in the holdout (scoring continues the fit) but are never evaluated
+    assert r.lead == 2 and r.holdout.time.values[0] == np.datetime64("2024-02-11")
+    assert r.holdout.time.values[r.lead] == np.datetime64("2024-02-25")
     with pytest.raises(MapiError) as err:
         split_dataset(ds, TimeHoldoutSplit(kind="time_holdout", dim="time", last=10))
     assert err.value.code is ErrorCode.SPLIT_INVALID

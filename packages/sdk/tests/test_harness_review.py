@@ -314,3 +314,27 @@ def test_cell_level_split_scores_holdout_without_its_own_targets(registry: Regis
     # give NaN lags, so the number of NaN lag features exceeds the series starts
     starts = ev_inputs.sizes["geo"]
     assert int(ylag.isnull().sum()) > starts
+
+
+# --------------------------------------------------------------- statistics-8 (as_of gap)
+
+
+def test_as_of_split_with_a_gap_evaluates_past_the_gap(registry: Registry) -> None:
+    data = _lag_panel(weeks=30, extra=0)
+    as_of = str(data["time"].values[21])[:10]
+    split = f"{{kind: as_of, dim: time, as_of: '{as_of}', gap: 2}}"
+    spec = load_model_spec(
+        LAG_SPEC.replace("pipeline:", f"  split: {split}\npipeline:").replace(
+            "mode: train_only", "mode: evaluate_then_refit"
+        )
+    )
+    bundle = fit_spec(spec, data, None, registry)
+    # 30 weeks: 22 train, 2 gap weeks (scored for continuity, never counted), 6 holdout
+    assert bundle.metrics.n_holdout == 3 * 6
+    assert bundle.metrics.values["rmse"] is not None
+    no_gap = load_model_spec(
+        LAG_SPEC.replace(
+            "pipeline:", f"  split: {{kind: as_of, dim: time, as_of: '{as_of}'}}\npipeline:"
+        ).replace("mode: train_only", "mode: evaluate_then_refit")
+    )
+    assert fit_spec(no_gap, data, None, registry).metrics.n_holdout == 3 * 8
