@@ -1,8 +1,19 @@
 # The app origin (MAPI_WEB_ORIGIN), port 8080. Rendered at container start by the nginx
 # entrypoint (envsubst; only MAPI_* and NGINX_LOCAL_RESOLVERS are substituted).
+
+# Any Host that is not one of MAPI_WEB_SERVER_NAMES lands here and gets no answer. The app
+# proxies the unauthenticated API under /v1/, and a DNS-rebinding page (attacker.example
+# re-pointed at 127.0.0.1) is same-origin to itself, so CORS never applies: the Host header is
+# the only tell. Add the names you browse to (a LAN host name, say) to MAPI_WEB_SERVER_NAMES.
+server {
+  listen 8080 default_server;
+  server_name _;
+  return 444;
+}
+
 server {
   listen 8080;
-  server_name _;
+  server_name ${MAPI_WEB_SERVER_NAMES};
   root /usr/share/nginx/html/web;
   index index.html;
 

@@ -133,6 +133,15 @@ a tmpfs on `/tmp`, all Linux capabilities dropped and `no-new-privileges`. Ports
 without it. The official `postgres` image is the one exception: it starts as root to fix data
 directory ownership, then drops to the `postgres` user.
 
+**Host names.** The M1 API has no authentication, and a web page whose host name is
+re-pointed at `127.0.0.1` (DNS rebinding) is same-origin to itself, so CORS does not stop it.
+The API therefore answers only the `Host` names in `MAPI_ALLOWED_HOSTS` (default `127.0.0.1`,
+`localhost`, `api`, plus the host of `MAPI_API_URL`) and returns 400 for anything else. The
+app's nginx server answers only `MAPI_WEB_SERVER_NAMES` (default `127.0.0.1 localhost`) and
+closes the connection for any other host. The GCS shim does the same, for loopback names and
+the hosts of its endpoints (`--allowed-host` adds more). If you reach the stack under another
+name, such as a LAN host name, add it to both variables.
+
 ### Executor choice: local-process vs docker
 
 The compose worker runs the **local-process executor inside a runner-capable image**: each run

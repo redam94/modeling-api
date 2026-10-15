@@ -38,6 +38,16 @@ def _defaults() -> tuple[LocalDev, str, int]:
     return local, parts.hostname or LOCALHOST, parts.port or GCS_SHIM_PORT
 
 
+def default_allowed_hosts(bind_host: str, *endpoints: str | None) -> list[str]:
+    """Loopback names plus the hosts the shim is bound to and reached at."""
+    hosts = [LOCALHOST, "localhost"]
+    names = [bind_host, *(urlsplit(e).hostname for e in endpoints if e)]
+    for name in names:
+        if name and name not in ("0.0.0.0", "::") and ":" not in name and name not in hosts:
+            hosts.append(name)
+    return hosts
+
+
 def _parser() -> argparse.ArgumentParser:
     local, host, port = _defaults()
     p = argparse.ArgumentParser(prog="mapi-gcs-shim", description="Local GCS emulator")
@@ -73,6 +83,16 @@ def _parser() -> argparse.ArgumentParser:
         metavar="ORIGIN",
         help="browser origin allowed to use signed URLs cross-origin (repeatable; default: "
         "$MAPI_WEB_ORIGIN, i.e. the web app; 'none' disables CORS)",
+    )
+    serve.add_argument(
+        "--allowed-host",
+        action="append",
+        dest="allowed_hosts",
+        default=None,
+        metavar="HOST",
+        help="Host header value to answer (repeatable; default: 127.0.0.1, localhost and the "
+        "hosts of --host, $MAPI_GCS_ENDPOINT and $MAPI_GCS_PUBLIC_ENDPOINT; '*' answers any "
+        "host). Other hosts get 400: a guard against DNS rebinding.",
     )
 
     init = sub.add_parser("init", help="write the default config and key files, then exit")
@@ -124,6 +144,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"key files: {args.root / '_shim' / 'keys'}", flush=True)
 
     local, _, _ = _defaults()
+    hosts = (
+        args.allowed_hosts
+        if args.allowed_hosts is not None
+        else default_allowed_hosts(
+            args.host, local.gcs_endpoint, os.environ.get("MAPI_GCS_PUBLIC_ENDPOINT")
+        )
+    )
     origins = args.cors_origins if args.cors_origins is not None else [local.web_origin]
     origins = [o for o in origins if o.lower() != "none"]
     serve(
@@ -135,6 +162,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         log_level=args.log_level.lower(),
         on_ready=ready,
         cors_origins=origins,
+        allowed_hosts=hosts,
     )
     return 0
 

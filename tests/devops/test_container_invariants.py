@@ -463,6 +463,17 @@ class TestWebImage:
             body = re.sub(r'"[^"]*"', "", re.sub(r"#.*", "", text))
             assert body.count("{") == body.count("}")
 
+    def test_app_server_refuses_unknown_hosts(self) -> None:
+        """DNS rebinding: /v1/ proxies the unauthenticated API, so only the configured host
+        names reach the app; anything else hits a default server that closes the connection."""
+        text = re.sub(r"#.*", "", _templates()["web/web.conf.template"])
+        blocks = re.findall(r"server \{(.*?)\n\}", text, flags=re.S)
+        default = [b for b in blocks if "default_server" in b]
+        assert len(default) == 1 and "return 444;" in default[0]
+        assert "/v1/" not in default[0]
+        app = next(b for b in blocks if "/v1/" in b)
+        assert "server_name ${MAPI_WEB_SERVER_NAMES};" in app and "default_server" not in app
+
     def test_site_selection_directories(self) -> None:
         copies = [i.args for i in stage("web") if i.keyword == "COPY"]
         for site in ("web", "plots", "all"):

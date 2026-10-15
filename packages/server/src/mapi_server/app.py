@@ -9,6 +9,7 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from mapi_spec.api import IDEMPOTENCY_KEY_HEADER, LAST_EVENT_ID_HEADER, PREFER_HEADER
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.run import (
@@ -217,6 +218,9 @@ def create_app(
         ],
         expose_headers=["Preference-Applied", "Location"],
     )
+    # Outermost: DNS rebinding makes a hostile page same-origin with 127.0.0.1, so CORS never
+    # applies; the Host header is the only tell (plan §9). 400 for any unexpected host.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts())
     for router in (
         meta.router,
         datasets.router,

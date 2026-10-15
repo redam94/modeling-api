@@ -47,6 +47,7 @@ import anyio.to_thread
 from mapi_spec.storage import crc32c_from_base64
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
@@ -314,9 +315,14 @@ class ShimApp:
         clock: Callable[[], datetime] | None = None,
         sweep_interval: float | None = 300.0,
         cors_origins: Sequence[str] = (),
+        allowed_hosts: Sequence[str] = (),
     ) -> None:
         """``cors_origins`` are the browser origins allowed to use signed URLs and the JSON
-        API cross-origin (like a bucket CORS configuration); empty disables CORS."""
+        API cross-origin (like a bucket CORS configuration); empty disables CORS.
+
+        ``allowed_hosts`` are the Host header values answered (400 otherwise), a guard
+        against DNS rebinding of a hostile name to the loopback address; empty or ``*``
+        disables the check (the library default; the CLI turns it on)."""
         self.backend = backend
         self.config = config
         self.clock = clock or (lambda: datetime.now(UTC))
@@ -339,6 +345,9 @@ class ShimApp:
                 expose_headers=list(CORS_EXPOSE_HEADERS),
                 max_age=600,
             )
+        self.allowed_hosts = tuple(allowed_hosts)
+        if self.allowed_hosts and "*" not in self.allowed_hosts:
+            self.asgi = TrustedHostMiddleware(self.asgi, allowed_hosts=list(self.allowed_hosts))
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         await self.asgi(scope, receive, send)

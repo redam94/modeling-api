@@ -14,6 +14,7 @@ import sys
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 from mapi_spec.localdev import (
     API_PORT,
@@ -87,6 +88,12 @@ class Settings(BaseSettings):
     web_origin: str = f"http://{LOCALHOST}:{WEB_PORT}"
     plots_origin: str = f"http://{LOCALHOST}:{PLOT_SANDBOX_PORT}"
     data_dir: Path = Path(".local")
+    allowed_hosts: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: [LOCALHOST, "localhost", "api"],
+        description="Host header values the API answers (comma-separated in the environment; "
+        "'*' turns the check off). The host of api_url is always allowed. The API is "
+        "unauthenticated in M1, so this is what stops DNS-rebinding pages from using it.",
+    )
 
     # ------------------------------------------------------------------------------ database
     database_url: str | None = Field(
@@ -177,6 +184,13 @@ class Settings(BaseSettings):
             return parts
         return v
 
+    @field_validator("allowed_hosts", mode="before")
+    @classmethod
+    def _hosts(cls, v: object) -> object:
+        if isinstance(v, str):
+            return [h.strip() for h in v.split(",") if h.strip()]
+        return v
+
     @field_validator("env")
     @classmethod
     def _env(cls, v: str) -> str:
@@ -205,6 +219,14 @@ class Settings(BaseSettings):
     @property
     def key_path(self) -> Path:
         return self.signing_key_path or (self.data_dir / "keys" / "bundle-signing-p256.pem")
+
+    def trusted_hosts(self) -> list[str]:
+        """``allowed_hosts`` plus the host of ``api_url`` (what TrustedHostMiddleware gets)."""
+        hosts = list(dict.fromkeys(self.allowed_hosts))
+        api_host = urlsplit(self.api_url).hostname
+        if api_host and api_host not in hosts:
+            hosts.append(api_host)
+        return hosts
 
     def resolved_gcs_root(self) -> Path:
         return self.gcs_root or (self.data_dir / "gcs")
