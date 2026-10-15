@@ -139,6 +139,10 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   tenants on `POST /v1/runs`. The Cloud Monitoring policy uses
   `serviceruntime.googleapis.com/api/request_count` (RunJob, `response_code=429`). Its old
   filter named a metric that Cloud Run jobs do not export, and it counted every 4xx.
+- **ops**: the plan's alert on running executions at 70 % of Cloud Run's 1,000 (§8.8)
+  exists. The orchestrator's report exports `mapi_executor_running_executions{executor}` from
+  the run table; `MapiRunningExecutions70` and a Cloud Monitoring policy on
+  `run.googleapis.com/job/running_executions` fire above 700.
 - **cli**: `mapi logout --revoke` revokes the token in the project it is bound to (it was
   refused with 403 when another project was selected) and forgets the local credentials even
   when the revocation fails, then exits 1.

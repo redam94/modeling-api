@@ -65,6 +65,7 @@ unless a token is set.
 | `mapi_integrity_failures_total{tenant_id}` | counter | Outputs that did not match the platform's record (a security signal) |
 | `mapi_sandbox_violations_total{reason}` | counter | Forged events, bad HMACs, execution-label mismatches |
 | `mapi_quota_rejections_total{scope,code}` | counter | `QUOTA_EXCEEDED` and `RATE_LIMITED` denials, by token, tenant or global level |
+| `mapi_executor_running_executions{executor}` | gauge | Runs holding a live execution on the executor, from the run table (every orchestrator reports the same fleet-wide value: aggregate with `max`). `MapiRunningExecutions70` alerts at 700, 70 % of Cloud Run's 1,000 per project and region |
 | `mapi_executor_submit_throttled_total{executor}` | counter | `429` answers from the executor backend to a submission (Cloud Run `jobs.run`), retried ones included. Recorded by the orchestrator. The API's own `429`s to tenants are not counted here |
 | `mapi_cost_micros_total{tenant_id}` | counter | Metered compute cost (currency micros) as ledger entries are written |
 | `mapi_global_spend_micros`, `mapi_global_spend_cap_micros` | gauge | Spend in the kill switches' cap window, and the cap |
@@ -82,7 +83,8 @@ Everything operators need is in `ops/` at the root of the repository:
 - `ops/dashboards/`: a Grafana dashboard and a Cloud Monitoring dashboard over the series
   above.
 - `ops/alerts/`: Prometheus rules and Cloud Monitoring policies. They cover jobs.run 429s, any
-  integrity failure, a failed security probe, spend at 70 % and 90 % of the cap, a rising
+  integrity failure, a failed security probe, spend at 70 % and 90 % of the cap, Cloud Run
+  running executions at 70 % of the quota, a rising
   `STALLED` rate, quota use at 70 %, slow time-to-`RUNNING` and a silent event path.
 - `ops/runbooks/`: incident response, a confirmed sandbox escape (kill switch, rotate keys,
   quarantine, notify), stuck runs, database failover, and rotating the HMAC and signing keys.

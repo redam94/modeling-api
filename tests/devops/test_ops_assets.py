@@ -188,6 +188,22 @@ def test_jobs_run_429_alarm_watches_the_backend_not_tenant_429s() -> None:
     assert "response_code_class" not in filters
 
 
+def test_running_executions_alert_at_70_percent_of_the_quota() -> None:
+    """Plan §8.8: 1,000 running executions per project and region; alert at 70 %."""
+    rules = _rules()
+    expr = _resolved(rules, "MapiRunningExecutions70")
+    assert "mapi_executor_running_executions" in expr and "700" in expr
+    policy = _policies()["mapi — Cloud Run running executions at 70% of quota"]
+    filters = _filters(policy)
+    assert 'metric.type = "run.googleapis.com/job/running_executions"' in filters
+    thresholds = [
+        c["conditionThreshold"]["thresholdValue"]
+        for c in policy["conditions"]
+        if "conditionThreshold" in c
+    ]
+    assert thresholds == [700]
+
+
 def test_runbook_links_resolve() -> None:
     runbooks = OPS / "runbooks"
     files = {p.name for p in runbooks.glob("*.md")}

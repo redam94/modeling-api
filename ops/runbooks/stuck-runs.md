@@ -1,7 +1,7 @@
 # Runbook: stuck runs (STALLED, stuck in a state, jobs.run 429)
 
 Triggered by **MapiStalledRateHigh**, **MapiTimeToRunningSlow**, **MapiJobsRun429**,
-**MapiNoProgressIngested**, or tenant reports that a run "isn't moving".
+**MapiRunningExecutions70**, **MapiNoProgressIngested**, or tenant reports that a run "isn't moving".
 
 ## Key principle (plan §8.3, §8.7)
 
@@ -47,9 +47,15 @@ rising; possibly **MapiJobsRun429**.
    - reduce pressure: lower `MAPI_DISPATCH_RATE_PER_MINUTE` so we back off cleanly;
    - spread load: shard across exec projects or regions at ~70% of quota (§8.8);
    - batch homogeneous children as one execution with `taskCount` (already done for sweeps).
-3. **Cold starts:** large images (2–4 GB) make time-to-RUNNING spike. Confirm base images are
+   The alert counts `mapi_executor_submit_throttled_total`, Cloud Run's own 429s; tenants
+   hitting their quotas (`POST /v1/runs` → 429) are a different signal (**MapiQuota70**).
+3. **Running executions near the quota (MapiRunningExecutions70):** the exec project has
+   more than 700 of its 1,000 running executions. Lower the global `concurrent_runs` policy
+   (`PUT /v1/admin/quotas`, scope `global`) or the busiest tenants' caps, and plan the next
+   exec project or region.
+4. **Cold starts:** large images (2–4 GB) make time-to-RUNNING spike. Confirm base images are
    warm/pinned; this is expected after a deploy and should settle.
-4. **Placement refusals:** if runs fail straight to `INFRA_ERROR` at lease, the executor caps
+5. **Placement refusals:** if runs fail straight to `INFRA_ERROR` at lease, the executor caps
    don't satisfy the tenant's trust tier (public needs isolation≥GVISOR, egress+DNS enforced).
    Check the enabled executors.
 

@@ -107,6 +107,21 @@ groups:
             (180/min) and per-tenant fan-out; shard across exec projects at 70% (§8.8).
           runbook: ops/runbooks/stuck-runs.md
 
+      - alert: MapiRunningExecutions70
+        # Plan §8.8: Cloud Run allows 1,000 running executions per project and region; alert
+        # at 70 %. Each orchestrator reports the same fleet-wide value (from the run table),
+        # hence max. One executor name per exec project and region.
+        expr: max by (executor) (mapi_executor_running_executions{executor=~"cloudrun.*"}) > 700
+        for: 10m
+        labels: { severity: ticket, team: platform-ops }
+        annotations:
+          summary: "{{ $labels.executor }}: {{ $value | printf \"%.0f\" }} running executions (70 % of the 1,000 quota)"
+          description: >
+            Sweeps or a tenant's fan-out are filling the project's running-execution quota.
+            Tighten per-tenant concurrent_runs or the global cap (700 by default), or shard
+            across exec projects/regions before submissions start failing (§8.8).
+          runbook: ops/runbooks/stuck-runs.md
+
       - alert: MapiQuota70
         # A tenant sustained above ~70% of its allowance (rejections are the visible signal).
         expr: sum(rate(mapi_quota_rejections_total{code="QUOTA_EXCEEDED"}[15m])) > 0.05

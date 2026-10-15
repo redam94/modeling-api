@@ -71,6 +71,7 @@ from mapi_server.services.runspec import build_runspec
 __all__ = ["Dispatcher", "TokenBucket"]
 
 _RESERVED_LABEL_PREFIX = "mapi.dev/"
+_WITH_EXECUTION = tuple(s.value for s in RunState if s.has_execution)
 _NAMESPACE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 
 log = logging.getLogger(__name__)
@@ -163,6 +164,17 @@ class Dispatcher:
         if values["last_success_at"] is None:
             update.pop("last_success_at")
         async with self.ctx.db.session() as session:
+            # the Cloud Run quota of running executions per project and region (plan §8.8,
+            # alert at 70 %): runs of this executor that hold a live execution
+            running = (
+                await session.execute(
+                    select(func.count()).where(
+                        m.Run.executor == self.executor.name,
+                        m.Run.state.in_(_WITH_EXECUTION),
+                    )
+                )
+            ).scalar_one()
+            obs_metrics.set_executor_running(self.executor.name, int(running))
             await session.execute(
                 pg_insert(m.ExecutorReport)
                 .values(**values)

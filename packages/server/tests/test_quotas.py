@@ -327,6 +327,24 @@ async def test_executor_health_is_reported(ctx: ServerContext, client: httpx.Asy
     assert (await client.get("/v1/admin/executors/nope")).status_code == 404
 
 
+async def test_report_exports_running_executions_for_the_quota_alert(
+    ctx: ServerContext, tenants: None, metrics: Metrics
+) -> None:
+    """Plan §8.8: alert at 70 % of the 1,000 running executions per project and region. The
+    orchestrator's report publishes this executor's live executions from the run table."""
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    for state in ("provisioning", "running", "stalled", "cancelling", "finalizing", "queued"):
+        run_id = await _queue(ctx, "big", state=state)
+        async with ctx.db.session() as s:
+            await s.execute(update(m.Run).where(m.Run.id == run_id).values(executor="fake"))
+    other = await _queue(ctx, "small", state="running")
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Run).where(m.Run.id == other).values(executor="elsewhere"))
+    await dispatcher.report()
+    # finalizing: the execution is over; queued: none yet; another executor: not ours
+    assert _sample("mapi_executor_running_executions", executor="fake") == 4
+
+
 async def test_operators_disable_an_executor_and_the_dispatcher_stops_leasing(
     ctx: ServerContext, client: httpx.AsyncClient, tenants: None
 ) -> None:

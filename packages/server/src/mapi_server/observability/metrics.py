@@ -50,6 +50,7 @@ __all__ = [
     "record_time_to_running",
     "render",
     "set_active_runs",
+    "set_executor_running",
     "set_global_spend",
     "set_metrics",
 ]
@@ -166,6 +167,14 @@ class Metrics:
             ["executor"],
             registry=r,
         )
+        self.executor_running_executions = Gauge(
+            "mapi_executor_running_executions",
+            "Runs holding a live execution on this executor (fleet-wide, from the run table; "
+            "each orchestrator reports the same value, so aggregate with max).",
+            ["executor"],
+            registry=r,
+            multiprocess_mode="max",
+        )
         self.http_requests_total = Counter(
             "mapi_http_requests_total",
             "HTTP requests handled by the API, by method, route template and status.",
@@ -227,6 +236,10 @@ def set_active_runs(counts: dict[str, int], *, states: Sequence[str]) -> None:
     """Set ``mapi_runs_active`` for every known ``state`` (0 when absent from ``counts``)."""
     for state in states:
         METRICS.runs_active.labels(state=state).set(counts.get(state, 0))
+
+
+def set_executor_running(executor: str, executions: int) -> None:
+    METRICS.executor_running_executions.labels(executor=executor).set(max(0, executions))
 
 
 def record_dispatch_latency(seconds: float) -> None:

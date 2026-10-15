@@ -37,6 +37,7 @@ ops/
 | `mapi_sandbox_violations_total{reason}` | counter | Forged events / HMAC / identity mismatch |
 | `mapi_quota_rejections_total{scope,code}` | counter | QUOTA_EXCEEDED / RATE_LIMITED denials |
 | `mapi_executor_submit_throttled_total{executor}` | counter | 429s from the executor backend (Cloud Run jobs.run), retried ones included; orchestrator |
+| `mapi_executor_running_executions{executor}` | gauge | Runs holding a live execution on the executor (fleet-wide; aggregate with `max`); orchestrator |
 | `mapi_cost_micros_total{tenant_id}` | counter | Billed compute cost in currency micros |
 | `mapi_global_spend_micros` / `mapi_global_spend_cap_micros` | gauge | Spend vs the global cap |
 | `mapi_sse_clients` | gauge | Live SSE subscribers on this process |

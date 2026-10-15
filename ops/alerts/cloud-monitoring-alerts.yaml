@@ -53,6 +53,38 @@ conditions:
 severity: WARNING
 
 ---
+# Running executions at 70 % of Cloud Run's 1,000 per project and region (plan §8.8).
+displayName: "mapi — Cloud Run running executions at 70% of quota"
+documentation:
+  content: |
+    The exec project's running Cloud Run job executions passed 700 of the 1,000 quota.
+    Tighten per-tenant concurrent_runs (or the global cap), or shard across exec projects
+    or regions. Runbook: ops/runbooks/stuck-runs.md
+  mimeType: text/markdown
+combiner: OR
+conditions:
+  - displayName: "running executions > 700 for 10m"
+    conditionThreshold:
+      filter: >
+        resource.type = "cloud_run_job" AND
+        metric.type = "run.googleapis.com/job/running_executions"
+      aggregations:
+        - alignmentPeriod: 60s
+          perSeriesAligner: ALIGN_MAX
+          crossSeriesReducer: REDUCE_SUM
+          groupByFields: ["resource.labels.project_id", "resource.labels.location"]
+      comparison: COMPARISON_GT
+      thresholdValue: 700
+      duration: 600s
+      trigger: { count: 1 }
+  - displayName: "orchestrator view: running executions > 700 for 10m"
+    conditionPrometheusQueryLanguage:
+      query: max by (executor) (mapi_executor_running_executions{executor=~"cloudrun.*"}) > 700
+      duration: 600s
+      evaluationInterval: 60s
+severity: WARNING
+
+---
 displayName: "mapi — integrity failure (security)"
 documentation:
   content: |
