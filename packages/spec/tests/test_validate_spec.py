@@ -283,7 +283,8 @@ def test_model_dtype_kind_and_role_mismatch(catalog: Catalog) -> None:
     res = _run(catalog, _e33(), raw)
     msgs = [(i.severity, i.message) for i in res.issues]
     assert any("dtype float64" in m for s, m in msgs if s is Severity.ERROR)
-    assert any("expects role 'target'" in m for s, m in msgs if s is Severity.WARNING)
+    # the model's template decides the target role; the override is reported, not warned
+    assert any("treated as role 'target'" in m for s, m in msgs if s is Severity.INFO)
     assert any("kind 'categorical'" in m for _, m in msgs)
 
 
@@ -437,6 +438,19 @@ def test_recursive_forecasting_rejected(catalog: Catalog) -> None:
     assert issue.pointer == "/pipeline/4" and issue.severity is Severity.ERROR
     assert "lags the target by 1" in issue.message
     assert res.resolved is None
+
+
+def test_recursion_detected_when_raw_schema_does_not_mark_the_target(catalog: Catalog) -> None:
+    """Target dependence follows the model's template roles, not only the raw schema's."""
+    raw = copy.deepcopy(E33_RAW)
+    raw["vars"]["revenue_local"]["role"] = "covariate"  # e.g. an inferred schema
+    res = _run(catalog, _target_lag_spec(8, [1, 2]), raw)
+    issue = _find(res, ErrorCode.RECURSIVE_UNSUPPORTED)
+    assert issue.pointer == "/pipeline/4" and issue.severity is Severity.ERROR
+    ok = _run(catalog, _target_lag_spec(8, [8, 12]), raw)
+    rs = ok.raise_for_errors()
+    assert rs.stages["raw"] is not None and rs.stages["raw"].vars["y"].role.value == "target"
+    assert not any("role" in i.message for i in ok.issues if i.severity is not Severity.INFO)
 
 
 def test_recursion_ok_when_lag_covers_holdout(catalog: Catalog) -> None:

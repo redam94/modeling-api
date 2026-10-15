@@ -148,7 +148,9 @@ def _resolve(
     catalog = registry.catalog()
     schema = _raw_schema(spec, data, raw_schema)
     result = validate_spec(spec, catalog, schema)
-    if raw_schema is None and result.resolved is not None:
+    # the model's template decides the target roles whatever schema was given (validation
+    # already judged target dependence by them); the stored raw schema says so too
+    if result.resolved is not None:
         model_schema = result.resolved.model.input_schema
         if model_schema is not None and model_schema.targets:
             fixed = _with_targets(schema, model_schema.targets, BindingMap(spec.data.bind))

@@ -375,6 +375,37 @@ def _depends_on_target(
     return bool(names & set(schema.targets))
 
 
+def _template_targets(spec: ModelSpec, catalog: Catalog) -> list[str]:
+    """Canonical target variables of the model's resolved schema template (best effort)."""
+    entry = catalog.resolve_model(spec.model.use)
+    if entry is None:
+        return []
+    man = entry.manifest
+    settings = apply_defaults(man.settings_schema, spec.model.plugin_settings)
+    model_schema, _ = man.schema_template.try_resolve(settings)
+    return list(model_schema.targets) if model_schema is not None else []
+
+
+def _mark_targets(schema: DataSchema, targets: Sequence[str], issues: list[Issue]) -> DataSchema:
+    """``schema`` with the variables named in ``targets`` given role ``target``."""
+    names = [t for t in targets if t in schema.vars and schema.vars[t].role is not Role.TARGET]
+    if not names:
+        return schema
+    data = schema.model_dump()
+    for n in names:
+        issues.append(
+            Issue(
+                code=ErrorCode.SCHEMA_INVALID,
+                severity=Severity.INFO,
+                pointer="/model",
+                message=f"variable {n!r} is the model's target; it is treated as role "
+                f"'target' (the data declares {schema.vars[n].role.value!r})",
+            )
+        )
+        data["vars"][n]["role"] = Role.TARGET
+    return DataSchema.model_validate(data)
+
+
 def _metric_known(name: str) -> bool:
     return any(p.match(name) for p in KNOWN_METRICS)
 
@@ -392,6 +423,11 @@ def validate_spec(spec: ModelSpec, catalog: Catalog, raw_schema: DataSchema) -> 
 
     # 1. binding ------------------------------------------------------------------------
     current = _apply_binding(spec.data.bind, raw_schema, issues)
+    if current is not None:
+        # the model's template decides what the target is, whatever the raw schema says
+        # (an inferred schema marks nothing as target); target dependence, recursion and
+        # leakage checks below follow these roles
+        current = _mark_targets(current, _template_targets(spec, catalog), issues)
     stages: list[Stage] = [Stage(RESERVED_STAGE, current)]
 
     # 2-5. steps ------------------------------------------------------------------------

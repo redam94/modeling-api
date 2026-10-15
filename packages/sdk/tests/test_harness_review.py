@@ -222,3 +222,39 @@ def test_unsorted_score_coords_are_ordered_before_the_pipeline(registry: Registr
     with pytest.raises(MapiError) as err:
         score_bundle(bundle, req(FORECAST_4), dup, registry=registry)
     assert err.value.code is ErrorCode.COORD_NOT_ALLOWED
+
+
+# ----------------------------------------- plan-conformance-3 / statistics-5 (target lags)
+
+YLAG_SPEC = """
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: ylag, project: growth}
+data:
+  dataset: dataset://growth/sales@latest
+  split: __SPLIT__
+pipeline:
+  - {id: ylag, use: toy.lag@^1, with: {vars: [y], along: time, within: [geo], lags: [1]}}
+model:
+  use: toy.linear@^1
+  settings: {features: [x, y_lag]}
+  fit: {mode: evaluate_then_refit, seed: 1}
+evaluate: {metrics: [rmse]}
+"""
+
+
+def _ylag_spec(split: str) -> Any:
+    return load_model_spec(YLAG_SPEC.replace("__SPLIT__", split))
+
+
+def test_recursion_is_rejected_whatever_raw_schema_is_given(registry: Registry) -> None:
+    from mapi_sdk.schema import infer_schema
+
+    data = _lag_panel(weeks=30, extra=0)
+    spec = _ylag_spec("{kind: time_holdout, dim: time, last: 4}")
+    inferred = infer_schema(data)  # marks no target
+    assert not inferred.targets
+    for schema in (None, inferred):
+        with pytest.raises(MapiError) as err:
+            fit_spec(spec, data, None, registry, raw_schema=schema)
+        assert err.value.code is ErrorCode.RECURSIVE_UNSUPPORTED
