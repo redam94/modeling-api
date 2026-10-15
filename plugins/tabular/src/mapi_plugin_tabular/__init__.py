@@ -17,7 +17,7 @@ from mapi_plugin_tabular.regressor import TabularRegressor, TabularRegressorSett
 try:
     __version__ = _metadata.version("mapi-plugin-tabular")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.0.0"
+    __version__ = "0.1.0"
 
 PLUGINS = (HierarchicalGLM, TabularRegressor)
 """Every ``tabular.*`` model plugin (loaded by the ``mapi.models`` entry point)."""

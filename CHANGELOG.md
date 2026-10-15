@@ -4,6 +4,33 @@ All notable changes are documented here. The project follows [Semantic Versionin
 milestone releases are tagged on `main`.
 
 ## [Unreleased]
+
+## [0.1.0] — M0: contract layer — 2026-10-15
+
+First milestone release: the typed contract layer and the in-process xarray runtime, with no
+platform services yet. In summary:
+
+- **spec** (`mapi-spec`): pure-Pydantic contracts (DataSchema, SchemaEffect, ModelSpec, ScoreRequest,
+  capabilities, representations, PlotSpec envelope, error codes) with static validation and
+  JSON Schema export, frozen as contract v0.1.
+- **sdk** (`mapi-sdk`): wire formats, the stage/split/context/replay/inverse pipeline engine,
+  CoordPlan, bundles without pickle, the `fit_spec`/`score_bundle` harness, the in-process executor
+  and the `mapi_sdk.testing` contract kit.
+- **steps** (`mapi-steps`): 28 built-in `core.*` preprocessing steps and five split kinds, each with
+  exported static effects.
+- **pymc** (`mapi-pymc`) and **sklearn** (`mapi-sklearn`): model adapters where an author writes only
+  `build()` or `estimator()`.
+- **plots** (`mapi-plots`): JSON-only Vega-Lite/Plotly sanitizer and the `core`, `mmm` and `ml` recipe
+  catalogs.
+- **plugins**: `mmm.hierarchical_geo`, `mmm.pymc_marketing`, `ts.hsgp_trend`, `ts.gaussian_hmm`,
+  `tabular.hierarchical_glm` and `tabular.regressor`.
+- **conformance** (`mapi-conformance`): the corpus runner and six fixtures (E02, C08, E24, store
+  demand, E33, pymc-marketing), all passing at `--size tiny`.
+- **docs**: the MkDocs Material site with tested snippets and generated catalogs.
+
+Every workspace package is versioned 0.1.0. The server, runner, CLI, client and GCS shim packages
+are still skeletons.
+
 - Repository scaffold: uv workspace, package skeletons, split Apache-2.0 / AGPLv3+commercial licensing.
 
 ### Contract v0.1 (frozen)
@@ -67,6 +94,10 @@ milestone releases are tagged on `main`.
 ### Changed
 - The workspace runs numpy 2.4 (pymc-marketing 1.2 requires numpy < 2.5).
 - `make typecheck` also covers `plugins/mmm`, `plugins/ts`, `plugins/tabular` and `conformance`.
+- Score requests that name a pinned side table now fail validation. Score outputs along time and extend
+  dims come back sorted. `validate_spec` emits an INFO issue when the model's target role overrides a
+  declared role.
+- Plugin-raised error text now appears in `untrusted_text`, not in `detail`.
 
 ### Fixed (integration)
 - The plan's xgboost example names the real quantile plugin (`sklearn.tabular_quantiles`). A new `ml.feature_importance` recipe covers its plot list.
@@ -78,6 +109,45 @@ milestone releases are tagged on `main`.
 - The in-process executor no longer resolves a score request's side-table refs when the run payload already supplies those tables.
 - The contract kit's score requests name the spec's `score_policy: supplied` side tables, so models with supplied tables (E33's FX) pass the scoring checks.
 - The E33 and pymc-marketing fixtures use the corpus runner's fixture layout and run in `python -m mapi_conformance run`.
+
+### Fixed (M0 review: spec and SDK)
+- Counterfactuals: `score_bundle` takes a baseline `data` payload and a separate `scenario` payload, and
+  scores the scenario's interventions against the baseline. A scenario without baseline data, or a
+  named scenario that was not supplied, is `SCHEMA_INVALID`.
+- `owns` is enforced: catalog steps declare `provides` (`scaling`, `carryover`), and `validate_spec`
+  rejects such a step on the target, media or spend variables of a model that owns that
+  preprocessing (`CAPABILITY_UNSUPPORTED`).
+- Target dependence follows the model template's target roles, even with an inferred raw schema, so
+  `RECURSIVE_UNSUPPORTED` fires reliably. The recursion and future-covariate checks measure how far
+  the payload extends past the fit, not only `horizon`.
+- No target leakage into evaluation lags for dynamic or cell-level splits. `as_of` gap periods stay
+  in the holdout with masked targets and are excluded from metrics.
+- Pinned side tables always replay the fit-time version; a request that names one fails with
+  `SIDE_TABLE_COVERAGE`.
+- Score payloads are sorted along ordered/extend dims before the pipeline; duplicate labels are
+  `COORD_NOT_ALLOWED`.
+- Chained look-back steps (adstock then lag) replay with fit-time history. A score window that starts
+  inside the fitted range and loses look-back history gets a WARNING.
+- Long-layout per-group context works end to end.
+- Inverses: steps declare `additive` inverses, and decompositions along `component` only go through
+  additive steps (otherwise they stay at the blocking stage, with a WARNING). Smearing residuals come
+  only from target-shaped outputs. The moments `sd` uses the delta method.
+- Model-owned outputs are labelled per variable with their units and `output_space`.
+- Derived quantities named in `output.vars` come back from the fit cache. An uncached one is refused.
+- PyMC CRN counterfactuals give identical draws in untouched cells for Poisson, negative binomial and
+  binomial likelihoods (`crn_ppf`).
+- Wire and bundle hardening: XrJSON budgets decoded bytes (`max_decoded_bytes`), caps declared dim
+  sizes and accepts only ISO-8601 dates. Zarr-zip decoding is bounded by declared shapes, string
+  lengths and an expansion ratio. Pickle is detected by opcode stream, in object `.npy` and inside
+  archives. The evaluation sub-bundle is verified and never kept stale. Entry points can no longer
+  replace registered or built-in plugin ids.
+- Spec parsing rejects non-finite floats and reports oversized JSON integers as `SpecParseError`.
+
+### Fixed (M0 review: models and steps)
+- `core.formula`: scalar `~` is logical not; overflow and division by zero give inf/nan, and other
+  arithmetic errors are reported as `SCHEMA_INVALID` rather than escaping.
+- PyMC checkpoints: the codec rebuilds only classes defined in PyMC step-method modules (plus
+  `pymc.util` and `mapi_pymc`), at exactly the encoded `module:qualname`.
 
 ### Fixed (M0 review: plots, conformance and tooling)
 - Plot sanitizer (Plotly): `updatemenus`/`sliders` method `args` are checked in the positional `[attr, value]` form and inside nested frame/trace objects, so external image sources, `href`/`url` paths, tile-map subplots and tile-map trace types can no longer hide there.
