@@ -491,9 +491,9 @@ def build_design(
             drop("bad_weight", ~(np.isfinite(w_all) & (w_all > 0)))
     plain = cols[:, ~leveled]
     if not allow_nan:
-        drop("missing_feature", ~np.isfinite(plain).all(axis=1))
+        drop("missing_feature", np.asarray(~np.isfinite(plain).all(axis=1)))
     else:
-        drop("infinite_feature", np.isinf(plain).any(axis=1))
+        drop("infinite_feature", np.asarray(np.isinf(plain).any(axis=1)))
     frame = stack_rows(
         xr.Dataset(
             {KEEP: xr.DataArray(keep.reshape(tmpl.shape), dims=tmpl.dims, coords=tmpl.coords)}
