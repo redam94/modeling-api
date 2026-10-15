@@ -38,6 +38,7 @@ from mapi_plots.recipes._base import (
     VlType,
     named,
     recipe,
+    wrap_facet,
 )
 from mapi_plots.recipes._util import (
     SAMPLE,
@@ -300,9 +301,14 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
         height=s.height,
     )
     if b.facet is not None:
-        chart = layer.facet(
-            facet=alt.Facet("group:N", title=b.facet), columns=s.columns
-        ).resolve_scale(y="independent")
+        chart = wrap_facet(
+            layer,
+            "group",
+            frame["group"].astype(str),
+            columns=s.columns,
+            title=b.facet,
+            independent_y=True,
+        )
     else:
         chart = layer
     lv_txt = " and ".join(pct(lv) for lv, _, _ in reversed(pairs))

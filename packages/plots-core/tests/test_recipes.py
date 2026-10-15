@@ -349,6 +349,26 @@ def test_fan_split_from_attrs_and_no_facet() -> None:
     assert frame(plot, "fan")["split"].iloc[0] == 3
 
 
+def test_faceted_fan_gives_every_panel_its_own_date_axis_in_coordinate_order() -> None:
+    """With 3 geos and 2 columns, a shared x axis floats under the empty cell and the top
+    row has no date labels; each panel gets its own axis, panels keep the coordinate order
+    and there are never more columns than panels."""
+    plot = get_recipe("core.ppc_fan").render(ex.score_tree(), columns=2)
+    spec = plot.spec
+    assert spec["resolve"]["axis"]["x"] == "independent"
+    assert spec["resolve"]["scale"]["y"] == "independent"
+    assert spec["facet"]["sort"] == ex.GEOS != sorted(ex.GEOS)
+    assert spec["columns"] == 2
+    wide = get_recipe("core.ppc_fan").render(ex.score_tree(), columns=8)
+    assert wide.spec["columns"] == len(ex.GEOS)
+
+
+def test_faceted_response_curves_give_every_panel_its_own_axes(bundle: Any) -> None:
+    plot = get_recipe("mmm.response_curves").render(bundle, facet=True)
+    assert plot.spec["resolve"]["axis"] == {"x": "independent", "y": "independent"}
+    assert plot.spec["columns"] == len(ex.CHANNELS)
+
+
 def test_fan_errors() -> None:
     summary = ex.score_tree(with_draws=False)["summary"].to_dataset()
     with pytest.raises(RecipeDataError, match="cannot be added up"):
