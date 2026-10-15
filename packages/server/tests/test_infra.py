@@ -6,6 +6,7 @@ import secrets
 import subprocess
 import sys
 from collections.abc import Iterator
+from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 import psycopg
@@ -67,10 +68,20 @@ def test_every_table_carries_tenant_and_project() -> None:
         assert {"tenant_id", "project_id"} <= cols, table.name
 
 
-def test_cli_migrate(scratch_db: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_migrate(scratch_db: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from mapi_server.services.signing import BundleSigner
+
     monkeypatch.setenv("DATABASE_URL", scratch_db)
+    monkeypatch.setenv("MAPI_DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("MAPI_SIGNING_KEY_PATH", raising=False)
     assert main(["migrate"]) == 0
     assert "runs" in _tables(scratch_db)
+    # migrate also prepares the bundle-signing key, once, before api and worker start
+    key = tmp_path / "keys" / "bundle-signing-p256.pem"
+    assert key.is_file()
+    key_id = BundleSigner.from_file(key, create=False).key_id
+    assert main(["migrate"]) == 0
+    assert BundleSigner.from_file(key, create=False).key_id == key_id
     with pytest.raises(SystemExit):
         main(["bogus"])
 

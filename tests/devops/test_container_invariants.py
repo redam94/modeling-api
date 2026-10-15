@@ -12,7 +12,7 @@ import os
 import re
 from dataclasses import dataclass
 from functools import cache
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from types import ModuleType
 from typing import Any
 
@@ -612,6 +612,93 @@ class TestCompose:
         assert mounts == [("worker", "/var/run/docker.sock:/var/run/docker.sock")]
         assert data["services"]["worker"]["environment"]["MAPI_EXECUTOR"] == "docker"
         assert data["services"]["postgres"]["ports"] == ["127.0.0.1:5432:5432"]
+
+
+# ======================================================================= bundle-signing key
+
+#: migrate creates the key; the worker's finalizer signs manifests; the API verifies them.
+KEY_SERVICES = ("migrate", "api", "worker")
+
+
+def _container_settings(svc: str, monkeypatch: pytest.MonkeyPatch) -> Any:
+    """``Settings()`` as ``svc`` builds it from its compose environment (literal values)."""
+    from mapi_server.settings import Settings
+
+    for key in [k for k in os.environ if k.startswith("MAPI_")]:
+        monkeypatch.delenv(key)
+    for key, value in (compose()["services"][svc].get("environment") or {}).items():
+        if key.startswith("MAPI_") and "${" not in str(value):
+            monkeypatch.setenv(key, str(value))
+    return Settings(database_url="postgresql://mapi@postgres:5432/mapi")
+
+
+def _mounts(svc: str) -> list[tuple[str, PurePosixPath, bool]]:
+    out = []
+    for spec in compose()["services"][svc].get("volumes", []):
+        source, target, *mode = str(spec).split(":")
+        out.append((source, PurePosixPath(target), "ro" in mode))
+    return out
+
+
+def _under(path: PurePosixPath, root: PurePosixPath) -> bool:
+    return path == root or root in path.parents
+
+
+def test_bundle_signing_key_is_shared_and_durable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every process that signs or verifies bundle manifests loads ONE key, from a named
+    volume that outlives restarts. A key under the per-container tmpfs (the old
+    MAPI_DATA_DIR default) gave api and worker different keys, so every bundle the worker
+    signed failed verification in the API, and each restart orphaned every model."""
+    from mapi_server.app import load_signer
+    from mapi_server.services.signing import BundleSigner
+
+    named = set(compose().get("volumes") or {})
+    sources, keys = set(), set()
+    for svc in KEY_SERVICES:
+        settings = _container_settings(svc, monkeypatch)
+        key = PurePosixPath(str(settings.key_path))
+        tmpfs = [PurePosixPath(t.split(":")[0]) for t in compose()["services"][svc]["tmpfs"]]
+        assert not any(_under(key, t) for t in tmpfs), f"{svc}: {key} is on a tmpfs"
+        mounts = [m for m in _mounts(svc) if _under(key, m[1])]
+        assert mounts, f"{svc}: {key} is not on a volume"
+        source, _, read_only = mounts[-1]
+        assert source in named, f"{svc}: {source} is not a named volume"
+        assert read_only is (svc != "migrate"), f"{svc}: only migrate may write the key"
+        assert settings.signing_key_create is (svc == "migrate"), svc
+        sources.add(source)
+        keys.add(key)
+    assert len(keys) == 1 and len(sources) == 1
+    # the images own that directory, so a fresh named volume is writable by uid 10001
+    key_dir = str(next(iter(keys)).parent)
+    for name, stage_name in CONTROL_PLANE_STAGES:
+        runs = " ".join(i.args for i in stage(name, stage_name) if i.keyword == "RUN")
+        assert re.search(rf"install -d -o 10001 -g 10001 -m 0700 \S*{re.escape(key_dir)}\b", runs)
+
+    # emulate the stack with the shared volume at tmp_path: migrate, then api and worker
+    shared = tmp_path / "keys" / "bundle-signing-p256.pem"
+    loaded = {}
+    for svc in KEY_SERVICES:
+        settings = _container_settings(svc, monkeypatch).model_copy(
+            update={"signing_key_path": shared}
+        )
+        loaded[svc] = load_signer(settings)
+    manifest = _signed_manifest(loaded["worker"])
+    assert loaded["api"].verify(manifest)
+    restarted = load_signer(
+        _container_settings("api", monkeypatch).model_copy(update={"signing_key_path": shared})
+    )
+    assert restarted.verify(manifest)  # a restart keeps every bundle verifiable
+    assert BundleSigner.from_file(shared, create=False).key_id == loaded["migrate"].key_id
+
+
+def _signed_manifest(signer: Any) -> Any:
+    from mapi_spec.run import BundleManifest
+
+    example = BundleManifest.model_json_schema()["examples"][0]
+    example.pop("signature")
+    return signer.sign(BundleManifest.model_validate(example))
 
 
 # ================================================================================ .env.example

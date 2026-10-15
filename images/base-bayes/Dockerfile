@@ -119,7 +119,10 @@ COPY --from=worker-builder /opt/mapi/venv /opt/mapi/venv
 # The image digest `mapi-server worker` keys the catalog by: sha256 of this uv.lock, the same
 # value the mapi/server image (api) computes (Settings.resolve_image_digest).
 COPY --chmod=0644 uv.lock /opt/mapi/uv.lock
-RUN python -I /opt/mapi/bin/assert_dists.py \
+# /var/lib/mapi/keys: mount point of the compose `keys` volume (the bundle-signing key the
+# orchestrator's finalizer signs with; mounted read-only).
+RUN install -d -o 10001 -g 10001 -m 0700 /var/lib/mapi/keys \
+ && python -I /opt/mapi/bin/assert_dists.py \
       --present mapi-server mapi-runner mapi-pymc mapi-plugin-mmm mapi-plugin-ts \
                 mapi-plugin-tabular mapi-sklearn docker \
       --absent nvidia-nccl-cu13 \

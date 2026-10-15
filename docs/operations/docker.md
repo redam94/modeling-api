@@ -131,6 +131,18 @@ need a public form and an internal form. With a shared namespace, `127.0.0.1:444
 subprocess. That is exactly the `make dev` topology, and it matches the `LocalDev` defaults. The
 `web` container reaches the API as `api:8000`, which is a network alias of the shim's container.
 
+**Durable state.** Three named volumes outlive the containers: `pgdata` (the database),
+`gcsdata` (the shim's objects and principal key files) and `keys` (the bundle-signing key).
+The worker's finalizer signs every bundle manifest, and the API verifies that signature
+before it hands out an artifact link, a `ui/` view or a plot, and before it accepts a score
+request. Both must therefore load the *same* key, and the key must survive restarts.
+`migrate` creates it once at `/var/lib/mapi/keys/bundle-signing-p256.pem`
+(`MAPI_SIGNING_KEY_PATH`). `api` and `worker` mount the volume read-only, with
+`MAPI_SIGNING_KEY_CREATE=false`, so a missing key fails start-up loudly instead of a new key
+being minted silently. `MAPI_DATA_DIR` (`/tmp/mapi-data`) is per-container scratch.
+`make compose-down VOLUMES=1` deletes the key along with the data. A new key cannot verify old
+bundles, so delete it only together with the database and the objects.
+
 **Hardening.** Every `mapi/*` service runs as a non-root user, with a read-only root filesystem,
 a tmpfs on `/tmp`, all Linux capabilities dropped and `no-new-privileges`. Ports are published on
 `127.0.0.1` only. The PostgreSQL password comes from `.env`, and compose refuses to start
@@ -232,6 +244,11 @@ The `api` container is unhealthy
     logs), or that the `DATABASE_URL` password does not match the database volume, which happens
     after you change `POSTGRES_PASSWORD`. In that case reset with `make compose-down VOLUMES=1`;
     this deletes the data.
+
+`no bundle-signing key at /var/lib/mapi/keys/... and MAPI_SIGNING_KEY_CREATE is off`
+:   `api` or `worker` started before `migrate` created the key, or without the `keys` volume.
+    Check `make compose-logs SERVICE=migrate`. Never point the two at different keys: the API
+    would reject every bundle the worker signs with `INTEGRITY_FAILURE`.
 
 `mapi-entrypoint: /tmp/mapi-cache is not writable`
 :   The container runs with a read-only root filesystem but without a writable `/tmp`. Add

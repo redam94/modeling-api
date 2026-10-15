@@ -37,7 +37,9 @@ Without `DATABASE_URL` an embedded PostgreSQL 16 (`pgserver`) starts under
 | `MAPI_DOCKER_IMAGE`, `MAPI_DOCKER_NETWORK` | `mapi/base-bayes:local`, `none` | container executor |
 | `MAPI_CATALOG_PATH` | — | catalog JSON exported at image build; otherwise a `describe` run fills it |
 | `MAPI_IMAGE_DIGEST` | `sha256(uv.lock)` | key of the cached catalog |
-| `MAPI_SIGNING_KEY_PATH` | `$MAPI_DATA_DIR/keys/bundle-signing-p256.pem` | bundle manifest key (KMS emulation) |
+| `MAPI_UV_LOCK_PATH` | `uv.lock` above the working directory | lock whose sha256 is the image digest (the images set `/opt/mapi/uv.lock`) |
+| `MAPI_SIGNING_KEY_PATH` | `$MAPI_DATA_DIR/keys/bundle-signing-p256.pem` | bundle manifest key (KMS emulation); api and worker must share it |
+| `MAPI_SIGNING_KEY_CREATE` | `true` | create the key if missing; `migrate` always creates it, compose turns this off for api/worker |
 | `MAPI_INTERNAL_TOKEN` | — | bearer required by `POST /internal/events` when set |
 
 ## Layout

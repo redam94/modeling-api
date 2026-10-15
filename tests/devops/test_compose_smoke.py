@@ -18,6 +18,7 @@ import shutil
 import subprocess
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -33,9 +34,31 @@ IMAGES = (f"mapi/server:{VERSION}", f"mapi/worker:{VERSION}", f"mapi/gcs-shim:{V
 #: Printed by ``python -I -c`` inside a container: what the control plane resolved at start-up.
 PROBE = """
 import json
+from mapi_server.app import load_signer
 from mapi_server.settings import Settings
 s = Settings()
-print(json.dumps({"digest": s.resolve_image_digest()}))
+print(json.dumps({"digest": s.resolve_image_digest(), "key_id": load_signer(s).key_id}))
+"""
+
+#: Run in ``worker``: sign an example bundle manifest the way its finalizer does.
+SIGN = """
+from mapi_server.app import load_signer
+from mapi_server.settings import Settings
+from mapi_spec.run import BundleManifest
+example = BundleManifest.model_json_schema()["examples"][0]
+example.pop("signature")
+manifest = load_signer(Settings()).sign(BundleManifest.model_validate(example))
+print(manifest.model_dump_json())
+"""
+
+#: Run in ``api`` with the manifest on stdin: what ``verified_manifest`` checks.
+VERIFY = """
+import json, sys
+from mapi_server.app import load_signer
+from mapi_server.settings import Settings
+from mapi_spec.run import BundleManifest
+manifest = BundleManifest.model_validate_json(sys.stdin.read())
+print(json.dumps({"verified": load_signer(Settings()).verify(manifest)}))
 """
 
 
@@ -67,9 +90,17 @@ def stack(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Compose]:
         project,
     ]
 
-    def compose(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+    def compose(
+        *args: str, check: bool = True, input: str | None = None
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [*base, *args], env=env, capture_output=True, text=True, timeout=900, check=check
+            [*base, *args],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=900,
+            check=check,
+            input=input,
         )
 
     try:
@@ -82,8 +113,10 @@ def stack(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Compose]:
         compose("down", "--volumes", "--remove-orphans", check=False)
 
 
-def probe(compose: Compose, service: str, code: str = PROBE) -> dict[str, str]:
-    out = compose("exec", "-T", service, "python", "-I", "-c", code).stdout
+def probe(
+    compose: Compose, service: str, code: str = PROBE, input: str | None = None
+) -> dict[str, Any]:
+    out = compose("exec", "-T", service, "python", "-I", "-c", code, input=input).stdout
     data = json.loads(out.strip().splitlines()[-1])
     assert isinstance(data, dict)
     return data
@@ -107,6 +140,21 @@ def test_api_and_worker_start_and_agree_on_the_image_digest(stack: Compose) -> N
     api, worker = probe(stack, "api"), probe(stack, "worker")
     assert api["digest"] == worker["digest"]
     assert api["digest"].startswith("sha256:")
+
+
+def test_api_verifies_what_the_worker_signs_across_restarts(stack: Compose) -> None:
+    """The worker's finalizer signs bundle manifests and the API verifies them: both load
+    the one key migrate created on the `keys` volume, and a restart keeps it."""
+    api, worker = probe(stack, "api"), probe(stack, "worker")
+    assert api["key_id"] == worker["key_id"]
+    signed = stack("exec", "-T", "worker", "python", "-I", "-c", SIGN).stdout.strip()
+    manifest = signed.splitlines()[-1]
+    assert probe(stack, "api", VERIFY, input=manifest) == {"verified": True}
+    stack("restart", "api", "worker")
+    stack("up", "-d", "--wait", "--no-build", "api", "worker")
+    assert probe(stack, "api")["key_id"] == api["key_id"]
+    assert probe(stack, "worker")["key_id"] == worker["key_id"]
+    assert probe(stack, "api", VERIFY, input=manifest) == {"verified": True}
 
 
 def test_lock_digest_matches_the_source_tree_when_freshly_built(stack: Compose) -> None:

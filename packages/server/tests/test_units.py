@@ -164,6 +164,47 @@ def test_bundle_signer_signs_and_verifies(tmp_path: Path) -> None:
         BundleSigner.from_file(tmp_path / "nope.pem", create=False)
 
 
+def test_bundle_signer_creation_race_converges_on_one_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """api and worker start together on a fresh data dir: whoever loses the creation race
+    loads the winner's key instead of failing (or keeping a key nobody else trusts)."""
+    path = tmp_path / "keys" / "k.pem"
+    original = BundleSigner.generate
+    winners: list[BundleSigner] = []
+
+    def racing_generate() -> BundleSigner:
+        monkeypatch.setattr(BundleSigner, "generate", original)
+        winners.append(BundleSigner.from_file(path))  # the other process gets there first
+        return original()
+
+    monkeypatch.setattr(BundleSigner, "generate", racing_generate)
+    loser = BundleSigner.from_file(path)
+    assert winners and loser.key_id == winners[0].key_id
+    assert loser.verify(winners[0].sign(_manifest()))
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    assert [p.name for p in path.parent.iterdir()] == ["k.pem"]  # no temp files left
+
+
+def test_build_context_refuses_to_mint_a_key_when_creation_is_off(tmp_path: Path) -> None:
+    """Compose: api and worker must load the key ``migrate`` created on the shared volume;
+    silently minting a private one would make every bundle unverifiable."""
+    from mapi_server.app import build_context
+
+    settings = Settings(
+        database_url="postgresql://mapi@127.0.0.1:1/mapi",
+        object_store="memory",
+        image_digest="sha256:" + "0" * 64,
+        signing_key_path=tmp_path / "keys" / "bundle-signing-p256.pem",
+        signing_key_create=False,
+    )
+    with pytest.raises(RuntimeError, match="mapi-server migrate"):
+        build_context(settings)
+    assert not settings.key_path.exists()
+    BundleSigner.from_file(settings.key_path)  # what migrate does
+    assert build_context(settings).signer.key_id == BundleSigner.from_file(settings.key_path).key_id
+
+
 # ----------------------------------------------------------------------------- docker
 
 

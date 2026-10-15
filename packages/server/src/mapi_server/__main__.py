@@ -41,12 +41,20 @@ def _setup_logging(settings: Settings) -> None:
 
 
 def cmd_migrate(settings: Settings) -> int:
+    """Prepare the durable state: database migrations, then the bundle-signing key.
+
+    The key is created here, once, before ``api`` and ``worker`` start: both must load the
+    *same* key (the worker signs bundle manifests, the API verifies them).
+    """
     from mapi_server.db import resolve_database_url
     from mapi_server.db.migrate import upgrade
+    from mapi_server.services.signing import BundleSigner
 
     url = resolve_database_url(settings)
     upgrade(url)
     log.info("database is at the latest migration")
+    signer = BundleSigner.from_file(settings.key_path, create=True)
+    log.info("bundle-signing key %s at %s", signer.key_id, settings.key_path)
     return 0
 
 
