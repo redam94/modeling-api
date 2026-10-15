@@ -25,6 +25,7 @@ import pytest
 import respx
 from mapi_client import Client, ClientConfig, ConfigError, CredentialStore, OidcError
 from mapi_client.auth import BearerAuth, default_auth
+from mapi_client.config import load_config
 from mapi_client.credentials import OidcSession
 from mapi_client.oidc import (
     DEFAULT_CLIENT_ID,
@@ -263,6 +264,35 @@ def test_a_loopback_dev_idp_may_use_plain_http() -> None:
         router.get(f"{dev}/.well-known/openid-configuration").respond(200, json=doc)
         meta = discover(http, dev)
     assert meta.token_endpoint == f"{dev}/token" and meta.device_authorization_endpoint is None
+
+
+def test_discovery_url_serves_another_issuers_document() -> None:
+    """The dev profile's IdP: issuer ``https://dev-idp.mapi.localhost`` (an identifier),
+    document served by the API at ``/dev/idp`` (it must still name that issuer)."""
+    issuer = "https://dev-idp.mapi.localhost"
+    api = "http://127.0.0.1:8000/dev/idp"
+    doc = {
+        "issuer": issuer,
+        "authorization_endpoint": f"{api}/authorize",
+        "token_endpoint": f"{api}/token",
+    }
+    with respx.mock() as router, httpx.Client() as http:
+        route = router.get(f"{api}/.well-known/openid-configuration").respond(200, json=doc)
+        meta = discover(http, issuer, discovery_url=api)
+        assert route.called and meta.issuer == issuer
+        assert meta.authorization_endpoint == f"{api}/authorize"
+        router.get(f"{api}/.well-known/openid-configuration").respond(
+            200, json={**doc, "issuer": "https://evil.test"}
+        )
+        with pytest.raises(OidcError, match="different issuer"):
+            discover(http, issuer, discovery_url=api)
+    with pytest.raises(ConfigError):
+        discover(httpx.Client(), issuer, discovery_url="http://idp.example/dev")
+    cfg = load_config(
+        environ={"MAPI_OIDC_ISSUER": issuer, "MAPI_OIDC_DISCOVERY_URL": api},
+        path=Path("/nonexistent/config.toml"),
+    )
+    assert cfg.oidc_discovery_url == api and cfg.sources["oidc_discovery_url"].startswith("env:")
 
 
 # ------------------------------------------------------------------------------ device

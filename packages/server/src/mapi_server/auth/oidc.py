@@ -199,11 +199,13 @@ async def verify_jwt(
     *,
     jwks: Any,
     algorithms: Sequence[str],
-    audience: str,
+    audience: str | Sequence[str],
     issuers: Sequence[str],
     leeway: int = LEEWAY_S,
 ) -> dict[str, Any]:
     """Verify a JWS against a JWKS source (``await jwks(refresh=bool)``); return its claims.
+
+    ``audience`` may list several accepted client ids (any one must be in ``aud``).
 
     Raises :class:`OidcError` for any defect (the reason is in ``.reason``).
     """
@@ -225,7 +227,7 @@ async def verify_jwt(
             token,
             key=key.key,
             algorithms=[alg],
-            audience=audience,
+            audience=audience if isinstance(audience, str) else list(audience),
             leeway=leeway,
             options={"require": ["exp", "iat", "iss", "aud", "sub"]},
         )
@@ -234,7 +236,8 @@ async def verify_jwt(
     if claims.get("iss") not in issuers:
         raise OidcError("issuer mismatch")
     aud = claims.get("aud")
-    if isinstance(aud, list) and len(aud) > 1 and claims.get("azp") != audience:
+    accepted = (audience,) if isinstance(audience, str) else tuple(audience)
+    if isinstance(aud, list) and len(aud) > 1 and claims.get("azp") not in accepted:
         raise OidcError("azp does not name this client")
     return claims
 
@@ -243,6 +246,25 @@ def _issuers(issuer: str) -> tuple[str, ...]:
     if issuer in GOOGLE_ISSUERS:
         return GOOGLE_ISSUERS
     return (issuer, issuer.rstrip("/"))
+
+
+def _identity(claims: Mapping[str, Any]) -> VerifiedIdentity:
+    """The identity in verified ID-token claims."""
+    iss = str(claims["iss"])
+    if not iss.startswith("https://"):
+        iss = "https://" + iss  # Google's legacy form "accounts.google.com"
+    sub = str(claims["sub"])
+    if not sub or len(sub) > 255:
+        raise OidcError("invalid subject")
+    email = claims.get("email")
+    name = claims.get("name")
+    return VerifiedIdentity(
+        issuer=iss,
+        subject=sub,
+        email=str(email)[:320] if isinstance(email, str) and "@" in email else None,
+        email_verified=claims.get("email_verified") is True,
+        name=str(name)[:200] if isinstance(name, str) and name else None,
+    )
 
 
 class OidcClient:
@@ -307,21 +329,24 @@ class OidcClient:
         presented = claims.get("nonce")
         if not isinstance(presented, str) or not hmac.compare_digest(presented, nonce):
             raise OidcError("nonce mismatch")
-        iss = str(claims["iss"])
-        if not iss.startswith("https://"):
-            iss = "https://" + iss  # Google's legacy form "accounts.google.com"
-        sub = str(claims["sub"])
-        if not sub or len(sub) > 255:
-            raise OidcError("invalid subject")
-        email = claims.get("email")
-        name = claims.get("name")
-        return VerifiedIdentity(
-            issuer=iss,
-            subject=sub,
-            email=str(email)[:320] if isinstance(email, str) and "@" in email else None,
-            email_verified=claims.get("email_verified") is True,
-            name=str(name)[:200] if isinstance(name, str) and name else None,
+        return _identity(claims)
+
+    async def verify_bearer(self, token: str, *, audiences: Sequence[str]) -> VerifiedIdentity:
+        """An ID token presented as ``Authorization: Bearer`` by a public client of the same
+        issuer (the ``mapi`` CLI signs in directly with the IdP). Signature, issuer, expiry
+        and an audience in ``audiences`` are checked; the nonce was checked by that client,
+        which created it."""
+        if not audiences:
+            raise OidcError("ID tokens are not accepted as bearers on this server")
+        meta = await self.provider.metadata()
+        claims = await verify_jwt(
+            token,
+            jwks=self.provider.jwks,
+            algorithms=self.algorithms,
+            audience=audiences,
+            issuers=_issuers(meta.issuer),
         )
+        return _identity(claims)
 
     async def complete(self, *, code: str, tx: LoginTransaction) -> VerifiedIdentity:
         """Exchange the authorization code (with the PKCE verifier) and verify the ID token."""

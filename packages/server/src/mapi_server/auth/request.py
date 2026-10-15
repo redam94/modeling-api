@@ -57,6 +57,7 @@ from mapi_spec.tokens import (
     TokenStatus,
     bearer_token,
     hash_token,
+    looks_like_token,
     parse_token,
     verify_token_hash,
 )
@@ -66,12 +67,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.auth.identity import (
     LOCAL_USER_ID,
+    claim_or_create_user,
     load_session,
     local_principal,
     memberships_of,
     token_record,
     user_principal,
 )
+from mapi_server.auth.oidc import OidcError
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError, ProblemWithHeaders, unauthenticated
@@ -345,6 +348,31 @@ async def _from_token(
     return _Resolved(Credential.TOKEN, principal, operator=False, token=record)
 
 
+async def _from_id_token(s: AsyncSession, ctx: ServerContext, raw: str) -> _Resolved:
+    """An OIDC ID token from a public client (``mapi login``) of the configured issuer: the
+    same person as a browser sign-in (Me.auth is ``session``), without a cookie or CSRF."""
+    audiences = ctx.settings.oidc_cli_client_ids
+    if ctx.oidc is None or not audiences:
+        raise unauthenticated("this server accepts API tokens (mapi_…) as bearers only")
+    try:
+        ident = await ctx.oidc.verify_bearer(raw, audiences=audiences)
+    except OidcError as exc:
+        log.info("bearer ID token refused: %s", exc.reason)
+        raise unauthenticated("the ID token was refused; sign in again") from None
+    user = (
+        await s.execute(
+            select(m.User).where(m.User.issuer == ident.issuer, m.User.subject == ident.subject)
+        )
+    ).scalar_one_or_none()
+    if user is None:  # first use: claim an invitation or create the user, like /auth/callback
+        user = await claim_or_create_user(
+            s, ident, operator_emails=ctx.settings.effective_operator_emails()
+        )
+    elif user.status != "active":
+        raise unauthenticated("this account is disabled")
+    return _Resolved(Credential.SESSION, user_principal(user), user.operator)
+
+
 def _check_csrf(ctx: ServerContext, request: Request, sess: m.WebSession) -> None:
     """Cookie-authenticated mutations: same-origin ``Origin`` and the session's CSRF token."""
     if request.method.upper() in SAFE_METHODS:
@@ -370,6 +398,8 @@ async def _credentials(
     if header is not None and raw is None:
         raise unauthenticated("unsupported Authorization scheme (use Bearer mapi_…)")
     if raw is not None:
+        if not looks_like_token(raw) and raw.count(".") == 2:
+            return await _from_id_token(s, ctx, raw)
         return await _from_token(s, ctx, request, raw, at)
     cookie = request.cookies.get(session_cookie(ctx.settings.secure_cookies).name)
     if cookie:

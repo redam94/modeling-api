@@ -183,6 +183,7 @@ def build_context(
             users=settings.devidp_users,
             base_url=settings.api_url,
             redirect_uri=settings.redirect_uri(),
+            public_clients=settings.oidc_cli_client_ids,
         )
         if settings.devidp_enabled
         else None

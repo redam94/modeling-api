@@ -374,6 +374,11 @@ class Settings(BaseSettings):
     oidc_algorithms: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["RS256", "ES256"]
     )
+    oidc_cli_client_ids: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["mapi-cli"],
+        description="Client ids of public OIDC clients (the mapi CLI) whose ID tokens of the "
+        "same issuer are accepted as bearers (comma-separated; empty: API tokens only)",
+    )
     oidc_extra_params: dict[str, str] = Field(
         default_factory=dict,
         description='Extra authorization parameters, e.g. {"hd": "acme.com"} (JSON)',
@@ -451,6 +456,7 @@ class Settings(BaseSettings):
     @field_validator(
         "allowed_hosts",
         "oidc_algorithms",
+        "oidc_cli_client_ids",
         "operator_emails",
         "default_tenant_admins",
         "devidp_users",

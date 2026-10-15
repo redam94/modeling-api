@@ -232,11 +232,20 @@ class ProviderMetadata:
         )
 
 
-def discover(http: httpx.Client, issuer: str) -> ProviderMetadata:
-    """Fetch and check ``<issuer>/.well-known/openid-configuration``."""
+def discover(
+    http: httpx.Client, issuer: str, *, discovery_url: str | None = None
+) -> ProviderMetadata:
+    """Fetch and check ``<issuer>/.well-known/openid-configuration`` (or the document at
+    ``discovery_url``, which must still name ``issuer``)."""
     issuer = check_issuer(issuer)
+    if discovery_url is None:
+        url = issuer + DISCOVERY_PATH
+    else:
+        url = check_issuer(discovery_url)
+        if not url.endswith(DISCOVERY_PATH):
+            url += DISCOVERY_PATH
     try:
-        response = http.get(issuer + DISCOVERY_PATH)
+        response = http.get(url)
     except httpx.TransportError as exc:
         raise OidcError(f"cannot reach the identity provider {issuer}: {exc}") from exc
     if response.status_code != 200:
@@ -636,7 +645,7 @@ def login(
     client_id = cfg.oidc_client_id or DEFAULT_CLIENT_ID
     target = store or _store_of(cfg)
     with _http(cfg) as http:
-        provider = discover(http, cfg.oidc_issuer)
+        provider = discover(http, cfg.oidc_issuer, discovery_url=cfg.oidc_discovery_url)
         flow: LoopbackLogin | DeviceLogin
         if method == "device":
             flow = DeviceLogin(

@@ -7,6 +7,11 @@ the key set are served in-process to the BFF, so the ID token goes through exact
 verification as a real provider's (RS256 signature against the JWKS, issuer, audience,
 expiry, nonce) and PKCE (S256) is enforced.
 
+Public clients (``MAPI_OIDC_CLI_CLIENT_IDS``, the ``mapi`` CLI) may use it too, with a
+loopback redirect URI on any port (``http://127.0.0.1:<port>/callback``), PKCE and a nonce;
+the API then accepts their ID tokens as bearers. Point the CLI at it with
+``mapi login --issuer https://dev-idp.mapi.localhost --discovery-url <api>/dev/idp``.
+
 The signing key is generated at start-up and never leaves the process; codes are single-use
 and live 60 seconds. There are no passwords: anybody who can reach a ``dev`` API can sign in
 as any configured account, which is why :func:`mount_devidp` refuses every other profile.
@@ -18,6 +23,7 @@ import base64
 import hashlib
 import hmac
 import html
+import re
 import secrets
 import time
 import uuid
@@ -48,7 +54,11 @@ DEV_ISSUER: Final = "https://dev-idp.mapi.localhost"
 DEV_CLIENT_ID: Final = "mapi-dev"
 DEVIDP_PREFIX: Final = "/dev/idp"
 CODE_TTL_S: Final = 60.0
-TOKEN_TTL_S: Final = 300
+TOKEN_TTL_S: Final = 3600
+"""ID-token lifetime (the CLI uses it as its bearer; there are no refresh tokens)."""
+_LOOPBACK_REDIRECT: Final = re.compile(
+    r"^http://(?:127\.0\.0\.1|localhost|\[::1\]):\d{1,5}/[\w/.-]*$"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +86,7 @@ class DevIdP:
         base_url: str,
         client_id: str = DEV_CLIENT_ID,
         redirect_uri: str,
+        public_clients: Sequence[str] = (),
     ) -> None:
         if not users:
             raise ValueError("the development IdP needs at least one account")
@@ -83,6 +94,7 @@ class DevIdP:
         self.base_url = base_url.rstrip("/")
         self.client_id = client_id
         self.redirect_uri = redirect_uri
+        self.public_clients = frozenset(public_clients) - {client_id}
         self._key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         self.kid = uuid.uuid4().hex[:16]
         self._codes: dict[str, _Grant] = {}
@@ -132,7 +144,7 @@ class DevIdP:
         """Issue a single-use authorization code for a configured account."""
         if email not in self.users:
             raise MapiError("unknown development account", code=ErrorCode.UNAUTHENTICATED)
-        if client_id != self.client_id or redirect_uri != self.redirect_uri:
+        if not self._known(client_id, redirect_uri):
             raise MapiError("unknown client or redirect_uri", code=ErrorCode.SCHEMA_INVALID)
         if code_challenge_method != "S256" or not 43 <= len(code_challenge) <= 128:
             raise MapiError("PKCE with S256 is required", code=ErrorCode.SCHEMA_INVALID)
@@ -143,6 +155,12 @@ class DevIdP:
             email, client_id, redirect_uri, nonce, code_challenge, now + CODE_TTL_S
         )
         return code
+
+    def _known(self, client_id: str, redirect_uri: str) -> bool:
+        """The BFF with its registered redirect URI, or a public client on loopback."""
+        if client_id == self.client_id:
+            return redirect_uri == self.redirect_uri
+        return client_id in self.public_clients and bool(_LOOPBACK_REDIRECT.fullmatch(redirect_uri))
 
     def redeem(
         self, *, code: str, redirect_uri: str, code_verifier: str, client_id: str
@@ -160,7 +178,7 @@ class DevIdP:
             "access_token": secrets.token_urlsafe(24),
             "token_type": "Bearer",
             "expires_in": TOKEN_TTL_S,
-            "id_token": self.id_token(grant.email, nonce=grant.nonce),
+            "id_token": self.id_token(grant.email, nonce=grant.nonce, audience=grant.client_id),
         }
 
     def id_token(self, email: str, *, nonce: str | None, audience: str | None = None) -> str:
@@ -222,6 +240,9 @@ def mount_devidp(app: FastAPI, settings: Settings) -> None:
                 "subject_types_supported": ["public"],
                 "id_token_signing_alg_values_supported": ["RS256"],
                 "code_challenge_methods_supported": ["S256"],
+                "token_endpoint_auth_methods_supported": ["none"],
+                "scopes_supported": ["openid", "email", "profile"],
+                "grant_types_supported": ["authorization_code"],
             }
         )
 
