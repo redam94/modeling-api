@@ -130,7 +130,7 @@ is required):
 | Switch | Effect |
 |---|---|
 | `untrusted_execution_enabled` | When off, no run of tenant-uploaded plugin code is accepted or leased. Built-in models keep working. |
-| `global_spend_cap_micros` | Once the platform's spend in the current UTC day (or month) reaches the cap, no new compute starts except for `internal` tenants |
+| `global_spend_cap_micros` | Once the platform's spend in the current UTC day (or month) reaches the cap, no new compute starts except for `internal` tenants. Spend counts the cost ledger plus the estimates of work not metered yet: admitted runs at admission, started runs (one by one) at dispatch |
 
 Both answer `QUOTA_EXCEEDED` at the global level. In a suspected sandbox escape, turning off
 untrusted execution is the first step of the incident runbook.

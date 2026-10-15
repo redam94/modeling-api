@@ -430,6 +430,36 @@ async def test_dispatcher_holds_runs_the_kill_switches_or_tenant_status_stop(
     assert await _leased(ctx, dispatcher) == [untrusted]
 
 
+async def test_the_spend_cap_counts_work_in_flight(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """The ledger only grows when runs finish: the spend cap also counts the estimates of
+    work already admitted (at admission) or started (at dispatch, run by run)."""
+    from mapi_server.services.quotas import kill_switch_check
+
+    await make_tenant(ctx, "pay", tier="self-hosted-trusted", projects=("main",))
+    r = await client.put(
+        "/v1/admin/kill-switches", json={"global_spend_cap_micros": 1000, "reason": "beta cap"}
+    )
+    assert r.status_code == 200
+    runs = [await _queue(ctx, "pay", minutes_ago=3 - i) for i in range(3)]
+    async with ctx.db.session() as s:
+        for row in (await s.execute(select(m.Run))).scalars():
+            row.estimate = {"vcpu_seconds": 1.0, "amount_micros": 600, "currency": "USD"}
+    # nothing is metered yet, but 1800 micros of work is queued: no more admissions
+    async with ctx.db.session() as s:
+        decision = await kill_switch_check(
+            s, untrusted_code=False, tier="self-hosted-trusted", now=now()
+        )
+    assert not decision.allowed and "spend cap" in (decision.message or "")
+    # dispatch starts runs while the committed spend is below the cap: 0, then 600, not 1200
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    assert await _leased(ctx, dispatcher) == runs[:2]
+    assert await _leased(ctx, dispatcher) == []  # 1200 in flight
+    async with ctx.db.session() as s:
+        assert (await load_run(s, None, runs[2])).state == RunState.QUEUED.value
+
+
 async def test_shared_tiers_need_a_sandboxing_executor(ctx: ServerContext) -> None:
     await make_tenant(ctx, "pub", tier="public", projects=("main",))
     run_id = await _queue(ctx, "pub")

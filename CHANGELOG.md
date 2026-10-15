@@ -160,6 +160,10 @@ is tested against fakes, and the Terraform is validated and tested against mocke
 - **server**: concurrent submissions from different tenants can no longer exceed a global
   `concurrent_runs` or vCPU limit. Run admission takes a transaction-scoped advisory lock
   after the tenant row when the global policy sets such a limit.
+- **server**: the global spend cap counts work in flight. The ledger only grows when runs
+  finish, so every queued run used to be admitted and dispatched against the same figure.
+  Admission now adds the estimates of admitted, unmetered runs, and the dispatcher adds the
+  estimates of started runs and of each run it leases in the same pass.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 

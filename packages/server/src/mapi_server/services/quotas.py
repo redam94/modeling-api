@@ -51,8 +51,10 @@ __all__ = [
     "admit_run",
     "admit_storage",
     "count_requests",
+    "estimate_micros",
     "global_policy",
     "global_spend",
+    "in_flight_spend",
     "kill_switch_check",
     "kill_switches",
     "policy_dto",
@@ -145,6 +147,31 @@ def _estimate_vcpu() -> ColumnElement[float]:
     return func.coalesce(cast(m.Run.estimate["vcpu_seconds"].astext, Float), 0.0)
 
 
+def _current_attempt_metered() -> ColumnElement[bool]:
+    """Has the run's current attempt an ``actual`` ledger entry? (It is metered when it
+    ends, FINALIZING included: from then on its estimate must stop counting.)"""
+    return (
+        select(m.CostLedgerEntry.id)
+        .where(
+            m.CostLedgerEntry.run_id == m.Run.id,
+            m.CostLedgerEntry.attempt == m.Run.attempt,
+            m.CostLedgerEntry.kind == CostEntryKind.ACTUAL.value,
+        )
+        .exists()
+    )
+
+
+def estimate_micros(run: m.Run, currency: str) -> int:
+    """A run's estimated cost in ``currency`` (0 without an estimate in that currency)."""
+    est = run.estimate or {}
+    if est.get("currency") != currency:
+        return 0
+    try:
+        return max(0, int(est.get("amount_micros") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 async def quota_usage(
     s: AsyncSession,
     scope: QuotaScope,
@@ -163,17 +190,7 @@ async def quota_usage(
         ),
         func.coalesce(func.sum(m.CostLedgerEntry.vcpu_seconds), 0.0),
     ).where(m.CostLedgerEntry.recorded_at >= month)
-    # an attempt is metered when it ends (FINALIZING included): from then on its actual
-    # vCPU-seconds are in the ledger, so the run's estimate must stop counting
-    metered = (
-        select(m.CostLedgerEntry.id)
-        .where(
-            m.CostLedgerEntry.run_id == m.Run.id,
-            m.CostLedgerEntry.attempt == m.Run.attempt,
-            m.CostLedgerEntry.kind == CostEntryKind.ACTUAL.value,
-        )
-        .exists()
-    )
+    metered = _current_attempt_metered()
     active = select(
         func.count(), func.coalesce(func.sum(_estimate_vcpu()).filter(~metered), 0.0)
     ).where(m.Run.state.in_(ACTIVE_STATES))
@@ -234,15 +251,40 @@ async def global_spend(s: AsyncSession, switches: KillSwitches, *, now: datetime
     return int(value)
 
 
+async def in_flight_spend(
+    s: AsyncSession, switches: KillSwitches, *, states: Sequence[str] = ACTIVE_STATES
+) -> int:
+    """Estimated cost (micros, the cap's currency) of runs in ``states`` whose current
+    attempt is not metered yet: spend already committed but not in the ledger."""
+    value = (
+        await s.execute(
+            select(
+                func.coalesce(func.sum(cast(m.Run.estimate["amount_micros"].astext, BigInteger)), 0)
+            ).where(
+                m.Run.state.in_(list(states)),
+                m.Run.estimate["currency"].astext == switches.spend_cap_currency,
+                ~_current_attempt_metered(),
+            )
+        )
+    ).scalar_one()
+    return int(value)
+
+
 async def kill_switch_check(
     s: AsyncSession, *, untrusted_code: bool, tier: str, now: datetime
 ) -> QuotaDecision:
-    """:func:`mapi_spec.admin.kill_switch_decision` with the stored switches (platform role)."""
+    """:func:`mapi_spec.admin.kill_switch_decision` with the stored switches (platform role).
+
+    The spend cap compares the metered spend *plus* the estimates of admitted runs not yet
+    metered (:func:`in_flight_spend`): the ledger only grows when runs finish, so a burst
+    of submissions would otherwise all pass against the same figure.
+    """
     switches = await kill_switches(s)
     spent = 0
     if switches.global_spend_cap_micros is not None:
-        spent = await global_spend(s, switches, now=now)
-        obs_metrics.set_global_spend(spent, switches.global_spend_cap_micros)
+        metered = await global_spend(s, switches, now=now)
+        obs_metrics.set_global_spend(metered, switches.global_spend_cap_micros)
+        spent = metered + await in_flight_spend(s, switches)
     return _observed(
         kill_switch_decision(
             switches,

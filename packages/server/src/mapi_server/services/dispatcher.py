@@ -59,8 +59,10 @@ from mapi_server.ratelimit import TokenBucket
 from mapi_server.services.bundles import BundleIntegrityError, verify_bundle_inputs
 from mapi_server.services.quotas import (
     DISPATCHED_STATES,
+    estimate_micros,
     global_policy,
     global_spend,
+    in_flight_spend,
     kill_switches,
     quota_usage,
     tenant_policy,
@@ -270,7 +272,10 @@ class Dispatcher:
         switches = await kill_switches(session)
         spent = 0
         if switches.global_spend_cap_micros is not None:
-            spent = await global_spend(session, switches, now=at)
+            # metered + started but not yet metered (queued work is not spent until leased)
+            spent = await global_spend(session, switches, now=at) + await in_flight_spend(
+                session, switches, states=DISPATCHED_STATES
+            )
         load = (
             await session.execute(
                 select(m.Run.tenant_id, func.count(), func.coalesce(func.sum(m.Run.task_count), 0))
@@ -333,9 +338,29 @@ class Dispatcher:
             )
         if held:
             log.debug("%d queued run(s) held back (kill switches or tenant status)", held)
-        return plan_leases(
+        plan = plan_leases(
             candidates, capacity=capacity, running_tasks=running_tasks, concurrency_left=left
         )
+        if switches.global_spend_cap_micros is None:
+            return plan
+        # each lease commits its estimate: later picks of this pass see it in the spend
+        by_id = {r.id: r for r in rows}
+        kept: list[LeaseCandidate] = []
+        for pick in plan:
+            run = by_id[pick.run_id]
+            tenant = tenants.get(run.tenant_id)
+            tier = tenant.trust_tier if tenant is not None else TrustTier.PUBLIC.value
+            decision = kill_switch_decision(
+                switches,
+                untrusted_code=run.untrusted_code,
+                tier=TrustTier(tier),
+                spent_micros=spent,
+                now=at,
+            )
+            if decision.allowed:
+                kept.append(pick)
+                spent += estimate_micros(run, switches.spend_cap_currency)
+        return kept
 
     async def dispatch_once(self) -> int:
         leased = await self.lease()
