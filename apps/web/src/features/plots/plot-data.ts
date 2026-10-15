@@ -1,7 +1,7 @@
 import type { JsonObject, PlotDatasets } from "@mapi/plot-sandbox/protocol";
 import { useQuery } from "@tanstack/react-query";
 
-import { modelArtifactLink } from "@/api/queries";
+import { modelArtifactLink, qk, useProjectScope } from "@/api/queries";
 import type { ArtifactLink, PlotSpec } from "@/api/types";
 import { base64ToBytes, decodeArrow, type Row } from "@/lib/arrow";
 import { fetchArtifactBytes, fetchArtifactJson } from "@/lib/artifacts";
@@ -55,8 +55,9 @@ export interface ResolvedPlot {
 }
 
 export function useModelPlotData(modelId: string, version: number, plot: PlotSpec | undefined) {
+  const scope = useProjectScope();
   return useQuery({
-    queryKey: ["models", modelId, "versions", version, "plots", plot?.id ?? "", "data"],
+    queryKey: [...qk.plot(scope.key, modelId, version, plot?.id ?? ""), "data"],
     enabled: Boolean(plot),
     staleTime: 10 * 60_000,
     queryFn: async ({ signal }): Promise<ResolvedPlot> => {

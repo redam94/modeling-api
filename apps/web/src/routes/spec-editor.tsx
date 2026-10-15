@@ -14,6 +14,8 @@ import {
   useSpec,
   useSpecRevision,
   useSpecRevisions,
+  qk,
+  useProjectScope,
   validateSpec,
 } from "@/api/queries";
 import type { Issue, SpecRevision, ValidateResponse } from "@/api/types";
@@ -46,8 +48,9 @@ interface ValidationState {
 function useLiveValidation(text: string): { state: ValidationState; validating: boolean; validateNow: () => void } {
   const debounced = useDebounced(text, 450);
   const [nonce, setNonce] = useState(0);
+  const scope = useProjectScope();
   const q = useQuery({
-    queryKey: ["validate", debounced, nonce],
+    queryKey: [...qk.project(scope.key), "validate", debounced, nonce],
     queryFn: async ({ signal }): Promise<ValidationState> => {
       try {
         return { response: await validateSpec(debounced, signal), problemIssues: [], problem: null };

@@ -107,6 +107,8 @@ export interface RunStreamOptions {
   /** Resume after this persisted event id (normally the last one seen). */
   lastEventId?: number | null;
   fetchImpl?: typeof fetch;
+  /** Extra request headers (the project selection, `X-Mapi-Project`). */
+  headers?: Record<string, string>;
   /** Upper bound for the reconnect backoff in ms. */
   maxBackoffMs?: number;
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
@@ -197,9 +199,9 @@ export async function followRunEvents(
     handlers.onStatus?.(failures || lastId !== null ? "reconnecting" : "connecting");
     let ended = false;
     try {
-      const headers: Record<string, string> = { Accept: "text/event-stream" };
+      const headers: Record<string, string> = { ...opts.headers, Accept: "text/event-stream" };
       if (lastId !== null) headers["Last-Event-ID"] = String(lastId);
-      const res = await fetchImpl(url, { headers, signal: opts.signal, credentials: "omit", cache: "no-store" });
+      const res = await fetchImpl(url, { headers, signal: opts.signal, credentials: "include", cache: "no-store" });
       if (res.status === 404) {
         handlers.onStatus?.("error", "run not found");
         return;

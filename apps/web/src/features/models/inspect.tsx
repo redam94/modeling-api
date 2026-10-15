@@ -3,7 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { AlertTriangle, CheckCircle2, ChevronRight, FolderTree, ShieldCheck, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { modelArtifactLink } from "@/api/queries";
+import { modelArtifactLink, qk, useProjectScope } from "@/api/queries";
 import type { Capabilities, Diagnostic, ModelVersion, Scorecard } from "@/api/types";
 import { EmptyState, ErrorNotice, JsonBlock, KeyValues, LoadingRows, Mono } from "@/components/common";
 import { DataTable } from "@/components/data-table";
@@ -96,10 +96,11 @@ export function DiagnosticsTable({ diagnostics, capabilities }: { diagnostics: D
 
 function useBundleView<T>(mv: ModelVersion, name: string, parse: (raw: unknown) => T) {
   const present = (mv.artifacts ?? []).some((a) => a.name === name);
+  const scope = useProjectScope();
   return {
     present,
     query: useQuery({
-      queryKey: ["models", mv.model_id, "versions", mv.version, "view", name],
+      queryKey: [...qk.modelVersion(scope.key, mv.model_id, mv.version), "view", name],
       enabled: present,
       staleTime: Infinity,
       queryFn: async ({ signal }) => parse(await fetchArtifactJson(await modelArtifactLink(mv.model_id, mv.version, name), { signal })),
