@@ -26,9 +26,9 @@ Dependencies: `pydantic>=2.9`, `pyyaml`, `jsonschema`.
 from mapi_spec import load_model_spec, spec_hash, canonical_json
 from mapi_spec.examples import E33_YAML
 
-spec = load_model_spec(E33_YAML)          # strict YAML 1.2 / JSON, typed result
+spec = load_model_spec(E33_YAML)  # strict YAML 1.2 / JSON, typed result
 print(spec.metadata.name, spec_hash(spec))  # eu-geo-mmm sha256:...
-print([s.id for s in spec.pipeline])        # ['to_eur', 'weekly', 'scale_spend', ...]
+print([s.id for s in spec.pipeline])  # ['to_eur', 'weekly', 'scale_spend', ...]
 ```
 
 Validate against a catalog and the dataset's raw schema (all static JSON):
@@ -36,12 +36,12 @@ Validate against a catalog and the dataset's raw schema (all static JSON):
 ```python
 from mapi_spec import Catalog, DataSchema, validate_spec
 
-result = validate_spec(spec, catalog, raw_schema)   # catalog: Catalog, raw_schema: DataSchema
+result = validate_spec(spec, catalog, raw_schema)  # catalog: Catalog, raw_schema: DataSchema
 for issue in result.issues:
     print(issue.severity, issue.code, issue.pointer, issue.message)
-resolved = result.raise_for_errors()                # ResolvedSpec (store it with the run)
-resolved.stages["weekly"]                           # DataSchema after the 'weekly' step
-resolved.split_stage                                # 'weekly'
+resolved = result.raise_for_errors()  # ResolvedSpec (store it with the run)
+resolved.stages["weekly"]  # DataSchema after the 'weekly' step
+resolved.split_stage  # 'weekly'
 ```
 
 Check a score request against a fitted model's metadata (CoordPlan, no arrays):

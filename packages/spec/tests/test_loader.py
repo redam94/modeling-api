@@ -334,3 +334,20 @@ def test_dump_yaml_roundtrip() -> None:
         assert dump_yaml(doc, exclude_defaults=False)
     tricky = {"a": "yes", "b": "0o17", "c": "1.5", "d": "null", "e": "multi\nline", "f": ".inf"}
     assert parse_yaml(dump_yaml(tricky)) == tricky
+
+
+def test_explicit_empty_defaults_do_not_change_hash() -> None:
+    base = {"apiVersion": "mapi/v1", "kind": "ScoreRequest", "model": "endpoint://a/b"}
+    explicit = {
+        **base,
+        "mode": "predict",
+        "inputs_stage": "raw",
+        "select": {},
+        "interventions": [],
+        "side_tables": {},
+        "output": {"kind": "expected", "draws": 0, "units": "original"},
+    }
+    a, b = parse_document(base), parse_document(explicit)
+    assert spec_hash(a) == spec_hash(b)
+    expected = '{"apiVersion":"mapi/v1","kind":"ScoreRequest","model":"endpoint://a/b"}'
+    assert canonical_json(b) == expected
