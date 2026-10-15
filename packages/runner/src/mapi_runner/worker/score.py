@@ -30,7 +30,12 @@ from mapi_spec.spec import ScoreRequest
 
 from mapi_runner.jobs import INPUT_SCENARIO, DeriveJob, EvaluateJob, ScoreJob
 from mapi_runner.worker.context import WorkerContext
-from mapi_runner.worker.data import load_bundle, load_dataset, load_side_tables
+from mapi_runner.worker.data import (
+    load_bundle,
+    load_dataset,
+    load_side_tables,
+    supplied_side_tables,
+)
 from mapi_runner.worker.plots import render_for
 
 __all__ = ["run_derive", "run_evaluate", "run_score"]
@@ -98,7 +103,8 @@ def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
     return tree
 
 
-def _default_request(bundle: Bundle, metrics_seed: int | None) -> ScoreRequest:
+def _default_request(bundle: Bundle, tables: dict[str, xr.Dataset]) -> ScoreRequest:
+    """The fit-time evaluation request: same output kind and seed, canonical names."""
     caps = bundle.model.manifest.capabilities
     spec = bundle.spec
     return ScoreRequest.model_validate(
@@ -114,7 +120,8 @@ def _default_request(bundle: Bundle, metrics_seed: int | None) -> ScoreRequest:
                 if REPRESENTATION_RULES[caps.representation].predictive
                 else "expected",
             },
-            "seed": metrics_seed if metrics_seed is not None else (spec.model.fit.seed or 0),
+            "seed": spec.model.fit.seed or 0,
+            "side_tables": supplied_side_tables(spec, tables),
         }
     )
 
@@ -124,7 +131,7 @@ def run_evaluate(ctx: WorkerContext, job: EvaluateJob) -> MetricsReport:
     bundle = load_bundle(ctx)
     data = load_dataset(ctx)
     tables = load_side_tables(ctx)
-    request = job.request or _default_request(bundle, None)
+    request = job.request or _default_request(bundle, tables)
     names = job.metrics
     if names is None:
         names = [m for m in bundle.spec.evaluate.metrics if not m.startswith("elpd_")] or ["rmse"]

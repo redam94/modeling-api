@@ -26,7 +26,12 @@ from mapi_spec.spec import AsOfSplit, ModelSpec, ScoreRequest, TimeHoldoutSplit
 from mapi_runner.jobs import BUNDLE_MANIFEST_OUTPUT
 from mapi_runner.worker.checkpoints import RunCheckpointSink
 from mapi_runner.worker.context import WorkerContext
-from mapi_runner.worker.data import load_dataset, load_raw_schema, load_side_tables
+from mapi_runner.worker.data import (
+    load_dataset,
+    load_raw_schema,
+    load_side_tables,
+    supplied_side_tables,
+)
 from mapi_runner.worker.plots import render_for
 from mapi_runner.worker.views import externalize_plot_data, write_ui_views
 
@@ -122,6 +127,9 @@ def _evaluation_tree(
         },
         "seed": spec.model.fit.seed or 0,
     }
+    supplied = supplied_side_tables(spec, tables)
+    if supplied:  # a score request must name the side tables it supplies
+        request["side_tables"] = supplied
     metrics = [m for m in spec.evaluate.metrics if not m.startswith("elpd_")] or ["rmse"]
     try:
         return score_bundle(

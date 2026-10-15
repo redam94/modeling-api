@@ -128,9 +128,7 @@ def test_worker_stdout_cannot_forge_events(gcs: FakeGcs) -> None:
 def test_a_tampered_event_line_fails_verification(gcs: FakeGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {})
     result = run_supervisor(run, registry=f"{TESTING}:empty_registry")
-    line = next(
-        ln for ln in result.lines if json.loads(ln)["mapi_event"]["type"] == "complete"
-    )
+    line = next(ln for ln in result.lines if json.loads(ln)["mapi_event"]["type"] == "complete")
     doc = json.loads(line)
     doc["mapi_event"]["payload"]["objects"] += 1
     tampered = decode_event_line(json.dumps(doc))
@@ -199,8 +197,13 @@ def test_input_hash_mismatch_is_an_integrity_failure(gcs: FakeGcs) -> None:
     run = make_run(
         gcs,
         RunKind.FIT,
-        {"apiVersion": "mapi/v1", "kind": "ModelSpec", "metadata": {"name": "x", "project": "p"},
-         "data": {"dataset": "dataset://p/x@v1"}, "model": {"use": "tabular.regressor@^1"}},
+        {
+            "apiVersion": "mapi/v1",
+            "kind": "ModelSpec",
+            "metadata": {"name": "x", "project": "p"},
+            "data": {"dataset": "dataset://p/x@v1"},
+            "model": {"use": "tabular.regressor@^1"},
+        },
         inputs={"dataset": (gcs.buckets.data, "t/default/x/data.zarr.zip")},
         input_overrides={"dataset": {"crc32c": "AAAAAA=="}},
     )

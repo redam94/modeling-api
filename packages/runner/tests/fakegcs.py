@@ -109,7 +109,9 @@ class FakeGcs:
         return Buckets(self.env)
 
     # ------------------------------------------------------------------- store
-    def put(self, bucket: str, name: str, data: bytes, content_type: str | None = None) -> ObjectMeta:
+    def put(
+        self, bucket: str, name: str, data: bytes, content_type: str | None = None
+    ) -> ObjectMeta:
         with self._lock:
             self._gen += 1
             obj = StoredObject(data, self._gen, content_type, datetime.now(UTC))

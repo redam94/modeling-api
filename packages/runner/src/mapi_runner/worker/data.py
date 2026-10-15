@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -13,6 +14,7 @@ from mapi_sdk.wire import read_datatree_zip, read_zarr_zip
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.run import INPUT_BUNDLE, INPUT_DATASET
 from mapi_spec.schema import DataSchema
+from mapi_spec.spec import ModelSpec, ScorePolicy
 from pydantic import ValidationError
 
 from mapi_runner.jobs import INPUT_BUNDLE_MANIFEST, INPUT_SCHEMA, SIDE_TABLE_PREFIX
@@ -24,6 +26,7 @@ __all__ = [
     "load_dataset",
     "load_raw_schema",
     "load_side_tables",
+    "supplied_side_tables",
 ]
 
 SCHEMA_ATTR = "mapi_schema"
@@ -82,6 +85,17 @@ def load_side_tables(ctx: WorkerContext) -> dict[str, xr.Dataset]:
     return {
         name.removeprefix(SIDE_TABLE_PREFIX): load_dataset(ctx, name)
         for name in ctx.input_names(SIDE_TABLE_PREFIX)
+    }
+
+
+def supplied_side_tables(spec: ModelSpec, available: Iterable[str]) -> dict[str, str]:
+    """Refs of the spec's ``score_policy: supplied`` side tables that are available; a score
+    request must name these to replay the steps that use them."""
+    have = set(available)
+    return {
+        name: str(st.ref)
+        for name, st in spec.data.side_tables.items()
+        if st.score_policy is ScorePolicy.SUPPLIED and name in have
     }
 
 

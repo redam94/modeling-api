@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from fakegcs import FakeGcs  # noqa: E402
+from fakegcs import FakeGcs
 
 
 @pytest.fixture
