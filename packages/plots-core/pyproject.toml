@@ -6,12 +6,26 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
+# Core install = sanitizer + templates only: JSON in, JSON out, safe for the control plane.
 dependencies = [
   "mapi-spec",
+  "jsonschema>=4.23",
 ]
 
 [project.optional-dependencies]
-recipes = ["altair>=5.4", "plotly>=6.0", "pandas>=2.2", "pyarrow>=17", "xarray>=2025.1"]
+# Recipe catalog, domain packs and the altair/plotly conversion helpers (runner images, notebooks).
+recipes = [
+  "altair>=5.4",
+  "plotly>=6.0",
+  "numpy>=2.0",
+  "pandas>=2.2",
+  "pyarrow>=17",
+  "xarray>=2025.1",
+]
+
+[project.entry-points."mapi.plots"]
+core = "mapi_plots.recipes:standard_recipes"
+mmm = "mapi_plots.packs.mmm:mmm_recipes"
 
 [build-system]
 requires = ["hatchling>=1.25"]

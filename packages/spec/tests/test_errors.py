@@ -126,3 +126,11 @@ def test_issue_limits() -> None:
         Issue(code=ErrorCode.SCHEMA_INVALID, message="x" * 2001)
     i = Issue(code=ErrorCode.SCHEMA_INVALID, message="ok")
     assert i.is_error and i.severity is Severity.ERROR
+
+
+def test_plot_unsafe_code_maps_to_its_class() -> None:
+    from mapi_spec.errors import PlotUnsafe
+
+    err = error_for_code(ErrorCode.PLOT_UNSAFE, "url data")
+    assert isinstance(err, PlotUnsafe) and isinstance(err, SpecError)
+    assert err.status == 422
