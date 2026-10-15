@@ -723,7 +723,10 @@ class Supervisor:
             )
         except OutputViolation as exc:
             return self._finish_failure(_Failure(FailureClass.SANDBOX, exc.detail))
-        objects: dict[str, ManifestObject] = dict(ckpts)
+        # a complete run does not list its checkpoints: they stay in the run prefix (allowed
+        # under checkpoints/) and are never copied into the bundle; they still count
+        # against the output byte cap
+        objects: dict[str, ManifestObject] = {}
         try:
             total = sum(f.size for f in files) + sum(o.size for o in ckpts.values())
             if total > limits.max_output_bytes:

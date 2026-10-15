@@ -6,6 +6,7 @@ import io
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -166,3 +167,33 @@ def test_supervisor_import_never_loads_plugin_or_array_code() -> None:
         [sys.executable, "-I", "-c", code], capture_output=True, text=True, check=True
     )
     assert out.stdout.strip() == ""
+
+
+def test_parquet_and_netcdf_uploads(tmp_path: Path) -> None:
+    from mapi_runner.worker.ingest import _read_table, _self_describing, _sniff
+
+    pq = tmp_path / "u.parquet"
+    _table().to_parquet(pq)
+    assert _sniff(pq) == "parquet"
+    ds, _schema = dataset_from_table(_read_table(pq, "parquet", max_rows=100), _mapping())
+    assert dict(ds.sizes) == {"date": 6, "market": 2}
+
+    nc = tmp_path / "u.nc"
+    ds.to_netcdf(nc, engine="scipy")  # netCDF-3
+    assert _sniff(nc) == "netcdf"
+    back, inferred = _self_describing(nc, "netcdf", None)
+    assert set(back.data_vars) == {"revenue", "tv"}
+    assert inferred.dims["date"].kind == "time"
+    mapped, mschema = _self_describing(
+        nc,
+        "netcdf",
+        IngestMapping(
+            format="netcdf",
+            dims={"week": DimMapping(column="date", spec=DimSpec(kind="time", policy="extend"))},
+            vars={"sales": VarMapping(column="revenue", role=Role.TARGET)},
+        ),
+    )
+    assert set(mapped.data_vars) == {"sales"} and "week" in mapped.dims
+    assert mschema.vars["sales"].role is Role.TARGET
+    with pytest.raises(MapiError, match="rows"):
+        _read_table(pq, "parquet", max_rows=5)

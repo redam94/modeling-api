@@ -338,3 +338,38 @@ def test_e02_zarr_ingest_checkpointed_fit_sigterm_partial_resume_and_score(gcs: 
     assert out["summary"].to_dataset()["y_hat"].sizes["home"] == 6
     issues = json.loads(score.output("result.json"))["issues"]
     assert any(i["code"] == "UNSEEN_LEVELS" for i in issues)
+
+
+def test_mff_ingest_and_an_invalid_spec_dry_run(gcs: FakeGcs) -> None:
+    rows = []
+    for period in ("2026-01-04", "2026-01-11", "2026-01-18", "2026-01-25"):
+        for geo in ("north", "south"):
+            for var, value in (("sales", 10.0), ("tv_spend", 3.0)):
+                rows.append(f"{period},{geo},all,,,,{var},{value}")
+    header = "Period,Geography,Product,Campaign,Outlet,Creative,VariableName,VariableValue"
+    gcs.put(gcs.buckets.quarantine, "t/default/uploads/mff", "\n".join([header, *rows]).encode())
+    ingest = run_supervisor(
+        make_run(
+            gcs,
+            RunKind.INGEST,
+            {"preset": "mff", "mff": {"roles": {"sales": "target", "tv_spend": "spend"}}},
+            inputs={"upload": (gcs.buckets.quarantine, "t/default/uploads/mff")},
+        )
+    )
+    _ok(ingest)
+    schema = DataSchema.model_validate_json(ingest.output("schema.json"))
+    assert set(schema.dims) == {"date", "geo"} and schema.dims["date"].freq == "W-SUN"
+
+    spec = _spec("xgb_store_demand")  # binds store_id/sku/week, which this data lacks
+    val = run_supervisor(
+        make_run(
+            gcs,
+            RunKind.VALIDATE,
+            spec,
+            inputs={"dataset": (gcs.buckets.runs, ingest.run.prefix + "data.zarr.zip")},
+        )
+    )
+    _ok(val)  # the dry run succeeds; its report says the spec is invalid
+    report = json.loads(val.output("validation.json"))
+    assert report["valid"] is False and report["issues"]
+    assert any(e.payload["code"] == "SPEC_INVALID" for e in val.of("warning"))

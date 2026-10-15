@@ -265,7 +265,8 @@ def _self_describing(
         if missing:
             raise _schema_error(f"the upload has no variable or dim {missing[0]!r}", "/mapping")
         keep = list(mapping.vars) or [str(v) for v in ds.data_vars]
-        ds = ds.rename(rename)[[v for v in keep if v in ds.data_vars]]
+        renamed = ds.rename(rename)
+        ds = renamed[[v for v in keep if v in renamed.data_vars]]
         draft = infer_schema(
             ds,
             roles={n: vm.role for n, vm in mapping.vars.items()},
