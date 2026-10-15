@@ -5,7 +5,7 @@
  *   upload the E33 data, side tables and score payloads → paste the spec into the editor,
  *   validate, save → fit → follow the run → inspect the scorecard, the PPC fan and the
  *   decomposition rendered inside the sandboxed plot iframe → score an 8-week forecast, a
- *   new market and a weekly EUR plan.
+ *   new market and a weekly EUR plan, and a counterfactual (tv spend +20%).
  *
  * Screenshots land in e2e/screenshots/ (git-ignored); the docs reuse a few of them.
  * Tagged @e2e: never part of the default (mocked) Playwright run.
@@ -32,6 +32,7 @@ const DATASETS = {
   eu_media_future: `ui_eu_media_future_${RUN}`,
   eu_media_future_fr: `ui_eu_media_future_fr_${RUN}`,
   eu_media_weekly_plan: `ui_eu_media_weekly_plan_${RUN}`,
+  eu_media_window: `ui_eu_media_window_${RUN}`,
 } as const;
 type DemoFile = keyof typeof DATASETS;
 const SPEC_NAME = `ui-geo-mmm-${RUN}`;
@@ -233,7 +234,31 @@ test.describe("@e2e M1: fit, inspect and score an E33 geo MMM from the UI", () =
       const quick = results.locator('iframe[data-testid="plot-frame"]').nth(1);
       await quick.scrollIntoViewIfNeeded();
       await expect(quick.contentFrame().locator("svg.marks")).toBeVisible({ timeout: 30_000 });
-      await shot(page, s.shot, results);
+      await runPlots.scrollIntoViewIfNeeded();
+      await page.mouse.move(0, 0); // no hover toolbar over the plot
+      await shot(page, s.shot);
     });
   }
+
+  test("score: counterfactual with tv spend +20% @e2e", async ({ page }) => {
+    test.setTimeout(5 * 60_000);
+    await page.goto(state.modelPath);
+    await page.getByRole("main").getByRole("link", { name: "Score" }).click();
+    await page.getByRole("radio", { name: "counterfactual" }).click();
+    await page.getByLabel("Input data").fill(`dataset://default/${DATASETS.eu_media_window}@v1`);
+    await page.getByRole("button", { name: "Add" }).click();
+    await page.getByRole("textbox", { name: "Variable", exact: true }).fill("spend_local");
+    await page.getByRole("textbox", { name: "Selection", exact: true }).fill("channel=tv");
+    await page.getByRole("textbox", { name: "Value", exact: true }).fill("1.2");
+    await page.getByRole("radio", { name: "Predictive" }).click();
+    await page.getByRole("button", { name: "Score", exact: true }).click();
+    const results = page.getByRole("region", { name: "Results" });
+    await expect(results.locator("[data-state=succeeded]")).toBeVisible({ timeout: 4 * 60_000 });
+    const runPlots = results.getByRole("region", { name: "Run plots" });
+    await expect(runPlots.getByText("Scenario vs baseline")).toBeVisible();
+    await renderedPlot(runPlots);
+    await runPlots.scrollIntoViewIfNeeded();
+    await page.mouse.move(0, 0);
+    await shot(page, "12-score-counterfactual");
+  });
 });
