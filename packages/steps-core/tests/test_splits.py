@@ -40,7 +40,9 @@ def test_time_holdout_and_as_of(weekly: xr.Dataset) -> None:
         weekly, {"dim": "time", "as_of": "2024-03-31", "gap": 1}
     )
     assert str(res.train["time"].values[-1])[:10] == "2024-03-31"
-    assert str(res.holdout["time"].values[0])[:10] == "2024-04-14"
+    # the gap week stays in the holdout (masked, never evaluated) so scoring is contiguous
+    assert res.lead == 1 and str(res.holdout["time"].values[0])[:10] == "2024-04-07"
+    assert str(res.holdout["time"].values[res.lead])[:10] == "2024-04-14"
     parsed = ms.split_strategy("time_holdout").parse(
         TimeHoldoutSplit(kind="time_holdout", dim="t", last=2)
     )
