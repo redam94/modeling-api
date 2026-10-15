@@ -154,6 +154,24 @@ def test_node_limit() -> None:
     parse_yaml("a: [" + ", ".join(["1"] * 9_000) + "]\n")
 
 
+@pytest.mark.parametrize("text", ["1e999", "-1e999", "1.0e400"])
+def test_core_schema_rejects_overflowing_floats(text: str) -> None:
+    with pytest.raises(ValueError):
+        resolve_plain_scalar(text)
+    with pytest.raises(SpecParseError, match="Infinity"):
+        parse_yaml(f"a: {text}\n")
+    with pytest.raises(SpecParseError, match="Infinity"):
+        parse_json(f'{{"a": {text}}}')
+
+
+def test_hostile_numbers_raise_typed_errors() -> None:
+    """Every hostile number surfaces as a MapiError, never a bare ValueError."""
+    with pytest.raises(SpecParseError):
+        parse_json('{"a": ' + "1" * 5000 + "}")
+    with pytest.raises(SpecParseError):
+        load_model_spec(E33_YAML.replace("period: 52.18", "period: 1e999"))
+
+
 def test_json_rules() -> None:
     assert parse_json('{"a": [1, 2.5, null, true]}') == {"a": [1, 2.5, None, True]}
     with pytest.raises(SpecParseError, match="duplicate"):

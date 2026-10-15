@@ -97,7 +97,10 @@ def resolve_plain_scalar(text: str) -> Any:
     if _INT16_RE.match(text):
         return int(text[2:], 16)
     if _FLOAT_RE.match(text):
-        return float(text)
+        value = float(text)
+        if not math.isfinite(value):  # e.g. 1e999 overflows to inf
+            raise ValueError("NaN and Infinity are not allowed in documents")
+        return value
     if _INF_NAN_RE.match(text):
         raise ValueError("NaN and Infinity are not allowed in documents")
     return text
@@ -273,12 +276,24 @@ def parse_json(text: str | bytes, limits: Limits = DEFAULT_LIMITS) -> Any:
     def bad_constant(name: str) -> Any:
         raise SpecParseError("NaN and Infinity are not allowed in documents")
 
+    def finite_float(text: str) -> float:
+        value = float(text)
+        if not math.isfinite(value):  # e.g. 1e999 overflows to inf
+            raise SpecParseError("NaN and Infinity are not allowed in documents")
+        return value
+
     try:
-        value = json.loads(src, object_pairs_hook=no_dups, parse_constant=bad_constant)
+        value = json.loads(
+            src, object_pairs_hook=no_dups, parse_constant=bad_constant, parse_float=finite_float
+        )
     except json.JSONDecodeError as exc:
         raise SpecParseError(f"invalid JSON: {exc.msg} at line {exc.lineno}") from None
     except RecursionError:
         raise PayloadTooLarge("document nesting is too deep") from None
+    except SpecParseError:
+        raise
+    except ValueError:  # e.g. an integer beyond Python's digit limit
+        raise SpecParseError("invalid JSON: a number is too large") from None
     check_limits(value, limits)
     return value
 
