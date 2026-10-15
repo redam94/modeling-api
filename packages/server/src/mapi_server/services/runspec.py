@@ -108,9 +108,17 @@ async def build_runspec(
         )
 
     resume: dict[str, SignedGet] = {}
-    if run.checkpointable and attempt.attempt > 1:
-        prev = run_checkpoint_prefix(run.tenant_id, run.id, attempt.attempt - 1)
-        for i, meta in enumerate(await list_all(store, runs_bucket, prev)):
+    prev, found = "", []
+    if run.checkpointable:
+        # the newest earlier attempt that checkpointed: an attempt that died before its
+        # first segment (or never started) must not throw away the progress before it
+        for earlier in range(attempt.attempt - 1, 0, -1):
+            prev = run_checkpoint_prefix(run.tenant_id, run.id, earlier)
+            found = await list_all(store, runs_bucket, prev)
+            if found:
+                break
+    if found:
+        for i, meta in enumerate(found):
             if len(resume) >= 1024:
                 break
             key = _io_name(meta.name[len(prev) :], i)

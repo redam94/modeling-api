@@ -15,7 +15,7 @@ from mapi_server.db import models as m
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.events import EventIngestor
 from mapi_server.services.notify import RunNotice, notify_run
-from mapi_server.services.runs import append_event, apply_transition, load_run
+from mapi_server.services.runs import append_event, apply_transition, load_run, now
 from mapi_server_testkit.builders import queued_fit, signed_event
 from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_spec.api import SSE_HEARTBEAT
@@ -30,6 +30,7 @@ from mapi_spec.run import (
     RunTrigger,
     StatePayload,
 )
+from sqlalchemy import select
 
 
 def parse_frames(text: str) -> list[dict[str, Any]]:
@@ -142,6 +143,40 @@ async def test_live_stream_with_progress_logs_heartbeat_and_end(ctx: ServerConte
     assert snapshots[0] == "provisioning" and "running" in snapshots
     progress = next(f for f in parsed if f["event"] == "progress")
     assert "id" not in progress and progress["json"]["payload"]["fraction"] == 0.5
+
+
+async def test_streams_close_when_the_credential_is_revoked(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """A stream re-checks its caller's credential every ``sse_reauth_s``: a token revoked
+    while a long run streams stops receiving its progress and logs, and reconnecting is
+    refused."""
+    from mapi_server.auth.identity import LOCAL_USER_ID
+    from mapi_server_testkit.identity import make_token, token_caller
+
+    ctx.settings = ctx.settings.model_copy(update={"sse_reauth_s": 0.2})
+    att = await _provisioned(ctx)
+    await ctx.hub.start()
+    async with ctx.db.session() as s:
+        owner = await s.get(m.User, LOCAL_USER_ID)
+        assert owner is not None
+    tok = token_caller(client, await make_token(ctx, owner, "default", "default", ["models:read"]))
+    url = f"/v1/runs/{att.run_id}/events"
+
+    async def revoke_soon() -> None:
+        await asyncio.sleep(0.5)
+        async with ctx.db.session() as s:
+            for row in (await s.execute(select(m.ApiToken))).scalars():
+                row.revoked_at = now()
+
+    revoker = asyncio.create_task(revoke_soon())
+    r = await asyncio.wait_for(tok.get(url, headers={"Accept": "text/event-stream"}), 10)
+    await revoker
+    assert r.status_code == 200
+    events = [f["event"] for f in parse_frames(r.text) if "event" in f]
+    assert events[0] == "snapshot" and "end" not in events  # closed, the run goes on
+    again = await tok.get(url, headers={"Accept": "text/event-stream"})
+    assert again.status_code == 401
 
 
 async def test_end_is_never_sent_before_the_final_event(
@@ -315,6 +350,57 @@ async def test_score_with_prefer_wait_returns_202_while_running(
     assert r.status_code == 422 and r.json()["code"] == "MODE_NOT_SUPPORTED"
     ev = await client.post(f"/v1/models/{mv.model_id}/versions/1:evaluate", json={})
     assert ev.status_code == 202 and ev.json()["kind"] == "evaluate"
+
+
+async def test_score_scoped_tokens_can_score_their_model(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """``score:<model id>`` and ``score:*`` tokens are the least-privilege scoring credential:
+    they can call ``:score`` on their model, and nothing broader."""
+    from mapi_server.auth.identity import LOCAL_USER_ID
+    from mapi_server.services.finalizer import Finalizer
+    from mapi_server_testkit.builders import simulate_outputs
+    from mapi_server_testkit.identity import make_token, token_caller
+
+    att = await _provisioned(ctx)
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, att.run_id, for_update=True)
+        await apply_transition(s, run, RunTrigger.EVENT, Actor.EVENTS)
+        await apply_transition(s, run, RunTrigger.COMPLETE, Actor.RECONCILER)
+    await simulate_outputs(ctx, run, att)
+    await Finalizer(ctx).finalize(run.id, 1)
+    async with ctx.db.session() as s:
+        fitted = await load_run(s, None, run.id)
+        mv = await s.get(m.ModelVersion, fitted.output_model_version_id)
+        owner = await s.get(m.User, LOCAL_USER_ID)
+        assert mv is not None and owner is not None
+    body = {
+        "request": {
+            "apiVersion": "mapi/v1",
+            "kind": "ScoreRequest",
+            "model": "model://default/trend@v1",
+            "mode": "forecast",
+            "horizon": {"dim": "t", "periods": 6},
+        }
+    }
+    url = f"/v1/models/{mv.model_id}/versions/1:score"
+
+    async def caller(scope: str) -> Any:
+        secret = await make_token(ctx, owner, "default", "default", [scope])
+        return token_caller(client, secret)
+
+    for scope in ("score:*", f"score:{mv.model_id}"):
+        r = await (await caller(scope)).post(url, json=body)
+        assert r.status_code == 202, (scope, r.text)
+        assert r.json()["run"]["kind"] == "score"
+    for scope in ("score:another-model", "models:read", "datasets:write"):
+        r = await (await caller(scope)).post(url, json=body)
+        assert r.status_code == 403, (scope, r.text)
+    # a scoring token cannot fit, evaluate or read other things
+    tok = await caller(f"score:{mv.model_id}")
+    ev = await tok.post(f"/v1/models/{mv.model_id}/versions/1:evaluate", json={})
+    assert ev.status_code == 403
+    assert (await tok.get("/v1/datasets")).status_code == 403
 
 
 async def test_wait_returns_200_with_outputs_when_the_run_finishes(

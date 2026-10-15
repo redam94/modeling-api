@@ -26,6 +26,7 @@ from mapi_spec.localdev import (
     WEB_PORT,
 )
 from mapi_spec.storage import Buckets
+from mapi_spec.tenancy import DEFAULT_RESIDENCY, residency_of_region
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
@@ -170,6 +171,7 @@ class Settings(BaseSettings):
     )
     db_pool_size: int = Field(10, ge=1, le=200)
     db_system_pool_size: int = Field(5, ge=1, le=200)
+    db_gateway_pool_size: int = Field(5, ge=1, le=200)
     db_echo: bool = False
     database_app_url: str | None = Field(
         None,
@@ -180,12 +182,20 @@ class Settings(BaseSettings):
     database_system_url: str | None = Field(
         None,
         repr=False,
-        description="Login of the platform role (dispatcher, reconciler, finalizer, events, "
-        "authentication lookups; bypasses row-level security). Unset: DATABASE_URL with "
-        "SET ROLE db_system_role",
+        description="Login of the platform role: the orchestrator's dispatcher, reconciler, "
+        "finalizer and housekeeper (bypasses row-level security; the API never needs it). "
+        "Unset: DATABASE_URL with SET ROLE db_system_role",
+    )
+    database_gateway_url: str | None = Field(
+        None,
+        repr=False,
+        description="Login of the gateway role: what the API and events service look up "
+        "before a tenant is known (sign-in, memberships, operator metadata, pushed events; "
+        "row-level security applies). Unset: DATABASE_URL with SET ROLE db_gateway_role",
     )
     db_app_role: str = Field("mapi_app", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
     db_system_role: str = Field("mapi_system", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
+    db_gateway_role: str = Field("mapi_gateway", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
 
     # ------------------------------------------------------------------------------- storage
     object_store: ObjectStoreKind = ObjectStoreKind.SHIM
@@ -252,6 +262,13 @@ class Settings(BaseSettings):
         None, description="Exec project that holds the Cloud Run Job inventory (cloudrun-jobs)"
     )
     cloudrun_region: str = Field("europe-west1", description="Region of the Job inventory")
+    default_residency: str | None = Field(
+        None,
+        pattern=r"^(?:[a-z]{2,6}|[a-z]+-[a-z]+[0-9]{1,2})$",
+        description="Data residency of the platform tenant, of tenants adopted by the "
+        "migrations and of tenants created without one (default: the multi-region of "
+        "MAPI_CLOUDRUN_REGION for cloudrun-jobs, e.g. eu, else us)",
+    )
     cloudrun_job_template: str = Field(
         "mapi-{env}-{base}-{class}",
         description="Job id convention; {env}, {base} (base-bayes|base-ml|base-forecast) and "
@@ -320,8 +337,17 @@ class Settings(BaseSettings):
     lost_execution_grace_s: float = Field(60.0, ge=0)
     max_infra_retries: int = Field(2, ge=0)
     auto_retry_window_s: float = Field(1800.0, ge=0, description="No auto-retry beyond 30 min")
+    auto_retry_cost_factor: float = Field(
+        2.0,
+        ge=0,
+        description="No auto-retry once a run's metered cost reaches this multiple of its "
+        "estimate (plan §8.3: retries capped by cost)",
+    )
     finalize_max_attempts: int = Field(5, ge=1)
     deadline_grace_s: float = Field(60.0, ge=0)
+    housekeeping_interval_s: float = Field(
+        300.0, gt=0, description="Sweep of expired upload intents and other expiring rows"
+    )
 
     # ---------------------------------------------------------------------- catalog / signing
     catalog_path: Path | None = Field(
@@ -420,9 +446,22 @@ class Settings(BaseSettings):
     lease_candidates: int = Field(
         500, ge=1, le=10_000, description="Queued runs the fair-share planner considers"
     )
+    lease_candidates_per_tenant: int = Field(
+        50,
+        ge=1,
+        le=10_000,
+        description="At most this many of them per tenant (a tenant whose runs are held "
+        "cannot fill the window)",
+    )
     executor_report_interval_s: float = Field(10.0, gt=0)
     sse_heartbeat_s: float = Field(15.0, gt=0)
     sse_poll_s: float = Field(5.0, gt=0, description="Fallback poll when no NOTIFY arrives")
+    sse_reauth_s: float = Field(
+        60.0,
+        gt=0,
+        description="How often an open event stream re-checks its caller's credential "
+        "(a revoked token, an expired session or a lost membership closes the stream)",
+    )
     max_sidecar_bytes: int = Field(8 * 1024 * 1024, ge=1024)
     log_level: Literal["debug", "info", "warning", "error"] = "info"
 
@@ -504,8 +543,8 @@ class Settings(BaseSettings):
     def _origins(self) -> Settings:
         if self.web_origin.rstrip("/") == self.plots_origin.rstrip("/"):
             raise ValueError("the plot sandbox must be served from a different origin")
-        if self.db_app_role == self.db_system_role:
-            raise ValueError("db_app_role and db_system_role must be different roles")
+        if len({self.db_app_role, self.db_system_role, self.db_gateway_role}) != 3:
+            raise ValueError("db_app_role, db_system_role and db_gateway_role must differ")
         if self.profile is not Profile.SINGLE_TENANT and self.auth_required is False:
             raise ValueError("authentication cannot be turned off in a multi-tenant profile")
         if (self.pubsub_push_audience is None) != (self.pubsub_push_service_account is None):
@@ -553,6 +592,15 @@ class Settings(BaseSettings):
     def secret_path(self) -> Path:
         """Next to the bundle-signing key by default: both live on durable, shared storage."""
         return self.server_secret_path or (self.key_path.parent / "server-secret")
+
+    def effective_default_residency(self) -> str:
+        """``default_residency``, else what the Cloud Run inventory's region satisfies (the
+        executor must be able to place the tenants created by default), else ``us``."""
+        if self.default_residency:
+            return self.default_residency
+        if self.executor is ExecutorName.CLOUDRUN_JOBS:
+            return residency_of_region(self.cloudrun_region)
+        return DEFAULT_RESIDENCY
 
     def effective_operator_emails(self) -> list[str]:
         """``operator_emails`` plus, in the dev profile, the first development account."""

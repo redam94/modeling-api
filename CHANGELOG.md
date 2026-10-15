@@ -124,6 +124,87 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   mount; before, every isolation probe ended in ERROR on a host with Docker.
   - `--executor cloud` refuses to run outside a Cloud Run Jobs execution.
 
+### Fixed (M2 review: spec, server and auth)
+- **server**: an API token can no longer administer its tenant. Tokens are bound to one
+  project, so tenant members, project create and delete, the tenant audit log and tenant usage
+  now need a signed-in session (`403` for any token). A token may still read its own tenant
+  and list its own project (`mapi_spec.api.TOKEN_TENANT_ROUTES`).
+- **server**: signing in again no longer re-activates a disabled account. `/auth/callback`
+  refuses it with the generic `401` and audits `auth.login_failed`; only an invitation becomes
+  active at its first sign-in.
+- **server**: operator status is decided on every request from `MAPI_OPERATOR_EMAILS` (and
+  the dev profile's first account). Before, a demoted operator kept operator powers through
+  `mapi login` ID tokens indefinitely and through browser sessions until they expired.
+- **spec/server**: an API token can no longer mint tokens, whatever its scopes
+  (`mapi_spec.tokens.TOKEN_NEVER`). A child token dropped its parent's expiry, vCPU budget and
+  rate limit, and outlived its revocation. `POST /v1/tokens` needs a signed-in session.
+- **spec/server**: `score:<target>` tokens can score. They authorized nothing, because
+  `:score` checks `run` on the model and the scope covered only endpoints, so integrations
+  fell back to broader `runs:create` tokens. `score:<model id>` now covers `:score` on that
+  model and `score:*` on every model of the project (`RouteAccess.name_param`). The web
+  tokens page, the CLI help and the docs say so.
+- **server**: concurrent uploads can no longer overrun the storage quota. Storage admission
+  now locks the tenant row like run admission does, so six concurrent 800-byte intents against
+  a 1000-byte quota admit exactly one.
+- **server**: abandoned upload intents no longer hold storage quota forever. Usage counts a
+  pending intent only while its signed PUT is valid, and a new housekeeper loop in the worker
+  (`MAPI_HOUSEKEEPING_INTERVAL_S`, default 300 s) marks expired intents `expired` and deletes
+  whatever reached quarantine.
+- **server**: expired browser sessions are deleted. The delete in `load_session` was rolled
+  back with the request's 401, and nothing else removed `web_sessions` rows. The row is now
+  deleted in its own transaction after the 401, and the housekeeper sweeps expired sessions
+  and abandoned sign-ins.
+- **server**: a FINALIZING run no longer counts its vCPU estimate on top of its metered
+  attempt. Quota usage counts an active run's estimate only while its current attempt has no
+  `actual` ledger entry, so runs near a daily or monthly limit are not refused by mistake.
+- **server**: concurrent submissions from different tenants can no longer exceed a global
+  `concurrent_runs` or vCPU limit. Run admission takes a transaction-scoped advisory lock
+  after the tenant row when the global policy sets such a limit.
+- **server**: the global spend cap counts work in flight. The ledger only grows when runs
+  finish, so every queued run used to be admitted and dispatched against the same figure.
+  Admission now adds the estimates of admitted, unmetered runs, and the dispatcher adds the
+  estimates of started runs and of each run it leases in the same pass.
+- **server**: held runs can no longer fill the dispatcher's window of queued runs and stall
+  fair share for every tenant. Runs of suspended tenants, uploaded code paused by the kill
+  switch and non-internal work past the spend cap are left out in SQL, and each tenant takes
+  at most `MAPI_LEASE_CANDIDATES_PER_TENANT` (50) of the window.
+- **server**: a retry resumes from the newest checkpoints of *any* earlier attempt. Before, it
+  only looked at the attempt just before it, so an attempt that died before its first segment
+  threw away all earlier progress. Automatic infra retries are also capped by cost
+  (`MAPI_AUTO_RETRY_COST_FACTOR`, default 2× the estimate), as plan §8.3 asks, and no longer
+  by count alone.
+- **server**: an unknown token prefix and a wrong secret for a known prefix get the same
+  answer (`the API token is invalid`), so the API no longer tells which prefixes exist.
+  Unauthenticated failures that anyone can cause (`token.auth_failed`, `auth.login_failed`)
+  are audited at most five times per token prefix or client and minute, so they can no longer
+  flood a tenant's audit log. The housekeeper sweeps old rate counters.
+- **server/web**: run event streams re-check the caller's credential every
+  `MAPI_SSE_REAUTH_S` (60 s). A revoked token, an ended session or a lost membership no
+  longer keeps receiving a 24-hour run's progress and logs: the stream closes and the
+  reconnect is refused. The web client stops on 401 (and raises the session-expired prompt)
+  or 403, where it used to retry forever.
+- **server**: the audit log and the cost ledger are append-only (migration
+  `0004_append_only_records`). Both runtime roles lose `UPDATE` and `DELETE` on them, and a
+  trigger refuses any change to an existing row, so a request-path bug or injection can no
+  longer rewrite a tenant's audit trail or billing history.
+- **server/infra**: the default data residency follows the deployment. It used to be `us`
+  everywhere, so on the documented EU deployment every run of the platform tenant and of
+  tenants created with defaults failed as `INFRA_ERROR`. `MAPI_DEFAULT_RESIDENCY` defaults
+  to the multi-region of the Cloud Run region, and Terraform sets it from the dispatch pool's
+  region (`default_residency` overrides it). It applies to the platform tenant, to rows the
+  tenancy migration adopts and to `POST /v1/admin/tenants` without `data_residency`.
+  Submissions that no reporting executor can place are refused at admission with a clear
+  `403` instead of being queued, and the worker warns at start-up about such tenants.
+- **server/infra**: the API and events services no longer hold the RLS-bypassing database
+  role, which plan §9 reserves for the dispatcher, reconciler and finalizer. Their platform
+  lookups (sign-in, memberships, operator metadata, routing pushed events) now run as a new
+  `mapi_gateway` role (migration `0005_gateway_role`, `MAPI_DATABASE_GATEWAY_URL`,
+  `MAPI_DB_GATEWAY_ROLE`). It has no `BYPASSRLS`, gets explicit policies on identity tables
+  and column privileges on a few run and ledger metadata columns, and cannot read datasets,
+  specs, models, plots, attempts, events or logs. Every API request uses it automatically.
+  Pushed events are written through tenant sessions. Terraform adds the `mapi_gateway` login
+  and its `db-url-gateway` secret, and only the orchestrator can read `db-url-orchestrator`.
+
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
 The platform now runs end to end on one machine. From the Expert web app (or the CLI, the Python

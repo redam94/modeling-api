@@ -13,12 +13,17 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Sequence
+from datetime import UTC, datetime, timedelta
 
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import Executor, ExecutorCaps
 from mapi_spec.resources import ResourceClass
 from mapi_spec.tenancy import TIER_PLACEMENT, TrustTier, placement_allows
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from mapi_server.db import models as m
 from mapi_server.executors.cloudrun import (
     Base,
     CloudRunApi,
@@ -42,6 +47,9 @@ __all__ = [
     "check_placement",
     "cloudrun_inventory",
     "docker_available",
+    "placement_refusal",
+    "placement_warnings",
+    "reported_caps",
 ]
 
 
@@ -85,6 +93,68 @@ def check_placement(
         raise PlacementRefused(f"the executor's regions do not satisfy residency {residency}")
     if resource_class not in caps.classes:
         raise PlacementRefused(f"the executor does not offer resource class {resource_class.value}")
+
+
+def placement_refusal(
+    offered: Sequence[ExecutorCaps],
+    *,
+    trust_tier: str,
+    resource_class: ResourceClass,
+    residency: str | None,
+) -> str | None:
+    """Why none of the ``offered`` executors may run this work (``None``: one may, or
+    nothing is known about the executors)."""
+    reasons: list[str] = []
+    for caps in offered:
+        try:
+            check_placement(
+                caps, trust_tier=trust_tier, resource_class=resource_class, residency=residency
+            )
+        except PlacementRefused as exc:
+            reasons.append(exc.detail)
+        else:
+            return None
+    return reasons[0] if reasons else None
+
+
+async def reported_caps(s: AsyncSession, *, max_age: timedelta) -> list[ExecutorCaps]:
+    """Capabilities of the executors whose dispatcher reported recently (``executor_reports``):
+    what the API can check placement against at admission (it runs no executor itself)."""
+    rows = (
+        await s.execute(
+            select(m.ExecutorReport.caps).where(
+                m.ExecutorReport.enabled.is_(True),
+                m.ExecutorReport.checked_at >= datetime.now(UTC) - max_age,
+            )
+        )
+    ).scalars()
+    out: list[ExecutorCaps] = []
+    for raw in rows:
+        try:
+            out.append(ExecutorCaps.model_validate(raw))
+        except ValueError:  # a report from another version: ignore it
+            continue
+    return out
+
+
+async def placement_warnings(s: AsyncSession, caps: ExecutorCaps) -> list[str]:
+    """One line per active tenant this executor cannot place (tier or residency): logged by
+    the worker at start-up, because every run of such a tenant would be refused."""
+    tenants = (
+        await s.execute(select(m.Tenant).where(m.Tenant.status == "active").order_by(m.Tenant.id))
+    ).scalars()
+    smallest = caps.classes[0] if caps.classes else ResourceClass.S
+    out: list[str] = []
+    for t in tenants:
+        why = placement_refusal(
+            [caps], trust_tier=t.trust_tier, resource_class=smallest, residency=t.data_residency
+        )
+        if why is not None:
+            out.append(
+                f"tenant {t.id} ({t.trust_tier}, residency {t.data_residency}) cannot run on "
+                f"this executor: {why}"
+            )
+    return out
 
 
 def cloudrun_inventory(settings: Settings) -> JobInventory:

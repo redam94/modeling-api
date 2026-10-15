@@ -118,8 +118,11 @@ failure). A run's `cost` field folds its entries together:
 class, day, token or run) and where it stands against each quota. Tenant admins see the
 whole tenant at `GET /v1/tenants/{tenant_id}/usage`.
 
-Retries are capped by cost, not by count: an infrastructure retry resumes from the last
-checkpoint, and a run that has already used more than 30 minutes is only retried with the
+Retries are capped by cost as well as by count: an infrastructure failure is retried
+automatically only while what the run has cost (its metered attempts plus the attempt that
+just failed) stays below `MAPI_AUTO_RETRY_COST_FACTOR` (default 2) times its estimate, at most
+`MAPI_MAX_INFRA_RETRIES` times. A retry resumes from the newest checkpoints any earlier
+attempt wrote, and a run that has already used more than 30 minutes is only retried with the
 user's consent.
 
 ## Kill switches
@@ -130,7 +133,7 @@ is required):
 | Switch | Effect |
 |---|---|
 | `untrusted_execution_enabled` | When off, no run of tenant-uploaded plugin code is accepted or leased. Built-in models keep working. |
-| `global_spend_cap_micros` | Once the platform's spend in the current UTC day (or month) reaches the cap, no new compute starts except for `internal` tenants |
+| `global_spend_cap_micros` | Once the platform's spend in the current UTC day (or month) reaches the cap, no new compute starts except for `internal` tenants. Spend counts the cost ledger plus the estimates of work not metered yet: admitted runs at admission, started runs (one by one) at dispatch |
 
 Both answer `QUOTA_EXCEEDED` at the global level. In a suspected sandbox escape, turning off
 untrusted execution is the first step of the incident runbook.

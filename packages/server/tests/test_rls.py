@@ -149,6 +149,134 @@ async def test_the_app_role_cannot_turn_row_security_off(
             await s.execute(select(func.count()).select_from(m.Run))
 
 
+async def test_audit_and_cost_records_are_append_only(ctx: ServerContext) -> None:
+    """Audit events and cost ledger entries can be added but never edited or erased: not by
+    the request-path role (a bug or an injection there cannot rewrite a tenant's audit trail
+    or billing history), and not by the platform role either."""
+    await _seed(ctx)
+    ts = now()
+    async with ctx.db.tenant_session("alpha") as s:
+        s.add(
+            m.AuditEvent(
+                id=new_id("aud"), ts=ts, tenant_id="alpha", operator=False, action="run.create",
+                resource_kind="run", outcome="success", details={},
+            )
+        )  # fmt: skip
+    async with ctx.db.session() as s:
+        s.add(
+            m.CostLedgerEntry(
+                id=new_id("cle"), tenant_id="alpha", project_id="main", run_id="run_x",
+                attempt=1, kind="actual", resource_class="S", task_count=1, wall_seconds=1,
+                vcpu_seconds=2, gib_seconds=8, price_version="v", amount_micros=10,
+                currency="USD", recorded_at=ts,
+            )
+        )  # fmt: skip
+    statements = [
+        update(m.AuditEvent).values(outcome="denied"),
+        delete(m.AuditEvent),
+        update(m.CostLedgerEntry).values(amount_micros=0),
+        delete(m.CostLedgerEntry),
+    ]
+    for stmt in statements:
+        with pytest.raises(DBAPIError, match=r"permission denied|append-only"):
+            async with ctx.db.tenant_session("alpha") as s:
+                await s.execute(stmt)
+        with pytest.raises(DBAPIError, match=r"permission denied|append-only"):
+            async with ctx.db.session() as s:
+                await s.execute(stmt)
+    async with ctx.db.session() as s:
+        assert (await s.execute(select(func.count()).select_from(m.AuditEvent))).scalar_one() == 1
+        ledger = (await s.execute(select(m.CostLedgerEntry))).scalar_one()
+        assert ledger.amount_micros == 10
+
+
+async def test_the_gateway_role_reads_identity_but_never_tenant_content(
+    ctx: ServerContext,
+) -> None:
+    """Plan §9 (IDOR row): only the orchestrator holds the row-level-security bypass. The
+    API's platform lookups (sign-in, memberships, operator metadata, pushed events) run as
+    the gateway role: it sees identity rows of every tenant and a few metadata columns of
+    runs and the ledger, but no tenant content, so an authorization slip in a handler is
+    still contained by row-level security."""
+    from mapi_server.db import acting_as_gateway
+
+    ids = await _seed(ctx)
+    with acting_as_gateway():
+        async with ctx.db.session() as s:
+            assert (await s.execute(text("SELECT current_user"))).scalar_one() == "mapi_gateway"
+            tenants = {t.id for t in (await s.execute(select(m.Tenant))).scalars()}
+            assert {"alpha", "beta"} <= tenants
+            states = dict((await s.execute(select(m.Run.id, m.Run.state))).all())
+            assert set(states) == {ids["alpha"]["run"], ids["beta"]["run"]}
+    forbidden = [
+        select(m.Dataset),
+        select(m.Run),  # payload, inputs, labels: not readable
+        select(m.Spec),
+        select(m.Model),
+        select(m.RunEvent),
+        update(m.Run).values(state="cancelled"),
+        delete(m.Dataset),
+    ]
+    for stmt in forbidden:
+        with pytest.raises(ProgrammingError, match="permission denied"), acting_as_gateway():
+            async with ctx.db.session() as s:
+                # even pinned to a tenant (so row-level security alone would let rows through)
+                await s.execute(text("SELECT set_config('app.tenant_id', 'alpha', true)"))
+                await s.execute(stmt)
+    async with ctx.db.session() as s:  # outside a request: the orchestrator's role
+        assert (await s.execute(text("SELECT current_user"))).scalar_one() == "mapi_system"
+    async with await psycopg.AsyncConnection.connect(ctx.db.url) as conn:
+        row = await (
+            await conn.execute(
+                "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname = 'mapi_gateway'"
+            )
+        ).fetchone()
+    assert row == (False, False)
+
+
+async def test_the_api_process_starts_up_as_the_gateway(ctx: ServerContext) -> None:
+    """``mapi-server api`` provisions the platform tenant, the dev accounts, invited admins
+    and the catalog cache at start-up with the gateway role alone (it has no login of the
+    bypass role in a cloud deployment)."""
+    from mapi_server.app import startup
+    from mapi_server.db import acting_as_gateway
+    from mapi_server.settings import Profile
+
+    ctx.settings = ctx.settings.model_copy(
+        update={
+            "profile": Profile.DEV,
+            "tenant_id": "gw-platform",
+            "default_tenant_admins": ["boss@gw.test"],
+        }
+    )
+    with acting_as_gateway():
+        await startup(ctx, listen=False)
+    async with ctx.db.session() as s:
+        tenant = await s.get(m.Tenant, "gw-platform")
+        emails = {u.email for u in (await s.execute(select(m.User))).scalars()}
+    assert tenant is not None and {"boss@gw.test", "admin@dev.local"} <= emails
+
+
+async def test_api_requests_cannot_use_the_bypass_role(
+    ctx: ServerContext, client: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A handler that (by mistake) reads tenant content through a platform session gets a
+    permission error instead of every tenant's rows."""
+    import httpx
+
+    assert isinstance(client, httpx.AsyncClient)
+    await _seed(ctx)
+
+    async def leaky_catalog(self: object, session: object) -> object:
+        async with ctx.db.session() as s:  # a platform session, inside a request
+            await s.execute(text("SELECT set_config('app.tenant_id', 'alpha', true)"))
+            return (await s.execute(select(m.Dataset))).scalars().all()
+
+    monkeypatch.setattr(type(ctx.catalogs), "require", leaky_catalog)
+    with pytest.raises(ProgrammingError, match="permission denied"):
+        await client.get("/v1/catalog")
+
+
 async def test_every_tenant_table_forces_rls_and_the_app_role_owns_nothing(
     ctx: ServerContext,
 ) -> None:

@@ -104,7 +104,8 @@ Rules that every component follows:
   event has been received. The finalizer then reads `OutputManifest.status` and fires
   `verified` or `verified_partial`.
 - **`infra_retry`** is applied only after the old execution is confirmed gone. Automatic
-  retries are capped by cost, and there is no automatic retry once a run has spent more than
+  retries are capped by cost (`MAPI_AUTO_RETRY_COST_FACTOR` times the estimate) and by count
+  (`MAPI_MAX_INFRA_RETRIES`), and there is no automatic retry once a run has spent more than
   30 minutes without user consent.
 - **Late events.** The events service drops verified events for runs that are already
   terminal. Every terminal state rejects `event`.
@@ -139,7 +140,7 @@ per-execution values are `MAPI_RUN_ID` and `MAPI_NONCE`.
 | `spec`, `spec_hash`, `catalog_digest` | The *resolved* spec JSON (`use:` ranges pinned), its canonical hash, and the catalog snapshot it was resolved against |
 | `inputs` | `name → SignedGet{url, expires_at, generation, size, crc32c, md5_hash?}`. Well-known names are `dataset` and `bundle`. URLs are pinned to a generation and support HTTP `Range`. The runner checks size and CRC32C after download and exits `13 INTEGRITY_ERROR` on a mismatch. |
 | `outputs` | `name → SignedPut \| PostPolicy`. `manifest` is a required write-once **signed PUT** for `{prefix}manifest.json`. `artifacts` is a **create-only V4 POST policy** on the attempt prefix with a `content_length_range`: it cannot replace an existing object, so it can't overwrite the manifest or swap an output after it was written. `checkpoints` is a POST policy on `checkpoint_prefix`, present only for checkpointable runs. |
-| `resume` | Checkpoint objects from the previous attempt, as `SignedGet`s |
+| `resume` | Checkpoint objects of the newest earlier attempt that wrote any (an attempt that died before its first checkpoint is skipped), as `SignedGet`s |
 | `checkpoint_prefix` | `{attempt prefix}checkpoints/`, or `null` |
 | `hmac_key` | Base64 encoding of at least 32 random bytes; the per-run event HMAC key (`new_hmac_key()`). Never logged: `RunSpec.redacted()` blanks it, together with every URL. |
 | `limits` | `RunLimits`: `log_line_bytes` (4096), `log_total_bytes` (20 MiB), `max_event_bytes` (64 KiB), `progress_interval_s` (2 s), `max_output_bytes` and `scratch_bytes` (from the resource class), `max_output_objects` (10 000) |

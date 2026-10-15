@@ -1,5 +1,5 @@
 """The orchestrator process (``mapi-server worker``): dispatcher + reconciler + event pump +
-procrastinate worker, all on one event loop."""
+housekeeper + procrastinate worker, all on one event loop."""
 
 from __future__ import annotations
 
@@ -10,9 +10,11 @@ import logging
 from mapi_spec.executor import Executor
 
 from mapi_server.context import ServerContext
+from mapi_server.executors import placement_warnings
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.events import EventIngestor
 from mapi_server.services.finalizer import Finalizer
+from mapi_server.services.housekeeping import Housekeeper
 from mapi_server.services.queue import InlineFinalizeQueue, ProcrastinateQueue
 from mapi_server.services.reconciler import Reconciler
 from mapi_server.services.submit import submit_describe
@@ -41,6 +43,7 @@ class Orchestrator:
         self.dispatcher = Dispatcher(ctx, executor)
         self.reconciler = Reconciler(ctx, executor)
         self.ingestor = EventIngestor(ctx)
+        self.housekeeper = Housekeeper(ctx)
         self.stop = asyncio.Event()
 
     async def ensure_catalog(self) -> None:
@@ -55,12 +58,25 @@ class Orchestrator:
                         run.id,
                     )
 
+    async def warn_unplaceable(self) -> list[str]:
+        """Log every active tenant this executor cannot place (residency or tier): their
+        runs would be refused at admission (or fail at dispatch)."""
+        async with self.ctx.db.session() as s:
+            lines = await placement_warnings(s, self.executor.caps())
+        for line in lines[:20]:
+            log.warning("%s", line)
+        if len(lines) > 20:
+            log.warning("... and %d more tenants this executor cannot place", len(lines) - 20)
+        return lines
+
     async def run(self) -> None:
         await self.ensure_catalog()
+        await self.warn_unplaceable()
         tasks = [
             asyncio.create_task(self.dispatcher.run_forever(self.stop), name="dispatcher"),
             asyncio.create_task(self.reconciler.run_forever(self.stop), name="reconciler"),
             asyncio.create_task(self.ingestor.pump(self.executor.event_source()), name="events"),
+            asyncio.create_task(self.housekeeper.run_forever(self.stop), name="housekeeping"),
         ]
         if self.procrastinate is not None:
             tasks.append(

@@ -122,6 +122,15 @@ Fill in the project ids, region, bucket location (follow your tenants' data resi
 exec pools, the access policy id, the domains, the OAuth client id and the GitHub repository.
 The file holds no secrets and is not committed.
 
+!!! warning "Data residency and the exec region"
+    A run is placed only on an executor whose region satisfies its tenant's data residency.
+    The default residency (the platform tenant's, and that of every tenant created without
+    one) is therefore what the dispatch pool's region satisfies: `eu` for `europe-west4`.
+    Override it with the control module's `default_residency`. A tenant whose residency the
+    exec region cannot satisfy has its runs refused at submission (`403`, "no executor of
+    this platform can run this tenant's work"), and the worker logs a warning for it at
+    start-up. Change it with `PATCH /v1/admin/tenants/{id}` (`data_residency`).
+
 ### 3. Apply the foundation
 
 ```bash
@@ -291,7 +300,8 @@ server does not read. Plain values:
 | `MAPI_GCP_PROJECT` | all | Project of the Cloud Storage client |
 | `MAPI_URL_SIGNER` | all | Service account whose `signBlob` signs URLs (no key file exists) |
 | `MAPI_SIGNER`, `MAPI_KMS_KEY_VERSION` | all | `kms` and `…/cryptoKeyVersions/<control.kms_key_version>` of the EC P-256 key that signs bundle manifests |
-| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE` | all | `mapi_app` (row-level security) and `mapi_orchestrator` (the platform role) |
+| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE`, `MAPI_DB_GATEWAY_ROLE` | all | `mapi_app` (row-level security), `mapi_orchestrator` (the platform role, the only RLS bypass) and `mapi_gateway` (the API's lookups before a tenant is known, RLS applies) |
+| `MAPI_DEFAULT_RESIDENCY` | all | Residency of the platform tenant and of tenants created without one: the control module's `default_residency`, else what the dispatch pool's region satisfies (`eu` for `europe-west4`) |
 | `MAPI_API_URL`, `MAPI_WEB_ORIGIN`, `MAPI_PLOTS_ORIGIN` | all, web | Public origins (the API shares the app origin behind the load balancer) |
 | `MAPI_DATA_DIR` | all | `/tmp/mapi` (in-memory scratch) |
 | `MAPI_ALLOWED_HOSTS` | api, events | Host names the service answers |
@@ -307,7 +317,8 @@ From Secret Manager (references, resolved when a revision starts):
 |---|---|---|
 | `MAPI_DATABASE_URL` | api, events | `db-url-app-direct`: `mapi_app`, direct (the LISTEN that feeds SSE) |
 | `MAPI_DATABASE_APP_URL` | api, events, orchestrator | `db-url-app`: `mapi_app` through the pooler (transaction mode); tenant sessions |
-| `MAPI_DATABASE_SYSTEM_URL` | api, events, orchestrator | `db-url-orchestrator`: `mapi_orchestrator`, direct; sign-in lookups, operator routes, pushed events, the orchestrator's loops |
+| `MAPI_DATABASE_GATEWAY_URL` | api, events | `db-url-gateway`: `mapi_gateway` through the pooler; sign-in lookups, operator routes, routing pushed events (no RLS bypass) |
+| `MAPI_DATABASE_SYSTEM_URL` | orchestrator | `db-url-orchestrator`: `mapi_orchestrator`, direct; the orchestrator's loops. Only the orchestrator's service account can read this secret (plan §9) |
 | `MAPI_DATABASE_URL` | orchestrator | `db-url-orchestrator` (procrastinate needs LISTEN) |
 | `MAPI_DATABASE_URL` | migrate | `db-url-migrate`: role `mapi_migrate` (schema owner), direct |
 | `MAPI_SERVER_SECRET` | all | The root of the API-token pepper and the audit fingerprint key; rotating it (`control.secret_versions.server_secret`) invalidates every API token |

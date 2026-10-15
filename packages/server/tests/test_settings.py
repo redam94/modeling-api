@@ -35,3 +35,16 @@ def test_cloud_storage_store_is_keyless_and_needs_a_signer(monkeypatch: pytest.M
         "uploader_service_account_email": "uploader@p.iam.gserviceaccount.com",
         "project": "mapi-prod-data",
     }
+
+
+def test_default_residency_follows_the_cloud_run_region() -> None:
+    """Tenants created without a residency (the platform tenant among them) must be able to
+    run on the deployment's executor: the default comes from its region."""
+    assert Settings().effective_default_residency() == "us"  # local executors: no region
+    cloud = Settings(executor="cloudrun-jobs", cloudrun_region="europe-west4")
+    assert cloud.effective_default_residency() == "eu"
+    assert Settings(executor="cloudrun-jobs").effective_default_residency() == "eu"
+    pinned = Settings(executor="cloudrun-jobs", default_residency="europe-west4")
+    assert pinned.effective_default_residency() == "europe-west4"
+    with pytest.raises(ValueError, match="default_residency"):
+        Settings(default_residency="Not A Region")

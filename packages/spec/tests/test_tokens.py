@@ -216,11 +216,25 @@ def test_score_scope_targets_one_endpoint_and_admin_covers_all() -> None:
     assert scope_allows(["score:a"], "read", "endpoint", resource_name="a")
     assert not scope_allows(["score:a"], "run", "endpoint", resource_name="b")
     assert not scope_allows(["score:a"], "run", "endpoint")
-    assert not scope_allows(["score:a"], "run", "model", resource_name="a")
+    # until endpoints exist, score:<model id> scores that model (score:* every model)
+    assert scope_allows(["score:a"], "run", "model", resource_name="a")
+    assert not scope_allows(["score:a"], "run", "model", resource_name="b")
+    assert not scope_allows(["score:a"], "run", "model")
+    assert scope_allows(["score:*"], "run", "model")
+    assert not scope_allows(["score:*"], "read", "model")
+    assert not scope_allows(["score:*"], "create", "run")
     assert scope_allows(["score:*"], "run", "endpoint", resource_name="anything")
     assert scope_allows(["admin"], "delete", "dataset")
     assert not scope_allows([], "read", "model")
     assert not scope_allows(["bogus"], "read", "model")
+
+
+def test_no_scope_lets_a_token_mint_tokens() -> None:
+    """A child token would escape its parent's expiry, budget, rate limit and revocation,
+    so minting needs a signed-in session whatever the token's scopes."""
+    for scope in [*SCOPE_EXPECTED, "admin", "score:*"]:
+        assert not scope_allows([scope], "create", "token"), scope
+    assert scope_allows(["admin"], "delete", "token")  # revoking stays possible
 
 
 # -------------------------------------------------------------------------------------- DTOs

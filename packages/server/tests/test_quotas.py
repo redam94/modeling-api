@@ -3,6 +3,7 @@ the dispatcher, and the cost ledger (metered attempts → ``Run.cost`` and ``/v1
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterator
 from datetime import timedelta
 
@@ -32,7 +33,7 @@ from mapi_spec.cost import DEFAULT_PRICE_TABLE, estimate_cost
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
 from prometheus_client.parser import text_string_to_metric_families
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 pytestmark = pytest.mark.integration
@@ -214,6 +215,56 @@ async def test_storage_quota_blocks_uploads_only(
     assert (await client.get(f"/v1/datasets/{ds['id']}")).status_code == 200
 
 
+async def test_concurrent_uploads_cannot_overrun_the_storage_quota(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """Storage admission is serialized per tenant (the tenant row is locked until the upload
+    row commits), so concurrent intents cannot each pass against the same usage."""
+    ds = (await client.post("/v1/datasets", json={"name": "race"})).json()
+    await _policy(ctx, "tenant", "default", storage_bytes=1000)
+    body = {"filename": "a.csv", "content_type": "text/csv", "size_bytes": 800}
+    url = f"/v1/datasets/{ds['id']}/uploads"
+    for _ in range(3):  # the race is timing-dependent: try a few rounds
+        rs = await asyncio.gather(*[client.post(url, json=body) for _ in range(6)])
+        assert all(r.status_code in (201, 429) for r in rs), [r.text for r in rs]
+        async with ctx.db.session() as s:
+            total = (await s.execute(select(func.sum(m.Upload.size_bytes)))).scalar_one()
+        assert total == 800, total  # exactly one intent fits
+
+
+async def test_abandoned_upload_intents_stop_counting_once_expired(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """An upload intent reserves its declared size only until its signed PUT expires; the
+    housekeeper then marks it expired and deletes whatever reached quarantine."""
+    from mapi_server.services.housekeeping import Housekeeper
+    from mapi_spec.storage import NotFound
+
+    ds = (await client.post("/v1/datasets", json={"name": "abandoned"})).json()
+    await _policy(ctx, "tenant", "default", storage_bytes=1000)
+    body = {"filename": "a.csv", "content_type": "text/csv", "size_bytes": 800}
+    url = f"/v1/datasets/{ds['id']}/uploads"
+    first = await client.post(url, json=body)
+    assert first.status_code == 201
+    assert (await client.post(url, json=body)).status_code == 429  # 800 + 800 > 1000
+    async with ctx.db.session() as s:
+        row = await s.get(m.Upload, first.json()["id"])
+        assert row is not None
+        row.expires_at = now() - timedelta(minutes=1)  # the browser was closed
+        bucket, name = row.bucket, row.object_name
+    await ctx.store.put(bucket, name, b"half a file")
+    second = await client.post(url, json=body)
+    assert second.status_code == 201, second.text  # the expired intent no longer counts
+    assert await Housekeeper(ctx).sweep_once() >= 1
+    async with ctx.db.session() as s:
+        statuses = {
+            u.id: u.status for u in (await s.execute(select(m.Upload))).scalars()
+        }  # fmt: skip
+    assert statuses == {first.json()["id"]: "expired", second.json()["id"]: "pending"}
+    with pytest.raises(NotFound):
+        await ctx.store.stat(bucket, name)
+
+
 # ============================================================================ fair share
 
 
@@ -240,6 +291,79 @@ async def _queue(
             )
         )  # fmt: skip
     return run_id
+
+
+async def test_a_finalizing_run_is_not_counted_twice(ctx: ServerContext, tenants: None) -> None:
+    """Entering FINALIZING meters the attempt into the ledger: from then on the run's
+    estimate no longer counts, so it is not counted as estimate + actual."""
+    from mapi_server.services.quotas import quota_usage
+    from mapi_spec.quotas import QuotaScope
+
+    run_id = await _queue(ctx, "big", state="finalizing")
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, run_id)
+        assert run is not None
+        run.estimate = {"vcpu_seconds": 100.0}
+        s.add(
+            m.CostLedgerEntry(
+                id=new_id("cst"), tenant_id="big", project_id="main", run_id=run_id,
+                attempt=1, kind="actual", resource_class="S", task_count=1,
+                wall_seconds=50.0, vcpu_seconds=100.0, gib_seconds=400.0,
+                price_version="test", amount_micros=1, currency="USD", recorded_at=now(),
+            )
+        )  # fmt: skip
+        await _queue(ctx, "big", state="running")  # an unmetered run still counts its estimate
+    async with ctx.db.session() as s:
+        for other in (await s.execute(select(m.Run).where(m.Run.id != run_id))).scalars():
+            other.estimate = {"vcpu_seconds": 30.0}
+    async with ctx.db.tenant_session("big") as s:
+        usage = await quota_usage(s, QuotaScope.TENANT, "big", now=now())
+    assert usage.vcpu_seconds_today == 130.0 and usage.concurrent_runs == 2
+    # a retried run (attempt 2 queued after a metered attempt 1) counts its new estimate
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, run_id)
+        assert run is not None
+        run.state, run.attempt = "queued", 2
+    async with ctx.db.tenant_session("big") as s:
+        usage = await quota_usage(s, QuotaScope.TENANT, "big", now=now())
+    assert usage.vcpu_seconds_today == 230.0
+
+
+async def test_concurrent_submissions_respect_the_global_concurrency_cap(
+    ctx: ServerContext, tenants: None
+) -> None:
+    """Admission against the global level is serialized across tenants (each tenant's row
+    lock only serializes that tenant), so two tenants cannot both take the last slot."""
+    from mapi_server.services.quotas import admit_run
+    from mapi_spec.quotas import QuotaDemand
+
+    await _policy(ctx, "global", "*", concurrent_runs=1)
+
+    async def submit(tenant: str) -> bool:
+        async with ctx.db.tenant_session(tenant) as sess:
+            async with ctx.db.session() as system:
+                decision = await admit_run(
+                    sess, system, tenant_id=tenant, token=None,
+                    demand=QuotaDemand(new_runs=1), untrusted_code=False, now=now(),
+                )  # fmt: skip
+            if decision.allowed:
+                ts = now()
+                sess.add(
+                    m.Run(
+                        id=new_id("run"), tenant_id=tenant, project_id="main", kind="fit",
+                        state="queued", attempt=1, resource_class="S", timeout_s=600,
+                        labels={}, payload={}, inputs={}, checkpointable=False,
+                        infra_retries=0, finalize_attempts=0, finalize={}, last_event_id=0,
+                        created_at=ts, updated_at=ts, queued_at=ts, priority="batch",
+                        task_count=1, untrusted_code=False,
+                    )
+                )  # fmt: skip
+                await asyncio.sleep(0.2)  # the rest of a real submission
+            return decision.allowed
+
+    allowed = await asyncio.gather(submit("big"), submit("small"))
+    assert sorted(allowed) == [False, True]
+    assert len(await _runs(ctx)) == 1
 
 
 async def _leased(ctx: ServerContext, dispatcher: Dispatcher) -> list[str]:
@@ -304,6 +428,122 @@ async def test_dispatcher_holds_runs_the_kill_switches_or_tenant_status_stop(
     async with ctx.db.session() as s:
         await s.execute(update(m.Tenant).where(m.Tenant.id == "big").values(status="active"))
     assert await _leased(ctx, dispatcher) == [untrusted]
+
+
+async def test_the_spend_cap_counts_work_in_flight(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """The ledger only grows when runs finish: the spend cap also counts the estimates of
+    work already admitted (at admission) or started (at dispatch, run by run)."""
+    from mapi_server.services.quotas import kill_switch_check
+
+    await make_tenant(ctx, "pay", tier="self-hosted-trusted", projects=("main",))
+    r = await client.put(
+        "/v1/admin/kill-switches", json={"global_spend_cap_micros": 1000, "reason": "beta cap"}
+    )
+    assert r.status_code == 200
+    runs = [await _queue(ctx, "pay", minutes_ago=3 - i) for i in range(3)]
+    async with ctx.db.session() as s:
+        for row in (await s.execute(select(m.Run))).scalars():
+            row.estimate = {"vcpu_seconds": 1.0, "amount_micros": 600, "currency": "USD"}
+    # nothing is metered yet, but 1800 micros of work is queued: no more admissions
+    async with ctx.db.session() as s:
+        decision = await kill_switch_check(
+            s, untrusted_code=False, tier="self-hosted-trusted", now=now()
+        )
+    assert not decision.allowed and "spend cap" in (decision.message or "")
+    # dispatch starts runs while the committed spend is below the cap: 0, then 600, not 1200
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    assert await _leased(ctx, dispatcher) == runs[:2]
+    assert await _leased(ctx, dispatcher) == []  # 1200 in flight
+    async with ctx.db.session() as s:
+        assert (await load_run(s, None, runs[2])).state == RunState.QUEUED.value
+
+
+async def test_held_runs_cannot_fill_the_lease_window(
+    ctx: ServerContext, client: httpx.AsyncClient, tenants: None
+) -> None:
+    """Runs that would be held anyway (suspended tenant, paused untrusted code, a tenant
+    over budget) never fill the window of queued runs the planner looks at, so other
+    tenants' runs behind them still start."""
+    ctx.settings = ctx.settings.model_copy(
+        update={"lease_candidates": 5, "lease_candidates_per_tenant": 2}
+    )
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    old = [await _queue(ctx, "big", minutes_ago=60 - i) for i in range(6)]
+    fresh = await _queue(ctx, "small", minutes_ago=1)
+    # 1. a suspended tenant keeps its queue, out of the window
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Tenant).where(m.Tenant.id == "big").values(status="suspended"))
+    assert await _leased(ctx, dispatcher) == [fresh]
+    # 2. untrusted code paused platform-wide
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Tenant).where(m.Tenant.id == "big").values(status="active"))
+        await s.execute(update(m.Run).where(m.Run.id.in_(old)).values(untrusted_code=True))
+    await client.put(
+        "/v1/admin/kill-switches", json={"untrusted_execution_enabled": False, "reason": "drill"}
+    )
+    fresh = await _queue(ctx, "small", minutes_ago=1)
+    assert await _leased(ctx, dispatcher) == [fresh]
+    # 3. a tenant over its budget holds at most lease_candidates_per_tenant slots
+    await client.put(
+        "/v1/admin/kill-switches", json={"untrusted_execution_enabled": True, "reason": "drill"}
+    )
+    await _policy(ctx, "tenant", "big", vcpu_seconds_per_day=0)
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Run).where(m.Run.id.in_(old)).values(untrusted_code=False))
+        for row in (await s.execute(select(m.Run).where(m.Run.id.in_(old)))).scalars():
+            row.estimate = {"vcpu_seconds": 10.0}
+    fresh = await _queue(ctx, "small", minutes_ago=1)
+    assert await _leased(ctx, dispatcher) == [fresh]
+    async with ctx.db.session() as s:
+        states = {(await load_run(s, None, r)).state for r in old}
+    assert states == {RunState.QUEUED.value}
+
+
+async def test_runs_the_executor_cannot_place_are_refused_at_admission(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """A tenant whose residency the executor's regions cannot satisfy gets a clear refusal
+    when it submits, instead of a run that is queued and then fails as INFRA_ERROR. The
+    worker also warns at start-up when such tenants exist."""
+    from mapi_server.executors import placement_warnings
+    from mapi_spec.executor import ExecutorCaps
+    from mapi_spec.tenancy import Isolation
+
+    await ready_dataset(ctx)
+    spec_id = await _spec(client)
+    fit = {"kind": "fit", "spec_id": spec_id, "revision": 1}
+    caps = ExecutorCaps(
+        isolation=Isolation.MICROVM, egress_enforced=True, dns_enforced=True,
+        classes=[ResourceClass.S, ResourceClass.M, ResourceClass.L],
+        regions=("europe-west4",),
+    )  # fmt: skip
+    async with ctx.db.session() as s:
+        s.add(
+            m.ExecutorReport(
+                name="cloudrun-jobs", enabled=True, caps=caps.model_dump(mode="json"),
+                submits_last_minute=0, throttled_last_hour=0, checked_at=now(),
+            )
+        )  # fmt: skip
+        tenant = await s.get(m.Tenant, "default")
+        assert tenant is not None and tenant.data_residency == "us"
+    r = await client.post("/v1/runs", json=fit)
+    assert r.status_code == 403, r.text
+    assert "residency us" in r.json()["detail"]
+    assert await _runs(ctx) == []
+    async with ctx.db.session() as s:
+        warnings = await placement_warnings(s, caps)
+    assert any("default" in w and "residency us" in w for w in warnings)
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Tenant).values(data_residency="eu"))
+        assert await placement_warnings(s, caps) == []
+    assert (await client.post("/v1/runs", json=fit)).status_code == 201
+    # a stale report (no worker running it) does not block submissions
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Tenant).values(data_residency="us"))
+        await s.execute(update(m.ExecutorReport).values(checked_at=now() - timedelta(hours=1)))
+    assert (await client.post("/v1/runs", json=fit)).status_code == 201
 
 
 async def test_shared_tiers_need_a_sandboxing_executor(ctx: ServerContext) -> None:

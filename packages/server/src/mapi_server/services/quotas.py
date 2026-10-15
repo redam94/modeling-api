@@ -6,8 +6,10 @@ a token's policy is its own rate limit and vCPU budget tightened by any operator
 it. The pure decision is always :func:`mapi_spec.quotas.evaluate_quota`.
 
 vCPU-second usage = metered ledger entries in the window + the estimates of runs that are
-active and not yet metered, so a burst of submissions cannot overrun a budget before the
-first run finishes.
+active and whose current attempt is not yet metered (a FINALIZING run is metered on entry),
+so a burst of submissions cannot overrun a budget before the first run finishes and no run
+counts twice. Storage usage = dataset versions + upload intents still able to
+complete (uploaded, or pending with an unexpired signed PUT).
 """
 
 from __future__ import annotations
@@ -44,12 +46,15 @@ from mapi_server.observability import metrics as obs_metrics
 __all__ = [
     "ACTIVE_STATES",
     "DISPATCHED_STATES",
+    "GLOBAL_ADMISSION_LOCK",
     "KILL_SWITCHES_KEY",
     "admit_run",
     "admit_storage",
     "count_requests",
+    "estimate_micros",
     "global_policy",
     "global_spend",
+    "in_flight_spend",
     "kill_switch_check",
     "kill_switches",
     "policy_dto",
@@ -61,6 +66,8 @@ __all__ = [
 ]
 
 KILL_SWITCHES_KEY: Final = "kill_switches"
+GLOBAL_ADMISSION_LOCK: Final = 0x6D617069_61646D74
+"""``pg_advisory_xact_lock`` key serializing run admission against global limits."""
 ACTIVE_STATES: Final = tuple(
     s.value for s in RunState if not s.terminal and s not in (RunState.CREATED,)
 )
@@ -140,6 +147,31 @@ def _estimate_vcpu() -> ColumnElement[float]:
     return func.coalesce(cast(m.Run.estimate["vcpu_seconds"].astext, Float), 0.0)
 
 
+def _current_attempt_metered() -> ColumnElement[bool]:
+    """Has the run's current attempt an ``actual`` ledger entry? (It is metered when it
+    ends, FINALIZING included: from then on its estimate must stop counting.)"""
+    return (
+        select(m.CostLedgerEntry.id)
+        .where(
+            m.CostLedgerEntry.run_id == m.Run.id,
+            m.CostLedgerEntry.attempt == m.Run.attempt,
+            m.CostLedgerEntry.kind == CostEntryKind.ACTUAL.value,
+        )
+        .exists()
+    )
+
+
+def estimate_micros(run: m.Run, currency: str) -> int:
+    """A run's estimated cost in ``currency`` (0 without an estimate in that currency)."""
+    est = run.estimate or {}
+    if est.get("currency") != currency:
+        return 0
+    try:
+        return max(0, int(est.get("amount_micros") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 async def quota_usage(
     s: AsyncSession,
     scope: QuotaScope,
@@ -158,9 +190,10 @@ async def quota_usage(
         ),
         func.coalesce(func.sum(m.CostLedgerEntry.vcpu_seconds), 0.0),
     ).where(m.CostLedgerEntry.recorded_at >= month)
-    active = select(func.count(), func.coalesce(func.sum(_estimate_vcpu()), 0.0)).where(
-        m.Run.state.in_(ACTIVE_STATES)
-    )
+    metered = _current_attempt_metered()
+    active = select(
+        func.count(), func.coalesce(func.sum(_estimate_vcpu()).filter(~metered), 0.0)
+    ).where(m.Run.state.in_(ACTIVE_STATES))
     if scope is QuotaScope.TOKEN:
         ledger = ledger.where(m.CostLedgerEntry.token_id == subject_id)
         active = active.where(m.Run.token_id == subject_id)
@@ -185,7 +218,8 @@ async def quota_usage(
                 await s.execute(
                     select(func.coalesce(func.sum(m.Upload.size_bytes), 0)).where(
                         m.Upload.tenant_id == subject_id,
-                        m.Upload.status.in_(("pending", "uploaded")),
+                        (m.Upload.status == "uploaded")
+                        | ((m.Upload.status == "pending") & (m.Upload.expires_at > now)),
                     )
                 )
             ).scalar_one()
@@ -217,15 +251,40 @@ async def global_spend(s: AsyncSession, switches: KillSwitches, *, now: datetime
     return int(value)
 
 
+async def in_flight_spend(
+    s: AsyncSession, switches: KillSwitches, *, states: Sequence[str] = ACTIVE_STATES
+) -> int:
+    """Estimated cost (micros, the cap's currency) of runs in ``states`` whose current
+    attempt is not metered yet: spend already committed but not in the ledger."""
+    value = (
+        await s.execute(
+            select(
+                func.coalesce(func.sum(cast(m.Run.estimate["amount_micros"].astext, BigInteger)), 0)
+            ).where(
+                m.Run.state.in_(list(states)),
+                m.Run.estimate["currency"].astext == switches.spend_cap_currency,
+                ~_current_attempt_metered(),
+            )
+        )
+    ).scalar_one()
+    return int(value)
+
+
 async def kill_switch_check(
     s: AsyncSession, *, untrusted_code: bool, tier: str, now: datetime
 ) -> QuotaDecision:
-    """:func:`mapi_spec.admin.kill_switch_decision` with the stored switches (platform role)."""
+    """:func:`mapi_spec.admin.kill_switch_decision` with the stored switches (platform role).
+
+    The spend cap compares the metered spend *plus* the estimates of admitted runs not yet
+    metered (:func:`in_flight_spend`): the ledger only grows when runs finish, so a burst
+    of submissions would otherwise all pass against the same figure.
+    """
     switches = await kill_switches(s)
     spent = 0
     if switches.global_spend_cap_micros is not None:
-        spent = await global_spend(s, switches, now=now)
-        obs_metrics.set_global_spend(spent, switches.global_spend_cap_micros)
+        metered = await global_spend(s, switches, now=now)
+        obs_metrics.set_global_spend(metered, switches.global_spend_cap_micros)
+        spent = metered + await in_flight_spend(s, switches)
     return _observed(
         kill_switch_decision(
             switches,
@@ -264,7 +323,11 @@ async def admit_run(
 
     ``session`` is the request's tenant session: the tenant row is locked (``FOR UPDATE``) so
     concurrent submissions of one tenant are admitted one at a time against fresh counters.
-    ``system`` (platform role) reads the policies, kill switches and global counters.
+    When the global policy limits concurrency or vCPU-seconds, a transaction-scoped advisory
+    lock (:data:`GLOBAL_ADMISSION_LOCK`, taken after the tenant row, always in that order)
+    serializes admissions across tenants too; both locks are held until ``session`` commits
+    the new run. ``system`` (platform role) reads the policies, kill switches and global
+    counters.
     """
     tenant = (
         await session.execute(select(m.Tenant).where(m.Tenant.id == tenant_id).with_for_update())
@@ -288,12 +351,15 @@ async def admit_run(
             await quota_usage(session, QuotaScope.TENANT, tenant_id, now=now),
         )
     )
-    levels.append(
-        (
-            await global_policy(system),
-            await quota_usage(system, QuotaScope.GLOBAL, GLOBAL_SUBJECT, now=now),
-        )
-    )
+    platform = await global_policy(system)
+    limits = platform.limits
+    if (
+        limits.concurrent_runs is not None
+        or limits.vcpu_seconds_per_day is not None
+        or limits.vcpu_seconds_per_month is not None
+    ):
+        await session.execute(select(func.pg_advisory_xact_lock(GLOBAL_ADMISSION_LOCK)))
+    levels.append((platform, await quota_usage(system, QuotaScope.GLOBAL, GLOBAL_SUBJECT, now=now)))
     return _observed(evaluate_quota(levels, demand, now=now))
 
 
@@ -301,8 +367,15 @@ async def admit_storage(
     session: AsyncSession, system: AsyncSession, *, tenant_id: str, nbytes: int, now: datetime
 ) -> QuotaDecision:
     """May the tenant store ``nbytes`` more (an upload)? Reads and deletes are never
-    blocked: only demands for more storage are checked."""
-    tenant = await session.get(m.Tenant, tenant_id)
+    blocked: only demands for more storage are checked.
+
+    Like :func:`admit_run`, the tenant row is locked (``FOR UPDATE``) in the request's
+    tenant session, so concurrent uploads of one tenant are admitted one at a time: the lock
+    is held until the caller's ``uploads`` row commits in that same transaction.
+    """
+    tenant = (
+        await session.execute(select(m.Tenant).where(m.Tenant.id == tenant_id).with_for_update())
+    ).scalar_one_or_none()
     if tenant is None:
         return QuotaDecision.allow()
     level = (

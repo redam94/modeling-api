@@ -11,6 +11,7 @@ import httpx
 import pytest
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.services.runs import now
 from mapi_server.settings import Profile, Settings
 from mapi_server_testkit.identity import (
     grant_role,
@@ -20,7 +21,16 @@ from mapi_server_testkit.identity import (
     session_caller,
     token_caller,
 )
-from mapi_spec.api import ENDPOINTS, ApiToken, Me, Page, RouteScope, TokenCreated, route_access
+from mapi_spec.api import (
+    ENDPOINTS,
+    TOKEN_TENANT_ROUTES,
+    ApiToken,
+    Me,
+    Page,
+    RouteScope,
+    TokenCreated,
+    route_access,
+)
 from mapi_spec.tenancy import PROJECT_HEADER
 from mapi_spec.tokens import TOKEN_ALPHABET, generate_token, scope_allows
 from sqlalchemy import select
@@ -129,6 +139,39 @@ async def test_malformed_wrong_expired_and_orphaned_tokens(
     assert all(e.tenant_id == "acme" and e.ip_hash for e in failed)
 
 
+async def test_bad_secrets_are_indistinguishable_and_their_audit_is_bounded(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """An unknown prefix and a known prefix with a wrong secret get the same answer, and an
+    anonymous client hammering a known (semi-public) prefix cannot write unbounded audit rows
+    into the victim tenant: failures are audited at most a few times per prefix and minute."""
+    from mapi_server.services.housekeeping import Housekeeper
+
+    ana = await _acme(ctx)
+    secret = await make_token(ctx, ana, "acme", "growth", ["models:read"])
+    prefix = secret.split("_")[1]
+    unknown = await token_caller(client, str(generate_token())).get("/v1/datasets")
+    forged = await token_caller(client, str(generate_token(prefix=prefix))).get("/v1/datasets")
+    assert unknown.status_code == forged.status_code == 401
+    assert unknown.json()["detail"] == forged.json()["detail"] == "the API token is invalid"
+    for _ in range(20):
+        r = await token_caller(client, str(generate_token(prefix=prefix))).get("/v1/datasets")
+        assert r.status_code == 401
+    async with ctx.db.session() as s:
+        failed = [
+            e for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "token.auth_failed"
+        ]  # fmt: skip
+        counters = list((await s.execute(select(m.RateCounter))).scalars())
+    assert 1 <= len(failed) <= 5
+    assert all(e.tenant_id == "acme" for e in failed)
+    assert counters  # the counters behind it are swept once their window is over
+    later = now() + timedelta(minutes=5)
+    await Housekeeper(ctx).sweep_once(now=later)
+    async with ctx.db.session() as s:
+        assert list((await s.execute(select(m.RateCounter))).scalars()) == []
+
+
 async def test_scopes_never_widen_the_owners_role(
     ctx: ServerContext, client: httpx.AsyncClient
 ) -> None:
@@ -155,6 +198,62 @@ async def test_token_rate_limit(ctx: ServerContext, client: httpx.AsyncClient) -
     # other principals are not affected by this token's budget
     web = await session_caller(ctx, client, ana, tenant_id="acme", project_id="growth")
     assert (await web.get("/v1/datasets")).status_code == 200
+
+
+async def test_tokens_cannot_mint_tokens(ctx: ServerContext, client: httpx.AsyncClient) -> None:
+    """A child token would drop its parent's budget, rate limit and expiry and outlive its
+    revocation: even an ``admin`` token cannot mint one."""
+    ana = await _acme(ctx)
+    secret = await make_token(ctx, ana, "acme", "growth", ["admin"],
+                              rate_limit_per_minute=5, vcpu_seconds_budget=10.0,
+                              expires_in=timedelta(hours=1))  # fmt: skip
+    tok = token_caller(client, secret)
+    r = await tok.post(
+        "/v1/tokens", json={"name": "child", "scopes": ["admin"], "expires_in_days": 365}
+    )
+    assert r.status_code == 403, r.text
+    async with ctx.db.session() as s:
+        assert len(list((await s.execute(select(m.ApiToken))).scalars())) == 1
+        denied = [
+            e for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "token.create"
+        ]  # fmt: skip
+    assert [e.outcome for e in denied] == ["denied"]
+    # the token may still list and revoke tokens; a session still mints
+    assert (await tok.get("/v1/tokens")).status_code == 200
+    web = await session_caller(ctx, client, ana, tenant_id="acme", project_id="growth")
+    r = await web.post("/v1/tokens", json={"name": "ci", "scopes": ["models:read"]})
+    assert r.status_code == 201, r.text
+
+
+async def test_project_bound_token_cannot_administer_the_tenant(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """A token is bound to one project: even an ``admin`` token of a tenant admin cannot add
+    tenant admins, delete other projects or read tenant-wide audit and billing."""
+    owner = await make_user(ctx, "owner@acme.test")
+    await make_tenant(ctx, "acme", projects=("growth", "secret"))
+    await grant_role(ctx, owner, "acme", None, "admin")
+    tok = token_caller(client, await make_token(ctx, owner, "acme", "growth", ["admin"]))
+    r = await tok.post("/v1/tenants/acme/members", json={"email": "evil@x.test", "role": "admin"})
+    assert r.status_code == 403, r.text
+    assert "signed-in session" in r.json()["detail"]
+    assert (await tok.delete("/v1/tenants/acme/projects/secret")).status_code == 403
+    assert (await tok.get("/v1/tenants/acme/audit")).status_code == 403
+    assert (await tok.get("/v1/tenants/acme/usage")).status_code == 403
+    assert (await tok.get("/v1/tenants/acme/members")).status_code == 403
+    assert (await tok.patch("/v1/tenants/acme", json={"name": "x"})).status_code == 403
+    # read-only views of its own tenant stay open, narrowed to the token's project
+    assert (await tok.get("/v1/tenants/acme")).status_code == 200
+    r = await tok.get("/v1/tenants/acme/projects")
+    assert r.status_code == 200 and [p["id"] for p in r.json()["items"]] == ["growth"]
+    async with ctx.db.session() as s:
+        users = [u.email for u in (await s.execute(select(m.User))).scalars()]
+        projects = [p.id for p in (await s.execute(select(m.Project))).scalars()]
+    assert "evil@x.test" not in users and "secret" in projects
+    # the same person in a browser session still can
+    web = await session_caller(ctx, client, owner)
+    assert (await web.get("/v1/tenants/acme/audit")).status_code == 200
 
 
 # =================================================================== scopes on every endpoint
@@ -185,8 +284,9 @@ async def test_token_scopes_gate_every_endpoint(
     ctx: ServerContext, client: httpx.AsyncClient, scope: str
 ) -> None:
     """Every operation is refused (403) unless the token's scope covers its permission (and
-    the owner is a tenant admin, so only the scope decides). Platform operations are never
-    open to tokens; public and "any principal" routes never answer 403."""
+    the owner is a tenant admin, so only the scope decides). Platform operations and tenant
+    administration are never open to tokens; public and "any principal" routes never answer
+    403."""
     owner = await make_user(ctx, "owner@acme.test")
     await make_tenant(ctx, "acme", projects=("growth", "scratch"))
     await grant_role(ctx, owner, "acme", None, "admin")
@@ -198,11 +298,13 @@ async def test_token_scopes_gate_every_endpoint(
             continue
         body = {} if e.method in ("POST", "PUT", "PATCH") else None
         path = _path(e.path)
-        if e.operation_id == "delete_project":  # allowed for admin: delete a spare one
-            path = path.replace("/growth", "/scratch")
         r = await tok.request(e.method, path, json=body)
         if access.scope is RouteScope.PLATFORM:
             assert r.status_code == 403, (scope, e.operation_id, r.status_code)
+            continue
+        if access.scope is RouteScope.TENANT and e.operation_id not in TOKEN_TENANT_ROUTES:
+            assert r.status_code == 403, (scope, e.operation_id, r.status_code)
+            checked += 1
             continue
         if access.resource is None or access.action is None:
             assert r.status_code != 403, (scope, e.operation_id, r.text)

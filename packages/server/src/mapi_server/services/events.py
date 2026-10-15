@@ -133,7 +133,16 @@ class EventIngestor:
         return result
 
     async def _ingest(self, event: RunEvent, *, execution: str | None = None) -> IngestResult:
-        async with self.ctx.db.session() as session:
+        # Only the run's tenant is looked up on the platform session (the events service
+        # holds no row-level-security bypass); everything else happens in a tenant session.
+        async with self.ctx.db.session() as lookup:
+            tenant_id = (
+                await lookup.execute(select(m.Run.tenant_id).where(m.Run.id == event.run_id))
+            ).scalar_one_or_none()
+        if tenant_id is None:
+            log.warning("event for unknown run %s", event.run_id)
+            return IngestResult.UNKNOWN_ATTEMPT
+        async with self.ctx.db.tenant_session(tenant_id) as session:
             attempt = await session.get(m.RunAttempt, (event.run_id, event.attempt))
             if attempt is None:
                 log.warning("event for unknown run/attempt %s/%s", event.run_id, event.attempt)

@@ -58,6 +58,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | unset | Set both to require a Google-signed OIDC token from the push subscription's service account on `POST /internal/events` (see [Authentication](authentication.md#pubsub-push) and the Cloud Run settings below) |
 | `MAPI_SSE_HEARTBEAT_S` | `15` | Seconds between `: keepalive` comments on event streams |
 | `MAPI_SSE_POLL_S` | `5` | Fallback poll of an event stream when no PostgreSQL `NOTIFY` arrives |
+| `MAPI_SSE_REAUTH_S` | `60` | How often an open event stream re-checks its caller's credential (revoked tokens, ended sessions and lost access close it) |
 | `MAPI_MAX_SIDECAR_BYTES` | 8 MiB | Largest JSON sidecar (`plots.json`, `diagnostics.json`, …) the control plane will parse |
 
 !!! warning "`MAPI_PROFILE` means two things"
@@ -71,11 +72,13 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | Variable | Default | Meaning |
 |---|---|---|
 | `MAPI_DB_POOL_SIZE` | `10` | Request-path connections per process (plus as many overflow connections) |
-| `MAPI_DB_SYSTEM_POOL_SIZE` | `5` | Platform-role connections per process |
+| `MAPI_DB_SYSTEM_POOL_SIZE` | `5` | Platform-role connections per process (the orchestrator) |
+| `MAPI_DB_GATEWAY_POOL_SIZE` | `5` | Gateway-role connections per process (the API and events service) |
 | `MAPI_DB_ECHO` | `false` | Log every SQL statement |
 | `MAPI_DATABASE_APP_URL` | unset | Dedicated login of the request-path role (row-level security applies). Unset: `DATABASE_URL` with the start-up option `role=$MAPI_DB_APP_ROLE` |
-| `MAPI_DATABASE_SYSTEM_URL` | unset | Dedicated login of the platform role (dispatcher, reconciler, finalizer, events, authentication lookups, operator endpoints). Unset: `DATABASE_URL` with `role=$MAPI_DB_SYSTEM_ROLE` |
-| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE` | `mapi_app`, `mapi_system` | The two runtime roles `mapi-server migrate` creates and grants (see [Authentication](authentication.md#row-level-security)) |
+| `MAPI_DATABASE_SYSTEM_URL` | unset | Dedicated login of the platform role, the only one that bypasses row-level security: the orchestrator's dispatcher, reconciler, finalizer and housekeeper. The API never needs it. Unset: `DATABASE_URL` with `role=$MAPI_DB_SYSTEM_ROLE` |
+| `MAPI_DATABASE_GATEWAY_URL` | unset | Dedicated login of the gateway role: what the API and events service look up before a tenant is known (sign-in, memberships, operator metadata, pushed events), with row-level security applying. Unset: `DATABASE_URL` with `role=$MAPI_DB_GATEWAY_ROLE` |
+| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE`, `MAPI_DB_GATEWAY_ROLE` | `mapi_app`, `mapi_system`, `mapi_gateway` | The three runtime roles `mapi-server migrate` creates and grants (see [Authentication](authentication.md#row-level-security)) |
 
 **Authentication (v0.3)**
 
@@ -103,7 +106,8 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_PRICE_TABLE_PATH` | unset | A JSON `PriceTable`; unset: Cloud Run-like list prices (`mapi_spec.cost.DEFAULT_PRICE_TABLE`) |
 | `MAPI_ESTIMATE_WALL_S` | fit 300, score 30, ingest 60, … | Per run kind, the wall time (seconds, capped at the run's timeout) a run is charged against vCPU-second quotas until it is metered (JSON) |
 | `MAPI_RATE_LIMITS_ENABLED` | `true` | Enforce `requests_per_minute` at token, tenant and global level |
-| `MAPI_LEASE_CANDIDATES` | `500` | Queued runs the dispatcher's fair-share planner considers per pass |
+| `MAPI_LEASE_CANDIDATES` | `500` | Queued runs the dispatcher's fair-share planner considers per pass (runs held by a suspended tenant, the kill switches or the spend cap are not among them) |
+| `MAPI_LEASE_CANDIDATES_PER_TENANT` | `50` | At most this many of them per tenant, so one tenant's held runs cannot crowd out the others |
 | `MAPI_EXECUTOR_REPORT_INTERVAL_S` | `10` | How often each dispatcher reports executor health for `/v1/admin/executors` |
 
 **Object storage**
@@ -145,7 +149,9 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_LOST_EXECUTION_GRACE_S` | `60` | How long an execution may be missing from the executor before the attempt is lost |
 | `MAPI_DEADLINE_GRACE_S` | `60` | Slack after a run's timeout before the reconciler stops it |
 | `MAPI_MAX_INFRA_RETRIES` | `2` | Automatic retries after infrastructure failures |
+| `MAPI_HOUSEKEEPING_INTERVAL_S` | `300` | Sweep of expired upload intents (their quarantine objects are deleted), expired browser sessions and abandoned sign-ins |
 | `MAPI_AUTO_RETRY_WINDOW_S` | `1800` | No automatic retry of a run that has been going for longer than this |
+| `MAPI_AUTO_RETRY_COST_FACTOR` | `2` | No automatic retry once a run has cost this multiple of its estimate |
 | `MAPI_FINALIZE_MAX_ATTEMPTS` | `5` | Attempts of the finalizer job before a run fails |
 
 **Catalog and signing**
@@ -167,6 +173,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 |---|---|---|
 | `MAPI_CLOUDRUN_PROJECT` | unset (required) | The exec project holding the Job inventory |
 | `MAPI_CLOUDRUN_REGION` | `europe-west1` | Region of the inventory |
+| `MAPI_DEFAULT_RESIDENCY` | derived | Data residency of the platform tenant, of tenants the migrations adopt and of tenants created without one. Default: the multi-region of `MAPI_CLOUDRUN_REGION` with `cloudrun-jobs` (`eu` for `europe-west1`), else `us` |
 | `MAPI_CLOUDRUN_JOB_TEMPLATE` | `mapi-{env}-{base}-{class}` | Job id convention; it must match the Jobs the infrastructure creates |
 | `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to base image family (JSON) |
 | `MAPI_CLOUDRUN_DEFAULT_BASE` | `base-bayes` | Base for runs without a mapped plugin (ingest, describe) |

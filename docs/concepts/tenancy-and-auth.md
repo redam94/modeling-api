@@ -138,6 +138,11 @@ Every resource of v0.2 (datasets, specs, runs, models, plots) now lives in a pro
 unambiguous. Tokens are bound to one project and may omit the header; naming another project
 with a token is `403 FORBIDDEN`. A local single-tenant install falls back to `default/default`.
 
+Because a token is bound to one project, it cannot administer its tenant: tenant members,
+creating or deleting projects, the tenant audit log and tenant usage need a signed-in session
+(`403 FORBIDDEN` for any token, whatever its scopes and its owner's role). A token may still
+read its own tenant (`GET /v1/tenants/{tenant}`) and list its own project.
+
 ```python
 --8<-- "concepts_tenancy.py:project"
 ```
@@ -174,10 +179,13 @@ token with `models:read` can only read.
 |---|---|
 | `models:read` | Read datasets, specs, runs, models, endpoints, plots, usage and the catalog |
 | `runs:create` | `models:read`, plus submit and cancel runs, score models and endpoints, render plots |
-| `score:{endpoint}` | Read and score one endpoint alias, for example `score:geo-mmm-prod`; `score:*` covers every endpoint in the project |
+| `score:{target}` | Score one model by its id, for example `score:mdl_01jaf3r1s2t3v4w5x6y7z8a9b0` (`POST /v1/models/{id}/versions/{v}:score`); `score:*` covers every model in the project. Once endpoints exist, an endpoint alias works the same way, for example `score:geo-mmm-prod` |
 | `datasets:write` | Create datasets and add versions |
 | `plugins:publish` | Publish and yank plugins (from v0.5) |
-| `admin` | Everything the owner's role allows |
+| `admin` | Everything the owner's role allows, except minting tokens |
+
+No scope lets a token mint tokens: a child token would escape its parent's expiry, budget,
+rate limit and revocation. Mint tokens from a signed-in session (`mapi login` or the browser).
 
 Each token also has an expiry (default 90 days, at most 365), and may have its own
 requests-per-minute limit and a vCPU-second budget per day or month. These apply in addition

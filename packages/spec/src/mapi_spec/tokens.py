@@ -52,6 +52,7 @@ __all__ = [
     "TOKEN_ALPHABET",
     "TOKEN_CHECKSUM_LEN",
     "TOKEN_ID_PREFIX",
+    "TOKEN_NEVER",
     "TOKEN_PREFIX_LEN",
     "TOKEN_RE",
     "TOKEN_SECRET_LEN",
@@ -207,7 +208,8 @@ def verify_token_hash(token: str | ParsedToken, stored: str, pepper: bytes) -> b
 
 
 class ScopeName(StrEnum):
-    """Scope families. ``score`` is always written with a target: ``score:<endpoint>``."""
+    """Scope families. ``score`` is always written with a target: ``score:<endpoint alias>``
+    or ``score:<model id>`` (``score:*``: every endpoint and model of the project)."""
 
     MODELS_READ = "models:read"
     RUNS_CREATE = "runs:create"
@@ -263,8 +265,9 @@ def scope_allows(
 
     ``action``/``resource`` are :class:`mapi_spec.tenancy.Action` /
     :class:`mapi_spec.tenancy.ResourceKind` values (plain strings here so this module does
-    not depend on :mod:`mapi_spec.tenancy`). ``resource_name`` is the endpoint alias for
-    ``score:<alias>``. Scopes only *narrow*: the owner's role is checked separately.
+    not depend on :mod:`mapi_spec.tenancy`). ``resource_name`` is the endpoint alias (or the
+    model id) for ``score:<target>``. Scopes only *narrow*: the owner's role is checked
+    separately.
 
     ===================  =========================================================
     scope                covers
@@ -274,11 +277,18 @@ def scope_allows(
                          plot, usage, project
     ``runs:create``      ``models:read`` + ``create``/``cancel`` run, ``run`` model,
                          endpoint, plot
-    ``score:<alias>``    ``read`` + ``run`` on that endpoint (``*``: every endpoint)
+    ``score:<target>``   ``read`` + ``run`` on that endpoint and ``run`` (score) on
+                         the model with that id (``*``: every endpoint and model)
     ``datasets:write``   ``read``/``create``/``update`` dataset
     ``plugins:publish``  ``read``/``create``/``delete`` plugin
     ===================  =========================================================
+
+    No scope covers :data:`TOKEN_NEVER` (minting tokens): a child token would escape its
+    parent's expiry, budget, rate limit and revocation, so minting needs a signed-in
+    session.
     """
+    if (resource, action) in TOKEN_NEVER:
+        return False
     for raw in scopes:
         try:
             name, target = parse_scope(raw)
@@ -287,10 +297,8 @@ def scope_allows(
         if name is ScopeName.ADMIN:
             return True
         if name is ScopeName.SCORE:
-            if (
-                resource == "endpoint"
-                and action in ("read", "run")
-                and (target == "*" or (resource_name is not None and target == resource_name))
+            if (resource, action) in _SCORE_GRANTS and (
+                target == "*" or (resource_name is not None and target == resource_name)
             ):
                 return True
             continue
@@ -298,6 +306,12 @@ def scope_allows(
             return True
     return False
 
+
+_SCORE_GRANTS = frozenset({("endpoint", "read"), ("endpoint", "run"), ("model", "run")})
+"""What ``score:<target>`` covers on the endpoint or model named ``<target>``."""
+
+TOKEN_NEVER: Final[frozenset[tuple[str, str]]] = frozenset({("token", "create")})
+"""``(resource, action)`` pairs no token may do, whatever its scopes (even ``admin``)."""
 
 _READABLE = ("catalog", "dataset", "spec", "run", "model", "endpoint", "plot", "usage", "project")
 _READ = frozenset((r, "read") for r in _READABLE)

@@ -1,8 +1,9 @@
 """Users, browser sessions, login transactions, API tokens and memberships.
 
 These lookups happen *before* the tenant of a request is known (which token is this, which
-tenants does this user belong to), so they run on the platform role. Every function here
-filters explicitly by the identifier it was given; none returns another principal's rows.
+tenants does this user belong to), so they run on a platform session: the gateway role in
+the API (identity tables only, no row-level-security bypass). Every function here filters
+explicitly by the identifier it was given; none returns another principal's rows.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from mapi_spec.api import new_id
 from mapi_spec.auth import SESSION_ABSOLUTE_TTL, SESSION_IDLE_TTL, LoginTransaction
 from mapi_spec.tenancy import Membership, PrincipalKind, ProjectRole, UserPrincipal
 from mapi_spec.tokens import BudgetPeriod, TokenRecord
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import ColumnElement, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
@@ -28,11 +29,14 @@ __all__ = [
     "LOCAL_ISSUER",
     "LOCAL_USER_ID",
     "SESSION_TOUCH_INTERVAL",
+    "AccountDisabled",
     "VerifiedIdentity",
     "claim_or_create_user",
     "create_session",
+    "delete_expired_session",
     "delete_session",
     "invite_user",
+    "is_operator",
     "load_session",
     "local_principal",
     "membership_dto",
@@ -40,6 +44,7 @@ __all__ = [
     "pop_login",
     "save_login",
     "session_key",
+    "sweep_expired_logins",
     "token_record",
     "user_principal",
 ]
@@ -48,6 +53,7 @@ LOCAL_USER_ID: Final = "usr_" + "0" * 26
 """The principal of credential-less requests in the single-tenant profile."""
 LOCAL_ISSUER: Final = "https://localhost/mapi-local"
 SESSION_TOUCH_INTERVAL: Final = timedelta(minutes=1)
+_LOGIN_SWEEP_AGE: Final = timedelta(hours=1)
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +100,23 @@ def _norm_email(email: str | None) -> str | None:
     return email.strip().lower() if email else None
 
 
+class AccountDisabled(Exception):
+    """A verified sign-in for an account an operator disabled (it stays disabled)."""
+
+
+def is_operator(user: m.User, operator_emails: Iterable[str]) -> bool:
+    """Is this user a platform operator under the *current* configuration?
+
+    Decided on every request from the verified e-mail, so removing an address from the
+    operator list takes effect at once for sessions and CLI ID tokens alike (the stored
+    ``users.operator`` flag only records the status at the last sign-in).
+    """
+    email = _norm_email(user.email)
+    if not email or not user.email_verified or user.issuer is None:
+        return False
+    return email in {e.strip().lower() for e in operator_emails if e.strip()}
+
+
 # ======================================================================================= users
 
 
@@ -101,7 +124,11 @@ async def claim_or_create_user(
     s: AsyncSession, ident: VerifiedIdentity, *, operator_emails: Iterable[str] = ()
 ) -> m.User:
     """The user for a verified sign-in: the known ``(issuer, subject)``, else the pending
-    invitation for the *verified* e-mail (claimed now), else a new user."""
+    invitation for the *verified* e-mail (claimed now), else a new user.
+
+    Raises :class:`AccountDisabled` for a disabled account: signing in never re-activates
+    it (only an invitation becomes active at its first sign-in).
+    """
     ts = now()
     email = _norm_email(ident.email)
     operators = {e.strip().lower() for e in operator_emails if e.strip()}
@@ -122,6 +149,8 @@ async def claim_or_create_user(
         ).scalar_one_or_none()
         if user is not None:
             user.issuer, user.subject = ident.issuer, ident.subject
+    if user is not None and user.status == "disabled":
+        raise AccountDisabled(user.id)
     if user is None:
         user = m.User(
             id=new_id("usr"),
@@ -211,7 +240,9 @@ async def load_session(
     s: AsyncSession, cookie_value: str, *, at: datetime | None = None
 ) -> tuple[m.WebSession, m.User] | None:
     """The live session for a cookie (absolute and idle expiry enforced), touched at most
-    once per :data:`SESSION_TOUCH_INTERVAL`. Expired sessions are deleted."""
+    once per :data:`SESSION_TOUCH_INTERVAL`. An expired session is deleted in ``s`` (callers
+    that then fail the request use :func:`delete_expired_session` in a new transaction, and
+    the housekeeper sweeps the rest)."""
     if not cookie_value or len(cookie_value) > 256:
         return None
     ts = at or now()
@@ -227,6 +258,37 @@ async def load_session(
     if ts - row.last_seen_at >= SESSION_TOUCH_INTERVAL:
         row.last_seen_at = ts
     return row, user
+
+
+def _expired_session(at: datetime) -> ColumnElement[bool]:
+    return (m.WebSession.expires_at <= at) | (m.WebSession.last_seen_at < at - SESSION_IDLE_TTL)
+
+
+async def delete_expired_session(
+    s: AsyncSession, cookie_value: str, *, at: datetime | None = None
+) -> bool:
+    """Delete the session of this cookie if (and only if) it has expired."""
+    if not cookie_value or len(cookie_value) > 256:
+        return False
+    result = await s.execute(
+        delete(m.WebSession).where(
+            m.WebSession.id == session_key(cookie_value), _expired_session(at or now())
+        )
+    )
+    return bool(getattr(result, "rowcount", 0))
+
+
+async def sweep_expired_logins(s: AsyncSession, *, at: datetime | None = None) -> int:
+    """Delete every expired session and every sign-in abandoned for longer than an hour
+    (a pending login is valid for :data:`~mapi_spec.auth.LOGIN_TTL`)."""
+    ts = at or now()
+    sessions = await s.execute(delete(m.WebSession).where(_expired_session(ts)))
+    logins = await s.execute(
+        delete(m.LoginTransactionRow).where(
+            m.LoginTransactionRow.created_at < ts - _LOGIN_SWEEP_AGE
+        )
+    )
+    return int(getattr(sessions, "rowcount", 0) or 0) + int(getattr(logins, "rowcount", 0) or 0)
 
 
 async def delete_session(s: AsyncSession, cookie_value: str) -> bool:
@@ -252,7 +314,7 @@ async def save_login(s: AsyncSession, tx: LoginTransaction) -> str:
     # opportunistic clean-up of abandoned logins
     await s.execute(
         delete(m.LoginTransactionRow).where(
-            m.LoginTransactionRow.created_at < now() - timedelta(hours=1)
+            m.LoginTransactionRow.created_at < now() - _LOGIN_SWEEP_AGE
         )
     )
     await s.flush()

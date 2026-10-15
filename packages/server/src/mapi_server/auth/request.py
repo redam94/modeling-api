@@ -16,8 +16,9 @@
    (plus unconditional secondary checks), then the request-rate limits at token, tenant and
    global level (``RATE_LIMITED`` with ``Retry-After``).
 
-These lookups run on the platform role (the tenant is not known yet); the handler then gets
-a tenant session pinned to the resolved tenant (row-level security).
+These lookups run on the gateway role (the tenant is not known yet; no row-level-security
+bypass: identity tables only); the handler then gets a tenant session pinned to the
+resolved tenant (row-level security).
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ from enum import StrEnum
 from typing import Any, Final
 
 from fastapi import Request
-from mapi_spec.api import ROUTE_ACCESS, RouteAccess, RouteScope
+from mapi_spec.api import ROUTE_ACCESS, TOKEN_TENANT_ROUTES, RouteAccess, RouteScope
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome, make_audit_event
 from mapi_spec.auth import CookieSpec
 from mapi_spec.errors import ErrorCode, MapiError
@@ -67,7 +68,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.auth.identity import (
     LOCAL_USER_ID,
+    AccountDisabled,
     claim_or_create_user,
+    delete_expired_session,
+    is_operator,
     load_session,
     local_principal,
     memberships_of,
@@ -78,7 +82,7 @@ from mapi_server.auth.oidc import OidcError
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError, ProblemWithHeaders, unauthenticated
-from mapi_server.services.audit import write_audit
+from mapi_server.services.audit import write_audit, write_failure_audit
 from mapi_server.services.quotas import global_policy, rate_limit, tenant_policy, token_policy
 from mapi_server.services.runs import Scope, now
 
@@ -94,6 +98,7 @@ __all__ = [
     "authenticate",
     "csrf_cookie",
     "session_cookie",
+    "still_authorized",
 ]
 
 log = logging.getLogger(__name__)
@@ -275,12 +280,27 @@ class _Resolved:
 
 
 class _AuthFailure(Exception):
-    """Raised inside the lookup transaction; carries audit rows to write after rollback."""
+    """Raised inside the lookup transaction; carries what to write after the rollback:
+    audit rows (bounded per ``audit_subject`` and minute when that is set), and the cookie
+    of an expired session to delete."""
 
-    def __init__(self, error: MapiError, audit: list[AuditEvent]) -> None:
+    def __init__(
+        self,
+        error: MapiError,
+        audit: list[AuditEvent],
+        *,
+        expired_session: str | None = None,
+        audit_subject: str | None = None,
+    ) -> None:
         super().__init__(error.detail)
         self.error = error
         self.audit = audit
+        self.expired_session = expired_session
+        self.audit_subject = audit_subject
+
+
+_INVALID_TOKEN: Final = "invalid"
+"""The reason for an unknown prefix *and* a wrong secret (no prefix oracle)."""
 
 
 def _request_id(request: Request) -> str:
@@ -307,7 +327,14 @@ def _token_failure(
         user_agent=request.headers.get("user-agent"),
         details={"reason": reason, "prefix": row.prefix},
     )
-    return _AuthFailure(unauthenticated(f"the API token is {reason}"), [ev])
+    return _AuthFailure(
+        unauthenticated(f"the API token is {reason}"), [ev], audit_subject=_failures(row.prefix)
+    )
+
+
+def _failures(prefix: str) -> str:
+    """Rate-counter subject of a token prefix's authentication failures."""
+    return f"authfail:{prefix}"
 
 
 async def _from_token(
@@ -321,11 +348,15 @@ async def _from_token(
     row = (
         await s.execute(select(m.ApiToken).where(m.ApiToken.prefix == parsed.prefix))
     ).scalar_one_or_none()
-    if row is None:
-        hash_token(parsed, pepper)  # the same work as a known prefix (timing)
-        raise unauthenticated("invalid API token")
+    if row is None:  # the same answer, and the same work, as a wrong secret
+        hash_token(parsed, pepper)
+        raise _AuthFailure(
+            unauthenticated(f"the API token is {_INVALID_TOKEN}"),
+            [],
+            audit_subject=_failures(parsed.prefix),
+        )
     if not verify_token_hash(parsed, row.secret_hash, pepper):
-        raise _token_failure(ctx, request, row, "invalid")
+        raise _token_failure(ctx, request, row, _INVALID_TOKEN)
     record = token_record(row)
     status = record.status_at(at)
     if status is not TokenStatus.ACTIVE:
@@ -364,13 +395,15 @@ async def _from_id_token(s: AsyncSession, ctx: ServerContext, raw: str) -> _Reso
             select(m.User).where(m.User.issuer == ident.issuer, m.User.subject == ident.subject)
         )
     ).scalar_one_or_none()
+    operators = ctx.settings.effective_operator_emails()
     if user is None:  # first use: claim an invitation or create the user, like /auth/callback
-        user = await claim_or_create_user(
-            s, ident, operator_emails=ctx.settings.effective_operator_emails()
-        )
+        try:
+            user = await claim_or_create_user(s, ident, operator_emails=operators)
+        except AccountDisabled:
+            raise unauthenticated("this account is disabled") from None
     elif user.status != "active":
         raise unauthenticated("this account is disabled")
-    return _Resolved(Credential.SESSION, user_principal(user), user.operator)
+    return _Resolved(Credential.SESSION, user_principal(user), is_operator(user, operators))
 
 
 def _check_csrf(ctx: ServerContext, request: Request, sess: m.WebSession) -> None:
@@ -404,11 +437,16 @@ async def _credentials(
     cookie = request.cookies.get(session_cookie(ctx.settings.secure_cookies).name)
     if cookie:
         loaded = await load_session(s, cookie, at=at)
-        if loaded is None:
-            raise unauthenticated("the session has expired; sign in again")
+        if loaded is None:  # the delete of an expired row is redone after the rollback
+            raise _AuthFailure(
+                unauthenticated("the session has expired; sign in again"),
+                [],
+                expired_session=cookie,
+            )
         sess, user = loaded
         _check_csrf(ctx, request, sess)
-        return _Resolved(Credential.SESSION, user_principal(user), user.operator, session=sess)
+        operator = is_operator(user, ctx.settings.effective_operator_emails())
+        return _Resolved(Credential.SESSION, user_principal(user), operator, session=sess)
     if not ctx.settings.requires_auth:
         return _Resolved(Credential.LOCAL, local_principal(), operator=True)
     raise unauthenticated()
@@ -427,7 +465,13 @@ def _local_memberships(ctx: ServerContext, at: datetime) -> list[Membership]:
 
 
 async def _resolve(
-    s: AsyncSession, ctx: ServerContext, request: Request, auth: RequestAuth, at: datetime
+    s: AsyncSession,
+    ctx: ServerContext,
+    request: Request,
+    auth: RequestAuth,
+    at: datetime,
+    *,
+    rate_limited: bool = True,
 ) -> RequestAuth:
     settings = ctx.settings
     who = await _credentials(s, ctx, request, at)
@@ -457,6 +501,12 @@ async def _resolve(
         tenant_id = str(request.path_params.get("tenant_id", ""))
         if token is not None and token.tenant_id != tenant_id:
             raise MapiError("this token is bound to a different tenant", code=ErrorCode.FORBIDDEN)
+        if token is not None and auth.operation_id not in TOKEN_TENANT_ROUTES:
+            raise MapiError(
+                "API tokens are bound to one project; tenant administration needs a "
+                "signed-in session",
+                code=ErrorCode.FORBIDDEN,
+            )
         tenant = await s.get(m.Tenant, tenant_id) if tenant_id else None
         member = any(mm.tenant_id == tenant_id for mm in memberships)
         if tenant is None or not (member or who.operator):
@@ -506,11 +556,14 @@ async def _resolve(
     else:  # AUTHENTICATED, PLATFORM
         auth.context = AuthContext(**common)
     if access.resource is not None and access.action is not None:
-        auth.context.require(access.action, access.resource)
+        named = request.path_params.get(access.name_param) if access.name_param else None
+        auth.context.require(
+            access.action, access.resource, resource_name=str(named) if named else None
+        )
         if auth.operation_id not in _CONDITIONAL_ALSO:
             for resource, action in access.also:
                 auth.context.require(action, resource)
-    if settings.rate_limits_enabled:
+    if settings.rate_limits_enabled and rate_limited:
         levels: list[tuple[QuotaPolicy, str]] = []
         if token is not None:
             levels.append((await token_policy(s, token), f"token:{token.id}"))
@@ -554,7 +607,13 @@ async def authenticate(request: Request) -> RequestAuth:
         async with ctx.db.session() as s:
             await _resolve(s, ctx, request, auth, now())
     except _AuthFailure as failure:
-        await write_audit(ctx.db, failure.audit)
+        if failure.audit_subject is not None:  # anyone can cause these: bounded
+            await write_failure_audit(ctx.db, failure.audit, failure.audit_subject, now=now())
+        elif failure.audit:
+            await write_audit(ctx.db, failure.audit)
+        if failure.expired_session is not None:
+            async with ctx.db.session() as s:
+                await delete_expired_session(s, failure.expired_session)
         raise failure.error from None
     except MapiError as exc:
         denied = _DENIED_AUDIT.get(auth.operation_id)
@@ -566,6 +625,33 @@ async def authenticate(request: Request) -> RequestAuth:
         raise
     request.state.auth = auth
     return auth
+
+
+async def still_authorized(request: Request, auth: RequestAuth) -> bool:
+    """Does the caller behind ``auth`` still have access, the same way, right now?
+
+    Long-lived responses (event streams) call this periodically: the credential is checked
+    again from the request (a revoked or expired token, an expired or deleted session, a
+    disabled owner, a lost membership or a suspended tenant all answer ``False``), without
+    counting a request against the rate limits.
+    """
+    if auth.access.scope in (RouteScope.PUBLIC, RouteScope.INTERNAL):
+        return True
+    ctx: ServerContext = request.app.state.ctx
+    fresh = RequestAuth(
+        operation_id=auth.operation_id,
+        access=auth.access,
+        credential=Credential.ANONYMOUS,
+        request_id=auth.request_id,
+        client_ip=auth.client_ip,
+        user_agent=auth.user_agent,
+    )
+    try:
+        async with ctx.db.session() as s:
+            await _resolve(s, ctx, request, fresh, now(), rate_limited=False)
+    except (MapiError, _AuthFailure):
+        return False
+    return fresh.credential is auth.credential and fresh.scope == auth.scope
 
 
 _DENIED_AUDIT: Final[dict[str, tuple[AuditAction, ResourceKind]]] = {

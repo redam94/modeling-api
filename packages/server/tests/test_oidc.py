@@ -225,6 +225,65 @@ async def test_bearer_id_tokens_need_a_cli_audience_and_a_valid_signature(
     assert r.status_code == 401
 
 
+async def test_demoted_operators_lose_operator_powers_at_once(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """Operator status follows the configuration on every request, not the flag stored at
+    the last browser sign-in: a demoted operator's CLI ID token and browser session stop
+    reaching the operator endpoints immediately."""
+    await sign_in(client, "admin@dev.local")
+    token = await _cli_id_token(client, "admin@dev.local", client_id="mapi-cli")
+    bearer = {"Authorization": f"Bearer {token}"}
+    assert (await client.get("/v1/admin/tenants", headers=bearer)).status_code == 200
+    assert (await client.get("/v1/admin/tenants")).status_code == 200
+    # admin@dev.local is no longer the first dev account, so no longer an operator
+    users = ["viewer@dev.local", "admin@dev.local", "analyst@dev.local"]
+    ctx.settings = ctx.settings.model_copy(update={"devidp_users": users})
+    assert "admin@dev.local" not in ctx.settings.effective_operator_emails()
+    assert (await client.get("/v1/admin/tenants", headers=bearer)).status_code == 403
+    r = await client.put("/v1/admin/kill-switches", json={}, headers=bearer)
+    assert r.status_code == 403
+    assert (await client.get("/v1/admin/tenants")).status_code == 403
+    assert not Me.model_validate((await client.get("/v1/me", headers=bearer)).json()).operator
+    info = SessionInfo.model_validate((await client.get("/auth/session")).json())
+    assert info.authenticated and not info.operator
+    # promoted again: effective at once as well
+    ctx.settings = ctx.settings.model_copy(update={"operator_emails": ["admin@dev.local"]})
+    assert (await client.get("/v1/admin/tenants", headers=bearer)).status_code == 200
+
+
+async def test_disabled_accounts_stay_disabled_when_they_sign_in_again(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    await sign_in(client, "analyst@dev.local")
+    token = await _cli_id_token(client, "analyst@dev.local", client_id="mapi-cli")
+    async with ctx.db.session() as s:
+        [user] = [
+            u for u in (await s.execute(select(m.User))).scalars()
+            if u.email == "analyst@dev.local"
+        ]  # fmt: skip
+        user.status = "disabled"
+    assert (await client.get("/v1/me")).status_code == 401  # the session is refused
+    r = await client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 401
+    # a new browser sign-in is refused (generic 401) and does not re-activate the account
+    r = await client.get("/auth/login")
+    r = await client.get(r.headers["location"] + "&login_hint=analyst%40dev.local")
+    r = await client.get(r.headers["location"])
+    assert r.status_code == 401 and r.json()["detail"] == "sign-in failed; start again"
+    assert not any(c.startswith("mapi_session=") for c in r.headers.get_list("set-cookie"))
+    async with ctx.db.session() as s:
+        row = await s.get(m.User, user.id)
+        assert row is not None and row.status == "disabled"
+        failed = [
+            e.details for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "auth.login_failed"
+        ]  # fmt: skip
+    assert any("disabled" in str(d.get("reason")) for d in failed)
+    r = await client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 401
+
+
 async def test_callback_is_single_use_and_checks_state(client: httpx.AsyncClient) -> None:
     r = await client.get("/auth/login")
     authorize = r.headers["location"]
@@ -245,6 +304,22 @@ async def test_callback_is_single_use_and_checks_state(client: httpx.AsyncClient
     r = await client.get("/auth/login")
     r = await client.get("/auth/callback?error=<script>&state=x")
     assert r.status_code == 401 and "<script>" not in r.text
+
+
+async def test_failed_sign_ins_are_audited_a_bounded_number_of_times(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """Anyone can hit /auth/callback: its failures are audited at most a few times per
+    client and minute, so they cannot flood the audit log."""
+    for _ in range(20):
+        r = await client.get("/auth/callback?code=x&state=y")
+        assert r.status_code == 401
+    async with ctx.db.session() as s:
+        failed = [
+            e for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "auth.login_failed"
+        ]  # fmt: skip
+    assert 1 <= len(failed) <= 5
 
 
 async def test_unknown_account_and_bad_redirect_are_refused(client: httpx.AsyncClient) -> None:
