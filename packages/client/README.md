@@ -7,7 +7,7 @@ Request and response bodies are the Pydantic DTOs from `mapi_spec.api`; errors a
 ```python
 from mapi_client import Client
 
-with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 127.0.0.1:8000
+with Client() as api:  # MAPI_URL / MAPI_TOKEN / MAPI_PROJECT / ~/.config/mapi/config.toml
     version = api.datasets.upload("eu_media.zarr.zip", dataset="eu_media_daily")
     rev = api.specs.upsert(open("spec.yaml").read())
     run = api.runs.fit(rev.spec_id, rev.revision)
@@ -35,7 +35,19 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
 - `pip install 'mapi-client[xarray]'` enables `xr.Dataset` uploads and `xr.DataTree`
   score results (via `mapi-sdk`'s validated zarr-zip reader/writer).
 
-M1 has no authentication; a configured token is sent as `Authorization: Bearer …` (never
-over plain http to a non-loopback host). OIDC arrives in M2.
+**Multi-tenant APIs (v0.3).**
+
+- Credentials: an API token (`Client(token=…)`, `MAPI_TOKEN`, the profile's `token`) or the
+  OpenID Connect sign-in stored by `mapi login` (`mapi_client.oidc`: loopback redirect with
+  PKCE, or the device grant), renewed with its refresh token and only ever sent to the API
+  it was made for. Tokens are never sent over plain http to a non-loopback host.
+- Project: `Client(project="acme/growth")`, `MAPI_PROJECT` or the profile's `project` is sent
+  as `X-Mapi-Project` on project-scoped requests (`api.use(...)` switches it).
+- Resources `tenants`, `tokens`, `usage`, `admin` and `api.me()`.
+- `429 RATE_LIMITED` is waited out (`Retry-After`, back-off) and resent; `429
+  QUOTA_EXCEEDED` raises `QuotaExceeded` at once with `retry_after_of(exc)` (see
+  `RetryPolicy`).
+- `mapi login`, `mapi use` and `mapi config set` write `config.toml` and `credentials.json`
+  atomically with mode `0600`.
 
 License: Apache License 2.0.

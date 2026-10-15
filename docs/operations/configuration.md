@@ -149,13 +149,19 @@ the entry point builds over it ([Container images](images.md#compile-caches-and-
 | Variable | Meaning |
 |---|---|
 | `MAPI_URL` | The API (falls back to `MAPI_API_URL`, then the profile, then `http://127.0.0.1:8000`) |
-| `MAPI_TOKEN` | A bearer token. Never sent over plain HTTP to a non-loopback host |
+| `MAPI_TOKEN` | An API token (`mapi_…`), sent as `Authorization: Bearer`. It wins over a stored `mapi login` sign-in, and is never sent over plain HTTP to a non-loopback host |
+| `MAPI_PROJECT` | The project to act in, `<tenant>/<project>` (v0.3), sent as `X-Mapi-Project` on project-scoped requests. Wins over `mapi use` |
 | `MAPI_PROFILE` | The profile of the config file to use (see the warning above) |
 | `MAPI_CONFIG` | The config file (default `$XDG_CONFIG_HOME/mapi/config.toml`, else `~/.config/mapi/config.toml`) |
+| `MAPI_CREDENTIALS` | Where `mapi login` keeps sign-ins (default `credentials.json` next to the config file; mode `0600`) |
+| `MAPI_OIDC_ISSUER` | The identity provider for `mapi login` (https, or plain http on a loopback address for a local development provider) |
+| `MAPI_OIDC_CLIENT_ID` | The OIDC client id of the CLI (default `mapi-cli`) |
+| `MAPI_OIDC_CLIENT_SECRET` | Only for identity providers that require one from installed apps (for example Google "desktop" clients); never printed |
 
-Arguments (`--url`, `--token`, `--profile`, or `Client(base_url=…, token=…)`) win over the
-environment, which wins over the file. `mapi config show` prints the result and where each
-value came from.
+Arguments (`--url`, `--token`, `--project`, `--profile`, or `Client(base_url=…, token=…,
+project=…)`) win over the environment, which wins over the file. `mapi config show` prints
+the result and where each value came from. `mapi login`, `mapi use` and `mapi config set`
+rewrite the config file atomically with mode `0600`.
 
 ## `make dev`
 
