@@ -44,15 +44,17 @@ Signals and what they mean:
 
 An escape may have read in-sandbox material. Rotate, in this order:
 
-1. **The bundle-signing key.** Rotating the signer invalidates every outstanding
-   object-scoped signed URL (they are checked when minted against the signed manifest). See
-   [rotating keys](rotating-keys.md#bundle-signing-key). After rotation, re-mint URLs only
-   after re-verifying bundles.
+1. **The bundle-signing key.** Follow [rotating keys, on compromise](rotating-keys.md#on-compromise):
+   do not keep the old key trusted, so no new URL is minted for a bundle it signed until
+   that bundle is re-verified and re-finalized.
 2. **The per-run HMAC root / bootstrap keys.** New runs already get a fresh per-run key; the
    concern is the signing/exec-token material. Rotate the GCS shim exec principal token
    (`gs://…/_shim/keys/exec.json` locally; the exec service-account key in cloud) so any
    leaked bootstrap token is dead. See [rotating keys](rotating-keys.md#hmac--exec-tokens).
-3. **The internal events token** (`MAPI_INTERNAL_TOKEN`) if forged events were seen.
+3. **The internal events token** (`MAPI_INTERNAL_TOKEN`, local and self-hosted only) if forged
+   events were seen. On GCP, pushes carry a Google-signed OIDC token instead. Check the push
+   identity and the events service's invoker grant (see
+   [rotating keys](rotating-keys.md#hmac--exec-tokens)).
 
 Rotation is only safe once every signer/verifier shares the new key — roll the API and worker
 together (they both load the bundle-signing key written by `mapi-server migrate`).

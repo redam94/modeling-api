@@ -79,9 +79,20 @@ variable "dispatch_pool" {
 }
 
 variable "kms_key_version" {
-  description = "Version of the bundle-signing key the server signs with (MAPI_KMS_KEY_VERSION). Bump after creating a new version; list the old one in extra_env MAPI_KMS_TRUSTED_KEY_VERSIONS while bundles it signed are live."
+  description = "Version of the bundle-signing key the server signs with (MAPI_KMS_KEY_VERSION). Bump after creating a new version; list the old one in kms_trusted_key_versions while bundles it signed are live (ops/runbooks/rotating-keys.md)."
   type        = number
   default     = 1
+}
+
+variable "kms_trusted_key_versions" {
+  description = "Older versions of the bundle-signing key whose signatures still verify (MAPI_KMS_TRUSTED_KEY_VERSIONS on every server workload). Without them, every bundle signed before a rotation fails INTEGRITY_FAILURE."
+  type        = list(number)
+  default     = []
+
+  validation {
+    condition     = !contains(var.kms_trusted_key_versions, var.kms_key_version)
+    error_message = "kms_trusted_key_versions lists retired versions; the active one is kms_key_version."
+  }
 }
 
 # ----------------------------------------------------------------------------------- network

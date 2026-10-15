@@ -102,9 +102,13 @@ locals {
     MAPI_DATA_DIR        = "/tmp/mapi"
     MAPI_SIGNER          = "kms"
     MAPI_KMS_KEY_VERSION = "${google_kms_crypto_key.bundle_signing.id}/cryptoKeyVersions/${var.kms_key_version}"
-    MAPI_URL_SIGNER      = google_service_account.sa["url-signer"].email
-    MAPI_DB_APP_ROLE     = "mapi_app"
-    MAPI_DB_SYSTEM_ROLE  = "mapi_orchestrator"
+    # retired versions that still verify the bundles they signed (key rotation)
+    MAPI_KMS_TRUSTED_KEY_VERSIONS = join(",", [
+      for v in var.kms_trusted_key_versions : "${google_kms_crypto_key.bundle_signing.id}/cryptoKeyVersions/${v}"
+    ])
+    MAPI_URL_SIGNER     = google_service_account.sa["url-signer"].email
+    MAPI_DB_APP_ROLE    = "mapi_app"
+    MAPI_DB_SYSTEM_ROLE = "mapi_orchestrator"
   }
 
   env = {

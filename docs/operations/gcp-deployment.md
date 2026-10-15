@@ -295,6 +295,11 @@ they are, and the next deploy moves traffic to the newest revision again.
 `control.secret_versions.session_secret` (signs everyone out) or `token_pepper` (**invalidates
 every API token**). New Cloud Run revisions pick up the latest secret versions.
 
+**Rotate the bundle-signing key.** Create a KMS key version, set `control.kms_key_version` to
+it and list the previous one in `control.kms_trusted_key_versions`, then deploy; see
+`ops/runbooks/rotating-keys.md`. Dropping a version from the trusted list makes every model
+it signed fail `INTEGRITY_FAILURE`.
+
 **Add an exec pool.** Add an entry to `exec_pools`, run `bootstrap.sh` for its project, then
 `deploy.sh`. The perimeter, the Logging sink, the image-pull grant and the bootstrap-bucket grant
 follow automatically.

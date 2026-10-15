@@ -156,6 +156,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_IMAGE_DIGEST` | `sha256` of `uv.lock` | The runner image digest the catalog is cached under |
 | `MAPI_UV_LOCK_PATH` | found above the working directory | The `uv.lock` whose hash is the local image digest |
 | `MAPI_SIGNING_KEY_PATH` | `$MAPI_DATA_DIR/keys/bundle-signing-p256.pem` | The EC P-256 key that signs bundle manifests (standing in for Cloud KMS). The worker signs and the API verifies, so both must load the same file. `mapi-server migrate` creates it |
+| `MAPI_SIGNING_TRUSTED_KEY_PATHS` | none | Retired bundle-signing keys (PEM files, public or private; comma-separated) whose signatures still verify, so a key rotation does not break the models the old key signed (`ops/runbooks/rotating-keys.md`) |
 | `MAPI_SIGNING_KEY_CREATE` | `true` | Create the key on first use when it is missing. Compose turns it off for `api` and `worker`, so a missing key fails start-up instead of a new key being minted |
 | `MAPI_SIGNER` | `local` | `local`: the key file above. `kms`: a Cloud KMS asymmetric key version signs (`gcp` extra) |
 | `MAPI_KMS_KEY_VERSION` | unset | With `MAPI_SIGNER=kms`: the `projects/…/cryptoKeyVersions/N` that signs new manifests |

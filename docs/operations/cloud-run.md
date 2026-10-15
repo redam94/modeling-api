@@ -148,7 +148,8 @@ name and `signature_crc32c`, and the signature is verified locally before it is 
 public keys of the active and trusted versions are loaded at startup, so verifying a manifest
 before minting URLs is local and never waits on KMS. To rotate, create a new version, point
 `MAPI_KMS_KEY_VERSION` at it and keep the old one in `MAPI_KMS_TRUSTED_KEY_VERSIONS` until
-no model version signed with it is in use.
+no model version signed with it is in use. With Terraform these are `control.kms_key_version`
+and `control.kms_trusted_key_versions` (`ops/runbooks/rotating-keys.md`).
 
 ## Cloud Storage
 

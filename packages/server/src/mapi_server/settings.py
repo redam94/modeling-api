@@ -334,6 +334,12 @@ class Settings(BaseSettings):
         description="PEM of the bundle-signing key (default: data_dir/keys/"
         "bundle-signing-p256.pem); every process that signs or verifies bundles must share it",
     )
+    signing_trusted_key_paths: Annotated[list[Path], NoDecode] = Field(
+        default_factory=list,
+        description="PEM files (public or private) of retired bundle-signing keys whose "
+        "signatures still verify (comma-separated): key rotation without invalidating the "
+        "bundles the old key signed",
+    )
     signing_key_create: bool = Field(
         True,
         description="Create the signing key when it is missing; off where `mapi-server "
@@ -486,6 +492,7 @@ class Settings(BaseSettings):
         "devidp_users",
         "pubsub_push_subscriptions",
         "kms_trusted_key_versions",
+        "signing_trusted_key_paths",
         mode="before",
     )
     @classmethod

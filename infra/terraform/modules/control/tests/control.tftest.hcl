@@ -274,6 +274,41 @@ run "metrics_reach_cloud_monitoring" {
   }
 }
 
+run "kms_rotation_keeps_old_versions_trusted" {
+  command = apply
+
+  variables {
+    kms_key_version          = 2
+    kms_trusted_key_versions = [1]
+  }
+
+  assert {
+    condition = alltrue([
+      for c in [
+        google_cloud_run_v2_service.api[0].template[0].containers[0],
+        google_cloud_run_v2_service.events[0].template[0].containers[0],
+        google_cloud_run_v2_worker_pool.orchestrator[0].template[0].containers[0],
+        ] : anytrue([
+          for e in c.env : e.name == "MAPI_KMS_TRUSTED_KEY_VERSIONS" && endswith(e.value, "/cryptoKeyVersions/1")
+          ]) && anytrue([
+          for e in c.env : e.name == "MAPI_KMS_KEY_VERSION" && endswith(e.value, "/cryptoKeyVersions/2")
+      ])
+    ])
+    error_message = "After a rotation every server workload signs with the new version and still trusts the old one."
+  }
+}
+
+run "the_active_kms_version_is_not_a_retired_one" {
+  command = plan
+
+  variables {
+    kms_key_version          = 2
+    kms_trusted_key_versions = [2]
+  }
+
+  expect_failures = [var.kms_trusted_key_versions]
+}
+
 run "no_collector_without_an_image" {
   command = apply
 

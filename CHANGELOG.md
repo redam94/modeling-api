@@ -153,6 +153,12 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   - The nightly security jobs push `mapi_security_probe_unexpected` to the Pushgateway at
     `MAPI_PUSHGATEWAY_URL`.
   - `gcp-deployment.md` has a Metrics section.
+- **server**: rotating the local bundle-signing key no longer breaks every existing model.
+  `MAPI_SIGNING_TRUSTED_KEY_PATHS` lists retired keys (public or private PEM) that still
+  verify. Terraform gains `control.kms_trusted_key_versions` (`MAPI_KMS_TRUSTED_KEY_VERSIONS`
+  on every server workload). The key-rotation runbook now gives the real local and Cloud KMS
+  procedures and the compromise path. It no longer tells GCP operators to rotate a
+  Pub/Sub "internal token": pushes there are OIDC-authenticated.
 - **ops**: three Prometheus rule fixes.
   - `MapiQuota70` is now `MapiQuotaRejections`. It fires on rejections, not at 70 %, and it
     aggregates `by (scope)`, so its summary names the scope.
