@@ -12,13 +12,12 @@ import type { Problem } from "./types";
 export const PROJECT_HEADER = "X-Mapi-Project";
 
 /**
- * Sent on every state-changing request of a signed-in browser. A custom header cannot be
- * attached by a cross-site form or image and forces a CORS preflight, which the API only
- * grants to the web origin; with the `SameSite=Strict` session cookie and JSON bodies this is
- * the third CSRF layer (the server may also require it).
+ * The session's CSRF token (`mapi_server.auth.request.CSRF_HEADER`), echoed on every
+ * state-changing request of a signed-in browser. The server hands it out in the same header
+ * on `GET /auth/session` and refuses cookie-authenticated mutations without it. A custom
+ * header also forces a CORS preflight, which the API only grants to the web origin.
  */
-export const CSRF_HEADER = "X-Requested-With";
-export const CSRF_VALUE = "mapi-web";
+export const CSRF_HEADER = "X-CSRF-Token";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -45,7 +44,8 @@ export const sessionMiddleware: Middleware = {
   onRequest({ request }) {
     if (useAuth.getState().mode !== "session") return undefined;
     const path = new URL(request.url).pathname;
-    if (!SAFE_METHODS.has(request.method.toUpperCase())) request.headers.set(CSRF_HEADER, CSRF_VALUE);
+    const csrf = useAuth.getState().csrf;
+    if (csrf && !SAFE_METHODS.has(request.method.toUpperCase())) request.headers.set(CSRF_HEADER, csrf);
     if (isProjectScoped(path) && !request.headers.has(PROJECT_HEADER)) {
       const scope = activeScopeKey();
       if (scope) request.headers.set(PROJECT_HEADER, scope);

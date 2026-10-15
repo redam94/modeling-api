@@ -26,6 +26,7 @@ from sqlalchemy import select
 pytestmark = pytest.mark.integration
 
 API = "http://127.0.0.1:8000"
+WEB = "http://127.0.0.1:5173"
 
 
 @pytest.fixture
@@ -49,7 +50,8 @@ async def sign_in(client: httpx.AsyncClient, email: str, return_to: str = "/runs
     assert callback.startswith(f"{API}/auth/callback?")
     r = await client.get(callback)
     assert r.status_code == 302, r.text
-    assert r.headers["location"] == return_to
+    # back to the web app (its own origin in local dev), never the API's
+    assert r.headers["location"] == WEB + return_to
     cookies = r.headers.get_list("set-cookie")
     session = next(c for c in cookies if c.startswith("mapi_session="))
     assert "HttpOnly" in session and "SameSite=Strict" in session and "Path=/" in session
@@ -164,7 +166,7 @@ async def test_open_redirects_are_blocked(client: httpx.AsyncClient) -> None:
         authorize = r.headers["location"]
         r = await client.get(authorize + "&login_hint=viewer%40dev.local")
         r = await client.get(r.headers["location"])
-        assert r.status_code == 302 and r.headers["location"] == "/"
+        assert r.status_code == 302 and r.headers["location"] == WEB + "/"
 
 
 async def test_secure_cookie_attributes(ctx: ServerContext, client: httpx.AsyncClient) -> None:

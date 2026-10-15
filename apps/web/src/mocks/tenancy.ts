@@ -103,6 +103,11 @@ export function setMockPersona(id: string | null): void {
   }
 }
 
+/** The mock session's CSRF token (what `/auth/session` hands out for this persona). */
+export function mockCsrfToken(p: Pick<Persona, "id">): string {
+  return `csrf-${p.id}`;
+}
+
 function persona(): Persona | null {
   const id = mockPersonaId();
   return id ? (PERSONAS[id] ?? null) : null;
@@ -435,13 +440,16 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
     http.get(`${AUTH}/auth/session`, () => {
       const p = persona();
       if (!p) return HttpResponse.json({ authenticated: false, operator: false, login_url: "/auth/login" });
-      return HttpResponse.json({
+      return HttpResponse.json(
+        {
         authenticated: true,
         principal: { kind: "user", id: p.id, issuer: "https://accounts.google.com", subject: p.id.slice(4), email: p.email, email_verified: true, name: p.name },
         operator: p.operator,
         expires_at: new Date(Date.now() + 2 * 3600_000).toISOString(),
         login_url: "/auth/login",
-      });
+        },
+        { headers: { "X-CSRF-Token": mockCsrfToken(p) } },
+      );
     }),
     http.post(`${AUTH}/auth/logout`, () => {
       setMockPersona(null);
@@ -463,7 +471,7 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
       const header = request.headers.get("X-Mapi-Project");
       if (!header || !PROJECT_SCOPED.test(url.pathname)) return undefined;
       // A v0.3 client sends the CSRF header on every mutation.
-      if (request.method !== "GET" && request.headers.get("X-Requested-With") !== "mapi-web") {
+      if (request.method !== "GET" && request.headers.get("X-CSRF-Token") !== mockCsrfToken(p)) {
         return problem(403, "FORBIDDEN", "Not allowed", "missing CSRF header");
       }
       const role = projectRole(p, header);

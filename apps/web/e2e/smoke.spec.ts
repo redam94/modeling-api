@@ -122,10 +122,12 @@ test("spec editor keeps unsaved edits when a newer revision appears", async ({ p
   await expect(page.getByText("unsaved changes", { exact: true })).toBeVisible();
   // Another tab (or the CLI) saves r3.
   const status = await page.evaluate(async (spec) => {
+    // What any v0.3 browser client sends: the project and the session's CSRF token.
+    const session = await fetch("http://127.0.0.1:8000/auth/session", { credentials: "include" });
+    const csrf = session.headers.get("X-CSRF-Token") ?? "";
     const res = await fetch(`http://127.0.0.1:8000/v1/specs/${spec}/revisions`, {
       method: "POST",
-      // What any v0.3 client sends: the project and the CSRF header.
-      headers: { "content-type": "application/json", "X-Mapi-Project": "acme/growth", "X-Requested-With": "mapi-web" },
+      headers: { "content-type": "application/json", "X-Mapi-Project": "acme/growth", "X-CSRF-Token": csrf },
       body: JSON.stringify({ yaml: "apiVersion: mapi/v1\nkind: ModelSpec\n", parent_revision: 2 }),
     });
     return res.status;

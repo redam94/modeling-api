@@ -34,6 +34,7 @@ from mapi_server.auth.identity import (
     create_session,
     delete_session,
     load_session,
+    local_principal,
     pop_login,
     save_login,
     user_principal,
@@ -194,7 +195,11 @@ async def auth_callback(
             session=s,
         )
         csrf = sess.csrf_token
-    resp = RedirectResponse(tx.return_to, status_code=status.HTTP_302_FOUND)
+    # return_to is a path (safe_return_to); it belongs to the web app, which may be served
+    # from another origin than the API (local dev; behind a load balancer they coincide)
+    resp = RedirectResponse(
+        settings.web_origin.rstrip("/") + tx.return_to, status_code=status.HTTP_302_FOUND
+    )
     secure = settings.secure_cookies
     resp.headers.append("set-cookie", session_cookie(secure).header(cookie_value))
     resp.headers.append("set-cookie", csrf_cookie(secure).header(csrf))
@@ -260,4 +265,8 @@ async def auth_session(request: Request) -> JSONResponse:
                     expires_at=min(sess.expires_at, sess.last_seen_at + SESSION_IDLE_TTL),
                 )
                 headers[CSRF_HEADER] = sess.csrf_token
+    if not info.authenticated and not ctx.settings.requires_auth:
+        # single-tenant profile: credential-less requests act as the local administrator,
+        # so the browser is "signed in" without a cookie (no CSRF token: none is checked)
+        info = SessionInfo(authenticated=True, principal=local_principal(), operator=True)
     return JSONResponse(info.model_dump(mode="json"), headers=headers)

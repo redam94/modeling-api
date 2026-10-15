@@ -518,7 +518,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The caller, their tenants, projects and roles */
+        /**
+         * Get Me
+         * @description Who is calling, and the tenants, projects and roles they can act in. For a token:
+         *     only its own project (its scopes narrow every role shown).
+         */
         get: operations["get_me"];
         put?: never;
         post?: never;

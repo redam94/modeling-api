@@ -193,3 +193,19 @@ def test_openapi_module_prints_json() -> None:
     )
     doc = json.loads(out.stdout)
     assert doc["info"]["title"] == "modeling-api"
+
+
+async def test_single_tenant_browser_session_is_the_local_administrator(
+    client: httpx.AsyncClient,
+) -> None:
+    """The web app asks /auth/session first: a single-tenant server answers "signed in as the
+    local administrator" (no cookie, no CSRF token) instead of sending it to a sign-in page
+    no identity provider can complete."""
+    from mapi_server.auth.identity import LOCAL_USER_ID
+    from mapi_spec.auth import SessionInfo
+
+    r = await client.get("/auth/session")
+    info = SessionInfo.model_validate(r.json())
+    assert info.authenticated and info.operator
+    assert info.principal is not None and info.principal.id == LOCAL_USER_ID
+    assert "x-csrf-token" not in r.headers

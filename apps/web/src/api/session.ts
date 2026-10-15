@@ -11,7 +11,7 @@ import createClient from "openapi-fetch";
 import { env } from "@/env";
 import { useAuth } from "@/stores/auth";
 
-import { sessionMiddleware, unwrap, unwrapVoid } from "./client";
+import { CSRF_HEADER, sessionMiddleware, unwrap, unwrapVoid } from "./client";
 import type { paths } from "./schema";
 import type { SessionInfo } from "./types";
 
@@ -35,13 +35,17 @@ export async function fetchSession(signal?: AbortSignal): Promise<SessionState> 
   }
   const info = await unwrap(Promise.resolve(res));
   useAuth.getState().setMode("session");
+  // The CSRF token of this session (absent when signed out, or for the single-tenant local
+  // administrator, which needs none).
+  useAuth.getState().setCsrf(info.authenticated ? res.response.headers.get(CSRF_HEADER) : null);
   if (info.authenticated) useAuth.getState().clearExpired();
   return { mode: "session", info };
 }
 
 /** `POST /auth/logout` (works without a valid session). */
-export function logout(): Promise<void> {
-  return unwrapVoid(authApi.POST("/auth/logout", {}));
+export async function logout(): Promise<void> {
+  await unwrapVoid(authApi.POST("/auth/logout", {}));
+  useAuth.getState().setCsrf(null);
 }
 
 /** `mapi_spec.auth.safe_return_to`: a same-origin absolute path, else `/`. */

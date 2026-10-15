@@ -12,7 +12,7 @@ import { ErrorNotice } from "@/components/common";
 import { TooltipProvider } from "@/components/ui/overlays";
 import { env } from "@/env";
 import { createHandlers } from "@/mocks/handlers";
-import { MOCK_SESSION_KEY } from "@/mocks/tenancy";
+import { MOCK_SESSION_KEY, mockCsrfToken, PERSONAS } from "@/mocks/tenancy";
 import { routeTree } from "@/router";
 import { useAuth } from "@/stores/auth";
 import { useScope } from "@/stores/scope";
@@ -81,7 +81,7 @@ describe("WorkspaceGate", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Create token" }));
     await screen.findByRole("dialog", { name: "Copy your new token now" });
     const post = seen.find((r) => r.method === "POST" && new URL(r.url).pathname === "/v1/tokens");
-    expect(post?.headers.get("X-Requested-With")).toBe("mapi-web");
+    expect(post?.headers.get("X-CSRF-Token")).toBe(mockCsrfToken(PERSONAS.ana!));
     expect(post?.headers.get("X-Mapi-Project")).toBe("acme/growth");
   });
 

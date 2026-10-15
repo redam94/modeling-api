@@ -10460,7 +10460,7 @@
     }
   },
   "info": {
-    "description": "Contract version 0.1. Errors are RFC 7807 problem documents (`application/problem+json`) with stable `code`s. Programs authenticate with `Authorization: Bearer mapi_…` API tokens, browsers with the BFF session (`/auth/login`); project-scoped routes act in the project named by the `X-Mapi-Project: <tenant>/<project>` header (or the token's project). The single-tenant profile accepts credential-less requests on loopback as the local administrator. v0.3 adds tenants, projects, members, API tokens, usage and operator endpoints (multi-tenant; browser sessions via the /auth backend-for-frontend).",
+    "description": "Contract version 0.1. Errors are RFC 7807 problem documents (`application/problem+json`) with stable `code`s. Programs authenticate with `Authorization: Bearer mapi_…` API tokens, browsers with the BFF session (`/auth/login`); project-scoped routes act in the project named by the `X-Mapi-Project: <tenant>/<project>` header (or the token's project). The single-tenant profile accepts credential-less requests on loopback as the local administrator.",
     "summary": "Typed xarray modelling runtime: control plane API (v1)",
     "title": "modeling-api",
     "version": "0.2.0"
@@ -12266,6 +12266,7 @@
     },
     "/v1/me": {
       "get": {
+        "description": "Who is calling, and the tenants, projects and roles they can act in. For a token:\nonly its own project (its scopes narrow every role shown).",
         "operationId": "get_me",
         "responses": {
           "200": {
@@ -12279,8 +12280,9 @@
             "description": "Successful Response"
           }
         },
-        "summary": "The caller, their tenants, projects and roles",
+        "summary": "Get Me",
         "tags": [
+          "tenants",
           "identity"
         ]
       }
