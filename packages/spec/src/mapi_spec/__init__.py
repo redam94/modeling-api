@@ -114,7 +114,7 @@ from mapi_spec.validate import (
 try:
     __version__ = _metadata.version("mapi-spec")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.0.0"
+    __version__ = "0.1.0"
 
 __all__ = [
     "API_VERSION",

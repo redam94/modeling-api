@@ -1,6 +1,6 @@
 [project]
 name = "mapi-sklearn"
-version = "0.0.0"
+version = "0.1.0"
 description = "scikit-learn / xgboost model base classes for modeling-api"
 readme = "README.md"
 requires-python = ">=3.12"
