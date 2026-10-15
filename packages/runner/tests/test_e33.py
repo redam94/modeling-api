@@ -9,7 +9,6 @@ import json
 from typing import Any
 
 import pytest
-from fakegcs import FakeGcs
 from mapi_conformance.fixtures.e33 import data as e33
 from mapi_sdk.wire import read_arrow_ipc, read_datatree_zip, write_zarr_zip
 from mapi_spec.api import ValidateResponse
@@ -17,6 +16,7 @@ from mapi_spec.executor import RunKind
 from mapi_spec.loader import canonical_json, load_model_spec
 from mapi_spec.run import ErrorPayload, OutputManifest, RunnerExit, verify_output_objects
 from runner_helpers import Result, assert_signed_stream, make_run, run_supervisor
+from shimgcs import ShimGcs
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
@@ -32,7 +32,7 @@ def _ok(result: Result) -> OutputManifest:
 
 
 @pytest.fixture
-def e33_inputs(gcs: FakeGcs) -> dict[str, Any]:
+def e33_inputs(gcs: ShimGcs) -> dict[str, Any]:
     data, side = e33.generate(0, "tiny")
     data.attrs["mapi_schema"] = e33.schema().model_dump_json()
     d = gcs.buckets.data
@@ -53,7 +53,7 @@ def e33_inputs(gcs: FakeGcs) -> dict[str, Any]:
 
 
 def test_e33_validate_fit_derive_score_evaluate_render(
-    gcs: FakeGcs, e33_inputs: dict[str, Any]
+    gcs: ShimGcs, e33_inputs: dict[str, Any]
 ) -> None:
     spec, inputs = e33_inputs["spec"], e33_inputs["inputs"]
     runs = gcs.buckets.runs

@@ -3,6 +3,7 @@
 Outputs (relative to the attempt prefix)::
 
     bundle.zarr.zip  bundle.manifest.json  diagnostics.json  plots.json  metrics.json
+    coords.json
     evaluation/{bundle.zarr.zip, manifest.json, diagnostics.json, plots.json, metrics.json}
     ui/{thin.zarr.zip, summaries.json, tree_index.json, grids/*.arrow, plotdata/*.arrow}
 
@@ -19,6 +20,7 @@ import numpy as np
 import xarray as xr
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.harness import fit_spec, score_bundle
+from mapi_sdk.schema import summarize_coords
 from mapi_spec.capabilities import REPRESENTATION_RULES
 from mapi_spec.run import RunnerPhase
 from mapi_spec.spec import AsOfSplit, ModelSpec, ScoreRequest, TimeHoldoutSplit
@@ -35,7 +37,9 @@ from mapi_runner.worker.data import (
 from mapi_runner.worker.plots import render_for
 from mapi_runner.worker.views import externalize_plot_data, write_ui_views
 
-__all__ = ["run_fit"]
+__all__ = ["FIT_COORDS", "run_fit", "write_fit_coords"]
+
+FIT_COORDS = "coords.json"
 
 
 def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
@@ -67,6 +71,7 @@ def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
     )
     bundle.plots = externalize_plot_data(ctx, plots)
     write_bundle(ctx, bundle)
+    write_fit_coords(ctx, bundle)
     write_ui_views(ctx, bundle)
     for diagnostic in bundle.diagnostics[:200]:
         ctx.diagnostic(diagnostic)
@@ -82,6 +87,19 @@ def write_bundle(ctx: WorkerContext, bundle: Bundle) -> None:
     manifest = bundle.write(ctx.outputs_dir)
     os.replace(ctx.outputs_dir / "manifest.json", ctx.outputs_dir / BUNDLE_MANIFEST_OUTPUT)
     del manifest
+
+
+def write_fit_coords(ctx: WorkerContext, bundle: Bundle) -> None:
+    """``coords.json``: ``{stage: {dim: CoordSummary}}`` of the fitted data, which the
+    control plane stores as ``ScoreMetadata.fit_coords`` for CoordPlan checks at submit."""
+    summaries = {
+        stage: {
+            dim: summary.model_dump(mode="json", exclude_none=True)
+            for dim, summary in summarize_coords(coords, bundle.resolved.stages.get(stage)).items()
+        }
+        for stage, coords in bundle.fit_coords.items()
+    }
+    ctx.write_json(FIT_COORDS, summaries)
 
 
 def _holdout(spec: ModelSpec, data: xr.Dataset, evaluation: Bundle) -> xr.Dataset | None:

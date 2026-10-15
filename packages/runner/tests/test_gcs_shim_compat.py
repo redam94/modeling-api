@@ -1,8 +1,8 @@
-"""The runner against the real local GCS emulator (``mapi_gcs_shim``), when it is installed.
+"""The runner against the local GCS emulator through the async ``ObjectStore`` protocol only.
 
-Skipped until the gcs-shim package (feat/m1-gcs-shim) is part of the workspace; the other
-runner tests use ``tests/fakegcs.py``. Everything here goes through the contract's async
-``ObjectStore`` protocol and the shim's *exec* principal, exactly as the local executor will.
+The other runner tests arrange objects through ``tests/shimgcs.py``; this one prepares every
+RunSpec with :class:`~mapi_gcs_shim.client.ShimObjectStore` calls, exactly as the control
+plane's dispatcher does, and the runner reads the bootstrap as the shim's *exec* principal.
 """
 
 from __future__ import annotations
@@ -15,10 +15,13 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import mapi_gcs_shim.config as shim_config
+import mapi_gcs_shim.server as shim_server
 import pytest
 from mapi_conformance.fixtures.xgb_store_demand import data as xgb
 from mapi_spec.api import DimMapping, IngestMapping, VarMapping
 from mapi_spec.executor import RunKind
+from mapi_spec.jobs import DATASET_OUTPUTS
 from mapi_spec.loader import canonical_json, load_model_spec, spec_hash
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import (
@@ -34,9 +37,6 @@ from mapi_spec.run import (
 )
 from mapi_spec.storage import NotFound, ObjectMeta, run_prefix
 from runner_helpers import Result, Run, assert_signed_stream, run_supervisor
-
-shim_server = pytest.importorskip("mapi_gcs_shim.server")
-shim_config = pytest.importorskip("mapi_gcs_shim.config")
 
 pytestmark = pytest.mark.integration
 TTL = timedelta(hours=1)
@@ -155,7 +155,7 @@ def test_csv_ingest_fit_and_score_through_the_shim(shim: Any) -> None:
     )
     ingest = run_supervisor(run)
     outputs = _run(_verify(shim, ingest))
-    assert set(outputs) == {"data.zarr.zip", "schema.json", "profile.json", "preview.json"}
+    assert set(outputs) == set(DATASET_OUTPUTS)
 
     text = (Path(xgb.__file__).parent / "spec.yaml").read_text()
     spec = json.loads(canonical_json(load_model_spec(text)))

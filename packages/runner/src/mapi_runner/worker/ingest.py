@@ -32,7 +32,7 @@ from mapi_spec.errors import ErrorCode, MapiError, Severity
 from mapi_spec.run import INPUT_DATASET, RunnerPhase
 from mapi_spec.schema import DataSchema, DimPolicy, DimSpec, Role
 
-from mapi_runner.jobs import INPUT_UPLOAD, IngestJob, MffOptions
+from mapi_runner.jobs import INGEST_DATA, INGEST_SCHEMA, INPUT_UPLOAD, IngestJob, MffOptions
 from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.data import SCHEMA_ATTR
 
@@ -415,8 +415,10 @@ def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
     ds.attrs[SCHEMA_ATTR] = schema.model_dump_json()
     raw = write_zarr_zip(ds)
     assert raw is not None
-    ctx.write_output("data.zarr.zip", raw)
-    ctx.write_output("schema.json", schema.model_dump_json(indent=2).encode())
+    ctx.write_output(INGEST_DATA, raw)
+    ctx.write_output(INGEST_SCHEMA, schema.model_dump_json(indent=2).encode())
+    # metadata the control plane uses for CoordPlan checks of score payloads
+    ctx.write_output("summary.json", data_summary(ds, schema).model_dump_json(indent=2).encode())
     ctx.write_json("profile.json", profile(ds, schema, issues, raw))
     ctx.write_json("preview.json", preview(ds, job.preview_rows))
     ctx.progress(1.0, "dataset ready", force=True)

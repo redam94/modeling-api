@@ -18,7 +18,6 @@ from typing import Any
 
 import pytest
 import xarray as xr
-from fakegcs import FakeGcs
 from mapi_conformance.fixtures.e02 import data as e02
 from mapi_conformance.fixtures.xgb_store_demand import data as xgb
 from mapi_plots.sanitize import sanitize_plot
@@ -26,6 +25,7 @@ from mapi_sdk.bundle import BundleManifest, MetricsReport
 from mapi_sdk.wire import read_datatree_zip, read_zarr_zip, write_zarr_zip
 from mapi_spec.api import DimMapping, IngestMapping, VarMapping
 from mapi_spec.executor import RunEvent, RunEventType, RunKind
+from mapi_spec.jobs import DATASET_OUTPUTS
 from mapi_spec.loader import canonical_json, load_model_spec
 from mapi_spec.plots import PlotSpec
 from mapi_spec.run import (
@@ -40,6 +40,7 @@ from mapi_spec.run import (
 )
 from mapi_spec.schema import DataSchema
 from runner_helpers import Result, assert_signed_stream, make_run, run_supervisor
+from shimgcs import ShimGcs
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
@@ -87,7 +88,7 @@ def _check_plots(raw: bytes) -> list[str]:
 # ======================================================================= store demand
 
 
-def test_store_demand_csv_ingest_fit_and_forecast(gcs: FakeGcs) -> None:
+def test_store_demand_csv_ingest_fit_and_forecast(gcs: ShimGcs) -> None:
     data, _ = xgb.generate(0, "tiny")
     schema: DataSchema = xgb.schema()
     csv = data.to_dataframe().reset_index().to_csv(index=False).encode()
@@ -111,7 +112,7 @@ def test_store_demand_csv_ingest_fit_and_forecast(gcs: FakeGcs) -> None:
         )
     )
     manifest = _ok(ingest)
-    assert set(manifest.objects) == {"data.zarr.zip", "schema.json", "profile.json", "preview.json"}
+    assert set(manifest.objects) == set(DATASET_OUTPUTS)
     raw = ingest.output("data.zarr.zip")
     profile = json.loads(ingest.output("profile.json"))
     assert profile["sha256"] == hashlib.sha256(raw).hexdigest()
@@ -195,7 +196,7 @@ def test_store_demand_csv_ingest_fit_and_forecast(gcs: FakeGcs) -> None:
     assert any(i["code"] == "UNSEEN_LEVELS" for i in result["issues"])
 
 
-def test_score_with_a_tampered_bundle_is_an_integrity_failure(gcs: FakeGcs) -> None:
+def test_score_with_a_tampered_bundle_is_an_integrity_failure(gcs: ShimGcs) -> None:
     gcs.put(gcs.buckets.runs, "t/default/x/bundle.zarr.zip", b"PK\x03\x04 not a bundle")
     fake = BundleManifest(bundle_id="b", created_at="2026-10-15T00:00:00Z", spec_hash="sha256:x")
     gcs.put(gcs.buckets.runs, "t/default/x/bundle.manifest.json", fake.model_dump_json().encode())
@@ -226,7 +227,7 @@ def _sigterm_after_checkpoint() -> Any:
     return on_event
 
 
-def test_e02_zarr_ingest_checkpointed_fit_sigterm_partial_resume_and_score(gcs: FakeGcs) -> None:
+def test_e02_zarr_ingest_checkpointed_fit_sigterm_partial_resume_and_score(gcs: ShimGcs) -> None:
     data, _ = e02.generate(0, "tiny")
     data.attrs["mapi_schema"] = e02.schema().model_dump_json()
     gcs.put(gcs.buckets.quarantine, "t/default/uploads/radon", write_zarr_zip(data) or b"")
@@ -340,7 +341,7 @@ def test_e02_zarr_ingest_checkpointed_fit_sigterm_partial_resume_and_score(gcs: 
     assert any(i["code"] == "UNSEEN_LEVELS" for i in issues)
 
 
-def test_mff_ingest_and_an_invalid_spec_dry_run(gcs: FakeGcs) -> None:
+def test_mff_ingest_and_an_invalid_spec_dry_run(gcs: ShimGcs) -> None:
     rows = []
     for period in ("2026-01-04", "2026-01-11", "2026-01-18", "2026-01-25"):
         for geo in ("north", "south"):
