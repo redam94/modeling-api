@@ -5,10 +5,43 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
-M2, cloud and multi-tenant core (to be released as 0.3.0). The platform becomes multi-tenant,
-and it has a Cloud Run Jobs backend, Terraform for every Google Cloud project, a cost ledger,
-quotas and an observability stack. Nothing has been applied to real Google Cloud: cloud code
-is tested against fakes, and the Terraform is validated and tested against mocked providers.
+## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
+
+The platform is now multi-tenant and ready for Google Cloud. Many teams can share one
+deployment: each tenant has its own projects, members, API tokens, quotas, cost and audit
+trail, and PostgreSQL row-level security keeps their data apart. Runs can execute as Cloud Run
+Jobs, and Terraform describes every Google Cloud project. Nothing has been applied to real
+Google Cloud yet: cloud code is tested against fakes, and the Terraform is validated and tested
+against mocked providers. In summary:
+
+- **tenancy and auth**: tenants with trust tiers and data residency, projects with ordered
+  roles (viewer < editor < runner < admin), browser sign-in through a backend-for-frontend
+  OIDC flow (with a dev identity provider for local work), `mapi login` for the CLI, and
+  checksummed, scoped, project-bound API tokens.
+- **isolation**: forced row-level security on every tenant table. The API runs as roles
+  without the bypass (`mapi_app` for tenant data, `mapi_gateway` for sign-in and operator
+  lookups); only the orchestrator holds the platform role. The audit log and the cost ledger
+  are append-only.
+- **quotas and cost**: token, tenant and global quotas with weighted fair-share leasing and
+  429 back-off; an integer-micros cost ledger with per-run cost, usage reports and cost by
+  tenant for operators; a global spend cap.
+- **operations**: kill switches (pause or cancel uploaded code, the spend cap), executors that
+  operators can disable, a shared-tier gate that needs recorded conformance and security-suite
+  evidence, audit events for every change, Prometheus metrics, dashboards, alerts and
+  runbooks, plus a security probe suite and chaos tests.
+- **cloud**: a Cloud Run Jobs executor (orphan adoption, fan-out, 429 handling), Pub/Sub push
+  events, a Cloud KMS bundle signer, Terraform for the control, data and exec projects, and
+  deploy and rollback scripts.
+- **web, CLI and client**: tenant switcher, members, tokens, usage and an operator console
+  (tenants, quotas, cost, kill switches, executors, audit); `mapi admin`, `mapi tokens` and
+  `mapi usage`; client methods for every new endpoint.
+- **docs**: Administration and Authentication guides with tested walkthroughs, a security
+  model, deployment to Google Cloud with the [verify M0] checklist, and reference tables
+  generated from the code.
+
+Every workspace package and both web apps are versioned 0.3.0. Contract v0.1 gains only
+additive changes. Upgrading from 0.2 runs migrations 0003 to 0006, which adopt existing rows
+into a platform tenant.
 
 ### Added
 - **spec**: the M2 contracts. They cover tenants, trust tiers and placement, ordered project
@@ -307,6 +340,37 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   when the revocation fails, then exits 1.
 - **security**: the report writers create their directory, so `make security-suite` (and both
   nightly security jobs) no longer fail on a fresh checkout without `.local/`.
+
+### Fixed (integration)
+- **server**: two review branches each added a database role for the API without the
+  row-level-security bypass. One is kept (`0005_gateway_role`, column-level grants, used for
+  every API request); `MAPI_DB_PLATFORM` from the other is gone. The executor-disable
+  migration is renumbered `0006_executor_disable` and lets the gateway change an executor's
+  `enabled` and `disabled_reason`.
+- **server**: an executor's `enabled` flag belongs to operators. Missing shared-tier evidence
+  no longer turns it off; it shows in `shared_tiers_enabled` and the executor's message.
+- **server**: a submission that no executor can place gets one answer per cause. A residency
+  or resource class no executor serves is refused with `403`. A trust tier that no executor
+  can take yet (enforcement not verified, no suite evidence) gets `503`.
+- **server**: as the gateway role, the kill switch's `cancel_untrusted_runs` cancels each
+  tenant's runs in a session of that tenant. The operators' usage report can read the ledger
+  columns it sums.
+- **tests**: the end-to-end spend-cap drills use a self-hosted-trusted tenant, which the local
+  executor can still place.
+
+### Known gaps
+- Nothing has run against real Google Cloud. The Cloud Run, Pub/Sub, KMS and Cloud SQL code
+  paths, the IAM conditions, the logging exclusion, the metrics collector sidecar and the
+  Cloud Monitoring filters are checked with fakes and mocked providers only.
+- No job posts the nightly conformance and security-suite results to the evidence endpoint
+  yet. Until an operator records them (and the M0 DNS check passes), `verified` and `public`
+  tenants cannot run on any executor.
+- There is no endpoint to disable a user account. `disabled` is set in the database, and
+  sign-in keeps it.
+- The gateway role still reads some tables across tenants for the operator console, quota
+  counters and sign-in.
+- A live log tail polls the logs endpoint instead of using the run's event stream.
+- The API's built-in `/docs` and `/redoc` pages load assets from a public CDN.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
