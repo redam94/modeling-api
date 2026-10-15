@@ -8,9 +8,13 @@ The orchestrator runs :meth:`Housekeeper.run_forever` every ``housekeeping_inter
   already ignores them once their PUT has expired (:func:`~mapi_server.services.quotas.
   quota_usage`); this makes the row say so.
 
+* **browser sessions** past their absolute or idle expiry, and sign-ins abandoned between
+  ``/auth/login`` and ``/auth/callback``, are deleted (a request with an expired cookie
+  deletes its own row; this catches the cookies that never come back).
+
 It runs on the platform role and touches nothing a request could still be using: an
-expired PUT can no longer be completed, and ``create_dataset_version`` refuses an upload
-whose intent expired.
+expired PUT can no longer be completed, ``create_dataset_version`` refuses an upload
+whose intent expired, and an expired session is refused anyway.
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ from datetime import datetime
 from mapi_spec.storage import NotFound
 from sqlalchemy import update
 
+from mapi_server.auth.identity import sweep_expired_logins
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.runs import now as utcnow
@@ -33,7 +38,7 @@ log = logging.getLogger(__name__)
 
 
 class Housekeeper:
-    """Sweeps expired upload intents (and other expiring rows) on a slow cadence."""
+    """Sweeps expired upload intents, sessions and sign-ins on a slow cadence."""
 
     def __init__(self, ctx: ServerContext) -> None:
         self.ctx = ctx
@@ -53,7 +58,11 @@ class Housekeeper:
 
     async def sweep_once(self, *, now: datetime | None = None) -> int:
         """One pass; returns how many rows it retired."""
-        return await self.expire_uploads(now=now or utcnow())
+        at = now or utcnow()
+        uploads = await self.expire_uploads(now=at)
+        async with self.ctx.db.session() as s:
+            logins = await sweep_expired_logins(s, at=at)
+        return uploads + logins
 
     async def expire_uploads(self, *, now: datetime) -> int:
         """Mark pending intents whose PUT expired ``expired`` and delete their objects."""

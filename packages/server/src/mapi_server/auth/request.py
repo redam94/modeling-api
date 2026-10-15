@@ -69,6 +69,7 @@ from mapi_server.auth.identity import (
     LOCAL_USER_ID,
     AccountDisabled,
     claim_or_create_user,
+    delete_expired_session,
     is_operator,
     load_session,
     local_principal,
@@ -277,12 +278,20 @@ class _Resolved:
 
 
 class _AuthFailure(Exception):
-    """Raised inside the lookup transaction; carries audit rows to write after rollback."""
+    """Raised inside the lookup transaction; carries what to write after the rollback:
+    audit rows, and the cookie of an expired session to delete."""
 
-    def __init__(self, error: MapiError, audit: list[AuditEvent]) -> None:
+    def __init__(
+        self,
+        error: MapiError,
+        audit: list[AuditEvent],
+        *,
+        expired_session: str | None = None,
+    ) -> None:
         super().__init__(error.detail)
         self.error = error
         self.audit = audit
+        self.expired_session = expired_session
 
 
 def _request_id(request: Request) -> str:
@@ -408,8 +417,12 @@ async def _credentials(
     cookie = request.cookies.get(session_cookie(ctx.settings.secure_cookies).name)
     if cookie:
         loaded = await load_session(s, cookie, at=at)
-        if loaded is None:
-            raise unauthenticated("the session has expired; sign in again")
+        if loaded is None:  # the delete of an expired row is redone after the rollback
+            raise _AuthFailure(
+                unauthenticated("the session has expired; sign in again"),
+                [],
+                expired_session=cookie,
+            )
         sess, user = loaded
         _check_csrf(ctx, request, sess)
         operator = is_operator(user, ctx.settings.effective_operator_emails())
@@ -568,7 +581,11 @@ async def authenticate(request: Request) -> RequestAuth:
         async with ctx.db.session() as s:
             await _resolve(s, ctx, request, auth, now())
     except _AuthFailure as failure:
-        await write_audit(ctx.db, failure.audit)
+        if failure.audit:
+            await write_audit(ctx.db, failure.audit)
+        if failure.expired_session is not None:
+            async with ctx.db.session() as s:
+                await delete_expired_session(s, failure.expired_session)
         raise failure.error from None
     except MapiError as exc:
         denied = _DENIED_AUDIT.get(auth.operation_id)

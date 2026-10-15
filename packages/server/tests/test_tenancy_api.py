@@ -225,3 +225,43 @@ async def test_operators_read_metadata_but_never_tenant_content(
     assert (await acme.post("/v1/datasets", json={"name": "x"})).status_code == 404
     assert (await ops.get("/v1/tenants/acme/members")).status_code == 200
     assert (await ops.patch("/v1/tenants/acme", json={"name": "x"})).status_code == 403
+
+
+async def test_expired_sessions_are_deleted(ctx: ServerContext, client: httpx.AsyncClient) -> None:
+    """An expired session is deleted when its cookie comes back (in its own transaction, so
+    the 401 does not roll the delete back), and the housekeeper sweeps the ones that never
+    come back, with abandoned sign-ins."""
+    from datetime import timedelta
+
+    from mapi_server.services.housekeeping import Housekeeper
+    from mapi_server.services.runs import now
+    from mapi_spec.auth import SESSION_IDLE_TTL
+
+    ana = await make_user(ctx, "ana@acme.test")
+    back = await session_caller(ctx, client, ana)
+    await session_caller(ctx, client, ana)  # never comes back, goes idle
+    live = await session_caller(ctx, client, ana)
+    async with ctx.db.session() as s:
+        rows = list(await s.execute(select(m.WebSession).order_by(m.WebSession.created_at)))
+        ids = [r[0].id for r in rows]
+        first, idle = (await s.get(m.WebSession, ids[0])), (await s.get(m.WebSession, ids[1]))
+        assert first is not None and idle is not None
+        first.expires_at = now() - timedelta(seconds=1)
+        idle.last_seen_at = now() - SESSION_IDLE_TTL - timedelta(minutes=1)
+        s.add(
+            m.LoginTransactionRow(
+                id="sha256:" + "0" * 64, state="s", nonce="n", code_verifier="v" * 43,
+                return_to="/", created_at=now() - timedelta(hours=2),
+            )
+        )  # fmt: skip
+    r = await back.get("/v1/me")
+    assert r.status_code == 401 and "expired" in r.json()["detail"]
+    async with ctx.db.session() as s:
+        assert await s.get(m.WebSession, ids[0]) is None  # deleted despite the 401
+        assert await s.get(m.WebSession, ids[1]) is not None
+    assert await Housekeeper(ctx).sweep_once() >= 2
+    async with ctx.db.session() as s:
+        left = [r.id for r in (await s.execute(select(m.WebSession))).scalars()]
+        logins = list((await s.execute(select(m.LoginTransactionRow))).scalars())
+    assert left == [ids[2]] and logins == []
+    assert (await live.get("/v1/me")).status_code == 200

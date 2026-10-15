@@ -18,7 +18,7 @@ from mapi_spec.api import new_id
 from mapi_spec.auth import SESSION_ABSOLUTE_TTL, SESSION_IDLE_TTL, LoginTransaction
 from mapi_spec.tenancy import Membership, PrincipalKind, ProjectRole, UserPrincipal
 from mapi_spec.tokens import BudgetPeriod, TokenRecord
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import ColumnElement, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
@@ -32,6 +32,7 @@ __all__ = [
     "VerifiedIdentity",
     "claim_or_create_user",
     "create_session",
+    "delete_expired_session",
     "delete_session",
     "invite_user",
     "is_operator",
@@ -42,6 +43,7 @@ __all__ = [
     "pop_login",
     "save_login",
     "session_key",
+    "sweep_expired_logins",
     "token_record",
     "user_principal",
 ]
@@ -50,6 +52,7 @@ LOCAL_USER_ID: Final = "usr_" + "0" * 26
 """The principal of credential-less requests in the single-tenant profile."""
 LOCAL_ISSUER: Final = "https://localhost/mapi-local"
 SESSION_TOUCH_INTERVAL: Final = timedelta(minutes=1)
+_LOGIN_SWEEP_AGE: Final = timedelta(hours=1)
 
 
 @dataclass(frozen=True, slots=True)
@@ -236,7 +239,9 @@ async def load_session(
     s: AsyncSession, cookie_value: str, *, at: datetime | None = None
 ) -> tuple[m.WebSession, m.User] | None:
     """The live session for a cookie (absolute and idle expiry enforced), touched at most
-    once per :data:`SESSION_TOUCH_INTERVAL`. Expired sessions are deleted."""
+    once per :data:`SESSION_TOUCH_INTERVAL`. An expired session is deleted in ``s`` (callers
+    that then fail the request use :func:`delete_expired_session` in a new transaction, and
+    the housekeeper sweeps the rest)."""
     if not cookie_value or len(cookie_value) > 256:
         return None
     ts = at or now()
@@ -252,6 +257,37 @@ async def load_session(
     if ts - row.last_seen_at >= SESSION_TOUCH_INTERVAL:
         row.last_seen_at = ts
     return row, user
+
+
+def _expired_session(at: datetime) -> ColumnElement[bool]:
+    return (m.WebSession.expires_at <= at) | (m.WebSession.last_seen_at < at - SESSION_IDLE_TTL)
+
+
+async def delete_expired_session(
+    s: AsyncSession, cookie_value: str, *, at: datetime | None = None
+) -> bool:
+    """Delete the session of this cookie if (and only if) it has expired."""
+    if not cookie_value or len(cookie_value) > 256:
+        return False
+    result = await s.execute(
+        delete(m.WebSession).where(
+            m.WebSession.id == session_key(cookie_value), _expired_session(at or now())
+        )
+    )
+    return bool(getattr(result, "rowcount", 0))
+
+
+async def sweep_expired_logins(s: AsyncSession, *, at: datetime | None = None) -> int:
+    """Delete every expired session and every sign-in abandoned for longer than an hour
+    (a pending login is valid for :data:`~mapi_spec.auth.LOGIN_TTL`)."""
+    ts = at or now()
+    sessions = await s.execute(delete(m.WebSession).where(_expired_session(ts)))
+    logins = await s.execute(
+        delete(m.LoginTransactionRow).where(
+            m.LoginTransactionRow.created_at < ts - _LOGIN_SWEEP_AGE
+        )
+    )
+    return int(getattr(sessions, "rowcount", 0) or 0) + int(getattr(logins, "rowcount", 0) or 0)
 
 
 async def delete_session(s: AsyncSession, cookie_value: str) -> bool:
@@ -277,7 +313,7 @@ async def save_login(s: AsyncSession, tx: LoginTransaction) -> str:
     # opportunistic clean-up of abandoned logins
     await s.execute(
         delete(m.LoginTransactionRow).where(
-            m.LoginTransactionRow.created_at < now() - timedelta(hours=1)
+            m.LoginTransactionRow.created_at < now() - _LOGIN_SWEEP_AGE
         )
     )
     await s.flush()

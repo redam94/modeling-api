@@ -150,6 +150,10 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   pending intent only while its signed PUT is valid, and a new housekeeper loop in the worker
   (`MAPI_HOUSEKEEPING_INTERVAL_S`, default 300 s) marks expired intents `expired` and deletes
   whatever reached quarantine.
+- **server**: expired browser sessions are deleted. The delete in `load_session` was rolled
+  back with the request's 401, and nothing else removed `web_sessions` rows. The row is now
+  deleted in its own transaction after the 401, and the housekeeper sweeps expired sessions
+  and abandoned sign-ins.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 

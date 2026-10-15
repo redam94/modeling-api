@@ -145,7 +145,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_LOST_EXECUTION_GRACE_S` | `60` | How long an execution may be missing from the executor before the attempt is lost |
 | `MAPI_DEADLINE_GRACE_S` | `60` | Slack after a run's timeout before the reconciler stops it |
 | `MAPI_MAX_INFRA_RETRIES` | `2` | Automatic retries after infrastructure failures |
-| `MAPI_HOUSEKEEPING_INTERVAL_S` | `300` | Sweep of expired upload intents (their quarantine objects are deleted) |
+| `MAPI_HOUSEKEEPING_INTERVAL_S` | `300` | Sweep of expired upload intents (their quarantine objects are deleted), expired browser sessions and abandoned sign-ins |
 | `MAPI_AUTO_RETRY_WINDOW_S` | `1800` | No automatic retry of a run that has been going for longer than this |
 | `MAPI_FINALIZE_MAX_ATTEMPTS` | `5` | Attempts of the finalizer job before a run fails |
 
