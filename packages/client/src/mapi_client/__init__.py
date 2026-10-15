@@ -1,7 +1,15 @@
 """Python client for the modeling-api ``/v1`` HTTP API.
 
 * :class:`Client` / :class:`AsyncClient` - typed with the ``mapi_spec.api`` DTOs; resources
-  ``projects``, ``catalog``, ``datasets``, ``specs``, ``runs``, ``models`` and ``plots``;
+  ``projects``, ``catalog``, ``datasets``, ``specs``, ``runs``, ``models`` and ``plots``,
+  and from v0.3 ``tenants``, ``tokens``, ``usage`` and ``admin`` (plus :meth:`Client.me`);
+* credentials: an API token (``MAPI_TOKEN``, config profile) or the OIDC sign-in stored by
+  ``mapi login`` (:mod:`mapi_client.oidc`), renewed automatically;
+* project selection: ``Client(project="acme/growth")`` / ``MAPI_PROJECT`` / the profile's
+  ``project`` is sent as ``X-Mapi-Project`` on project-scoped requests;
+* ``429`` handling: ``RATE_LIMITED`` is waited out (``Retry-After``) and resent;
+  ``QUOTA_EXCEEDED`` raises :class:`~mapi_spec.errors.QuotaExceeded` with
+  :func:`retry_after_of` (see :class:`RetryPolicy`);
 * errors are :class:`mapi_spec.errors.MapiError` subclasses rebuilt from RFC 7807 problems
   (see :mod:`mapi_client.errors`);
 * list endpoints return lazy :class:`Paginator` / :class:`AsyncPaginator` iterators;
@@ -16,12 +24,21 @@
 
 from mapi_client._async import AsyncClient
 from mapi_client._common import ScoreResult
-from mapi_client._http import Call, RetryPolicy
+from mapi_client._http import Call, RetryPolicy, RetryState
 from mapi_client._sync import Client
 from mapi_client._version import __version__
-from mapi_client.auth import BearerAuth, TokenProvider
+from mapi_client.auth import BearerAuth, TokenProvider, default_auth
 from mapi_client.config import ClientConfig, ConfigError, load_config
-from mapi_client.errors import TransportError, UnexpectedResponse, http_status_of, problem_of
+from mapi_client.credentials import CredentialStore, OidcSession
+from mapi_client.errors import (
+    RateLimited,
+    TransportError,
+    UnexpectedResponse,
+    http_status_of,
+    problem_of,
+    retry_after_of,
+)
+from mapi_client.oidc import OidcError, OidcTokenProvider
 from mapi_client.pagination import AsyncPaginator, Paginator
 from mapi_client.sse import RunEnd, RunEventFrame, RunLiveFrame, RunSnapshot, RunStreamItem
 
@@ -33,8 +50,14 @@ __all__ = [
     "Client",
     "ClientConfig",
     "ConfigError",
+    "CredentialStore",
+    "OidcError",
+    "OidcSession",
+    "OidcTokenProvider",
     "Paginator",
+    "RateLimited",
     "RetryPolicy",
+    "RetryState",
     "RunEnd",
     "RunEventFrame",
     "RunLiveFrame",
@@ -45,7 +68,9 @@ __all__ = [
     "TransportError",
     "UnexpectedResponse",
     "__version__",
+    "default_auth",
     "http_status_of",
     "load_config",
     "problem_of",
+    "retry_after_of",
 ]
