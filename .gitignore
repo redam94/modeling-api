@@ -1,0 +1,44 @@
+# --- Plans are never committed ---
+plans/
+docs/architecture-plan.md
+*.plan.md
+
+# --- Python ---
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+
+# --- Node ---
+node_modules/
+apps/*/dist/
+.pnpm-store/
+playwright-report/
+test-results/
+
+# --- Local state ---
+.local/
+.env
+.env.*
+!.env.example
+*.zarr.zip
+*.nc
+.remember/
+.claude/worktrees/
+.DS_Store
+site/
+
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
