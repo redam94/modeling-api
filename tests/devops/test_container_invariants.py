@@ -630,10 +630,11 @@ class TestCompose:
         shim = data["services"]["gcs-shim"]["container_name"]
         assert env["MAPI_DOCKER_NETWORK"] == f"container:{shim}"
         # the images `make docker-build` tags, chosen per plugin
-        assert env["MAPI_DOCKER_IMAGE"] == "mapi/base-bayes:${MAPI_VERSION:-0.1.0}"
+        tag = "${MAPI_VERSION:-" + _workspace_version() + "}"
+        assert env["MAPI_DOCKER_IMAGE"] == f"mapi/base-bayes:{tag}"
         images = json.loads(env["MAPI_DOCKER_IMAGES"])
-        assert images["ts"] == "mapi/base-forecast:${MAPI_VERSION:-0.1.0}"
-        assert images["sklearn"] == "mapi/base-ml:${MAPI_VERSION:-0.1.0}"
+        assert images["ts"] == f"mapi/base-forecast:{tag}"
+        assert images["sklearn"] == f"mapi/base-ml:{tag}"
         # the worker keeps the runner-capable mapi/worker image (docker SDK, uv.lock digest)
         assert "image" not in worker and "build" not in worker
 
@@ -723,6 +724,13 @@ def _signed_manifest(signer: Any) -> Any:
     example = BundleManifest.model_json_schema()["examples"][0]
     example.pop("signature")
     return signer.sign(BundleManifest.model_validate(example))
+
+
+def _workspace_version() -> str:
+    import tomllib
+
+    meta = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    return str(meta["project"]["version"])
 
 
 # ================================================================================ .env.example
