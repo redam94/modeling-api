@@ -124,8 +124,10 @@ A multi-tenant API (v0.3) needs credentials and a project
 - **`mapi login`** opens the identity provider in your browser (OpenID Connect,
   authorization code with PKCE, redirected to a one-off listener on `127.0.0.1`).
   `--device` signs in with a code typed on another device instead, and `--no-browser` only
-  prints the address. `--issuer` and `--client-id` are saved in the profile, so later
-  logins need neither. The sign-in is kept in `credentials.json` next to the config file
+  prints the address. `--issuer`, `--client-id` and `--discovery-url` are saved in the
+  profile, so later logins need none of them. Against a local `MAPI_PROFILE=dev` stack, use
+  `mapi login --issuer https://dev-idp.mapi.localhost --discovery-url
+  http://127.0.0.1:8000/dev/idp` and pick an account on the page that opens. The sign-in is kept in `credentials.json` next to the config file
   (mode `0600`) and renewed automatically with its refresh token. It is only ever sent to
   the API it was made for.
 - **`mapi login --with-token`** reads an API token from stdin, checks its checksum (a typo

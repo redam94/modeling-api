@@ -9,12 +9,11 @@ mock_provider "google-beta" {
 }
 
 variables {
-  project_id             = "acme-test-control"
-  project_number         = "111111111111"
-  env                    = "test"
-  region                 = "europe-west4"
-  buckets                = { quarantine = "mapi-test-quarantine", bootstrap = "mapi-test-bootstrap", runs = "mapi-test-runs", bundles = "mapi-test-bundles", data = "mapi-test-data" }
-  bootstrap_url_template = "gs://mapi-test-bootstrap/{nonce}"
+  project_id     = "acme-test-control"
+  project_number = "111111111111"
+  env            = "test"
+  region         = "europe-west4"
+  buckets        = { quarantine = "mapi-test-quarantine", bootstrap = "mapi-test-bootstrap", runs = "mapi-test-runs", bundles = "mapi-test-bundles", data = "mapi-test-data" }
   exec_pools = {
     paid = {
       project = "acme-test-exec-paid"

@@ -35,7 +35,7 @@ use others: `MAPI_SMOKE_WEB_PORT=5293 MAPI_SMOKE_PLOTS_PORT=5294 pnpm --filter @
 - **Requests.** Every API call sends the cookie (`credentials: "include"`). Project-scoped
   routes (every v0.2 resource, `/v1/tokens`, `/v1/usage`) carry `X-Mapi-Project:
   <tenant>/<project>`; tenant, admin, identity and catalog routes never do. Every mutation
-  carries the CSRF header `X-Requested-With: mapi-web`. A 401 opens a "session ended" dialog
+  carries the session's CSRF token in `X-CSRF-Token` (handed out by `/auth/session`). A 401 opens a "session ended" dialog
   that keeps the page (and its unsaved edits) instead of navigating away.
 - **Projects.** The header switcher lists `/v1/me` tenants and projects with the caller's
   effective role and remembers the choice per browser. Every project-scoped query key starts
@@ -54,10 +54,9 @@ Ana (organisation admin and platform operator, the default), Rui (runner) and Vi
 ## API client
 
 `openapi.json` drives `src/api/schema.d.ts` (openapi-typescript) and the typed client
-(openapi-fetch). `scripts/gen_openapi.py` writes the server's own document and overlays the
-`mapi_spec.api.M2_ENDPOINTS` operations the server does not serve yet, rendered by FastAPI from
-the contract DTOs (so component names match what the server will emit); `--server-only` skips
-the overlay. It also writes `src/api/access.gen.json`:
+(openapi-fetch). `scripts/gen_openapi.py` writes the server's own document (every M1 and M2
+operation; the same document a running server serves at `/openapi.json`). It also writes
+`src/api/access.gen.json`, the role order and permission matrix the UI uses to hide actions:
 
 ```bash
 uv run python apps/web/scripts/gen_openapi.py          # regenerate (or --check)

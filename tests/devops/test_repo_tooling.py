@@ -322,6 +322,10 @@ class TestReleaseCheck:
 # ================================================================================== Makefile
 
 REQUIRED_TARGETS = {
+    "chaos",
+    "load-test",
+    "security-suite",
+    "tf-validate",
     "dev",
     "run",
     "stop",
@@ -369,6 +373,7 @@ class TestMakefile:
             "local stack (no Docker)",
             "quality",
             "tests",
+            "security",
             "web",
             "containers",
             "docs",

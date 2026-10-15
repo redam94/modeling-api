@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from typing import Any
 
+import fastapi.routing
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -71,6 +72,7 @@ __all__ = [
     "check_route_access",
     "create_app",
     "ensure_scope",
+    "iter_api_routes",
     "load_signer",
     "openapi_document",
     "prepare_signer",
@@ -181,6 +183,7 @@ def build_context(
             users=settings.devidp_users,
             base_url=settings.api_url,
             redirect_uri=settings.redirect_uri(),
+            public_clients=settings.oidc_cli_client_ids,
         )
         if settings.devidp_enabled
         else None
@@ -363,17 +366,30 @@ def create_app(
     return app
 
 
+def iter_api_routes(app: FastAPI) -> Iterator[tuple[APIRoute, str]]:
+    """Every API route of ``app`` with its full path, including those of included routers
+    (FastAPI >= 0.140 keeps included routers as branches in ``app.routes``)."""
+    iterate = getattr(fastapi.routing, "iter_route_contexts", None)
+    if iterate is None:  # older FastAPI: included routes are flattened into app.routes
+        for route in app.routes:
+            if isinstance(route, APIRoute):
+                yield route, route.path
+        return
+    for context in iterate(app.routes):
+        original = context.original_route
+        if isinstance(original, APIRoute):
+            yield original, context.path or original.path
+
+
 def check_route_access(app: FastAPI) -> None:
     """Every route must have an access rule (fail closed at start-up, not per request)."""
     missing = []
-    for route in app.routes:
-        if not isinstance(route, APIRoute):
-            continue
+    for route, path in iter_api_routes(app):
         op = route.operation_id or route.name
         try:
             access_for(op)
         except MapiError:
-            missing.append(f"{sorted(route.methods or ())} {route.path} ({op})")
+            missing.append(f"{sorted(route.methods or ())} {path} ({op})")
     if missing:
         raise RuntimeError(f"routes without an access rule: {missing}")
 

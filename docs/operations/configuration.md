@@ -48,6 +48,12 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_ALLOWED_HOSTS` | `127.0.0.1,localhost,api` | `Host` header values the API answers (comma-separated; the host of `MAPI_API_URL` is always allowed; `*` turns the check off). The DNS-rebinding guard of the unauthenticated M1 API |
 | `MAPI_DEBUG` | `false` | Put tracebacks into problem documents' `untrusted_text`. Never in production |
 | `MAPI_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
+| `MAPI_LOG_JSON` | `true` | One JSON object per log line (structlog, with `trace_id`/`span_id` and the request, run and tenant context); `false` gives a human console format |
+| `MAPI_METRICS_ENABLED` | `true` | Serve Prometheus metrics at `GET /metrics` (see [Observability](observability.md)) |
+| `MAPI_METRICS_TOKEN` | unset | Bearer a scraper must present on `GET /metrics`. Required in the `multi-tenant` profile, which refuses scrapes without it (the series carry tenant ids and spend) |
+| `MAPI_WORKER_METRICS_PORT`, `MAPI_WORKER_METRICS_HOST` | unset, `127.0.0.1` | Serve the worker's own `GET /metrics` (dispatcher, reconciler, finalizer series) on this address; same bearer rule as the API |
+| `MAPI_TRACING_ENABLED` | `true` | Create OpenTelemetry spans for requests, outgoing HTTP calls and runs |
+| `MAPI_OTLP_ENDPOINT` | unset | OTLP/HTTP collector to export spans to (also read from `OTEL_EXPORTER_OTLP_ENDPOINT`); unset creates spans without exporting them |
 | `MAPI_INTERNAL_TOKEN` | unset | If set (and Pub/Sub push authentication is not), `POST /internal/events` requires this bearer token. A multi-tenant profile with neither refuses every push |
 | `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | unset | Set both to require a Google-signed OIDC token from the push subscription's service account on `POST /internal/events` (see [Authentication](authentication.md#pubsub-push) and the Cloud Run settings below) |
 | `MAPI_SSE_HEARTBEAT_S` | `15` | Seconds between `: keepalive` comments on event streams |
@@ -84,6 +90,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_OIDC_CLIENT_ID`, `MAPI_OIDC_CLIENT_SECRET` | unset | The OAuth client registered for the BFF (the secret is optional for public clients; PKCE is always used) |
 | `MAPI_OIDC_REDIRECT_URI` | `$MAPI_API_URL/auth/callback` | The registered redirect URI |
 | `MAPI_OIDC_ALGORITHMS` | `RS256,ES256` | Accepted ID-token algorithms (asymmetric only) |
+| `MAPI_OIDC_CLI_CLIENT_IDS` | `mapi-cli` | Public OIDC clients of the same issuer whose ID tokens the API accepts as `Authorization: Bearer` (what `mapi login` sends). Comma-separated; empty accepts API tokens only. In the `dev` profile these clients may also use the built-in IdP with a loopback redirect |
 | `MAPI_OIDC_EXTRA_PARAMS` | `{}` | Extra authorization parameters as JSON, for example `{"hd": "acme.com"}` |
 | `MAPI_OPERATOR_EMAILS` | unset | Verified e-mails that sign in as platform operators (comma-separated) |
 | `MAPI_DEFAULT_TENANT_ADMINS` | unset | E-mails invited as admins of the default tenant at start-up (claimed at first sign-in with that verified e-mail) |
@@ -103,7 +110,10 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MAPI_OBJECT_STORE` | `shim` | `shim` (the GCS shim at `MAPI_GCS_ENDPOINT`) or `memory` (tests only) |
+| `MAPI_OBJECT_STORE` | `shim` | `shim` (the GCS shim at `MAPI_GCS_ENDPOINT`), `gcs` (real Cloud Storage; needs the `gcp` extra and `MAPI_URL_SIGNER`) or `memory` (tests only) |
+| `MAPI_GCP_PROJECT` | unset | With `gcs`: the project of the Cloud Storage client (default: the environment's) |
+| `MAPI_URL_SIGNER` | unset | With `gcs`: the service account that signs URLs through IAM `signBlob`, so no key file exists anywhere |
+| `MAPI_URL_UPLOADER` | `MAPI_URL_SIGNER` | With `gcs`: the account that signs create-only upload policies (it may create objects, never delete them) |
 | `MAPI_GCS_PUBLIC_ENDPOINT` | `MAPI_GCS_ENDPOINT` | The base URL put into signed URLs, when browsers or containers reach the shim under another host name |
 | `MAPI_GCS_ROOT` | `$MAPI_DATA_DIR/gcs` | The shim's state directory; the server reads the principals' key files under `_shim/keys/` |
 | `MAPI_GCS_KEY_FILE` | `$MAPI_GCS_ROOT/_shim/keys/control.json` | Key file of the control plane's principal |
@@ -190,6 +200,8 @@ arguments. Never set them by hand.
 | `MAPI_WORKER_PYTHON` | The worker's interpreter (default: the supervisor's) |
 | `MAPI_BASE_IMAGE` | The base image recorded in the run's lineage |
 | `MAPI_REQUIRE_ISOLATION` | Set to `1` by the docker executor: the supervisor fails the run with `SANDBOX_VIOLATION` instead of running the worker in dev mode |
+| `MAPI_TRACEPARENT` | The W3C `traceparent` of the dispatching span, so the supervisor's stderr diagnostics carry the run's trace id (nothing is exported from the sandbox) |
+| `MAPI_LOG_JSON` | `1` (the default) makes the supervisor's stderr diagnostics JSON lines; `0` plain text |
 
 The supervisor passes the untrusted worker only an allow-list of variables
 (`mapi_spec.run.WORKER_ENV_ALLOWLIST`: `PATH`, `HOME`, `TMPDIR`, locale and thread-count
@@ -218,6 +230,7 @@ the entry point builds over it ([Container images](images.md#compile-caches-and-
 | `MAPI_CREDENTIALS` | Where `mapi login` keeps sign-ins (default `credentials.json` next to the config file; mode `0600`) |
 | `MAPI_OIDC_ISSUER` | The identity provider for `mapi login` (https, or plain http on a loopback address for a local development provider) |
 | `MAPI_OIDC_CLIENT_ID` | The OIDC client id of the CLI (default `mapi-cli`) |
+| `MAPI_OIDC_DISCOVERY_URL` | Where the issuer's discovery document is, when not under the issuer. The `dev` profile's built-in IdP has the issuer `https://dev-idp.mapi.localhost` and serves its document at `<api>/dev/idp` |
 | `MAPI_OIDC_CLIENT_SECRET` | Only for identity providers that require one from installed apps (for example Google "desktop" clients); never printed |
 
 Arguments (`--url`, `--token`, `--project`, `--profile`, or `Client(base_url=…, token=…,
@@ -231,11 +244,18 @@ rewrite the config file atomically with mode `0600`.
 
 | Variable | Meaning |
 |---|---|
+| `MAPI_STACK_PROFILE` | The servers' `MAPI_PROFILE`: `dev` (the default: sign-in through the built-in development IdP, the `default` tenant and project, the seeded accounts of `MAPI_DEVIDP_USERS` with `admin@dev.local` as tenant admin and platform operator), `single-tenant` (the credential-less M1 API) or `multi-tenant`. A separate name so that a CLI `MAPI_PROFILE` in your shell never reaches the servers |
+| `MAPI_INTERNAL_TOKEN` | Outside the single-tenant profile, a random bearer for `POST /internal/events` is created in `$MAPI_DATA_DIR/dev/internal-token` and given to the servers (the end-to-end suite reads it there) |
 | `MAPI_DEV_<NAME>_CMD` | Replace one service's command (shell-quoted). `<NAME>` is `GCS_SHIM`, `MIGRATE`, `API`, `WORKER`, `WEB` or `PLOTS`, e.g. `MAPI_DEV_API_CMD="uvicorn mapi_server.app:app --reload --port 8000"` |
 | `NO_COLOR`, `FORCE_COLOR` | Disable or force coloured service prefixes |
 
 `make dev ONLY=api` and `make dev WITHOUT=web,plots` choose services; `make seed SIZE=full`
 loads the large demo. These are `make` arguments, not environment variables.
+
+`make seed`, `make e2e` and `python -m mapi_conformance run --stack` sign in to a stack that
+requires it: with `MAPI_TOKEN` when set, otherwise through the development IdP as
+`MAPI_DEV_ACCOUNT` (default `admin@dev.local`), acting in `MAPI_PROJECT` (default
+`default/default`).
 
 ## The web app and the plot sandbox
 
@@ -266,6 +286,7 @@ Compose reads `.env` in the repository root (copy `.env.example`).
 | `POSTGRES_PASSWORD` | **required** | The database password; compose refuses to start without it |
 | `MAPI_VERSION` | the workspace version | The `mapi/*` image tag (`make compose-up` sets it) |
 | `MAPI_ENV` | `local` | As above |
+| `MAPI_STACK_PROFILE` | `dev` | The servers' `MAPI_PROFILE`, as for `make dev` |
 | `MAPI_EXECUTOR` | `local-process` | The worker's executor |
 | `MAPI_WORKER_TMPFS`, `MAPI_WORKER_MEMORY`, `MAPI_WORKER_CPUS` | `4g`, `12g`, `4` | The worker's `/tmp` (the scratch of every local-process run), memory limit and CPUs |
 | `DOCKER_GID` | `0` | With the docker executor override: the group that owns the Docker socket |
@@ -315,6 +336,7 @@ The variables Terraform sets on the Cloud Run services (the deployment contract 
 | Variable | Meaning |
 |---|---|
 | `MAPI_E2E` | Set by `pnpm --filter @mapi/web e2e`: run the Playwright `@e2e` suite against a running stack |
+| `MAPI_DEV_ACCOUNT` | The development-IdP account `make seed` and the end-to-end suites sign in as (default `admin@dev.local`) |
 | `MAPI_UPDATE_SNAPSHOTS` | `1` regenerates the contract snapshot of `mapi_spec` |
 | `MAPI_HYPOTHESIS_EXAMPLES` | Examples per property in the wire-format round-trip tests (default 60) |
 

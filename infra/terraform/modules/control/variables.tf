@@ -61,13 +61,8 @@ variable "buckets" {
   type        = map(string)
 }
 
-variable "bootstrap_url_template" {
-  description = "gs://mapi-{env}-bootstrap/{nonce}."
-  type        = string
-}
-
 variable "exec_pools" {
-  description = "Exec pools (one per exec project). The orchestrator gets the inventory as MAPI_CLOUDRUN_POOLS; a Logging sink in each exec project routes event lines to the events topic."
+  description = "Exec pools (one per exec project). The orchestrator dispatches to dispatch_pool (MAPI_CLOUDRUN_PROJECT/REGION); a Logging sink in each exec project routes event lines to the events topic."
   type = map(object({
     project = string
     region  = string
@@ -75,6 +70,18 @@ variable "exec_pools" {
     jobs    = map(map(string))
     public  = bool
   }))
+}
+
+variable "dispatch_pool" {
+  description = "The exec pool the orchestrator submits runs to (its Job inventory becomes MAPI_CLOUDRUN_PROJECT/REGION). Default: the first pool that is not public, else the first pool. One orchestrator serves one pool; per-tier placement across pools is M5."
+  type        = string
+  default     = null
+}
+
+variable "kms_key_version" {
+  description = "Version of the bundle-signing key the server signs with (MAPI_KMS_KEY_VERSION). Bump after creating a new version; list the old one in extra_env MAPI_KMS_TRUSTED_KEY_VERSIONS while bundles it signed are live."
+  type        = number
+  default     = 1
 }
 
 # ----------------------------------------------------------------------------------- network
@@ -133,10 +140,10 @@ variable "database" {
 # ------------------------------------------------------------------------------------ secrets
 
 variable "secret_versions" {
-  description = "Bump a number to rotate that generated secret on the next apply (new value, new secret version). Rotating token_pepper invalidates every API token."
+  description = "Bump a number to rotate that generated secret on the next apply (new value, new secret version). Rotating server_secret invalidates every API token."
   type = object({
-    token_pepper   = optional(number, 1)
-    session_secret = optional(number, 1)
+    server_secret = optional(number, 1)
+    metrics_token = optional(number, 1)
   })
   default = {}
 }

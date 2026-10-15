@@ -38,22 +38,32 @@ locals {
 
   services_ready = var.images.server != null && var.images.web != null
 
+  # The one exec pool this orchestrator dispatches to (see var.dispatch_pool).
+  private_pools = sort([for k, p in var.exec_pools : k if !p.public])
+  dispatch_pool = coalesce(
+    var.dispatch_pool,
+    length(local.private_pools) > 0 ? local.private_pools[0] : sort(keys(var.exec_pools))[0],
+  )
+
   # ------------------------------------------------------------------------ environment
-  # The deployment contract with mapi-server (documented in docs/operations/gcp-deployment.md).
-  # Secrets arrive through Secret Manager references (secret_env below), never as values.
+  # The deployment contract with mapi-server: every name is a mapi_server.settings.Settings
+  # field (tests/infra/test_contract.py checks it; docs/operations/gcp-deployment.md lists
+  # them). Secrets arrive through Secret Manager references (secret_env below), never as values.
   env_common = {
-    MAPI_ENV          = var.env
-    MAPI_PROFILE      = "multi-tenant"
-    MAPI_OBJECT_STORE = "gcs"
-    MAPI_GCP_PROJECT  = var.project_id
-    MAPI_GCP_REGION   = var.region
-    MAPI_LOG_LEVEL    = "info"
-    MAPI_API_URL      = local.api_url
-    MAPI_WEB_ORIGIN   = local.web_origin
-    MAPI_PLOTS_ORIGIN = local.plots_origin
-    MAPI_DATA_DIR     = "/tmp/mapi"
-    MAPI_KMS_KEY      = google_kms_crypto_key.bundle_signing.id
-    MAPI_URL_SIGNER   = google_service_account.sa["url-signer"].email
+    MAPI_ENV             = var.env
+    MAPI_PROFILE         = "multi-tenant"
+    MAPI_OBJECT_STORE    = "gcs"
+    MAPI_GCP_PROJECT     = var.project_id
+    MAPI_LOG_LEVEL       = "info"
+    MAPI_API_URL         = local.api_url
+    MAPI_WEB_ORIGIN      = local.web_origin
+    MAPI_PLOTS_ORIGIN    = local.plots_origin
+    MAPI_DATA_DIR        = "/tmp/mapi"
+    MAPI_SIGNER          = "kms"
+    MAPI_KMS_KEY_VERSION = "${google_kms_crypto_key.bundle_signing.id}/cryptoKeyVersions/${var.kms_key_version}"
+    MAPI_URL_SIGNER      = google_service_account.sa["url-signer"].email
+    MAPI_DB_APP_ROLE     = "mapi_app"
+    MAPI_DB_SYSTEM_ROLE  = "mapi_orchestrator"
   }
 
   env = {
@@ -64,16 +74,16 @@ locals {
     }, lookup(var.extra_env, "api", {}))
 
     events = merge(local.env_common, {
-      MAPI_ALLOWED_HOSTS        = trimprefix(local.run_url.events, "https://")
-      MAPI_PUSH_AUDIENCE        = local.push_audience
-      MAPI_PUSH_SERVICE_ACCOUNT = google_service_account.sa["push"].email
-      MAPI_PUSH_SUBSCRIPTION    = "projects/${var.project_id}/subscriptions/${local.prefix}-run-events-push"
+      MAPI_ALLOWED_HOSTS               = trimprefix(local.run_url.events, "https://")
+      MAPI_PUBSUB_PUSH_AUDIENCE        = local.push_audience
+      MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT = google_service_account.sa["push"].email
+      MAPI_PUBSUB_PUSH_SUBSCRIPTIONS   = "projects/${var.project_id}/subscriptions/${local.prefix}-run-events-push"
     }, lookup(var.extra_env, "events", {}))
 
     orchestrator = merge(local.env_common, {
-      MAPI_EXECUTOR       = "cloudrun-jobs"
-      MAPI_BOOTSTRAP_URL  = var.bootstrap_url_template
-      MAPI_CLOUDRUN_POOLS = jsonencode(var.exec_pools)
+      MAPI_EXECUTOR         = "cloudrun-jobs"
+      MAPI_CLOUDRUN_PROJECT = var.exec_pools[local.dispatch_pool].project
+      MAPI_CLOUDRUN_REGION  = var.exec_pools[local.dispatch_pool].region
     }, lookup(var.extra_env, "orchestrator", {}))
 
     migrate = merge(local.env_common, lookup(var.extra_env, "migrate", {}))
@@ -88,24 +98,32 @@ locals {
     }, lookup(var.extra_env, "web", {}))
   }
 
+  # api and events run the same app: tenant sessions on mapi_app (pooled), sign-in lookups and
+  # pushed events on the platform role, LISTEN on a direct connection
+  secret_env_api = {
+    MAPI_DATABASE_URL        = "db-url-app-direct"
+    MAPI_DATABASE_APP_URL    = "db-url-app"
+    MAPI_DATABASE_SYSTEM_URL = "db-url-orchestrator"
+    MAPI_SERVER_SECRET       = "server-secret"
+    MAPI_METRICS_TOKEN       = "metrics-token"
+  }
+
   # name of the env var => secret id (resolved to "latest" version at revision start)
   secret_env = {
-    api = merge({
-      MAPI_DATABASE_URL        = "db-url-app"
-      MAPI_DATABASE_LISTEN_URL = "db-url-app-direct"
-      MAPI_TOKEN_PEPPER        = "token-pepper"
-      MAPI_SESSION_SECRET      = "session-secret"
-      }, var.oidc.client_secret_version > 0 ? {
+    api = merge(local.secret_env_api, var.oidc.client_secret_version > 0 ? {
       MAPI_OIDC_CLIENT_SECRET = "oidc-client-secret"
     } : {})
-    events = {
-      MAPI_DATABASE_URL = "db-url-app"
-    }
+    events = local.secret_env_api
     orchestrator = {
-      MAPI_DATABASE_URL = "db-url-orchestrator"
+      MAPI_DATABASE_URL        = "db-url-orchestrator"
+      MAPI_DATABASE_SYSTEM_URL = "db-url-orchestrator"
+      MAPI_DATABASE_APP_URL    = "db-url-app"
+      MAPI_SERVER_SECRET       = "server-secret"
+      MAPI_METRICS_TOKEN       = "metrics-token"
     }
     migrate = {
-      MAPI_DATABASE_URL = "db-url-migrate"
+      MAPI_DATABASE_URL  = "db-url-migrate"
+      MAPI_SERVER_SECRET = "server-secret"
     }
   }
 }

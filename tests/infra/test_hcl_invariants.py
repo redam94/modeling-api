@@ -16,7 +16,17 @@ from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.run import ENV_BOOTSTRAP_URL, ENV_NONCE, ENV_RUN_ID
 from mapi_spec.storage import BucketPurpose, bucket_name
 
-from .conftest import DEPLOY, ENVS, MODULES, TF_ROOT, Block, parse_blocks, resources, tf_files
+from .conftest import (
+    DEPLOY,
+    ENVS,
+    MODULES,
+    TF_ROOT,
+    Block,
+    parse_blocks,
+    resources,
+    strip_comments,
+    tf_files,
+)
 
 GIB = 1024**3
 
@@ -383,3 +393,44 @@ def _bootstrap_apis() -> dict[str, set[str]]:
 
 def test_bootstrap_enables_exactly_the_terraform_apis() -> None:
     assert _bootstrap_apis() == _tf_apis()
+
+
+def _env_names(text: str, block: str) -> set[str]:
+    """``MAPI_*`` keys assigned inside the ``block = {`` map of ``locals.tf``."""
+    start = text.index(f"  {block} = {{")
+    depth, i = 0, text.index("{", start)
+    for j in range(i, len(text)):
+        depth += {"{": 1, "}": -1}.get(text[j], 0)
+        if depth == 0:
+            return set(re.findall(r"\b(MAPI_[A-Z0-9_]+)\s*=", text[i:j]))
+    raise AssertionError(f"unbalanced {block}")
+
+
+def test_server_workloads_get_only_real_settings() -> None:
+    """Every variable Terraform hands mapi-server (plain or from Secret Manager) is a
+    Settings field, so a renamed setting cannot silently fall back to its default in the
+    cloud. The web image's variables are nginx template inputs, not server settings."""
+    from mapi_server.settings import Settings
+
+    known = {
+        (f.validation_alias if isinstance(f.validation_alias, str) else f"MAPI_{n}").upper()
+        for n, f in Settings.model_fields.items()
+    } | {f"MAPI_{n.upper()}" for n in Settings.model_fields}
+    locals_tf = strip_comments((TF_ROOT / "modules" / "control" / "locals.tf").read_text())
+    names = (
+        _env_names(locals_tf, "env_common")
+        | _env_names(locals_tf, "secret_env_api")
+        | set(re.findall(r"\b(MAPI_[A-Z0-9_]+)\s*=", locals_tf.split("  env = {", 1)[1]))
+    )
+    web_only = {"MAPI_API_UPSTREAM", "MAPI_WEB_SERVER_NAMES", "MAPI_GCS_ENDPOINT"}
+    unknown = sorted(names - known - web_only)
+    assert not unknown, f"not mapi_server settings: {unknown}"
+    # the essentials of a multi-tenant cloud deployment are all there
+    for required in (
+        "MAPI_PROFILE", "MAPI_OBJECT_STORE", "MAPI_SIGNER", "MAPI_KMS_KEY_VERSION",
+        "MAPI_URL_SIGNER", "MAPI_SERVER_SECRET", "MAPI_METRICS_TOKEN",
+        "MAPI_PUBSUB_PUSH_AUDIENCE", "MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT",
+        "MAPI_DATABASE_APP_URL", "MAPI_DATABASE_SYSTEM_URL", "MAPI_DB_SYSTEM_ROLE",
+        "MAPI_CLOUDRUN_PROJECT", "MAPI_EXECUTOR",
+    ):  # fmt: skip
+        assert required in names, required

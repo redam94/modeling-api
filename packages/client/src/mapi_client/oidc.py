@@ -49,6 +49,7 @@ from mapi_client.credentials import CredentialStore, OidcSession
 __all__ = [
     "DEFAULT_CLIENT_ID",
     "DEVICE_GRANT",
+    "DEV_ISSUER",
     "DeviceCode",
     "DeviceLogin",
     "LoopbackLogin",
@@ -58,6 +59,7 @@ __all__ = [
     "TokenResponse",
     "check_id_token",
     "decode_jwt_claims",
+    "dev_idp_login",
     "discover",
     "login",
     "logout",
@@ -69,6 +71,10 @@ DEFAULT_CLIENT_ID: Final = "mapi-cli"
 """Client id used when none is configured (the local development identity provider's
 public CLI client)."""
 DEVICE_GRANT: Final = "urn:ietf:params:oauth:grant-type:device_code"
+DEV_ISSUER: Final = "https://dev-idp.mapi.localhost"
+"""Issuer of the identity provider built into a ``MAPI_PROFILE=dev`` server (an identifier;
+its documents are served by the API under ``/dev/idp``)."""
+DEV_IDP_PATH: Final = "/dev/idp"
 DISCOVERY_PATH: Final = "/.well-known/openid-configuration"
 LOGIN_TIMEOUT: Final = 300.0
 _LEEWAY: Final = timedelta(seconds=120)
@@ -232,11 +238,20 @@ class ProviderMetadata:
         )
 
 
-def discover(http: httpx.Client, issuer: str) -> ProviderMetadata:
-    """Fetch and check ``<issuer>/.well-known/openid-configuration``."""
+def discover(
+    http: httpx.Client, issuer: str, *, discovery_url: str | None = None
+) -> ProviderMetadata:
+    """Fetch and check ``<issuer>/.well-known/openid-configuration`` (or the document at
+    ``discovery_url``, which must still name ``issuer``)."""
     issuer = check_issuer(issuer)
+    if discovery_url is None:
+        url = issuer + DISCOVERY_PATH
+    else:
+        url = check_issuer(discovery_url)
+        if not url.endswith(DISCOVERY_PATH):
+            url += DISCOVERY_PATH
     try:
-        response = http.get(issuer + DISCOVERY_PATH)
+        response = http.get(url)
     except httpx.TransportError as exc:
         raise OidcError(f"cannot reach the identity provider {issuer}: {exc}") from exc
     if response.status_code != 200:
@@ -636,7 +651,7 @@ def login(
     client_id = cfg.oidc_client_id or DEFAULT_CLIENT_ID
     target = store or _store_of(cfg)
     with _http(cfg) as http:
-        provider = discover(http, cfg.oidc_issuer)
+        provider = discover(http, cfg.oidc_issuer, discovery_url=cfg.oidc_discovery_url)
         flow: LoopbackLogin | DeviceLogin
         if method == "device":
             flow = DeviceLogin(
@@ -782,3 +797,82 @@ class OidcTokenProvider:
             obtained_at=now,
         )
         self._store.save(self._profile, self._session)
+
+
+def dev_idp_login(
+    api_url: str,
+    email: str = "admin@dev.local",
+    *,
+    client_id: str = DEFAULT_CLIENT_ID,
+    http: httpx.Client | None = None,
+) -> str:
+    """An ID token for ``email`` from the identity provider of a ``MAPI_PROFILE=dev`` server,
+    obtained without a browser (scripts, the end-to-end suite, ``scripts/seed.py``).
+
+    It runs the same authorization-code flow as :class:`LoopbackLogin` (PKCE, state, nonce, a
+    loopback redirect that is never contacted: the code is read from the redirect itself)
+    and checks the token's issuer, audience and nonce. The API accepts the token as
+    ``Authorization: Bearer`` for an hour. Only a development server offers this; any other
+    server answers 404 and :class:`OidcError` is raised.
+    """
+    base = _check_url_for_dev(api_url)
+    own = http is None
+    client = http or httpx.Client(timeout=30.0, headers={"User-Agent": _USER_AGENT})
+    try:
+        provider = discover(client, DEV_ISSUER, discovery_url=base + DEV_IDP_PATH)
+        state, nonce, verifier = random_state(), random_state(), pkce_verifier()
+        redirect = "http://127.0.0.1:9/callback"  # discard port: never contacted
+        r = client.get(
+            provider.authorization_endpoint,
+            params={
+                "response_type": "code",
+                "client_id": client_id,
+                "redirect_uri": redirect,
+                "scope": " ".join(OIDC_SCOPES),
+                "state": state,
+                "nonce": nonce,
+                "code_challenge": pkce_challenge(verifier),
+                "code_challenge_method": "S256",
+                "login_hint": email,
+            },
+            follow_redirects=False,
+        )
+        location = r.headers.get("location", "")
+        if r.status_code != 302 or not location.startswith(redirect + "?"):
+            raise OidcError(
+                f"the development IdP refused the sign-in of {email} (HTTP {r.status_code})",
+                untrusted_text=r.text[:500] or None,
+            )
+        query = parse_qs(urlsplit(location).query)
+        if query.get("state") != [state] or not query.get("code"):
+            raise OidcError("the development IdP answered with a wrong state or no code")
+        tokens = TokenResponse.from_json(
+            _token_request(
+                client,
+                provider.token_endpoint,
+                {
+                    "grant_type": "authorization_code",
+                    "code": query["code"][0],
+                    "redirect_uri": redirect,
+                    "code_verifier": verifier,
+                    "client_id": client_id,
+                },
+                "code exchange",
+            )
+        )
+        claims = decode_jwt_claims(tokens.id_token)
+        if claims.get("iss") != DEV_ISSUER or claims.get("aud") != client_id:
+            raise OidcError("the development IdP issued a token for another issuer or client")
+        if claims.get("nonce") != nonce:
+            raise OidcError("the development IdP's token does not carry our nonce")
+        return tokens.id_token
+    finally:
+        if own:
+            client.close()
+
+
+def _check_url_for_dev(url: str) -> str:
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        raise ConfigError(f"API URL must be an absolute http(s) URL, got {url!r}")
+    return url.rstrip("/")

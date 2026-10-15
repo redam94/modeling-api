@@ -113,6 +113,7 @@ class SignerKind(StrEnum):
 class ObjectStoreKind(StrEnum):
     SHIM = "shim"  # mapi_gcs_shim.ShimObjectStore against MAPI_GCS_ENDPOINT
     MEMORY = "memory"  # in-process store (tests; signed URLs only work through its ASGI app)
+    GCS = "gcs"  # real Cloud Storage (mapi_gcs_shim.GcsObjectStore; the `gcp` extra)
 
 
 def local_image_digest(lock_path: Path) -> str:
@@ -193,6 +194,19 @@ class Settings(BaseSettings):
         None,
         description="Base URL put into signed URLs when executions/browsers reach the shim "
         "under another host name (default: gcs_endpoint)",
+    )
+    gcp_project: str | None = Field(
+        None, description="Google Cloud project of the Cloud Storage client (MAPI_OBJECT_STORE=gcs)"
+    )
+    url_signer: str | None = Field(
+        None,
+        description="Service account that signs Cloud Storage URLs through IAM signBlob "
+        "(keyless; required with MAPI_OBJECT_STORE=gcs)",
+    )
+    url_uploader: str | None = Field(
+        None,
+        description="Service account that signs create-only upload policies (objects.create, "
+        "no delete); default: url_signer",
     )
     gcs_root: Path | None = Field(
         None, description="The GCS shim's state directory (default: data_dir/gcs)"
@@ -374,6 +388,11 @@ class Settings(BaseSettings):
     oidc_algorithms: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["RS256", "ES256"]
     )
+    oidc_cli_client_ids: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["mapi-cli"],
+        description="Client ids of public OIDC clients (the mapi CLI) whose ID tokens of the "
+        "same issuer are accepted as bearers (comma-separated; empty: API tokens only)",
+    )
     oidc_extra_params: dict[str, str] = Field(
         default_factory=dict,
         description='Extra authorization parameters, e.g. {"hd": "acme.com"} (JSON)',
@@ -412,6 +431,16 @@ class Settings(BaseSettings):
         True, description="Emit JSON logs (structlog); off gives a human console renderer"
     )
     metrics_enabled: bool = Field(True, description="Mount GET /metrics (Prometheus)")
+    worker_metrics_port: int | None = Field(
+        None,
+        ge=1,
+        le=65535,
+        description="Serve GET /metrics of the worker (dispatcher, reconciler, finalizer, "
+        "events) on this port; unset: the worker exposes no metrics",
+    )
+    worker_metrics_host: str = Field(
+        "127.0.0.1", description="Bind address of the worker's metrics endpoint"
+    )
     metrics_token: str | None = Field(
         None,
         repr=False,
@@ -451,6 +480,7 @@ class Settings(BaseSettings):
     @field_validator(
         "allowed_hosts",
         "oidc_algorithms",
+        "oidc_cli_client_ids",
         "operator_emails",
         "default_tenant_admins",
         "devidp_users",
@@ -484,6 +514,8 @@ class Settings(BaseSettings):
             )
         if self.signer is SignerKind.KMS and not self.kms_key_version:
             raise ValueError("MAPI_SIGNER=kms needs MAPI_KMS_KEY_VERSION")
+        if self.object_store is ObjectStoreKind.GCS and not self.url_signer:
+            raise ValueError("MAPI_OBJECT_STORE=gcs needs MAPI_URL_SIGNER (the signBlob account)")
         weak = [a for a in self.oidc_algorithms if a.upper().startswith("HS") or a == "none"]
         if weak:
             raise ValueError("oidc_algorithms must be asymmetric (RS*, ES*, PS* or EdDSA)")

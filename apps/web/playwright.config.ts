@@ -31,6 +31,8 @@ const smokeWeb = customPorts
 
 export default defineConfig({
   testDir: "e2e",
+  // @e2e signs in to the stack once (dev profile) and reuses the session in every test.
+  ...(e2e ? { globalSetup: "./e2e/global-setup.ts" } : {}),
   ...(e2e ? { grep: /@e2e/ } : { grepInvert: /@e2e/ }),
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
@@ -40,6 +42,7 @@ export default defineConfig({
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: webOrigin,
+    ...(e2e ? { storageState: "e2e/.auth/state.json" } : {}),
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },

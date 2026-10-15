@@ -71,6 +71,7 @@ from mapi_spec.storage import (
 from mapi_spec.validate import ResolvedSpec, ScoreMetadata
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
@@ -426,6 +427,21 @@ class Finalizer:
             if res:
                 return str(res["model_id"]), int(res["version"]), str(res["model_version_id"])
             name = str(row.payload.get("metadata", {}).get("name") or f"run-{row.id}")
+            # get-or-create without a race: concurrent first fits of one spec both try the
+            # insert, one wins, and both then lock the same row (versions 1, 2, ...)
+            await session.execute(
+                pg_insert(m.Model)
+                .values(
+                    id=new_id("mdl"),
+                    tenant_id=row.tenant_id,
+                    project_id=row.project_id,
+                    name=name,
+                    next_version=1,
+                )
+                .on_conflict_do_nothing(
+                    index_elements=[m.Model.tenant_id, m.Model.project_id, m.Model.name]
+                )
+            )
             model = (
                 await session.execute(
                     select(m.Model)
@@ -435,18 +451,9 @@ class Finalizer:
                         m.Model.name == name,
                     )
                     .with_for_update()
+                    .execution_options(populate_existing=True)
                 )
-            ).scalar_one_or_none()
-            if model is None:
-                model = m.Model(
-                    id=new_id("mdl"),
-                    tenant_id=row.tenant_id,
-                    project_id=row.project_id,
-                    name=name,
-                    next_version=1,
-                )
-                session.add(model)
-                await session.flush()
+            ).scalar_one()
             version = model.next_version
             model.next_version += 1
             mv_id = new_id("mv")

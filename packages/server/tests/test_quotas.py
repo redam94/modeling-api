@@ -3,12 +3,15 @@ the dispatcher, and the cost ledger (metered attempts → ``Run.cost`` and ``/v1
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import timedelta
 
 import httpx
 import pytest
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.observability import metrics as obs_metrics
+from mapi_server.observability.metrics import Metrics
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.finalizer import Finalizer
 from mapi_server.services.queue import InlineFinalizeQueue
@@ -28,6 +31,7 @@ from mapi_spec.api import Run, UsageReport, new_id
 from mapi_spec.cost import DEFAULT_PRICE_TABLE, estimate_cost
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
+from prometheus_client.parser import text_string_to_metric_families
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 
@@ -57,8 +61,28 @@ async def _runs(ctx: ServerContext) -> list[m.Run]:
 # ============================================================================= admission
 
 
+@pytest.fixture
+def metrics() -> Iterator[Metrics]:
+    """A throwaway Prometheus registry so assertions see only this test's observations."""
+    previous = obs_metrics.METRICS
+    fresh = Metrics()
+    obs_metrics.set_metrics(fresh)
+    try:
+        yield fresh
+    finally:
+        obs_metrics.set_metrics(previous)
+
+
+def _sample(name: str, **labels: str) -> float:
+    for family in text_string_to_metric_families(obs_metrics.render().decode()):
+        for sample in family.samples:
+            if sample.name == name and labels.items() <= sample.labels.items():
+                return float(sample.value)
+    return 0.0
+
+
 async def test_run_creation_is_admitted_against_tenant_quotas(
-    ctx: ServerContext, client: httpx.AsyncClient
+    ctx: ServerContext, client: httpx.AsyncClient, metrics: Metrics
 ) -> None:
     await ready_dataset(ctx)
     spec_id = await _spec(client)
@@ -97,6 +121,8 @@ async def test_run_creation_is_admitted_against_tenant_quotas(
     assert {e.details["limit_name"] for e in denied} == {
         "concurrent_runs", "vcpu_seconds_per_day", "max_resource_class",
     }  # fmt: skip
+    # the MapiQuota* alerts key on this counter
+    assert _sample("mapi_quota_rejections_total", scope="tenant", code="QUOTA_EXCEEDED") == 3
 
 
 async def test_token_vcpu_budget_and_global_concurrency(
@@ -120,7 +146,7 @@ async def test_token_vcpu_budget_and_global_concurrency(
 
 
 async def test_kill_switches_refuse_new_compute(
-    ctx: ServerContext, client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ctx: ServerContext, client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch, metrics: Metrics
 ) -> None:
     import mapi_server.services.submit as submit
 
@@ -156,6 +182,9 @@ async def test_kill_switches_refuse_new_compute(
     r = await client.post("/v1/runs", json=fit)
     assert r.status_code == 429 and "spend cap" in r.json()["detail"]
     assert int(r.headers["retry-after"]) > 0
+    # the spend-cap dashboard panel and its 70 %/90 % alerts read these gauges
+    assert _sample("mapi_global_spend_micros") == 5000
+    assert _sample("mapi_global_spend_cap_micros") == 1000
     switches = (await client.get("/v1/admin/kill-switches")).json()
     assert switches["global_spend_cap_micros"] == 1000 and switches["reason"] == "beta cap"
 
@@ -298,6 +327,40 @@ async def test_executor_health_is_reported(ctx: ServerContext, client: httpx.Asy
     assert (await client.get("/v1/admin/executors/nope")).status_code == 404
 
 
+async def test_cloud_run_throttling_reaches_the_admin_console(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """The cloudrun-jobs executor's own 429 alarm and submit rate feed the dispatcher's
+    report, so operators see jobs.run throttling in /v1/admin/executors."""
+    from mapi_server.executors.cloudrun import CloudRunJobsExecutor
+    from mapi_server.executors.fake_cloudrun import FakeCloudRun
+    from mapi_server_testkit.conformance import INVENTORY
+
+    executor = CloudRunJobsExecutor(
+        FakeCloudRun.for_inventory(INVENTORY), INVENTORY, submits_per_minute=120, burst=5
+    )
+    for _ in range(2):
+        executor.throttled.record()
+    await Dispatcher(ctx, executor).report()
+    health = (await client.get("/v1/admin/executors/cloudrun-jobs")).json()
+    assert health["status"] == "degraded" and health["throttled_last_hour"] == 2
+    assert health["submit_rate_limit_per_minute"] == 120
+    assert "429" in health["message"]
+
+
+def test_dispatcher_backs_off_on_a_cloud_run_429(ctx: ServerContext) -> None:
+    """A jobs.run 429 the executor could not absorb (``CloudRunRateLimited``) puts the
+    dispatcher into back-off, honouring Retry-After, and counts toward its health."""
+    from mapi_server.executors.cloudrun import CloudRunError, CloudRunRateLimited
+
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    assert dispatcher._throttled(CloudRunError("boom", status=500)) is None
+    assert dispatcher._throttled(CloudRunRateLimited("429", retry_after=7.0)) == 7.0
+    first = dispatcher._throttled(CloudRunRateLimited("429"))
+    second = dispatcher._throttled(CloudRunRateLimited("429"))
+    assert first is not None and second is not None and second >= first
+
+
 async def test_runs_admitted_under_looser_limits_wait_at_dispatch(
     ctx: ServerContext, tenants: None
 ) -> None:
@@ -323,7 +386,7 @@ async def test_runs_admitted_under_looser_limits_wait_at_dispatch(
 
 
 async def test_finished_attempts_are_metered_into_the_ledger(
-    ctx: ServerContext, client: httpx.AsyncClient
+    ctx: ServerContext, client: httpx.AsyncClient, metrics: Metrics
 ) -> None:
     executor = FakeExecutor()
     ctx.queue = InlineFinalizeQueue(Finalizer(ctx))
@@ -364,6 +427,7 @@ async def test_finished_attempts_are_metered_into_the_ledger(
         run = await load_run(s, None, run_id)
         assert await bill_attempts(s, run) == []
     assert entry.executor == "fake" and entry.token_id is None and entry.kind == "actual"
+    assert _sample("mapi_cost_micros_total", tenant_id="default") == entry.amount_micros
     usage = UsageReport.model_validate(
         (await client.get("/v1/usage", params={"group_by": "resource_class"})).json()
     )

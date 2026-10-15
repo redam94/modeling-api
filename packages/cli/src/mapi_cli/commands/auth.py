@@ -136,6 +136,14 @@ def login(
         str | None,
         typer.Option("--client-id", help="OIDC client id (saved to the profile)"),
     ] = None,
+    discovery_url: Annotated[
+        str | None,
+        typer.Option(
+            "--discovery-url",
+            help="Where the issuer's discovery document lives, when not under the issuer "
+            "(e.g. http://127.0.0.1:8000/dev/idp for the dev profile; saved to the profile)",
+        ),
+    ] = None,
     port: Annotated[
         int, typer.Option("--port", min=0, max=65535, help="Loopback port (0: any free port)")
     ] = 0,
@@ -156,6 +164,8 @@ def login(
         settings["oidc_issuer"] = issuer
     if client_id:
         settings["oidc_client_id"] = client_id
+    if discovery_url:
+        settings["oidc_discovery_url"] = discovery_url
     if with_token:
         _login_token(st, settings, verify=verify)
         return

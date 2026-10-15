@@ -1,9 +1,15 @@
-# modeling-api local stack (M1, single tenant). Usage:
+# modeling-api local stack. Usage:
 #
 #   cp .env.example .env            # then set POSTGRES_PASSWORD
 #   make docker-build               # or: docker compose build
 #   make compose-up                 # docker compose up -d --wait
-#   open http://127.0.0.1:5173
+#   open http://127.0.0.1:5173      # sign in as admin@dev.local (the dev IdP's page)
+#
+# Profile. The servers run MAPI_PROFILE=${MAPI_STACK_PROFILE:-dev}: multi-tenant with the
+# built-in development identity provider (/dev/idp on the API), the `default` tenant and
+# project, and the seeded accounts of MAPI_DEVIDP_USERS (admin@dev.local: tenant admin and
+# platform operator). MAPI_STACK_PROFILE=single-tenant restores the credential-less M1 API.
+# (Not MAPI_PROFILE: the CLI reads that one as its config-file profile.)
 #
 # Network layout. `api`, `worker` and `gcs-shim` share ONE network namespace (the shim's),
 # so 127.0.0.1:4443 (object store) and 127.0.0.1:8000 (API) mean the same thing to the browser,
@@ -29,6 +35,7 @@ name: mapi
 
 x-mapi-env: &mapi-env
   MAPI_ENV: ${MAPI_ENV:-local}
+  MAPI_PROFILE: ${MAPI_STACK_PROFILE:-dev}
   DATABASE_URL: postgresql://mapi:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/mapi
   MAPI_GCS_ENDPOINT: http://127.0.0.1:4443
   MAPI_API_URL: http://127.0.0.1:8000

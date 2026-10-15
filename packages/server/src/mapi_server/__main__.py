@@ -19,8 +19,8 @@ import logging
 import signal
 import socket
 import sys
-from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from collections.abc import Iterator, Sequence
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
 from mapi_server.hardening import harden_process
@@ -81,10 +81,51 @@ async def _worker(settings: Settings) -> None:
     await startup(ctx, listen=False)
     orch = Orchestrator(ctx, build_executor(settings))
     _install_stop(orch.stop)
+    metrics = _worker_metrics_server(settings)
+    serving = asyncio.create_task(metrics.serve(), name="metrics") if metrics else None
     try:
         await orch.run()
     finally:
+        if metrics is not None and serving is not None:
+            metrics.should_exit = True
+            with contextlib.suppress(Exception, asyncio.CancelledError):
+                await serving
         await shutdown(ctx)
+
+
+def _worker_metrics_server(settings: Settings) -> Any:
+    """A small HTTP server for the worker's ``GET /metrics`` (``MAPI_WORKER_METRICS_PORT``):
+    the dispatcher, reconciler, finalizer and pipe event ingestion record their series in
+    this process, not in the API's. Same bearer rule as the API's endpoint."""
+    if not (settings.metrics_enabled and settings.worker_metrics_port):
+        return None
+    import uvicorn
+    from fastapi import FastAPI
+
+    from mapi_server.observability.middleware import add_metrics_endpoint
+    from mapi_server.settings import Profile
+
+    app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None)
+    add_metrics_endpoint(
+        app,
+        token=settings.metrics_token,
+        require_token=settings.profile is Profile.MULTI_TENANT,
+    )
+
+    class _Server(uvicorn.Server):
+        @contextlib.contextmanager
+        def capture_signals(self) -> Iterator[None]:  # the worker owns SIGINT/SIGTERM
+            yield
+
+    config = uvicorn.Config(
+        app,
+        host=settings.worker_metrics_host,
+        port=settings.worker_metrics_port,
+        log_level="warning",
+        lifespan="off",
+        access_log=False,
+    )
+    return _Server(config)
 
 
 def cmd_worker(settings: Settings) -> int:

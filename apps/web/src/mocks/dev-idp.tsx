@@ -37,7 +37,7 @@ export function DevIdpPage() {
     try {
       const res = await fetch(`${env.authBase}/__mock/auth/login`, {
         method: "POST",
-        headers: { "content-type": "application/json", "X-Requested-With": "mapi-web" },
+        headers: { "content-type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ persona }),
       });

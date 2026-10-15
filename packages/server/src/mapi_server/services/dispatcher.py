@@ -105,7 +105,11 @@ class Dispatcher:
 
     def _throttled(self, error: Exception | None) -> float | None:
         """Seconds to back off if ``error`` is the backend's 429 (``None`` otherwise)."""
-        status = getattr(error, "status_code", None) or getattr(error, "code", None)
+        status = (
+            getattr(error, "status_code", None)
+            or getattr(error, "status", None)  # CloudRunRateLimited (after its own retries)
+            or getattr(error, "code", None)
+        )
         if status not in (429, ErrorCode.RATE_LIMITED, "429"):
             return None
         retry_after = getattr(error, "retry_after", None)
@@ -135,8 +139,22 @@ class Dispatcher:
             "checked_at": ts,
             "message": None,
         }
+        own_health = getattr(self.executor, "health", None)
+        if callable(own_health):
+            # executors that throttle themselves (cloudrun-jobs: its jobs.run token bucket
+            # and 429 alarm) know more than the dispatcher sees from the outside
+            h = own_health()
+            values["submits_last_minute"] = max(len(self._submits), h.submits_last_minute)
+            if h.submit_rate_limit_per_minute is not None:
+                values["submit_rate_limit_per_minute"] = min(
+                    int(self.ctx.settings.dispatch_rate_per_minute),
+                    h.submit_rate_limit_per_minute,
+                )
+            values["throttled_last_hour"] = max(len(self._throttles), h.throttled_last_hour)
+            values["last_success_at"] = self._last_success or h.last_success_at
+            values["message"] = h.message
         update = {k: v for k, v in values.items() if k != "name"}
-        if self._last_success is None:
+        if values["last_success_at"] is None:
             update.pop("last_success_at")
         async with self.ctx.db.session() as session:
             await session.execute(

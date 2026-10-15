@@ -24,6 +24,7 @@ from typing import Any
 
 import pytest
 from mapi_server.context import ServerContext
+from mapi_server.db import models as m
 from mapi_server.storage import list_all
 from mapi_server_testkit.conformance import (
     TERMINAL,
@@ -52,6 +53,7 @@ from mapi_spec.executor import ExecState, RunKind, RunSubmit
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import FailureClass, RunState
 from mapi_spec.storage import run_checkpoint_prefix, run_prefix
+from sqlalchemy import select
 
 pytestmark = pytest.mark.integration
 
@@ -328,6 +330,30 @@ RUNNERS: dict[ConformanceCaseId, Callable[[Harness], Awaitable[ObservedRun]]] = 
 }
 
 
+async def _unbilled(ctx: ServerContext) -> list[str]:
+    """Every attempt that ran (submitted and finished) on a run that has ended must be in
+    the cost ledger, whatever the executor and however the run ended (plan §14 M2)."""
+    async with ctx.db.session() as s:
+        rows = (
+            await s.execute(
+                select(m.RunAttempt.run_id, m.RunAttempt.attempt)
+                .join(m.Run, m.Run.id == m.RunAttempt.run_id)
+                .where(
+                    m.Run.state.in_([st.value for st in RunState if st.terminal]),
+                    m.RunAttempt.submitted_at.is_not(None),
+                    m.RunAttempt.finished_at.is_not(None),
+                    ~select(m.CostLedgerEntry.id)
+                    .where(
+                        m.CostLedgerEntry.run_id == m.RunAttempt.run_id,
+                        m.CostLedgerEntry.attempt == m.RunAttempt.attempt,
+                    )
+                    .exists(),
+                )
+            )
+        ).all()
+    return [f"attempt {r}/{a} ran but is not in the cost ledger" for r, a in rows]
+
+
 def test_every_case_has_a_runner() -> None:
     assert set(RUNNERS) == {c.id for c in EXECUTOR_CONFORMANCE}
 
@@ -350,7 +376,7 @@ async def test_executor_conformance(
         except Exception:
             results[case.id] = ConformanceResult(case_id=case.id, outcome=CaseOutcome.ERROR)
             raise
-        problems = check_expectation(case, observed) + h.notes
+        problems = check_expectation(case, observed) + h.notes + await _unbilled(ctx)
         results[case.id] = ConformanceResult(
             case_id=case.id,
             outcome=CaseOutcome.FAILED if problems else CaseOutcome.PASSED,

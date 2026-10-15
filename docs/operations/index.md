@@ -34,8 +34,10 @@ flowchart LR
 
 Whichever you choose:
 
-- **It is single-tenant and has no authentication.** The API listens on `127.0.0.1`, and
-  compose publishes every port on `127.0.0.1` only. Do not expose a v0.2 stack to untrusted
+- **Sign-in is for development only.** Both run the servers in the `dev` profile: anyone who
+  can reach the API can sign in as one of the seeded accounts through the built-in identity
+  provider (`MAPI_STACK_PROFILE=single-tenant` turns sign-in off). The API listens on
+  `127.0.0.1`, and compose publishes every port on `127.0.0.1` only. Do not expose a v0.2 stack to untrusted
   networks; see the [security model](../concepts/security.md#local-development-vs-production).
 - **State is the database plus the object store.** Back up both (`.local/pg` and
   `.local/gcs` locally; the `pgdata` and `gcsdata` volumes under compose), and the bundle
@@ -53,5 +55,12 @@ Whichever you choose:
 - [Google Cloud](gcp-deployment.md): the Terraform and deploy scripts of v0.3, step by step.
 - [Security hardening on Google Cloud](security-hardening.md): what each control does, and the
   M0 verification checklist.
+- [Authentication and isolation](authentication.md): sign-in, API tokens, operators,
+  row-level security and Pub/Sub push.
+- [Cloud Run Jobs executor](cloud-run.md): the v0.3 execution backend.
+- [Observability](observability.md): metrics, logs, traces, and the dashboards, alerts and
+  runbooks in `ops/`.
+- [Security suite](security-suite.md): the sandbox-escape probes and what each isolation level
+  must block.
 - [Configuration reference](configuration.md): every environment variable.
 - [Troubleshooting](troubleshooting.md): port conflicts and everything else.

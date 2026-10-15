@@ -39,6 +39,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
+from mapi_server.observability import metrics as obs_metrics
 
 __all__ = [
     "ACTIVE_STATES",
@@ -224,9 +225,26 @@ async def kill_switch_check(
     spent = 0
     if switches.global_spend_cap_micros is not None:
         spent = await global_spend(s, switches, now=now)
-    return kill_switch_decision(
-        switches, untrusted_code=untrusted_code, tier=TrustTier(tier), spent_micros=spent, now=now
+        obs_metrics.set_global_spend(spent, switches.global_spend_cap_micros)
+    return _observed(
+        kill_switch_decision(
+            switches,
+            untrusted_code=untrusted_code,
+            tier=TrustTier(tier),
+            spent_micros=spent,
+            now=now,
+        )
     )
+
+
+def _observed(decision: QuotaDecision) -> QuotaDecision:
+    """Count a denial in ``mapi_quota_rejections_total`` (the 70 %/429 alerts key on it)."""
+    if not decision.allowed:
+        obs_metrics.record_quota_rejection(
+            decision.scope.value if decision.scope is not None else "unknown",
+            decision.code.value if decision.code is not None else "unknown",
+        )
+    return decision
 
 
 # ==================================================================================== admission
@@ -276,7 +294,7 @@ async def admit_run(
             await quota_usage(system, QuotaScope.GLOBAL, GLOBAL_SUBJECT, now=now),
         )
     )
-    return evaluate_quota(levels, demand, now=now)
+    return _observed(evaluate_quota(levels, demand, now=now))
 
 
 async def admit_storage(
@@ -291,7 +309,7 @@ async def admit_storage(
         await tenant_policy(system, tenant_id, tenant.trust_tier),
         await quota_usage(session, QuotaScope.TENANT, tenant_id, now=now),
     )
-    return evaluate_quota([level], QuotaDemand(storage_bytes=nbytes), now=now)
+    return _observed(evaluate_quota([level], QuotaDemand(storage_bytes=nbytes), now=now))
 
 
 # =================================================================================== rate limit
@@ -336,4 +354,4 @@ async def rate_limit(
         checked.append((policy, QuotaUsage(requests_this_minute=before)))
     if not checked:
         return QuotaDecision.allow()
-    return evaluate_quota(checked, QuotaDemand(requests=1), now=now)
+    return _observed(evaluate_quota(checked, QuotaDemand(requests=1), now=now))

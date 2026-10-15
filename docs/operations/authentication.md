@@ -97,6 +97,31 @@ works without a network:
 There are no passwords: anyone who can reach a `dev` API can sign in as any listed account.
 The IdP refuses to mount in any other profile.
 
+The CLI can use it too (see [The CLI](#the-cli)). Its issuer is the identifier
+`https://dev-idp.mapi.localhost`, and the API serves its discovery document:
+
+```bash
+mapi login --issuer https://dev-idp.mapi.localhost \
+           --discovery-url http://127.0.0.1:8000/dev/idp
+```
+
+## The CLI
+
+`mapi login` signs in with the identity provider directly, using the authorization code flow
+with PKCE and a one-off listener on `127.0.0.1`. It then sends the ID token as
+`Authorization: Bearer`. The API accepts such a bearer when all of these hold:
+
+- it is a JWT, not a `mapi_` API token;
+- it is signed by the configured issuer (checked against its JWKS), and has not expired;
+- its audience is one of `MAPI_OIDC_CLI_CLIENT_IDS` (default `mapi-cli`). The BFF's own client
+  id is not accepted.
+
+The caller is then the same user as in a browser session. The first use claims a pending
+invitation, exactly like `/auth/callback`. No cookie is involved, so no CSRF token is needed,
+and `GET /v1/me` reports `auth: session`. Set `MAPI_OIDC_CLI_CLIENT_IDS=` (empty) to accept
+API tokens only. Register the CLI as a public "installed app" client with your provider; it
+needs a loopback redirect URI, PKCE and the `openid email` scopes.
+
 ## API tokens
 
 Programs send `Authorization: Bearer mapi_<prefix>_<secret><checksum>`. A token is minted

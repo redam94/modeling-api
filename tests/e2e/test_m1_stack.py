@@ -37,6 +37,7 @@ from mapi_client.errors import TransportError
 from mapi_conformance.fixtures.e33 import data as e33
 from mapi_conformance.fixtures.e33.expectations import check_fit, check_score
 from mapi_conformance.runner import FixtureContext
+from mapi_conformance.stack import StackAuth
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.registry import Registry, default_registry
 from mapi_server.services.signing import BundleSigner
@@ -115,8 +116,10 @@ def stack() -> Stack:
 
 
 @pytest.fixture(scope="session")
-def api(stack: Stack) -> Iterator[Client]:
-    with Client(stack.local.api_url) as client:
+def api(stack: Stack, stack_credentials: StackAuth) -> Iterator[Client]:
+    with Client(
+        stack.local.api_url, token=stack_credentials.token, project=stack_credentials.project
+    ) as client:
         try:
             ready = client.ready()
         except TransportError as exc:
@@ -372,12 +375,14 @@ def test_plots_are_sanitized_and_their_data_resolves(api: Client, fit: FitResult
     assert {p["id"] for p in raw} == ids
 
 
-def test_ui_views_redirect_to_signed_urls(api: Client, stack: Stack, fit: FitResult) -> None:
+def test_ui_views_redirect_to_signed_urls(
+    api: Client, stack: Stack, stack_credentials: StackAuth, fit: FitResult
+) -> None:
     mv = fit.version
     base = stack.local.api_url.rstrip("/")
     path = f"{base}/v1/models/{mv.model_id}/versions/{mv.version}/ui/tree_index.json"
     with httpx.Client(timeout=30) as http:
-        hop = http.get(path, follow_redirects=False)
+        hop = http.get(path, follow_redirects=False, headers=stack_credentials.headers())
         assert hop.status_code == 307
         location = hop.headers["location"]
         assert location.startswith(stack.local.gcs_endpoint.rstrip("/"))
@@ -388,15 +393,25 @@ def test_ui_views_redirect_to_signed_urls(api: Client, stack: Stack, fit: FitRes
         posterior = index.groups["/model/posterior"]
         assert {"chain", "draw"} <= set(posterior.dims), posterior.dims
         summaries = http.get(
-            path.replace("tree_index.json", "summaries.json"), follow_redirects=True
+            path.replace("tree_index.json", "summaries.json"),
+            follow_redirects=True,  # httpx drops Authorization on the hop to the store
+            headers=stack_credentials.headers(),
         )
         assert summaries.status_code == 200 and summaries.json()
-        pre = http.get(path.replace("tree_index.json", "preprocess.json"), follow_redirects=True)
+        pre = http.get(
+            path.replace("tree_index.json", "preprocess.json"),
+            follow_redirects=True,
+            headers=stack_credentials.headers(),
+        )
         assert pre.status_code == 200, pre.text
         steps = {s.id: s for s in PreprocessView.model_validate_json(pre.content).steps}
         assert steps["scale_spend"].stateful
         assert any(len(a.dims) == 2 for a in steps["scale_spend"].arrays)
-        missing = http.get(path.replace("tree_index.json", "nope.json"), follow_redirects=False)
+        missing = http.get(
+            path.replace("tree_index.json", "nope.json"),
+            follow_redirects=False,
+            headers=stack_credentials.headers(),
+        )
         assert missing.status_code == 404
 
 
@@ -494,11 +509,11 @@ def _forged(run: Run, *, key: bytes | None, attempt: int | None = None) -> dict[
     return {"mapi_event": event.model_dump(mode="json")}
 
 
-def test_forged_run_events_are_refused(api: Client, stack: Stack, fit: FitResult) -> None:
+def test_forged_run_events_are_refused(
+    api: Client, stack: Stack, stack_credentials: StackAuth, fit: FitResult
+) -> None:
     run = fit.run
-    headers = {}
-    if token := os.environ.get("MAPI_INTERNAL_TOKEN"):
-        headers["Authorization"] = f"Bearer {token}"
+    headers = stack_credentials.internal_headers()
     url = stack.local.api_url.rstrip("/") + "/internal/events"
     before = api.runs.get(run.id)
     events_before = [e.id for e in api.runs.events(run.id)]

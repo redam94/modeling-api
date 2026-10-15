@@ -86,6 +86,14 @@ typecheck: ## mypy over every type-checked package, the dev scripts and the imag
 	$(UV) run mypy $(DEVOPS_PY)
 	$(UV) run mypy images/common
 
+# Downloaded Terraform providers are kept here between `make tf-validate` runs (git-ignored).
+TF_PLUGIN_CACHE ?= $(CURDIR)/.local/terraform-plugins
+
+.PHONY: tf-validate
+tf-validate: ## Terraform fmt + validate (every env) + mocked-provider module tests; never applies
+	@mkdir -p $(TF_PLUGIN_CACHE)
+	TF_PLUGIN_CACHE_DIR=$(TF_PLUGIN_CACHE) $(UV) run pytest -q tests/infra
+
 ## ---------------------------------------------------------------- tests
 .PHONY: test
 test: ## Run the default local test suite (no docker/cloud/e2e)
@@ -104,6 +112,14 @@ e2e: ## End-to-end tests against a running stack (`make dev` first): API suite, 
 	@if ls apps/web/playwright.config.* >/dev/null 2>&1; then \
 		$(PNPM) --filter @mapi/web e2e; \
 	else echo "e2e: apps/web has no Playwright config; browser suite skipped"; fi
+
+.PHONY: chaos
+chaos: ## Chaos tests: worker killed mid-run, event redelivery/reordering, Postgres restart
+	$(UV) run pytest -q packages/server/tests/test_chaos.py
+
+.PHONY: load-test
+load-test: ## 100 concurrent fits through dispatcher/reconciler/finalizer on fake Cloud Run (LOAD_TEST_RUNS, LOAD_TEST_FIT_MS)
+	$(UV) run pytest -q -s packages/server/tests/test_load_cloudrun.py
 
 .PHONY: conformance
 conformance: ## Run the conformance corpus at tiny size (FIXTURE=<id> picks one; CORPUS_SIZE overrides)

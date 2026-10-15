@@ -65,6 +65,7 @@ __all__ = [
     "ENV_CREDENTIALS",
     "ENV_OIDC_CLIENT_ID",
     "ENV_OIDC_CLIENT_SECRET",
+    "ENV_OIDC_DISCOVERY_URL",
     "ENV_OIDC_ISSUER",
     "ENV_PROFILE",
     "ENV_PROJECT",
@@ -98,6 +99,7 @@ ENV_PROJECT: Final = "MAPI_PROJECT"
 ENV_OIDC_ISSUER: Final = "MAPI_OIDC_ISSUER"
 ENV_OIDC_CLIENT_ID: Final = "MAPI_OIDC_CLIENT_ID"
 ENV_OIDC_CLIENT_SECRET: Final = "MAPI_OIDC_CLIENT_SECRET"
+ENV_OIDC_DISCOVERY_URL: Final = "MAPI_OIDC_DISCOVERY_URL"
 ENV_CREDENTIALS: Final = "MAPI_CREDENTIALS"
 
 PROFILE_KEYS: Final = frozenset(
@@ -109,6 +111,7 @@ PROFILE_KEYS: Final = frozenset(
         "max_retries",
         "verify",
         "oidc_issuer",
+        "oidc_discovery_url",
         "oidc_client_id",
         "oidc_client_secret",
     }
@@ -178,6 +181,10 @@ class ClientConfig:
     project: str | None = None
     """``X-Mapi-Project`` sent on project-scoped requests (``<tenant>/<project>``)."""
     oidc_issuer: str | None = None
+    oidc_discovery_url: str | None = None
+    """Where the issuer's discovery document lives when it is not under the issuer (the
+    ``dev`` profile's built-in IdP serves it at ``<api>/dev/idp``); its ``issuer`` must still
+    equal :attr:`oidc_issuer`."""
     oidc_client_id: str | None = None
     oidc_client_secret: str | None = field(default=None, repr=False)
     credentials_file: Path | None = None
@@ -199,6 +206,8 @@ class ClientConfig:
             object.__setattr__(self, "project", check_project(value) if value else None)
         if self.oidc_issuer is not None:
             object.__setattr__(self, "oidc_issuer", check_issuer(self.oidc_issuer))
+        if self.oidc_discovery_url is not None:
+            object.__setattr__(self, "oidc_discovery_url", check_issuer(self.oidc_discovery_url))
         if self.token is not None and not self.allow_insecure_token and self.insecure_transport:
             raise ConfigError(
                 "refusing to send a bearer token over plain http to a non-loopback host; "
@@ -407,6 +416,7 @@ def load_config(
     project: str | None = None,
     oidc_issuer: str | None = None,
     oidc_client_id: str | None = None,
+    oidc_discovery_url: str | None = None,
 ) -> ClientConfig:
     """Resolve a :class:`ClientConfig` from arguments, environment, config file and defaults."""
     env = os.environ if environ is None else environ
@@ -444,6 +454,7 @@ def load_config(
     to = pick("timeout", timeout, (), DEFAULT_TIMEOUT)
     retries = pick("max_retries", max_retries, (), DEFAULT_MAX_RETRIES)
     issuer = pick("oidc_issuer", oidc_issuer, (ENV_OIDC_ISSUER,), None)
+    discovery = pick("oidc_discovery_url", oidc_discovery_url, (ENV_OIDC_DISCOVERY_URL,), None)
     client_id = pick("oidc_client_id", oidc_client_id, (ENV_OIDC_CLIENT_ID,), None)
     client_secret = pick("oidc_client_secret", None, (ENV_OIDC_CLIENT_SECRET,), None)
     verify = file_vals.get("verify", True)
@@ -458,6 +469,7 @@ def load_config(
             allow_insecure_token=allow_insecure_token,
             project=opt(proj),
             oidc_issuer=opt(issuer),
+            oidc_discovery_url=opt(discovery),
             oidc_client_id=opt(client_id),
             oidc_client_secret=opt(client_secret),
             credentials_file=credentials_path(env),

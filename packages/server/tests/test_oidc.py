@@ -26,6 +26,7 @@ from sqlalchemy import select
 pytestmark = pytest.mark.integration
 
 API = "http://127.0.0.1:8000"
+WEB = "http://127.0.0.1:5173"
 
 
 @pytest.fixture
@@ -49,7 +50,8 @@ async def sign_in(client: httpx.AsyncClient, email: str, return_to: str = "/runs
     assert callback.startswith(f"{API}/auth/callback?")
     r = await client.get(callback)
     assert r.status_code == 302, r.text
-    assert r.headers["location"] == return_to
+    # back to the web app (its own origin in local dev), never the API's
+    assert r.headers["location"] == WEB + return_to
     cookies = r.headers.get_list("set-cookie")
     session = next(c for c in cookies if c.startswith("mapi_session="))
     assert "HttpOnly" in session and "SameSite=Strict" in session and "Path=/" in session
@@ -125,6 +127,104 @@ async def test_first_dev_account_is_operator_and_tenant_admin(
     assert (await client.get("/v1/admin/tenants")).status_code == 200
 
 
+async def _cli_id_token(client: httpx.AsyncClient, email: str, *, client_id: str) -> str:
+    """What ``mapi login`` does against the dev IdP: discovery, authorize with PKCE and a
+    nonce to a loopback redirect, code exchange as a public client."""
+    import base64
+    import hashlib
+    import secrets
+
+    doc = (await client.get("/dev/idp/.well-known/openid-configuration")).json()
+    assert doc["issuer"] == DEV_ISSUER and "none" in doc["token_endpoint_auth_methods_supported"]
+    verifier = secrets.token_urlsafe(48)
+    challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    )
+    redirect = "http://127.0.0.1:53682/callback"
+    params = {
+        "response_type": "code", "client_id": client_id, "redirect_uri": redirect,
+        "state": "st", "nonce": "n0nce", "code_challenge": challenge,
+        "code_challenge_method": "S256", "scope": "openid email", "login_hint": email,
+    }  # fmt: skip
+    r = await client.get(doc["authorization_endpoint"], params=params)
+    assert r.status_code == 302, r.text
+    assert r.headers["location"].startswith(redirect + "?")
+    code = parse_qs(urlsplit(r.headers["location"]).query)["code"][0]
+    r = await client.post(
+        doc["token_endpoint"],
+        data={"grant_type": "authorization_code", "code": code, "redirect_uri": redirect,
+              "code_verifier": verifier, "client_id": client_id},
+    )  # fmt: skip
+    assert r.status_code == 200, r.text
+    token: str = r.json()["id_token"]
+    claims = jwt.decode(token, options={"verify_signature": False})
+    assert claims["aud"] == client_id and claims["nonce"] == "n0nce"
+    return token
+
+
+async def test_cli_id_tokens_are_accepted_as_bearers(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    token = await _cli_id_token(client, "analyst@dev.local", client_id="mapi-cli")
+    r = await client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200, r.text
+    me = Me.model_validate(r.json())
+    assert me.auth == "session" and me.principal.email == "analyst@dev.local"
+    project = {PROJECT_HEADER: "default/default", "Authorization": f"Bearer {token}"}
+    # a bearer needs no CSRF token (no cookie is involved)
+    r = await client.post("/v1/datasets", json={"name": "from-cli"}, headers=project)
+    assert r.status_code == 201, r.text
+    # the same person as a browser sign-in: one user row
+    async with ctx.db.session() as s:
+        users = [
+            u for u in (await s.execute(select(m.User))).scalars()
+            if u.email == "analyst@dev.local"
+        ]  # fmt: skip
+    assert len(users) == 1
+
+
+async def test_bearer_id_tokens_need_a_cli_audience_and_a_valid_signature(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    assert isinstance(ctx.devidp, DevIdP)
+    # the BFF's own client id is not a bearer audience
+    bff = ctx.devidp.id_token("analyst@dev.local", nonce="x")
+    r = await client.get("/v1/me", headers={"Authorization": f"Bearer {bff}"})
+    assert r.status_code == 401
+    # unknown public clients cannot even get a code
+    r = await client.get(
+        "/dev/idp/authorize",
+        params={"response_type": "code", "client_id": "evil-cli",
+                "redirect_uri": "http://127.0.0.1:1/callback", "state": "s",
+                "code_challenge": "x" * 43, "code_challenge_method": "S256",
+                "login_hint": "analyst@dev.local"},
+    )  # fmt: skip
+    assert r.status_code == 422
+    # a loopback redirect only: a CLI client id cannot send codes elsewhere
+    r = await client.get(
+        "/dev/idp/authorize",
+        params={"response_type": "code", "client_id": "mapi-cli",
+                "redirect_uri": "https://evil.example/callback", "state": "s",
+                "code_challenge": "x" * 43, "code_challenge_method": "S256",
+                "login_hint": "analyst@dev.local"},
+    )  # fmt: skip
+    assert r.status_code == 422
+    forged = jwt.encode(
+        {"iss": DEV_ISSUER, "aud": "mapi-cli", "sub": "dev|x", "iat": int(time.time()),
+         "exp": int(time.time()) + 60},
+        rsa.generate_private_key(public_exponent=65537, key_size=2048),
+        algorithm="RS256",
+        headers={"kid": ctx.devidp.kid},
+    )  # fmt: skip
+    r = await client.get("/v1/me", headers={"Authorization": f"Bearer {forged}"})
+    assert r.status_code == 401
+    # with no CLI client ids configured, only API tokens are bearers
+    token = await _cli_id_token(client, "analyst@dev.local", client_id="mapi-cli")
+    ctx.settings = ctx.settings.model_copy(update={"oidc_cli_client_ids": []})
+    r = await client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 401
+
+
 async def test_callback_is_single_use_and_checks_state(client: httpx.AsyncClient) -> None:
     r = await client.get("/auth/login")
     authorize = r.headers["location"]
@@ -164,7 +264,7 @@ async def test_open_redirects_are_blocked(client: httpx.AsyncClient) -> None:
         authorize = r.headers["location"]
         r = await client.get(authorize + "&login_hint=viewer%40dev.local")
         r = await client.get(r.headers["location"])
-        assert r.status_code == 302 and r.headers["location"] == "/"
+        assert r.status_code == 302 and r.headers["location"] == WEB + "/"
 
 
 async def test_secure_cookie_attributes(ctx: ServerContext, client: httpx.AsyncClient) -> None:
