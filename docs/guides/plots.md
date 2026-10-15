@@ -104,6 +104,13 @@ Build with Altair or Plotly as usual, then wrap it:
 Both run the sanitizer and raise a `SanitizeError` if the chart breaks a rule. `from_plotly`
 also strips HTML from the strings it moves into datasets (see below).
 
+**Colours and dark mode.** An explicit mark colour wins over any theme, so the platform
+recipes draw only with `mapi_plots.palette` (for example `OBSERVED`, `ESTIMATE`, `BAND`,
+`ALERT`). In dark mode the plot sandbox swaps each palette colour for its dark variant; every
+stroke, dot and text colour keeps at least 3:1 contrast on both card backgrounds. Use the
+palette in your own charts to get the same behaviour. Any other colour is drawn as written in
+both themes.
+
 ## Role- and dim-bound templates
 
 A template binds channels to **roles and dims** instead of one model's variable names, so a

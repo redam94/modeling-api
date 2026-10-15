@@ -18,6 +18,17 @@ import xarray as xr
 from mapi_spec.capabilities import Representation
 from pydantic import Field, field_validator
 
+from mapi_plots.palette import (
+    ALERT,
+    BAND,
+    BASELINE,
+    ESTIMATE,
+    OBSERVED,
+    REFERENCE,
+    SCENARIO,
+    STRONG,
+    SURFACE,
+)
 from mapi_plots.recipes import _stats
 from mapi_plots.recipes._base import (
     Figure,
@@ -264,23 +275,23 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
     ]
     for i, (_, lo_c, hi_c) in enumerate(pairs):
         layers.append(
-            base.mark_area(opacity=0.15 + 0.15 * i, color="#3366cc").encode(
+            base.mark_area(opacity=0.15 + 0.15 * i, color=BAND).encode(
                 x=_xenc(b, title=b.x_dim),
                 y=alt.Y(f"{lo_c}:Q", title=b.var, scale=alt.Scale(zero=False)),
                 y2=f"{hi_c}:Q",
             )
         )
-    layers.append(base.mark_line(color="#1f4e99").encode(x=_xenc(b), y="point:Q"))
+    layers.append(base.mark_line(color=ESTIMATE).encode(x=_xenc(b), y="point:Q"))
     if "observed" in frame:
         layers.append(
-            base.mark_circle(size=16, color="#111111").encode(
+            base.mark_circle(size=16, color=OBSERVED).encode(
                 x=_xenc(b), y="observed:Q", tooltip=[_xtip(b), "observed:Q", "point:Q"]
             )
         )
     if split is not None:
         agg = "min(split)"
         layers.append(
-            base.mark_rule(strokeDash=[5, 4], color="#c62828").encode(
+            base.mark_rule(strokeDash=[5, 4], color=ALERT).encode(
                 x=alt.X(agg, type="temporal" if b.temporal else "quantitative")
             )
         )
@@ -391,7 +402,7 @@ def fit_vs_actual(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
     )
     line = (
         alt.Chart(named("identity"))
-        .mark_line(color="#999", strokeDash=[4, 4])
+        .mark_line(color=REFERENCE, strokeDash=[4, 4])
         .encode(x="v:Q", y="v:Q")
     )
     chart = alt.layer(line, pts).properties(width=s.width, height=s.width * 3 // 4)
@@ -425,7 +436,7 @@ def residuals_over_time(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
     f["residual"] = f["observed"] - f["point"]
     base = alt.Chart()
     chart = alt.layer(
-        base.mark_rule(color="#999").encode(y=alt.datum(0)),
+        base.mark_rule(color=REFERENCE).encode(y=alt.datum(0)),
         base.mark_line(point=True, strokeWidth=1, opacity=0.6 if b.cells else 1.0).encode(
             x=_xenc(b, title=b.x_dim),
             y=alt.Y("residual:Q", title=f"actual − predicted {b.var}"),
@@ -555,7 +566,7 @@ def _decomposition(
                 alt.Tooltip("share:Q", format=".1%"),
             ],
         ),
-        bbase.mark_rule(color="#333").encode(
+        bbase.mark_rule(color=STRONG).encode(
             x="lo:Q", x2="hi:Q", y=alt.Y("component:N", sort="-x")
         ),
         data=named("totals"),
@@ -687,7 +698,7 @@ def counterfactual(inp: RecipeInput, s: CounterfactualSettings) -> Figure:
         total = np.asarray(d.sum([x for x in d.dims if x != SAMPLE]).values, dtype=float)
     temporal = np.issubdtype(lines["x"].dtype, np.datetime64)
     xtype: VlType = "temporal" if temporal else "quantitative"
-    colors = alt.Scale(domain=["baseline", "scenario"], range=["#9aa5b1", "#e8710a"])
+    colors = alt.Scale(domain=["baseline", "scenario"], range=[BASELINE, SCENARIO])
     lbase = alt.Chart()
     band = alt.layer(
         lbase.mark_area(opacity=0.25).encode(
@@ -725,15 +736,15 @@ def counterfactual(inp: RecipeInput, s: CounterfactualSettings) -> Figure:
         sbase = alt.Chart(named("delta_summary"))
         charts.append(
             alt.layer(
-                hbase.mark_rect(color="#e8710a", opacity=0.7, stroke="white").encode(
+                hbase.mark_rect(color=SCENARIO, opacity=0.7, stroke=SURFACE).encode(
                     x=alt.X("bin_start:Q", title=f"total change in {var}"),
                     x2="bin_end:Q",
                     y=alt.Y("count:Q", title="draws"),
                     y2=alt.datum(0),
                 ),
-                sbase.mark_rule(color="#333", strokeWidth=2).encode(x="mean:Q"),
-                sbase.mark_rule(color="#333", strokeDash=[4, 4]).encode(x="lo:Q"),
-                sbase.mark_rule(color="#333", strokeDash=[4, 4]).encode(x="hi:Q"),
+                sbase.mark_rule(color=STRONG, strokeWidth=2).encode(x="mean:Q"),
+                sbase.mark_rule(color=STRONG, strokeDash=[4, 4]).encode(x="lo:Q"),
+                sbase.mark_rule(color=STRONG, strokeDash=[4, 4]).encode(x="hi:Q"),
             ).properties(width=s.width, height=s.height * 2 // 3, title="Total change")
         )
         caption = (

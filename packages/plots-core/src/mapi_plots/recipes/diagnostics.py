@@ -11,6 +11,7 @@ import xarray as xr
 from mapi_spec.capabilities import Representation
 from pydantic import Field, field_validator
 
+from mapi_plots.palette import ALERT, BAND, BASELINE, EMPTY, MUTED, OBSERVED, OK, REFERENCE, SURFACE
 from mapi_plots.recipes import _stats
 from mapi_plots.recipes._base import (
     Figure,
@@ -97,7 +98,7 @@ def _density_frame(
 
 def _density_chart(name: str, label: str, var: str, s: RecipeSettings) -> Any:
     colors = alt.Scale(
-        domain=[label, f"{label} (all)", "observed"], range=["#9aa5b1", "#3366cc", "#111111"]
+        domain=[label, f"{label} (all)", "observed"], range=[BASELINE, BAND, OBSERVED]
     )
     return (
         alt.Chart(named(name))
@@ -200,13 +201,13 @@ def _fan_chart(
     layers: list[Any] = []
     for i, (_, lo_c, hi_c) in enumerate(interval_columns(levels)):
         layers.append(
-            base.mark_area(opacity=0.18 + 0.12 * i, color="#3366cc").encode(
+            base.mark_area(opacity=0.18 + 0.12 * i, color=BAND).encode(
                 x=alt.X("x:T", title=t), y=alt.Y(f"{lo_c}:Q", title=var), y2=f"{hi_c}:Q"
             )
         )
-    layers.append(base.mark_line(color="#3366cc").encode(x="x:T", y="point:Q"))
+    layers.append(base.mark_line(color=BAND).encode(x="x:T", y="point:Q"))
     if with_obs:
-        layers.append(base.mark_circle(size=14, color="#111111").encode(x="x:T", y="observed:Q"))
+        layers.append(base.mark_circle(size=14, color=OBSERVED).encode(x="x:T", y="observed:Q"))
     title = f"Prior predictive {var} over {t}"
     if mean_over:
         title += f" (mean over {', '.join(map(str, mean_over))})"
@@ -284,7 +285,7 @@ def convergence(inp: RecipeInput, s: ConvergenceSettings) -> Figure:
     diag = diag.sort_values("_sort", ascending=False).drop(columns="_sort").reset_index(drop=True)
     shown = diag.head(s.max_parameters).copy()
 
-    status_scale = alt.Scale(domain=["ok", "check"], range=["#2e7d32", "#c62828"])
+    status_scale = alt.Scale(domain=["ok", "check"], range=[OK, ALERT])
     height = max(60, 14 * len(shown))
     base = alt.Chart(named("diagnostics"))
     rhat_chart = alt.layer(
@@ -294,7 +295,7 @@ def convergence(inp: RecipeInput, s: ConvergenceSettings) -> Figure:
             color=alt.Color("status:N", scale=status_scale, title=None),
             tooltip=["parameter:N", alt.Tooltip("rhat:Q", format=".4f")],
         ),
-        base.mark_rule(strokeDash=[4, 4], color="#c62828").encode(x=alt.datum(s.rhat_threshold)),
+        base.mark_rule(strokeDash=[4, 4], color=ALERT).encode(x=alt.datum(s.rhat_threshold)),
     ).properties(width=s.width // 2, height=height, title="R-hat (lower is better)")
     ess_chart = alt.layer(
         base.mark_point(filled=True).encode(
@@ -307,7 +308,7 @@ def convergence(inp: RecipeInput, s: ConvergenceSettings) -> Figure:
                 alt.Tooltip("ess_tail:Q", format=".0f"),
             ],
         ),
-        base.mark_rule(strokeDash=[4, 4], color="#c62828").encode(x=alt.datum(ess_thr)),
+        base.mark_rule(strokeDash=[4, 4], color=ALERT).encode(x=alt.datum(ess_thr)),
     ).properties(width=s.width // 2, height=height, title="Effective sample size")
 
     top = diag.head(s.table_rows)
@@ -336,7 +337,7 @@ def convergence(inp: RecipeInput, s: ConvergenceSettings) -> Figure:
     )
     table = alt.layer(
         cell.transform_filter(alt.FieldEqualPredicate(field="status", equal="header")).mark_text(
-            align="left", baseline="middle", fontSize=11, fontWeight="bold", color="#666"
+            align="left", baseline="middle", fontSize=11, fontWeight="bold", color=MUTED
         ),
         cell.transform_filter(alt.FieldOneOfPredicate(field="status", oneOf=["ok", "check"]))
         .mark_text(align="left", baseline="middle", fontSize=11, limit=int(s.width * 0.48))
@@ -388,7 +389,7 @@ def convergence(inp: RecipeInput, s: ConvergenceSettings) -> Figure:
             rbase.mark_line(interpolate="step", strokeWidth=1).encode(
                 x=alt.X("bin:Q", title="rank bin"), y=alt.Y("count:Q", title=None), color="chain:N"
             ),
-            rbase.mark_rule(strokeDash=[3, 3], color="#666").encode(y="mean(expected):Q"),
+            rbase.mark_rule(strokeDash=[3, 3], color=MUTED).encode(y="mean(expected):Q"),
             data=named("rank"),
         )
         .properties(width=s.width // 2, height=70)
@@ -490,7 +491,7 @@ def posterior_forest(inp: RecipeInput, s: ForestSettings) -> Figure:
         base.mark_rule(strokeWidth=4).encode(
             x="lo_inner:Q", x2="hi_inner:Q", y=y, color="variable:N"
         ),
-        base.mark_point(filled=True, color="white", stroke="black", size=40).encode(
+        base.mark_point(filled=True, color=SURFACE, stroke=OBSERVED, size=40).encode(
             x="point:Q",
             y=y,
             tooltip=[
@@ -505,7 +506,7 @@ def posterior_forest(inp: RecipeInput, s: ForestSettings) -> Figure:
     crossing = set(spans.index[(spans["lo"] < 0) & (spans["hi"] > 0)])
     forest["zero"] = np.where(forest["variable"].isin(crossing), 0.0, np.nan)
     if crossing:  # a zero reference only where the variable's intervals straddle zero
-        layers.insert(0, base.mark_rule(color="#999", strokeDash=[3, 3]).encode(x="zero:Q"))
+        layers.insert(0, base.mark_rule(color=REFERENCE, strokeDash=[3, 3]).encode(x="zero:Q"))
     layer = alt.layer(*layers).properties(width=s.width, height=alt.Step(16))
     if forest["variable"].nunique() > 1:
         # one row per variable, each on its own value scale (alpha ~ 100, beta ~ 0.5 ...)
@@ -580,10 +581,8 @@ def ppc(inp: RecipeInput, s: PPCSettings) -> Figure:
     )
     pbase = alt.Chart()
     pit_chart = alt.layer(
-        pbase.mark_rect(color="#e0e0e0").encode(
-            x="bin_start:Q", x2="bin_end:Q", y="lo:Q", y2="hi:Q"
-        ),
-        pbase.mark_rect(opacity=0.8, stroke="white", strokeWidth=0.5).encode(
+        pbase.mark_rect(color=EMPTY).encode(x="bin_start:Q", x2="bin_end:Q", y="lo:Q", y2="hi:Q"),
+        pbase.mark_rect(opacity=0.8, stroke=SURFACE, strokeWidth=0.5).encode(
             x=alt.X("bin_start:Q", title="PIT", scale=alt.Scale(domain=[0, 1])),
             x2="bin_end:Q",
             y=alt.Y("count:Q", title="observations"),
@@ -594,7 +593,7 @@ def ppc(inp: RecipeInput, s: PPCSettings) -> Figure:
     ).properties(width=s.width // 2, height=s.height, title="PIT (flat = calibrated)")
     cbase = alt.Chart()
     cov_chart = alt.layer(
-        cbase.mark_line(color="#999", strokeDash=[4, 4]).encode(
+        cbase.mark_line(color=REFERENCE, strokeDash=[4, 4]).encode(
             x=alt.X("nominal:Q", title="nominal coverage", scale=alt.Scale(domain=[0, 1])),
             y=alt.Y("nominal:Q", title="observed coverage", scale=alt.Scale(domain=[0, 1])),
         ),

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import re
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -709,3 +711,63 @@ def test_feature_importance_needs_a_known_group() -> None:
         render(ex.score_tree())
     with pytest.raises(RecipeDataError):
         render(ex.feature_importance_tree(), source="importance", feature_dim="column")
+
+
+# ------------------------------------------------------------------------------ colours
+
+_COLOUR = re.compile(r"^(#[0-9a-fA-F]{3,8}|white|black|red|blue|green|gray|grey|orange)$")
+_LIGHT_CARD, _DARK_CARD = "#ffffff", "#1b212d"
+
+
+def _colours(node: Any, out: set[str]) -> set[str]:
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k not in ("data", "datasets"):
+                _colours(v, out)
+    elif isinstance(node, list):
+        for v in node:
+            _colours(v, out)
+    elif isinstance(node, str) and _COLOUR.match(node):
+        out.add(node.lower())
+    return out
+
+
+def _luminance(hex_colour: str) -> float:
+    h = hex_colour.lstrip("#")
+    rgb = [int(h[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+    lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb]
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+
+def _contrast(a: str, b: str) -> float:
+    hi, lo = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def test_recipes_use_only_palette_colours_and_every_one_has_a_dark_variant() -> None:
+    """Explicit mark colours override any theme config, so recipes draw only palette colours,
+    which the plot sandbox swaps for their dark variants in dark mode (no black dots on the
+    dark card)."""
+    from mapi_plots.palette import PALETTE, dark_variants
+
+    used: set[str] = set()
+    for recipe_id, (data, options) in EXAMPLES.items():
+        _colours(get_recipe(recipe_id).render(data, **options).spec, used)
+    variants = dark_variants()
+    assert used, "the recipes use no explicit colours at all?"
+    assert used <= set(variants), sorted(used - set(variants))
+    for role, swatch in PALETTE.items():
+        assert variants[swatch.light] == swatch.dark, role
+        if swatch.legible:  # strokes, dots and text: WCAG 3:1 for graphics on both cards
+            assert _contrast(swatch.light, _LIGHT_CARD) >= 3.0, role
+            assert _contrast(swatch.dark, _DARK_CARD) >= 3.0, role
+
+
+def test_the_plot_sandbox_mirrors_the_dark_variants() -> None:
+    from mapi_plots.palette import dark_variants
+
+    ts = Path(__file__).parents[3] / "apps" / "plot-sandbox" / "src" / "recipe-palette.ts"
+    if not ts.parent.is_dir():
+        pytest.skip("the plot sandbox sources are not in this checkout")
+    pairs = dict(re.findall(r'"(#[0-9a-f]{6})":\s*"(#[0-9a-f]{6})"', ts.read_text()))
+    assert pairs == dark_variants()

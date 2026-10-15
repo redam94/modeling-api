@@ -20,6 +20,7 @@ import pandas as pd
 from mapi_spec.capabilities import Representation
 from pydantic import Field
 
+from mapi_plots.palette import OBSERVED, REFERENCE
 from mapi_plots.recipes import _stats
 from mapi_plots.recipes._base import (
     Figure,
@@ -153,7 +154,7 @@ def _curve_chart(name: str, y_title: str, s: ResponseCurveSettings, current: boo
         # current spend is stored on every row of its channel, so one dataset serves all
         # layers and the chart can still be faceted
         layers.append(
-            base.mark_point(filled=True, size=80, shape="diamond", color="#111").encode(
+            base.mark_point(filled=True, size=80, shape="diamond", color=OBSERVED).encode(
                 x="mean(current_spend):Q",
                 y="mean(current_value):Q",
                 detail="channel:N",
@@ -375,7 +376,7 @@ def budget_plans(inp: RecipeInput, s: BudgetPlanSettings) -> Figure:
         data=named("outcomes"),
     ).properties(width=s.width // 2, height=26 * len(summary), title="Expected outcome")
     delta = alt.layer(
-        obase.mark_rule(color="#999").encode(x=alt.datum(0)),
+        obase.mark_rule(color=REFERENCE).encode(x=alt.datum(0)),
         obase.mark_rule().encode(
             x=alt.X("delta_lo:Q", title=f"change vs {ref}"),
             x2="delta_hi:Q",
