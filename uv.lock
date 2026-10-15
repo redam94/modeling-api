@@ -1065,6 +1065,23 @@ wheels = [
 ]
 
 [[package]]
+name = "google-cloud-kms"
+version = "3.18.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-api-core", extra = ["grpc"] },
+    { name = "google-auth" },
+    { name = "grpc-google-iam-v1" },
+    { name = "grpcio" },
+    { name = "proto-plus" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0f/db/f2d72c861ad87a423fc3982de8b2244947c01ae65861aac9e5a1a45134e0/google_cloud_kms-3.18.0.tar.gz", hash = "sha256:019754cbcd57d032027d288e9c138c062c7870585c461b2e2772c1bc61c6d40a", size = 436172 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3f/5e/8f6d9a5f633ad5b768899859654d4af11384ae7a2b47fc5246f1eb0c5c35/google_cloud_kms-3.18.0-py3-none-any.whl", hash = "sha256:475d3d8fd4e2697cab71493b99e48dcb5e0bbf347a663907942df1eaa009b5f6", size = 352300 },
+]
+
+[[package]]
 name = "google-cloud-pubsub"
 version = "2.42.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2317,6 +2334,7 @@ docker = [
     { name = "docker" },
 ]
 gcp = [
+    { name = "google-cloud-kms" },
     { name = "google-cloud-pubsub" },
     { name = "google-cloud-run" },
     { name = "google-cloud-storage" },
@@ -2328,6 +2346,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=43" },
     { name = "docker", marker = "extra == 'docker'", specifier = ">=7.1" },
     { name = "fastapi", specifier = ">=0.115" },
+    { name = "google-cloud-kms", marker = "extra == 'gcp'", specifier = ">=3.0" },
     { name = "google-cloud-pubsub", marker = "extra == 'gcp'", specifier = ">=2.23" },
     { name = "google-cloud-run", marker = "extra == 'gcp'", specifier = ">=0.10" },
     { name = "google-cloud-storage", marker = "extra == 'gcp'", specifier = ">=2.18" },

@@ -485,7 +485,7 @@ class Finalizer:
             source_manifest_crc32c=v.manifest_meta.crc32c,
             signed_at=now(),
         )
-        signed = self.ctx.signer.sign(manifest)
+        signed = await self.ctx.signer.sign_manifest(manifest)
         assert signed.signature is not None
         unsigned_json = canonical_json(signed.model_copy(update={"signature": None}))
         await self._put_once(bundles, dst_prefix + "manifest.json", unsigned_json.encode())

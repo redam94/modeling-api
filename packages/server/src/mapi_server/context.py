@@ -12,7 +12,7 @@ from mapi_server.db import Database
 from mapi_server.services.catalog import CatalogService
 from mapi_server.services.notify import NotificationHub
 from mapi_server.services.runs import Scope
-from mapi_server.services.signing import BundleSigner
+from mapi_server.services.signing import ManifestSigner
 from mapi_server.settings import Settings
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ class ServerContext:
     db: Database
     store: ObjectStore
     catalogs: CatalogService
-    signer: BundleSigner
+    signer: ManifestSigner
     hub: NotificationHub
     queue: FinalizeQueue | None = None
     on_shutdown: list[Callable[[], Awaitable[None]]] = field(default_factory=list)

@@ -26,7 +26,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-gcp = ["google-cloud-run>=0.10", "google-cloud-storage>=2.18", "google-cloud-pubsub>=2.23"]
+gcp = [
+  "google-cloud-run>=0.10",
+  "google-cloud-storage>=2.18",
+  "google-cloud-pubsub>=2.23",
+  "google-cloud-kms>=3.0",
+]
 docker = ["docker>=7.1"]
 
 [project.scripts]

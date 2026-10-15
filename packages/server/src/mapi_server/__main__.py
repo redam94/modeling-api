@@ -49,12 +49,16 @@ def cmd_migrate(settings: Settings) -> int:
     """
     from mapi_server.db import resolve_database_url
     from mapi_server.db.migrate import upgrade
-    from mapi_server.services.signing import BundleSigner
+    from mapi_server.services.signing import LocalSigner
+    from mapi_server.settings import SignerKind
 
     url = resolve_database_url(settings)
     upgrade(url)
     log.info("database is at the latest migration")
-    signer = BundleSigner.from_file(settings.key_path, create=True)
+    if settings.signer is SignerKind.KMS:
+        log.info("bundle manifests are signed by KMS key %s", settings.kms_key_version)
+        return 0
+    signer = LocalSigner.from_file(settings.key_path, create=True)
     log.info("bundle-signing key %s at %s", signer.key_id, settings.key_path)
     return 0
 
