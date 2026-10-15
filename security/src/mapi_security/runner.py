@@ -19,6 +19,7 @@ import subprocess
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 
 from mapi_spec.executor import Isolation
 
@@ -30,6 +31,7 @@ __all__ = [
     "EXECUTORS",
     "CloudExecutionRequired",
     "ExecutorProfile",
+    "docker_probe_command",
     "evaluate",
     "in_cloud_run_job",
     "isolation_for",
@@ -89,6 +91,44 @@ def docker_available() -> bool:
         return False
 
 
+PROBE_MOUNT = "/opt/mapi-security"
+"""Where the suite's own source is mounted (read-only) in the probe container: the suite is
+never installed in an image, so the runner image only has to provide Python and mapi_spec."""
+
+
+def suite_source_root() -> Path:
+    """The directory holding the ``mapi_security`` package (``security/src``)."""
+    return Path(__file__).resolve().parent.parent
+
+
+def docker_probe_command(profile: ExecutorProfile, *, image: str) -> list[str]:
+    """``docker run`` for the isolation probes: no network, read-only root, uid 10001, no
+    capabilities, ``no-new-privileges`` (and ``--runtime runsc`` for gVisor), with the suite
+    mounted read-only and put on ``PYTHONPATH``."""
+    cmd = [
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--read-only",
+        "--user",
+        "10001:10001",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--volume",
+        f"{suite_source_root()}:{PROBE_MOUNT}:ro",
+        "--env",
+        f"PYTHONPATH={PROBE_MOUNT}",
+    ]
+    if profile.docker_runtime:
+        cmd += ["--runtime", profile.docker_runtime]
+    cmd += [image, "python", "-m", "mapi_security", "probe", "--category", "isolation", "--json"]
+    return cmd
+
+
 def run_probes_in_docker(profile: ExecutorProfile, *, image: str) -> list[ProbeResult]:
     """Run the isolation probes inside a container; platform probes run in process.
 
@@ -105,23 +145,7 @@ def run_probes_in_docker(profile: ExecutorProfile, *, image: str) -> list[ProbeR
             for pid in isolation_ids
         ]
         return _ordered(skipped + platform_results)
-    cmd = [
-        "docker",
-        "run",
-        "--rm",
-        "--network",
-        "none",
-        "--read-only",
-        "--user",
-        "10001:10001",
-        "--cap-drop",
-        "ALL",
-        "--security-opt",
-        "no-new-privileges",
-    ]
-    if profile.docker_runtime:
-        cmd += ["--runtime", profile.docker_runtime]
-    cmd += [image, "python", "-m", "mapi_security", "probe", "--category", "isolation", "--json"]
+    cmd = docker_probe_command(profile, image=image)
     try:
         proc = subprocess.run(cmd, check=True, capture_output=True, timeout=300, text=True)
         parsed = json.loads(proc.stdout)

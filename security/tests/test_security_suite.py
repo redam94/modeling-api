@@ -133,3 +133,22 @@ def test_the_cloud_profile_only_runs_inside_a_cloud_run_job(capsys) -> None:
     if not in_cloud_run_job():
         assert main(["run", "--executor", "cloud"]) == 2
         assert "Cloud Run Jobs execution" in capsys.readouterr().err
+
+
+def test_the_probe_container_gets_the_suite_read_only() -> None:
+    """Images never ship the suite: the container must see it through a read-only mount."""
+    from pathlib import Path
+
+    from mapi_security.runner import EXECUTORS, PROBE_MOUNT, docker_probe_command
+
+    cmd = docker_probe_command(EXECUTORS["docker-gvisor"], image="mapi/worker:latest")
+    mount = cmd[cmd.index("--volume") + 1]
+    src, dest, mode = mount.rsplit(":", 2)
+    assert (Path(src) / "mapi_security" / "__main__.py").is_file()
+    assert (dest, mode) == (PROBE_MOUNT, "ro")
+    assert f"PYTHONPATH={PROBE_MOUNT}" in cmd
+    for flag in ("--read-only", "no-new-privileges", "ALL", "none", "10001:10001"):
+        assert flag in cmd
+    assert cmd[cmd.index("--runtime") + 1] == "runsc"
+    tail = ["python", "-m", "mapi_security", "probe", "--category", "isolation", "--json"]
+    assert cmd[cmd.index("mapi/worker:latest") + 1 :] == tail
