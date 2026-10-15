@@ -228,12 +228,23 @@ def build_executor(settings: Settings) -> Executor:
             f"from {template.split('/storage/')[0]}; set MAPI_DOCKER_NETWORK to "
             "container:<gcs-shim container> or to an internal network that holds the shim"
         )
+    if settings.docker_network_isolated and settings.docker_network in (
+        "host",
+        "bridge",
+        "default",
+    ):
+        raise ExecutorRefused(
+            f"MAPI_DOCKER_NETWORK_ISOLATED: {settings.docker_network!r} reaches the outside; "
+            "use an internal network (docker network create --internal) that holds only the "
+            "GCS shim"
+        )
     return DockerExecutor(
         image=settings.docker_image,
         images=settings.docker_images,
         bootstrap_url_template=template,
         exec_token=settings.resolved_exec_token(),
         network=settings.docker_network,
+        network_isolated=settings.docker_network_isolated,
         gvisor=settings.executor is ExecutorName.DOCKER_GVISOR,
         gvisor_runtime=settings.docker_runtime_gvisor,
         cancel_grace_s=settings.cancel_grace_s,

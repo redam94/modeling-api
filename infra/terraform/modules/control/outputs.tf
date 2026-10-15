@@ -1,5 +1,5 @@
 output "service_accounts" {
-  description = "Service account e-mail per control-plane workload (api, events, orchestrator, migrate, web, push, url-signer)."
+  description = "Service account e-mail per control-plane workload (api, events, orchestrator, migrate, web, push, url-signer, url-uploader)."
   value       = { for k, sa in google_service_account.sa : k => sa.email }
 }
 

@@ -83,6 +83,10 @@ and `gcloud storage buckets get-iam-policy gs://mapi-<env>-<bucket>`.
 - The Logging sink of each exec project routes only `jsonPayload.mapi_event:*` lines of this
   environment's Jobs, and writes as its own identity, which may only publish to the events
   topic.
+- User output is excluded at the exec project's `_Default` sink (plan §8.7,
+  `modules/exec/logging.tf`): `log` and `progress` events of the runner Jobs still reach the
+  events service through the routing sink, but are not ingested (and billed) in the exec
+  project. State changes, warnings, errors, completions and Cloud Run's system logs stay.
 - The events service is **internal-only** and IAM-protected: only the push identity may invoke
   it, and Cloud Run checks the push token's signature and audience before the request reaches
   the container. The server additionally checks the claims (`mapi_spec.auth.check_push_claims`)
@@ -115,6 +119,10 @@ Record the date, the result and the evidence (log query, screenshot) for each.
   `<random>.probe.<zone you control>` (A, AAAA and TXT). Pass: the answer is the sinkhole (or
   NODATA) and the zone's authoritative query logs never see the name. Plan §9's red-team gate;
   if it fails, Cloud Run Jobs cannot host untrusted code (fallback: GKE Sandbox).
+  **Until this passes, `verified` and `public` tenants stay off:** only then set
+  `MAPI_CLOUDRUN_DNS_ENFORCED=true` on the orchestrator and record the security-suite and
+  conformance evidence ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)). New tenants
+  default to `verified`, so the private beta needs this item.
 - [ ] **A wildcard rule for the root (`*.`) is accepted** by Cloud DNS, and local data for
   A/AAAA does not leak TXT or other record types upstream (same probe, other types).
 - [ ] **The bypass rules work**: `storage.googleapis.com` resolves to 199.36.153.4–7 and

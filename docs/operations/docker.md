@@ -109,6 +109,17 @@ only the shim also works, provided `MAPI_GCS_ENDPOINT` names the shim on that ne
 `none` would leave the runner with nothing to fetch its bootstrap object from, so the worker
 refuses to start with it.
 
+**docker-gvisor for verified and public tenants.** Shared tiers need an executor with
+egress and DNS enforced. Since `none` is not usable, put the run containers on an internal
+network that holds nothing but the shim (`docker network create --internal mapi-sandbox`,
+the shim attached to it and to nothing that routes out), set
+`MAPI_DOCKER_NETWORK=mapi-sandbox` and declare it with `MAPI_DOCKER_NETWORK_ISOLATED=true`
+(`host`, `bridge` and `default` are refused). The executor then reports enforced egress and
+DNS, but the dispatcher places `verified` and `public` tenants on it only once the security
+suite ran against it with the `http_egress`, `dns_egress` and `metadata_token` probes
+blocked, and that result and a passing conformance run are recorded
+([the shared-tier gate](cloud-run.md#the-shared-tier-gate)).
+
 **Worker isolation in run containers.** A run container starts its supervisor as root, with
 every Linux capability dropped except the few the uid split needs, and with
 `no-new-privileges`. The supervisor then starts the untrusted worker as uid 10001, which has no

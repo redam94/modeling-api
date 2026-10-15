@@ -135,6 +135,20 @@ run "least_privilege" {
   }
 }
 
+run "user_output_is_not_stored_in_the_exec_project" {
+  command = apply
+
+  assert {
+    condition     = google_logging_project_exclusion.user_output.project == "acme-test-exec-paid"
+    error_message = "The exclusion applies to this exec project's _Default sink."
+  }
+
+  assert {
+    condition     = strcontains(google_logging_project_exclusion.user_output.filter, "jsonPayload.mapi_event.type=\"log\"") && strcontains(google_logging_project_exclusion.user_output.filter, "^mapi-test-")
+    error_message = "User log events of this environment's Jobs are excluded (plan §8.7)."
+  }
+}
+
 run "tagged_runner_images_are_refused" {
   command = plan
 

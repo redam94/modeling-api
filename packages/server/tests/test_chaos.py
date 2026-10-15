@@ -1,6 +1,7 @@
 """Chaos tests (plan §13): the control plane converges to correct terminal states despite
-worker death, event redelivery/reordering, and a Postgres restart — without loss or
-duplicates.
+worker death (with and without retries), event redelivery/reordering, a Postgres restart
+under the live loops, ``jobs.run`` throttling storms and a submit that hangs after the
+execution was created — without loss or duplicates.
 
 Marked ``slow`` (and ``integration``): they spawn real subprocesses and, for the Postgres
 case, a dedicated embedded server they stop and start. They exercise the invariants the plan
@@ -20,19 +21,21 @@ import sys
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
+from typing import Any
 
 import psycopg
 import pytest
 from mapi_server.context import ServerContext
-from mapi_server.db import Database, libpq_url
+from mapi_server.db import libpq_url
 from mapi_server.db import models as m
 from mapi_server.db.migrate import upgrade
 from mapi_server.executors import LocalProcessExecutor
+from mapi_server.executors.cloudrun import CloudRunJobsExecutor
 from mapi_server.orchestrator import Orchestrator
 from mapi_server.services.events import EventIngestor
-from mapi_server.services.reconciler import Reconciler
 from mapi_server.services.runs import load_run
 from mapi_server_testkit.builders import CATALOG, EXEC_TOKEN, queued_fit, signed_event
+from mapi_server_testkit.conformance import INVENTORY, harness
 from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_server_testkit.store_http import serve_store
 from mapi_spec.run import (
@@ -289,8 +292,9 @@ async def test_bad_hmac_redelivery_never_advances_the_run(ctx: ServerContext) ->
 
 
 async def test_postgres_restart_mid_run_converges(tmp_path: Path) -> None:
-    """Stop and start the database under a live run; the control plane reconnects and the run
-    reaches a terminal state with no duplicate attempts."""
+    """Stop and start the database under a live run while the orchestrator's loops keep
+    running on the same pools (no engine swap, no hand-driven reconciler): the loops ride out
+    the outage, the pools reconnect, and the run converges with no duplicate attempt."""
     pgserver = pytest.importorskip("pgserver")
     from mapi_server.app import build_context, shutdown, startup
     from mapi_server.services.signing import BundleSigner
@@ -308,6 +312,7 @@ async def test_postgres_restart_mid_run_converges(tmp_path: Path) -> None:
         gcs_endpoint="http://store.invalid",
         exec_token=EXEC_TOKEN,
         reconcile_interval_s=0.05,
+        dispatch_poll_s=0.05,
         lost_execution_grace_s=0.0,
         max_infra_retries=0,
     )
@@ -316,11 +321,11 @@ async def test_postgres_restart_mid_run_converges(tmp_path: Path) -> None:
         base_url=settings.gcs_endpoint, buckets=settings.buckets.all().values()
     )
     ctx = build_context(settings, store=store, signer=BundleSigner.generate())
-    await startup(ctx)
+    await startup(ctx, listen=False)
     executor = FakeExecutor()
 
     # record finalize hand-offs instead of running the finalizer (no real outputs here): the
-    # convergence we assert is that the reconciler moves the run past RUNNING after restart.
+    # convergence we assert is that the live reconciler moves the run past RUNNING.
     class _RecordingQueue:
         def __init__(self) -> None:
             self.calls: list[tuple[str, int]] = []
@@ -328,33 +333,50 @@ async def test_postgres_restart_mid_run_converges(tmp_path: Path) -> None:
         async def defer_finalize(self, run_id: str, attempt: int) -> None:
             self.calls.append((run_id, attempt))
 
-    ctx.queue = _RecordingQueue()
+    queue = _RecordingQueue()
+    ctx.queue = queue
+    orch = Orchestrator(ctx, executor, use_procrastinate=False)
+    loops = asyncio.create_task(orch.run())
+
+    async def state(run_id: str) -> str:
+        async with ctx.db.session() as s:
+            return (await load_run(s, None, run_id)).state
+
+    async def ingest(event: Any) -> str:
+        """Pushes are redelivered until they succeed (Pub/Sub retries a failed push)."""
+        for _ in range(100):
+            with contextlib.suppress(Exception):
+                return (await orch.ingestor.ingest(event)).value
+            await asyncio.sleep(0.1)
+        raise AssertionError("the event was never accepted")
+
     try:
         run_id = await queued_fit(ctx)
-        from mapi_server.services.dispatcher import Dispatcher
 
-        await Dispatcher(ctx, executor).dispatch_once()
+        async def dispatched() -> bool:
+            return await state(run_id) == RunState.PROVISIONING.value
+
+        await _until(dispatched)
         async with ctx.db.session() as s:
             att = await s.get(m.RunAttempt, (run_id, 1))
             assert att is not None
             s.expunge(att)
-        # the run is live and has received one event
-        first = signed_event(att, 0, StatePayload(phase=RunnerPhase.FIT))
-        assert (await EventIngestor(ctx).ingest(first)).value == "accepted"
+        assert await ingest(signed_event(att, 0, StatePayload(phase=RunnerPhase.FIT))) == (
+            "accepted"
+        )
 
-        # --- chaos: stop and restart Postgres underneath the running control plane ---
-        await ctx.db.dispose()  # drop pooled connections the way a real outage would
+        # --- chaos: stop Postgres under the running loops, let them fail, start it again ---
         import pgserver.postgres_server as ps
 
         ps.pg_ctl(["-m", "fast", "stop"], pgdata=pgdata)
         _wait_pg_down(settings.database_url)
+        await asyncio.sleep(1.0)  # the dispatcher and reconciler passes fail meanwhile
+        assert not loops.done(), "the orchestrator must survive a database outage"
+        # the execution finishes while the database is down
+        executor.finish(att.nonce, exit_code=0)
         srv.ensure_postgres_running()
         _wait_pg_up(settings.database_url)
-        # rebuild the engine as a restarted worker process would (fresh pool)
-        ctx.db = Database(settings.database_url, pool_size=settings.db_pool_size)
 
-        # the execution finished while the DB was down; the reconciler converges after restart
-        executor.finish(att.nonce, exit_code=0)
         complete = signed_event(
             att,
             1,
@@ -366,20 +388,16 @@ async def test_postgres_restart_mid_run_converges(tmp_path: Path) -> None:
                 total_bytes=0,
             ),
         )
-        assert (await EventIngestor(ctx).ingest(complete)).value == "accepted"
-        reconciler = Reconciler(ctx, executor)
-        for _ in range(10):
-            await reconciler.reconcile_run(run_id)
-            async with ctx.db.session() as s:
-                run = await load_run(s, None, run_id)
-                s.expunge(run)
-            if run.state == RunState.FINALIZING.value:
-                break
-            await asyncio.sleep(0.05)
-        # The reconciler, running after the restart, observed the finished execution and moved
-        # the run to FINALIZING and handed it off exactly once — a single attempt, no duplicate.
+        assert await ingest(complete) == "accepted"
+
+        async def finalizing() -> bool:
+            with contextlib.suppress(Exception):
+                return await state(run_id) == RunState.FINALIZING.value and bool(queue.calls)
+            return False
+
+        await _until(finalizing)
+        assert not loops.done()
         async with ctx.db.session() as s:
-            run = await load_run(s, None, run_id)
             attempts = (
                 await s.execute(
                     select(func.count())
@@ -387,10 +405,13 @@ async def test_postgres_restart_mid_run_converges(tmp_path: Path) -> None:
                     .where(m.RunAttempt.run_id == run_id)
                 )
             ).scalar_one()
-        assert run.state == RunState.FINALIZING.value, run.state
         assert attempts == 1
-        assert ctx.queue.calls == [(run_id, 1)]  # type: ignore[attr-defined]
+        assert queue.calls == [(run_id, 1)], "handed off exactly once"
+        assert executor.submit_calls == 1, "no duplicate execution"
     finally:
+        orch.stop.set()
+        with contextlib.suppress(Exception):
+            await asyncio.wait_for(loops, 20)
         await shutdown(ctx)
         srv.cleanup()
 
@@ -416,3 +437,121 @@ def _wait_pg_up(url: str, timeout: float = 30) -> None:
         except psycopg.OperationalError:
             time.sleep(0.1)
     raise AssertionError("Postgres did not come back up")
+
+
+# ------------------------------------------------------ retries, throttling, stuck submits
+
+TERMINAL = frozenset(s for s in RunState if s.terminal)
+
+
+async def _billed_attempts(ctx: ServerContext, run_id: str) -> list[int]:
+    async with ctx.db.session() as s:
+        return sorted(
+            (
+                await s.execute(
+                    select(m.CostLedgerEntry.attempt).where(
+                        m.CostLedgerEntry.run_id == run_id, m.CostLedgerEntry.kind == "actual"
+                    )
+                )
+            ).scalars()
+        )
+
+
+async def test_lost_worker_is_retried_to_success(ctx: ServerContext, tmp_path: Path) -> None:
+    """The host of a running execution dies (no exit code; Cloud Run forgets it) with retries
+    enabled: exactly one new attempt, never two executions live at once, the run SUCCEEDS,
+    and the lost attempt is billed too."""
+    async with harness("fake-cloudrun", ctx, tmp_path) as h:
+        assert h.fake is not None
+        ctx.settings.max_infra_retries = 1
+        run_id = await h.fit("hang_first")  # attempt 1 hangs, attempt 2 succeeds
+        await h.start()
+        await h.wait(run_id, {RunState.RUNNING})
+        att = await h.attempt(run_id)
+        assert att is not None and att.external_id
+        h.fake.lose_execution(att.external_id)
+        run = await h.wait(run_id, TERMINAL, timeout=90)
+        assert run.state == RunState.SUCCEEDED.value, run.problem
+        assert run.attempt == 2 and run.infra_retries == 1
+        assert h.executions_created(run_id) == 2 and h.max_live(run_id) == 1
+        assert await _billed_attempts(ctx, run_id) == [1, 2]
+        await _one_execution(ctx, run_id)
+
+
+async def test_sigkill_is_never_retried_blindly(ctx: ServerContext, tmp_path: Path) -> None:
+    """A SIGKILLed supervisor looks exactly like the OOM killer: even with retries enabled
+    it is not retried automatically (that would OOM again); the run fails as
+    RESOURCE_EXHAUSTED with the offer to retry one class up, after one execution."""
+    async with harness("local-process", ctx, tmp_path) as h:
+        ctx.settings.max_infra_retries = 2
+        run_id = await h.fit("hang_first")
+        await h.start()
+        await h.wait(run_id, {RunState.RUNNING})
+        pid = await _supervisor_pid(ctx, run_id)
+        os.kill(pid, signal.SIGKILL)
+        _wait_dead(pid)
+        run = await h.wait(run_id, TERMINAL, timeout=90)
+        assert run.state == RunState.FAILED.value
+        assert run.failure_class == "resource_exhausted" and run.attempt == 1
+        assert "retry at class" in str((run.problem or {}).get("detail"))
+        assert await _billed_attempts(ctx, run_id) == [1]
+
+
+async def test_jobs_run_throttling_storm_never_fails_runs(
+    ctx: ServerContext, tmp_path: Path
+) -> None:
+    """jobs.run answers 429 for longer than the executor retries: the run is requeued
+    (without an infrastructure retry budget at all) and succeeds once the storm passes,
+    with exactly one execution."""
+    async with harness("fake-cloudrun", ctx, tmp_path) as h:
+        assert h.fake is not None
+        h.executor.inner = CloudRunJobsExecutor(
+            h.fake,
+            INVENTORY,
+            max_rate_limit_retries=1,
+            backoff_base_s=0.05,
+            submits_per_minute=180,
+            burst=50,
+            jitter=lambda: 0.0,
+            adopt_refresh_s=0.0,
+        )
+        ctx.settings.max_infra_retries = 0
+        h.fake.rate_limit(5)  # two exhausted submits, then one that gets through
+        run_id = await h.fit("ok")
+        await h.start()
+        run = await h.wait(run_id, TERMINAL, timeout=90)
+        assert run.state == RunState.SUCCEEDED.value, run.problem
+        assert run.infra_retries == 0 and run.attempt == 3
+        assert h.executions_created(run_id) == 1
+
+
+async def test_a_stuck_submit_lets_the_lease_lapse_and_is_adopted(
+    ctx: ServerContext, tmp_path: Path
+) -> None:
+    """jobs.run created the execution but the dispatcher never gets the answer back (a hung
+    call): its lease stops being renewed after MAX_SUBMIT_LEASES, the reconciler adopts the
+    execution by nonce, and the run succeeds with one execution. When the stale call finally
+    returns, nothing is created or rolled back."""
+    async with harness("fake-cloudrun", ctx, tmp_path) as h:
+        assert h.fake is not None
+        ctx.settings.dispatch_lease_s = 0.2
+        original = h.fake.run_job
+        release = asyncio.Event()
+
+        async def stuck(job: str, **kw: Any) -> Any:
+            result = await original(job, **kw)
+            await release.wait()
+            return result
+
+        h.fake.run_job = stuck  # type: ignore[method-assign]
+        run_id = await h.fit("ok")
+        await h.start()
+        try:
+            run = await h.wait(run_id, TERMINAL, timeout=60)
+        finally:
+            release.set()
+        assert run.state == RunState.SUCCEEDED.value, run.problem
+        assert run.attempt == 1 and h.executions_created(run_id) == 1
+        await asyncio.sleep(0.3)  # the stale submit returns and is recorded as a no-op
+        assert (await h.run(run_id)).state == RunState.SUCCEEDED.value
+        assert h.executions_created(run_id) == 1

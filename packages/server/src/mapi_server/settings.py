@@ -216,7 +216,7 @@ class Settings(BaseSettings):
     url_uploader: str | None = Field(
         None,
         description="Service account that signs create-only upload policies (objects.create, "
-        "no delete); default: url_signer",
+        "never delete; required with MAPI_OBJECT_STORE=gcs and distinct from url_signer)",
     )
     gcs_root: Path | None = Field(
         None, description="The GCS shim's state directory (default: data_dir/gcs)"
@@ -252,6 +252,12 @@ class Settings(BaseSettings):
         description="Network of run containers: 'container:<gcs-shim container>' (share the "
         "shim's namespace, so 127.0.0.1:4443 works) or an internal network holding only the "
         "shim. 'none' is refused while the bootstrap URL is HTTP (nothing would be reachable).",
+    )
+    docker_network_isolated: bool = Field(
+        False,
+        description="Declare MAPI_DOCKER_NETWORK an internal network that holds only the GCS "
+        "shim (no route out, no DNS beyond it), so docker-gvisor reports enforced egress and "
+        "DNS. Shared tiers still need a passing security-suite run recorded for these caps",
     )
     docker_runtime_gvisor: str = "runsc"
     executor_workdir: Path | None = None
@@ -300,8 +306,9 @@ class Settings(BaseSettings):
     )
     cloudrun_dns_enforced: bool = Field(
         False,
-        description="The DNS response policy is verified to apply to Jobs [verify M0]; public "
-        "tenants are only placed when both egress and DNS are enforced",
+        description="The DNS response policy is verified to apply to Jobs [verify M0]; "
+        "verified and public tenants are only placed when both egress and DNS are enforced "
+        "(and suite evidence is recorded)",
     )
     cloudrun_adopt_lookback_s: float = Field(
         26 * 3600, gt=0, description="How far back orphan adoption lists executions"
@@ -454,6 +461,12 @@ class Settings(BaseSettings):
         "cannot fill the window)",
     )
     executor_report_interval_s: float = Field(10.0, gt=0)
+    executor_evidence_max_age_s: float = Field(
+        3 * 86400.0,
+        gt=0,
+        description="How long a recorded conformance or security-suite report lets an "
+        "executor take verified and public tenants (the nightly suites renew it)",
+    )
     sse_heartbeat_s: float = Field(15.0, gt=0)
     sse_poll_s: float = Field(5.0, gt=0, description="Fallback poll when no NOTIFY arrives")
     sse_reauth_s: float = Field(
@@ -555,6 +568,15 @@ class Settings(BaseSettings):
             raise ValueError("MAPI_SIGNER=kms needs MAPI_KMS_KEY_VERSION")
         if self.object_store is ObjectStoreKind.GCS and not self.url_signer:
             raise ValueError("MAPI_OBJECT_STORE=gcs needs MAPI_URL_SIGNER (the signBlob account)")
+        if self.object_store is ObjectStoreKind.GCS and (
+            not self.url_uploader or self.url_uploader == self.url_signer
+        ):
+            # Every run's output policy is create_only; GCS POST forms carry no generation
+            # precondition, so only an account without storage.objects.delete can sign one.
+            raise ValueError(
+                "MAPI_OBJECT_STORE=gcs needs MAPI_URL_UPLOADER: a service account other than "
+                "MAPI_URL_SIGNER that may create objects but never delete them"
+            )
         weak = [a for a in self.oidc_algorithms if a.upper().startswith("HS") or a == "none"]
         if weak:
             raise ValueError("oidc_algorithms must be asymmetric (RS*, ES*, PS* or EdDSA)")

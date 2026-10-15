@@ -350,15 +350,10 @@ and skip otherwise.
 
 ## Known gaps (not cloud-specific)
 
-- **Executor conformance reports are not stored.** The suite computes a
-  `ConformanceReport` per backend and checks `passed_for`, but the server never records one.
-  As a result:
-    - `GET /v1/admin/executors` always answers `conformance_passed: false` with "no executor
-      conformance report has been recorded";
-    - enabling an executor is not gated on a stored report at run time (plan §8.4).
-
-    Placement by trust tier *is* enforced: `verified` and `public` tenants are refused on
-    `local-process`.
+- **Executor evidence is recorded by hand.** Shared tiers are gated on stored conformance and
+  security-suite reports ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)), but no
+  job posts the nightly results to `PUT /v1/admin/executors/{name}/evidence` yet: an operator
+  records them.
 - **The nightly workflow has not run yet.** `.github/workflows/nightly.yml` has no remote
   to run on here, and its gVisor job (installing `runsc` on the runner) is untested.
 

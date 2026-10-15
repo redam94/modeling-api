@@ -83,4 +83,8 @@ error: the migration failed. The previous release is still serving. Inspect it w
 EOF
   exit 1
 fi
-log "migrations applied"
+if [[ $DRY_RUN == 1 ]]; then
+  log "dry run: no migration was run"
+else
+  log "migrations applied"
+fi

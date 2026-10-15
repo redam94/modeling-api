@@ -57,6 +57,8 @@ jobs:
         run: |
           POSTGRES_PASSWORD=ci docker compose -f docker-compose.yml config -q
           POSTGRES_PASSWORD=ci docker compose -f docker-compose.yml -f compose.override.example.yml config -q
+      - name: Workflows are valid (actionlint)
+        run: uvx --from actionlint-py==1.7.12.25 actionlint .github/workflows/*.yml
 
   docker:
     # Build only (never pushed): proves every Dockerfile builds, including the build-time

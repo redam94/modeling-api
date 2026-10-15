@@ -184,7 +184,8 @@ deploy/gcp/deploy.sh --env staging
    yet, so they run right after the apply instead.
 4. `terraform apply` of exactly the saved plan.
 5. The images file is recorded as a release in
-   `gs://<state bucket>/mapi/staging/releases/<UTC timestamp>-<sha>.json`.
+   `gs://<state bucket>/mapi/staging/releases/<UTC timestamp>-<release id>.json`. The release id
+   is a hash of the images, so a retried deploy of the same images is the same release.
 6. Smoke test: API `/healthz` and `/readyz`, the web app (with a Content-Security-Policy), the
    plot sandbox, and a check that the events service refuses requests from the internet.
 
@@ -203,6 +204,22 @@ the services answer on their `run.app` URLs (`terraform output urls`).
 Work through the [security hardening](security-hardening.md) page, and the
 [M0 verification checklist](security-hardening.md#m0-verification-checklist) before the first
 production deploy.
+
+!!! warning "Verified tenants cannot run until DNS enforcement is verified"
+    `verified` (the default tier of new tenants, the private beta) and `public` tenants need
+    an executor with egress **and** DNS enforced. A fresh stack sets neither
+    `MAPI_CLOUDRUN_DNS_ENFORCED` nor any suite evidence, so their runs are refused at
+    submission (`INFRA_ERROR`, 503) and only `internal` and `self_hosted_trusted` tenants run.
+    To open the shared tiers:
+
+    1. pass the DNS red-team gate of the M0 checklist from a Job of this environment;
+    2. set `MAPI_CLOUDRUN_DNS_ENFORCED = "true"` for the orchestrator through
+       `control.extra_env` (`{ orchestrator = { MAPI_CLOUDRUN_DNS_ENFORCED = "true" } }`) and
+       deploy;
+    3. run the executor conformance suite and the security suite against the deployed
+       executor and record both with `PUT /v1/admin/executors/cloudrun-jobs/evidence`
+       ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)). Evidence expires after
+       `MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S`, so record the nightly runs.
 
 ## Continuous deployment
 
@@ -254,12 +271,15 @@ Terraform or read the exec projects' logs from outside it need an access level
 
 ```bash
 deploy/gcp/rollback.sh --env prod --list            # recorded releases, newest first
-deploy/gcp/rollback.sh --env prod --previous        # redeploy the release before the newest
+deploy/gcp/rollback.sh --env prod --previous        # redeploy the release before the deployed one
 deploy/gcp/rollback.sh --env prod --traffic-only    # seconds: services back to their previous revision
 ```
 
 A release rollback goes through `deploy.sh` (plan, confirmation, apply, smoke test) with
-`--skip-migrate`: schema changes only move forward. `--traffic-only` shifts traffic with
+`--skip-migrate`: schema changes only move forward. It is recorded as
+`<UTC timestamp>-<id of the release it redeployed>-rollback.json`, and `--previous` replays the
+records: retried deploys count once, and after rolling back from a bad release a second
+`--previous` goes one release further back instead of returning to the bad one. `--traffic-only` shifts traffic with
 `gcloud` without touching Terraform, for incidents; it leaves the orchestrator and the Jobs as
 they are, and the next deploy moves traffic to the newest revision again.
 
@@ -299,6 +319,7 @@ server does not read. Plain values:
 | `MAPI_OBJECT_STORE` | all | `gcs`: real Cloud Storage, URLs signed keylessly |
 | `MAPI_GCP_PROJECT` | all | Project of the Cloud Storage client |
 | `MAPI_URL_SIGNER` | all | Service account whose `signBlob` signs URLs (no key file exists) |
+| `MAPI_URL_UPLOADER` | all | Service account whose `signBlob` signs create-only upload policies (run outputs); it may create objects in `runs` and `quarantine` but never delete them |
 | `MAPI_SIGNER`, `MAPI_KMS_KEY_VERSION` | all | `kms` and `…/cryptoKeyVersions/<control.kms_key_version>` of the EC P-256 key that signs bundle manifests |
 | `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE`, `MAPI_DB_GATEWAY_ROLE` | all | `mapi_app` (row-level security), `mapi_orchestrator` (the platform role, the only RLS bypass) and `mapi_gateway` (the API's lookups before a tenant is known, RLS applies) |
 | `MAPI_DEFAULT_RESIDENCY` | all | Residency of the platform tenant and of tenants created without one: the control module's `default_residency`, else what the dispatch pool's region satisfies (`eu` for `europe-west4`) |

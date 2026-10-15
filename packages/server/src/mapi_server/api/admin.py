@@ -12,9 +12,17 @@ from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, Response, status
-from mapi_spec.admin import ExecutorHealth, ExecutorStatus, KillSwitches, KillSwitchUpdate
+from mapi_spec.admin import (
+    ExecutorEvidence,
+    ExecutorEvidenceUpdate,
+    ExecutorHealth,
+    ExecutorStatus,
+    KillSwitches,
+    KillSwitchUpdate,
+)
 from mapi_spec.api import Page, TenantAdminUpdate, TenantCreate
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome, AuditQuery
+from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import ExecutorCaps
 from mapi_spec.quotas import QuotaPolicy, QuotaPolicyUpsert, QuotaScope
 from mapi_spec.run import FailureClass, RunState
@@ -38,6 +46,7 @@ from mapi_server.auth.identity import invite_user
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
 from mapi_server.services.audit import write_audit
+from mapi_server.services.evidence import load_evidence, record_evidence
 from mapi_server.services.quotas import (
     DISPATCHED_STATES,
     KILL_SWITCHES_KEY,
@@ -391,6 +400,12 @@ async def executor_health(system: AsyncSession, row: m.ExecutorReport) -> Execut
             )
         )
     ).scalar_one()
+    evidence = await load_evidence(system, row.name)
+    conf_att = evidence.conformance_attestation if evidence else None
+    sec_att = evidence.security_attestation if evidence else None
+    conformance_ok = conf_att is not None and conf_att.problem("", caps, now=ts) is None
+    security_ok = sec_att is not None and sec_att.problem("", caps, now=ts) is None
+    shared = caps.allows_public_tenants() and conformance_ok and security_ok
     if not row.enabled:
         state = ExecutorStatus.DISABLED
     elif ts - row.checked_at > STALE_REPORT:
@@ -406,8 +421,11 @@ async def executor_health(system: AsyncSession, row: m.ExecutorReport) -> Execut
         caps=caps,
         regions=list(caps.regions),
         allows_public_tenants=caps.allows_public_tenants(),
-        conformance=None,
-        conformance_passed=False,
+        conformance=evidence.conformance if evidence else None,
+        conformance_passed=conformance_ok,
+        security=evidence.security if evidence else None,
+        security_passed=security_ok,
+        shared_tiers_enabled=shared,
         running_executions=int(running),
         queued_runs=int(queued),
         submits_last_minute=row.submits_last_minute,
@@ -416,7 +434,8 @@ async def executor_health(system: AsyncSession, row: m.ExecutorReport) -> Execut
         failures_last_hour=int(failures),
         last_success_at=row.last_success_at,
         checked_at=row.checked_at,
-        message=row.message or "no executor conformance report has been recorded",
+        message=row.message
+        or (None if evidence else "no conformance or security-suite report has been recorded"),
     )
 
 
@@ -447,6 +466,64 @@ async def admin_get_executor(
     if row is None:
         raise NotFoundError("executor", name)
     return await executor_health(system, row)
+
+
+ExecutorName = Annotated[str, Path(pattern=r"^[a-z][a-z0-9-]{0,54}$")]
+
+
+@router.get(
+    "/executors/{name}/evidence",
+    response_model=ExecutorEvidence,
+    operation_id="admin_get_executor_evidence",
+)
+async def admin_get_executor_evidence(
+    system: SystemSession, name: ExecutorName
+) -> ExecutorEvidence:
+    evidence = await load_evidence(system, name)
+    if evidence is None:
+        raise NotFoundError("executor evidence", name)
+    return evidence
+
+
+@router.put(
+    "/executors/{name}/evidence",
+    response_model=ExecutorEvidence,
+    operation_id="admin_put_executor_evidence",
+)
+async def admin_put_executor_evidence(
+    ctx: Ctx, auth: Auth, system: SystemSession, name: ExecutorName, body: ExecutorEvidenceUpdate
+) -> ExecutorEvidence:
+    """Record executor-conformance and/or security-suite results (plan §8.4). The dispatcher
+    places verified and public tenants on an executor only while both reports passed for the
+    caps it currently reports and neither has expired (``MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S``)."""
+    if body.target.executor != name:
+        raise MapiError("target.executor must match the path", code=ErrorCode.SCHEMA_INVALID)
+    evidence = await record_evidence(
+        system,
+        body,
+        by=auth.user_id,
+        now=now(),
+        max_age=timedelta(seconds=ctx.settings.executor_evidence_max_age_s),
+    )
+    details: dict[str, JsonValue] = {"caps": body.target.caps.model_dump(mode="json")}
+    if evidence.conformance_attestation is not None and body.conformance is not None:
+        details["conformance_passed"] = evidence.conformance_attestation.passed
+    if evidence.security_attestation is not None and body.security is not None:
+        details["security_passed"] = evidence.security_attestation.passed
+    await write_audit(
+        ctx.db,
+        [
+            auth.audit(
+                ctx,
+                AuditAction.EXECUTOR_EVIDENCE_UPDATE,
+                ResourceKind.EXECUTOR,
+                resource_id=name,
+                details=details,
+            )
+        ],
+        session=system,
+    )
+    return evidence
 
 
 # ==================================================================================== audit

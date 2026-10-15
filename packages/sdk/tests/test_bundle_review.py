@@ -61,6 +61,26 @@ def test_safe_native_formats_pass(data: bytes) -> None:
     assert_no_pickle({"model.bin": data})
 
 
+def test_zip_artifacts_are_never_mistaken_for_pickles_whatever_their_timestamp() -> None:
+    """A zip starts with ``PK``; ``P`` is the protocol-0 PERSID opcode, which reads to the
+    next newline. When the DOS time's low byte is ``0x0a`` the next bytes can parse to STOP,
+    which used to reject real skops bundles depending on the second they were written."""
+    rng = np.random.default_rng(7)
+    for _ in range(3000):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_STORED) as zf:
+            info = zipfile.ZipInfo("schema", date_time=(2026, 10, 15, 16, 24, 20))
+            zf.writestr(info, b'{"coef": %r}' % rng.normal())
+        assert_no_pickle({"artifact.skops": buf.getvalue()})
+
+
+def test_a_pickle_with_trailing_bytes_is_still_a_pickle() -> None:
+    """``pickle.load`` stops at STOP, so junk after a loadable pickle must not hide it."""
+    payload = pickle.dumps(complex(1, 2), protocol=0) + b"\x00trailing junk"
+    with pytest.raises(BundleError):
+        assert_no_pickle({"model.bin": payload})
+
+
 # ------------------------------------------------- quality-security-11 (evaluation sub-bundle)
 
 

@@ -435,3 +435,148 @@ def test_server_workloads_get_only_real_settings() -> None:
         "MAPI_CLOUDRUN_PROJECT", "MAPI_EXECUTOR",
     ):  # fmt: skip
         assert required in names, required
+
+
+def test_create_only_uploads_have_their_own_identity() -> None:
+    """Every run's output policy is create_only, which GcsObjectStore signs as
+    MAPI_URL_UPLOADER: Terraform must create that account (signBlob for api and orchestrator
+    only), hand it to every server workload, and grant it create (never delete) on the two
+    buckets written through upload policies."""
+    iam = strip_comments((TF_ROOT / "modules" / "control" / "iam.tf").read_text())
+    assert re.search(r'url-uploader\s*=\s*\{\s*id\s*=\s*"\$\{local\.prefix\}-uploader"', iam)
+    signblob = re.search(
+        r'resource "google_service_account_iam_member" "url_signer" \{(.*?)\n\}', iam, re.S
+    )
+    assert signblob, "signBlob grants exist"
+    assert '"url-signer"' in signblob.group(1) and '"url-uploader"' in signblob.group(1)
+    assert '["api", "orchestrator"]' in signblob.group(1)
+
+    locals_tf = strip_comments((TF_ROOT / "modules" / "control" / "locals.tf").read_text())
+    assert {"MAPI_URL_SIGNER", "MAPI_URL_UPLOADER"} <= _env_names(locals_tf, "env_common")
+    assert 'google_service_account.sa["url-uploader"].email' in locals_tf
+
+    data_iam = strip_comments((TF_ROOT / "modules" / "data" / "iam.tf").read_text())
+    grants = re.findall(r'\["(\w+)", "(\w+)", "url_uploader"\]', data_iam)
+    assert sorted(grants) == [("quarantine", "writer"), ("runs", "writer")], grants
+    writer = _one(_module_blocks("data"), "google_project_iam_custom_role", "object_writer")
+    assert "storage.objects.delete" not in writer.body, "the uploader can never overwrite"
+
+    stack = strip_comments((TF_ROOT / "modules" / "stack" / "main.tf").read_text())
+    assert re.search(
+        r'url_uploader\s*=\s*module\.control\.service_accounts\["url-uploader"\]', stack
+    )
+    assert re.search(
+        r'url-uploader\s*=\s*module\.control\.service_accounts\["url-uploader"\]', stack
+    )
+
+
+def _cel(expression: str, name: str) -> bool:
+    """Evaluate the small IAM-condition subset the checkpoint grant uses on ``resource.name``:
+    ``&&`` of ``resource.name.startsWith("...")`` and ``resource.name.extract("a{x}b") != ""``
+    (extract: the text between the first ``a`` and the next ``b`` after it; empty if absent)."""
+    for term in (t.strip() for t in expression.split("&&")):
+        if m := re.fullmatch(r'resource\.name\.startsWith\("([^"]*)"\)', term):
+            ok = name.startswith(m.group(1))
+        elif m := re.fullmatch(r'resource\.name\.extract\("([^"{]*)\{\w+\}([^"]*)"\) != ""', term):
+            before, after = m.group(1), m.group(2)
+            i = name.find(before)
+            rest = name[i + len(before) :] if i >= 0 else ""
+            j = rest.find(after) if after else len(rest)
+            ok = i >= 0 and j > 0
+        else:
+            raise AssertionError(f"unsupported condition term: {term!r}")
+        if not ok:
+            return False
+    return True
+
+
+def test_checkpoints_can_be_overwritten_and_nothing_else() -> None:
+    """Segmented sampling rewrites the same checkpoint names every segment through a POST
+    policy signed as url_signer. GCS needs storage.objects.delete to overwrite, so url_signer
+    holds delete on the runs bucket, but only under ``.../checkpoints/``: manifests and
+    outputs stay write-once."""
+    from mapi_runner.worker.checkpoints import checkpoint_files
+    from mapi_spec.run import MANIFEST_OBJECT_NAME
+    from mapi_spec.storage import run_checkpoint_prefix, run_prefix
+
+    blocks = _module_blocks("data")
+    role = _one(blocks, "google_project_iam_custom_role", "checkpoint_overwriter")
+    assert set(re.findall(r'"(storage\.[\w.]+)"', role.body)) == {"storage.objects.delete"}
+    grant = _one(blocks, "google_storage_bucket_iam_member", "checkpoint_overwrite")
+    assert 'google_storage_bucket.this["runs"].name' in grant.body
+    assert "google_project_iam_custom_role.checkpoint_overwriter.id" in grant.body
+    assert "var.access.url_signer" in grant.body
+    raw = grant.attr("expression")
+    assert raw and raw.startswith('"') and raw.endswith('"'), "the delete grant is conditional"
+    expression = raw[1:-1].replace('\\"', '"')
+    bucket = "mapi-prod-runs"
+    expression = expression.replace('${google_storage_bucket.this["runs"].name}', bucket)
+
+    def obj(name: str) -> str:
+        return f"projects/_/buckets/{bucket}/objects/{name}"
+
+    for prefix in (
+        run_checkpoint_prefix("t1", "r1", 1),
+        run_checkpoint_prefix("t1", "r1", 3, task_index=7),
+    ):
+        for f in checkpoint_files("fit-0"):
+            assert _cel(expression, obj(prefix + f)), prefix + f
+    for name in (
+        run_prefix("t1", "r1", 1) + MANIFEST_OBJECT_NAME,
+        run_prefix("t1", "r1", 1) + "bundle.zarr.zip",
+        run_prefix("t1", "r1", 1, task_index=2) + "out/checkpoints.json",
+        "checkpoints/t/x",
+    ):
+        assert not _cel(expression, obj(name)), name
+    assert not _cel(expression, "projects/_/buckets/mapi-prod-bundles/objects/t/a/checkpoints/x")
+    # the plain grants never include delete for the signer
+    data_iam = strip_comments((TF_ROOT / "modules" / "data" / "iam.tf").read_text())
+    signer = re.findall(r'\["(\w+)", "(\w+)", "url_signer"\]', data_iam)
+    assert all(r in {"reader", "writer"} for _, r in signer), signer
+
+
+def test_only_the_orchestrator_holds_the_platform_database_login() -> None:
+    """Plan §9 (IDOR row): the role that passes row-level security is for the dispatcher,
+    reconciler and finalizer. The internet-facing api and events services run their platform
+    sessions as the gateway role (migration 0005) and never get the orchestrator's URL."""
+    secrets_tf = strip_comments((TF_ROOT / "modules" / "control" / "secrets.tf").read_text())
+    access = dict(re.findall(r'"(db-url-[a-z-]+)"\s*=\s*(\[[^\]]*\])', secrets_tf))
+    assert access["db-url-orchestrator"] == '["orchestrator"]'
+    assert access["db-url-gateway"] == '["api", "events"]'
+    sql = strip_comments((TF_ROOT / "modules" / "control" / "sql.tf").read_text())
+    assert 'db_roles = toset(["app", "gateway", "orchestrator", "migrate"])' in sql
+
+    locals_tf = strip_comments((TF_ROOT / "modules" / "control" / "locals.tf").read_text())
+    start = locals_tf.index("  secret_env_api = {")
+    api_secrets = locals_tf[start : locals_tf.index("}", start)]
+    assert "db-url-orchestrator" not in api_secrets
+    assert re.search(r'MAPI_DATABASE_GATEWAY_URL\s*=\s*"db-url-gateway"', api_secrets)
+    assert re.search(r'MAPI_DB_GATEWAY_ROLE\s*=\s*"mapi_gateway"', locals_tf)
+
+
+def test_the_api_identity_only_reads_objects() -> None:
+    """The API never writes or deletes objects (signed PUTs act as url_signer; copies and
+    deletes are the orchestrator's), so the internet-facing identity holds read roles only:
+    it cannot overwrite or delete a tenant's pending uploads."""
+    iam = strip_comments((TF_ROOT / "modules" / "data" / "iam.tf").read_text())
+    grants = re.findall(r'\["(\w+)", "(\w+)", "api"\]', iam)
+    assert grants, "the api has bucket grants"
+    assert all(role in {"reader", "objectViewer"} for _, role in grants), grants
+    assert ("quarantine", "reader") in grants, "stat of an upload by name, no list"
+
+
+def test_user_output_is_excluded_at_the_exec_projects_default_sink() -> None:
+    """Plan §8.7: user stdout above the platform's needs is excluded at the sink. The
+    supervisor turns user output into ``log`` events (and coalesced ``progress`` events);
+    those still reach the events service through the routing sink, but the exec project's
+    ``_Default`` bucket (hostile tenants' volume, billed per GiB) does not ingest them."""
+    blocks = _module_blocks("exec")
+    exclusion = _one(blocks, "google_logging_project_exclusion", "user_output")
+    assert "var.project_id" in exclusion.body
+    flt = exclusion.body
+    assert 'resource.type=\\"cloud_run_job\\"' in flt
+    assert "^mapi-${var.env}-" in flt
+    for event_type in ("log", "progress"):
+        assert f'jsonPayload.mapi_event.type=\\"{event_type}\\"' in flt, event_type
+    for kept in ("state", "error", "complete", "warning"):
+        assert f'\\"{kept}\\"' not in flt, f"{kept} events stay in the project's logs"

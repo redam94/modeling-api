@@ -60,13 +60,16 @@ must be BLOCKED on every executor:
 | Isolation | Executors | Isolation probes | Platform probes |
 |---|---|---|---|
 | `PROCESS` | `local-process`, `docker` (runc) | Either outcome is accepted: these are not security boundaries | BLOCKED |
-| `GVISOR` | `docker-gvisor` | BLOCKED | BLOCKED |
+| `GVISOR` | `docker-gvisor` (shared tiers only on a network declared with `MAPI_DOCKER_NETWORK_ISOLATED`) | BLOCKED | BLOCKED |
 | `MICROVM` | `cloud` (the `cloudrun-jobs` executor) | BLOCKED | BLOCKED |
 
 SKIPPED is always acceptable, for example when there is no procfs or no Docker daemon. ERROR
-never is. This matrix is what lets an executor take `verified` and `public` tenants
-([placement](authentication.md)). The 12-case executor conformance suite (`make test`, in
-`packages/server/tests/test_executor_conformance.py`) is the other half of that gate.
+never is. A passing run of this matrix, recorded for the executor's current caps, is one half
+of what lets an executor take `verified` and `public` tenants; a passing run of the 12-case
+executor conformance suite (`packages/server/tests/test_executor_conformance.py`) is the other.
+Record both with `PUT /v1/admin/executors/{name}/evidence`: see
+[the shared-tier gate](cloud-run.md#the-shared-tier-gate). For that gate, the network probes
+(`http_egress`, `dns_egress`, `metadata_token`) must have run and been blocked.
 
 ## Where the probes run
 

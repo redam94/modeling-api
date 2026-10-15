@@ -25,6 +25,8 @@ from mapi_spec.api import (
     DatasetCreate,
     DatasetVersion,
     DatasetVersionCreate,
+    ExecutorEvidence,
+    ExecutorEvidenceUpdate,
     ExecutorHealth,
     Health,
     KillSwitches,
@@ -813,6 +815,21 @@ def admin_list_executors(limit: int | None, cursor: str | None) -> Call[Page[Exe
 def admin_get_executor(name: str) -> Call[ExecutorHealth]:
     path = f"{_ADMIN}/executors/{segment(name)}"
     return Call("GET", path, parse_model(ExecutorHealth), scoped=False)
+
+
+def admin_get_executor_evidence(name: str) -> Call[ExecutorEvidence]:
+    path = f"{_ADMIN}/executors/{segment(name)}/evidence"
+    return Call("GET", path, parse_model(ExecutorEvidence), scoped=False)
+
+
+def admin_put_executor_evidence(name: str, body: ExecutorEvidenceUpdate) -> Call[ExecutorEvidence]:
+    return Call(
+        "PUT",
+        f"{_ADMIN}/executors/{segment(name)}/evidence",
+        parse_model(ExecutorEvidence),
+        json=dump(body),
+        scoped=False,
+    )
 
 
 def admin_list_audit(

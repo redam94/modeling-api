@@ -196,6 +196,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/executors/{name}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Get Executor Evidence */
+        get: operations["admin_get_executor_evidence"];
+        /**
+         * Admin Put Executor Evidence
+         * @description Record executor-conformance and/or security-suite results (plan §8.4). The dispatcher
+         *     places verified and public tenants on an executor only while both reports passed for the
+         *     caps it currently reports and neither has expired (``MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S``).
+         */
+        put: operations["admin_put_executor_evidence"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/kill-switches": {
         parameters: {
             query?: never;
@@ -1494,7 +1517,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -1983,6 +2006,25 @@ export interface components {
             outcome: components["schemas"]["CaseOutcome"];
             /** Problems */
             problems?: string[];
+        };
+        /**
+         * ConformanceTarget
+         * @description An executor under test: its declared caps plus facts the caps do not express.
+         */
+        ConformanceTarget: {
+            caps: components["schemas"]["ExecutorCaps"];
+            /**
+             * Enforces Memory Limit
+             * @default false
+             */
+            enforces_memory_limit?: boolean;
+            /** Executor */
+            executor: string;
+            /**
+             * Remote Control Api
+             * @default false
+             */
+            remote_control_api?: boolean;
         };
         /**
          * ContextNeed
@@ -2539,6 +2581,48 @@ export interface components {
             };
         };
         /**
+         * ExecutorAttestation
+         * @description One recorded suite result, bound to the caps it was measured against.
+         * @example {
+         *       "caps": {
+         *         "checkpoint_storage": true,
+         *         "classes": [
+         *           "S",
+         *           "M",
+         *           "L"
+         *         ],
+         *         "dns_enforced": true,
+         *         "egress_enforced": true,
+         *         "isolation": 3,
+         *         "max_runtime": "1h",
+         *         "max_tasks": 10000,
+         *         "regions": [
+         *           "europe-west1"
+         *         ]
+         *       },
+         *       "expires_at": "2026-10-18T09:30:00Z",
+         *       "passed": true,
+         *       "recorded_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        ExecutorAttestation: {
+            caps: components["schemas"]["ExecutorCaps"];
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Passed */
+            passed: boolean;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Recorded By */
+            recorded_by?: string | null;
+        };
+        /**
          * ExecutorCaps
          * @description What an executor can do; placement rules are enforced against these.
          */
@@ -2583,6 +2667,183 @@ export interface components {
              * @default []
              */
             regions?: string[];
+        };
+        /**
+         * ExecutorEvidence
+         * @description The conformance and security-suite evidence recorded for one executor.
+         * @example {
+         *       "conformance": {
+         *         "environment": "nightly",
+         *         "executor": "cloudrun-jobs",
+         *         "finished_at": "2026-10-15T02:24:00Z",
+         *         "results": [
+         *           {
+         *             "case_id": "submit",
+         *             "duration_seconds": 61,
+         *             "outcome": "passed"
+         *           },
+         *           {
+         *             "case_id": "rate_limit_backoff",
+         *             "duration_seconds": 33.5,
+         *             "outcome": "passed"
+         *           }
+         *         ],
+         *         "started_at": "2026-10-15T02:00:00Z",
+         *         "suite_version": "1"
+         *       },
+         *       "conformance_attestation": {
+         *         "caps": {
+         *           "checkpoint_storage": true,
+         *           "classes": [
+         *             "S",
+         *             "M",
+         *             "L"
+         *           ],
+         *           "dns_enforced": true,
+         *           "egress_enforced": true,
+         *           "isolation": 3,
+         *           "max_runtime": "1h",
+         *           "max_tasks": 10000,
+         *           "regions": [
+         *             "europe-west1"
+         *           ]
+         *         },
+         *         "expires_at": "2026-10-18T09:30:00Z",
+         *         "passed": true,
+         *         "recorded_at": "2026-10-15T09:30:00Z"
+         *       },
+         *       "executor": "cloudrun-jobs",
+         *       "security": {
+         *         "executor": "cloudrun-jobs",
+         *         "isolation": "microvm",
+         *         "ok": true,
+         *         "rows": [
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "http_egress"
+         *           },
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "dns_egress"
+         *           },
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "metadata_token"
+         *           }
+         *         ],
+         *         "started_at": "2026-10-15T02:30:00Z",
+         *         "unexpected": []
+         *       },
+         *       "security_attestation": {
+         *         "caps": {
+         *           "checkpoint_storage": true,
+         *           "classes": [
+         *             "S",
+         *             "M",
+         *             "L"
+         *           ],
+         *           "dns_enforced": true,
+         *           "egress_enforced": true,
+         *           "isolation": 3,
+         *           "max_runtime": "1h",
+         *           "max_tasks": 10000,
+         *           "regions": [
+         *             "europe-west1"
+         *           ]
+         *         },
+         *         "expires_at": "2026-10-18T09:30:00Z",
+         *         "passed": true,
+         *         "recorded_at": "2026-10-15T09:30:00Z"
+         *       }
+         *     }
+         */
+        ExecutorEvidence: {
+            conformance?: components["schemas"]["ConformanceReport"] | null;
+            conformance_attestation?: components["schemas"]["ExecutorAttestation"] | null;
+            /** Executor */
+            executor: string;
+            security?: components["schemas"]["SecuritySuiteReport"] | null;
+            security_attestation?: components["schemas"]["ExecutorAttestation"] | null;
+        };
+        /**
+         * ExecutorEvidenceUpdate
+         * @description Record suite results for an executor (``PUT /v1/admin/executors/{name}/evidence``).
+         *
+         *     ``target`` is what the suites ran against (the executor's caps plus the facts its caps do
+         *     not express); the evidence only counts while the executor still reports those caps.
+         *     Each report given replaces the stored one of its kind.
+         * @example {
+         *       "conformance": {
+         *         "environment": "nightly",
+         *         "executor": "cloudrun-jobs",
+         *         "finished_at": "2026-10-15T02:24:00Z",
+         *         "results": [
+         *           {
+         *             "case_id": "submit",
+         *             "duration_seconds": 61,
+         *             "outcome": "passed"
+         *           },
+         *           {
+         *             "case_id": "rate_limit_backoff",
+         *             "duration_seconds": 33.5,
+         *             "outcome": "passed"
+         *           }
+         *         ],
+         *         "started_at": "2026-10-15T02:00:00Z",
+         *         "suite_version": "1"
+         *       },
+         *       "security": {
+         *         "executor": "cloudrun-jobs",
+         *         "isolation": "microvm",
+         *         "ok": true,
+         *         "rows": [
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "http_egress"
+         *           },
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "dns_egress"
+         *           },
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "metadata_token"
+         *           }
+         *         ],
+         *         "started_at": "2026-10-15T02:30:00Z",
+         *         "unexpected": []
+         *       },
+         *       "target": {
+         *         "caps": {
+         *           "checkpoint_storage": true,
+         *           "classes": [
+         *             "S",
+         *             "M",
+         *             "L"
+         *           ],
+         *           "dns_enforced": true,
+         *           "egress_enforced": true,
+         *           "isolation": 3,
+         *           "max_runtime": "1h",
+         *           "max_tasks": 10000,
+         *           "regions": [
+         *             "europe-west1"
+         *           ]
+         *         },
+         *         "executor": "cloudrun-jobs"
+         *       }
+         *     }
+         */
+        ExecutorEvidenceUpdate: {
+            conformance?: components["schemas"]["ConformanceReport"] | null;
+            security?: components["schemas"]["SecuritySuiteReport"] | null;
+            target: components["schemas"]["ConformanceTarget"];
         };
         /**
          * ExecutorHealth
@@ -2635,6 +2896,32 @@ export interface components {
          *         "europe-west1"
          *       ],
          *       "running_executions": 37,
+         *       "security": {
+         *         "executor": "cloudrun-jobs",
+         *         "isolation": "microvm",
+         *         "ok": true,
+         *         "rows": [
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "http_egress"
+         *           },
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "dns_egress"
+         *           },
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "metadata_token"
+         *           }
+         *         ],
+         *         "started_at": "2026-10-15T02:30:00Z",
+         *         "unexpected": []
+         *       },
+         *       "security_passed": true,
+         *       "shared_tiers_enabled": true,
          *       "status": "ok",
          *       "submit_rate_limit_per_minute": 180,
          *       "submits_last_minute": 52,
@@ -2653,6 +2940,7 @@ export interface components {
             conformance?: components["schemas"]["ConformanceReport"] | null;
             /**
              * Conformance Passed
+             * @description A passing, unexpired conformance report for the current caps
              * @default false
              */
             conformance_passed?: boolean;
@@ -2682,6 +2970,19 @@ export interface components {
              * @default 0
              */
             running_executions?: number;
+            security?: components["schemas"]["SecuritySuiteReport"] | null;
+            /**
+             * Security Passed
+             * @description A passing, unexpired security-suite report for the current caps
+             * @default false
+             */
+            security_passed?: boolean;
+            /**
+             * Shared Tiers Enabled
+             * @description May take verified and public tenants: the caps allow it and both suites passed for these caps (plan §8.4)
+             * @default false
+             */
+            shared_tiers_enabled?: boolean;
             status: components["schemas"]["ExecutorStatus"];
             /** Submit Rate Limit Per Minute */
             submit_rate_limit_per_minute?: number | null;
@@ -5108,6 +5409,80 @@ export interface components {
             value?: number | null;
         };
         /**
+         * SecurityProbeRow
+         * @description One probe of a security-suite run (``mapi-security --json``).
+         * @example {
+         *       "category": "isolation",
+         *       "outcome": "blocked",
+         *       "probe_id": "dns_egress"
+         *     }
+         */
+        SecurityProbeRow: {
+            /** Acceptable */
+            acceptable?: string[];
+            /** Category */
+            category?: string | null;
+            /** Detail */
+            detail?: string | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "allowed" | "blocked" | "error" | "skipped";
+            /** Probe Id */
+            probe_id: string;
+            /**
+             * Unexpected
+             * @default false
+             */
+            unexpected?: boolean;
+        };
+        /**
+         * SecuritySuiteReport
+         * @description A security-suite run against one executor: the JSON ``mapi-security --json`` prints.
+         * @example {
+         *       "executor": "cloudrun-jobs",
+         *       "isolation": "microvm",
+         *       "ok": true,
+         *       "rows": [
+         *         {
+         *           "category": "isolation",
+         *           "outcome": "blocked",
+         *           "probe_id": "http_egress"
+         *         },
+         *         {
+         *           "category": "isolation",
+         *           "outcome": "blocked",
+         *           "probe_id": "dns_egress"
+         *         },
+         *         {
+         *           "category": "isolation",
+         *           "outcome": "blocked",
+         *           "probe_id": "metadata_token"
+         *         }
+         *       ],
+         *       "started_at": "2026-10-15T02:30:00Z",
+         *       "unexpected": []
+         *     }
+         */
+        SecuritySuiteReport: {
+            /** Executor */
+            executor: string;
+            /**
+             * Isolation
+             * @enum {string}
+             */
+            isolation: "none" | "process" | "gvisor" | "microvm" | "dedicated_vm";
+            /** Ok */
+            ok: boolean;
+            /** Rows */
+            rows?: components["schemas"]["SecurityProbeRow"][];
+            /** Started At */
+            started_at?: string | null;
+            /** Unexpected */
+            unexpected?: string[];
+        };
+        /**
          * ServicePrincipal
          * @description An internal platform component (bypasses RLS through its own database role).
          */
@@ -6437,6 +6812,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExecutorHealth"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_get_executor_evidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutorEvidence"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_put_executor_evidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutorEvidenceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutorEvidence"];
                 };
             };
             /** @description Validation Error */

@@ -153,10 +153,12 @@ done
 run gcloud services enable storage.googleapis.com --project "$state_project" --quiet
 
 # State bucket: private, versioned (state history), never public. Reading it means reading
-# the infrastructure's shape, so only operators and the CI identities get access.
-if [[ $DRY_RUN == 0 ]] && gcloud storage buckets describe "gs://$state_bucket" --project "$state_project" >/dev/null 2>&1; then
+# the infrastructure's shape, so only operators and the CI identities get access. The describe
+# is read-only, so a dry run makes it too: its preview then matches what a real run would do.
+if gcloud storage buckets describe "gs://$state_bucket" --project "$state_project" >/dev/null 2>&1; then
   log "state bucket gs://$state_bucket exists"
 else
+  [[ $DRY_RUN == 0 ]] || log "state bucket gs://$state_bucket not found (or not readable with these credentials)"
   run gcloud storage buckets create "gs://$state_bucket" \
     --project "$state_project" \
     --location "$state_location" \

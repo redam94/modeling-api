@@ -146,21 +146,35 @@ _MAX_ARCHIVE_MEMBERS = 10_000
 _MAX_MEMBER_BYTES = 256 * 1024**2
 
 
-def _is_pickle(data: bytes) -> bool:
-    """Whether ``data`` parses as a complete pickle (any protocol, 0-5) up to ``STOP``.
+_CODE_OPCODES = frozenset(
+    {"GLOBAL", "STACK_GLOBAL", "INST", "OBJ", "REDUCE", "NEWOBJ", "NEWOBJ_EX", "BUILD"}
+)
+"""Opcodes that import or call something: what makes a pickle dangerous to load."""
 
-    Only the opcode stream is parsed (:func:`pickletools.genops`); nothing is executed.
+
+def _is_pickle(data: bytes) -> bool:
+    """Whether ``data`` is a pickle (any protocol, 0-5).
+
+    A PROTO 2-5 header is enough. A headerless (protocol 0/1) opcode stream counts when it
+    reaches ``STOP`` after more than one opcode and either ends there (the whole payload is
+    the pickle) or imports or calls something on the way (``pickle.load`` ignores what
+    follows ``STOP``). Short opcode-looking prefixes of other binary formats therefore do
+    not count. Only the opcode stream is parsed (:func:`pickletools.genops`); nothing is
+    executed.
     """
     if not data:
         return False
     if data[:1] == b"\x80" and len(data) > 1 and data[1] in range(2, 6):
         return True  # a PROTO 2-5 header, even if the stream is truncated
     ops = 0
+    code = False
     try:
-        for opcode, _arg, _pos in pickletools.genops(io.BytesIO(data[:_PICKLE_SCAN_BYTES])):
+        for opcode, _arg, pos in pickletools.genops(io.BytesIO(data[:_PICKLE_SCAN_BYTES])):
             ops += 1
+            code = code or opcode.name in _CODE_OPCODES
             if opcode.name == "STOP":
-                return ops > 1
+                whole = pos is not None and pos + 1 == len(data)
+                return ops > 1 and (whole or code)
     except Exception:  # not a pickle opcode stream (or truncated)
         return False
     return False
@@ -186,10 +200,10 @@ def _npy_has_objects(data: bytes) -> bool:
 def _pickle_reason(name: str, data: bytes, depth: int = 0) -> str | None:
     if name.lower().endswith(_PICKLE_SUFFIXES):
         return "its name says it is a pickle"
-    if _is_pickle(data):
-        return "it contains pickle data"
-    if _npy_has_objects(data):
-        return "it is a NumPy array of Python objects (pickled)"
+    # Container formats first: a zip starts with "PK", which is also a pickle opcode, so a
+    # valid archive is judged by its members, never by its first bytes.
+    if data.startswith(b"\x93NUMPY"):
+        return "it is a NumPy array of Python objects (pickled)" if _npy_has_objects(data) else None
     if data[:4] == b"PK\x03\x04":
         if depth >= _MAX_ARCHIVE_DEPTH:
             return "it nests archives too deeply to inspect"
@@ -208,9 +222,15 @@ def _pickle_reason(name: str, data: bytes, depth: int = 0) -> str | None:
                         return f"archive member {info.filename[:200]!r}: {why}"
         except (zipfile.BadZipFile, OSError, RuntimeError, NotImplementedError):
             # unreadable here (the format's own loader rejects it); still refuse archives
-            # that name pickle members in their directory
+            # that name pickle members in their directory, or that are pickles in disguise
             if any(m in data for m in (b".pkl", b".pickle", b".joblib")):
                 return "it is an unreadable archive naming pickle members"
+            if _is_pickle(data):
+                return "it contains pickle data"
+            return None
+        return None
+    if _is_pickle(data):
+        return "it contains pickle data"
     return None
 
 

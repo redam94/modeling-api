@@ -74,6 +74,8 @@ class AuditAction(StrEnum):
     QUOTA_DELETE = "quota.delete"
     QUOTA_DENIED = "quota.denied"
     KILL_SWITCH_UPDATE = "kill_switch.update"
+    EXECUTOR_EVIDENCE_UPDATE = "executor.evidence_update"
+    """Conformance or security-suite results recorded for an executor (shared-tier gate)."""
     RUN_CREATE = "run.create"
     RUN_CANCEL = "run.cancel"
     RUN_INTEGRITY_FAILURE = "run.integrity_failure"

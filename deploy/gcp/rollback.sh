@@ -16,20 +16,23 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 usage() {
   cat <<'EOF'
 Usage: deploy/gcp/rollback.sh --env ENV (--previous | --release NAME | --images-file FILE)
-         [--dry-run] [--yes]
+         [--backend-config FILE] [--dry-run] [--yes]
        deploy/gcp/rollback.sh --env ENV --traffic-only [--services "api web plots events"]
          [--project ID] [--region REGION] [--dry-run] [--yes]
        deploy/gcp/rollback.sh --env ENV --list
 
 Releases are the images files deploy.sh records in
-gs://<state bucket>/mapi/ENV/releases/<UTC timestamp>-<git sha>.json.
+gs://<state bucket>/mapi/ENV/releases/<UTC timestamp>-<release id>[-rollback].json; the id
+names the images, and rollbacks are recorded with the id of the release they redeployed.
 
 Options:
   --env ENV            environment
   --list               list recorded releases, newest first
-  --previous           redeploy the release before the newest one
+  --previous           redeploy the release before the one deployed now (retried deploys of
+                       the same images count once; a second --previous goes back further)
   --release NAME       redeploy a named release (as printed by --list)
   --images-file FILE   redeploy from a local images file
+  --backend-config FILE  backend config (default: envs/ENV/backend.hcl)
   --traffic-only       shift service traffic to each service's previous ready revision
   --services "NAMES"   services for --traffic-only (default: "api events web plots")
   --project ID         control project (default: terraform output control_project)
@@ -47,6 +50,7 @@ env=""
 mode=""
 release=""
 images_file=""
+backend_config=""
 services="api events web plots"
 project=""
 region=""
@@ -64,6 +68,7 @@ while (($#)); do
     --release) need_value "$1" "${2:-}"; set_mode release; release=$2; shift 2 ;;
     --images-file) need_value "$1" "${2:-}"; set_mode file; images_file=$2; shift 2 ;;
     --traffic-only) set_mode traffic; shift ;;
+    --backend-config) need_value "$1" "${2:-}"; backend_config=$2; shift 2 ;;
     --services) need_value "$1" "${2:-}"; services=$2; shift 2 ;;
     --project) need_value "$1" "${2:-}"; project=$2; shift 2 ;;
     --region) need_value "$1" "${2:-}"; region=$2; shift 2 ;;
@@ -77,7 +82,7 @@ done
 [[ -n $env ]] || die "--env is required"
 valid_env "$env" || die "--env must match ^[a-z][a-z0-9-]{0,15}$"
 [[ -n $mode ]] || die "choose one of --list, --previous, --release, --images-file, --traffic-only"
-[[ -z $release || $release =~ ^[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9]+\.json$ ]] || die "--release must look like 20261015T120000Z-abc123def456.json"
+[[ -z $release || $release =~ ^[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9]+(-rollback)?\.json$ ]] || die "--release must look like 20261015T120000Z-abc123def456.json"
 
 require_tool gcloud
 require_tool python3
@@ -112,11 +117,12 @@ if [[ $mode == traffic ]]; then
 fi
 
 # ------------------------------------------------------------------------- release path
-bucket=$(backend_bucket "$env")
+bucket=$(backend_bucket "$env" "$backend_config")
 prefix="gs://$bucket/mapi/$env/releases"
 
 list_releases() {
-  gcloud storage ls "$prefix/" 2>/dev/null | sed -n 's#.*/\([0-9]\{8\}T[0-9]\{6\}Z-[A-Za-z0-9]*\.json\)$#\1#p' | sort -r
+  gcloud storage ls "$prefix/" 2>/dev/null |
+    sed -n 's#.*/\([0-9]\{8\}T[0-9]\{6\}Z-[A-Za-z0-9]*\(-rollback\)\{0,1\}\.json\)$#\1#p' | sort -r
 }
 
 case $mode in
@@ -128,8 +134,8 @@ case $mode in
     if [[ $DRY_RUN == 1 ]]; then
       release="<previous release>"
     else
-      release=$(list_releases | sed -n 2p)
-      [[ -n $release ]] || die "no previous release recorded under $prefix"
+      release=$(list_releases | python3 -I "$REPO_ROOT/deploy/gcp/lib/releases.py" previous) ||
+        die "no earlier release than the deployed one is recorded under $prefix"
     fi
     ;;
 esac
@@ -142,8 +148,20 @@ if [[ $DRY_RUN == 0 ]]; then
   check_images_file "$images_file" || die "$images_file is not a complete release"
 fi
 
+# the release id the rollback is recorded under
+if [[ $DRY_RUN == 1 && $mode == previous ]]; then
+  release_id=previous
+elif [[ $mode == file ]]; then
+  release_id=$(python3 -I "$REPO_ROOT/deploy/gcp/lib/releases.py" id "$images_file")
+else
+  release_id=${release#*Z-}
+  release_id=${release_id%.json}
+  release_id=${release_id%-rollback}
+fi
+
 log "rolling '$env' back to ${release:-$images_file}"
-deploy_args=(--env "$env" --images-file "$images_file" --skip-migrate)
+deploy_args=(--env "$env" --images-file "$images_file" --skip-migrate --rollback-of "$release_id")
+[[ -z $backend_config ]] || deploy_args+=(--backend-config "$backend_config")
 [[ $DRY_RUN == 0 ]] || deploy_args+=(--dry-run)
 [[ $ASSUME_YES == 0 ]] || deploy_args+=(--yes)
 "$REPO_ROOT/deploy/gcp/deploy.sh" "${deploy_args[@]}"

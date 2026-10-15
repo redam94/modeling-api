@@ -89,9 +89,16 @@ never retried blindly: the next submit of that nonce adopts first.
 orchestrator keeps a token bucket at `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE` (default 150 — split
 the quota between orchestrator replicas). A `429` answer means nothing was created: the
 executor puts every submitter into a shared cool-down (exponential back-off from
-`MAPI_CLOUDRUN_BACKOFF_BASE_S`, at least the server's `Retry-After`), counts the answer as an
-alarm (`ALARM cloudrun-jobs: jobs.run answered 429` in the log, `throttled_last_hour` in the
-executor health) and retries the same nonce.
+`MAPI_CLOUDRUN_BACKOFF_BASE_S`, at least the server's `Retry-After` but never more than
+`MAPI_CLOUDRUN_BACKOFF_CAP_S`), counts the answer as an alarm (`ALARM cloudrun-jobs: jobs.run
+answered 429` in the log, `throttled_last_hour` in the executor health) and retries the same
+nonce. When `MAPI_CLOUDRUN_MAX_429_RETRIES` answers in a row are exhausted the run goes back
+to the queue for a new attempt, without using up one of its `MAPI_MAX_INFRA_RETRIES`: a
+throttling storm delays runs, it never fails them. While a dispatcher works through a batch it
+keeps extending the leases of the runs it has not submitted yet, so the reconciler never
+takes over a run whose submit is only slow. A single submit that hangs for more than ten lease
+lengths stops the renewals: the leases lapse and the reconciler adopts what `jobs.run` created
+(by nonce) or retries the attempt.
 
 ### Fan-out with `taskCount`
 
@@ -161,8 +168,8 @@ generation and compare the result. See [GCS shim](../reference/gcs-shim.md#real-
 
 ## Executor conformance and load
 
-An executor may be enabled only after it passes the executor conformance suite
-(`mapi_spec.conformance_executor`): submit, orphan adoption after a dispatcher crash,
+An executor takes shared tiers only after it passes the executor conformance suite
+(`mapi_spec.conformance_executor`) and the [security suite](security-suite.md): submit, orphan adoption after a dispatcher crash,
 duplicate submit, cancel mid-run, timeout, stalled-not-lost, confirmed cancel before retry,
 checkpoint resume, OOM classification, fan-out, generation verification and 429 back-off.
 
@@ -179,6 +186,34 @@ events as lagging, duplicated Pub/Sub pushes, three `429`s and two lost `jobs.ru
 At the default 150 submits a minute it measures a p95 time-to-`running` of about 46 s with no
 lost run and exactly one execution per run. Real Cloud Run cold starts come on top.
 
+### The shared-tier gate
+
+The gate is enforced in code. `verified` and `public` tenants are placed on an executor only
+when both hold:
+
+1. its caps allow it: isolation of at least gVisor, with egress and DNS enforced;
+2. a passing executor-conformance report **and** a passing security-suite report were recorded
+   for exactly the caps it currently reports, and neither is older than
+   `MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S` (3 days by default, so the nightly suites keep it open).
+
+A security-suite report only counts as evidence of enforced egress and DNS when the
+`http_egress`, `dns_egress` and `metadata_token` probes ran and were blocked (skipped is not
+evidence). Record results with `PUT /v1/admin/executors/{name}/evidence` (operators only,
+audited), with the target the suites ran against:
+
+```bash
+curl -X PUT "$API/v1/admin/executors/cloudrun-jobs/evidence" -H 'content-type: application/json' \
+  -d '{"target": {"executor": "cloudrun-jobs", "caps": <caps from GET /v1/admin/executors>,
+                  "remote_control_api": true, "enforces_memory_limit": true},
+       "conformance": <ConformanceReport>, "security": <mapi-security --json output>}'
+```
+
+Until then the dispatcher leaves `verified` and `public` runs queued (it never fails them for
+missing evidence), and `GET /v1/admin/executors` shows the executor as `disabled` with the
+reason, plus `conformance_passed`, `security_passed` and `shared_tiers_enabled`. Evidence
+recorded for other caps (a changed region list, a flipped `MAPI_CLOUDRUN_DNS_ENFORCED`) no
+longer counts. `internal` and `self_hosted_trusted` tenants are not gated.
+
 ## Settings
 
 | Variable | Default | Meaning |
@@ -193,7 +228,7 @@ lost run and exactly one execution per run. Real Cloud Run cold starts come on t
 | `MAPI_CLOUDRUN_BACKOFF_BASE_S`, `MAPI_CLOUDRUN_BACKOFF_CAP_S` | `1`, `64` | Exponential back-off after a `429` |
 | `MAPI_CLOUDRUN_TIMEOUT_MARGIN_S` | `120` | Task timeout = run timeout + margin |
 | `MAPI_CLOUDRUN_EGRESS_ENFORCED` | `true` | The exec network denies all egress |
-| `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified for Jobs **[verify M0]**; public tenants need both |
+| `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified for Jobs **[verify M0]**; `verified` and `public` tenants need both, plus [recorded evidence](#the-shared-tier-gate) |
 | `MAPI_CLOUDRUN_ADOPT_LOOKBACK_S` | `93600` | How far back orphan adoption looks |
 | `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | — | Expected push token (set both) |
 | `MAPI_PUBSUB_PUSH_SUBSCRIPTIONS` | any | Accepted subscriptions (comma-separated) |

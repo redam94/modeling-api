@@ -204,6 +204,32 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   specs, models, plots, attempts, events or logs. Every API request uses it automatically.
   Pushed events are written through tenant sessions. Terraform adds the `mapi_gateway` login
   and its `db-url-gateway` secret, and only the orchestrator can read `db-url-orchestrator`.
+### Fixed (M2 review: executors, cloud and infrastructure)
+- **infra**: the deployed stack can run work at all. Terraform creates a create-only
+  `url-uploader` account (`MAPI_URL_UPLOADER`), without which every run failed at dispatch;
+  the server refuses `MAPI_OBJECT_STORE=gcs` without a distinct uploader.
+- **infra**: checkpoint policies may overwrite their own checkpoints (conditional
+  `storage.objects.delete` under `.../checkpoints/` only), so PARTIAL bundles and resume see
+  every segment on real GCS.
+- **server**: verified and public tenants are placed only on an executor with passing,
+  unexpired conformance and security-suite reports for its current caps
+  (`PUT /v1/admin/executors/{name}/evidence`, `MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S`); the admin
+  console, CLI and web show the real state. Runs that no executor can place are refused at
+  submission (503) instead of failing at lease, and the docs say that verified tenants need
+  DNS enforcement verified first.
+- **server**: `docker-gvisor` can qualify for shared tiers on a network declared isolated
+  (`MAPI_DOCKER_NETWORK_ISOLATED`).
+- **server**: Cloud Run 429s requeue a run without using up an infrastructure retry, leases
+  are renewed while a batch is submitted (for at most ten lease lengths per submit), and
+  `Retry-After` is capped. The executor's per-process bookkeeping is bounded.
+- **sdk**: zip artifacts (skops) are no longer rejected as pickles depending on the second
+  they were written.
+- **infra**: user log and progress events are excluded from the exec projects' `_Default`
+  log bucket; the API identity only reads the quarantine bucket.
+- **deploy**: the deploy workflow is valid (no `runner` context in job env; CI runs
+  actionlint); `rollback.sh --previous` picks the release before the deployed one (records
+  are named after their images, rollbacks are marked); dry runs no longer claim what they did
+  not do.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 

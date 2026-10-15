@@ -109,15 +109,16 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_LEASE_CANDIDATES` | `500` | Queued runs the dispatcher's fair-share planner considers per pass (runs held by a suspended tenant, the kill switches or the spend cap are not among them) |
 | `MAPI_LEASE_CANDIDATES_PER_TENANT` | `50` | At most this many of them per tenant, so one tenant's held runs cannot crowd out the others |
 | `MAPI_EXECUTOR_REPORT_INTERVAL_S` | `10` | How often each dispatcher reports executor health for `/v1/admin/executors` |
+| `MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S` | `259200` (3 days) | How long a recorded conformance or security-suite report lets an executor take `verified` and `public` tenants ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)) |
 
 **Object storage**
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MAPI_OBJECT_STORE` | `shim` | `shim` (the GCS shim at `MAPI_GCS_ENDPOINT`), `gcs` (real Cloud Storage; needs the `gcp` extra and `MAPI_URL_SIGNER`) or `memory` (tests only) |
+| `MAPI_OBJECT_STORE` | `shim` | `shim` (the GCS shim at `MAPI_GCS_ENDPOINT`), `gcs` (real Cloud Storage; needs the `gcp` extra, `MAPI_URL_SIGNER` and `MAPI_URL_UPLOADER`) or `memory` (tests only) |
 | `MAPI_GCP_PROJECT` | unset | With `gcs`: the project of the Cloud Storage client (default: the environment's) |
 | `MAPI_URL_SIGNER` | unset | With `gcs`: the service account that signs URLs through IAM `signBlob`, so no key file exists anywhere |
-| `MAPI_URL_UPLOADER` | `MAPI_URL_SIGNER` | With `gcs`: the account that signs create-only upload policies (it may create objects, never delete them) |
+| `MAPI_URL_UPLOADER` | unset | With `gcs` (required): the account that signs create-only upload policies, which every run uses for its outputs. It must differ from `MAPI_URL_SIGNER` and may create objects but never delete them: a GCS POST form has no generation precondition, so only a signer without `storage.objects.delete` makes it create-only. The server refuses to start without it |
 | `MAPI_GCS_PUBLIC_ENDPOINT` | `MAPI_GCS_ENDPOINT` | The base URL put into signed URLs, when browsers or containers reach the shim under another host name |
 | `MAPI_GCS_ROOT` | `$MAPI_DATA_DIR/gcs` | The shim's state directory; the server reads the principals' key files under `_shim/keys/` |
 | `MAPI_GCS_KEY_FILE` | `$MAPI_GCS_ROOT/_shim/keys/control.json` | Key file of the control plane's principal |
@@ -133,6 +134,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_DOCKER_IMAGE` | `mapi/base-bayes:<version>` | Runner image of the docker executors for runs without a mapped plugin (ingest, describe) |
 | `MAPI_DOCKER_IMAGES` | `mmm`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to runner image (JSON), tagged with the workspace version |
 | `MAPI_DOCKER_NETWORK` | `none` | The run containers' network: `container:<gcs-shim container>` or an internal network that contains only the shim. `none` is refused while the bootstrap URL is HTTP |
+| `MAPI_DOCKER_NETWORK_ISOLATED` | `false` | Declare `MAPI_DOCKER_NETWORK` an internal network holding only the shim, so `docker-gvisor` reports enforced egress and DNS. `verified` and `public` tenants still need a recorded security-suite run with the network probes blocked ([docker](docker.md)) |
 | `MAPI_DOCKER_RUNTIME_GVISOR` | `runsc` | The OCI runtime of `docker-gvisor` |
 | `MAPI_CANCEL_GRACE_S` | `10` | Seconds between SIGTERM and SIGKILL when a run is cancelled |
 
@@ -142,7 +144,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 |---|---|---|
 | `MAPI_DISPATCH_RATE_PER_MINUTE`, `MAPI_DISPATCH_BURST` | `180`, `10` | Token bucket in front of the executor (Cloud Run's `jobs.run` quota) |
 | `MAPI_DISPATCH_BATCH`, `MAPI_DISPATCH_POLL_S` | `10`, `1` | Queued runs leased per pass, and the pause between passes |
-| `MAPI_DISPATCH_LEASE_S` | `120` | How long a dispatcher's lease on a run lasts |
+| `MAPI_DISPATCH_LEASE_S` | `120` | How long a dispatcher's lease on a run lasts; a live dispatcher extends it every third of that while the run waits to be submitted (for at most ten lease lengths per submit) |
 | `MAPI_RECONCILE_INTERVAL_S` | `10` | The reconciler's level-triggered loop |
 | `MAPI_STALL_INTERVALS` | `15` | A run is `stalled` (a warning) after this many progress intervals of silence |
 | `MAPI_COMPLETE_EVENT_GRACE_S` | `60` | How long to wait for a run's `complete` event after the executor reports an exit |
@@ -182,7 +184,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_CLOUDRUN_BACKOFF_BASE_S`, `MAPI_CLOUDRUN_BACKOFF_CAP_S` | `1`, `64` | Exponential back-off after a `429` (never shorter than `Retry-After`) |
 | `MAPI_CLOUDRUN_TIMEOUT_MARGIN_S` | `120` | Task timeout = run timeout + this margin (the reconciler stops runs at their deadline; this is the backstop) |
 | `MAPI_CLOUDRUN_EGRESS_ENFORCED` | `true` | The exec network denies all egress except the restricted Google APIs VIP |
-| `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified to apply to Jobs. Public tenants are placed only when both are `true` |
+| `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified to apply to Jobs (the M0 DNS red-team gate). `verified` and `public` tenants (`verified` is the default tier) are placed only when both are `true` **and** passing suite evidence is recorded ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)); until then their runs are refused at submission |
 | `MAPI_CLOUDRUN_ADOPT_LOOKBACK_S` | `93600` | How far back orphan adoption lists executions |
 
 **Pub/Sub push events** (`POST /internal/events`)

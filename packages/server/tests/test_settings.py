@@ -48,3 +48,29 @@ def test_default_residency_follows_the_cloud_run_region() -> None:
     assert pinned.effective_default_residency() == "europe-west4"
     with pytest.raises(ValueError, match="default_residency"):
         Settings(default_residency="Not A Region")
+def test_cloud_storage_store_needs_a_separate_uploader() -> None:
+    """Every run asks for a create_only output policy, which GCS can only sign as an account
+    without delete: a gcs deployment without MAPI_URL_UPLOADER would fail every run at
+    dispatch, so it is refused at start-up (and so is reusing the signer, which may delete
+    checkpoints)."""
+    from mapi_server.settings import ObjectStoreKind
+
+    signer = "signer@p.iam.gserviceaccount.com"
+    with pytest.raises(ValueError, match="MAPI_URL_UPLOADER"):
+        Settings(
+            database_url="postgresql://u/u", object_store=ObjectStoreKind.GCS, url_signer=signer
+        )
+    with pytest.raises(ValueError, match="MAPI_URL_UPLOADER"):
+        Settings(
+            database_url="postgresql://u/u",
+            object_store=ObjectStoreKind.GCS,
+            url_signer=signer,
+            url_uploader=signer,
+        )
+    ok = Settings(
+        database_url="postgresql://u/u",
+        object_store=ObjectStoreKind.GCS,
+        url_signer=signer,
+        url_uploader="uploader@p.iam.gserviceaccount.com",
+    )
+    assert ok.url_uploader == "uploader@p.iam.gserviceaccount.com"

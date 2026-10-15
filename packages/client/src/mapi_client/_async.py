@@ -25,6 +25,8 @@ from mapi_spec.api import (
     DatasetCreate,
     DatasetVersion,
     DatasetVersionCreate,
+    ExecutorEvidence,
+    ExecutorEvidenceUpdate,
     ExecutorHealth,
     Health,
     IngestMapping,
@@ -1074,6 +1076,21 @@ class AsyncAdmin(_Resource):
 
     async def executor(self, name: str) -> ExecutorHealth:
         return await self._c.send(calls.admin_get_executor(name))
+
+    async def executor_evidence(self, name: str) -> ExecutorEvidence:
+        """The conformance and security-suite reports recorded for an executor."""
+        return await self._c.send(calls.admin_get_executor_evidence(name))
+
+    async def record_executor_evidence(
+        self, name: str, update: ExecutorEvidenceUpdate | Mapping[str, Any]
+    ) -> ExecutorEvidence:
+        """Record suite results; shared tiers need both, passing, for the current caps."""
+        body = (
+            update
+            if isinstance(update, ExecutorEvidenceUpdate)
+            else ExecutorEvidenceUpdate.model_validate(dict(update))
+        )
+        return await self._c.send(calls.admin_put_executor_evidence(name, body))
 
     def audit(
         self,

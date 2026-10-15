@@ -17,6 +17,7 @@ from mapi_spec.api import (
     DatasetCreate,
     DatasetVersionCreate,
     EndpointDecl,
+    ExecutorEvidenceUpdate,
     IngestMapping,
     KillSwitchUpdate,
     MembershipCreate,
@@ -155,6 +156,13 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     ),
     "admin_list_executors": lambda: c.admin_list_executors(None, None),
     "admin_get_executor": lambda: c.admin_get_executor("cloudrun-jobs"),
+    "admin_get_executor_evidence": lambda: c.admin_get_executor_evidence("cloudrun-jobs"),
+    "admin_put_executor_evidence": lambda: c.admin_put_executor_evidence(
+        "cloudrun-jobs",
+        ExecutorEvidenceUpdate.model_validate(
+            ExecutorEvidenceUpdate.model_json_schema()["examples"][0]
+        ),
+    ),
     "admin_list_audit": lambda: c.admin_list_audit(None, None),
 }
 

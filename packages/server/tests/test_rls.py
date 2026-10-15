@@ -342,3 +342,39 @@ async def test_requests_cannot_reach_another_tenants_rows(
     assert r.status_code == 404 and r.json()["code"] == "NOT_FOUND"
     page = (await alpha.get("/v1/runs")).json()
     assert [r["id"] for r in page["items"]] == [ids["alpha"]["run"]]
+
+
+async def test_the_gateway_role_never_writes_tenant_data(ctx: ServerContext) -> None:
+    """The internet-facing API and events services run platform sessions as the gateway role
+    (migration 0005), not the role that passes row-level security (plan §9:
+    that one is for the dispatcher, reconciler and finalizer only). It reads what sign-in,
+    the operator console and the quota counters need, and cannot change tenant data."""
+    ids = await _seed(ctx)
+    db = ctx.db
+    async with db.gateway_session() as s:
+        assert (await s.execute(text("SELECT current_user"))).scalar_one() == "mapi_gateway"
+        tenants = (await s.execute(select(func.count()).select_from(m.Tenant))).scalar_one()
+        runs = (await s.execute(select(func.count()).select_from(m.Run))).scalar_one()
+        assert tenants >= 2 and runs >= 2  # cross-tenant reads: sign-in, operators, quotas
+        role = (
+            await s.execute(
+                text("SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user")
+            )
+        ).scalar_one()
+        assert role is False
+    forbidden = [
+        update(m.Run).where(m.Run.id == ids["alpha"]["run"]).values(state="failed"),
+        delete(m.Run),
+        delete(m.AuditEvent),
+        update(m.AuditEvent).values(outcome="success"),
+        select(m.Dataset),
+        update(m.Dataset).values(name="x"),
+        delete(m.CostLedgerEntry),
+    ]
+    for stmt in forbidden:
+        with pytest.raises((ProgrammingError, DBAPIError)):
+            async with db.gateway_session() as s:
+                await s.execute(stmt)
+    async with ctx.db.session() as s:  # the orchestrator's role is unaffected
+        run = await s.get(m.Run, ids["alpha"]["run"])
+        assert run is not None and run.state == "queued"

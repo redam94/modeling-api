@@ -46,7 +46,7 @@ from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger, new_hmac_key, new_nonce
 from mapi_spec.storage import NotFound, bootstrap_key
 from mapi_spec.tenancy import TenantStatus, TrustTier
-from sqlalchemy import ColumnElement, Select, func, select
+from sqlalchemy import ColumnElement, Select, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,6 +58,7 @@ from mapi_server.observability.tracing import run_span
 from mapi_server.ratelimit import TokenBucket
 from mapi_server.services.bundles import BundleIntegrityError, verify_bundle_inputs
 from mapi_server.services.cost import retry_within_cost
+from mapi_server.services.evidence import gated_tier, shared_tiers_gate
 from mapi_server.services.quotas import (
     DISPATCHED_STATES,
     estimate_micros,
@@ -77,6 +78,23 @@ _RESERVED_LABEL_PREFIX = "mapi.dev/"
 _NAMESPACE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 
 log = logging.getLogger(__name__)
+
+MAX_RETRY_AFTER_S = 64.0
+"""A backend's ``Retry-After`` is honoured up to this long (one answer cannot park the queue)."""
+
+MAX_SUBMIT_LEASES = 10
+"""A single submit may keep its batch's leases alive for this many lease lengths; a submit
+that hangs longer lets them lapse, so the reconciler takes the runs over (adopt by nonce)."""
+
+
+def _rate_limited(error: Exception | None) -> bool:
+    """Is ``error`` the backend's 429 (nothing was created, so the attempt is not lost)?"""
+    status = (
+        getattr(error, "status_code", None)
+        or getattr(error, "status", None)  # CloudRunRateLimited (after its own retries)
+        or getattr(error, "code", None)
+    )
+    return status in (429, ErrorCode.RATE_LIMITED, "429")
 
 
 def _over_budget(policy: QuotaPolicy, usage: QuotaUsage) -> bool:
@@ -105,21 +123,21 @@ class Dispatcher:
         self._backoff_until = 0.0
         self._last_success: datetime | None = None
         self._reported = 0.0
+        self._submit_started = 0.0
 
     def _throttled(self, error: Exception | None) -> float | None:
         """Seconds to back off if ``error`` is the backend's 429 (``None`` otherwise)."""
-        status = (
-            getattr(error, "status_code", None)
-            or getattr(error, "status", None)  # CloudRunRateLimited (after its own retries)
-            or getattr(error, "code", None)
-        )
-        if status not in (429, ErrorCode.RATE_LIMITED, "429"):
+        if not _rate_limited(error):
             return None
         retry_after = getattr(error, "retry_after", None)
         self._throttle_streak += 1
         return backoff_seconds(
             self._throttle_streak,
-            retry_after=float(retry_after) if isinstance(retry_after, int | float) else None,
+            retry_after=(
+                min(float(retry_after), MAX_RETRY_AFTER_S)
+                if isinstance(retry_after, int | float)
+                else None
+            ),
         )
 
     async def report(self) -> None:
@@ -130,10 +148,18 @@ class Dispatcher:
             while q and t - q[0] > horizon:
                 q.popleft()
         ts = now()
+        caps = self.executor.caps()
+        # Enabled = every tier its caps admit is backed by evidence: an executor whose caps
+        # allow shared tiers is enabled only with passing, unexpired conformance and security
+        # reports for these caps (plan §8.4). Others serve the trusted tiers only.
+        gate: str | None = None
+        if caps.allows_public_tenants():
+            async with self.ctx.db.session() as session:
+                gate = await shared_tiers_gate(session, self.executor.name, caps, now=ts)
         values = {
             "name": self.executor.name,
-            "enabled": True,
-            "caps": self.executor.caps().model_dump(mode="json"),
+            "enabled": gate is None,
+            "caps": caps.model_dump(mode="json"),
             "submits_last_minute": len(self._submits),
             "submit_rate_limit_per_minute": int(self.ctx.settings.dispatch_rate_per_minute),
             "throttled_last_hour": len(self._throttles),
@@ -156,6 +182,8 @@ class Dispatcher:
             values["throttled_last_hour"] = max(len(self._throttles), h.throttled_last_hour)
             values["last_success_at"] = self._last_success or h.last_success_at
             values["message"] = h.message
+        if gate is not None:
+            values["message"] = f"verified and public tenants are held: {gate}"[:500]
         update = {k: v for k, v in values.items() if k != "name"}
         if values["last_success_at"] is None:
             update.pop("last_success_at")
@@ -350,12 +378,23 @@ class Dispatcher:
         budgets: dict[str, tuple[QuotaPolicy, QuotaUsage]] = {}
         candidates: list[LeaseCandidate] = []
         held = 0
+        caps = self.executor.caps()
+        shared_gate: str | None = None
+        if caps.allows_public_tenants() and any(
+            r.tenant_id not in tenants or gated_tier(tenants[r.tenant_id].trust_tier) for r in rows
+        ):
+            shared_gate = await shared_tiers_gate(session, self.executor.name, caps, now=at)
         for run in rows:
             tenant = tenants.get(run.tenant_id)
             tier = tenant.trust_tier if tenant is not None else TrustTier.PUBLIC.value
             if tenant is not None and tenant.status != TenantStatus.ACTIVE.value:
                 held += 1
                 continue  # suspended tenants keep their queue until reactivated
+            if shared_gate is not None and gated_tier(tier):
+                # plan §8.4: no shared-tier work without passing, unexpired conformance and
+                # security reports for the current caps; the run waits for the evidence
+                held += 1
+                continue
             decision = kill_switch_decision(
                 switches,
                 untrusted_code=run.untrusted_code,
@@ -394,7 +433,9 @@ class Dispatcher:
                 )
             )
         if held:
-            log.debug("%d queued run(s) held back (kill switches or tenant status)", held)
+            log.debug("%d queued run(s) held back (kill switches, tenant status, evidence)", held)
+            if shared_gate is not None:
+                log.warning("verified and public runs are held: %s", shared_gate)
         plan = plan_leases(
             candidates, capacity=capacity, running_tasks=running_tasks, concurrency_left=left
         )
@@ -421,18 +462,65 @@ class Dispatcher:
 
     async def dispatch_once(self) -> int:
         leased = await self.lease()
-        for run_id, attempt in leased:
-            await self.bucket.acquire()
-            pause = self._backoff_until - time.monotonic()
-            if pause > 0:  # the backend answered 429: wait it out, then submit once
-                await asyncio.sleep(pause)
-            try:
-                await self.submit(run_id, attempt)
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                log.exception("dispatch of %s/%s failed unexpectedly", run_id, attempt)
+        if not leased:
+            return 0
+        # Runs are submitted one after another, and a submit may take minutes (the token
+        # bucket, a 429 back-off inside the executor). Keep every lease of the batch alive
+        # until its run is recorded, so the reconciler never takes a run this dispatcher is
+        # still working on (a lease only lapses when the dispatcher itself is gone).
+        pending = set(leased)
+        self._submit_started = time.monotonic()
+        keeper = asyncio.create_task(self._keep_leased(pending))
+        try:
+            for run_id, attempt in leased:
+                self._submit_started = time.monotonic()
+                await self.bucket.acquire()
+                pause = self._backoff_until - time.monotonic()
+                if pause > 0:  # the backend answered 429: wait it out, then submit once
+                    await asyncio.sleep(pause)
+                try:
+                    await self.submit(run_id, attempt)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    log.exception("dispatch of %s/%s failed unexpectedly", run_id, attempt)
+                pending.discard((run_id, attempt))
+        finally:
+            keeper.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await keeper
         return len(leased)
+
+    async def _keep_leased(self, pending: set[tuple[str, int]]) -> None:
+        """Extend the leases of ``pending`` runs every third of a lease until cancelled, as
+        long as the submit in flight has not been stuck for :data:`MAX_SUBMIT_LEASES`."""
+        lease_s = self.ctx.settings.dispatch_lease_s
+        while True:
+            await asyncio.sleep(lease_s / 3)
+            if time.monotonic() - self._submit_started > MAX_SUBMIT_LEASES * lease_s:
+                log.error(
+                    "a submit has been stuck for %.0fs: letting %d lease(s) lapse",
+                    time.monotonic() - self._submit_started,
+                    len(pending),
+                )
+                continue
+            for run_id, attempt in list(pending):
+                try:
+                    async with self.ctx.db.session() as session:
+                        await session.execute(
+                            update(m.Run)
+                            .where(
+                                m.Run.id == run_id,
+                                m.Run.attempt == attempt,
+                                m.Run.state == RunState.DISPATCHING.value,
+                                m.Run.lease_owner == self.name,
+                            )
+                            .values(lease_expires_at=now() + timedelta(seconds=lease_s))
+                        )
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    log.warning("could not extend the lease of %s/%s", run_id, attempt)
 
     async def submit(self, run_id: str, attempt_no: int) -> None:
         ctx = self.ctx
@@ -579,7 +667,11 @@ class Dispatcher:
                 detail = f"{detail}: {type(error).__name__}"
             # an input object is gone, or the bundle does not verify: no retry
             permanent = isinstance(error, NotFound | BundleIntegrityError)
-            if (
+            if _rate_limited(error):
+                # the backend refused to create anything (429): requeue without using up
+                # an infrastructure retry; the dispatcher's back-off paces the next submit
+                await apply_transition(session, run, RunTrigger.INFRA_RETRY, Actor.DISPATCHER)
+            elif (
                 not permanent
                 and run.infra_retries < ctx.settings.max_infra_retries
                 and await retry_within_cost(session, run, ctx.settings.auto_retry_cost_factor)

@@ -139,7 +139,7 @@ class GcsObjectStore:
             ``storage.objects.create`` but **not** ``storage.objects.delete`` on the runs
             bucket, used for ``create_only`` POST policies. GCS POST forms have no generation
             precondition; an upload by a principal that cannot delete cannot overwrite.
-            [verify M2: provisioned by Terraform]
+            Terraform provisions it as the ``url-uploader`` account (``MAPI_URL_UPLOADER``).
         blob_signer: signs V4 URLs and POST policies (preferred over the library path).
         uploader_signer: the ``create_only`` POST-policy signer (same role as
             ``uploader_credentials``; either may be given).
