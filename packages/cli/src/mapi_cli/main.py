@@ -2,7 +2,8 @@
 
 Local commands (``new``, ``check``, ``fit``, ``score``, ``catalog``, ``plugin``, ``spec``)
 need no server; remote commands talk to the API configured with ``--url``/``MAPI_URL``,
-``--token``/``MAPI_TOKEN`` or a profile in ``~/.config/mapi/config.toml``.
+``--token``/``MAPI_TOKEN``, ``mapi login`` or a profile in ``~/.config/mapi/config.toml``,
+in the project chosen with ``mapi use``/``--project``/``MAPI_PROJECT``.
 ``--json`` prints machine-readable output on stdout.
 """
 
@@ -13,7 +14,22 @@ from typing import Annotated
 import typer
 
 from mapi_cli import __version__
-from mapi_cli.commands import catalog, check, config, datasets, fit, new, plugin, runs, score, serve
+from mapi_cli.commands import (
+    admin,
+    auth,
+    catalog,
+    check,
+    config,
+    datasets,
+    fit,
+    new,
+    plugin,
+    runs,
+    score,
+    serve,
+    tokens,
+    usage,
+)
 from mapi_cli.commands import spec as spec_cmd
 from mapi_cli.output import Output
 from mapi_cli.state import AppState
@@ -21,9 +37,10 @@ from mapi_cli.state import AppState
 HELP = (
     "The modeling-api command line.\n\n"
     "Local commands (new, check, fit, score, catalog, plugin, spec) need no server. Remote "
-    "commands (runs, datasets, --remote) use the API from --url, MAPI_URL or a profile in "
-    "~/.config/mapi/config.toml, with --token or MAPI_TOKEN. --json prints machine-readable "
-    "output on stdout."
+    "commands (runs, datasets, tokens, usage, admin, --remote) use the API from --url, "
+    "MAPI_URL or a profile in ~/.config/mapi/config.toml, signed in with `mapi login` (or "
+    "--token / MAPI_TOKEN), in the project chosen with `mapi use` (or --project / "
+    "MAPI_PROJECT). --json prints machine-readable output on stdout."
 )
 
 app = typer.Typer(
@@ -54,6 +71,12 @@ def main(
     profile: Annotated[
         str | None, typer.Option("--profile", help="Config profile (default: MAPI_PROFILE)")
     ] = None,
+    project: Annotated[
+        str | None,
+        typer.Option(
+            "--project", help="<tenant>/<project> to act in (default: MAPI_PROJECT, mapi use)"
+        ),
+    ] = None,
     json_mode: Annotated[
         bool, typer.Option("--json", help="Machine-readable JSON on stdout")
     ] = False,
@@ -63,7 +86,12 @@ def main(
     ] = False,
 ) -> None:
     ctx.obj = AppState(
-        url=url, token=token, profile=profile, json_mode=json_mode, output=Output(json_mode)
+        url=url,
+        token=token,
+        profile=profile,
+        json_mode=json_mode,
+        output=Output(json_mode),
+        project=project,
     )
 
 
@@ -72,6 +100,11 @@ app.command("check")(check.check)
 app.command("fit")(fit.fit)
 app.command("score")(score.score)
 app.command("catalog")(catalog.catalog)
+app.command("login")(auth.login)
+app.command("logout")(auth.logout)
+app.command("whoami")(auth.whoami)
+app.command("use")(auth.use)
+app.command("usage")(usage.usage)
 app.command("serve", context_settings={"allow_extra_args": True, "ignore_unknown_options": True})(
     serve.serve
 )
@@ -80,6 +113,8 @@ app.add_typer(datasets.app, name="datasets")
 app.add_typer(plugin.app, name="plugin")
 app.add_typer(spec_cmd.app, name="spec")
 app.add_typer(config.app, name="config")
+app.add_typer(tokens.app, name="tokens")
+app.add_typer(admin.app, name="admin")
 
 
 def run() -> None:  # pragma: no cover - console script entry point
