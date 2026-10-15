@@ -1,6 +1,7 @@
 """``mapi-gcs-shim`` / ``python -m mapi_gcs_shim``: run or initialise the local GCS emulator.
 
     mapi-gcs-shim [serve] [--root .local/gcs] [--host 127.0.0.1] [--port 4443] [--env local]
+                          [--cors-origin http://127.0.0.1:5173 ...]
     mapi-gcs-shim init    [--root .local/gcs] [--env local]
     mapi-gcs-shim key     [--root .local/gcs] PRINCIPAL [--field path|token|email]
 
@@ -64,6 +65,15 @@ def _parser() -> argparse.ArgumentParser:
         help="lifecycle sweep period in seconds (0 disables)",
     )
     serve.add_argument("--log-level", default="info")
+    serve.add_argument(
+        "--cors-origin",
+        action="append",
+        dest="cors_origins",
+        default=None,
+        metavar="ORIGIN",
+        help="browser origin allowed to use signed URLs cross-origin (repeatable; default: "
+        "$MAPI_WEB_ORIGIN, i.e. the web app; 'none' disables CORS)",
+    )
 
     init = sub.add_parser("init", help="write the default config and key files, then exit")
     common(init)
@@ -113,6 +123,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"mapi-gcs-shim serving {args.root} at {endpoint}", flush=True)
         print(f"key files: {args.root / '_shim' / 'keys'}", flush=True)
 
+    local, _, _ = _defaults()
+    origins = args.cors_origins if args.cors_origins is not None else [local.web_origin]
+    origins = [o for o in origins if o.lower() != "none"]
     serve(
         args.root,
         host=args.host,
@@ -121,6 +134,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         sweep_interval=args.sweep_interval or None,
         log_level=args.log_level.lower(),
         on_ready=ready,
+        cors_origins=origins,
     )
     return 0
 
