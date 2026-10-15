@@ -14,6 +14,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import secrets
 import time
 from collections.abc import Iterable, Mapping
@@ -24,6 +25,7 @@ from urllib.parse import quote, urlencode
 
 from mapi_spec.errors import ErrorCode
 from mapi_spec.storage import (
+    BUCKET_RE,
     AccessDenied,
     NotFound,
     ObjectMeta,
@@ -73,7 +75,9 @@ class MemoryObjectStore:
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self._key = signing_key or secrets.token_bytes(32)
-        self._buckets: set[str] = set(buckets)
+        self._buckets: set[str] = set()
+        for name in buckets:
+            self.create_bucket(name)
         self._live: dict[tuple[str, str], int] = {}
         self._objs: dict[tuple[str, str, int], _Obj] = {}
         self._gen = 0
@@ -83,6 +87,8 @@ class MemoryObjectStore:
 
     # ------------------------------------------------------------------ helpers
     def create_bucket(self, name: str) -> None:
+        if not re.match(BUCKET_RE, name):
+            raise ValueError(f"invalid bucket name {name!r}")
         self._buckets.add(name)
 
     def _bucket(self, bucket: str) -> None:
