@@ -159,6 +159,9 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   on every server workload). The key-rotation runbook now gives the real local and Cloud KMS
   procedures and the compromise path. It no longer tells GCP operators to rotate a
   Pub/Sub "internal token": pushes there are OIDC-authenticated.
+- **docs**: data residency is enforced only on executors that declare regions (Cloud Run
+  Jobs). The self-hosted executors are not checked, and the tenancy page now says so instead
+  of promising a region match everywhere.
 - **ops**: three Prometheus rule fixes.
   - `MapiQuota70` is now `MapiQuotaRejections`. It fires on rejections, not at 70 %, and it
     aggregates `by (scope)`, so its summary names the scope.

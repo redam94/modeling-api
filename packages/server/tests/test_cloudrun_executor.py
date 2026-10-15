@@ -167,6 +167,23 @@ def test_caps_and_placement() -> None:
         check_placement(trusted, trust_tier=tier, resource_class=ResourceClass.S)
 
 
+def test_residency_is_enforced_only_where_executors_declare_regions() -> None:
+    """Cloud Run declares its region, so residency is checked; self-hosted executors declare
+    none and are not checked (the install's own location is the residency). The tenancy docs
+    must say so, not promise a region match everywhere."""
+    caps = _executor(FakeCloudRun.for_inventory(INV)).caps()  # europe-west1
+    check_placement(caps, trust_tier="internal", resource_class=ResourceClass.S, residency="eu")
+    with pytest.raises(PlacementRefused, match="residency"):
+        check_placement(caps, trust_tier="internal", resource_class=ResourceClass.S, residency="us")
+    regionless = caps.model_copy(update={"regions": ()})
+    check_placement(
+        regionless, trust_tier="internal", resource_class=ResourceClass.S, residency="us"
+    )
+    docs = Path(__file__).resolve().parents[3] / "docs" / "concepts" / "tenancy-and-auth.md"
+    row = next(line for line in docs.read_text().splitlines() if "| Data residency |" in line)
+    assert "declare" in row and "self-hosted" in row, row
+
+
 # ---------------------------------------------------------------------- submit
 
 
