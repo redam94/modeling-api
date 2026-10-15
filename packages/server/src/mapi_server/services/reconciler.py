@@ -9,7 +9,9 @@ the database with the **executor's status API — the liveness source of truth**
   any other exit is classified with :func:`~mapi_spec.run.failure_class_for_exit`; infra
   failures retry (capped, and never after 30 min) once the old execution is confirmed gone;
   event silence only raises ``STALLED`` (a warning, never a failure); deadlines are enforced
-  by cancelling the execution;
+  by cancelling the execution, recorded on the attempt so the stop is classified as
+  ``TIMEOUT`` (or finalized as ``PARTIAL`` when checkpoints were flushed), never as an
+  execution stopped outside the platform;
 * ``CANCELLING`` → cancel at the executor, then ``cancel_confirmed`` once it is gone;
 * ``FINALIZING`` → make sure a finalize job is queued.
 
@@ -43,7 +45,7 @@ from mapi_spec.run import (
 )
 from mapi_spec.storage import bootstrap_key
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
@@ -70,6 +72,10 @@ _FAIL_TRIGGERS = {
     FailureClass.TIMEOUT: RunTrigger.FAIL_TIMEOUT,
     FailureClass.SANDBOX: RunTrigger.FAIL_SANDBOX,
 }
+
+
+DEADLINE_STOP = "stopped by the platform at the run deadline"
+"""``run_attempts.exec_message`` of an attempt the reconciler cancelled at its deadline."""
 
 
 def _handle(att: m.RunAttempt) -> Handle | None:
@@ -312,8 +318,15 @@ class Reconciler:
     ) -> None:
         s = self.ctx.settings
         if now() > att.deadline + timedelta(seconds=s.deadline_grace_s):
-            log.warning("run %s passed its deadline; cancelling the execution", run.id)
-            await self.executor.cancel(handle)  # SIGTERM → partial flush; exit classifies
+            if att.exec_message != DEADLINE_STOP:
+                log.warning("run %s passed its deadline; cancelling the execution", run.id)
+                async with self.ctx.db.session() as session:
+                    await session.execute(
+                        update(m.RunAttempt)
+                        .where(m.RunAttempt.run_id == run.id, m.RunAttempt.attempt == att.attempt)
+                        .values(exec_message=DEADLINE_STOP)
+                    )
+            await self.executor.cancel(handle)  # SIGTERM → partial flush; see _finished
             return
         if state is not RunState.RUNNING:
             return
@@ -343,15 +356,18 @@ class Reconciler:
     ) -> None:
         code = status.exit_code
         finished = status.finished_at or now()
+        # the platform itself stopped it at the deadline: not "stopped outside the platform"
+        deadline_stop = att.exec_message == DEADLINE_STOP
+        stopped_outside = status.state is ExecState.CANCELLED and not deadline_stop
         base_update: dict[str, object] = {
             "exit_code": code,
             "exec_state": status.state.value,
-            "exec_message": (status.message or None),
+            "exec_message": DEADLINE_STOP if deadline_stop else (status.message or None),
             "status": "finished",
             "finished_at": att.finished_at or finished,
         }
         await self._delete_bootstrap(att.nonce)
-        if code in (RunnerExit.OK, RunnerExit.PARTIAL) and status.state is not ExecState.CANCELLED:
+        if code in (RunnerExit.OK, RunnerExit.PARTIAL) and not stopped_outside:
             if att.complete_payload is not None:
                 moved = await self._transition(
                     run, RunTrigger.COMPLETE, expect_state=state, attempt_update=base_update
@@ -370,6 +386,23 @@ class Reconciler:
                 problem=Problem.from_code(
                     ErrorCode.INFRA_ERROR,
                     f"the supervisor exited with {code} but no 'complete' event arrived",
+                ),
+            )
+            return
+        if deadline_stop:
+            payload = self._error_payload(att)
+            detail = f"the run passed its {run.timeout_s} s deadline and was stopped"
+            if payload is not None:
+                detail = f"{detail}: {payload.message}"
+            await self._transition(
+                run,
+                RunTrigger.FAIL_TIMEOUT,
+                expect_state=state,
+                attempt_update=base_update,
+                problem=Problem.from_code(
+                    ErrorCode.TIMEOUT,
+                    detail[:2000],
+                    untrusted_text=payload.untrusted_text if payload else None,
                 ),
             )
             return
@@ -396,13 +429,17 @@ class Reconciler:
             run, trigger, expect_state=state, attempt_update=base_update, problem=problem
         )
 
+    @staticmethod
+    def _error_payload(att: m.RunAttempt) -> ErrorPayload | None:
+        if att.error_payload:
+            with contextlib.suppress(ValidationError):
+                return ErrorPayload.model_validate(att.error_payload)
+        return None
+
     def _problem(
         self, run: m.Run, att: m.RunAttempt, code: int, fc: FailureClass | None
     ) -> Problem:
-        payload: ErrorPayload | None = None
-        if att.error_payload:
-            with contextlib.suppress(ValidationError):
-                payload = ErrorPayload.model_validate(att.error_payload)
+        payload = self._error_payload(att)
         if fc is FailureClass.INTEGRITY:
             # an input did not match its size/crc32c: the transition table has no
             # live → fail_integrity edge, so the run fails as infra with the integrity code

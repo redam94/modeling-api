@@ -12,7 +12,7 @@ from mapi_server.services.finalizer import Finalizer
 from mapi_server.services.queue import InlineFinalizeQueue
 from mapi_server.services.reconciler import Reconciler
 from mapi_server.services.runs import apply_transition, load_run, now
-from mapi_server_testkit.builders import queued_fit
+from mapi_server_testkit.builders import queued_fit, simulate_outputs
 from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_spec.executor import ExecState, ExecStatus, Handle, RunSubmit
 from mapi_spec.run import (
@@ -303,6 +303,53 @@ async def test_deadline_cancels_the_execution(
         )
     await reconciler.reconcile_run(run_id)
     assert executor.only().cancelled == 1
+
+
+async def _past_deadline(ctx: ServerContext, run_id: str) -> None:
+    ctx.settings.deadline_grace_s = 0
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.RunAttempt)
+            .where(m.RunAttempt.run_id == run_id)
+            .values(deadline=now() - timedelta(minutes=1))
+        )
+
+
+async def test_a_deadline_cancel_fails_the_run_as_timeout_not_infra(
+    ctx: ServerContext, executor: FakeExecutor, wired: tuple[Dispatcher, Reconciler]
+) -> None:
+    """The platform stopped it at its deadline: that is TIMEOUT, never an infra retry."""
+    dispatcher, reconciler = wired
+    run_id, _att = await _provisioned(ctx, dispatcher)
+    await _past_deadline(ctx, run_id)
+    await reconciler.reconcile_run(run_id)  # cancels: the executor reports CANCELLED
+    await reconciler.reconcile_run(run_id)
+    run = await _state(ctx, run_id)
+    assert run.state == RunState.FAILED.value and run.attempt == 1, (run.state, run.attempt)
+    assert run.failure_class == "timeout"
+    assert run.problem is not None and run.problem["code"] == "TIMEOUT"
+
+
+async def test_a_deadline_cancel_with_checkpoints_finalizes_as_partial(
+    ctx: ServerContext, executor: FakeExecutor, wired: tuple[Dispatcher, Reconciler]
+) -> None:
+    dispatcher, reconciler = wired
+    run_id, att = await _provisioned(ctx, dispatcher)
+    await _past_deadline(ctx, run_id)
+    await reconciler.reconcile_run(run_id)
+    # the supervisor flushed its checkpoints and exited PARTIAL after the SIGTERM
+    executor.executions[att.nonce].status = ExecStatus(
+        state=ExecState.CANCELLED, exit_code=16, finished_at=now()
+    )
+    run = await _state(ctx, run_id)
+    async with ctx.db.session() as s:
+        row = await s.get(m.RunAttempt, (run_id, 1))
+        assert row is not None
+    await simulate_outputs(ctx, run, row, mode="partial")
+    await reconciler.reconcile_run(run_id)
+    await ctx.queue.drain()  # type: ignore[union-attr]
+    run = await _state(ctx, run_id)
+    assert run.state == RunState.PARTIAL.value, (run.state, run.problem)
 
 
 async def test_cancel_flow_confirms_after_the_executor_stops(

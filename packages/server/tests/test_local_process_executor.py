@@ -179,7 +179,8 @@ async def test_success_cancel_and_timeout(tmp_path: Path) -> None:
     h2 = await ex2.submit(_submit(timeout=1), "c" * 64)
     await _wait_done(ex2, h2, limit=15)
     st2 = await ex2.status(h2)
-    assert st2.exit_code == 137 and st2.message and "hard timeout" in st2.message
+    # killed by the watchdog after ignoring SIGTERM: a timeout (143), not an OOM kill (137)
+    assert st2.exit_code == 143 and st2.message and "hard timeout" in st2.message
 
 
 async def test_orphan_adoption_by_pid_file(tmp_path: Path) -> None:

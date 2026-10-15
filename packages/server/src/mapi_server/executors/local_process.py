@@ -33,7 +33,13 @@ from mapi_spec.executor import (
     RunSubmit,
 )
 from mapi_spec.resources import ResourceClass
-from mapi_spec.run import MAX_EVENT_LINE_BYTES, InvalidEvent, RunnerEnv, decode_event_line
+from mapi_spec.run import (
+    MAX_EVENT_LINE_BYTES,
+    InvalidEvent,
+    RunnerEnv,
+    RunnerExit,
+    decode_event_line,
+)
 
 from mapi_server.settings import Profile
 
@@ -252,6 +258,10 @@ class LocalProcessExecutor:
         if rc is None or not all(t.done() for t in ex.readers):
             return ExecStatus(state=ExecState.RUNNING, started_at=ex.started_at)
         code = _exit_code(rc)
+        if ex.timed_out and rc < 0:
+            # killed by the hard-timeout watchdog (SIGKILL after an ignored SIGTERM): a
+            # timeout, not the OOM killer that 137 means
+            code = RunnerExit.TERMINATED
         if ex.cancelled:
             state = ExecState.CANCELLED
         elif code == 0:
