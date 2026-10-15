@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { deepMerge, preparePlotly, prepareVegaLite, resolvePlotlyRefs, SpecError } from "./prepare";
+import type { JsonObject } from "./protocol";
 
 const datasets = {
   contrib: [
@@ -45,11 +46,12 @@ describe("prepareVegaLite", () => {
     expect(unit.autosize).toEqual({ type: "fit-x", contains: "padding" });
     const layered = prepareVegaLite({ layer: [{ mark: "line" }], width: 400 }, datasets, "light");
     expect(layered.autosize).toEqual({ type: "fit-x", contains: "padding" });
-    for (const composite of [
+    const composites: JsonObject[] = [
       { vconcat: [{ mark: "bar", width: 240 }] },
       { hconcat: [{ mark: "bar" }] },
       { facet: { field: "geo", type: "nominal" }, spec: { layer: [{ mark: "line" }], width: 240 } },
-    ]) {
+    ];
+    for (const composite of composites) {
       const out = prepareVegaLite(composite, datasets, "light");
       expect(out.autosize).toEqual({ type: "pad" });
       expect(out.width).toBeUndefined();

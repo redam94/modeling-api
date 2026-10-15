@@ -3,16 +3,20 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Download, FileJson, Table2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import type { ArtifactLink } from "@/api/types";
+import { useRunPlots } from "@/api/queries";
+import type { ArtifactLink, PlotSpec } from "@/api/types";
 import { ErrorNotice, JsonBlock, LoadingRows, Mono } from "@/components/common";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Field, NativeSelect } from "@/components/ui/primitives";
 import { quickChart } from "@/features/plots/builtin-specs";
+import { resolvePlotDatasets } from "@/features/plots/plot-data";
 import { PlotFrame } from "@/features/plots/plot-frame";
+import type { JsonObject } from "@mapi/plot-sandbox/protocol";
 import { decodeArrow, type DecodedTable, type Row } from "@/lib/arrow";
 import { fetchArtifactBytes, fetchArtifactJson } from "@/lib/artifacts";
 import { formatBytes, formatNumber, relativeTime } from "@/lib/format";
+import { distinctOn, pivotStats } from "@/lib/summary";
 import { cn } from "@/lib/utils";
 
 function isArrow(link: ArtifactLink): boolean {
@@ -27,7 +31,7 @@ function ArrowOutput({ link }: { link: ArtifactLink }) {
   const q = useQuery({
     queryKey: ["artifact", link.url, "arrow"],
     staleTime: Infinity,
-    queryFn: async ({ signal }) => decodeArrow(await fetchArtifactBytes(link, { signal })),
+    queryFn: async ({ signal }) => pivotStats(decodeArrow(await fetchArtifactBytes(link, { signal }))),
   });
   if (q.isPending) return <LoadingRows rows={4} />;
   if (q.isError) return <ErrorNotice error={q.error} title={`${link.name} could not be opened`} />;
@@ -51,19 +55,26 @@ function ResultTable({ table, name }: { table: DecodedTable; name: string }) {
   const all = table.columns.map((c) => c.name);
   const timeLike = table.columns.find((c) => /timestamp|date/i.test(c.type))?.name;
   const [x, setX] = useState(timeLike ?? all[0] ?? "");
-  const [y, setY] = useState(numeric.find((n) => /mean|median|value|y_hat/i.test(n)) ?? numeric[0] ?? "");
+  const [y, setY] = useState(
+    numeric.find((n) => /^y_hat_mean$/i.test(n)) ?? numeric.find((n) => /mean|median|value|y_hat/i.test(n)) ?? numeric[0] ?? "",
+  );
   const [band, setBand] = useState(() => {
-    const lo = numeric.find((n) => /(lower|lo|hdi.*low|q0?5)$/i.test(n));
-    const hi = numeric.find((n) => /(upper|hi|hdi.*high|q95)$/i.test(n));
+    // Prefer the interval of the chosen variable (y_hat_hdi_90_lower / _upper).
+    const stem = y.replace(/_(mean|median)$/i, "");
+    const pick = (re: RegExp) => numeric.find((n) => n.startsWith(stem) && re.test(n)) ?? numeric.find((n) => re.test(n));
+    const lo = pick(/(lower|lo|hdi.*low|q0?5)$/i);
+    const hi = pick(/(upper|hi|hdi.*high|q95)$/i);
     return lo && hi ? `${lo}|${hi}` : "";
   });
-  const [color, setColor] = useState("");
-  const [lower, upper] = band ? band.split("|") : [undefined, undefined];
-  const plot = useMemo(
-    () => (x && y ? quickChart(table.rows, { x, y, lower, upper, color: color || undefined }, Boolean(timeLike && x === timeLike)) : null),
-    [table.rows, x, y, lower, upper, color, timeLike],
-  );
   const categorical = table.columns.filter((c) => /utf8|string|dictionary|bool/i.test(c.type)).map((c) => c.name);
+  const [color, setColor] = useState(() => categorical.find((c) => c !== x) ?? "");
+  const [lower, upper] = band ? band.split("|") : [undefined, undefined];
+  const plot = useMemo(() => {
+    if (!x || !y) return null;
+    const c = { x, y, lower, upper, color: color || undefined };
+    const rows = distinctOn(table.rows, [x, c.color, y, lower, upper]);
+    return quickChart(rows, c, Boolean(timeLike && x === timeLike));
+  }, [table.rows, x, y, lower, upper, color, timeLike]);
   return (
     <div className="grid gap-4">
       <p className="text-xs text-muted-foreground">
@@ -114,13 +125,63 @@ function JsonOutput({ link }: { link: ArtifactLink }) {
   return <JsonBlock value={q.data} />;
 }
 
-/** Score outputs: list of signed links; Arrow outputs open as a table and a quick chart. */
-export function ScoreResults({ outputs }: { outputs: ArtifactLink[] }) {
+function RunPlot({ plot, outputs }: { plot: PlotSpec; outputs: ArtifactLink[] }) {
+  const data = useQuery({
+    queryKey: ["run-plot", plot.id, outputs.map((o) => o.url).join("|")],
+    staleTime: Infinity,
+    queryFn: ({ signal }) =>
+      resolvePlotDatasets(
+        plot,
+        (path) => {
+          const link = outputs.find((o) => o.name === path);
+          return link ? Promise.resolve(link) : Promise.reject(new Error(`the run has no output named ${path}`));
+        },
+        signal,
+      ),
+  });
+  return (
+    <figure className="grid gap-2">
+      <figcaption>
+        <span className="text-[13px] font-medium">{plot.title}</span>
+        {plot.caption_plain ? <span className="block text-xs text-muted-foreground">{plot.caption_plain}</span> : null}
+      </figcaption>
+      {data.isError ? (
+        <ErrorNotice error={data.error} title="The plot data could not be loaded" />
+      ) : data.data ? (
+        <PlotFrame kind={plot.kind} spec={plot.spec as JsonObject} datasets={data.data} title={plot.title} exportName={plot.id} />
+      ) : (
+        <LoadingRows rows={3} />
+      )}
+    </figure>
+  );
+}
+
+/** Plots the score run rendered, fetched sanitized from the API and drawn in the sandbox. */
+function RunPlots({ runId, outputs }: { runId: string; outputs: ArtifactLink[] }) {
+  const plots = useRunPlots(runId);
+  if (plots.isError) return <ErrorNotice error={plots.error} title="The run's plots could not be loaded" />;
+  const items = plots.data?.items ?? [];
+  if (!items.length) return null;
+  return (
+    <section aria-label="Run plots" className="grid gap-4">
+      {items.map((p) => (
+        <RunPlot key={p.id} plot={p} outputs={outputs} />
+      ))}
+    </section>
+  );
+}
+
+/**
+ * Score outputs: the run's own plots (forecast fan, counterfactual band) first, then the list
+ * of signed links; Arrow outputs open as a table and a quick chart.
+ */
+export function ScoreResults({ outputs, runId }: { outputs: ArtifactLink[]; runId?: string | undefined }) {
   const [open, setOpen] = useState<string | null>(outputs.find(isArrow)?.name ?? outputs[0]?.name ?? null);
   const current = outputs.find((o) => o.name === open) ?? null;
   if (!outputs.length) return <p className="text-muted-foreground">The run finished without output files.</p>;
   return (
     <div className="grid gap-4">
+      {runId ? <RunPlots runId={runId} outputs={outputs} /> : null}
       <ul className="grid gap-1">
         {outputs.map((o) => (
           <li key={o.name} className={cn("flex flex-wrap items-center gap-3 rounded-md border px-3 py-2", o.name === open && "border-primary/50 bg-accent/40")}>

@@ -38,7 +38,7 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
 | `catalog` | `get`, `models`, `model`, `steps`, `plots`, `schema` |
 | `datasets` | `create`, `list`, `get`, `find`, `ensure`, `create_upload`, `create_version`, `versions`, `version`, `wait_version`, `upload`, `artifact`, `download` |
 | `specs` | `validate`, `create`, `list`, `get`, `find`, `revise`, `upsert`, `revisions`, `revision`, `dry_run` |
-| `runs` | `create`, `fit`, `get`, `list`, `wait`, `stream_events`, `events`, `logs`, `cancel`, `resume`, `retry` |
+| `runs` | `create`, `fit`, `get`, `list`, `wait`, `stream_events`, `events`, `logs`, `plots`, `cancel`, `resume`, `retry` |
 | `models` | `list`, `get`, `versions`, `version`, `artifact`, `download`, `score` |
 | `plots` | `list`, `get`, `validate` |
 
@@ -50,6 +50,8 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
   creates the dataset if needed, PUTs the file to the signed URL, starts the ingest run and
   waits for the version to be ready. A dataset that carries its raw schema in the
   `mapi_schema` attribute keeps its dim policies and roles.
+- `runs.stream_events` yields `RunSnapshot`, `RunEventFrame` (persisted events, with an id),
+  `RunLiveFrame` (live `progress` and `log` frames, without an id) and finally `RunEnd`.
 - `models.score` sends `Prefer: wait=N`. While the run is still going it repeats the same
   request with the same `Idempotency-Key`; the server's idempotent replay returns the finished
   `ScoreCallResult` with fresh output links.

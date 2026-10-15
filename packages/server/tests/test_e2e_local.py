@@ -171,7 +171,12 @@ async def test_ingest_fit_score_end_to_end(client: httpx.AsyncClient, ctx: Serve
         assert r.status_code == 200, r.text
         result = r.json()
         assert result["done"] and result["run"]["state"] == "succeeded"
-        assert [o["name"] for o in result["outputs"]] == ["result.json"]
+        assert [o["name"] for o in result["outputs"]] == ["plots.json", "result.json"]
+        # the run's plots come back sanitized: the unsafe one is dropped
+        plots = (await client.get(f"/v1/runs/{result['run']['id']}/plots")).json()["items"]
+        assert [p["id"] for p in plots] == ["core.ppc_fan"]
+        assert (await client.get(f"/v1/runs/{run['id']}/plots")).json()["items"]  # fit too
+        assert (await client.get("/v1/runs/run_nope/plots")).status_code == 404
 
 
 @pytest.mark.parametrize(

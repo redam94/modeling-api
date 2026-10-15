@@ -4,18 +4,21 @@ cancel, resume and retry."""
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import APIRouter, Header, Path, Query, Request, status
 from fastapi.responses import JSONResponse, Response, StreamingResponse
+from mapi_plots.sanitize import SanitizeError, sanitize_plot
 from mapi_spec.api import (
     LAST_EVENT_ID_HEADER,
     SSE_HEARTBEAT,
     SSE_RETRY_MS,
     LogLine,
     Page,
+    PlotSpec,
     Run,
     RunCreate,
     RunEventView,
@@ -23,6 +26,7 @@ from mapi_spec.api import (
     SseEventName,
     parse_last_event_id,
 )
+from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunEventType, RunKind
 from mapi_spec.run import Actor, RunState, RunTrigger
 from sqlalchemy import and_, or_, select
@@ -44,12 +48,15 @@ from mapi_server.errors import Conflict
 from mapi_server.services.runs import apply_transition, load_run, run_dto
 from mapi_server.services.submit import submit_retry, submit_run
 
-__all__ = ["render_run", "router", "run_view", "sse_stream"]
+__all__ = ["RUN_PLOTS_OUTPUT", "render_run", "router", "run_view", "sse_stream"]
 
 router = APIRouter(prefix="/v1/runs", tags=["runs"])
 
 RunId = Annotated[str, Path(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$")]
 _PAGE = 500
+RUN_PLOTS_OUTPUT = "plots.json"
+"""Output a run renders its plots into (a JSON array of PlotSpec documents)."""
+_MAX_RUN_PLOTS = 50
 
 
 async def run_view(session: AsyncSession, run: m.Run) -> Run:
@@ -353,6 +360,57 @@ def _live_json(
         separators=(",", ":"),
         ensure_ascii=False,
     )
+
+
+@router.get("/{run_id}/plots", response_model=Page[PlotSpec], operation_id="list_run_plots")
+async def list_run_plots(
+    ctx: Ctx,
+    session: Session,
+    run_id: RunId,
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: str | None = None,
+) -> Page[PlotSpec]:
+    """Plots a succeeded run rendered (``plots.json``), passed through the plot sanitizer on
+    every read; plots it rejects are left out. Empty while the run is not ``succeeded``.
+
+    The control plane decodes nothing but this size-capped JSON, read at the generation the
+    finalizer verified.
+    """
+    run = await load_run(session, None, run_id)
+    if run.state != RunState.SUCCEEDED.value:
+        return Page[PlotSpec](items=[], next_cursor=None)
+    att = await session.get(m.RunAttempt, (run.id, run.attempt))
+    meta = (att.outputs or {}).get(RUN_PLOTS_OUTPUT) if att is not None else None
+    if not isinstance(meta, dict):
+        return Page[PlotSpec](items=[], next_cursor=None)
+    cap = ctx.settings.max_sidecar_bytes
+    if int(meta.get("size", 0)) > cap:
+        raise MapiError(
+            f"{RUN_PLOTS_OUTPUT} exceeds the {cap}-byte sidecar limit",
+            code=ErrorCode.INTEGRITY_FAILURE,
+        )
+    raw = await ctx.store.get(
+        str(meta["bucket"]), str(meta["name"]), generation=int(meta["generation"]), max_bytes=cap
+    )
+    try:
+        docs = json.loads(raw)
+    except ValueError:
+        docs = None
+    if not isinstance(docs, list):
+        raise MapiError(
+            f"{RUN_PLOTS_OUTPUT} is not a JSON array of plot specs",
+            code=ErrorCode.INTEGRITY_FAILURE,
+        )
+    plots: list[PlotSpec] = []
+    for doc in docs[:_MAX_RUN_PLOTS]:
+        try:
+            plots.append(sanitize_plot(doc).plot)
+        except SanitizeError:
+            continue  # the finalizer's rule for fit plots: unsafe plots are dropped
+    start = int(decode_cursor(cursor) or 0)
+    page = plots[start : start + limit]
+    more = start + limit < len(plots)
+    return Page[PlotSpec](items=page, next_cursor=encode_cursor(start + limit) if more else None)
 
 
 @router.get("/{run_id}/logs", response_model=Page[LogLine], operation_id="run_logs")

@@ -325,6 +325,11 @@ def run_logs(
     )
 
 
+def list_run_plots(run_id: str, limit: int | None, cursor: str | None) -> Call[Page[PlotSpec]]:
+    path = f"{V1}/runs/{segment(run_id)}/plots"
+    return Call("GET", path, parse_model(Page[PlotSpec]), params=page_params(limit, cursor))
+
+
 def cancel_run(run_id: str) -> Call[Run]:
     # idempotent by definition (cancelling twice returns the same run): safe to resend
     return Call(

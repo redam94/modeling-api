@@ -642,6 +642,11 @@ class Runs(_Resource):
             lambda cur: calls.run_logs(run_id, limit, cur, attempt=attempt, stream=stream)
         )
 
+    def plots(self, run_id: str, *, limit: int | None = None) -> Paginator[PlotSpec]:
+        """Sanitized plots a succeeded run rendered (empty until it succeeds). Render them
+        only in the plot-sandbox origin."""
+        return self._c.page_iter(lambda cur: calls.list_run_plots(run_id, limit, cur))
+
     def cancel(self, run_id: str) -> Run:
         return self._c.send(calls.cancel_run(run_id))
 

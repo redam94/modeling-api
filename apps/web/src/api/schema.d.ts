@@ -609,6 +609,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/runs/{run_id}/plots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Run Plots
+         * @description Plots a succeeded run rendered (``plots.json``), passed through the plot sanitizer on
+         *     every read; plots it rejects are left out. Empty while the run is not ``succeeded``.
+         *
+         *     The control plane decodes nothing but this size-capped JSON, read at the generation the
+         *     finalizer verified.
+         */
+        get: operations["list_run_plots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/runs/{run_id}:cancel": {
         parameters: {
             query?: never;
@@ -2548,6 +2572,19 @@ export interface components {
         Page_PlotListItem_: {
             /** Items */
             items: components["schemas"]["PlotListItem"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[PlotSpec]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_PlotSpec_: {
+            /** Items */
+            items: components["schemas"]["PlotSpec"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -5409,6 +5446,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_LogLine_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_plots: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PlotSpec_"];
                 };
             };
             /** @description Validation Error */

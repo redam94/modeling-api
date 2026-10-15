@@ -18,7 +18,17 @@ import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/overlays";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, NativeSelect } from "@/components/ui/primitives";
 import { ProgressPanel } from "@/features/runs/progress-panel";
-import { buildScoreRequest, defaultScoreForm, SUMMARY_OPTIONS, type FormProblem, type InterventionOp, type ScoreForm, type ScoreMode } from "@/features/score/request";
+import {
+  buildScoreRequest,
+  defaultScoreForm,
+  sideTableOptions,
+  SUMMARY_OPTIONS,
+  type FormProblem,
+  type InterventionOp,
+  type ScoreForm,
+  type ScoreMode,
+  type SideTableOption,
+} from "@/features/score/request";
 import { ScoreResults } from "@/features/score/results";
 import { useRunEvents } from "@/hooks/use-run-events";
 import { isTerminal } from "@/lib/run-state";
@@ -72,17 +82,25 @@ function ModelPicker({ modelId, version }: { modelId: string | undefined; versio
   );
 }
 
-/** Pipeline step ids of the spec that produced this version: the valid `inputs_stage` values. */
-function useStageOptions(mv: ModelVersion | undefined): string[] {
+/**
+ * What the spec that produced this version allows a score request to name: its pipeline step
+ * ids (the valid `inputs_stage` values) and its side tables.
+ */
+function useSpecOptions(mv: ModelVersion | undefined): { stages: string[]; sideTables: SideTableOption[] } {
   const run = useRun(mv?.lineage.run_id, { poll: false });
   const rev = useSpecRevision(run.data?.spec_id ?? undefined, run.data?.spec_revision ?? undefined);
   return useMemo(() => {
-    const pipeline = (rev.data?.document as { pipeline?: unknown } | undefined)?.pipeline;
+    const doc = rev.data?.document as { pipeline?: unknown } | undefined;
+    const pipeline = doc?.pipeline;
     const ids = Array.isArray(pipeline)
       ? pipeline.map((s) => (typeof s === "object" && s !== null && typeof (s as { id?: unknown }).id === "string" ? (s as { id: string }).id : null)).filter((x): x is string => x !== null)
       : [];
-    return ["raw", ...ids];
+    return { stages: ["raw", ...ids], sideTables: sideTableOptions(doc) };
   }, [rev.data]);
+}
+
+function datasetRefs(items: { id: string; ref: string; latest_version?: number | null }[]): string[] {
+  return items.map((d) => (d.latest_version ? `${d.ref}@v${d.latest_version}` : d.ref));
 }
 
 function problemFor(problems: FormProblem[], field: string): string | undefined {
@@ -94,8 +112,14 @@ function ScoreFormView({ mv, onResult }: { mv: ModelVersion; onResult: (r: { res
   const [problems, setProblems] = useState<FormProblem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const stages = useStageOptions(mv);
+  const { stages, sideTables } = useSpecOptions(mv);
   const datasets = useDatasets();
+  const refs = useMemo(() => datasetRefs(datasets.data?.items ?? []), [datasets.data]);
+  // Supplied side tables default to the version the fit used (it usually covers the horizon).
+  useEffect(() => {
+    const defaults = Object.fromEntries(sideTables.filter((t) => t.policy !== "pinned").map((t) => [t.name, t.ref]));
+    setForm((f) => ({ ...f, sideTables: { ...defaults, ...f.sideTables } }));
+  }, [sideTables]);
   const modes = useMemo(
     () => (mv.capabilities?.score_modes ?? ["predict", "forecast", "counterfactual", "simulate", "filter", "evaluate"]) as ScoreMode[],
     [mv.capabilities],
@@ -165,19 +189,60 @@ function ScoreFormView({ mv, onResult }: { mv: ModelVersion; onResult: (r: { res
         </Field>
       </div>
 
-      <Field label="Scenario data (optional)" htmlFor="scenario" hint={problemFor(problems, "scenario") ?? "A dataset version with the future inputs. Upload one under Datasets first."}>
+      <datalist id="score-datasets">
+        {refs.map((r) => (
+          <option key={r} value={r} />
+        ))}
+      </datalist>
+      <Field
+        label="Input data"
+        htmlFor="score-data"
+        hint={problemFor(problems, "data") ?? "The inputs to score, in the units of the entry stage: future spend over the horizon, new markets, or a window of past data. Upload it under Datasets first."}
+      >
         <div className="flex gap-2">
-          <Input id="scenario" value={form.scenario} onChange={(e) => set("scenario", e.target.value)} placeholder="dataset://default/plan_2027h1@v1" className="font-mono" list="scenario-datasets" />
-          <datalist id="scenario-datasets">
-            {(datasets.data?.items ?? []).map((d) => (
-              <option key={d.id} value={d.latest_version ? `${d.ref}@v${d.latest_version}` : d.ref} />
-            ))}
-          </datalist>
+          <Input id="score-data" value={form.data} onChange={(e) => set("data", e.target.value)} placeholder="dataset://default/eu_media_future@v1" className="font-mono" list="score-datasets" />
           <Button variant="outline" asChild>
             <Link to="/datasets">Upload</Link>
           </Button>
         </div>
       </Field>
+
+      <Field label="Scenario data (optional)" htmlFor="scenario" hint={problemFor(problems, "scenario") ?? "A changed copy of the input data. Counterfactuals compare it against the input data."}>
+        <Input id="scenario" value={form.scenario} onChange={(e) => set("scenario", e.target.value)} placeholder="dataset://default/plan_2027h1@v1" className="font-mono" list="score-datasets" />
+      </Field>
+
+      {sideTables.length ? (
+        <fieldset className="grid gap-3 rounded-lg border p-4">
+          <legend className="px-1 text-[13px] font-medium">Side tables</legend>
+          {sideTables.map((t) =>
+            t.policy === "pinned" ? (
+              <p key={t.name} className="text-xs text-muted-foreground">
+                <Mono>{t.name}</Mono> is pinned: scoring replays <Mono>{t.ref}</Mono> from the fit.
+              </p>
+            ) : (
+              <Field
+                key={t.name}
+                label={t.name}
+                htmlFor={`side-${t.name}`}
+                hint={
+                  problemFor(problems, `sideTables.${t.name}`) ??
+                  (t.policy === "supplied"
+                    ? "Required when a step before the entry stage uses it; it must cover the scored dates."
+                    : "Optional: defaults to its latest version.")
+                }
+              >
+                <Input
+                  id={`side-${t.name}`}
+                  value={form.sideTables[t.name] ?? ""}
+                  onChange={(e) => set("sideTables", { ...form.sideTables, [t.name]: e.target.value })}
+                  className="font-mono"
+                  list="score-datasets"
+                />
+              </Field>
+            ),
+          )}
+        </fieldset>
+      ) : null}
 
       <div className="grid gap-2">
         <div className="flex items-center justify-between">
@@ -339,6 +404,11 @@ export function ScorePage() {
   const mv = useModelVersion(model, version);
   const [pending, setPending] = useState<{ result: ScoreCallResult; key: string; body: ScoreCall } | null>(null);
   const [done, setDone] = useState<ScoreCallResult | null>(null);
+  const resultsRef = useRef<HTMLElement>(null);
+  // Below 2xl the results stack under the form: bring them into view when a score starts.
+  useEffect(() => {
+    if (pending || done) resultsRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, [pending, done]);
 
   return (
     <>
@@ -350,7 +420,7 @@ export function ScorePage() {
       ) : mv.isError ? (
         <ErrorNotice error={mv.error} />
       ) : mv.data ? (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,34rem)_minmax(0,1fr)]">
+        <div className="grid gap-5 2xl:grid-cols-[minmax(0,34rem)_minmax(0,1fr)]">
           <Card>
             <CardHeader>
               <div>
@@ -370,14 +440,14 @@ export function ScorePage() {
               />
             </CardContent>
           </Card>
-          <Card>
+          <Card ref={resultsRef} aria-label="Results">
             <CardHeader>
               <CardTitle>Results</CardTitle>
               {done ? <StateBadge state={done.run.state} /> : null}
             </CardHeader>
             <CardContent>
               {done ? (
-                done.run.problem ? <ProblemNotice problem={done.run.problem} /> : <ScoreResults outputs={done.outputs ?? []} />
+                done.run.problem ? <ProblemNotice problem={done.run.problem} /> : <ScoreResults outputs={done.outputs ?? []} runId={done.run.id} />
               ) : pending ? (
                 <PendingScore
                   mv={mv.data}
