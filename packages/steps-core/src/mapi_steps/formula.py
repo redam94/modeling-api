@@ -261,7 +261,8 @@ def evaluate(compiled: Compiled, ds: xr.Dataset) -> xr.DataArray | float:
     def ev(node: Node) -> Any:
         match node[0]:
             case "num":
-                return node[1]
+                # numpy scalars: overflow and division by zero give inf/nan under errstate
+                return np.float64(node[1])
             case "var":
                 name = node[1]
                 if name not in ds.variables:
@@ -270,9 +271,11 @@ def evaluate(compiled: Compiled, ds: xr.Dataset) -> xr.DataArray | float:
             case "neg":
                 return -ev(node[1])
             case "not":
-                return ~_as_bool(ev(node[1]))
+                x = _as_bool(ev(node[1]))
+                return ~x if isinstance(x, xr.DataArray) else not x
             case "cmp":
-                return COMPARE[node[1]](ev(node[2]), ev(node[3]))
+                out = COMPARE[node[1]](ev(node[2]), ev(node[3]))
+                return out if isinstance(out, xr.DataArray) else bool(out)
             case "bin":
                 a, b = ev(node[2]), ev(node[3])
                 if node[1] in ("and_op", "or_op"):
@@ -306,8 +309,11 @@ def evaluate(compiled: Compiled, ds: xr.Dataset) -> xr.DataArray | float:
             raise FormulaError(f"{name}() over dims {missing} that the operand does not have")
         return getattr(x, name)(dims, skipna=True)
 
-    with np.errstate(all="ignore"):
-        result = ev(compiled.ast)
+    try:
+        with np.errstate(all="ignore"):
+            result = ev(compiled.ast)
+    except (ArithmeticError, TypeError) as exc:
+        raise FormulaError(f"formula cannot be evaluated: {exc}") from None
     if isinstance(result, xr.DataArray):
         return result
     return float(result)

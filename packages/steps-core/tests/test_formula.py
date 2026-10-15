@@ -99,3 +99,51 @@ def test_step_dims_broadcast_and_errors(weekly: xr.Dataset) -> None:
     no_target = weekly.drop_vars("y")
     out = go({"out": "ly", "expr": "log(y)", "dims": ["geo", "time"]}, no_target)
     assert "ly" not in out
+
+
+@pytest.mark.parametrize(
+    ("expr", "negate"),
+    [
+        ("where(~(2 > 1), y, -y)", True),
+        ("where(~(1 > 2), y, -y)", False),
+        ("where(~~(2 > 1), y, -y)", False),
+        ("where(~0, y, -y)", False),
+        ("where(~3, y, -y)", True),
+    ],
+)
+def test_not_on_scalars_is_logical(weekly: xr.Dataset, expr: str, negate: bool) -> None:
+    y = weekly["y"]
+    xr.testing.assert_allclose(ev(expr, weekly), -y if negate else y)
+
+
+@pytest.mark.parametrize(
+    ("expr", "expected"),
+    [
+        ("y + 10 ** 400", np.inf),
+        ("y + 1 / 0", np.inf),
+        ("y * 0 ** -1", np.inf),
+        ("y - 1 / 0", -np.inf),
+        ("y * (0 / 0)", np.nan),
+        ("y + 1e400", np.inf),
+    ],
+)
+def test_scalar_overflow_and_division_by_zero_follow_numpy(
+    weekly: xr.Dataset, expr: str, expected: float
+) -> None:
+    out = ev(expr, weekly)
+    np.testing.assert_array_equal(out.values, np.full(out.shape, expected))
+
+
+def test_scalar_arithmetic_errors_do_not_escape_the_step(weekly: xr.Dataset) -> None:
+    inst = ms.FormulaStep()
+    ctx = StepContext(step_id="t", schema=infer_schema(weekly, targets=["y"]))
+    s = inst.parse_settings({"out": "z", "expr": "y + 1 / 0", "dims": ["geo", "time"]})
+    out = inst.transform(weekly, s, inst.fit(weekly, s, ctx), ctx)
+    assert bool(np.isinf(out["z"]).all())
+    assert ev("1 / 0", weekly) == np.inf
+    assert ev("-(2 > 1) + (1 > 2)", weekly) == -1.0
+    # numpy refuses arithmetic negation of a boolean array: a schema error, not a crash
+    bad = inst.parse_settings({"out": "z", "expr": "-(y > 1)", "dims": ["geo", "time"]})
+    with pytest.raises(MapiError, match="cannot be evaluated") as err:
+        inst.transform(weekly, bad, inst.fit(weekly, bad, ctx), ctx)
+    assert err.value.code is ErrorCode.SCHEMA_INVALID
