@@ -1,0 +1,22 @@
+# C08: forecasts up to max_extension, the refit boundary and contiguity errors.
+- name: forecast_12
+  request: {mode: forecast, horizon: {dim: t, periods: 12}, output: {draws: 20}}
+  expect: {groups: [summary, draws], vars: [y_hat, trend], sizes: {date: 12}}
+- name: forecast_to_max_extension
+  request: {mode: forecast, horizon: {dim: t, periods: 24}, output: {kind: predictive}}
+  expect: {vars: [y_hat], sizes: {date: 24}}
+- name: horizon_exceeds_fit
+  request: {mode: forecast, horizon: {dim: t, periods: 30}}
+  expect_error: HORIZON_EXCEEDS_FIT
+- name: predict_last_two_years
+  request: {mode: predict, output: {summary: [mean, hdi_90, q5, q95]}}
+  payload: "tail:24"
+  expect: {sizes: {date: 24, stat: 5}}
+- name: gap_after_fit
+  request: {mode: predict}
+  payload: gapped
+  expect_error: NON_CONTIGUOUS_EXTENSION
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: co2, multiply: 1.1}]}
+  payload: "tail:3"
+  expect_error: MODE_NOT_SUPPORTED

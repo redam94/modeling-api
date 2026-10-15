@@ -1,0 +1,23 @@
+# E24: the terminal state drives forecasts and filtering; new animals start from pi.
+- name: forecast_5
+  request: {mode: forecast, horizon: {dim: step, periods: 5}, output: {draws: 10}}
+  expect: {groups: [summary, draws], vars: [y_hat, state_prob], sizes: {step: 5}}
+- name: filter_live_telemetry
+  request: {mode: filter, data: "dataset://ecology/tracks_live@v1"}
+  payload: live
+  drop_targets: false
+  expect: {groups: [summary, terminal_state], vars: [y_hat, state_prob], sizes: {step: 6}}
+- name: filter_inside_fit
+  request: {mode: filter, data: "dataset://ecology/tracks@v1"}
+  payload: "tail:5"
+  drop_targets: false
+  expect_error: COORD_NOT_ALLOWED
+- name: new_animal_from_pi
+  request: {mode: predict, output: {kind: predictive}}
+  payload: new_animal
+  expect: {vars: [y_hat], issues: [UNSEEN_LEVELS]}
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: step_length, multiply: 1.1}]}
+  payload: "tail:3"
+  drop_targets: false
+  expect_error: MODE_NOT_SUPPORTED

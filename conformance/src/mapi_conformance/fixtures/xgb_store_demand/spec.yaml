@@ -1,0 +1,34 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: store-demand-xgb, project: retail, labels: {corpus: xgb_store_demand}}
+data:
+  dataset: dataset://retail/store_sku_weekly@latest
+  bind:
+    dims: {store: store_id, sku: sku, time: week}
+    vars: {y: units_sold, price: price, promo: promo_flag}
+  split: {kind: time_holdout, dim: time, last: 8}
+pipeline:
+  - id: imp
+    use: core.impute@^1
+    with: {vars: [price], method: ffill, along: time, within: [store, sku], unseen_levels: pooled}
+  - id: plags
+    use: core.lag@^1
+    with: {vars: [promo], along: time, within: [store, sku], lags: [1, 2]}
+  - {id: cal, use: core.calendar@^1, with: {along: time, features: [week_of_year, month]}}
+  - {id: logy, use: core.log1p@^1, with: {vars: [y]}}
+model:
+  use: tabular.regressor@^1
+  settings:
+    estimator:
+      kind: xgboost.XGBRegressor
+      params: {n_estimators: 600, max_depth: 6, learning_rate: 0.05}
+    rows: [store, sku, time]
+    columns: {roles: [covariate]}
+    coord_features: {store: category, sku: category}
+    uncertainty: {kind: quantile, quantiles: [0.1, 0.5, 0.9]}
+    forecast_strategy: direct
+    retransform: median
+  fit: {seed: 7, mode: evaluate_then_refit}
+evaluate: {metrics: [rmse, mape, coverage_80]}
+outputs: {plots: [core.fit_vs_actual, core.residuals_over_time, ml.feature_importance]}
+execution: {resource_class: S, timeout: 10m}
