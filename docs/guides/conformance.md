@@ -33,12 +33,12 @@ The runner prints one row per fixture and exits non-zero if any step failed:
 ```text
 fixture           model                           validate  fit  score   evaluate  contract  plots   expectations  ...  result
 ----------------  ------------------------------  --------  ---  ------  --------  --------  ------  ------------       ------
-e02               tabular.hierarchical_glm@1.0.0  ok        ok   ok 6/6  ok        ok 10/10  ok 2/2  ok                 PASS
-c08               ts.hsgp_trend@1.0.0             ok        ok   ok 6/6  ok        ok 10/10  ok 3/3  ok                 PASS
-e24               ts.gaussian_hmm@1.0.0           ok        ok   ok 5/5  ok        ok 12/12  ok 2/2  ok                 PASS
-xgb_store_demand  tabular.regressor@1.0.0         ok        ok   ok 6/6  ok        ok 12/12  ok 3/3  ok                 PASS
-e33               mmm.hierarchical_geo@1.3.0      ok        ok   ok 4/4  ok        ok 12/12  ok 4/4  ok                 PASS
-pymc_marketing    mmm.pymc_marketing@1.0.0        ok        ok   ok 4/4  ok        ok 12/12  ok 2/2  ok                 PASS
+e02               tabular.hierarchical_glm@1.0.0  ok        ok   ok 6/6  ok        ok 13/13  ok 2/2  ok                 PASS
+c08               ts.hsgp_trend@1.0.0             ok        ok   ok 6/6  ok        ok 13/13  ok 3/3  ok                 PASS
+e24               ts.gaussian_hmm@1.0.0           ok        ok   ok 5/5  ok        ok 15/15  ok 2/2  ok                 PASS
+xgb_store_demand  tabular.regressor@1.0.0         ok        ok   ok 6/6  ok        ok 16/16  ok 3/3  ok                 PASS
+e33               mmm.hierarchical_geo@1.3.0      ok        ok   ok 4/4  ok        ok 16/16  ok 4/4  ok                 PASS
+pymc_marketing    mmm.pymc_marketing@1.0.0        ok        ok   ok 4/4  ok        ok 15/15  ok 2/2  ok                 PASS
 ```
 
 `--size tiny` (the default, used by `pytest -m conformance`) keeps data small and MCMC
