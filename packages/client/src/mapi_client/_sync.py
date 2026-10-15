@@ -16,6 +16,7 @@ from mapi_spec.api import (
     MAX_PREFER_WAIT_SECONDS,
     PROJECT_HEADER,
     SSE_RETRY_MS,
+    AdminUsageReport,
     ApiToken,
     ArtifactLink,
     AuditEvent,
@@ -1116,6 +1117,12 @@ class Admin(_Resource):
 
     def executor(self, name: str) -> ExecutorHealth:
         return self._c.send(calls.admin_get_executor(name))
+
+    def usage(
+        self, *, period: str | None = None, start: datetime | str | None = None
+    ) -> AdminUsageReport:
+        """Cost by tenant for a UTC ``day`` or ``month`` and spend against the global cap."""
+        return self._c.send(calls.admin_get_usage(period=period, start=start))
 
     def audit(
         self,

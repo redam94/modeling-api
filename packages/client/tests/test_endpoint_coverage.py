@@ -156,6 +156,7 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "admin_list_executors": lambda: c.admin_list_executors(None, None),
     "admin_get_executor": lambda: c.admin_get_executor("cloudrun-jobs"),
     "admin_list_audit": lambda: c.admin_list_audit(None, None),
+    "admin_get_usage": lambda: c.admin_get_usage(period="day"),
 }
 
 PROGRAM_ENDPOINTS = tuple(d for d in ENDPOINTS if d.operation_id not in NOT_FOR_PROGRAMS)

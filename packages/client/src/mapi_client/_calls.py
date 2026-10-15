@@ -17,6 +17,7 @@ from mapi_spec.api import (
     MAX_PREFER_WAIT_SECONDS,
     PAGE_LIMIT_MAX,
     PREFER_HEADER,
+    AdminUsageReport,
     ApiToken,
     ArtifactLink,
     AuditEvent,
@@ -813,6 +814,18 @@ def admin_list_executors(limit: int | None, cursor: str | None) -> Call[Page[Exe
 def admin_get_executor(name: str) -> Call[ExecutorHealth]:
     path = f"{_ADMIN}/executors/{segment(name)}"
     return Call("GET", path, parse_model(ExecutorHealth), scoped=False)
+
+
+def admin_get_usage(
+    *, period: str | None = None, start: datetime | str | None = None
+) -> Call[AdminUsageReport]:
+    return Call(
+        "GET",
+        f"{_ADMIN}/usage",
+        parse_model(AdminUsageReport),
+        params=usage_params(period, start, None),
+        scoped=False,
+    )
 
 
 def admin_list_audit(
