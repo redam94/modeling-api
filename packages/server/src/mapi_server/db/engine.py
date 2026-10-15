@@ -74,7 +74,9 @@ def start_embedded_postgres(pg_dir: Path) -> str:
         srv = _EMBEDDED.get(pg_dir)
         if srv is None:
             pg_dir.mkdir(parents=True, exist_ok=True)
-            srv = pgserver.get_server(str(pg_dir), cleanup_mode="stop")
+            srv = pgserver.get_server(  # type: ignore[attr-defined,unused-ignore]
+                str(pg_dir), cleanup_mode="stop"
+            )
             _EMBEDDED[pg_dir] = srv
         uri: str = srv.get_uri()
         return uri

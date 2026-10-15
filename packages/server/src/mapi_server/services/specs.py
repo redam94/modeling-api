@@ -1,0 +1,310 @@
+"""Static spec validation and reference resolution (JSON only, plan §3.3 layer 2).
+
+Documents are parsed with the strict loader (no anchors/tags, size/depth/node caps),
+validated as typed documents, then checked against the cached catalog and the *stored*
+``DataSchema`` of the referenced dataset version — never against data. Everything is
+reported at once as :class:`~mapi_spec.errors.Issue` objects with JSON pointers.
+"""
+
+from __future__ import annotations
+
+import copy
+from dataclasses import dataclass, field
+from typing import Any
+
+from mapi_spec.coords import DataSummary
+from mapi_spec.errors import (
+    ErrorCode,
+    Issue,
+    MapiError,
+    Severity,
+    ValidationFailed,
+    has_errors,
+)
+from mapi_spec.loader import check_limits, parse_document, parse_text, spec_hash
+from mapi_spec.refs import DatasetRef, EndpointRef, ModelVersionRef
+from mapi_spec.schema import DataSchema
+from mapi_spec.spec import ModelSpec, ScoreRequest
+from mapi_spec.validate import ResolvedSpec, ScoreMetadata, validate_score_request, validate_spec
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from mapi_server.db import models as m
+from mapi_server.services.catalog import CatalogService, CatalogSnapshot
+from mapi_server.services.runs import Scope
+
+__all__ = [
+    "DOCUMENT_KINDS",
+    "Validation",
+    "check_score_request",
+    "first_error",
+    "pin_document",
+    "resolve_dataset",
+    "resolve_model_version",
+    "validate_document",
+]
+
+DOCUMENT_KINDS = ("ModelSpec", "ScoreRequest", "Sweep", "Backtest", "SBC", "Campaign")
+
+
+@dataclass
+class Validation:
+    """Outcome of :func:`validate_document`."""
+
+    document: dict[str, Any]
+    kind: str | None
+    hash: str | None
+    issues: list[Issue] = field(default_factory=list)
+    stages: list[tuple[str, DataSchema | None, bool]] = field(default_factory=list)
+    resolved: ResolvedSpec | None = None
+    catalog: CatalogSnapshot | None = None
+    dataset: m.DatasetVersion | None = None
+    side_tables: dict[str, m.DatasetVersion] = field(default_factory=dict)
+    model_version: m.ModelVersion | None = None
+    typed: ModelSpec | ScoreRequest | None = None
+
+    @property
+    def valid(self) -> bool:
+        return not has_errors(self.issues)
+
+
+def _issue(code: ErrorCode, pointer: str, message: str) -> Issue:
+    return Issue(code=code, pointer=pointer, message=message[:2000])
+
+
+async def resolve_dataset(
+    session: AsyncSession, scope: Scope, ref: DatasetRef
+) -> tuple[m.DatasetVersion | None, str | None]:
+    """The **ready** dataset version a ref points at, or ``(None, reason)``."""
+    if ref.project != scope.project_id:
+        return None, f"project {ref.project!r} does not exist (M1 has only {scope.project_id!r})"
+    ds = (
+        await session.execute(
+            select(m.Dataset).where(
+                m.Dataset.tenant_id == scope.tenant_id,
+                m.Dataset.project_id == scope.project_id,
+                m.Dataset.name == ref.name,
+            )
+        )
+    ).scalar_one_or_none()
+    if ds is None:
+        return None, f"dataset {ref.name!r} does not exist"
+    stmt = select(m.DatasetVersion).where(
+        m.DatasetVersion.dataset_id == ds.id, m.DatasetVersion.status == "ready"
+    )
+    if ref.is_pinned:
+        stmt = stmt.where(m.DatasetVersion.sha256 == ref.version)
+    elif ref.version_number is not None:
+        stmt = stmt.where(m.DatasetVersion.version == ref.version_number)
+    stmt = stmt.order_by(m.DatasetVersion.version.desc()).limit(1)
+    dv = (await session.execute(stmt)).scalar_one_or_none()
+    if dv is None:
+        return None, f"no ready version of dataset {ref.name!r} matches {ref.version or 'latest'!r}"
+    return dv, None
+
+
+async def resolve_model_version(
+    session: AsyncSession, scope: Scope, ref: ModelVersionRef | EndpointRef
+) -> tuple[m.ModelVersion | None, str | None]:
+    if isinstance(ref, EndpointRef):
+        return None, "endpoint aliases arrive in v0.4 (M3); use model://project/name@vN"
+    if ref.project != scope.project_id:
+        return None, f"project {ref.project!r} does not exist"
+    model = (
+        await session.execute(
+            select(m.Model).where(
+                m.Model.tenant_id == scope.tenant_id,
+                m.Model.project_id == scope.project_id,
+                m.Model.name == ref.name,
+            )
+        )
+    ).scalar_one_or_none()
+    if model is None:
+        return None, f"model {ref.name!r} does not exist"
+    stmt = select(m.ModelVersion).where(m.ModelVersion.model_id == model.id)
+    if ref.version == "latest":
+        stmt = stmt.order_by(m.ModelVersion.version.desc()).limit(1)
+    else:
+        stmt = stmt.where(m.ModelVersion.version == int(ref.version.removeprefix("v")))
+    mv = (await session.execute(stmt)).scalar_one_or_none()
+    if mv is None:
+        return None, f"model {ref.name!r} has no version {ref.version!r}"
+    return mv, None
+
+
+async def validate_document(
+    session: AsyncSession,
+    scope: Scope,
+    catalogs: CatalogService,
+    *,
+    text: str | None = None,
+    document: dict[str, Any] | None = None,
+    dataset_override: str | None = None,
+) -> Validation:
+    """Parse and statically validate one document. Parse/size errors raise; everything
+    else is reported as issues (so editors get every problem at once)."""
+    data: Any = parse_text(text) if text is not None else document
+    if text is None:
+        check_limits(data)
+    if not isinstance(data, dict):
+        raise ValidationFailed(
+            [_issue(ErrorCode.SCHEMA_INVALID, "", "a document must be a mapping")]
+        )
+    kind = data.get("kind") if data.get("kind") in DOCUMENT_KINDS else None
+    out = Validation(document=data, kind=kind, hash=spec_hash(data))
+    try:
+        typed = parse_document(data)
+    except ValidationFailed as exc:
+        out.issues.extend(exc.issues)
+        return out
+    except MapiError as exc:  # UnsupportedApiVersion and friends
+        out.issues.append(exc.to_issue())
+        return out
+    if isinstance(typed, ModelSpec):
+        out.typed = typed
+        await _validate_model_spec(session, scope, catalogs, typed, out, dataset_override)
+    elif isinstance(typed, ScoreRequest):
+        out.typed = typed
+        await _validate_score(session, scope, typed, out)
+    else:
+        out.issues.append(
+            _issue(
+                ErrorCode.CAPABILITY_UNSUPPORTED,
+                "/kind",
+                f"{typed.kind} documents (fan-out parents) arrive in v0.5 (M4)",
+            )
+        )
+    return out
+
+
+async def _validate_model_spec(
+    session: AsyncSession,
+    scope: Scope,
+    catalogs: CatalogService,
+    spec: ModelSpec,
+    out: Validation,
+    dataset_override: str | None,
+) -> None:
+    if spec.metadata.project != scope.project_id:
+        out.issues.append(
+            _issue(
+                ErrorCode.REF_UNRESOLVED,
+                "/metadata/project",
+                f"project {spec.metadata.project!r} does not exist "
+                f"(M1 has only {scope.project_id!r})",
+            )
+        )
+    snapshot = await catalogs.require(session)
+    out.catalog = snapshot
+    ref = spec.data.dataset
+    pointer = "/data/dataset"
+    if dataset_override is not None:
+        try:
+            ref = DatasetRef.parse(dataset_override)
+        except ValueError as exc:
+            out.issues.append(_issue(ErrorCode.SCHEMA_INVALID, "/dataset", str(exc)))
+            return
+        pointer = "/dataset"
+    dv, why = await resolve_dataset(session, scope, ref)
+    for name, table in spec.data.side_tables.items():
+        tv, twhy = await resolve_dataset(session, scope, table.ref)
+        if tv is None:
+            out.issues.append(
+                _issue(ErrorCode.REF_UNRESOLVED, f"/data/side_tables/{name}/ref", twhy or "")
+            )
+        else:
+            out.side_tables[name] = tv
+    if dv is None:
+        out.issues.append(_issue(ErrorCode.REF_UNRESOLVED, pointer, why or "dataset not found"))
+        return
+    out.dataset = dv
+    if dv.data_schema is None:
+        out.issues.append(
+            _issue(ErrorCode.SCHEMA_INVALID, pointer, "the dataset version has no stored schema")
+        )
+        return
+    result = validate_spec(spec, snapshot.catalog, DataSchema.model_validate(dv.data_schema))
+    out.issues.extend(result.issues)
+    split = result.resolved.split_stage if result.resolved else None
+    out.stages = [(st.name, st.schema, st.name == split) for st in result.stages]
+    out.resolved = result.resolved
+
+
+async def _validate_score(
+    session: AsyncSession, scope: Scope, req: ScoreRequest, out: Validation
+) -> None:
+    mv, why = await resolve_model_version(session, scope, req.model)
+    if mv is None:
+        out.issues.append(_issue(ErrorCode.REF_UNRESOLVED, "/model", why or "model not found"))
+        return
+    out.model_version = mv
+    await check_score_request(session, scope, req, mv, out.issues)
+
+
+async def check_score_request(
+    session: AsyncSession,
+    scope: Scope,
+    req: ScoreRequest,
+    mv: m.ModelVersion,
+    issues: list[Issue],
+) -> dict[str, m.DatasetVersion]:
+    """CoordPlan checks from metadata + resolution of the request's dataset refs."""
+    datasets: dict[str, m.DatasetVersion] = {}
+    for name, ref in (("data", req.data), ("scenario", req.scenario)):
+        if ref is None:
+            continue
+        dv, why = await resolve_dataset(session, scope, ref)
+        if dv is None:
+            issues.append(_issue(ErrorCode.REF_UNRESOLVED, f"/{name}", why or ""))
+        else:
+            datasets[name] = dv
+    for name, ref in req.side_tables.items():
+        dv, why = await resolve_dataset(session, scope, ref)
+        if dv is None:
+            issues.append(_issue(ErrorCode.REF_UNRESOLVED, f"/side_tables/{name}", why or ""))
+        else:
+            datasets[f"side_table.{name}"] = dv
+    if mv.score_meta is None:
+        issues.append(
+            _issue(
+                ErrorCode.CAPABILITY_UNSUPPORTED,
+                "/model",
+                "this model version has no stored score metadata",
+            )
+        )
+        return datasets
+    meta = ScoreMetadata.model_validate(mv.score_meta)
+    payload = datasets.get("scenario") or datasets.get("data")
+    summary = None
+    if payload is not None and payload.summary is not None:
+        summary = DataSummary.model_validate(payload.summary)
+    issues.extend(validate_score_request(req, meta, summary))
+    return datasets
+
+
+def pin_document(document: dict[str, Any], v: Validation) -> dict[str, Any]:
+    """The resolved document handed to the runner: ``use:`` ranges pinned to the exact
+    versions they resolved to and dataset refs pinned to their content hash."""
+    doc = copy.deepcopy(document)
+    rs = v.resolved
+    if rs is not None:
+        by_id = {s.id: s.resolved for s in rs.steps}
+        for step in doc.get("pipeline", []):
+            if isinstance(step, dict) and step.get("id") in by_id:
+                step["use"] = by_id[step["id"]]
+        if isinstance(doc.get("model"), dict):
+            doc["model"]["use"] = rs.model.resolved
+    data = doc.get("data")
+    if isinstance(data, dict) and v.dataset is not None and v.dataset.sha256:
+        ref = DatasetRef.parse(str(data["dataset"]))
+        data["dataset"] = str(ref.pinned(v.dataset.sha256.removeprefix("sha256:")))
+        for name, tv in v.side_tables.items():
+            table = data.get("side_tables", {}).get(name)
+            if isinstance(table, dict) and tv.sha256:
+                tref = DatasetRef.parse(str(table["ref"]))
+                table["ref"] = str(tref.pinned(tv.sha256.removeprefix("sha256:")))
+    return doc
+
+
+def first_error(issues: list[Issue]) -> Issue | None:
+    return next((i for i in issues if i.severity is Severity.ERROR), None)

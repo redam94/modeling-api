@@ -24,7 +24,7 @@ def _raw_execute(sql: str) -> None:
     driver_conn = op.get_bind().connection.driver_connection
     if driver_conn is None:  # pragma: no cover - always a live psycopg connection here
         raise RuntimeError("no DBAPI connection available")
-    driver_conn.execute(sql)  # type: ignore[attr-defined]
+    driver_conn.execute(sql)
 
 
 def upgrade() -> None:

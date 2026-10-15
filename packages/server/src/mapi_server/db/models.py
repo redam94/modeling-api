@@ -256,6 +256,7 @@ class Run(_Scoped, Base):
     checkpointable: Mapped[bool] = mapped_column(Boolean, default=False)
     infra_retries: Mapped[int] = mapped_column(Integer, default=0)
     finalize_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    finalize: Mapped[dict[str, Any]] = mapped_column(default=dict)  # finalizer reservations
     last_event_id: Mapped[int] = mapped_column(BigInteger, default=0)
     last_event_at: Mapped[datetime | None] = mapped_column()
     lease_owner: Mapped[str | None] = mapped_column(String(128))

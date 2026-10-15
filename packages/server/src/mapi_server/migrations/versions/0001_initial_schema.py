@@ -118,6 +118,7 @@ def upgrade() -> None:
         sa.Column("checkpointable", sa.Boolean(), nullable=False),
         sa.Column("infra_retries", sa.Integer(), nullable=False),
         sa.Column("finalize_attempts", sa.Integer(), nullable=False),
+        sa.Column("finalize", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("last_event_id", sa.BigInteger(), nullable=False),
         sa.Column("last_event_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("lease_owner", sa.String(length=128), nullable=True),
