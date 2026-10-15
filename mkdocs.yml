@@ -192,6 +192,7 @@ nav:
       - Cloud Run Jobs executor: operations/cloud-run.md
       - Observability: operations/observability.md
       - Security suite: operations/security-suite.md
+      - M2 verification: operations/m2-verification.md
       - Configuration reference: operations/configuration.md
       - Troubleshooting: operations/troubleshooting.md
   - Roadmap:

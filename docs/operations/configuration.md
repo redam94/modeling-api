@@ -337,6 +337,9 @@ The variables Terraform sets on the Cloud Run services (the deployment contract 
 |---|---|
 | `MAPI_E2E` | Set by `pnpm --filter @mapi/web e2e`: run the Playwright `@e2e` suite against a running stack |
 | `MAPI_DEV_ACCOUNT` | The development-IdP account `make seed` and the end-to-end suites sign in as (default `admin@dev.local`) |
+| `MAPI_E2E_ACCOUNTS` | The two development-IdP accounts the M2 tenancy suite makes tenant admins (default `analyst@dev.local,viewer@dev.local`) |
+| `MAPI_E2E_UI_ACCOUNT` | The tenant admin of the M2 browser flow and the fit burst (default `analyst@dev.local`) |
+| `MAPI_E2E_BURST_RUNS` | Opt-in: how many concurrent real fits `tests/e2e/test_m2_burst_stack.py` submits ([M2 verification](m2-verification.md)) |
 | `MAPI_UPDATE_SNAPSHOTS` | `1` regenerates the contract snapshot of `mapi_spec` |
 | `MAPI_HYPOTHESIS_EXAMPLES` | Examples per property in the wire-format round-trip tests (default 60) |
 

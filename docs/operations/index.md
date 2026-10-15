@@ -62,5 +62,7 @@ Whichever you choose:
   runbooks in `ops/`.
 - [Security suite](security-suite.md): the sandbox-escape probes and what each isolation level
   must block.
+- [M2 verification](m2-verification.md): what was verified of the M2 exit criteria without a
+  cloud project, the measured numbers, and the steps left for a real one.
 - [Configuration reference](configuration.md): every environment variable.
 - [Troubleshooting](troubleshooting.md): port conflicts and everything else.
