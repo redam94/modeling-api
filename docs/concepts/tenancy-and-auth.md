@@ -48,8 +48,12 @@ configuration:
 | `verified` | Known customers (identity or card verified) | gVisor or a microVM, with egress and DNS enforced |
 | `public` | Anyone who signed up | gVisor or a microVM, with egress and DNS enforced |
 
-So a `public` tenant's runs never land on the `local-process` or plain `docker` executor;
-they go to Cloud Run Jobs (a microVM per run) or `docker-gvisor`.
+So a `verified` or `public` tenant's runs never land on the `local-process` or plain `docker`
+executor. The executor must also have passed the executor conformance suite and the security
+suite for its current configuration, recorded by an operator
+([the shared-tier gate](../operations/cloud-run.md#the-shared-tier-gate)). Until an executor
+qualifies, those tenants' runs are refused at submission. New tenants are `verified` by
+default.
 
 A **project** is a workspace inside a tenant and the unit of access control. Its id is a short
 slug, unique in the tenant, because it appears in references such as

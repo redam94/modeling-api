@@ -14,6 +14,7 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.runs import load_run, now
+from mapi_server_testkit.builders import TREND_SPEC, ready_dataset
 from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_server_testkit.identity import make_tenant
 from mapi_spec.admin import NETWORK_PROBES
@@ -22,7 +23,7 @@ from mapi_spec.conformance_executor import ConformanceTarget, applicable_cases
 from mapi_spec.executor import ExecutorCaps, Isolation
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 
 pytestmark = pytest.mark.integration
 
@@ -33,12 +34,13 @@ class SandboxedExecutor(FakeExecutor):
 
     isolation: Isolation = Isolation.MICROVM
     max_tasks: int = 1
+    dns: bool = True
 
     def caps(self) -> ExecutorCaps:
         return ExecutorCaps(
             isolation=self.isolation,
             egress_enforced=True,
-            dns_enforced=True,
+            dns_enforced=self.dns,
             classes=[ResourceClass.S, ResourceClass.M, ResourceClass.L],
             max_tasks=self.max_tasks,
         )
@@ -191,3 +193,46 @@ async def test_evidence_must_name_the_executor(
     )
     assert r.status_code == 422
     assert (await client.get(f"/v1/admin/executors/{ex.name}/evidence")).status_code == 404
+
+
+async def test_runs_nobody_can_place_are_refused_at_submission(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """A verified tenant (the default tier) on a stack whose executor cannot take it gets a
+    clear refusal when submitting, instead of a run that fails as INFRA_ERROR at lease."""
+    await ready_dataset(ctx)
+    r = await client.post("/v1/specs", json={"yaml": TREND_SPEC})
+    assert r.status_code == 201, r.text
+    fit = {"kind": "fit", "spec_id": r.json()["id"], "revision": 1}
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.Tenant).where(m.Tenant.id == "default").values(trust_tier="verified")
+        )
+
+    async def runs() -> int:
+        async with ctx.db.session() as s:
+            return int((await s.execute(select(func.count()).select_from(m.Run))).scalar_one())
+
+    # no executor has reported yet: accepted (the dispatcher decides at lease)
+    assert (await client.post("/v1/runs", json=fit)).status_code == 201
+    # cloudrun-jobs as Terraform deploys it: DNS enforcement not verified
+    deployed = SandboxedExecutor(name="cloudrun-jobs", dns=False)
+    await Dispatcher(ctx, deployed).report()
+    r = await client.post("/v1/runs", json=fit)
+    assert r.status_code == 503 and r.json()["code"] == "INFRA_ERROR", r.text
+    assert "verified" in r.json()["detail"] and "DNS" in r.json()["detail"]
+    assert await runs() == 1
+    # DNS verified, but no suite evidence recorded yet: still refused
+    verified = SandboxedExecutor(name="cloudrun-jobs")
+    await Dispatcher(ctx, verified).report()
+    r = await client.post("/v1/runs", json=fit)
+    assert r.status_code == 503 and "report" in r.json()["detail"]
+    t = now()
+    await _put(
+        client,
+        verified,
+        conformance=_conformance(verified, at=t),
+        security=_security(verified, at=t),
+    )
+    assert (await client.post("/v1/runs", json=fit)).status_code == 201
+    assert await runs() == 2

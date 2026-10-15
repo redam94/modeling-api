@@ -195,6 +195,22 @@ Work through the [security hardening](security-hardening.md) page, and the
 [M0 verification checklist](security-hardening.md#m0-verification-checklist) before the first
 production deploy.
 
+!!! warning "Verified tenants cannot run until DNS enforcement is verified"
+    `verified` (the default tier of new tenants, the private beta) and `public` tenants need
+    an executor with egress **and** DNS enforced. A fresh stack sets neither
+    `MAPI_CLOUDRUN_DNS_ENFORCED` nor any suite evidence, so their runs are refused at
+    submission (`INFRA_ERROR`, 503) and only `internal` and `self_hosted_trusted` tenants run.
+    To open the shared tiers:
+
+    1. pass the DNS red-team gate of the M0 checklist from a Job of this environment;
+    2. set `MAPI_CLOUDRUN_DNS_ENFORCED = "true"` for the orchestrator through
+       `control.extra_env` (`{ orchestrator = { MAPI_CLOUDRUN_DNS_ENFORCED = "true" } }`) and
+       deploy;
+    3. run the executor conformance suite and the security suite against the deployed
+       executor and record both with `PUT /v1/admin/executors/cloudrun-jobs/evidence`
+       ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)). Evidence expires after
+       `MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S`, so record the nightly runs.
+
 ## Continuous deployment
 
 `.github/workflows/deploy.yml` deploys on manual dispatch only, without service-account keys:

@@ -176,7 +176,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_CLOUDRUN_BACKOFF_BASE_S`, `MAPI_CLOUDRUN_BACKOFF_CAP_S` | `1`, `64` | Exponential back-off after a `429` (never shorter than `Retry-After`) |
 | `MAPI_CLOUDRUN_TIMEOUT_MARGIN_S` | `120` | Task timeout = run timeout + this margin (the reconciler stops runs at their deadline; this is the backstop) |
 | `MAPI_CLOUDRUN_EGRESS_ENFORCED` | `true` | The exec network denies all egress except the restricted Google APIs VIP |
-| `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified to apply to Jobs. Public tenants are placed only when both are `true` |
+| `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified to apply to Jobs (the M0 DNS red-team gate). `verified` and `public` tenants (`verified` is the default tier) are placed only when both are `true` **and** passing suite evidence is recorded ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)); until then their runs are refused at submission |
 | `MAPI_CLOUDRUN_ADOPT_LOOKBACK_S` | `93600` | How far back orphan adoption lists executions |
 
 **Pub/Sub push events** (`POST /internal/events`)

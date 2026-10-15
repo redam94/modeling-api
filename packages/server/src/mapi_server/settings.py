@@ -283,8 +283,9 @@ class Settings(BaseSettings):
     )
     cloudrun_dns_enforced: bool = Field(
         False,
-        description="The DNS response policy is verified to apply to Jobs [verify M0]; public "
-        "tenants are only placed when both egress and DNS are enforced",
+        description="The DNS response policy is verified to apply to Jobs [verify M0]; "
+        "verified and public tenants are only placed when both egress and DNS are enforced "
+        "(and suite evidence is recorded)",
     )
     cloudrun_adopt_lookback_s: float = Field(
         26 * 3600, gt=0, description="How far back orphan adoption lists executions"

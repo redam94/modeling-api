@@ -53,6 +53,7 @@ from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import verified_bundle_object, verify_bundle_inputs
 from mapi_server.services.catalog import CatalogSnapshot
 from mapi_server.services.cost import run_estimate
+from mapi_server.services.evidence import placement_problem
 from mapi_server.services.quotas import admit_run
 from mapi_server.services.runs import Scope, apply_transition, create_run, now
 from mapi_server.services.runspec import StoredRef
@@ -110,9 +111,10 @@ async def admit(
 ) -> None:
     """Stamp scheduling and accounting fields, then check kill switches and quotas.
 
-    Runs created by a request are checked against the kill switches and the token, tenant
-    and global quotas (``QUOTA_EXCEEDED``/429, audited; no run is created). Platform runs
-    (``describe``) are only stamped.
+    Runs created by a request are checked against placement (an executor that reported
+    recently must be able to take the tenant's tier: ``INFRA_ERROR``/503 otherwise), the kill
+    switches and the token, tenant and global quotas (``QUOTA_EXCEEDED``/429, audited; no run
+    is created). Platform runs (``describe``) are only stamped.
     """
     settings = ctx.settings
     kind = RunKind(run.kind)
@@ -133,7 +135,21 @@ async def admit(
         fanout_tasks=max(1, run.task_count or 1),
         resource_class=rc,
     )
+    tenant = await session.get(m.Tenant, run.tenant_id)
     async with ctx.db.session() as system:
+        if tenant is not None:
+            # refuse up front what no executor can place (trust tier, class, residency,
+            # shared-tier evidence) instead of failing the run at lease
+            problem = await placement_problem(
+                system,
+                tier=tenant.trust_tier,
+                resource_class=rc,
+                residency=tenant.data_residency,
+                now=now(),
+            )
+            if problem is not None:
+                detail = f"no executor can run {tenant.trust_tier}-tier work now ({problem})"
+                raise MapiError(detail[:2000], code=ErrorCode.INFRA_ERROR)
         decision = await admit_run(
             session,
             system,

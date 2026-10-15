@@ -221,7 +221,7 @@ longer counts. `internal` and `self_hosted_trusted` tenants are not gated.
 | `MAPI_CLOUDRUN_BACKOFF_BASE_S`, `MAPI_CLOUDRUN_BACKOFF_CAP_S` | `1`, `64` | Exponential back-off after a `429` |
 | `MAPI_CLOUDRUN_TIMEOUT_MARGIN_S` | `120` | Task timeout = run timeout + margin |
 | `MAPI_CLOUDRUN_EGRESS_ENFORCED` | `true` | The exec network denies all egress |
-| `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified for Jobs **[verify M0]**; public tenants need both |
+| `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified for Jobs **[verify M0]**; `verified` and `public` tenants need both, plus [recorded evidence](#the-shared-tier-gate) |
 | `MAPI_CLOUDRUN_ADOPT_LOOKBACK_S` | `93600` | How far back orphan adoption looks |
 | `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | — | Expected push token (set both) |
 | `MAPI_PUBSUB_PUSH_SUBSCRIPTIONS` | any | Accepted subscriptions (comma-separated) |

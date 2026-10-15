@@ -113,6 +113,10 @@ Record the date, the result and the evidence (log query, screenshot) for each.
   `<random>.probe.<zone you control>` (A, AAAA and TXT). Pass: the answer is the sinkhole (or
   NODATA) and the zone's authoritative query logs never see the name. Plan §9's red-team gate;
   if it fails, Cloud Run Jobs cannot host untrusted code (fallback: GKE Sandbox).
+  **Until this passes, `verified` and `public` tenants stay off:** only then set
+  `MAPI_CLOUDRUN_DNS_ENFORCED=true` on the orchestrator and record the security-suite and
+  conformance evidence ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)). New tenants
+  default to `verified`, so the private beta needs this item.
 - [ ] **A wildcard rule for the root (`*.`) is accepted** by Cloud DNS, and local data for
   A/AAAA does not leak TXT or other record types upstream (same probe, other types).
 - [ ] **The bypass rules work**: `storage.googleapis.com` resolves to 199.36.153.4–7 and
