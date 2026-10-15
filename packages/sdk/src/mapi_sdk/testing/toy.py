@@ -182,6 +182,7 @@ class ScaleStep(Step[ScaleSettings, ScaleState]):
     Settings = ScaleSettings
     State = ScaleState
     invertible = True
+    provides = ("scaling",)
     var_params = ("vars",)
     dim_params = ("over",)
     unseen_levels_param = "unseen_levels"

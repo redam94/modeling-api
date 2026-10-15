@@ -246,6 +246,8 @@ class Step[SettingsT: StepSettings, StateT: StepState]:
     var_params: ClassVar[tuple[str, ...]] = ()
     dim_params: ClassVar[tuple[str, ...]] = ()
     side_table_params: ClassVar[tuple[str, ...]] = ()
+    provides: ClassVar[tuple[Literal["scaling", "carryover"], ...]] = ()
+    """Preprocessing a model can own (``Capabilities.owns``): scaling or carry-over."""
     unseen_levels_param: ClassVar[str | None] = None
     effect_template: ClassVar[Mapping[str, JsonValue]] = {}
     context_template: ClassVar[Mapping[str, JsonValue] | None] = None
@@ -282,6 +284,7 @@ class Step[SettingsT: StepSettings, StateT: StepState]:
             var_params=list(cls.var_params),
             dim_params=list(cls.dim_params),
             side_table_params=list(cls.side_table_params),
+            provides=list(cls.provides),
             summary=cls.summary,
             summary_plain=cls.summary_plain,
         )

@@ -375,6 +375,31 @@ def _depends_on_target(
     return bool(names & set(schema.targets))
 
 
+_OWNED_ROLES = frozenset({Role.TARGET, Role.MEDIA, Role.SPEND})
+
+
+def _check_owned(
+    caps: Capabilities,
+    candidates: Sequence[tuple[int, str, list[str], list[str]]],
+    issues: list[Issue],
+) -> None:
+    """A model that ``owns`` scaling or carry-over does it itself (plan §4.3): the same
+    platform preprocessing on its target/media variables would apply it twice."""
+    for idx, step_id, provides, touched in candidates:
+        for what in provides:
+            if what not in caps.owns:
+                continue
+            issues.append(
+                Issue(
+                    code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                    pointer=json_pointer("pipeline", idx),
+                    message=f"the model owns {what}; step {step_id!r} would apply {what} to "
+                    f"{sorted(touched)} a second time",
+                    suggested_action=f"Remove the step: the model does its own {what}.",
+                )
+            )
+
+
 def _template_targets(spec: ModelSpec, catalog: Catalog) -> list[str]:
     """Canonical target variables of the model's resolved schema template (best effort)."""
     entry = catalog.resolve_model(spec.model.use)
@@ -432,6 +457,7 @@ def validate_spec(spec: ModelSpec, catalog: Catalog, raw_schema: DataSchema) -> 
 
     # 2-5. steps ------------------------------------------------------------------------
     resolved_steps: list[ResolvedStep | None] = []
+    owned_candidates: list[tuple[int, str, list[str], list[str]]] = []
     for i, call in enumerate(spec.pipeline):
         ptr = json_pointer("pipeline", i)
         input_stage = stages[-1].name
@@ -496,6 +522,15 @@ def validate_spec(spec: ModelSpec, catalog: Catalog, raw_schema: DataSchema) -> 
         # Best effort when the input stage is unknown (e.g. after a dynamic step): judge target
         # dependence against the last statically known stage.
         input_schema = next((st.schema for st in reversed(stages[:-1]) if st.schema), None)
+        if entry.provides and input_schema is not None:
+            touched = [
+                name
+                for param in entry.var_params
+                for _, name in _names(settings.get(param))
+                if name in input_schema.vars and input_schema.vars[name].role in _OWNED_ROLES
+            ]
+            if touched:
+                owned_candidates.append((i, call.id, list(entry.provides), touched))
         resolved_steps.append(
             ResolvedStep(
                 id=call.id,
@@ -517,6 +552,8 @@ def validate_spec(spec: ModelSpec, catalog: Catalog, raw_schema: DataSchema) -> 
 
     # 7-8. model ------------------------------------------------------------------------
     resolved_model = _check_model(spec, catalog, stages[-1].schema, resolved_steps, issues)
+    if resolved_model is not None:
+        _check_owned(resolved_model.capabilities, owned_candidates, issues)
 
     resolved: ResolvedSpec | None = None
     if not has_errors(issues) and resolved_model is not None and all(resolved_steps):

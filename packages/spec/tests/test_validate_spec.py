@@ -468,6 +468,32 @@ def test_recursion_ok_when_model_owns_it(catalog: Catalog) -> None:
     assert _run(owning, _target_lag_spec(8, [1])).ok
 
 
+def _owning(catalog: Catalog, owns: list[str]) -> Catalog:
+    data = catalog.model_dump(mode="json")
+    for m in data["models"]:
+        if m["manifest"]["id"] == "mmm.hierarchical_geo":
+            m["manifest"]["capabilities"]["owns"] = owns
+    return Catalog.model_validate(data)
+
+
+def test_platform_scaling_rejected_when_the_model_owns_it(catalog: Catalog) -> None:
+    """``owns: [scaling]``: a platform scaling step on the target/media would double-scale."""
+    res = _run(_owning(catalog, ["scaling", "inverse_units"]), _e33())
+    errs = {i.pointer: i for i in res.errors if i.code is ErrorCode.CAPABILITY_UNSUPPORTED}
+    assert set(errs) == {"/pipeline/2", "/pipeline/3"}  # scale_spend (spend), scale_y (y)
+    assert "owns scaling" in errs["/pipeline/3"].message
+    assert res.resolved is None
+    # without ownership the same pipeline is fine
+    assert _run(catalog, _e33()).ok
+
+
+def test_platform_carryover_rejected_when_the_model_owns_it(catalog: Catalog) -> None:
+    res = _run(_owning(catalog, ["carryover"]), _e33())
+    errs = [i for i in res.errors if i.code is ErrorCode.CAPABILITY_UNSUPPORTED]
+    assert [i.pointer for i in errs] == ["/pipeline/4"]  # lags: lag_tensor on spend
+    assert "owns carryover" in errs[0].message
+
+
 def test_recursion_unknown_horizon_warns(catalog: Catalog) -> None:
     d = _target_lag_spec(8, [1])
     d["data"]["split"] = {
