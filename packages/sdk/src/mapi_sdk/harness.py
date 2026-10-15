@@ -1014,7 +1014,7 @@ def score_bundle(
                     )
                 )
         elif "inverse_units" in caps.owns:
-            space = {str(v): "model-owned" for v in pred.data_vars}
+            pred, space = _model_owned(pred, bundle)
         else:
             space = {str(v): rs.model_stage for v in pred.data_vars}
         return pred, space, retrans
@@ -1091,6 +1091,33 @@ def score_bundle(
     nodes: dict[str, xr.Dataset] = {"/": xr.Dataset(attrs=attrs)}
     nodes.update({f"/{k}": v for k, v in groups.items()})
     return xr.DataTree.from_dict(nodes)
+
+
+def _model_owned(pred: xr.Dataset, bundle: Bundle) -> tuple[xr.Dataset, dict[str, str]]:
+    """Label outputs of a model that owns ``inverse_units``, per variable.
+
+    Such a model inverts its own scaling, so its outputs are in the units of its input:
+    the declared ``units``, else those of ``units_of`` at the model stage (the raw units
+    when no platform step changed them).
+    """
+    rs = bundle.resolved
+    stage = rs.stages.get(rs.model_stage)
+    outputs = bundle.model.manifest.outputs
+    updates: dict[str, xr.DataArray] = {}
+    space: dict[str, str] = {}
+    for v in pred.data_vars:
+        name = str(v)
+        decl = outputs.get(name)
+        units = decl.units if decl is not None else None
+        src = decl.units_of if decl is not None else None
+        if units is None and src is not None and stage is not None and src in stage.vars:
+            units = stage.vars[src].units
+        attrs = {**pred[v].attrs, "output_space": "model-owned"}
+        if units is not None:
+            attrs["units"] = units
+        updates[name] = pred[v].assign_attrs(attrs)
+        space[name] = "model-owned"
+    return pred.assign(updates), space
 
 
 def _requested_derived(bundle: Bundle, req: ScoreRequest) -> dict[str, xr.Dataset]:

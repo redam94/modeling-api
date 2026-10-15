@@ -819,11 +819,14 @@ def check_model(
         notes = []
         for var, stage in space.items():
             decl = manifest.outputs.get(var)
-            if decl is None or decl.units_of is None or stage == "model-owned":
+            if decl is None or decl.units_of is None:
                 continue
-            sch = b.resolved.stages.get(stage)
+            # a model owning inverse_units reports the units of its own input
+            sch = b.resolved.stages.get(b.model_stage if stage == "model-owned" else stage)
             want = (
-                sch.vars[decl.units_of].units
+                decl.units
+                if decl.units is not None
+                else sch.vars[decl.units_of].units
                 if sch is not None and decl.units_of in sch.vars
                 else None
             )

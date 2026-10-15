@@ -160,6 +160,24 @@ def test_models_owning_inverse_units_are_not_inverted_for_metrics(
     assert set(json.loads(out.attrs["output_space"]).values()) == {"model-owned"}
 
 
+def test_model_owned_outputs_carry_per_variable_units_and_space(
+    reg: Registry, e33_spec: Callable[..., ModelSpec], panel: tuple[xr.Dataset, xr.Dataset]
+) -> None:
+    """A model owning ``inverse_units`` reports its outputs in the units of its own input
+    (the model stage); every output variable says so, not only the root attrs."""
+    data, fx = panel
+    owned = fit_spec(_spec(e33_spec, "toy.owned_linear@^1", []), data, {"fx": fx}, reg)
+    req = load_score_request(
+        "apiVersion: mapi/v1\nkind: ScoreRequest\nmodel: endpoint://g/t\nmode: predict\n"
+    )
+    out = score_bundle(owned, req, data.isel(date=slice(-28, None)), registry=reg, return_full=True)
+    want = owned.resolved.stages[owned.resolved.model_stage].vars["y"].units  # type: ignore[union-attr]
+    for name in ("y_hat", "contributions"):
+        attrs = out["predictions"].to_dataset()[name].attrs
+        assert attrs["output_space"] == "model-owned"
+        assert attrs.get("units") == want
+
+
 def test_derived_quantities_requested_in_output_vars(
     reg: Registry, e33_spec: Callable[..., ModelSpec], panel: tuple[xr.Dataset, xr.Dataset]
 ) -> None:
