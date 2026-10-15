@@ -186,6 +186,17 @@ async def test_integrity_failures(
     assert errors and errors[0].payload["failure_class"] == "integrity"
 
 
+@pytest.mark.parametrize("name", ["diagnostics.json", "metrics.json", "plots.json", "coords.json"])
+async def test_deeply_nested_sidecar_is_an_integrity_failure(ctx: ServerContext, name: str) -> None:
+    """Hostile nesting must not escape as RecursionError (retried, no security alert)."""
+    run, att = await _finalizing(ctx)
+    await simulate_outputs(ctx, run, att, replace={name: b"[" * 100_000 + b"]" * 100_000})
+    assert await Finalizer(ctx).finalize(run.id, att.attempt) is RunState.FAILED
+    failed = await _reload(ctx, run.id)
+    assert failed.failure_class == "integrity"
+    assert failed.problem is not None and "nest" in failed.problem["detail"]
+
+
 async def test_missing_manifest_and_missing_complete_event(ctx: ServerContext) -> None:
     run, att = await _finalizing(ctx)
     assert await Finalizer(ctx).finalize(run.id, att.attempt) is RunState.FAILED

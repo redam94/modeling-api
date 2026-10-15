@@ -45,6 +45,7 @@ from mapi_server.api.common import (
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict
+from mapi_server.jsonlimits import loads_limited
 from mapi_server.services.runs import apply_transition, load_run, run_dto
 from mapi_server.services.submit import submit_retry, submit_run
 
@@ -344,7 +345,6 @@ async def sse_stream(
 def _live_json(
     run_id: str, attempt: int, seq: int, ts: object, type_: str, payload: dict[str, object]
 ) -> str:
-    import json
     from datetime import datetime
 
     stamp = ts.isoformat().replace("+00:00", "Z") if isinstance(ts, datetime) else str(ts)
@@ -393,7 +393,7 @@ async def list_run_plots(
         str(meta["bucket"]), str(meta["name"]), generation=int(meta["generation"]), max_bytes=cap
     )
     try:
-        docs = json.loads(raw)
+        docs = loads_limited(raw)
     except ValueError:
         docs = None
     if not isinstance(docs, list):

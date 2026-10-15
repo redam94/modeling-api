@@ -20,7 +20,6 @@ Transient storage errors propagate so the job is retried; after
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any
@@ -75,6 +74,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.jsonlimits import JsonTooDeep, loads_limited
 from mapi_server.services.runs import append_event, apply_transition, now
 from mapi_server.services.runspec import EMPTY_CATALOG_DIGEST, MANIFEST_MAX_BYTES
 from mapi_server.storage import list_all
@@ -192,10 +192,13 @@ class Finalizer:
         if meta.size > cap:
             raise IntegrityError(f"{meta.name!r} exceeds the {cap}-byte sidecar limit")
         raw = await self.ctx.store.get(bucket, meta.name, generation=meta.generation, max_bytes=cap)
+        name = meta.name.rsplit("/", 1)[-1]
         try:
-            return json.loads(raw)
+            return loads_limited(raw)
+        except JsonTooDeep as exc:
+            raise IntegrityError(f"{name!r}: {exc}") from None
         except ValueError as exc:
-            raise IntegrityError(f"{meta.name.rsplit('/', 1)[-1]!r} is not valid JSON") from exc
+            raise IntegrityError(f"{name!r} is not valid JSON") from exc
 
     async def _verify(self, run: m.Run, att: m.RunAttempt) -> _Verified:
         store, runs_bucket = self.ctx.store, self.ctx.buckets.runs

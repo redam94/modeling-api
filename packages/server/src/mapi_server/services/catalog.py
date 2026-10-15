@@ -9,7 +9,6 @@ model or plot code.
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime
@@ -25,6 +24,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
+from mapi_server.jsonlimits import loads_limited
 
 __all__ = ["CatalogService", "CatalogSnapshot", "CatalogUnavailable", "parse_catalog"]
 
@@ -54,7 +54,7 @@ def parse_catalog(raw: bytes | str | dict[str, Any]) -> Catalog:
         if len(raw) > MAX_CATALOG_BYTES:
             raise ValueError(f"catalog JSON exceeds {MAX_CATALOG_BYTES} bytes")
         try:
-            data = json.loads(raw)
+            data = loads_limited(raw)
         except ValueError as exc:
             raise ValueError(f"catalog is not valid JSON: {exc}") from exc
     else:
