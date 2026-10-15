@@ -233,3 +233,24 @@ def test_elpd_paths() -> None:
     spiky["y"][..., 0] = RNG.normal(-50, 30, (2, 50))
     _, _, d2 = elpd({"posterior": post, "log_likelihood": spiky}, ["elpd_loo"])
     assert d2 and d2[0].code == "PARETO_K_HIGH"
+
+
+def test_default_summaries_fit_the_stored_quantile_grid() -> None:
+    """Defaults never ask for quantiles the grid cannot reach; explicit requests still fail."""
+    from mapi_sdk.summarise import default_summary_names
+
+    assert default_summary_names(QUANT, R.QUANTILES) == ["median", "q10", "q90"]
+    wide = QUANT.assign_coords(quantile=[0.025, 0.5, 0.975])
+    assert default_summary_names(wide, R.QUANTILES) == ["median", "q5", "q95"]
+    upper = QUANT.assign_coords(quantile=[0.6, 0.8, 0.9])
+    assert default_summary_names(upper, R.QUANTILES) == ["q60", "q90"]
+    low = QUANT.assign_coords(quantile=[0.0125, 0.3, 0.4])
+    assert default_summary_names(low, R.QUANTILES) == ["q5", "q40"]
+    odd = QUANT.assign_coords(quantile=[0.0625, 0.5, 0.9375])
+    assert default_summary_names(odd, R.QUANTILES) == ["median", "q6_25", "q93_75"]
+    out = summarise(QUANT, R.QUANTILES, default_summary_names(QUANT, R.QUANTILES))
+    assert list(out["stat"].values) == ["median", "q10", "q90"]
+    assert default_summary_names(DRAWS, R.DRAWS) == ["mean", "hdi_90"]
+    assert default_summary_names(POINT, R.QUANTILES) == ["median", "q5", "q95"]
+    with pytest.raises(CapabilityError):
+        summarise(QUANT, R.QUANTILES, ["q5"])
