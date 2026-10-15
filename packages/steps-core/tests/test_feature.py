@@ -211,6 +211,19 @@ def test_lag_dense_values_fill_and_mask(weekly: xr.Dataset) -> None:
     assert bool(lag1.where(~masked["ok"]).isnull().all())  # masked cells stay missing
     src_masked = (~masked["ok"]).shift(time=1, fill_value=True)
     assert bool(lag1.where(src_masked & masked["ok"]).isnull().all())  # masked sources are missing
+    filled = run(ms.LagStep, masked, {"vars": ["y"], "lags": [1], "mask": "ok", "fill": 0.0})
+    lag1 = filled["y_lagged"].sel(lag=1, drop=True)
+    assert bool(lag1.where(~masked["ok"]).isnull().all())  # fill never un-masks a cell
+    assert bool(lag1.where(masked["ok"]).notnull().sum() == masked["ok"].sum())
+
+
+def test_holidays_needs_a_known_frequency(weekly: xr.Dataset, holidays: xr.Dataset) -> None:
+    two = weekly.isel(time=slice(0, 2))
+    settings = {"table": "h", "table_along": "date"}
+    with pytest.raises(MapiError, match="frequency"):
+        run(ms.HolidaysStep, two, settings, side_tables={"h": holidays})
+    out = run(ms.HolidaysStep, two, {**settings, "freq": "W-SUN"}, side_tables={"h": holidays})
+    assert float(out["holiday"].isel(time=0)) == 1.0  # Jan 1 falls in the week ending Jan 7
 
 
 def test_lag_long_layout_groups_rows(data: Any) -> None:

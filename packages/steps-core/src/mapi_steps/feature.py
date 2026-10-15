@@ -369,9 +369,14 @@ class HolidaysStep(Step[HolidaysSettings, StepState]):
     ) -> xr.DataArray:
         tlabels = np.asarray(var[s.along].values)
         freq = s.freq or coord_freq(labels, ctx, s.along)
+        if freq is None:
+            raise schema_error(
+                ctx.step_id,
+                f"cannot tell the frequency of {s.along!r}; declare freq on the dim or set 'freq'",
+            )
         tfreq = coord_freq(tlabels, StepContext(step_id=ctx.step_id), s.along) or "D"
         values = var.astype(np.float64)
-        if freq is None or freq == tfreq:
+        if freq == tfreq:
             missing = labels[~np.isin(labels, tlabels)]
             if missing.size:
                 raise self._coverage(s, missing)
@@ -502,10 +507,10 @@ class LagStep(Step[LagSettings, StepState]):
             shifted = []
             for k in s.lags:
                 lagged = apply_along(da, ds, s.along, s.within, functools.partial(_shift, k=k))
+                if s.fill is not None:  # no history -> fill; masked cells stay missing
+                    lagged = lagged.fillna(s.fill)
                 shifted.append(_restore_mask(lagged, ds, s.mask))
             res = xr.concat(shifted, dim=pd.Index(s.lags, name=s.lag_dim))
-            if s.fill is not None:
-                res = res.fillna(s.fill)
             res = res.transpose(*da.dims, s.lag_dim)
             res.attrs = dict(ds[v].attrs)
             out[f"{v}_lagged"] = res
