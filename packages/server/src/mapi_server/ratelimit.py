@@ -50,6 +50,8 @@ class TokenBucket:
 
     def _refill(self) -> None:
         t = self._clock()
+        if t <= self._stamp:  # inside a cool-down nothing accrues
+            return
         self._tokens = min(self.burst, self._tokens + (t - self._stamp) * self.rate)
         self._stamp = t
 
@@ -60,14 +62,17 @@ class TokenBucket:
     def penalize(self, seconds: float) -> None:
         """Block every caller for ``seconds`` (extends, never shortens, an active cool-down).
 
-        Saved-up tokens are dropped too: after a 429 the backend's own budget is spent, and
-        a burst right after the cool-down would only earn another 429.
+        Saved-up tokens are dropped and none accrue during the cool-down: after a 429 the
+        backend's own budget is spent, and a burst right after it would only earn another
+        429. Exactly one token is available when the cool-down ends — for the retry — so the
+        back-off delay is the computed one, not that plus a refill.
         """
         if seconds <= 0:
             return
         self._refill()
-        self._tokens = min(self._tokens, 0.0)
         self._blocked_until = max(self._blocked_until, self._clock() + seconds)
+        self._tokens = 1.0
+        self._stamp = self._blocked_until
 
     def try_acquire(self) -> bool:
         if self.cooldown_left() > 0:

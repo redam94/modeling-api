@@ -222,8 +222,8 @@ async def test_429_backs_off_exponentially_and_raises_the_alarm() -> None:
     outcomes = [c.outcome for c in fake.run_job_calls]
     assert outcomes == ["throttled", "throttled", "throttled", "created"]
     assert len(fake.executions()) == 1 and h.external_id == fake.executions()[0].name
-    waits = [round(s, 6) for s in clock.sleeps if s >= 0.5]
-    assert waits == [1.0, 2.0, 4.0]  # exponential, shared through the bucket's cool-down
+    # exponential, shared through the bucket's cool-down, and nothing on top of it
+    assert [round(s, 6) for s in clock.sleeps] == [1.0, 2.0, 4.0]
     assert ex.throttled.count() == 3 and ex.throttled.total == 3
     health = ex.health()
     assert health.throttled_last_hour == 3 and health.status is ExecutorStatus.DEGRADED
@@ -237,7 +237,7 @@ async def test_retry_after_is_honoured_and_retries_are_capped() -> None:
     clock = FakeClock()
     ex = _executor(fake, clock=clock, sleep=clock.sleep, max_rate_limit_retries=2)
     await ex.submit(_rs(), NONCE)
-    assert [s for s in clock.sleeps if s >= 0.5] == [7.5]
+    assert clock.sleeps == [7.5]
     fake.rate_limit(5)
     with pytest.raises(CloudRunRateLimited):
         await ex.submit(_rs("run_2"), NONCE2)

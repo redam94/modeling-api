@@ -11,7 +11,9 @@ timeout) as **one** execution, and each task maps its index to one child spec:
   shared object would leave the others without their RunSpec;
 * :func:`child_for_task` / :class:`TaskEnv` are what a supervisor uses to find its child;
 * outputs of task ``i`` go under ``.../a{n}/tasks/{i}/`` (:func:`mapi_spec.storage.run_prefix`
-  with ``task_index``), so the finalizer can verify each child separately.
+  with ``task_index``), so the finalizer can verify each child separately;
+* task ``i`` numbers its events from :func:`task_seq` ``(i, 0)``, so ``(run, attempt, seq)``
+  deduplication never drops another task's events.
 
 Fan-out *parents* (``Sweep``, ``SBC``, ``Backtest``) arrive in M4; this module is the executor
 side of that contract.
@@ -32,12 +34,14 @@ __all__ = [
     "ENV_TASK_ATTEMPT",
     "ENV_TASK_COUNT",
     "ENV_TASK_INDEX",
+    "TASK_SEQ_STRIDE",
     "TaskEnv",
     "batch_key",
     "child_for_task",
     "group_homogeneous",
     "task_nonce",
     "task_nonces",
+    "task_seq",
 ]
 
 ENV_TASK_INDEX: Final = "CLOUD_RUN_TASK_INDEX"
@@ -63,6 +67,18 @@ def task_nonce(nonce: str, index: int, count: int) -> str:
     if count == 1:
         return nonce
     return hashlib.sha256(_TASK_CONTEXT + nonce.encode() + str(index).encode()).hexdigest()
+
+
+TASK_SEQ_STRIDE: Final = 1 << 32
+"""Event ``seq`` space per task: events are deduplicated on ``(run, attempt, seq)``, so the
+tasks of one execution must not reuse each other's sequence numbers."""
+
+
+def task_seq(index: int, seq: int) -> int:
+    """The event ``seq`` of a task's ``seq``-th event (task 0 keeps the M1 numbering)."""
+    if index < 0 or not 0 <= seq < TASK_SEQ_STRIDE:
+        raise ValueError("index must be >= 0 and seq within the task's stride")
+    return index * TASK_SEQ_STRIDE + seq
 
 
 def task_nonces(nonce: str, count: int) -> list[str]:
