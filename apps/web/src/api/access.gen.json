@@ -1,0 +1,252 @@
+{
+  "default_token_ttl_days": 90,
+  "max_token_ttl_days": 365,
+  "permissions": {
+    "audit:read": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "billing:read": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "catalog:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "dataset:create": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "dataset:delete": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "dataset:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "dataset:update": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "endpoint:create": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "endpoint:delete": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "endpoint:promote": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "endpoint:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "endpoint:run": {
+      "level": "project",
+      "min_role": "runner"
+    },
+    "endpoint:update": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "event:create": {
+      "level": "internal",
+      "min_role": null
+    },
+    "executor:read": {
+      "level": "platform",
+      "min_role": null
+    },
+    "kill_switch:read": {
+      "level": "platform",
+      "min_role": null
+    },
+    "kill_switch:update": {
+      "level": "platform",
+      "min_role": null
+    },
+    "member:create": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "member:delete": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "member:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "member:update": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "model:delete": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "model:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "model:run": {
+      "level": "project",
+      "min_role": "runner"
+    },
+    "plot:create": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "plot:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "plot:run": {
+      "level": "project",
+      "min_role": "runner"
+    },
+    "plugin:create": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "plugin:delete": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "plugin:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "project:create": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "project:delete": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "project:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "project:update": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "quota:delete": {
+      "level": "platform",
+      "min_role": null
+    },
+    "quota:read": {
+      "level": "platform",
+      "min_role": null
+    },
+    "quota:update": {
+      "level": "platform",
+      "min_role": null
+    },
+    "run:cancel": {
+      "level": "project",
+      "min_role": "runner"
+    },
+    "run:create": {
+      "level": "project",
+      "min_role": "runner"
+    },
+    "run:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "spec:create": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "spec:delete": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "spec:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "spec:update": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "tenant:create": {
+      "level": "platform",
+      "min_role": null
+    },
+    "tenant:delete": {
+      "level": "platform",
+      "min_role": null
+    },
+    "tenant:manage": {
+      "level": "platform",
+      "min_role": null
+    },
+    "tenant:read": {
+      "level": "tenant",
+      "min_role": "viewer"
+    },
+    "tenant:update": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "tenant_member:create": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "tenant_member:delete": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "tenant_member:read": {
+      "level": "tenant",
+      "min_role": "viewer"
+    },
+    "tenant_member:update": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "token:create": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "token:delete": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "token:manage": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "token:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "usage:read": {
+      "level": "project",
+      "min_role": "viewer"
+    }
+  },
+  "roles": [
+    "viewer",
+    "editor",
+    "runner",
+    "admin"
+  ],
+  "token_scopes": [
+    "models:read",
+    "runs:create",
+    "score",
+    "plugins:publish",
+    "datasets:write",
+    "admin"
+  ]
+}
