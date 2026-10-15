@@ -82,7 +82,12 @@ include_external_packages = true
 name = "Control plane never imports plugin/runtime code or array libraries"
 type = "forbidden"
 source_modules = ["mapi_server"]
-forbidden_modules = ["mapi_sdk", "mapi_runner", "mapi_pymc", "mapi_sklearn", "mapi_steps", "numpy", "xarray"]
+forbidden_modules = [
+  "mapi_sdk", "mapi_runner", "mapi_pymc", "mapi_sklearn", "mapi_steps",
+  "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular",
+  "mapi_plots.recipes", "mapi_plots.packs",
+  "numpy", "xarray", "pandas", "pyarrow", "zarr",
+]
 
 [[tool.importlinter.contracts]]
 name = "Contracts are pure Pydantic"
