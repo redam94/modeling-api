@@ -55,6 +55,25 @@ milestone releases are tagged on `main`.
   workspace at the repo root.
 - **plot-sandbox**: `apps/plot-sandbox`, the separate-origin Vega-Lite/Plotly renderer with a
   strict CSP and a validated `postMessage` protocol.
+- **devops**: containers, local orchestration and developer tooling for M1:
+  - `images/`: `base-bayes` (with a `worker` target), `base-ml` (no PyMC), `base-forecast`,
+    `server` (control plane only, checked with import-linter and package assertions at build
+    time), `gcs-shim` and `web` (nginx serving the app and the plot sandbox on separate origins
+    with strict CSPs). All are digest-pinned, run as non-root with a read-only root filesystem,
+    and have health checks. The runner images bake the catalog JSON and a warmed PyTensor/Numba
+    cache.
+  - `docker-compose.yml` (postgres 16, gcs-shim, migrate, api, worker with the local-process
+    executor, web, plot-sandbox), `compose.override.example.yml` and `.env.example`, which
+    documents every `MAPI_*` variable.
+  - `scripts/dev.py` (`make dev`): runs the whole stack without Docker (pgserver PostgreSQL, GCS
+    shim, migrations, api, worker and both Vite servers) with readiness probes, prefixed logs and
+    clean process-group shutdown. Also `stop`, `status`, `migrate`, `db-shell` and `clean`.
+  - New make targets: `dev`/`run`, `stop`, `status`, `migrate`, `db-shell`, `seed` (the E33 demo
+    through the API), `clean-local`, `docker-build`, `docker-pin`, `compose-up/down/logs`,
+    `web-build`, `web-test`, `test-all`, `e2e` and `release-check`.
+  - CI: a web job, a build-only docker job for every image, and digest-pin and compose checks.
+  - Docs: "Local development" and "Containers and docker compose" (Operations), and
+    `deploy/README.md`.
 
 ## [0.1.0] — M0: contract layer — 2026-10-15
 

@@ -1,0 +1,47 @@
+# The app origin (MAPI_WEB_ORIGIN), port 8080. Rendered at container start by the nginx
+# entrypoint (envsubst; only MAPI_* and NGINX_LOCAL_RESOLVERS are substituted).
+server {
+  listen 8080;
+  server_name _;
+  root /usr/share/nginx/html/web;
+  index index.html;
+
+  include /tmp/nginx/conf.d/web-headers.inc;
+
+  location = /healthz {
+    access_log off;
+    default_type text/plain;
+    return 200 "ok\n";
+  }
+
+  # The API on the same origin, so the SPA needs no CORS. Resolved per request (the API
+  # container may start after this one). Unbuffered and long-lived for SSE run events.
+  location /v1/ {
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+    set $mapi_api_upstream ${MAPI_API_UPSTREAM};
+    proxy_pass $mapi_api_upstream;
+    proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $http_host;
+    proxy_set_header Connection "";
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+  }
+
+  # Vite emits content-hashed file names under /assets/.
+  location /assets/ {
+    expires 1y;
+    try_files $uri =404;
+  }
+
+  # Client-side routes fall back to the SPA shell, which is never cached.
+  location / {
+    limit_except GET HEAD { deny all; }
+    expires -1;
+    try_files $uri $uri/ /index.html;
+  }
+}

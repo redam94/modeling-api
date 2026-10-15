@@ -1,0 +1,34 @@
+# Optional local tweaks to docker-compose.yml. Copy to compose.override.yml (git-ignored by
+# convention; never commit secrets in it) and keep only the blocks you want. `docker compose`
+# merges compose.override.yml automatically.
+#
+#   cp compose.override.example.yml compose.override.yml
+#   docker compose config        # inspect the merged result
+
+services:
+  # --- 1. Reach Postgres from the host (psql, a GUI client) --------------------------------
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  # --- 2. Docker executor instead of local-process -----------------------------------------
+  # Runs each fit/score in its own container from the exact runner images (mapi/base-*),
+  # instead of as a subprocess of the worker. Trade-offs (docs/operations/docker.md):
+  #   + one container per run (separate filesystem, resource limits, `--network none` possible)
+  #   + exactly the production images
+  #   - the worker gets the Docker socket, which is root-equivalent on the host
+  #   - run containers must join the gcs-shim network namespace to reach 127.0.0.1:4443
+  # The control-plane image (mapi/server) is enough for the worker in this mode.
+  worker:
+    image: mapi/server:${MAPI_VERSION:-0.1.0}
+    build: !reset null
+    command: ["worker"]
+    user: "10001:${DOCKER_GID:-0}"   # the group that owns /var/run/docker.sock on the host
+    environment:
+      MAPI_EXECUTOR: docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # --- 3. Bigger runs ---------------------------------------------------------------------
+  # Raise MAPI_WORKER_TMPFS / MAPI_WORKER_MEMORY / MAPI_WORKER_CPUS in .env instead of
+  # editing here; the worker's /tmp is the scratch space of every local-process run.

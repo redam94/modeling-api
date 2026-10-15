@@ -1,0 +1,209 @@
+# modeling-api local stack (M1, single tenant). Usage:
+#
+#   cp .env.example .env            # then set POSTGRES_PASSWORD
+#   make docker-build               # or: docker compose build
+#   make compose-up                 # docker compose up -d --wait
+#   open http://127.0.0.1:5173
+#
+# Network layout. `api`, `worker` and `gcs-shim` share ONE network namespace (the shim's),
+# so 127.0.0.1:4443 (object store) and 127.0.0.1:8000 (API) mean the same thing to the browser,
+# the API, the orchestrator and the runner subprocesses it starts. Signed URLs and the
+# bootstrap URL template therefore work everywhere without a public/internal endpoint split,
+# exactly as in the no-Docker `make dev` setup. Only 127.0.0.1 is published on the host.
+#
+# The worker runs the *local-process* executor inside a runner-capable image (mapi/worker):
+# simple and daemon-free, but runs share the worker container (process isolation only).
+# docs/operations/docker.md explains the trade-off and the docker-executor alternative
+# (compose.override.example.yml).
+#
+# Every service runs as a non-root user with a read-only root filesystem, a tmpfs on /tmp,
+# no Linux capabilities and no-new-privileges (postgres excepted: the official image starts
+# as root to fix data-directory ownership, then drops to the postgres user).
+
+name: mapi
+
+x-mapi-env: &mapi-env
+  MAPI_ENV: ${MAPI_ENV:-local}
+  DATABASE_URL: postgresql://mapi:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/mapi
+  MAPI_GCS_ENDPOINT: http://127.0.0.1:4443
+  MAPI_API_URL: http://127.0.0.1:8000
+  MAPI_WEB_ORIGIN: http://127.0.0.1:5173
+  MAPI_PLOTS_ORIGIN: http://127.0.0.1:5174
+  MAPI_DATA_DIR: /tmp/mapi-data   # scratch only; durable state is in postgres and gcsdata
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-trixie@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+    environment:
+      POSTGRES_USER: mapi
+      POSTGRES_DB: mapi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    security_opt: ["no-new-privileges:true"]
+    shm_size: 256mb
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "mapi", "-d", "mapi"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  gcs-shim:
+    image: mapi/gcs-shim:${MAPI_VERSION:-0.1.0}
+    build:
+      context: .
+      dockerfile: images/gcs-shim/Dockerfile
+    <<: *hardening
+    user: "10001:10001"
+    environment:
+      <<: *mapi-env
+      MAPI_DATA_DIR: /data
+    volumes:
+      - gcsdata:/data
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    ports:
+      - "127.0.0.1:4443:4443"   # object store (signed URLs)
+      - "127.0.0.1:8000:8000"   # the API (it shares this network namespace)
+    networks:
+      default:
+        aliases: [api]          # so the web container reaches the API at api:8000
+    healthcheck:
+      test: ["CMD", "python", "-I", "/opt/mapi/bin/healthcheck.py", "tcp", "127.0.0.1:4443"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  migrate:
+    image: mapi/server:${MAPI_VERSION:-0.1.0}
+    build:
+      context: .
+      dockerfile: images/server/Dockerfile
+    <<: *hardening
+    restart: "no"
+    user: "10001:10001"
+    command: ["migrate"]
+    environment:
+      <<: *mapi-env
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      disable: true             # one-shot: compose waits for it to exit 0 instead
+
+  api:
+    image: mapi/server:${MAPI_VERSION:-0.1.0}
+    <<: *hardening
+    user: "10001:10001"
+    command: ["api", "--host", "0.0.0.0", "--port", "8000"]
+    network_mode: "service:gcs-shim"
+    environment:
+      <<: *mapi-env
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      gcs-shim:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-I", "/opt/mapi/bin/healthcheck.py", "http", "http://127.0.0.1:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    image: mapi/worker:${MAPI_VERSION:-0.1.0}
+    build:
+      context: .
+      dockerfile: images/base-bayes/Dockerfile
+      target: worker
+    <<: *hardening
+    user: "10001:10001"
+    command: ["mapi-server", "worker"]
+    network_mode: "service:gcs-shim"
+    environment:
+      <<: *mapi-env
+      MAPI_EXECUTOR: ${MAPI_EXECUTOR:-local-process}
+    tmpfs:
+      # Runs (scratch, compile caches, HOME) live here, like Cloud Run's in-memory filesystem.
+      - /tmp:size=${MAPI_WORKER_TMPFS:-4g},mode=1777
+    deploy:
+      resources:
+        limits:
+          cpus: "${MAPI_WORKER_CPUS:-4}"
+          memory: ${MAPI_WORKER_MEMORY:-12g}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      gcs-shim:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-I", "/opt/mapi/bin/healthcheck.py", "env-tcp", "DATABASE_URL", "MAPI_GCS_ENDPOINT"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  web:
+    image: mapi/web:${MAPI_VERSION:-0.1.0}
+    build:
+      context: .
+      dockerfile: images/web/Dockerfile
+    <<: *hardening
+    user: "101:101"
+    environment:
+      NGINX_ENVSUBST_TEMPLATE_DIR: /etc/nginx/templates/web
+      MAPI_WEB_ORIGIN: http://127.0.0.1:5173
+      MAPI_PLOTS_ORIGIN: http://127.0.0.1:5174
+      MAPI_API_URL: http://127.0.0.1:8000
+      MAPI_API_UPSTREAM: http://api:8000
+      MAPI_GCS_ENDPOINT: http://127.0.0.1:4443
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    ports:
+      - "127.0.0.1:5173:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/mapi-web-healthcheck"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  plot-sandbox:
+    image: mapi/web:${MAPI_VERSION:-0.1.0}
+    <<: *hardening
+    user: "101:101"
+    environment:
+      NGINX_ENVSUBST_TEMPLATE_DIR: /etc/nginx/templates/plots
+      MAPI_WEB_ORIGIN: http://127.0.0.1:5173
+      MAPI_PLOTS_ORIGIN: http://127.0.0.1:5174
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    ports:
+      - "127.0.0.1:5174:8081"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/mapi-web-healthcheck"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  pgdata:
+  gcsdata:

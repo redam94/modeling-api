@@ -43,3 +43,6 @@ docs/reference/generated/
 *.tfstate
 *.tfstate.*
 *.tfplan
+
+# --- Local compose overrides (see compose.override.example.yml) ---
+compose.override.yml

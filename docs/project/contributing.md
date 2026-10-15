@@ -19,6 +19,9 @@ make help             # every developer entry point
 | `make conformance` | The conformance corpus at size `tiny` (`FIXTURE=e33` for one) |
 | `make docs-serve` | This site with live reload |
 | `make docs-build` | Regenerate the catalog pages and build the site strictly |
+| `make dev` | The whole stack locally without Docker ([Local development](../operations/local-development.md)) |
+| `make docker-build` / `make compose-up` | Build the images / run the compose stack ([Containers](../operations/docker.md)) |
+| `make release-check` | Version consistency, changelog entry, no plan files, pinned images |
 
 ## Branching model
 

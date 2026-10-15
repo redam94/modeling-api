@@ -2,6 +2,14 @@ name: CI
 on:
   push: {branches: [main, develop]}
   pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   python:
     runs-on: ubuntu-latest
@@ -12,6 +20,10 @@ jobs:
       - run: make lint
       - run: make typecheck
       - run: uv run pytest -q -m "not docker and not cloud and not e2e" --cov --cov-report=xml
+      # One version everywhere and no plan files tracked (the dated CHANGELOG entry is only
+      # required by `make release-check` when cutting a release).
+      - run: uv run python scripts/release_check.py --only versions --only plans
+
   web:
     runs-on: ubuntu-latest
     steps:
@@ -30,3 +42,55 @@ jobs:
       - run: pnpm -r test
         env: {CI: "1"}
       - run: pnpm -r build
+
+  container-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Every base and compose image is pinned by digest
+        run: uv run --no-project python scripts/image_pins.py check
+      - name: Compose files are valid
+        run: |
+          POSTGRES_PASSWORD=ci docker compose -f docker-compose.yml config -q
+          POSTGRES_PASSWORD=ci docker compose -f docker-compose.yml -f compose.override.example.yml config -q
+
+  docker:
+    # Build only (never pushed): proves every Dockerfile builds, including the build-time
+    # guards (import-linter in the server image, package assertions, catalog export).
+    needs: container-config
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {image: base-bayes, target: runtime}
+          - {image: base-bayes, target: worker, tag: worker}
+          - {image: base-ml, target: runtime}
+          - {image: base-forecast, target: runtime}
+          - {image: server, target: runtime}
+          - {image: gcs-shim, target: runtime}
+          - {image: web, target: runtime}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space for the scientific images
+        if: startsWith(matrix.image, 'base-')
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - id: meta
+        run: |
+          echo "version=$(sed -n 's/^version = \"\(.*\)\"/\1/p' pyproject.toml | head -n 1)" >> "$GITHUB_OUTPUT"
+          echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: images/${{ matrix.image }}/Dockerfile
+          target: ${{ matrix.target }}
+          push: false
+          tags: mapi/${{ matrix.tag || matrix.image }}:${{ steps.meta.outputs.version }}
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            VCS_REF=${{ github.sha }}
+            BUILD_DATE=${{ steps.meta.outputs.created }}
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.target }}
