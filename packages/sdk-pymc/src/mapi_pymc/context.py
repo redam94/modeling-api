@@ -202,7 +202,7 @@ class BuildContext:
         self.data_vars[name] = used_dims
         self.data_values[name] = arr
         var = pm.Data(name, arr, dims=list(used_dims) if used_dims else None)
-        return var  # type: ignore[no-any-return]
+        return var
 
     def observed(self, name: str, *, dims: Sequence[str] | None = None) -> np.ndarray:
         """Observed values for a likelihood: the target at fit, zeros of the right shape at
@@ -245,6 +245,7 @@ class BuildContext:
                 )
             values = self.ds[name]
         if isinstance(values, xr.DataArray):
+            values = self.align(values)
             order = tuple(str(d) for d in (dims or values.dims))
             return np.asarray(values.transpose(*order).values), order
         arr = np.asarray(values)
@@ -253,6 +254,32 @@ class BuildContext:
                 f"pass dims= for array values of {name!r}", code=ErrorCode.SCHEMA_INVALID
             )
         return arr, tuple(str(d) for d in (dims or ()))
+
+    def align(self, da: xr.DataArray) -> xr.DataArray:
+        """Put dims the model schema does not declare (``channel`` in a panel whose
+        template only names ``geo`` and ``time``) back into their fit order.
+
+        The platform canonicalises declared dims; undeclared ones arrive in payload order.
+        Positional models must see them in fit order, and with exactly the fit labels.
+        """
+        if self.phase == "fit":
+            return da
+        for d in map(str, da.dims):
+            declared = self.schema is not None and d in self.schema.dims
+            if declared or d not in da.coords or d not in self.fit_coords:
+                continue
+            fit = np.asarray(self.fit_coords[d])
+            cur = np.asarray(da[d].values)
+            if np.array_equal(fit, cur):
+                continue
+            if cur.size != fit.size or set(cur.tolist()) != set(fit.tolist()):
+                raise MapiError(
+                    f"the labels of {d!r} differ from the fit; it is not a declared dim of the "
+                    "model, so its labels must match the fit exactly",
+                    code=ErrorCode.UNSEEN_LEVELS,
+                )
+            da = da.sel({d: fit})
+        return da
 
     # ----------------------------------------------------------------- hierarchy
     def hier_effect(
@@ -313,7 +340,7 @@ class BuildContext:
             effect = pm.Deterministic(name, mu_fit + sigma_t * offset, dims=fit_dim)
         self.hier_effects[name] = HierEffect(name, dim, strategy, n_fit, n_new, centered)
         if not n_new:
-            return effect  # type: ignore[no-any-return]
+            return effect
         new_dim = f"{dim}__new"
         if strategy == "hyperprior":
             z = self.frozen_noise(f"{name}__new_z", dims=(new_dim,), kind="normal")
@@ -323,7 +350,7 @@ class BuildContext:
         else:
             fresh = pt.zeros((n_new,))
         new_effect = pm.Deterministic(f"{name}__new", fresh, dims=new_dim)
-        return pt.concatenate([effect, new_effect])  # type: ignore[no-any-return]
+        return pt.concatenate([effect, new_effect])
 
     def frozen_noise(
         self, name: str, *, dims: Sequence[str], kind: NoiseKind = "normal"
@@ -336,8 +363,8 @@ class BuildContext:
         dims_t = tuple(str(d) for d in dims)
         self.frozen[name] = FrozenNoise(name, kind, dims_t)
         if kind == "uniform":
-            return pm.Uniform(name, 0.0, 1.0, dims=list(dims_t))  # type: ignore[no-any-return]
-        return pm.Normal(name, 0.0, 1.0, dims=list(dims_t))  # type: ignore[no-any-return]
+            return pm.Uniform(name, 0.0, 1.0, dims=list(dims_t))
+        return pm.Normal(name, 0.0, 1.0, dims=list(dims_t))
 
     # ----------------------------------------------------------------- extend dims
     @property
@@ -389,7 +416,7 @@ class BuildContext:
             for v in extra:
                 order[v] = len(order)
             pos = np.array([order[v] for v in labels.tolist()], dtype=float)
-            last = float(fit.size - 1)
+            last = fit.size - 1
         if scale:
             return pos / (last if last > 0 else 1.0)
         return pos

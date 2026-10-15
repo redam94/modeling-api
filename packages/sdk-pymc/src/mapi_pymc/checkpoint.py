@@ -200,10 +200,10 @@ def encode_state(obj: Any) -> Any:
     if isinstance(obj, float):
         return obj if math.isfinite(obj) else {"__float__": repr(obj)}
     if isinstance(obj, tuple) and hasattr(type(obj), "_fields"):
-        cls = type(obj)
+        nt: Any = type(obj)
         return {
-            "__namedtuple__": f"{cls.__module__}:{cls.__qualname__}",
-            "fields": {k: encode_state(getattr(obj, k)) for k in cls._fields},  # type: ignore[attr-defined]
+            "__namedtuple__": f"{nt.__module__}:{nt.__qualname__}",
+            "fields": {k: encode_state(getattr(obj, k)) for k in nt._fields},
         }
     if isinstance(obj, tuple):
         return {"__tuple__": [encode_state(v) for v in obj]}

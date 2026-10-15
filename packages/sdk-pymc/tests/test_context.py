@@ -177,3 +177,30 @@ def test_positions_and_anticipated_coords() -> None:
     assert BuildContext("fit", xr.Dataset({"v": (("k",), [1, 2])})).labels("k").tolist() == [0, 1]
     assert fit.policy("time").value == "extend" and fit.strategy("geo") == "pooled"
     assert BuildContext("fit", _fit_ds()).strategy("geo") == "hyperprior"
+
+
+def test_undeclared_dims_are_put_back_in_fit_order() -> None:
+    spend = xr.DataArray(
+        np.array([[1.0, 2.0, 3.0]]),
+        dims=["geo", "channel"],
+        coords={"geo": ["a"], "channel": ["tv", "radio", "search"]},
+    )
+    ctx = BuildContext(
+        "score",
+        xr.Dataset({"spend": spend.isel(channel=[2, 0, 1])}),
+        schema=SCHEMA,
+        fit_coords={"channel": np.array(["tv", "radio", "search"]), "geo": np.array(["a"])},
+    )
+    with pm.Model(coords=ctx.coords()):
+        np.testing.assert_array_equal(ctx.data("spend").eval(), [[1.0, 2.0, 3.0]])
+    bad = BuildContext(
+        "score",
+        xr.Dataset({"spend": spend.isel(channel=[0, 1])}),
+        schema=SCHEMA,
+        fit_coords={"channel": np.array(["tv", "radio", "search"])},
+    )
+    with pm.Model(coords=bad.coords()), pytest.raises(MapiError) as err:
+        bad.data("spend")
+    assert err.value.code is ErrorCode.UNSEEN_LEVELS
+    fit = BuildContext("fit", xr.Dataset({"spend": spend}))
+    assert fit.align(spend.isel(channel=[2, 0, 1])).equals(spend.isel(channel=[2, 0, 1]))

@@ -490,8 +490,8 @@ def _to_idata(model: pm.Model, step: NUTS, chains: _Chains, plan: EnginePlan) ->
         traces.append(tr)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        idata = pm.to_inference_data(MultiTrace(traces), model=model)
-    return idata  # type: ignore[no-any-return]
+        idata: xr.DataTree = pm.to_inference_data(MultiTrace(traces), model=model)
+    return idata
 
 
 def _sample_pymc_compound(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> EngineResult:
@@ -620,7 +620,9 @@ def _finished(sampler: Any) -> bool:
 
 def _save_snapshot(hooks: EngineHooks, plan: EnginePlan, snap: xr.DataTree, done: int) -> None:
     assert hooks.sink is not None and hooks.key is not None
-    post = snap["posterior"].to_dataset(inherit=False)
+    node = snap["posterior"]
+    assert isinstance(node, xr.DataTree)
+    post = node.to_dataset(inherit=False)
     done = min(done, int(post.sizes["draw"]))
     post = post.isel(draw=slice(0, done))
     data = xr.Dataset({f"posterior__{k}": v for k, v in post.data_vars.items()})

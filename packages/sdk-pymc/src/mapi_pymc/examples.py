@@ -274,8 +274,9 @@ class PanelModel(PyMCModel[PanelSettings]):
         checkpointable=True,
     )
     schema_template = _PANEL_TEMPLATE
-    outputs: ClassVar[dict[str, Any]] = {"y": {"dims": ["geo", "time"], "units_of": "y"}}
-    expected: ClassVar[dict[str, str]] = {"y": "mu"}
+    outputs: ClassVar[dict[str, Any]] = {"y_hat": {"dims": ["geo", "time"], "units_of": "y"}}
+    expected: ClassVar[dict[str, str]] = {"y_hat": "mu"}
+    predictive: ClassVar[dict[str, str]] = {"y_hat": "y"}
     default_engine = "pymc"
 
     def build(self, ds: xr.Dataset, s: PanelSettings, ctx: BuildContext) -> pm.Model:
@@ -296,28 +297,38 @@ class PanelModel(PyMCModel[PanelSettings]):
 def panel_design(
     ds: xr.Dataset, target: str, group_dim: str, time_dim: str
 ) -> tuple[np.ndarray, list[str]]:
-    """``(group, time, feature)`` design matrix of every numeric non-target variable."""
+    """``(group, time, feature)`` design matrix of every numeric non-target variable.
+
+    Extra dims (``channel``, ``lag``, ``fourier_mode``) are flattened into one feature per
+    label, named ``var[dim=label,...]`` and sorted by name, so the column order never
+    depends on the payload's label order.
+    """
     frame = xr.DataArray(
         np.zeros((ds.sizes[group_dim], ds.sizes[time_dim])),
         dims=[group_dim, time_dim],
         coords={group_dim: ds[group_dim].values, time_dim: ds[time_dim].values},
     )
-    cols: list[np.ndarray] = []
-    names: list[str] = []
-    for v in sorted(map(str, ds.data_vars)):
+    cols: dict[str, np.ndarray] = {}
+    for v in map(str, ds.data_vars):
         da = ds[v]
         if v == target or da.dtype.kind not in "fiub" or time_dim not in da.dims:
             continue
         extra = [str(d) for d in da.dims if d not in (group_dim, time_dim)]
-        stacked = da.stack(__col=extra) if extra else da.expand_dims(__col=[0])
-        for k in range(stacked.sizes["__col"]):
-            col = stacked.isel(__col=k).drop_vars(
-                [c for c in stacked.coords if c not in (group_dim, time_dim)], errors="ignore"
-            )
-            cols.append(
-                col.broadcast_like(frame).transpose(group_dim, time_dim).values.astype(float)
-            )
-            names.append(f"{v}[{k}]" if extra else v)
-    if not cols:
+        labels = [
+            np.asarray(ds[d].values) if d in ds.coords else np.arange(ds.sizes[d]) for d in extra
+        ]
+        combos = list(np.ndindex(*[len(lab) for lab in labels])) if extra else [()]
+        for combo in combos:
+            sel = {d: int(i) for d, i in zip(extra, combo, strict=True)}
+            name = v
+            if extra:
+                parts = [f"{d}={labels[k][i]}" for k, (d, i) in enumerate(sel.items())]
+                name = f"{v}[{','.join(parts)}]"
+            col = da.isel(sel) if sel else da
+            col = col.drop_vars([c for c in col.coords if c not in (group_dim, time_dim)])
+            cols[name] = col.broadcast_like(frame).transpose(group_dim, time_dim).values
+    names = sorted(cols)
+    if not names:
         return np.zeros((*frame.shape, 0)), []
-    return np.nan_to_num(np.stack(cols, axis=-1), nan=0.0), names
+    x = np.stack([cols[n].astype(float) for n in names], axis=-1)
+    return np.nan_to_num(x, nan=0.0), names

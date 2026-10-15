@@ -55,7 +55,7 @@ from mapi_sdk.models import PREDICTIONS, CustomModel, FitContext, FitOutput, Fit
 from mapi_spec.capabilities import Capabilities, Diagnostic, ModelManifest, Representation
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.spec import FitConfig, PosteriorPredictiveKeep, ScoreRequest
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel
 
 from mapi_pymc.checkpoint import CheckpointSink, fit_key
 from mapi_pymc.context import BuildContext
@@ -190,7 +190,7 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
             diagnostics = convergence_diagnostics(
                 groups["posterior"], groups.get("sample_stats"), var_names=free
             )
-        learned: dict[str, JsonValue] = {
+        learned: dict[str, Any] = {
             "engine": result.engine,
             "tune": result.plan.tune,
             "draws": result.plan.draws,
@@ -198,7 +198,7 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
             "target_accept": result.plan.target_accept,
             "resumed_from": result.resumed_from,
             "checkpoints": result.checkpoints,
-            "notes": list(result.notes),
+            "notes": [str(n) for n in result.notes],
             "observed": sorted(bctx.observed_vars),
             "hier_effects": {k: v.dim for k, v in bctx.hier_effects.items()},
         }
@@ -300,13 +300,13 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
                 freeze_vars=freeze or None,
             )
         preds = _child(pp, "predictions")
-        out: dict[str, xr.DataArray] = {}
+        arrays: dict[str, xr.DataArray] = {}
         for name, (var, how) in wanted.items():
             da = preds[var].rename(None)
             da = da.assign_coords({d: ds[d].values for d in da.dims if d in ds.coords})
             da.attrs = {"kind": how, "noise": noise[name]}
-            out[name] = da
-        pred = xr.Dataset(out)
+            arrays[name] = da
+        pred = xr.Dataset(arrays)
         drop = [c for c in pred.coords if c not in pred.dims]
         return xr.DataTree.from_dict({PREDICTIONS: pred.drop_vars(drop)})
 
@@ -510,7 +510,7 @@ def _trace(
 
 
 def _fit_len(posterior: xr.Dataset, name: str, dim: str) -> int:
-    dims = [d for d in posterior[name].dims if d not in ("chain", "draw")]
+    dims = [str(d) for d in posterior[name].dims if d not in ("chain", "draw")]
     for d in dims:
         if d == dim or d.startswith(f"{dim}__"):
             return int(posterior.sizes[d])

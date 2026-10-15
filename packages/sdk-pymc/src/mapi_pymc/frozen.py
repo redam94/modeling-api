@@ -123,7 +123,7 @@ def _replace_observed_rvs(
         if not depends:
             value = model.rvs_to_values[rv]
             data = value.get_value() if hasattr(value, "get_value") else value.eval()
-            replacements[rv] = pt.constant(np.asarray(data).astype(rv.dtype), name=rv.name)
+            replacements[rv] = pt.constant(np.asarray(data).astype(rv.type.dtype), name=rv.name)
             continue
         if has_dynamic_dims and rv.type.shape and any(s is not None for s in rv.type.shape):
             logger.warning(
@@ -131,7 +131,7 @@ def _replace_observed_rvs(
                 rv.name,
                 rv.type.shape,
             )
-        u = pt.scalar(f"{rv.name}_uniform", dtype=rv.dtype)
+        u = pt.scalar(f"{rv.name}_uniform", dtype=rv.type.dtype)
         uniforms[rv] = u
         try:
             replacements[rv] = pm.icdf(rv, u, warn_rvs=False)
@@ -363,7 +363,7 @@ def create_frozen_predictor(
     protected, input_dims = _find_protected_dims(model, outputs, set(input_vars), all_anc)
     has_dynamic = not input_dims or bool(input_dims - protected)
 
-    absent = sorted(rv.name for rv in needed_free if rv.name not in samples)
+    absent = sorted(str(rv.name) for rv in needed_free if rv.name not in samples)
     if absent:
         raise MapiError(
             f"the posterior has no samples of {absent}; a frozen predictor cannot draw new "
@@ -371,7 +371,7 @@ def create_frozen_predictor(
             code=ErrorCode.CAPABILITY_UNSUPPORTED,
         )
     rv_placeholders = {
-        rv: pt.tensor(name=rv.name, shape=rv.type.shape, dtype=rv.dtype) for rv in needed_free
+        rv: pt.tensor(name=rv.name, shape=rv.type.shape, dtype=rv.type.dtype) for rv in needed_free
     }
     data_vars = {n: model.named_vars[n] for n in input_vars}
     ndims = {n: int(v.type.ndim) for n, v in data_vars.items()}
