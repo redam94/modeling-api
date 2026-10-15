@@ -501,3 +501,32 @@ def test_long_layout_group_context_survives_canonicalisation() -> None:
         assert out["obs"].values.tolist() == [6, 7]
         # each household's previous trip: x at obs 4 (hh 0) and obs 5 (hh 1)
         assert out["x_lag"].sel(lag=1).values.tolist() == [5.0, 6.0]
+
+
+# ------------------------------------------------------- statistics-10 (moments delta method)
+
+
+def test_moments_inverse_uses_the_delta_method_derivative() -> None:
+    from mapi_sdk.pipeline import Pipeline
+    from mapi_sdk.testing import toy
+    from mapi_spec import Representation
+
+    pipe = Pipeline.build([("logy", toy.Log1pStep, {"vars": ["y"]})])
+    ds = xr.Dataset({"y": (("t",), np.array([1.0, 2.0, 3.0]))}, coords={"t": [0, 1, 2]})
+    trace = pipe.fit(ds)
+    moments = xr.DataArray(
+        np.array([[2.0, 0.0], [1.0, 0.1]]),
+        dims=["moment", "t"],
+        coords={"moment": ["mean", "sd"], "t": [0, 1]},
+    )
+    out = pipe.inverse_outputs(
+        xr.Dataset({"y_hat": moments}),
+        trace.states,
+        {"y_hat": "y"},
+        representation=Representation.MOMENTS,
+    )
+    got = out.data["y_hat"]
+    # g = expm1: mean g(mu), sd |g'(mu)| * sd = e^mu * sd
+    np.testing.assert_allclose(got.sel(moment="mean").values, np.expm1([2.0, 0.0]))
+    np.testing.assert_allclose(got.sel(moment="sd").values, [np.e**2, 0.1], rtol=1e-6)
+    assert out.retransform["y_hat"] == "delta_method"

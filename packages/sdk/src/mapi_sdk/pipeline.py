@@ -388,7 +388,7 @@ class Pipeline:
         RESHAPE stage) or at the first non-invertible step that touched the variable.
         Point outputs through a non-linear inverse are labelled ``median`` (plain inverse)
         or use Duan's smearing over stored model-space ``residuals``; moments use the
-        delta method for ``sd``.
+        first-order delta method (``g(mu)``, ``|g'(mu)| sd`` with a central difference).
 
         ``decompositions`` name additive decompositions (``contributions(component, ...)``).
         They are inverted component by component only through *additive* steps
@@ -430,8 +430,11 @@ class Pipeline:
                 label = "none"
             elif representation is Representation.MOMENTS and "moment" in da.dims:
                 mean, sd = da.sel(moment="mean", drop=True), da.sel(moment="sd", drop=True)
-                m = run(mean)
-                sd_out = abs(run(mean + sd) - m)
+                m = run(mean)  # g(mu): the first-order delta-method mean
+                # delta method: |g'(mu)| * sd, with a central difference for g'
+                h = 1e-5 * (abs(mean) + 1.0)
+                slope = (run(mean + h) - run(mean - h)) / (2 * h)
+                sd_out = abs(slope) * sd
                 inv = xr.concat([m, sd_out], dim="moment").assign_coords(moment=["mean", "sd"])
                 inv = inv.transpose(*da.dims)
                 label = "delta_method" if nonlinear else "exact"
