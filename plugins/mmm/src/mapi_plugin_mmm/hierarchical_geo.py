@@ -111,7 +111,6 @@ SCHEMA_TEMPLATE: dict[str, Any] = {
     ],
 }
 
-_TIME_DETERMINISTICS = ("mu", "contributions", "channel_contribution")
 _MODES = frozenset({"predict", "forecast", "counterfactual", "evaluate", "simulate"})
 
 
@@ -444,7 +443,13 @@ class HierarchicalGeoMMM(PyMCModel[HierarchicalGeoSettings]):
             target_scale = np.asarray(rc["target_scale"].sel({GEO: geos}).values, dtype=float)
         posterior = fitted.posterior
         post = draw_samples(posterior, None)
-        n_lag = len(fitted.coords.get(s.lag_dim, ())) or (s.adstock.l_max or 1)
+        lags = fitted.coords.get(s.lag_dim)
+        if lags is None or not len(lags):
+            raise MapiError(
+                f"the fitted model has no {s.lag_dim!r} coordinate to size the adstock",
+                code=ErrorCode.INTEGRITY_FAILURE,
+            )
+        n_lag = len(lags)
         x = np.zeros((geos.size, channels.size, 1, n_lag))  # shapes only (steady state)
         curves = ChannelCurves.from_samples(
             post, x, s, geos=geos, channels=channels, times=np.arange(1)

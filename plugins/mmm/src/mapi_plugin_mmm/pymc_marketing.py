@@ -27,7 +27,9 @@ not pay its import cost.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import io
 import logging
 import warnings
 from collections.abc import Iterator
@@ -84,12 +86,14 @@ def pymc_marketing_available() -> bool:
 
 @contextmanager
 def _quiet() -> Iterator[None]:
+    """Silence library logging, warnings and progress bars (pymc-marketing recomputes
+    deterministics with an unconditional rich progress bar on stdout)."""
     loggers = [logging.getLogger(n) for n in ("pymc", "pymc_marketing", "pytensor")]
     levels = [lg.level for lg in loggers]
     for lg in loggers:
         lg.setLevel(logging.ERROR)
     try:
-        with warnings.catch_warnings():
+        with warnings.catch_warnings(), contextlib.redirect_stdout(io.StringIO()):
             warnings.simplefilter("ignore")
             yield
     finally:
