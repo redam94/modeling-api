@@ -702,7 +702,7 @@ def check_model(
                 return np.array(
                     [np.datetime64(pd.Timestamp(v) + periods * offset, "ns") for v in values]
                 )
-            return values + (coords[1] - coords[0]) * periods
+            return np.asarray(values + (coords[1] - coords[0]) * periods)
 
         gap = data.isel({tdim: slice(n // 2, None)}).assign_coords(
             {tdim: shifted(coords[n // 2 :], n + 30)}
