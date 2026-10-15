@@ -1,0 +1,37 @@
+{
+  "name": "@mapi/plot-sandbox",
+  "private": true,
+  "version": "0.2.0-dev",
+  "description": "Isolated Vega-Lite / Plotly renderer served from its own origin (plan §10.3)",
+  "license": "AGPL-3.0-only OR LicenseRef-mapi-commercial",
+  "type": "module",
+  "exports": {
+    "./protocol": "./src/protocol.ts"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "plotly.js-strict-dist-min": "3.7.0",
+    "vega": "6.4.0",
+    "vega-embed": "7.2.0",
+    "vega-interpreter": "2.3.2",
+    "vega-lite": "6.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "22.20.4",
+    "eslint": "9.39.5",
+    "globals": "16.5.0",
+    "jsdom": "26.1.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.1",
+    "vite": "7.3.6",
+    "vitest": "3.2.7"
+  }
+}
