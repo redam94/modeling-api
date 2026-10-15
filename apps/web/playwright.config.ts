@@ -27,10 +27,13 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
-      command: e2e ? "pnpm exec vite" : "pnpm exec vite --mode mock",
+      // The smoke suite runs the production build (CSP + Trusted Types enforced) in mock mode.
+      command: e2e
+        ? "pnpm exec vite"
+        : "pnpm exec vite build --mode mock --outDir dist/mock --emptyOutDir && pnpm exec vite preview --mode mock --outDir dist/mock",
       url: "http://127.0.0.1:5173",
       reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
+      timeout: 180_000,
     },
     {
       command: "pnpm exec vite",

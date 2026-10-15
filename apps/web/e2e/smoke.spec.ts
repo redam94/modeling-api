@@ -13,6 +13,38 @@ test.beforeEach(async ({ page }) => {
   page.on("pageerror", (err) => {
     throw err;
   });
+  // Record CSP / Trusted Types violations on the app origin; every test must end with none.
+  await page.addInitScript(() => {
+    const w = window as unknown as { __csp: string[] };
+    w.__csp = [];
+    document.addEventListener("securitypolicyviolation", (e) => w.__csp.push(`${e.violatedDirective} ${e.blockedURI}`));
+  });
+});
+
+test.afterEach(async ({ page }) => {
+  const violations = await page.evaluate(() => (window as unknown as { __csp: string[] }).__csp);
+  expect(violations).toEqual([]);
+});
+
+test("the app is served with a CSP that enforces Trusted Types", async ({ page }) => {
+  const res = await page.goto("/");
+  expect(res?.headers()["content-security-policy"]).toContain("require-trusted-types-for 'script'");
+  const meta = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute("content");
+  expect(meta).toContain("frame-src http://127.0.0.1:5174");
+  expect(await page.evaluate(() => typeof (window as unknown as { trustedTypes?: unknown }).trustedTypes)).toBe("object");
+  const blocked = await page.evaluate(() => {
+    try {
+      // eslint-disable-next-line no-restricted-properties -- deliberate Trusted Types probe
+      document.createElement("div").innerHTML = "<img src=x>";
+      return false;
+    } catch {
+      return true;
+    }
+  });
+  expect(blocked).toBe(true);
+  // The probe above is the only expected violation; clear it for the afterEach check.
+  const probe = await page.evaluate(() => (window as unknown as { __csp: string[] }).__csp.splice(0));
+  expect(probe.every((v) => v.startsWith("require-trusted-types-for"))).toBe(true);
 });
 
 test("home shows runs in flight and navigates by keyboard", async ({ page }) => {

@@ -1,3 +1,4 @@
+import "./trusted-types";
 import "@fontsource-variable/hanken-grotesk";
 import "@fontsource-variable/jetbrains-mono";
 import "./app.css";
