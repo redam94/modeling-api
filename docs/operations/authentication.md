@@ -150,14 +150,20 @@ every refused attempt at an operator endpoint is audited.
 
 ## Row-level security
 
-`mapi-server migrate` creates two cluster-wide roles and turns on `FORCE ROW LEVEL SECURITY`
+`mapi-server migrate` creates three cluster-wide roles and turns on `FORCE ROW LEVEL SECURITY`
 for every table that holds tenant data, with a fail-closed policy on
 `current_setting('app.tenant_id', false)`:
 
 | Role | Used by | Row-level security |
 |---|---|---|
 | `mapi_app` | Request handlers (one transaction per request, pinned with `set_config('app.tenant_id', <tenant>, true)`) | Applies: it sees and writes only that tenant's rows. Owns no table |
-| `mapi_system` | Dispatcher, reconciler, finalizer, events, authentication lookups (which token is this, which tenants does this user belong to) and operator endpoints | `BYPASSRLS` where the migrating login is a superuser, plus an explicit policy, so it also works on managed Postgres and for logins that are members of it |
+| `mapi_gateway` | Platform sessions of the API and events services: authentication lookups (which token is this, which tenants does this user belong to), operator endpoints, quota and usage counters | Applies, with explicit policies: it reads across tenants only the tables those need, writes only identity rows, operator documents (tenants, quotas, settings) and request counters, and may only *insert* audit rows. It cannot change runs, datasets, models or the cost ledger. Pushed run events are written through a tenant session of the run's tenant |
+| `mapi_system` | Dispatcher, reconciler and finalizer only | `BYPASSRLS` where the migrating login is a superuser, plus an explicit policy, so it also works on managed Postgres and for logins that are members of it |
+
+`MAPI_DB_PLATFORM` decides which role a process's platform sessions use: `gateway` for the
+API and events services, `system` for the orchestrator, and `auto` (the default, for one
+process that serves both, such as `mapi dev`) uses the gateway while it handles an HTTP
+request and the system role otherwise.
 
 A transaction that forgot to pin a tenant fails closed: on a fresh connection every query
 errors, on a pooled connection the setting is empty and matches no row. The test suite runs
@@ -169,10 +175,13 @@ in as the migrating user and select their role with the start-up option `role=..
 
 ```sql
 CREATE ROLE mapi_api LOGIN PASSWORD '...' IN ROLE mapi_app;
+CREATE ROLE mapi_api_gateway LOGIN PASSWORD '...' IN ROLE mapi_gateway;
 CREATE ROLE mapi_orchestrator LOGIN PASSWORD '...' IN ROLE mapi_system;
 ```
 
-and set `MAPI_DATABASE_APP_URL` (API) and `MAPI_DATABASE_SYSTEM_URL` (API and worker).
+and set `MAPI_DATABASE_APP_URL` (API and worker), `MAPI_DATABASE_GATEWAY_URL` with
+`MAPI_DB_PLATFORM=gateway` (API) and `MAPI_DATABASE_SYSTEM_URL` with `MAPI_DB_PLATFORM=system`
+(worker only).
 `DATABASE_URL` (the owner) is then needed by `mapi-server migrate` and procrastinate only.
 
 ## Pub/Sub push

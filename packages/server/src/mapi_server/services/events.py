@@ -133,10 +133,24 @@ class EventIngestor:
         return result
 
     async def _ingest(self, event: RunEvent, *, execution: str | None = None) -> IngestResult:
-        async with self.ctx.db.session() as session:
+        # Only the attempt's tenant is looked up with the platform role (the gateway, in the
+        # events service); everything is then read and written in a tenant session of that
+        # tenant, under row-level security (plan §9).
+        async with self.ctx.db.session() as platform:
+            tenant_id = (
+                await platform.execute(
+                    select(m.RunAttempt.tenant_id).where(
+                        m.RunAttempt.run_id == event.run_id,
+                        m.RunAttempt.attempt == event.attempt,
+                    )
+                )
+            ).scalar_one_or_none()
+        if tenant_id is None:
+            log.warning("event for unknown run/attempt %s/%s", event.run_id, event.attempt)
+            return IngestResult.UNKNOWN_ATTEMPT
+        async with self.ctx.db.tenant_session(tenant_id) as session:
             attempt = await session.get(m.RunAttempt, (event.run_id, event.attempt))
             if attempt is None:
-                log.warning("event for unknown run/attempt %s/%s", event.run_id, event.attempt)
                 return IngestResult.UNKNOWN_ATTEMPT
             if not verify_event(event, attempt.hmac_key):
                 await self._violation(session, attempt, "event HMAC verification failed")

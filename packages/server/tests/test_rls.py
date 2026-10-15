@@ -214,3 +214,92 @@ async def test_requests_cannot_reach_another_tenants_rows(
     assert r.status_code == 404 and r.json()["code"] == "NOT_FOUND"
     page = (await alpha.get("/v1/runs")).json()
     assert [r["id"] for r in page["items"]] == [ids["alpha"]["run"]]
+
+
+async def test_the_gateway_role_never_writes_tenant_data(ctx: ServerContext) -> None:
+    """The internet-facing API and events services run platform sessions as the gateway role
+    (``MAPI_DB_PLATFORM=gateway``), not the role that passes row-level security (plan §9:
+    that one is for the dispatcher, reconciler and finalizer only). It reads what sign-in,
+    the operator console and the quota counters need, and cannot change tenant data."""
+    ids = await _seed(ctx)
+    db = Database(ctx.db.url, platform="gateway", pool_size=1, system_pool_size=1)
+    try:
+        async with db.session() as s:
+            assert (await s.execute(text("SELECT current_user"))).scalar_one() == "mapi_gateway"
+            tenants = (await s.execute(select(func.count()).select_from(m.Tenant))).scalar_one()
+            runs = (await s.execute(select(func.count()).select_from(m.Run))).scalar_one()
+            assert tenants >= 2 and runs >= 2  # cross-tenant reads: sign-in, operators, quotas
+            role = (
+                await s.execute(
+                    text("SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user")
+                )
+            ).scalar_one()
+            assert role is False
+        forbidden = [
+            update(m.Run).where(m.Run.id == ids["alpha"]["run"]).values(state="failed"),
+            delete(m.Run),
+            delete(m.AuditEvent),
+            update(m.AuditEvent).values(outcome="success"),
+            select(m.Dataset),
+            update(m.Dataset).values(name="x"),
+            delete(m.CostLedgerEntry),
+        ]
+        for stmt in forbidden:
+            with pytest.raises((ProgrammingError, DBAPIError)):
+                async with db.session() as s:
+                    await s.execute(stmt)
+        async with ctx.db.session() as s:  # the orchestrator's role is unaffected
+            run = await s.get(m.Run, ids["alpha"]["run"])
+            assert run is not None and run.state == "queued"
+    finally:
+        await db.dispose()
+
+
+async def test_requests_use_the_gateway_role_and_background_work_the_system_role(
+    ctx: ServerContext,
+) -> None:
+    """``MAPI_DB_PLATFORM=auto`` (one process serving both): platform sessions opened while
+    an HTTP request is handled run as the gateway role, so the whole API test suite runs its
+    request paths with the gateway's grants; the dispatcher and other loops keep the system
+    role."""
+    import httpx
+    from mapi_server.app import _RequestScope, create_app
+    from mapi_server.db.engine import IN_REQUEST
+
+    seen: list[str] = []
+
+    async def probe(scope: object, receive: object, send: object) -> None:
+        async with ctx.db.session() as s:
+            seen.append(str((await s.execute(text("SELECT current_user"))).scalar_one()))
+
+    await _RequestScope(probe)({"type": "http"}, None, None)  # type: ignore[arg-type]
+    assert seen == ["mapi_gateway"] and IN_REQUEST.get() is False
+    async with ctx.db.session() as s:
+        assert (await s.execute(text("SELECT current_user"))).scalar_one() == "mapi_system"
+    # a real request through the app: an operator route reads tenants as the gateway
+    app = create_app(ctx.settings, ctx=ctx, manage_context=False)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8000") as c:
+        r = await c.get("/v1/admin/tenants")
+    assert r.status_code == 200, r.text
+
+
+async def test_an_api_process_starts_with_only_the_gateway_role(ctx: ServerContext) -> None:
+    """A deployed API process (``MAPI_DB_PLATFORM=gateway``) provisions the platform tenant,
+    invites the configured admins and imports the catalog at start-up with gateway grants."""
+    from mapi_server.app import build_context, shutdown, startup
+
+    async with await psycopg.AsyncConnection.connect(ctx.db.url, autocommit=True) as conn:
+        await conn.execute("TRUNCATE catalogs")  # so start-up imports it again
+    settings = ctx.settings.model_copy(
+        update={"db_platform": "gateway", "default_tenant_admins": ["ops@example.com"]}
+    )
+    api = build_context(settings, store=ctx.store, signer=ctx.signer, secrets=ctx.secrets)
+    assert api.db.uses_gateway
+    try:
+        await startup(api, listen=False)
+        async with api.db.session() as s:
+            assert (await s.execute(text("SELECT current_user"))).scalar_one() == "mapi_gateway"
+            assert (await s.execute(select(func.count()).select_from(m.Catalog))).scalar_one()
+    finally:
+        await shutdown(api)

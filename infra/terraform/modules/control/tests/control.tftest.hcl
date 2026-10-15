@@ -91,7 +91,7 @@ run "database" {
   }
 
   assert {
-    condition     = toset([for u in google_sql_user.role : u.name]) == toset(["mapi_app", "mapi_orchestrator", "mapi_migrate"])
+    condition     = toset([for u in google_sql_user.role : u.name]) == toset(["mapi_app", "mapi_gateway", "mapi_orchestrator", "mapi_migrate"])
     error_message = "Three roles: app (RLS-bound), orchestrator (BYPASSRLS), migrate (owner)."
   }
 

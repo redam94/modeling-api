@@ -5,7 +5,7 @@ embedded Postgres.
 ``pgserver`` included). SQLAlchemy gets the ``postgresql+psycopg://`` form, while
 procrastinate and the LISTEN connection get the plain libpq form.
 
-**Two roles, two pools** (plan §9, IDOR row):
+**Three roles** (plan §9, IDOR row):
 
 * :meth:`Database.tenant_session` runs as the request-path role (``mapi_app``), which owns
   no table and is subject to the ``FORCE ROW LEVEL SECURITY`` policies of migration
@@ -14,13 +14,20 @@ procrastinate and the LISTEN connection get the plain libpq form.
   connection never carries a previous request's tenant). A transaction without the setting
   fails closed: ``current_setting('app.tenant_id', false)`` raises on a fresh connection
   and is the empty string (matching no row) on a reused one.
-* :meth:`Database.session` / :meth:`Database.system_session` run as the platform role
-  (``mapi_system``, ``BYPASSRLS``): the dispatcher, reconciler, finalizer, events service,
-  authentication lookups and operator endpoints.
+* :meth:`Database.session` / :meth:`Database.system_session` are *platform* sessions. In the
+  orchestrator they run as the system role (``mapi_system``, ``BYPASSRLS``): only the
+  dispatcher, reconciler and finalizer hold it. In the internet-facing API and events
+  services they run as the **gateway** role (``mapi_gateway``, migration ``0004``): no
+  ``BYPASSRLS``; it may read what sign-in, operator routes and quota counters need across
+  tenants, and write only identity, policy and settings rows plus inserts into the audit
+  log. Pushed events are written through a tenant session of the run's tenant.
+  ``MAPI_DB_PLATFORM`` picks the role; ``auto`` (one process serving both, e.g. ``mapi dev``
+  and the tests) uses the gateway while an HTTP request is handled (:data:`IN_REQUEST`).
 
-Without dedicated logins (``MAPI_DATABASE_APP_URL``/``MAPI_DATABASE_SYSTEM_URL``) both pools
-connect with ``DATABASE_URL`` and select their role with the libpq start-up option
-``-c role=<role>`` (``RESET ROLE`` then returns to that role, not to the login).
+Without dedicated logins (``MAPI_DATABASE_APP_URL``/``MAPI_DATABASE_SYSTEM_URL``/
+``MAPI_DATABASE_GATEWAY_URL``) the pools connect with ``DATABASE_URL`` and select their role
+with the libpq start-up option ``-c role=<role>`` (``RESET ROLE`` then returns to that role,
+not to the login).
 """
 
 from __future__ import annotations
@@ -28,6 +35,7 @@ from __future__ import annotations
 import threading
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Final
 
@@ -44,6 +52,7 @@ from sqlalchemy.orm import Session, SessionTransaction
 from mapi_server.settings import Settings
 
 __all__ = [
+    "IN_REQUEST",
     "TENANT_SETTING",
     "Database",
     "TenantScopedSession",
@@ -55,6 +64,10 @@ __all__ = [
 
 TENANT_SETTING: Final = "app.tenant_id"
 """The transaction-local setting every row-level-security policy compares ``tenant_id`` to."""
+
+IN_REQUEST: ContextVar[bool] = ContextVar("mapi_in_request", default=False)
+"""True while an HTTP request is handled (set by the app's ASGI wrapper): with
+``MAPI_DB_PLATFORM=auto`` platform sessions then use the gateway role."""
 
 
 class TenantScopedSession(Session):
@@ -158,8 +171,11 @@ class Database:
         *,
         app_url: str | None = None,
         system_url: str | None = None,
+        gateway_url: str | None = None,
         app_role: str = "mapi_app",
         system_role: str = "mapi_system",
+        gateway_role: str = "mapi_gateway",
+        platform: str = "auto",
         pool_size: int = 10,
         system_pool_size: int | None = None,
         echo: bool = False,
@@ -168,6 +184,10 @@ class Database:
         self.url = libpq_url(url)
         self.app_role = app_role
         self.system_role = system_role
+        self.gateway_role = gateway_role
+        if platform not in ("auto", "system", "gateway"):
+            raise ValueError("platform must be auto, system or gateway")
+        self.platform = platform
         self.system_engine = _engine(
             libpq_url(system_url) if system_url else self.url,
             role=None if system_url else system_role,
@@ -180,11 +200,20 @@ class Database:
             pool_size=pool_size,
             echo=echo,
         )
+        self.gateway_engine = _engine(
+            libpq_url(gateway_url) if gateway_url else self.url,
+            role=None if gateway_url else gateway_role,
+            pool_size=system_pool_size or max(2, pool_size // 2),
+            echo=echo,
+        )
         self.engine: AsyncEngine = self.system_engine
-        """The platform-role engine (kept under its v0.2 name)."""
+        """The system-role engine (kept under its v0.2 name)."""
         info = dict(session_info or {})
-        self.sessionmaker = async_sessionmaker(
+        self.system_sessionmaker = async_sessionmaker(
             self.system_engine, expire_on_commit=False, info=dict(info)
+        )
+        self.gateway_sessionmaker = async_sessionmaker(
+            self.gateway_engine, expire_on_commit=False, info=dict(info)
         )
         self.tenant_sessionmaker = async_sessionmaker(
             self.app_engine,
@@ -201,19 +230,32 @@ class Database:
             url,
             app_url=settings.database_app_url,
             system_url=settings.database_system_url,
+            gateway_url=settings.database_gateway_url,
             app_role=settings.db_app_role,
             system_role=settings.db_system_role,
+            gateway_role=settings.db_gateway_role,
+            platform=settings.db_platform,
             pool_size=settings.db_pool_size,
             system_pool_size=settings.db_system_pool_size,
             echo=settings.db_echo,
             session_info=session_info,
         )
 
+    @property
+    def uses_gateway(self) -> bool:
+        """Do platform sessions run as the gateway role right now?"""
+        return self.platform == "gateway" or (self.platform == "auto" and IN_REQUEST.get())
+
+    @property
+    def sessionmaker(self) -> async_sessionmaker[AsyncSession]:
+        """The platform sessionmaker of this process (see :attr:`uses_gateway`)."""
+        return self.gateway_sessionmaker if self.uses_gateway else self.system_sessionmaker
+
     @asynccontextmanager
     async def session(self) -> AsyncIterator[AsyncSession]:
-        """A **platform-role** session inside one transaction (committed on success, rolled
-        back on error). It bypasses row-level security: request handlers use
-        :meth:`tenant_session` instead."""
+        """A **platform** session inside one transaction (committed on success, rolled back
+        on error): the system role in the orchestrator, the gateway role in the API and
+        events services. Tenant data goes through :meth:`tenant_session`."""
         async with self.sessionmaker() as s, s.begin():
             yield s
 
@@ -230,3 +272,4 @@ class Database:
     async def dispose(self) -> None:
         await self.app_engine.dispose()
         await self.system_engine.dispose()
+        await self.gateway_engine.dispose()

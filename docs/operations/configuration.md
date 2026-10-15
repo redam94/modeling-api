@@ -74,8 +74,10 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_DB_SYSTEM_POOL_SIZE` | `5` | Platform-role connections per process |
 | `MAPI_DB_ECHO` | `false` | Log every SQL statement |
 | `MAPI_DATABASE_APP_URL` | unset | Dedicated login of the request-path role (row-level security applies). Unset: `DATABASE_URL` with the start-up option `role=$MAPI_DB_APP_ROLE` |
-| `MAPI_DATABASE_SYSTEM_URL` | unset | Dedicated login of the platform role (dispatcher, reconciler, finalizer, events, authentication lookups, operator endpoints). Unset: `DATABASE_URL` with `role=$MAPI_DB_SYSTEM_ROLE` |
-| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE` | `mapi_app`, `mapi_system` | The two runtime roles `mapi-server migrate` creates and grants (see [Authentication](authentication.md#row-level-security)) |
+| `MAPI_DATABASE_SYSTEM_URL` | unset | Dedicated login of the platform role that passes row-level security (dispatcher, reconciler, finalizer: the orchestrator only). Unset: `DATABASE_URL` with `role=$MAPI_DB_SYSTEM_ROLE` |
+| `MAPI_DATABASE_GATEWAY_URL` | unset | Dedicated login of the gateway role (the API and events services: authentication lookups, operator endpoints, quota counters; row-level security applies). Unset: `DATABASE_URL` with `role=$MAPI_DB_GATEWAY_ROLE` |
+| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE`, `MAPI_DB_GATEWAY_ROLE` | `mapi_app`, `mapi_system`, `mapi_gateway` | The three runtime roles `mapi-server migrate` creates and grants (see [Authentication](authentication.md#row-level-security)) |
+| `MAPI_DB_PLATFORM` | `auto` | Role behind platform sessions: `gateway` (API and events services), `system` (orchestrator), `auto` (one process serving both: the gateway while handling a request, the system role otherwise) |
 
 **Authentication (v0.3)**
 

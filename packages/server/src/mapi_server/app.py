@@ -30,6 +30,7 @@ from mapi_spec.storage import ObjectStore
 from mapi_spec.tenancy import PROJECT_HEADER
 from pydantic import BaseModel
 from pydantic.json_schema import models_json_schema
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 import mapi_server
 from mapi_server.api import (
@@ -49,6 +50,7 @@ from mapi_server.auth.oidc import HttpOidcProvider, OidcClient
 from mapi_server.auth.request import CSRF_HEADER, access_for, authenticate
 from mapi_server.context import FinalizeQueue, ServerContext
 from mapi_server.db import Database, resolve_database_url
+from mapi_server.db.engine import IN_REQUEST
 from mapi_server.devidp import DevIdP, mount_devidp
 from mapi_server.errors import install_error_handlers
 from mapi_server.services.catalog import CatalogService
@@ -176,6 +178,7 @@ def build_context(
         from mapi_server.observability.tracing import instrument_engine
 
         instrument_engine(db.system_engine)
+        instrument_engine(db.gateway_engine)
         instrument_engine(db.app_engine)
     owned_store = store is None
     devidp = (
@@ -254,6 +257,23 @@ async def shutdown(ctx: ServerContext) -> None:
     for fn in reversed(ctx.on_shutdown):
         await fn()
     await ctx.db.dispose()
+
+
+class _RequestScope:
+    """Pure ASGI wrapper marking the request context (:data:`mapi_server.db.engine.IN_REQUEST`)."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+        token = IN_REQUEST.set(True)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            IN_REQUEST.reset(token)
 
 
 def create_app(
@@ -345,6 +365,8 @@ def create_app(
     # Outermost: DNS rebinding makes a hostile page same-origin with 127.0.0.1, so CORS never
     # applies; the Host header is the only tell (plan §9). 400 for any unexpected host.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts())
+    # Every request runs with the gateway role behind platform sessions (MAPI_DB_PLATFORM=auto)
+    app.add_middleware(_RequestScope)
     for router in (
         meta.router,
         auth_routes.router,

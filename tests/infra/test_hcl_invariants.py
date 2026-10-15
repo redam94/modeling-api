@@ -532,3 +532,30 @@ def test_checkpoints_can_be_overwritten_and_nothing_else() -> None:
     data_iam = strip_comments((TF_ROOT / "modules" / "data" / "iam.tf").read_text())
     signer = re.findall(r'\["(\w+)", "(\w+)", "url_signer"\]', data_iam)
     assert all(r in {"reader", "writer"} for _, r in signer), signer
+
+
+def test_only_the_orchestrator_holds_the_platform_database_login() -> None:
+    """Plan §9 (IDOR row): the role that passes row-level security is for the dispatcher,
+    reconciler and finalizer. The internet-facing api and events services run their platform
+    sessions as the gateway role (migration 0004) and never get the orchestrator's URL."""
+    secrets_tf = strip_comments((TF_ROOT / "modules" / "control" / "secrets.tf").read_text())
+    access = dict(re.findall(r'"(db-url-[a-z-]+)"\s*=\s*(\[[^\]]*\])', secrets_tf))
+    assert access["db-url-orchestrator"] == '["orchestrator"]'
+    assert access["db-url-gateway"] == '["api", "events"]'
+    sql = strip_comments((TF_ROOT / "modules" / "control" / "sql.tf").read_text())
+    assert 'db_roles = toset(["app", "gateway", "orchestrator", "migrate"])' in sql
+
+    locals_tf = strip_comments((TF_ROOT / "modules" / "control" / "locals.tf").read_text())
+    start = locals_tf.index("  secret_env_api = {")
+    api_secrets = locals_tf[start : locals_tf.index("}", start)]
+    assert "db-url-orchestrator" not in api_secrets
+    assert re.search(r'MAPI_DATABASE_GATEWAY_URL\s*=\s*"db-url-gateway"', api_secrets)
+    for workload, platform in (
+        ("api", "gateway"),
+        ("events", "gateway"),
+        ("orchestrator", "system"),
+    ):
+        block = locals_tf[locals_tf.index(f"    {workload} = merge(local.env_common, {{") :]
+        block = block[: block.index("}")]
+        assert re.search(rf'MAPI_DB_PLATFORM\s*=\s*"{platform}"', block), workload
+    assert re.search(r'MAPI_DB_GATEWAY_ROLE\s*=\s*"mapi_gateway"', locals_tf)

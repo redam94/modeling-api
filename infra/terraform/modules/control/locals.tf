@@ -65,16 +65,19 @@ locals {
     MAPI_URL_UPLOADER    = google_service_account.sa["url-uploader"].email
     MAPI_DB_APP_ROLE     = "mapi_app"
     MAPI_DB_SYSTEM_ROLE  = "mapi_orchestrator"
+    MAPI_DB_GATEWAY_ROLE = "mapi_gateway"
   }
 
   env = {
     api = merge(local.env_common, {
+      MAPI_DB_PLATFORM    = "gateway"
       MAPI_ALLOWED_HOSTS  = join(",", distinct([local.host.web, local.host.api]))
       MAPI_OIDC_ISSUER    = var.oidc.issuer
       MAPI_OIDC_CLIENT_ID = var.oidc.client_id == null ? "" : var.oidc.client_id
     }, lookup(var.extra_env, "api", {}))
 
     events = merge(local.env_common, {
+      MAPI_DB_PLATFORM                 = "gateway"
       MAPI_ALLOWED_HOSTS               = trimprefix(local.run_url.events, "https://")
       MAPI_PUBSUB_PUSH_AUDIENCE        = local.push_audience
       MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT = google_service_account.sa["push"].email
@@ -82,6 +85,7 @@ locals {
     }, lookup(var.extra_env, "events", {}))
 
     orchestrator = merge(local.env_common, {
+      MAPI_DB_PLATFORM      = "system"
       MAPI_EXECUTOR         = "cloudrun-jobs"
       MAPI_CLOUDRUN_PROJECT = var.exec_pools[local.dispatch_pool].project
       MAPI_CLOUDRUN_REGION  = var.exec_pools[local.dispatch_pool].region
@@ -100,13 +104,14 @@ locals {
   }
 
   # api and events run the same app: tenant sessions on mapi_app (pooled), sign-in lookups and
-  # pushed events on the platform role, LISTEN on a direct connection
+  # operator routes on the gateway role, LISTEN on a direct connection. Never the orchestrator
+  # login: it passes row-level security (plan §9)
   secret_env_api = {
-    MAPI_DATABASE_URL        = "db-url-app-direct"
-    MAPI_DATABASE_APP_URL    = "db-url-app"
-    MAPI_DATABASE_SYSTEM_URL = "db-url-orchestrator"
-    MAPI_SERVER_SECRET       = "server-secret"
-    MAPI_METRICS_TOKEN       = "metrics-token"
+    MAPI_DATABASE_URL         = "db-url-app-direct"
+    MAPI_DATABASE_APP_URL     = "db-url-app"
+    MAPI_DATABASE_GATEWAY_URL = "db-url-gateway"
+    MAPI_SERVER_SECRET        = "server-secret"
+    MAPI_METRICS_TOKEN        = "metrics-token"
   }
 
   # name of the env var => secret id (resolved to "latest" version at revision start)

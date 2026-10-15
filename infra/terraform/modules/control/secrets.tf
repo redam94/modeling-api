@@ -7,10 +7,13 @@
 #                         MAPI_DATABASE_APP_URL of api, events and orchestrator
 #   db-url-app-direct     mapi_app, direct: MAPI_DATABASE_URL of api and events (their LISTEN
 #                         connection for SSE fan-out)
+#   db-url-gateway        mapi_gateway (MAPI_DB_GATEWAY_ROLE), direct: MAPI_DATABASE_GATEWAY_URL
+#                         of api and events (sign-in lookups, operator routes, quota
+#                         counters); no BYPASSRLS
 #   db-url-orchestrator   mapi_orchestrator (the platform role, MAPI_DB_SYSTEM_ROLE), direct:
-#                         MAPI_DATABASE_SYSTEM_URL of api and events (sign-in lookups,
-#                         operator routes, pushed events) and the orchestrator's own URL
-#                         (procrastinate LISTEN, advisory locks)
+#                         the orchestrator only (dispatcher, reconciler, finalizer, procrastinate
+#                         LISTEN, advisory locks). Plan §9: the internet-facing services never
+#                         hold the credential that passes row-level security
 #   db-url-migrate        migrate job: direct, schema owner
 #   server-secret         MAPI_SERVER_SECRET: the root of the API-token pepper and the audit
 #                         fingerprint key (mapi_server.services.secrets); shared by every
@@ -22,6 +25,7 @@ locals {
   secret_ids = toset([
     "db-url-app",
     "db-url-app-direct",
+    "db-url-gateway",
     "db-url-orchestrator",
     "db-url-migrate",
     "server-secret",
@@ -33,7 +37,8 @@ locals {
   secret_access = {
     "db-url-app"          = ["api", "events", "orchestrator"]
     "db-url-app-direct"   = ["api", "events"]
-    "db-url-orchestrator" = ["api", "events", "orchestrator"]
+    "db-url-gateway"      = ["api", "events"]
+    "db-url-orchestrator" = ["orchestrator"]
     "db-url-migrate"      = ["migrate"]
     "server-secret"       = ["api", "events", "orchestrator", "migrate"]
     "metrics-token"       = ["api", "events", "orchestrator"]
@@ -46,10 +51,11 @@ locals {
     }
   ]...)
 
-  # (secret id => role, port) for the four connection URLs
+  # (secret id => role, port) for the five connection URLs
   db_urls = {
     "db-url-app"          = { role = "app", pooled = true }
     "db-url-app-direct"   = { role = "app", pooled = false }
+    "db-url-gateway"      = { role = "gateway", pooled = false }
     "db-url-orchestrator" = { role = "orchestrator", pooled = false }
     "db-url-migrate"      = { role = "migrate", pooled = false }
   }
