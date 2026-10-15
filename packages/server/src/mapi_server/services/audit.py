@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, Final
 
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome, AuditQuery
 from mapi_spec.errors import ErrorCode
@@ -97,6 +97,37 @@ async def write_audit(
                 s.add(_row(ev))
     except Exception:  # pragma: no cover - database outage while auditing
         log.exception("could not write %d audit event(s)", len(events))
+
+
+FAILURE_AUDITS_PER_MINUTE: Final = 5
+"""Unauthenticated failures (a wrong token secret, a failed sign-in) are audited at most this
+many times per counter subject (token prefix, client) and minute: anyone can cause them, so
+they must not be able to flood a tenant's audit log."""
+
+
+async def write_failure_audit(
+    db: Database,
+    events: Sequence[AuditEvent],
+    subject: str,
+    *,
+    now: datetime,
+    limit: int = FAILURE_AUDITS_PER_MINUTE,
+) -> bool:
+    """Count one failure under ``subject`` and audit ``events`` unless ``limit`` failures were
+    already audited this minute. Returns whether they were written. Never raises."""
+    from mapi_server.services.quotas import count_requests
+
+    try:
+        async with db.session() as s:
+            before = await count_requests(s, subject, now=now)
+            if before >= limit:
+                return False
+            for ev in events:
+                s.add(_row(ev))
+        return True
+    except Exception:  # pragma: no cover - database outage while auditing
+        log.exception("could not write %d failure audit event(s)", len(events))
+        return False
 
 
 def audit_query(q: AuditQuery, *, after: tuple[datetime, str] | None = None) -> Select[Any]:

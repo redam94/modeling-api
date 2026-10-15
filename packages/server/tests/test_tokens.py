@@ -11,6 +11,7 @@ import httpx
 import pytest
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.services.runs import now
 from mapi_server.settings import Profile, Settings
 from mapi_server_testkit.identity import (
     grant_role,
@@ -136,6 +137,39 @@ async def test_malformed_wrong_expired_and_orphaned_tokens(
         ]
     assert {e.details["reason"] for e in failed} >= {"invalid", "expired"}
     assert all(e.tenant_id == "acme" and e.ip_hash for e in failed)
+
+
+async def test_bad_secrets_are_indistinguishable_and_their_audit_is_bounded(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """An unknown prefix and a known prefix with a wrong secret get the same answer, and an
+    anonymous client hammering a known (semi-public) prefix cannot write unbounded audit rows
+    into the victim tenant: failures are audited at most a few times per prefix and minute."""
+    from mapi_server.services.housekeeping import Housekeeper
+
+    ana = await _acme(ctx)
+    secret = await make_token(ctx, ana, "acme", "growth", ["models:read"])
+    prefix = secret.split("_")[1]
+    unknown = await token_caller(client, str(generate_token())).get("/v1/datasets")
+    forged = await token_caller(client, str(generate_token(prefix=prefix))).get("/v1/datasets")
+    assert unknown.status_code == forged.status_code == 401
+    assert unknown.json()["detail"] == forged.json()["detail"] == "the API token is invalid"
+    for _ in range(20):
+        r = await token_caller(client, str(generate_token(prefix=prefix))).get("/v1/datasets")
+        assert r.status_code == 401
+    async with ctx.db.session() as s:
+        failed = [
+            e for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "token.auth_failed"
+        ]  # fmt: skip
+        counters = list((await s.execute(select(m.RateCounter))).scalars())
+    assert 1 <= len(failed) <= 5
+    assert all(e.tenant_id == "acme" for e in failed)
+    assert counters  # the counters behind it are swept once their window is over
+    later = now() + timedelta(minutes=5)
+    await Housekeeper(ctx).sweep_once(now=later)
+    async with ctx.db.session() as s:
+        assert list((await s.execute(select(m.RateCounter))).scalars()) == []
 
 
 async def test_scopes_never_widen_the_owners_role(

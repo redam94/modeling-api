@@ -306,6 +306,22 @@ async def test_callback_is_single_use_and_checks_state(client: httpx.AsyncClient
     assert r.status_code == 401 and "<script>" not in r.text
 
 
+async def test_failed_sign_ins_are_audited_a_bounded_number_of_times(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """Anyone can hit /auth/callback: its failures are audited at most a few times per
+    client and minute, so they cannot flood the audit log."""
+    for _ in range(20):
+        r = await client.get("/auth/callback?code=x&state=y")
+        assert r.status_code == 401
+    async with ctx.db.session() as s:
+        failed = [
+            e for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "auth.login_failed"
+        ]  # fmt: skip
+    assert 1 <= len(failed) <= 5
+
+
 async def test_unknown_account_and_bad_redirect_are_refused(client: httpx.AsyncClient) -> None:
     r = await client.get("/auth/login")
     authorize = r.headers["location"]

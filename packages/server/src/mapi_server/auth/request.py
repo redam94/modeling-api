@@ -81,7 +81,7 @@ from mapi_server.auth.oidc import OidcError
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError, ProblemWithHeaders, unauthenticated
-from mapi_server.services.audit import write_audit
+from mapi_server.services.audit import write_audit, write_failure_audit
 from mapi_server.services.quotas import global_policy, rate_limit, tenant_policy, token_policy
 from mapi_server.services.runs import Scope, now
 
@@ -279,7 +279,8 @@ class _Resolved:
 
 class _AuthFailure(Exception):
     """Raised inside the lookup transaction; carries what to write after the rollback:
-    audit rows, and the cookie of an expired session to delete."""
+    audit rows (bounded per ``audit_subject`` and minute when that is set), and the cookie
+    of an expired session to delete."""
 
     def __init__(
         self,
@@ -287,11 +288,17 @@ class _AuthFailure(Exception):
         audit: list[AuditEvent],
         *,
         expired_session: str | None = None,
+        audit_subject: str | None = None,
     ) -> None:
         super().__init__(error.detail)
         self.error = error
         self.audit = audit
         self.expired_session = expired_session
+        self.audit_subject = audit_subject
+
+
+_INVALID_TOKEN: Final = "invalid"
+"""The reason for an unknown prefix *and* a wrong secret (no prefix oracle)."""
 
 
 def _request_id(request: Request) -> str:
@@ -318,7 +325,14 @@ def _token_failure(
         user_agent=request.headers.get("user-agent"),
         details={"reason": reason, "prefix": row.prefix},
     )
-    return _AuthFailure(unauthenticated(f"the API token is {reason}"), [ev])
+    return _AuthFailure(
+        unauthenticated(f"the API token is {reason}"), [ev], audit_subject=_failures(row.prefix)
+    )
+
+
+def _failures(prefix: str) -> str:
+    """Rate-counter subject of a token prefix's authentication failures."""
+    return f"authfail:{prefix}"
 
 
 async def _from_token(
@@ -332,11 +346,15 @@ async def _from_token(
     row = (
         await s.execute(select(m.ApiToken).where(m.ApiToken.prefix == parsed.prefix))
     ).scalar_one_or_none()
-    if row is None:
-        hash_token(parsed, pepper)  # the same work as a known prefix (timing)
-        raise unauthenticated("invalid API token")
+    if row is None:  # the same answer, and the same work, as a wrong secret
+        hash_token(parsed, pepper)
+        raise _AuthFailure(
+            unauthenticated(f"the API token is {_INVALID_TOKEN}"),
+            [],
+            audit_subject=_failures(parsed.prefix),
+        )
     if not verify_token_hash(parsed, row.secret_hash, pepper):
-        raise _token_failure(ctx, request, row, "invalid")
+        raise _token_failure(ctx, request, row, _INVALID_TOKEN)
     record = token_record(row)
     status = record.status_at(at)
     if status is not TokenStatus.ACTIVE:
@@ -581,7 +599,9 @@ async def authenticate(request: Request) -> RequestAuth:
         async with ctx.db.session() as s:
             await _resolve(s, ctx, request, auth, now())
     except _AuthFailure as failure:
-        if failure.audit:
+        if failure.audit_subject is not None:  # anyone can cause these: bounded
+            await write_failure_audit(ctx.db, failure.audit, failure.audit_subject, now=now())
+        elif failure.audit:
             await write_audit(ctx.db, failure.audit)
         if failure.expired_session is not None:
             async with ctx.db.session() as s:

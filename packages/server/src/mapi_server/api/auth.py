@@ -47,7 +47,7 @@ from mapi_server.auth.request import CSRF_HEADER, _check_csrf, csrf_cookie, sess
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import problem_response
-from mapi_server.services.audit import write_audit
+from mapi_server.services.audit import write_audit, write_failure_audit
 from mapi_server.services.runs import now
 
 __all__ = ["router"]
@@ -69,8 +69,11 @@ def _client(request: Request) -> tuple[str | None, str | None]:
 
 
 async def _login_failed(ctx: ServerContext, request: Request, reason: str) -> JSONResponse:
+    """The generic 401; the reason is audited, at most a few times per client and minute
+    (anyone can call the callback)."""
     ip, ua = _client(request)
-    await write_audit(
+    client = client_fingerprint(ip, ctx.secrets.audit_key) or "-"
+    await write_failure_audit(
         ctx.db,
         [
             make_audit_event(
@@ -85,6 +88,8 @@ async def _login_failed(ctx: ServerContext, request: Request, reason: str) -> JS
                 details={"reason": reason[:200]},
             )
         ],
+        f"loginfail:{client}",
+        now=now(),
     )
     log.info("sign-in failed: %s", reason)
     problem = Problem.from_code(

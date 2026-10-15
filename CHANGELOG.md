@@ -173,6 +173,11 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   threw away all earlier progress. Automatic infra retries are also capped by cost
   (`MAPI_AUTO_RETRY_COST_FACTOR`, default 2× the estimate), as plan §8.3 asks, and no longer
   by count alone.
+- **server**: an unknown token prefix and a wrong secret for a known prefix get the same
+  answer (`the API token is invalid`), so the API no longer tells which prefixes exist.
+  Unauthenticated failures that anyone can cause (`token.auth_failed`, `auth.login_failed`)
+  are audited at most five times per token prefix or client and minute, so they can no longer
+  flood a tenant's audit log. The housekeeper sweeps old rate counters.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 

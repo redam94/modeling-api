@@ -132,7 +132,9 @@ narrowed by its scopes, and is bound to that project:
   `MAPI_SERVER_SECRET` and compares in constant time; a typo is caught by the checksum
   before any database lookup, and no error ever echoes the presented value;
 - expired, revoked or orphaned tokens (owner disabled) answer `401`; a wrong secret for a
-  known prefix, expiry and revocation are audited as `token.auth_failed`;
+  known prefix, expiry and revocation are audited as `token.auth_failed`, at most five times
+  per token prefix and minute (anyone who knows a prefix can cause them). An unknown prefix
+  and a wrong secret get the same answer, `the API token is invalid`;
 - a disabled account stays disabled: signing in again is refused (a generic `401`, audited
   as `auth.login_failed`), and only an invitation becomes active at its first sign-in;
 - a token never carries operator powers, even if its owner is an operator;
