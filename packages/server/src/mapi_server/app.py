@@ -61,7 +61,7 @@ from mapi_server.services.tenancy import (
     invite_admins,
     seed_dev_accounts,
 )
-from mapi_server.settings import Settings, SignerKind
+from mapi_server.settings import Profile, Settings, SignerKind
 from mapi_server.storage import build_object_store
 
 __all__ = [
@@ -170,6 +170,11 @@ def build_context(
     url = database_url or resolve_database_url(settings)
     price_table = load_price_table(settings.price_table_path)
     db = Database.from_settings(settings, url, session_info={PRICE_TABLE_INFO_KEY: price_table})
+    if settings.tracing_enabled:
+        from mapi_server.observability.tracing import instrument_engine
+
+        instrument_engine(db.system_engine)
+        instrument_engine(db.app_engine)
     owned_store = store is None
     devidp = (
         DevIdP(
@@ -228,6 +233,9 @@ async def prepare_signer(signer: ManifestSigner) -> None:
 
 
 async def startup(ctx: ServerContext, *, listen: bool = True) -> None:
+    from mapi_server.observability import metrics as obs_metrics
+
+    obs_metrics.METRICS.bind_sse_gauge(ctx.hub.subscriber_count)
     await prepare_signer(ctx.signer)
     await ensure_scope(ctx)
     async with ctx.db.session() as s:
@@ -314,6 +322,7 @@ def create_app(
 
     app.openapi = openapi  # type: ignore[method-assign]
     install_error_handlers(app, debug=settings.debug)
+    _install_observability(app, settings, ctx)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.web_origin.rstrip("/")],
@@ -367,6 +376,33 @@ def check_route_access(app: FastAPI) -> None:
             missing.append(f"{sorted(route.methods or ())} {route.path} ({op})")
     if missing:
         raise RuntimeError(f"routes without an access rule: {missing}")
+
+
+def _install_observability(app: FastAPI, settings: Settings, ctx: ServerContext | None) -> None:
+    """Metrics endpoint, request middleware, OTel instrumentation and the SSE-client gauge.
+
+    Logging and the tracer provider are configured once per process at the entry point
+    (``mapi-server api``/``worker``); here we only attach per-app pieces so that tests which
+    build apps directly still get ``/metrics`` and request metrics.
+    """
+    from mapi_server.observability import metrics as obs_metrics
+    from mapi_server.observability.middleware import (
+        ObservabilityMiddleware,
+        add_metrics_endpoint,
+    )
+    from mapi_server.observability.tracing import instrument_app
+
+    if settings.metrics_enabled:
+        add_metrics_endpoint(
+            app,
+            token=settings.metrics_token,
+            require_token=settings.profile is Profile.MULTI_TENANT,
+        )
+    app.add_middleware(ObservabilityMiddleware, fastapi_app=app)
+    if settings.tracing_enabled:
+        instrument_app(app)
+    if ctx is not None:
+        obs_metrics.METRICS.bind_sse_gauge(ctx.hub.subscriber_count)
 
 
 def openapi_document(settings: Settings | None = None) -> dict[str, Any]:

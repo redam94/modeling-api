@@ -35,10 +35,9 @@ log = logging.getLogger("mapi_server")
 
 
 def _setup_logging(settings: Settings) -> None:
-    logging.basicConfig(
-        level=getattr(logging, settings.log_level.upper()),
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    from mapi_server.observability import setup_observability
+
+    setup_observability(settings.obs_settings())
 
 
 def cmd_migrate(settings: Settings) -> int:

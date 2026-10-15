@@ -50,7 +50,7 @@ from mapi_server.storage import MemoryObjectStore
 from mapi_spec.conformance_executor import ConformanceTarget, ObservedRun
 from mapi_spec.executor import ExecState, ExecStatus, Executor, ExecutorCaps, Handle, RunSubmit
 from mapi_spec.run import FailureClass, RunState
-from sqlalchemy import text, update
+from sqlalchemy import update
 
 from .builders import CATALOG, EXEC_TOKEN, submit_fit, trend_spec
 from .pubsub import AUDIENCE, PUSH_SA, SUBSCRIPTION, LocalGoogleIdP, PubSubPusher

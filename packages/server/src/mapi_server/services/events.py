@@ -48,6 +48,7 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.executors.cloudrun import same_execution
 from mapi_server.jsonlimits import loads_limited
+from mapi_server.observability import metrics as obs_metrics
 from mapi_server.services.notify import notify_run
 from mapi_server.services.runs import append_event, apply_transition, now
 
@@ -102,6 +103,17 @@ def _stream_label(payload: BaseModel) -> str:
     return payload.stream if isinstance(payload, LogPayload) else ""
 
 
+def _violation_reason(why: str) -> str:
+    """Map a violation message to a bounded metric label."""
+    if "HMAC" in why:
+        return "bad_hmac"
+    if "execution label" in why:
+        return "identity_mismatch"
+    if "payload" in why:
+        return "bad_payload"
+    return "other"
+
+
 class EventIngestor:
     """Verifies and persists run events; shared by the pipe pump and the HTTP endpoint."""
 
@@ -109,6 +121,14 @@ class EventIngestor:
         self.ctx = ctx
 
     async def ingest(self, event: RunEvent, *, execution: str | None = None) -> IngestResult:
+        """Verify, deduplicate and persist one event, recording the outcome to metrics."""
+        result = await self._ingest(event, execution=execution)
+        obs_metrics.record_event_ingested(result.value)
+        if result is IngestResult.ACCEPTED:
+            obs_metrics.record_ingestion_lag((now() - event.ts).total_seconds())
+        return result
+
+    async def _ingest(self, event: RunEvent, *, execution: str | None = None) -> IngestResult:
         async with self.ctx.db.session() as session:
             attempt = await session.get(m.RunAttempt, (event.run_id, event.attempt))
             if attempt is None:
@@ -147,8 +167,13 @@ class EventIngestor:
 
     async def _violation(self, session: AsyncSession, attempt: m.RunAttempt, why: str) -> None:
         log.warning(
-            "sandbox violation on run %s attempt %s: %s", attempt.run_id, attempt.attempt, why
+            "sandbox violation on run %s attempt %s: %s",
+            attempt.run_id,
+            attempt.attempt,
+            why,
+            extra={"security_alert": True, "run_id": attempt.run_id},
         )
+        obs_metrics.record_sandbox_violation(_violation_reason(why))
         await session.execute(
             update(m.RunAttempt)
             .where(m.RunAttempt.run_id == attempt.run_id, m.RunAttempt.attempt == attempt.attempt)

@@ -113,6 +113,24 @@ conformance: ## Run the conformance corpus at tiny size (FIXTURE=<id> picks one;
 conformance-full: ## Run the conformance corpus at full size (nightly-scale data and fits; slow)
 	$(UV) run python -m mapi_conformance run --size full $(if $(FIXTURE),--fixture $(FIXTURE))
 
+## ---------------------------------------------------------------- security
+# The security suite lives in security/ (NOT a uv workspace member, so never installed by
+# `uv sync`). It runs against the installed venv with security/src on PYTHONPATH. EXECUTOR
+# selects the isolation level (local-process|docker|docker-gvisor|cloud); docker executors
+# auto-skip their sandbox probes when no Docker daemon is present.
+SECURITY_PYTHONPATH := security/src:security/plugin/src
+EXECUTOR ?= local-process
+
+.PHONY: security-suite
+security-suite: ## Run the sandbox-escape probe suite (EXECUTOR=docker-gvisor for the gVisor run)
+	PYTHONPATH=$(SECURITY_PYTHONPATH) $(UV) run python -m mapi_security run --executor $(EXECUTOR) \
+		--metrics .local/security-$(EXECUTOR).prom
+	PYTHONPATH=$(SECURITY_PYTHONPATH) $(UV) run pytest -q security/tests -m sandbox
+
+.PHONY: security-list
+security-list: ## List the security probe corpus
+	PYTHONPATH=$(SECURITY_PYTHONPATH) $(UV) run python -m mapi_security list
+
 ## ---------------------------------------------------------------- web
 .PHONY: web-build
 web-build: _web-check ## Production builds of apps/web and apps/plot-sandbox (Vite)

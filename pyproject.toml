@@ -6,7 +6,7 @@ version = "0.2.0"
 requires-python = ">=3.12"
 dependencies = [
   "mapi-spec", "mapi-sdk", "mapi-pymc", "mapi-sklearn", "mapi-steps", "mapi-plots[recipes]",
-  "mapi-runner", "mapi-server[docker]", "mapi-gcs-shim", "mapi-cli", "mapi-client",
+  "mapi-runner", "mapi-server[docker,otlp]", "mapi-gcs-shim", "mapi-cli", "mapi-client",
   "mapi-plugin-mmm", "mapi-plugin-ts", "mapi-plugin-tabular", "mapi-conformance",
 ]
 
@@ -107,7 +107,7 @@ type = "forbidden"
 source_modules = [
   "mapi_runner.supervisor", "mapi_runner.__main__", "mapi_runner.bootstrap",
   "mapi_runner.channel", "mapi_runner.events", "mapi_runner.jobs", "mapi_runner.outputs",
-  "mapi_runner.sandbox", "mapi_runner.transfer", "mapi_runner._text",
+  "mapi_runner.sandbox", "mapi_runner.transfer", "mapi_runner._text", "mapi_runner.obslog",
 ]
 forbidden_modules = [
   "mapi_runner.worker", "mapi_runner.testing", "mapi_sdk", "mapi_pymc", "mapi_sklearn",

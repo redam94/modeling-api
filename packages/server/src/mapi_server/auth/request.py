@@ -114,6 +114,8 @@ SERVER_ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "devidp_jwks": _PUBLIC,
     "devidp_authorize": _PUBLIC,
     "devidp_token": _PUBLIC,
+    # Prometheus scrape: authenticated by its own bearer (MAPI_METRICS_TOKEN), like pushes
+    "metrics": RouteAccess(RouteScope.INTERNAL),
 }
 """Routes the server serves beyond :data:`mapi_spec.api.ENDPOINTS` (same semantics)."""
 
