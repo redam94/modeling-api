@@ -130,6 +130,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_DOCKER_IMAGE` | `mapi/base-bayes:<version>` | Runner image of the docker executors for runs without a mapped plugin (ingest, describe) |
 | `MAPI_DOCKER_IMAGES` | `mmm`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to runner image (JSON), tagged with the workspace version |
 | `MAPI_DOCKER_NETWORK` | `none` | The run containers' network: `container:<gcs-shim container>` or an internal network that contains only the shim. `none` is refused while the bootstrap URL is HTTP |
+| `MAPI_DOCKER_NETWORK_ISOLATED` | `false` | Declare `MAPI_DOCKER_NETWORK` an internal network holding only the shim, so `docker-gvisor` reports enforced egress and DNS. `verified` and `public` tenants still need a recorded security-suite run with the network probes blocked ([docker](docker.md)) |
 | `MAPI_DOCKER_RUNTIME_GVISOR` | `runsc` | The OCI runtime of `docker-gvisor` |
 | `MAPI_CANCEL_GRACE_S` | `10` | Seconds between SIGTERM and SIGKILL when a run is cancelled |
 

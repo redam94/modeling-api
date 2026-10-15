@@ -60,7 +60,7 @@ must be BLOCKED on every executor:
 | Isolation | Executors | Isolation probes | Platform probes |
 |---|---|---|---|
 | `PROCESS` | `local-process`, `docker` (runc) | Either outcome is accepted: these are not security boundaries | BLOCKED |
-| `GVISOR` | `docker-gvisor` | BLOCKED | BLOCKED |
+| `GVISOR` | `docker-gvisor` (shared tiers only on a network declared with `MAPI_DOCKER_NETWORK_ISOLATED`) | BLOCKED | BLOCKED |
 | `MICROVM` | `cloud` (the `cloudrun-jobs` executor) | BLOCKED | BLOCKED |
 
 SKIPPED is always acceptable, for example when there is no procfs or no Docker daemon. ERROR

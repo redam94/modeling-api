@@ -243,6 +243,12 @@ class Settings(BaseSettings):
         "shim's namespace, so 127.0.0.1:4443 works) or an internal network holding only the "
         "shim. 'none' is refused while the bootstrap URL is HTTP (nothing would be reachable).",
     )
+    docker_network_isolated: bool = Field(
+        False,
+        description="Declare MAPI_DOCKER_NETWORK an internal network that holds only the GCS "
+        "shim (no route out, no DNS beyond it), so docker-gvisor reports enforced egress and "
+        "DNS. Shared tiers still need a passing security-suite run recorded for these caps",
+    )
     docker_runtime_gvisor: str = "runsc"
     executor_workdir: Path | None = None
     cancel_grace_s: float = Field(10.0, ge=0)

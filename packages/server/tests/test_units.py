@@ -342,6 +342,43 @@ def test_docker_settings_default_to_the_built_images() -> None:
     assert isinstance(ok, DockerExecutor)
 
 
+def test_docker_gvisor_can_qualify_for_shared_tiers_on_a_declared_isolated_network() -> None:
+    """docker-gvisor cannot use --network none (the bootstrap is HTTP), so an operator declares
+    an internal network that holds only the shim (MAPI_DOCKER_NETWORK_ISOLATED). The caps then
+    claim enforced egress and DNS, which the shared-tier gate accepts only with a passing
+    security-suite run (its network probes blocked) recorded for these caps."""
+    from mapi_server.executors import ExecutorRefused, build_executor, check_placement
+    from mapi_server.settings import ExecutorName
+
+    def build(**kw: object) -> DockerExecutor:
+        ex = build_executor(
+            Settings(database_url="postgresql://x/y", executor=ExecutorName.DOCKER_GVISOR, **kw)  # type: ignore[arg-type]
+        )
+        assert isinstance(ex, DockerExecutor)
+        return ex
+
+    plain = build(docker_network="mapi-sandbox").caps()
+    assert plain.isolation is Isolation.GVISOR and not plain.allows_public_tenants()
+    isolated = build(docker_network="mapi-sandbox", docker_network_isolated=True).caps()
+    assert isolated.egress_enforced and isolated.dns_enforced
+    assert isolated.allows_public_tenants()
+    check_placement(isolated, trust_tier="verified", resource_class=ResourceClass.S)
+    # plain docker (runc) never qualifies, however the network is declared
+    runc = build_executor(
+        Settings(
+            database_url="postgresql://x/y",
+            executor=ExecutorName.DOCKER,
+            docker_network="mapi-sandbox",
+            docker_network_isolated=True,
+        )
+    ).caps()
+    assert not runc.allows_public_tenants()
+    # networks that obviously reach the outside cannot be declared isolated
+    for network in ("host", "bridge", "default"):
+        with pytest.raises(ExecutorRefused, match="MAPI_DOCKER_NETWORK_ISOLATED"):
+            build(docker_network=network, docker_network_isolated=True)
+
+
 async def test_docker_executor_lifecycle_with_a_fake_client() -> None:
     fake = _FakeDocker()
     ex = DockerExecutor(image="img:1", bootstrap_url_template=TEMPLATE, client_factory=lambda: fake)
