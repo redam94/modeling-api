@@ -138,8 +138,8 @@ Signing follows **GOOG4-HMAC-SHA256** with per-principal HMAC keys:
 
 - **Canonical request:** method, path, every query parameter except `X-Goog-Signature`, the
   signed headers (always including `host`) and `UNSIGNED-PAYLOAD`.
-- **Signed values:** `X-Goog-Expires` (at most 7 days) and `X-Goog-Date` are signed, and the
-  URL is valid within ±5 minutes of clock skew.
+- **Signed values:** `X-Goog-Expires` (at most 7 days) and `X-Goog-Date` are signed. Expiry is
+  strict, but `X-Goog-Date` may be up to 5 minutes in the future to allow for clock skew.
 - **Bound to the signature:** the method, path, host, query (for example `generation`) and
   signed header values. Changing any of them returns `403 SignatureDoesNotMatch`.
 - **Unsigned headers:** any `x-goog-*` header that was not signed returns `400`, except
