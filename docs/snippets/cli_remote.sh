@@ -29,7 +29,10 @@ side_tables: {fx: dataset://default/fx_daily@latest}
 output: {kind: expected, summary: [mean, hdi_90]}
 EOF
 # the CLI has no `models` command yet: take the model id and version from the API
-MODEL=$(curl -s "${MAPI_API_URL:-http://127.0.0.1:8000}/v1/models" \
+# (with the same credentials as the CLI when MAPI_TOKEN is set)
+AUTH=(-H "X-Mapi-Project: ${MAPI_PROJECT:-default/default}")
+[ -z "${MAPI_TOKEN:-}" ] || AUTH+=(-H "Authorization: Bearer $MAPI_TOKEN")
+MODEL=$(curl -s "${AUTH[@]}" "${MAPI_API_URL:-http://127.0.0.1:8000}/v1/models" \
   | jq -c '.items[] | select(.name == "eu-geo-mmm")')
 mapi score forecast.yaml --remote @ --model "$(jq -r .id <<<"$MODEL")" \
   --version "$(jq -r .latest_version <<<"$MODEL")" -o forecast.zarr.zip

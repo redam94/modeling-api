@@ -118,3 +118,37 @@ def test_malicious_plugin_runs_probes_but_is_not_registered() -> None:
     # it must NOT be discoverable through the mapi.models entry point
     registered = {ep.value for ep in md.entry_points(group="mapi.models")}
     assert not any("mapi_security_plugin" in v for v in registered)
+
+
+def test_the_cloud_profile_only_runs_inside_a_cloud_run_job(capsys) -> None:
+    """A "cloud" report made on a laptop or CI runner would describe the wrong sandbox."""
+    from mapi_security.__main__ import main
+    from mapi_security.runner import CloudExecutionRequired, evaluate, in_cloud_run_job
+
+    assert not in_cloud_run_job({})
+    assert not in_cloud_run_job({"CLOUD_RUN_JOB": "mapi-dev-base-bayes-s"})
+    assert in_cloud_run_job({"CLOUD_RUN_JOB": "j", "CLOUD_RUN_EXECUTION": "j-abc12"})
+    with pytest.raises(CloudExecutionRequired):
+        evaluate("cloud", environ={})
+    if not in_cloud_run_job():
+        assert main(["run", "--executor", "cloud"]) == 2
+        assert "Cloud Run Jobs execution" in capsys.readouterr().err
+
+
+def test_the_probe_container_gets_the_suite_read_only() -> None:
+    """Images never ship the suite: the container must see it through a read-only mount."""
+    from pathlib import Path
+
+    from mapi_security.runner import EXECUTORS, PROBE_MOUNT, docker_probe_command
+
+    cmd = docker_probe_command(EXECUTORS["docker-gvisor"], image="mapi/worker:latest")
+    mount = cmd[cmd.index("--volume") + 1]
+    src, dest, mode = mount.rsplit(":", 2)
+    assert (Path(src) / "mapi_security" / "__main__.py").is_file()
+    assert (dest, mode) == (PROBE_MOUNT, "ro")
+    assert f"PYTHONPATH={PROBE_MOUNT}" in cmd
+    for flag in ("--read-only", "no-new-privileges", "ALL", "none", "10001:10001"):
+        assert flag in cmd
+    assert cmd[cmd.index("--runtime") + 1] == "runsc"
+    tail = ["python", "-m", "mapi_security", "probe", "--category", "isolation", "--json"]
+    assert cmd[cmd.index("mapi/worker:latest") + 1 :] == tail

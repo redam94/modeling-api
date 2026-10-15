@@ -13,7 +13,7 @@ import { validateTokenForm } from "@/routes/tokens";
 import { dailySeries, periodKey, periodLabel, periodStart, shiftPeriod } from "@/routes/usage";
 import { parseScopeKey, scopeKey } from "@/stores/scope";
 
-import { formatMicros, formatVcpuSeconds, runCostView } from "./cost";
+import { formatGibSeconds, formatMicros, formatVcpuSeconds, isSessionGroup, runCostView } from "./cost";
 import { adviseProblem, humanWait, parseQuotaDetail } from "./problems";
 
 const grants = (patch: Partial<Grants>): Grants => ({ projectRole: null, tenantRole: null, operator: false, ...patch });
@@ -154,8 +154,21 @@ describe("cost formatting", () => {
     expect(formatMicros(31_200)).toBe("$0.0312");
     expect(formatMicros(1_234_567)).toBe("$1.23");
     expect(formatMicros(0)).toBe("$0.00");
+    // a few seconds of compute is a few dozen micros: never rounded away to $0.00
+    expect(formatMicros(47)).toBe("$0.000047");
+    expect(formatMicros(100)).toBe("$0.0001");
+    expect(formatMicros(1)).toBe("$0.000001");
     expect(formatMicros(250_000, "EUR")).toBe("€0.25");
     expect(formatMicros(null)).toBe("—");
+  });
+
+  it("formats memory in GiB-seconds or GiB-hours and names session usage", () => {
+    expect(formatGibSeconds(52)).toBe("52 GiB·s");
+    expect(formatGibSeconds(90_000)).toBe("25 GiB·h");
+    expect(formatGibSeconds(null)).toBe("—");
+    // the server groups runs started without a token under "-" (mapi_spec.cost)
+    expect(isSessionGroup("-")).toBe(true);
+    expect(isSessionGroup("tok_01jaf3q2x8m9v7k5h4g3f2e1b2")).toBe(false);
   });
 
   it("formats compute in seconds or hours", () => {

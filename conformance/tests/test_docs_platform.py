@@ -232,6 +232,7 @@ def test_screenshots_are_small_and_used() -> None:
 @pytest.fixture(scope="module")
 def stack(tmp_path_factory: pytest.TempPathFactory) -> Iterator[tuple[Path, dict[str, str]]]:
     """A working directory with the demo files, against the running stack (make dev)."""
+    from mapi_conformance.stack import stack_auth
     from mapi_spec.localdev import LocalDev
 
     local = LocalDev.from_environ(os.environ)
@@ -244,6 +245,15 @@ def stack(tmp_path_factory: pytest.TempPathFactory) -> Iterator[tuple[Path, dict
     (work / "scripts").symlink_to(ROOT / "scripts", target_is_directory=True)
     env = _env(MAPI_API_URL=local.api_url)
     env.pop("MAPI_PROFILE", None)
+    # a stack that requires sign-in (the dev profile of `make dev`): the walkthroughs run as
+    # MAPI_TOKEN in MAPI_PROJECT, exactly as their docs tell a reader to
+    data_dir = Path(local.data_dir)
+    auth = stack_auth(
+        local.api_url, data_dir=data_dir if data_dir.is_absolute() else ROOT / data_dir
+    )
+    if auth.token:
+        env["MAPI_TOKEN"] = auth.token
+        env["MAPI_PROJECT"] = auth.project or "default/default"
     for args in (
         [sys.executable, "scripts/seed.py", "--export", "demo/"],
         [sys.executable, "scripts/seed.py"],
