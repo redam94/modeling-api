@@ -950,7 +950,7 @@ def validate_score_request(
         stage_schema = rs.stages[req.inputs_stage]
         executed = rs.steps_after(req.inputs_stage)
 
-    model_schema = rs.model.input_schema or rs.stages.get(rs.model_stage)
+    model_schema = _model_view(rs)
     to_canon = rs.binding.canonical_of() if req.inputs_stage == RESERVED_STAGE else {}
 
     def canon(name: str) -> str:
@@ -1242,6 +1242,17 @@ def validate_score_request(
                     )
                 )
     return issues
+
+
+def _model_view(rs: ResolvedSpec) -> DataSchema | None:
+    """Final-stage schema overlaid with the model's input schema (effective policies)."""
+    final = rs.stages.get(rs.model_stage)
+    inp = rs.model.input_schema
+    if final is None or inp is None:
+        return inp if final is None else final
+    return final.model_copy(
+        update={"dims": {**final.dims, **inp.dims}, "vars": {**final.vars, **inp.vars}}
+    )
 
 
 def _check_coord(
