@@ -108,10 +108,28 @@ def instrument_app(app: FastAPI) -> None:
 
 
 def instrument_engine(engine: AsyncEngine) -> None:
-    """Instrument a SQLAlchemy engine for query spans."""
+    """Instrument a SQLAlchemy engine for query spans (when the versions are compatible).
+
+    The ``opentelemetry-instrumentation-sqlalchemy`` package pins a SQLAlchemy range and logs
+    an error (and does nothing) outside it. We check the range ourselves and skip quietly so
+    an incompatible SQLAlchemy does not spam the logs; FastAPI and httpx spans still carry the
+    trace, and DB calls appear as children of the request/run span regardless.
+    """
     try:
+        import sqlalchemy
         from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+        from opentelemetry.instrumentation.sqlalchemy.package import _instruments
+        from packaging.requirements import Requirement
+        from packaging.version import Version
     except ImportError:  # pragma: no cover
+        return
+    spec = next((r for r in _instruments if r.startswith("sqlalchemy")), None)
+    if spec is not None and Version(sqlalchemy.__version__) not in Requirement(spec).specifier:
+        log.debug(
+            "skipping SQLAlchemy instrumentation: installed %s is outside %s",
+            sqlalchemy.__version__,
+            spec,
+        )
         return
     # The async engine wraps a sync engine; instrument the sync core.
     SQLAlchemyInstrumentor().instrument(engine=engine.sync_engine)

@@ -181,6 +181,10 @@ def main() -> int:
             return 2
         key = new_hmac_key() if mode == "bad_hmac" else rs.hmac_key
         sup = Supervisor(rs, key)
+        if mode == "silent_hang":
+            # never emit an event: the run stays in PROVISIONING until the deadline or a kill.
+            signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+            time.sleep(600)
         sup.emit(StatePayload(phase=RunnerPhase.BOOTSTRAP))
         sup.emit(ProgressPayload(phase=RunnerPhase.FIT, fraction=0.5, message="halfway"))
         sup.emit(LogPayload(stream="stderr", line="sampling chain 0"))
