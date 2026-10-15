@@ -9,6 +9,10 @@
 # works with a read-only root filesystem as long as /tmp is writable, and PyTensor accepts
 # relocated entries (same leaf directory names / same realpath).
 #
+# Started as root (the docker executor does this so the supervisor can run the untrusted
+# worker as uid 10001), it hands the cache over to that uid: the worker needs a writable
+# PyTensor compiledir. Root keeps only a few capabilities there (CHOWN among them).
+#
 # Then it execs the given command (default: mapi-runner) so the runner's supervisor is the
 # direct child of tini (PID 1) and receives SIGTERM itself.
 set -eu
@@ -29,6 +33,11 @@ if [ ! -e "$cache/.seeded" ]; then
   else
     echo "mapi-entrypoint: $cache is not writable; mount a tmpfs on /tmp (read-only rootfs?)" >&2
   fi
+fi
+
+if [ "$(id -u)" = 0 ] && [ -d "$cache" ]; then
+  chown -hR 10001:10001 "$cache" 2>/dev/null \
+    || echo "mapi-entrypoint: could not hand $cache to the worker uid" >&2
 fi
 
 # `docker run IMAGE` runs the runner; `docker run IMAGE --flag ...` passes flags to it;

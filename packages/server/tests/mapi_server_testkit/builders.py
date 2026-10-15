@@ -176,6 +176,7 @@ async def simulate_outputs(
     extra: dict[str, bytes] | None = None,
     corrupt: str | None = None,
     sign_key: str | None = None,
+    replace: dict[str, bytes] | None = None,
 ) -> tuple[OutputManifest, CompletePayload]:
     """Write a run's outputs + signed manifest straight into the memory store and record the
     ``complete`` payload on the attempt (what the supervisor and events service would do)."""
@@ -185,6 +186,7 @@ async def simulate_outputs(
     fake_rs = RunSpec.model_construct(kind=RunKind(run.kind))
     objects: dict[str, ManifestObject] = {}
     for name, (data, ctype) in outputs_for(fake_rs, mode).items():
+        data = (replace or {}).get(name, data)
         await store.put(ctx.buckets.runs, prefix + name, data, content_type=ctype)
         claimed = data + b"!" if name == corrupt else data
         objects[name] = ManifestObject(

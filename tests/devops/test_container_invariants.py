@@ -463,6 +463,17 @@ class TestWebImage:
             body = re.sub(r'"[^"]*"', "", re.sub(r"#.*", "", text))
             assert body.count("{") == body.count("}")
 
+    def test_app_server_refuses_unknown_hosts(self) -> None:
+        """DNS rebinding: /v1/ proxies the unauthenticated API, so only the configured host
+        names reach the app; anything else hits a default server that closes the connection."""
+        text = re.sub(r"#.*", "", _templates()["web/web.conf.template"])
+        blocks = re.findall(r"server \{(.*?)\n\}", text, flags=re.S)
+        default = [b for b in blocks if "default_server" in b]
+        assert len(default) == 1 and "return 444;" in default[0]
+        assert "/v1/" not in default[0]
+        app = next(b for b in blocks if "/v1/" in b)
+        assert "server_name ${MAPI_WEB_SERVER_NAMES};" in app and "default_server" not in app
+
     def test_site_selection_directories(self) -> None:
         copies = [i.args for i in stage("web") if i.keyword == "COPY"]
         for site in ("web", "plots", "all"):
@@ -560,8 +571,21 @@ class TestCompose:
             (svc, v) for svc, spec in data["services"].items() for v in spec.get("volumes", [])
         ]
         assert mounts == [("worker", "/var/run/docker.sock:/var/run/docker.sock")]
-        assert data["services"]["worker"]["environment"]["MAPI_EXECUTOR"] == "docker"
+        worker = data["services"]["worker"]
+        env = worker["environment"]
+        assert env["MAPI_EXECUTOR"] == "docker"
         assert data["services"]["postgres"]["ports"] == ["127.0.0.1:5432:5432"]
+        # run containers join the shim's network namespace (the bootstrap and signed URLs
+        # point at 127.0.0.1:4443); --network none could not fetch the bootstrap object
+        shim = data["services"]["gcs-shim"]["container_name"]
+        assert env["MAPI_DOCKER_NETWORK"] == f"container:{shim}"
+        # the images `make docker-build` tags, chosen per plugin
+        assert env["MAPI_DOCKER_IMAGE"] == "mapi/base-bayes:${MAPI_VERSION:-0.1.0}"
+        images = json.loads(env["MAPI_DOCKER_IMAGES"])
+        assert images["ts"] == "mapi/base-forecast:${MAPI_VERSION:-0.1.0}"
+        assert images["sklearn"] == "mapi/base-ml:${MAPI_VERSION:-0.1.0}"
+        # the worker keeps the runner-capable mapi/worker image (docker SDK, uv.lock digest)
+        assert "image" not in worker and "build" not in worker
 
 
 # ================================================================================ .env.example

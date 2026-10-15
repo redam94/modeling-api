@@ -134,7 +134,7 @@ async def ctx(settings: Settings) -> AsyncIterator[ServerContext]:
 async def client(ctx: ServerContext) -> AsyncIterator[httpx.AsyncClient]:
     app = create_app(ctx.settings, ctx=ctx, manage_context=False)
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+    async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8000") as c:
         yield c
 
 

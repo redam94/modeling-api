@@ -179,7 +179,8 @@ async def test_success_cancel_and_timeout(tmp_path: Path) -> None:
     h2 = await ex2.submit(_submit(timeout=1), "c" * 64)
     await _wait_done(ex2, h2, limit=15)
     st2 = await ex2.status(h2)
-    assert st2.exit_code == 137 and st2.message and "hard timeout" in st2.message
+    # killed by the watchdog after ignoring SIGTERM: a timeout (143), not an OOM kill (137)
+    assert st2.exit_code == 143 and st2.message and "hard timeout" in st2.message
 
 
 async def test_orphan_adoption_by_pid_file(tmp_path: Path) -> None:
@@ -204,3 +205,75 @@ async def test_orphan_adoption_by_pid_file(tmp_path: Path) -> None:
         await second.status(Handle(executor="local-process", run_id="r", nonce="e" * 64))
     ).state is ExecState.UNKNOWN
     await first.aclose()
+
+
+async def test_cancel_returns_at_once_and_escalates_in_the_background(tmp_path: Path) -> None:
+    """The reconciler cancels inline in its serial pass: cancel() must not wait out the
+    grace period (that would stall every other run), but SIGKILL still follows it."""
+    import time
+
+    stubborn = """
+    import signal, time
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    print("ready", flush=True)
+    time.sleep(60)
+    """
+    ex = LocalProcessExecutor(
+        command=_script(tmp_path, stubborn),
+        bootstrap_url_template=TEMPLATE,
+        workdir=tmp_path / "w",
+        cancel_grace_s=1.5,
+    )
+    h = await ex.submit(_submit(), NONCE)
+    await asyncio.sleep(0.5)
+    started = time.monotonic()
+    await ex.cancel(h)
+    await ex.cancel(h)  # repeated by later reconcile passes: still no wait
+    assert time.monotonic() - started < 0.5
+    assert (await ex.status(h)).state is ExecState.RUNNING  # SIGTERM ignored for now
+    await _wait_done(ex, h, limit=10)
+    st = await ex.status(h)
+    assert st.state is ExecState.CANCELLED and st.exit_code == 137
+    await ex.aclose()
+
+
+async def test_exit_is_reported_only_after_the_consumer_drained_the_events(
+    tmp_path: Path,
+) -> None:
+    """A chatty worker can leave a long event backlog behind its exit; until the ingestor has
+    processed it (the ``complete`` event is last), the execution must not look finished, or
+    the reconciler's complete-event grace runs out on a successful run."""
+    from mapi_spec.run import LogPayload
+
+    n = 40
+    lines = [
+        encode_event_line(make_event("run_1", 1, i, LogPayload(stream="stdout", line=f"l{i}")))
+        for i in range(n)
+    ]
+    cmd = _script(
+        tmp_path,
+        f"""
+        import sys
+        for line in {lines!r}:
+            print(line)
+        sys.exit(0)
+        """,
+    )
+    ex = LocalProcessExecutor(command=cmd, bootstrap_url_template=TEMPLATE, workdir=tmp_path / "w")
+    h = await ex.submit(_submit(), NONCE)
+    source = ex.event_source()
+    first = await asyncio.wait_for(source.__anext__(), 5)  # the ingestor is consuming
+    consumed = 1
+    assert first.seq == 0
+    await asyncio.sleep(0.5)  # the process has exited by now; the backlog is still queued
+    while consumed < n:
+        assert not (await ex.status(h)).state.terminal, f"terminal after {consumed}/{n} events"
+        await asyncio.wait_for(source.__anext__(), 5)  # slow ingest: one at a time
+        consumed += 1
+    # the last event was handed out; it counts as processed once the consumer comes back
+    assert not (await ex.status(h)).state.terminal
+    nxt = asyncio.ensure_future(source.__anext__())
+    await asyncio.sleep(0.05)
+    assert (await ex.status(h)).state is ExecState.SUCCEEDED
+    nxt.cancel()
+    await ex.aclose()

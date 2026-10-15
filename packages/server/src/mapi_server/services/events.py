@@ -19,7 +19,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import binascii
-import json
 import logging
 from collections.abc import AsyncIterator, Mapping
 from enum import StrEnum
@@ -47,6 +46,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.jsonlimits import loads_limited
 from mapi_server.services.notify import notify_run
 from mapi_server.services.runs import append_event, apply_transition, now
 
@@ -81,7 +81,7 @@ def events_from_envelope(body: Mapping[str, Any]) -> tuple[RunEvent, str | None]
         if not isinstance(data, str):
             raise InvalidEvent("Pub/Sub message has no data")
         try:
-            decoded = json.loads(base64.b64decode(data, validate=True))
+            decoded = loads_limited(base64.b64decode(data, validate=True))
         except (binascii.Error, ValueError) as exc:
             raise InvalidEvent("Pub/Sub message data is not base64 JSON") from exc
         if not isinstance(decoded, Mapping):

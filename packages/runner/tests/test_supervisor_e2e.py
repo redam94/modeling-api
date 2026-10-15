@@ -301,3 +301,22 @@ def test_deadline_without_checkpoints_is_a_timeout(gcs: ShimGcs) -> None:
     )
     assert result.code == RunnerExit.TIMEOUT, result.stderr
     assert _error(result).failure_class is FailureClass.TIMEOUT
+
+
+def test_required_isolation_fails_closed_in_dev_mode(gcs: ShimGcs) -> None:
+    """The docker executor sets MAPI_REQUIRE_ISOLATION: a supervisor that cannot drop the
+    worker to its own uid must not run untrusted code next to itself (plan §8.1)."""
+    from mapi_runner.sandbox import plan_isolation
+
+    if not plan_isolation().dev_mode:
+        pytest.skip("this host can split uids (root on Linux)")
+    run = make_run(gcs, RunKind.DESCRIBE, {})
+    result = run_supervisor(
+        run, registry=f"{TESTING}:empty_registry", env={"MAPI_REQUIRE_ISOLATION": "1"}
+    )
+    assert result.code == RunnerExit.SANDBOX_VIOLATION, result.stderr
+    err = _error(result)
+    assert err.failure_class is FailureClass.SANDBOX and "isolation" in err.message
+    phases = [StatePayload.model_validate(e.payload).phase.value for e in result.of("state")]
+    assert phases == ["bootstrap"], "the worker must never start"
+    assert_signed_stream(result)

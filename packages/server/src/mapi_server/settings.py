@@ -14,6 +14,7 @@ import sys
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 from mapi_spec.localdev import (
     API_PORT,
@@ -27,7 +28,24 @@ from mapi_spec.storage import Buckets
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
-__all__ = ["ExecutorName", "ObjectStoreKind", "Profile", "Settings", "local_image_digest"]
+from mapi_server import __version__
+
+__all__ = [
+    "DEFAULT_DOCKER_IMAGES",
+    "ExecutorName",
+    "ObjectStoreKind",
+    "Profile",
+    "Settings",
+    "local_image_digest",
+]
+
+DEFAULT_DOCKER_IMAGES: dict[str, str] = {
+    "mmm": f"mapi/base-bayes:{__version__}",
+    "tabular": f"mapi/base-bayes:{__version__}",
+    "sklearn": f"mapi/base-ml:{__version__}",
+    "ts": f"mapi/base-forecast:{__version__}",
+}
+"""Plugin namespace → the runner image ``make docker-build`` tags that ships it."""
 
 
 class Profile(StrEnum):
@@ -87,6 +105,12 @@ class Settings(BaseSettings):
     web_origin: str = f"http://{LOCALHOST}:{WEB_PORT}"
     plots_origin: str = f"http://{LOCALHOST}:{PLOT_SANDBOX_PORT}"
     data_dir: Path = Path(".local")
+    allowed_hosts: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: [LOCALHOST, "localhost", "api"],
+        description="Host header values the API answers (comma-separated in the environment; "
+        "'*' turns the check off). The host of api_url is always allowed. The API is "
+        "unauthenticated in M1, so this is what stops DNS-rebinding pages from using it.",
+    )
 
     # ------------------------------------------------------------------------------ database
     database_url: str | None = Field(
@@ -126,10 +150,19 @@ class Settings(BaseSettings):
         default_factory=lambda: _default_runner_command(),
         description="argv of the supervisor (shell-quoted string in the environment)",
     )
-    docker_image: str = "mapi/base-bayes:local"
+    docker_image: str = Field(
+        f"mapi/base-bayes:{__version__}",
+        description="Runner image for runs without a mapped plugin (ingest, describe, ...)",
+    )
+    docker_images: dict[str, str] = Field(
+        default_factory=lambda: dict(DEFAULT_DOCKER_IMAGES),
+        description="Plugin namespace → runner image (JSON in the environment)",
+    )
     docker_network: str = Field(
         "none",
-        description="'none' (no network) or an internal network that only contains the shim",
+        description="Network of run containers: 'container:<gcs-shim container>' (share the "
+        "shim's namespace, so 127.0.0.1:4443 works) or an internal network holding only the "
+        "shim. 'none' is refused while the bootstrap URL is HTTP (nothing would be reachable).",
     )
     docker_runtime_gvisor: str = "runsc"
     executor_workdir: Path | None = None
@@ -177,6 +210,13 @@ class Settings(BaseSettings):
             return parts
         return v
 
+    @field_validator("allowed_hosts", mode="before")
+    @classmethod
+    def _hosts(cls, v: object) -> object:
+        if isinstance(v, str):
+            return [h.strip() for h in v.split(",") if h.strip()]
+        return v
+
     @field_validator("env")
     @classmethod
     def _env(cls, v: str) -> str:
@@ -205,6 +245,14 @@ class Settings(BaseSettings):
     @property
     def key_path(self) -> Path:
         return self.signing_key_path or (self.data_dir / "keys" / "bundle-signing-p256.pem")
+
+    def trusted_hosts(self) -> list[str]:
+        """``allowed_hosts`` plus the host of ``api_url`` (what TrustedHostMiddleware gets)."""
+        hosts = list(dict.fromkeys(self.allowed_hosts))
+        api_host = urlsplit(self.api_url).hostname
+        if api_host and api_host not in hosts:
+            hosts.append(api_host)
+        return hosts
 
     def resolved_gcs_root(self) -> Path:
         return self.gcs_root or (self.data_dir / "gcs")

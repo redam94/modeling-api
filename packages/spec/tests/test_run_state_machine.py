@@ -52,6 +52,7 @@ EXPECTED: dict[tuple[RunState, RunTrigger], RunState] = {
     (S.CANCELLING, T.CANCEL): S.CANCELLING,
     (S.CANCELLING, T.EVENT): S.CANCELLING,
     (S.CANCELLING, T.CANCEL_CONFIRMED): S.CANCELLED,
+    (S.CANCELLING, T.COMPLETE): S.FINALIZING,  # cancelled with a flushed partial bundle
     (S.PARTIAL, T.RESUME): S.QUEUED,
 }
 for _live in LIVE:

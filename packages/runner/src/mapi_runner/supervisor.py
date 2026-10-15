@@ -45,6 +45,7 @@ import httpx
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.run import (
+    ENV_REQUIRE_ISOLATION,
     MANIFEST_OBJECT_NAME,
     OUTPUT_ARTIFACTS,
     OUTPUT_CHECKPOINTS,
@@ -261,6 +262,15 @@ class Supervisor:
             total_bytes=rs.limits.log_total_bytes,
         )
         self._state(RunnerPhase.BOOTSTRAP, "bootstrap object read and deleted")
+        if self.isolation.dev_mode and self.environ.get(ENV_REQUIRE_ISOLATION) == "1":
+            # the executor promised a uid split: never run the worker under our own uid
+            return self._finish_failure(
+                _Failure(
+                    FailureClass.SANDBOX,
+                    "worker isolation is required by the executor but unavailable: "
+                    + str(self.isolation.reason),
+                )
+            )
         if self.isolation.dev_mode:
             self._emit(
                 WarningPayload(

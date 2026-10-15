@@ -6,6 +6,11 @@ environment only (``MAPI_RUN_ID``, ``MAPI_NONCE``, ``MAPI_BOOTSTRAP_URL`` and th
 ``MAPI_EXEC_TOKEN``); nothing goes in argv. The supervisor's stdout is the event pipe: each
 ``{"mapi_event": …}`` line is decoded here and handed to the event ingestor, which verifies
 its HMAC. A pid file per nonce lets a restarted orchestrator adopt still-running children.
+
+An execution is reported finished only once its event backlog has been *processed* (the
+consumer came back for the next event): a chatty worker can leave thousands of queued
+lines behind its exit, with the ``complete`` event last, and the reconciler's
+complete-event grace must not run out while they are still being ingested.
 """
 
 from __future__ import annotations
@@ -33,7 +38,13 @@ from mapi_spec.executor import (
     RunSubmit,
 )
 from mapi_spec.resources import ResourceClass
-from mapi_spec.run import MAX_EVENT_LINE_BYTES, InvalidEvent, RunnerEnv, decode_event_line
+from mapi_spec.run import (
+    MAX_EVENT_LINE_BYTES,
+    InvalidEvent,
+    RunnerEnv,
+    RunnerExit,
+    decode_event_line,
+)
 
 from mapi_server.settings import Profile
 
@@ -77,6 +88,7 @@ class _Exec:
     pid: int
     readers: list[asyncio.Task[None]] = field(default_factory=list)
     watchdog: asyncio.Task[None] | None = None
+    stopper: asyncio.Task[None] | None = None
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     finished_at: datetime | None = None
     cancelled: bool = False
@@ -140,7 +152,10 @@ class LocalProcessExecutor:
         self._max_runtime_s = max_runtime_s
         self._parent_env = dict(os.environ if parent_env is None else parent_env)
         self._execs: dict[str, _Exec] = {}
-        self._events: asyncio.Queue[RunEvent] = asyncio.Queue()
+        self._events: asyncio.Queue[tuple[str, RunEvent]] = asyncio.Queue()
+        self._pending: dict[str, int] = {}
+        """Events per nonce queued or handed out but not yet processed by the consumer."""
+        self._consumers = 0
 
     # ------------------------------------------------------------------ protocol
     def caps(self) -> ExecutorCaps:
@@ -248,9 +263,13 @@ class LocalProcessExecutor:
                 message="the adopted supervisor exited; its exit code is unavailable",
             )
         rc = ex.proc.returncode
-        if rc is None or not all(t.done() for t in ex.readers):
+        if rc is None or not all(t.done() for t in ex.readers) or self._backlog(h.nonce):
             return ExecStatus(state=ExecState.RUNNING, started_at=ex.started_at)
         code = _exit_code(rc)
+        if ex.timed_out and rc < 0:
+            # killed by the hard-timeout watchdog (SIGKILL after an ignored SIGTERM): a
+            # timeout, not the OOM killer that 137 means
+            code = RunnerExit.TERMINATED
         if ex.cancelled:
             state = ExecState.CANCELLED
         elif code == 0:
@@ -268,22 +287,51 @@ class LocalProcessExecutor:
         )
 
     async def cancel(self, h: Handle) -> None:
+        """SIGTERM now, SIGKILL after ``cancel_grace_s`` in the background.
+
+        Never waits for the process: the reconciler cancels inline in its serial pass, and
+        the next pass observes the terminal status. Repeated calls do not re-signal.
+        """
         ex = self._execs.get(h.nonce)
         if ex is None:
             return
         ex.cancelled = True
-        await self._terminate(ex)
+        if ex.stopper is None:
+            ex.stopper = asyncio.create_task(self._terminate(ex), name=f"stop-{h.run_id}")
+            await asyncio.sleep(0)  # let the SIGTERM go out before returning
 
     def event_source(self) -> AsyncIterator[RunEvent]:
         return self._iter_events()
 
     async def _iter_events(self) -> AsyncIterator[RunEvent]:
-        while True:
-            yield await self._events.get()
+        self._consumers += 1
+        try:
+            while True:
+                nonce, event = await self._events.get()
+                try:
+                    yield event
+                finally:  # the consumer is back for the next one: this one is processed
+                    self._done(nonce)
+        finally:
+            self._consumers -= 1
+
+    def _backlog(self, nonce: str) -> bool:
+        """Unprocessed events of ``nonce`` (only while someone consumes the source)."""
+        return self._consumers > 0 and self._pending.get(nonce, 0) > 0
+
+    def _done(self, nonce: str) -> None:
+        left = self._pending.get(nonce, 0) - 1
+        if left > 0:
+            self._pending[nonce] = left
+        else:
+            self._pending.pop(nonce, None)
 
     async def aclose(self) -> None:
         """Terminate every child (used on shutdown of a dev process)."""
         for ex in list(self._execs.values()):
+            if ex.stopper is not None:
+                with contextlib.suppress(Exception):
+                    await ex.stopper
             if ex.proc is not None and ex.proc.returncode is None:
                 await self._terminate(ex)
             if ex.watchdog is not None:
@@ -297,7 +345,14 @@ class LocalProcessExecutor:
             return
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.killpg(ex.pid, signal.SIGTERM)
-        if ex.proc is None:
+        if ex.proc is None:  # adopted: no child handle to wait on; poll the pid instead
+            loop = asyncio.get_running_loop()
+            until = loop.time() + self._grace
+            while _pid_alive(ex.pid) and loop.time() < until:
+                await asyncio.sleep(0.1)
+            if _pid_alive(ex.pid):
+                with contextlib.suppress(ProcessLookupError, PermissionError):
+                    os.killpg(ex.pid, signal.SIGKILL)
             return
         try:
             await asyncio.wait_for(ex.proc.wait(), self._grace)
@@ -341,7 +396,8 @@ class LocalProcessExecutor:
                 ex.invalid_lines += 1
                 log.warning("event identity mismatch from run %s", ex.handle.run_id)
                 continue
-            await self._events.put(event)
+            self._pending[ex.handle.nonce] = self._pending.get(ex.handle.nonce, 0) + 1
+            await self._events.put((ex.handle.nonce, event))
 
     async def _read_stderr(self, ex: _Exec) -> None:
         assert ex.proc is not None and ex.proc.stderr is not None

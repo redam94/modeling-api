@@ -19,7 +19,7 @@ from mapi_server.services.signing import SIGNATURE_ALG, BundleSigner
 from mapi_server.settings import Settings, local_image_digest
 from mapi_server.storage import MemoryObjectStore, list_all
 from mapi_spec._types import Duration
-from mapi_spec.executor import ExecState, Isolation, RunKind, RunSubmit
+from mapi_spec.executor import PLUGIN_LABEL, ExecState, Isolation, RunKind, RunSubmit
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import (
     Actor,
@@ -179,7 +179,12 @@ class _FakeContainer:
     def logs(self, **_: Any) -> list[bytes]:
         return []
 
+    stop_delay = 0.0
+
     def stop(self, timeout: int) -> None:
+        import time
+
+        time.sleep(self.stop_delay)  # the real SDK blocks up to `timeout` seconds
         self.attrs["State"] = {"Status": "exited", "ExitCode": 143}
 
 
@@ -216,7 +221,12 @@ def test_docker_container_options_lock_the_sandbox_down() -> None:
     opts = ex.container_options(rs, "a" * 64)
     assert opts["network_mode"] == "none" and opts["read_only"] is True
     assert opts["cap_drop"] == ["ALL"] and "no-new-privileges:true" in opts["security_opt"]
-    assert opts["user"] == "10001:10001" and opts["pids_limit"] == 512
+    # the supervisor starts as root with only what the uid split needs; the worker runs as
+    # 10001 with no capabilities at all (plan §8.1), and the runner refuses dev mode
+    assert opts["user"] == "0:0" and opts["pids_limit"] == 512
+    caps = ["CHOWN", "DAC_OVERRIDE", "FOWNER", "KILL", "SETGID", "SETUID"]
+    assert sorted(opts["cap_add"]) == caps
+    assert opts["environment"]["MAPI_REQUIRE_ISOLATION"] == "1"
     assert opts["mem_limit"] == 16 * 1024**3 and opts["nano_cpus"] == 4_000_000_000
     assert opts["tmpfs"]["/tmp"].endswith(f"size={6 * 1024**3}")
     assert set(opts["environment"]) == {
@@ -224,6 +234,7 @@ def test_docker_container_options_lock_the_sandbox_down() -> None:
         "MAPI_NONCE",
         "MAPI_BOOTSTRAP_URL",
         "MAPI_EXEC_TOKEN",
+        "MAPI_REQUIRE_ISOLATION",
         "PYTHONUNBUFFERED",
     }
     assert "runtime" not in opts and "command" not in opts
@@ -233,6 +244,55 @@ def test_docker_container_options_lock_the_sandbox_down() -> None:
     assert gopts["runtime"] == "runsc" and gopts["network_mode"] == "sb"
     assert gv.name == "docker-gvisor" and gv.caps().isolation is Isolation.GVISOR
     assert not gv.caps().egress_enforced
+    # a non-root supervisor cannot split uids: never claim gVisor (public placement) then
+    rootless = DockerExecutor(
+        image="img:1", bootstrap_url_template=TEMPLATE, gvisor=True, user="10001:10001"
+    )
+    assert rootless.caps().isolation is Isolation.PROCESS
+    assert not rootless.caps().allows_public_tenants()
+
+
+def test_docker_image_is_chosen_per_plugin() -> None:
+    ex = DockerExecutor(
+        image="mapi/base-bayes:9",
+        images={"ts": "mapi/base-forecast:9", "sklearn": "mapi/base-ml:9"},
+        bootstrap_url_template=TEMPLATE,
+    )
+
+    def image(labels: dict[str, str]) -> str:
+        rs = RunSubmit(run_id="run_1", kind=RunKind.FIT, labels=labels)
+        return str(ex.container_options(rs, "a" * 64)["image"])
+
+    assert image({PLUGIN_LABEL: "ts"}) == "mapi/base-forecast:9"
+    assert image({PLUGIN_LABEL: "sklearn"}) == "mapi/base-ml:9"
+    assert image({PLUGIN_LABEL: "mmm"}) == "mapi/base-bayes:9"  # not mapped: the default
+    assert image({}) == "mapi/base-bayes:9"  # ingest / describe
+
+
+def test_docker_settings_default_to_the_built_images() -> None:
+    from mapi_server import __version__
+    from mapi_server.executors import ExecutorRefused, build_executor
+    from mapi_server.settings import ExecutorName
+
+    s = Settings(database_url="postgresql://x/y")
+    assert s.docker_image == f"mapi/base-bayes:{__version__}"  # what `make docker-build` tags
+    assert s.docker_images == {
+        "mmm": f"mapi/base-bayes:{__version__}",
+        "tabular": f"mapi/base-bayes:{__version__}",
+        "sklearn": f"mapi/base-ml:{__version__}",
+        "ts": f"mapi/base-forecast:{__version__}",
+    }
+    # --network none cannot reach the HTTP bootstrap URL: refuse at start, not per run
+    with pytest.raises(ExecutorRefused, match="MAPI_DOCKER_NETWORK"):
+        build_executor(Settings(database_url="postgresql://x/y", executor=ExecutorName.DOCKER))
+    ok = build_executor(
+        Settings(
+            database_url="postgresql://x/y",
+            executor=ExecutorName.DOCKER,
+            docker_network="container:mapi-gcs-shim",
+        )
+    )
+    assert isinstance(ok, DockerExecutor)
 
 
 async def test_docker_executor_lifecycle_with_a_fake_client() -> None:
@@ -250,8 +310,19 @@ async def test_docker_executor_lifecycle_with_a_fake_client() -> None:
             break
         await asyncio.sleep(0.01)
     assert (await ex.status(h)).state is ExecState.RUNNING
+    assert fake.containers.container is not None
+    fake.containers.container.stop_delay = 1.0
+    import time
+
+    started = time.monotonic()
     await ex.cancel(h)
-    st = await ex.status(h)
+    await ex.cancel(h)  # a later reconcile pass: no second stop, no wait
+    assert time.monotonic() - started < 0.5, "cancel must not block the reconcile pass"
+    for _ in range(100):
+        st = await ex.status(h)
+        if st.state.terminal:
+            break
+        await asyncio.sleep(0.05)
     assert st.state is ExecState.CANCELLED and st.exit_code == 143
     assert fake.containers.container is not None
     fake.containers.container.attrs["State"] = {

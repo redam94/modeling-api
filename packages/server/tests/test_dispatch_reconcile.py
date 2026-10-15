@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import httpx
 import pytest
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
@@ -12,9 +13,9 @@ from mapi_server.services.finalizer import Finalizer
 from mapi_server.services.queue import InlineFinalizeQueue
 from mapi_server.services.reconciler import Reconciler
 from mapi_server.services.runs import apply_transition, load_run, now
-from mapi_server_testkit.builders import queued_fit
+from mapi_server_testkit.builders import queued_fit, simulate_outputs
 from mapi_server_testkit.fake_executor import FakeExecutor
-from mapi_spec.executor import ExecState, ExecStatus, Handle, RunSubmit
+from mapi_spec.executor import PLUGIN_LABEL, ExecState, ExecStatus, Handle, RunSubmit
 from mapi_spec.run import (
     Actor,
     ErrorPayload,
@@ -80,6 +81,7 @@ async def test_dispatch_writes_intent_row_and_bootstrap_before_submit(
     assert seen["bootstrap"] is not None, "the RunSpec must exist before the executor call"
     rs = seen["rs"]
     assert isinstance(rs, RunSubmit) and rs.payload == {}  # nothing secret travels in submit
+    assert rs.labels[PLUGIN_LABEL] == "ts"  # the executor picks the base image by plugin
     att = await _attempt(ctx, run_id)
     assert att.nonce == nonce and att.status == "submitted" and att.handle is not None
     run = await _state(ctx, run_id)
@@ -269,6 +271,34 @@ async def test_exit_zero_needs_the_complete_event(
     assert run.state == RunState.FAILED.value and "no 'complete' event" in run.problem["detail"]  # type: ignore[index]
 
 
+async def test_complete_event_ingested_during_the_pass_is_not_missed(
+    ctx: ServerContext,
+    executor: FakeExecutor,
+    wired: tuple[Dispatcher, Reconciler],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The attempt row is read before the executor status: a ``complete`` event ingested in
+    between must not fail a successful run whose grace period has run out."""
+    dispatcher, reconciler = wired
+    run_id, att = await _provisioned(ctx, dispatcher)
+    executor.finish(att.nonce, 0)
+    real_status = executor.status
+
+    async def status_then_ingest(h: Handle) -> ExecStatus:
+        st = await real_status(h)
+        run = await _state(ctx, run_id)
+        await simulate_outputs(ctx, run, att)  # records complete_payload, like the ingestor
+        return st
+
+    monkeypatch.setattr(executor, "status", status_then_ingest)
+    await reconciler.reconcile_run(run_id)
+    run = await _state(ctx, run_id)
+    assert run.state in (RunState.FINALIZING.value, RunState.SUCCEEDED.value), (
+        run.state,
+        run.problem,
+    )
+
+
 async def test_silence_only_stalls_and_events_revive(
     ctx: ServerContext, executor: FakeExecutor, wired: tuple[Dispatcher, Reconciler]
 ) -> None:
@@ -308,6 +338,53 @@ async def test_deadline_cancels_the_execution(
     assert executor.only().cancelled == 1
 
 
+async def _past_deadline(ctx: ServerContext, run_id: str) -> None:
+    ctx.settings.deadline_grace_s = 0
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.RunAttempt)
+            .where(m.RunAttempt.run_id == run_id)
+            .values(deadline=now() - timedelta(minutes=1))
+        )
+
+
+async def test_a_deadline_cancel_fails_the_run_as_timeout_not_infra(
+    ctx: ServerContext, executor: FakeExecutor, wired: tuple[Dispatcher, Reconciler]
+) -> None:
+    """The platform stopped it at its deadline: that is TIMEOUT, never an infra retry."""
+    dispatcher, reconciler = wired
+    run_id, _att = await _provisioned(ctx, dispatcher)
+    await _past_deadline(ctx, run_id)
+    await reconciler.reconcile_run(run_id)  # cancels: the executor reports CANCELLED
+    await reconciler.reconcile_run(run_id)
+    run = await _state(ctx, run_id)
+    assert run.state == RunState.FAILED.value and run.attempt == 1, (run.state, run.attempt)
+    assert run.failure_class == "timeout"
+    assert run.problem is not None and run.problem["code"] == "TIMEOUT"
+
+
+async def test_a_deadline_cancel_with_checkpoints_finalizes_as_partial(
+    ctx: ServerContext, executor: FakeExecutor, wired: tuple[Dispatcher, Reconciler]
+) -> None:
+    dispatcher, reconciler = wired
+    run_id, att = await _provisioned(ctx, dispatcher)
+    await _past_deadline(ctx, run_id)
+    await reconciler.reconcile_run(run_id)
+    # the supervisor flushed its checkpoints and exited PARTIAL after the SIGTERM
+    executor.executions[att.nonce].status = ExecStatus(
+        state=ExecState.CANCELLED, exit_code=16, finished_at=now()
+    )
+    run = await _state(ctx, run_id)
+    async with ctx.db.session() as s:
+        row = await s.get(m.RunAttempt, (run_id, 1))
+        assert row is not None
+    await simulate_outputs(ctx, run, row, mode="partial")
+    await reconciler.reconcile_run(run_id)
+    await ctx.queue.drain()  # type: ignore[union-attr]
+    run = await _state(ctx, run_id)
+    assert run.state == RunState.PARTIAL.value, (run.state, run.problem)
+
+
 async def test_cancel_flow_confirms_after_the_executor_stops(
     ctx: ServerContext, executor: FakeExecutor, wired: tuple[Dispatcher, Reconciler]
 ) -> None:
@@ -320,6 +397,53 @@ async def test_cancel_flow_confirms_after_the_executor_stops(
     run = await _state(ctx, run_id)
     assert run.state == RunState.CANCELLED.value
     assert executor.only().cancelled == 1
+
+
+async def test_cancelled_checkpointed_fit_finalizes_as_partial_and_can_resume(
+    ctx: ServerContext,
+    client: httpx.AsyncClient,
+    executor: FakeExecutor,
+    wired: tuple[Dispatcher, Reconciler],
+) -> None:
+    """Plan §8.7: on SIGTERM the supervisor flushes its checkpoints and writes a PARTIAL
+    bundle; the run must end PARTIAL (resumable), not CANCELLED with the bundle dropped."""
+    dispatcher, reconciler = wired
+    run_id, att = await _provisioned(ctx, dispatcher)
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, run_id, for_update=True)
+        await apply_transition(s, run, RunTrigger.EVENT, Actor.EVENTS)
+        await apply_transition(s, run, RunTrigger.CANCEL, Actor.API)
+    ex = executor.only()
+    ex.refuse_cancel = True  # what the supervisor does with the SIGTERM is scripted here:
+    ex.status = ExecStatus(state=ExecState.CANCELLED, exit_code=16, finished_at=now())
+    run = await _state(ctx, run_id)
+    await simulate_outputs(ctx, run, att, mode="partial")  # partial manifest + complete event
+    await reconciler.reconcile_run(run_id)
+    await ctx.queue.drain()  # type: ignore[union-attr]
+    run = await _state(ctx, run_id)
+    assert run.state == RunState.PARTIAL.value, (run.state, run.problem)
+    assert ex.cancelled == 1
+    r = await client.post(f"/v1/runs/{run_id}:resume")
+    assert r.status_code == 202 and r.json()["state"] == "queued"
+
+
+async def test_cancel_waits_briefly_for_the_partial_complete_event(
+    ctx: ServerContext, executor: FakeExecutor, wired: tuple[Dispatcher, Reconciler]
+) -> None:
+    dispatcher, reconciler = wired
+    ctx.settings.complete_event_grace_s = 3600
+    run_id, _att = await _provisioned(ctx, dispatcher)
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, run_id, for_update=True)
+        await apply_transition(s, run, RunTrigger.CANCEL, Actor.API)
+    ex = executor.only()
+    ex.refuse_cancel = True
+    ex.status = ExecStatus(state=ExecState.CANCELLED, exit_code=16, finished_at=now())
+    await reconciler.reconcile_run(run_id)  # exit 16 but no complete event yet: wait
+    assert (await _state(ctx, run_id)).state == RunState.CANCELLING.value
+    ctx.settings.complete_event_grace_s = 0
+    await reconciler.reconcile_run(run_id)  # it never came: plain cancellation
+    assert (await _state(ctx, run_id)).state == RunState.CANCELLED.value
 
 
 async def test_cancel_of_a_queued_run_is_confirmed_without_an_execution(

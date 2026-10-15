@@ -42,6 +42,7 @@ def build_app(
     sweep_interval: float | None = 300.0,
     clock: Callable[[], datetime] | None = None,
     cors_origins: Sequence[str] = (),
+    allowed_hosts: Sequence[str] = (),
 ) -> ShimApp:
     """Initialise ``root`` (config, keys, buckets) and return the ASGI app.
 
@@ -53,7 +54,12 @@ def build_app(
     backend = FsBackend(root)
     try:
         return ShimApp(
-            backend, config, clock=clock, sweep_interval=sweep_interval, cors_origins=cors_origins
+            backend,
+            config,
+            clock=clock,
+            sweep_interval=sweep_interval,
+            cors_origins=cors_origins,
+            allowed_hosts=allowed_hosts,
         )
     except BaseException:
         backend.close()
@@ -97,6 +103,7 @@ def serve(
     log_level: str = "info",
     on_ready: Callable[[str], None] | None = None,
     cors_origins: Sequence[str] = (),
+    allowed_hosts: Sequence[str] = (),
 ) -> None:
     """Serve until interrupted (SIGINT/SIGTERM), then shut down gracefully and return."""
     import uvicorn
@@ -104,7 +111,12 @@ def serve(
     sock = bind_socket(host, port)
     endpoint = _endpoint(host, sock.getsockname()[1])
     app = build_app(
-        root, env=env, endpoint=endpoint, sweep_interval=sweep_interval, cors_origins=cors_origins
+        root,
+        env=env,
+        endpoint=endpoint,
+        sweep_interval=sweep_interval,
+        cors_origins=cors_origins,
+        allowed_hosts=allowed_hosts,
     )
 
     # uvicorn handles SIGINT/SIGTERM itself during run() and re-raises the signal after its
@@ -153,6 +165,7 @@ class ShimServer:
         log_level: str = "warning",
         cors_origins: Sequence[str] = (),
         wrap: Callable[[ASGIApp], ASGIApp] | None = None,
+        allowed_hosts: Sequence[str] = (),
     ) -> None:
         """``wrap`` wraps the ASGI app served by uvicorn (e.g. a request recorder in tests);
         :attr:`app` stays the :class:`ShimApp`."""
@@ -164,6 +177,7 @@ class ShimServer:
         self.clock = clock
         self.log_level = log_level
         self.cors_origins = tuple(cors_origins)
+        self.allowed_hosts = tuple(allowed_hosts)
         self._wrap = wrap
         self._server: uvicorn.Server | None = None
         self._thread: threading.Thread | None = None
@@ -190,6 +204,7 @@ class ShimServer:
             sweep_interval=self.sweep_interval,
             clock=self.clock,
             cors_origins=self.cors_origins,
+            allowed_hosts=self.allowed_hosts,
         )
         served: ASGIApp = self._app if self._wrap is None else self._wrap(self._app)
         self._server = uvicorn.Server(_uvicorn_config(served, self.log_level))

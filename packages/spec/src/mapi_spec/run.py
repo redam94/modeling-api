@@ -81,6 +81,7 @@ __all__ = [
     "ENV_BOOTSTRAP_URL",
     "ENV_EXEC_TOKEN",
     "ENV_NONCE",
+    "ENV_REQUIRE_ISOLATION",
     "ENV_RUN_ID",
     "EVENT_PAYLOAD_MODELS",
     "INPUT_BUNDLE",
@@ -371,6 +372,9 @@ def _build_table() -> dict[tuple[RunState, RunTrigger], TransitionRule]:
     add(S.CANCELLING, T.CANCEL, S.CANCELLING, A.API)
     add(S.CANCELLING, T.EVENT, S.CANCELLING, A.EVENTS)
     add(S.CANCELLING, T.CANCEL_CONFIRMED, S.CANCELLED, A.RECONCILER)
+    # On SIGTERM a checkpointing supervisor flushes and exits PARTIAL with a ``partial``
+    # complete event (plan §8.7 step 3): that bundle is finalized (→ PARTIAL, resumable).
+    add(S.CANCELLING, T.COMPLETE, S.FINALIZING, A.RECONCILER)
 
     add(S.PARTIAL, T.RESUME, S.QUEUED, A.API, new_attempt=True)
     return {(r.source, r.trigger): r for r in rules}
@@ -1206,6 +1210,10 @@ ENV_NONCE: Final = "MAPI_NONCE"
 ENV_BOOTSTRAP_URL: Final = "MAPI_BOOTSTRAP_URL"
 ENV_EXEC_TOKEN: Final = "MAPI_EXEC_TOKEN"
 RUNNER_ENV_VARS: Final = (ENV_RUN_ID, ENV_NONCE, ENV_BOOTSTRAP_URL, ENV_EXEC_TOKEN)
+ENV_REQUIRE_ISOLATION: Final = "MAPI_REQUIRE_ISOLATION"
+"""Set to ``1`` by executors that promise a supervisor/worker uid split (docker): the
+supervisor then refuses to start the worker in dev mode (``SANDBOX_VIOLATION``) instead of
+running untrusted code under its own uid. Not a secret, and never passed to the worker."""
 
 WORKER_ENV_ALLOWLIST: Final = frozenset(
     {

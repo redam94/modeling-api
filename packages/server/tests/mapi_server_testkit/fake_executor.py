@@ -25,6 +25,10 @@ class FakeExecution:
     handle: Handle
     status: ExecStatus
     cancelled: int = 0
+    refuse_cancel: bool = False
+    """``cancel`` is counted but the execution keeps its status (it did not stop)."""
+    scripted: list[ExecStatus] = field(default_factory=list)
+    """Statuses returned (and consumed) before ``status``."""
 
 
 @dataclass
@@ -39,6 +43,7 @@ class FakeExecutor:
     orphans: dict[str, Handle] = field(default_factory=dict)
     events: asyncio.Queue[RunEvent] = field(default_factory=asyncio.Queue)
     submit_calls: int = 0
+    adopt_calls: int = 0
 
     def caps(self) -> ExecutorCaps:
         return ExecutorCaps(
@@ -67,6 +72,7 @@ class FakeExecutor:
         return handle
 
     async def adopt(self, nonce: str) -> Handle | None:
+        self.adopt_calls += 1
         if nonce in self.orphans:
             return self.orphans[nonce]
         ex = self.executions.get(nonce)
@@ -76,12 +82,16 @@ class FakeExecutor:
         ex = self.executions.get(h.nonce)
         if ex is None:
             return ExecStatus(state=ExecState.UNKNOWN, message="unknown")
+        if ex.scripted:
+            return ex.scripted.pop(0)
         return ex.status
 
     async def cancel(self, h: Handle) -> None:
         ex = self.executions.get(h.nonce)
         if ex is not None:
             ex.cancelled += 1
+            if ex.refuse_cancel:
+                return
             ex.status = ExecStatus(
                 state=ExecState.CANCELLED, exit_code=143, finished_at=datetime.now(UTC)
             )

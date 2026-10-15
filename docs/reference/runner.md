@@ -62,7 +62,9 @@ image only and never carry secrets:
   the worker also runs as uid/gid `10001` with no supplementary groups, `no_new_privs` and
   no core dumps, and the supervisor marks itself non-dumpable. Anywhere else (macOS, a
   non-root shell) the run continues in **dev mode**: the supervisor reports a
-  `DEV_MODE_ISOLATION` warning event. Dev mode is not a security boundary.
+  `DEV_MODE_ISOLATION` warning event. Dev mode is not a security boundary. An executor that
+  promises the split sets `MAPI_REQUIRE_ISOLATION=1` (the docker executor does); the
+  supervisor then fails the run with `SANDBOX_VIOLATION` instead of entering dev mode.
 - **Worker messages are validated.** Each message is a length-prefixed JSON frame of at most
   256 KiB and must match its Pydantic model. A malformed frame, an unknown type or anything
   sent after the final result is a `SANDBOX_VIOLATION`.

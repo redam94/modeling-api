@@ -12,6 +12,7 @@ from mapi_server.services.runs import apply_transition, load_run
 from mapi_server_testkit.builders import LEAKY_SPEC, TREND_SPEC, ready_dataset
 from mapi_spec.api import Run
 from mapi_spec.run import Actor, RunState, RunTrigger
+from sqlalchemy import select
 
 
 async def _spec(client: httpx.AsyncClient, ctx: ServerContext, yaml: str = TREND_SPEC) -> str:
@@ -76,7 +77,11 @@ async def test_invalid_revision_is_refused_with_its_first_error_code(
     r = await client.post("/v1/runs", json={"kind": "fit", "spec_id": spec_id, "revision": 1})
     assert r.status_code == 422
     assert r.json()["code"] == "LEAKAGE_RISK"
+    assert any(e["code"] == "LEAKAGE_RISK" for e in r.json()["errors"])  # every issue, pointed
     assert (await client.get("/v1/runs")).json()["items"] == []
+    # documented contract (run-protocol.md): refused without a run, so no REJECTED row either
+    async with ctx.db.session() as s:
+        assert (await s.execute(select(m.Run.id))).first() is None
     r = await client.post("/v1/runs", json={"kind": "fit", "spec_id": "spc_nope", "revision": 1})
     assert r.status_code == 404
 
@@ -122,6 +127,29 @@ async def test_cancel_is_idempotent(client: httpx.AsyncClient, ctx: ServerContex
     assert r.status_code == 202 and r.json()["state"] == "cancelled"
     assert r.json()["problem"]["code"] == "CANCELLED"
     assert (await client.post("/v1/runs/run_missing:cancel")).status_code == 404
+
+
+async def test_cancel_of_a_finalizing_run_is_a_no_op(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """The execution already finished: cancelling now would discard a complete result after
+    the finalizer reserved a version number and copied write-once bundle objects."""
+    spec_id = await _spec(client, ctx)
+    run = (
+        await client.post("/v1/runs", json={"kind": "fit", "spec_id": spec_id, "revision": 1})
+    ).json()
+    await _force(
+        ctx,
+        run["id"],
+        (RunTrigger.LEASE, Actor.DISPATCHER),
+        (RunTrigger.SUBMITTED, Actor.DISPATCHER),
+        (RunTrigger.COMPLETE, Actor.RECONCILER),
+    )
+    r = await client.post(f"/v1/runs/{run['id']}:cancel")
+    assert r.status_code == 202 and r.json()["state"] == "finalizing"
+    async with ctx.db.session() as s:
+        row = await load_run(s, None, run["id"])
+        assert row.state == RunState.FINALIZING.value
 
 
 async def test_resume_and_retry_rules(client: httpx.AsyncClient, ctx: ServerContext) -> None:
@@ -203,3 +231,20 @@ async def test_logs_and_events_pages(client: httpx.AsyncClient, ctx: ServerConte
     assert events == {"items": [], "next_cursor": None}
     assert (await client.get("/v1/runs/run_missing/events")).status_code == 404
     assert (await client.get("/v1/runs/run_missing/logs")).status_code == 404
+
+
+async def test_run_endpoints_are_scoped_to_the_project(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """A run of another project is invisible by id on every run endpoint (plots included)."""
+    spec_id = await _spec(client, ctx)
+    run = (
+        await client.post("/v1/runs", json={"kind": "fit", "spec_id": spec_id, "revision": 1})
+    ).json()
+    async with ctx.db.session() as s:
+        row = await s.get(m.Run, run["id"])
+        assert row is not None
+        row.project_id = "someone-else"
+    for path in ("", "/plots", "/logs", "/events"):
+        r = await client.get(f"/v1/runs/{run['id']}{path}")
+        assert r.status_code == 404, (path, r.status_code, r.text)

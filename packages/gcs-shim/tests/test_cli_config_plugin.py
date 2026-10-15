@@ -158,6 +158,11 @@ def test_cli_serves_until_sigterm(tmp_path: Path) -> None:
                     raise
                 time.sleep(0.05)
         assert r.json()["status"] == "ok"
+        # DNS-rebinding guard: only loopback / configured host names are answered
+        r = httpx.get(f"{endpoint}/_shim/healthz", headers={"Host": "attacker.example:4443"})
+        assert r.status_code == 400
+        r = httpx.get(f"{endpoint}/_shim/healthz", headers={"Host": "localhost"})
+        assert r.status_code == 200
         creds = ShimCredentials.from_root(root, "control")
         assert creds.endpoint == endpoint
         r = httpx.get(

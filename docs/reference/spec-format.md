@@ -46,7 +46,7 @@ execution: {resource_class: M, timeout: 45m}
 | `model` | Plugin `use`, its `settings` and the `fit` block |
 | `outputs` | Derived quantities, plot recipes and the number of draws kept for the UI |
 | `evaluate` | Holdout metrics (`elpd_loo`, `coverage_90`, `mape`, `rmse`, ...) |
-| `execution` | Resource class (`S`, `M`, `L`, `XL`) and timeout (`45m`, `1h30m`) |
+| `execution` | Resource class (`S`, `M`, `L`, `XL`) and timeout (`45m`, `1h30m`). Each class caps the input data a run reads (dataset plus side tables): S 0.5 GB, M 2 GB, L 5 GB, XL 50 GB. Validation reports `PAYLOAD_TOO_LARGE` at `/execution/resource_class` when the data is bigger, and names the class that fits. Ingest runs pick the smallest class that holds the upload. |
 
 ## Versions in `use:`
 

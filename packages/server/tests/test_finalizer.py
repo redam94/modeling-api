@@ -12,7 +12,13 @@ from mapi_server.db import models as m
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.finalizer import Finalizer, build_scorecard, dataset_sha
 from mapi_server.services.runs import apply_transition, load_run
-from mapi_server_testkit.builders import CATALOG, queued_fit, ready_dataset, simulate_outputs
+from mapi_server_testkit.builders import (
+    CATALOG,
+    TREND_SPEC,
+    queued_fit,
+    ready_dataset,
+    simulate_outputs,
+)
 from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_spec.api import ModelVersion
 from mapi_spec.run import Actor, BundleManifest, RunState, RunTrigger, new_hmac_key
@@ -103,6 +109,23 @@ async def test_fit_is_verified_copied_signed_and_registered(
     assert await Finalizer(ctx).finalize(run.id, att.attempt) is None
 
 
+async def test_lineage_records_the_effective_seed_when_the_spec_omits_it(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """The runner fits with seed 0 when ``model.fit.seed`` is omitted; lineage must say so."""
+    run_id = await queued_fit(ctx, yaml=TREND_SPEC.replace("fit: {seed: 7}", "fit: {}"))
+    async with ctx.db.session() as s:
+        queued = await load_run(s, None, run_id)
+    assert queued.payload["model"]["fit"]["seed"] == 0  # pinned at submit, like `use:`
+    run, att = await _finalizing(ctx, run_id)
+    await simulate_outputs(ctx, run, att)
+    assert await Finalizer(ctx).finalize(run.id, att.attempt) is RunState.SUCCEEDED
+    done = await _reload(ctx, run.id)
+    async with ctx.db.session() as s:
+        mv = await s.get(m.ModelVersion, done.output_model_version_id)
+    assert mv is not None and mv.lineage["seed"] == 0
+
+
 async def test_lineage_records_the_side_table_versions_the_fit_read(
     ctx: ServerContext, client: httpx.AsyncClient
 ) -> None:
@@ -184,6 +207,17 @@ async def test_integrity_failures(
             (await s.execute(select(m.RunEvent).where(m.RunEvent.type == "error"))).scalars()
         )
     assert errors and errors[0].payload["failure_class"] == "integrity"
+
+
+@pytest.mark.parametrize("name", ["diagnostics.json", "metrics.json", "plots.json", "coords.json"])
+async def test_deeply_nested_sidecar_is_an_integrity_failure(ctx: ServerContext, name: str) -> None:
+    """Hostile nesting must not escape as RecursionError (retried, no security alert)."""
+    run, att = await _finalizing(ctx)
+    await simulate_outputs(ctx, run, att, replace={name: b"[" * 100_000 + b"]" * 100_000})
+    assert await Finalizer(ctx).finalize(run.id, att.attempt) is RunState.FAILED
+    failed = await _reload(ctx, run.id)
+    assert failed.failure_class == "integrity"
+    assert failed.problem is not None and "nest" in failed.problem["detail"]
 
 
 async def test_missing_manifest_and_missing_complete_event(ctx: ServerContext) -> None:

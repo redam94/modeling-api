@@ -1,9 +1,21 @@
 """``docker`` / ``docker-gvisor``: run the supervisor in a locked-down container (plan §8.4).
 
-Each attempt is a fresh container from the configured base image with: no network (or an
-*internal* network holding only the GCS shim), a read-only root filesystem with a size-capped
-``/tmp`` tmpfs, all capabilities dropped, ``no-new-privileges``, a non-root user, pids/CPU/
-memory limits from the resource class, and optionally the gVisor runtime (``runsc``).
+Each attempt is a fresh container from the base image that ships the run's model plugin
+(``images`` maps the plugin namespace from :data:`~mapi_spec.executor.PLUGIN_LABEL` to an
+image; everything else uses ``image``) with: no network (only usable with a non-network
+bootstrap transport), the GCS shim's network namespace (``container:<shim>``, the compose
+setup) or an internal network holding only the shim, a read-only root filesystem with a size-capped
+``/tmp`` tmpfs, ``no-new-privileges``, pids/CPU/memory limits from the resource class, and
+optionally the gVisor runtime (``runsc``).
+
+**Uid split (plan §8.1).** The supervisor starts as root with every capability dropped except
+the few the split needs (``CHOWN``/``FOWNER`` for the worker's scratch directory,
+``SETUID``/``SETGID`` to start the worker as uid 10001, ``KILL`` to stop it, and
+``DAC_OVERRIDE`` to read its outputs). The worker then runs as 10001 with no capabilities and
+cannot signal, ptrace or read the environment of the supervisor or the init process.
+``MAPI_REQUIRE_ISOLATION=1`` makes the supervisor fail the run (``SANDBOX_VIOLATION``) rather
+than fall back to dev mode. A non-root ``user`` cannot split uids, so the executor then reports
+``PROCESS`` isolation only, never gVisor.
 Identifiers travel in the environment only; the container's stdout is the event pipe.
 The Docker SDK is synchronous, so every call runs in a worker thread.
 """
@@ -14,12 +26,13 @@ import asyncio
 import contextlib
 import logging
 import threading
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Mapping
 from datetime import datetime
 from typing import Any
 
 from mapi_spec._types import Duration
 from mapi_spec.executor import (
+    PLUGIN_LABEL,
     ExecState,
     ExecStatus,
     ExecutorCaps,
@@ -29,9 +42,16 @@ from mapi_spec.executor import (
     RunSubmit,
 )
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
-from mapi_spec.run import InvalidEvent, RunnerEnv, decode_event_line
+from mapi_spec.run import ENV_REQUIRE_ISOLATION, InvalidEvent, RunnerEnv, decode_event_line
 
-__all__ = ["LABEL_ATTEMPT", "LABEL_NONCE", "LABEL_RUN", "DockerExecutor", "docker_available"]
+__all__ = [
+    "LABEL_ATTEMPT",
+    "LABEL_NONCE",
+    "LABEL_RUN",
+    "SUPERVISOR_CAPS",
+    "DockerExecutor",
+    "docker_available",
+]
 
 log = logging.getLogger(__name__)
 
@@ -39,6 +59,8 @@ LABEL_NONCE = "dev.mapi.nonce"
 LABEL_RUN = "dev.mapi.run_id"
 LABEL_ATTEMPT = "dev.mapi.attempt"
 _TMPFS_FRACTION = 1.0  # the scratch budget is the tmpfs size
+SUPERVISOR_CAPS = ("CHOWN", "DAC_OVERRIDE", "FOWNER", "KILL", "SETGID", "SETUID")
+"""The only capabilities a run container keeps: what the supervisor needs for the uid split."""
 
 
 def docker_available() -> bool:
@@ -72,18 +94,20 @@ class DockerExecutor:
         *,
         image: str,
         bootstrap_url_template: str,
+        images: Mapping[str, str] | None = None,
         exec_token: str | None = None,
         command: list[str] | None = None,
         network: str = "none",
         gvisor: bool = False,
         gvisor_runtime: str = "runsc",
-        user: str = "10001:10001",
+        user: str = "0:0",
         cancel_grace_s: float = 10.0,
         client_factory: Callable[[], Any] | None = None,
     ) -> None:
         RunnerEnv(run_id="probe", nonce="0" * 64, bootstrap_url=bootstrap_url_template)
         self.name = "docker-gvisor" if gvisor else "docker"
         self._image = image
+        self._images = dict(images or {})
         self._template = bootstrap_url_template
         self._token = exec_token
         self._command = command
@@ -94,10 +118,14 @@ class DockerExecutor:
         self._grace = cancel_grace_s
         self._client_factory = client_factory or self._default_client
         self._client: Any = None
-        self._events: asyncio.Queue[RunEvent] = asyncio.Queue()
+        self._events: asyncio.Queue[tuple[str, RunEvent]] = asyncio.Queue()
+        self._pending: dict[str, int] = {}
+        """Events per nonce queued or handed out but not yet processed by the consumer."""
+        self._consumers = 0
         self._loop: asyncio.AbstractEventLoop | None = None
         self._followers: dict[str, threading.Thread] = {}
         self._cancelled: set[str] = set()
+        self._stopping: dict[str, asyncio.Task[None]] = {}
 
     @staticmethod
     def _default_client() -> Any:
@@ -116,9 +144,15 @@ class DockerExecutor:
         return self._client
 
     # ------------------------------------------------------------------ protocol
+    @property
+    def splits_uids(self) -> bool:
+        """True when the supervisor starts as root and can drop the worker to its own uid."""
+        return self._user.split(":", 1)[0] in ("0", "root")
+
     def caps(self) -> ExecutorCaps:
+        strong = self._gvisor and self.splits_uids  # dev mode is never a gVisor-grade boundary
         return ExecutorCaps(
-            isolation=Isolation.GVISOR if self._gvisor else Isolation.PROCESS,
+            isolation=Isolation.GVISOR if strong else Isolation.PROCESS,
             egress_enforced=self._network == "none",
             dns_enforced=self._network == "none",
             max_runtime=Duration(24 * 3600),
@@ -127,6 +161,10 @@ class DockerExecutor:
             checkpoint_storage=True,
         )
 
+    def image_for(self, rs: RunSubmit) -> str:
+        """The base image that ships the run's plugin (the default for plugin-less runs)."""
+        return self._images.get(rs.labels.get(PLUGIN_LABEL, ""), self._image)
+
     def container_options(self, rs: RunSubmit, nonce: str) -> dict[str, Any]:
         """Keyword arguments for ``containers.run`` (pure; unit-tested without a daemon)."""
         spec = RESOURCE_CLASSES[rs.resource_class]
@@ -134,15 +172,17 @@ class DockerExecutor:
             run_id=rs.run_id, nonce=nonce, bootstrap_url=self._template, exec_token=self._token
         ).to_environ()
         env["PYTHONUNBUFFERED"] = "1"
+        env[ENV_REQUIRE_ISOLATION] = "1"
         scratch = spec.scratch_bytes or 1024**3
         opts: dict[str, Any] = {
-            "image": self._image,
+            "image": self.image_for(rs),
             "environment": env,
             "detach": True,
             "network_mode": self._network,
             "read_only": True,
             "tmpfs": {"/tmp": f"rw,noexec,nosuid,size={int(scratch * _TMPFS_FRACTION)}"},
             "cap_drop": ["ALL"],
+            "cap_add": list(SUPERVISOR_CAPS),
             "security_opt": ["no-new-privileges:true"],
             "user": self._user,
             "pids_limit": 512,
@@ -216,8 +256,11 @@ class DockerExecutor:
         if status in ("running", "paused"):
             return ExecStatus(state=ExecState.RUNNING, started_at=started)
         follower = self._followers.get(h.nonce)
-        if follower is not None and follower.is_alive():
-            return ExecStatus(state=ExecState.RUNNING, started_at=started)  # draining stdout
+        if (follower is not None and follower.is_alive()) or (
+            self._consumers > 0 and self._pending.get(h.nonce, 0) > 0
+        ):
+            # still draining stdout, or its events are not ingested yet (complete is last)
+            return ExecStatus(state=ExecState.RUNNING, started_at=started)
         code = int(st.get("ExitCode", 1))
         if st.get("OOMKilled"):
             code = 137
@@ -236,23 +279,58 @@ class DockerExecutor:
         )
 
     async def cancel(self, h: Handle) -> None:
+        """Start ``docker stop`` (SIGTERM, SIGKILL after the grace) without waiting for it.
+
+        ``container.stop`` blocks for up to the grace period; the reconciler cancels inline
+        in its serial pass, so the stop runs in a background task and the next pass
+        observes the exit. Repeated calls while a stop is in flight do nothing.
+        """
         if h.external_id is None:
             return
         self._cancelled.add(h.nonce)
+        pending = self._stopping.get(h.nonce)
+        if pending is not None and not pending.done():
+            return
         try:
             container = await asyncio.to_thread(self.client.containers.get, h.external_id)
         except Exception as exc:
             if type(exc).__name__ == "NotFound":
                 return
             raise
-        await asyncio.to_thread(container.stop, timeout=int(self._grace))
+        task = asyncio.create_task(
+            asyncio.to_thread(container.stop, timeout=int(self._grace)),
+            name=f"docker-stop-{h.run_id}",
+        )
+        task.add_done_callback(lambda t: self._stopped(h, t))
+        self._stopping[h.nonce] = task
+
+    def _stopped(self, h: Handle, task: asyncio.Task[None]) -> None:
+        if not task.cancelled() and task.exception() is not None:
+            log.warning("docker stop of run %s failed: %r", h.run_id, task.exception())
 
     def event_source(self) -> AsyncIterator[RunEvent]:
         return self._iter_events()
 
     async def _iter_events(self) -> AsyncIterator[RunEvent]:
-        while True:
-            yield await self._events.get()
+        self._consumers += 1
+        try:
+            while True:
+                nonce, event = await self._events.get()
+                try:
+                    yield event
+                finally:  # the consumer is back for the next one: this one is processed
+                    left = self._pending.get(nonce, 0) - 1
+                    if left > 0:
+                        self._pending[nonce] = left
+                    else:
+                        self._pending.pop(nonce, None)
+        finally:
+            self._consumers -= 1
+
+    def _enqueue(self, nonce: str, event: RunEvent) -> None:
+        """Runs on the event loop (``call_soon_threadsafe`` from a follower thread)."""
+        self._pending[nonce] = self._pending.get(nonce, 0) + 1
+        self._events.put_nowait((nonce, event))
 
     # ------------------------------------------------------------------ internals
     def _follow(self, handle: Handle, container: Any) -> None:
@@ -284,4 +362,4 @@ class DockerExecutor:
             return
         if event is None or event.run_id != handle.run_id or event.attempt != handle.attempt:
             return
-        loop.call_soon_threadsafe(self._events.put_nowait, event)
+        loop.call_soon_threadsafe(self._enqueue, handle.nonce, event)

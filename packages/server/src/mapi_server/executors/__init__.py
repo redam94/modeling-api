@@ -57,8 +57,15 @@ def build_executor(settings: Settings) -> Executor:
             profile=settings.profile,
             cancel_grace_s=settings.cancel_grace_s,
         )
+    if settings.docker_network == "none" and template.startswith(("http://", "https://")):
+        raise ExecutorRefused(
+            "MAPI_DOCKER_NETWORK=none: run containers could not fetch the bootstrap object "
+            f"from {template.split('/storage/')[0]}; set MAPI_DOCKER_NETWORK to "
+            "container:<gcs-shim container> or to an internal network that holds the shim"
+        )
     return DockerExecutor(
         image=settings.docker_image,
+        images=settings.docker_images,
         bootstrap_url_template=template,
         exec_token=settings.resolved_exec_token(),
         network=settings.docker_network,

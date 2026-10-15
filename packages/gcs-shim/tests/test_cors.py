@@ -73,3 +73,13 @@ def test_cors_is_off_by_default(tmp_path: Path) -> None:
         r = httpx.get(f"{server.endpoint}/_shim/healthz", headers={"Origin": WEB})
         assert r.status_code == 200
         assert "access-control-allow-origin" not in r.headers
+
+
+def test_allowed_hosts_refuse_other_host_headers(tmp_path: Path) -> None:
+    with ShimServer(tmp_path / "gcs2", allowed_hosts=["127.0.0.1", "localhost"]) as shim:
+        r = httpx.get(f"{shim.endpoint}/_shim/healthz", headers={"Host": "rebound.example"})
+        assert r.status_code == 400
+        assert httpx.get(f"{shim.endpoint}/_shim/healthz").status_code == 200
+    with ShimServer(tmp_path / "gcs3") as shim:  # library default: no check (tests, embedding)
+        r = httpx.get(f"{shim.endpoint}/_shim/healthz", headers={"Host": "rebound.example"})
+        assert r.status_code == 200

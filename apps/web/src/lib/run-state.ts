@@ -26,9 +26,12 @@ export function isTerminal(state: RunState): boolean {
   return TERMINAL.has(state);
 }
 
-/** States in which `:cancel` makes sense (it is idempotent server-side anyway). */
+/**
+ * States in which `:cancel` makes sense (it is idempotent server-side anyway). A finalizing
+ * run's execution is already over, so the server leaves it alone.
+ */
 export function isCancellable(state: RunState): boolean {
-  return !TERMINAL.has(state) && state !== "cancelling";
+  return !TERMINAL.has(state) && state !== "cancelling" && state !== "finalizing";
 }
 
 export type Tone = "neutral" | "active" | "success" | "warning" | "danger" | "muted";

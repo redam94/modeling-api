@@ -133,6 +133,15 @@ a tmpfs on `/tmp`, all Linux capabilities dropped and `no-new-privileges`. Ports
 without it. The official `postgres` image is the one exception: it starts as root to fix data
 directory ownership, then drops to the `postgres` user.
 
+**Host names.** The M1 API has no authentication, and a web page whose host name is
+re-pointed at `127.0.0.1` (DNS rebinding) is same-origin to itself, so CORS does not stop it.
+The API therefore answers only the `Host` names in `MAPI_ALLOWED_HOSTS` (default `127.0.0.1`,
+`localhost`, `api`, plus the host of `MAPI_API_URL`) and returns 400 for anything else. The
+app's nginx server answers only `MAPI_WEB_SERVER_NAMES` (default `127.0.0.1 localhost`) and
+closes the connection for any other host. The GCS shim does the same, for loopback names and
+the hosts of its endpoints (`--allowed-host` adds more). If you reach the stack under another
+name, such as a LAN host name, add it to both variables.
+
 ### Executor choice: local-process vs docker
 
 The compose worker runs the **local-process executor inside a runner-capable image**: each run
@@ -142,10 +151,29 @@ no Docker socket and is daemon-agnostic. Its trade-offs:
 | | local-process in `mapi/worker` (default) | docker executor (`compose.override.example.yml`) |
 |---|---|---|
 | Isolation | Process only: runs share the worker's filesystem, `/tmp` and memory limit | One container per run, from the exact runner image, with its own limits; `--network none` is possible |
-| Images | One large image holding every plugin plus the control plane | The control-plane image for the worker, and `mapi/base-*` per run |
+| Images | One large image holding every plugin plus the control plane | `mapi/worker` for the orchestrator, and per run the `mapi/base-*` image that ships the run's plugin (`MAPI_DOCKER_IMAGES`) |
 | Privileges | None beyond the worker's own | The worker mounts `/var/run/docker.sock`, which is **root-equivalent on the host** |
-| Networking | Runs reach `127.0.0.1:4443` directly | Run containers must join the `gcs-shim` network namespace |
+| Networking | Runs reach `127.0.0.1:4443` directly | Run containers join the `gcs-shim` network namespace (`MAPI_DOCKER_NETWORK=container:mapi-gcs-shim`) |
 | Use it for | Day-to-day development, demos, CI | Checking production images end to end, and self-hosted setups (gVisor `runsc` in v0.3) |
+
+**Docker executor settings.** `MAPI_DOCKER_IMAGES` maps a plugin namespace to its runner
+image: `mmm.*` and `tabular.*` run in `mapi/base-bayes`, `sklearn.*` in `mapi/base-ml` and
+`ts.*` in `mapi/base-forecast`. Runs without a model plugin (ingest, describe) use
+`MAPI_DOCKER_IMAGE`. The defaults are the tags `make docker-build` produces for the current
+version. `MAPI_DOCKER_NETWORK` must give the run a way to reach the object store, because
+the bootstrap object and every signed URL point at it. In compose that means joining the
+shim's network namespace (`container:mapi-gcs-shim`). An internal Docker network that holds
+only the shim also works, provided `MAPI_GCS_ENDPOINT` names the shim on that network.
+`none` would leave the runner with nothing to fetch its bootstrap object from, so the worker
+refuses to start with it.
+
+**Worker isolation in run containers.** A run container starts its supervisor as root, with
+every Linux capability dropped except the few the uid split needs, and with
+`no-new-privileges`. The supervisor then starts the untrusted worker as uid 10001, which has no
+capabilities at all. So the worker cannot signal the supervisor, read its or the init
+process's environment, or write to its event pipe. The executor also sets
+`MAPI_REQUIRE_ISOLATION=1`, which makes the supervisor fail the run with `SANDBOX_VIOLATION`
+rather than run the worker under its own uid.
 
 Neither mode is a multi-tenant boundary. Both are single-tenant local stacks, and the
 local-process executor is meant to refuse any multi-tenant profile. The worker's `/tmp` is the

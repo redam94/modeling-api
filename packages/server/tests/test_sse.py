@@ -8,6 +8,7 @@ import json
 from typing import Any
 
 import httpx
+import pytest
 from mapi_server.api.runs import sse_stream
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
@@ -141,6 +142,76 @@ async def test_live_stream_with_progress_logs_heartbeat_and_end(ctx: ServerConte
     assert snapshots[0] == "provisioning" and "running" in snapshots
     progress = next(f for f in parsed if f["event"] == "progress")
     assert "id" not in progress and progress["json"]["payload"]["fraction"] == 0.5
+
+
+async def test_end_is_never_sent_before_the_final_event(
+    ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A commit that appends the last event *and* makes the run terminal can land between
+    the stream's reads; the stream must still send that event before ``end``."""
+    import mapi_server.api.runs as runs_api
+
+    att = await _provisioned(ctx)
+    real = runs_api.load_run
+    calls = 0
+
+    async def racing_load_run(*args: Any, **kwargs: Any) -> m.Run:
+        nonlocal calls
+        calls += 1
+        if calls == 2:  # first read inside the loop: the finalizer-style commit lands now
+            async with ctx.db.session() as s:
+                run = await real(s, None, att.run_id, for_update=True)
+                await append_event(
+                    s,
+                    run,
+                    type=RunEventType.ERROR,
+                    payload={"failure_class": "integrity", "message": "boom"},
+                )
+                await apply_transition(s, run, RunTrigger.FAIL_USER, Actor.RECONCILER)
+        return await real(*args, **kwargs)
+
+    monkeypatch.setattr(runs_api, "load_run", racing_load_run)
+    frames = [f async for f in sse_stream(ctx, None, att.run_id, 0)]
+    events = [f["event"] for f in parse_frames("".join(frames)) if "event" in f]
+    assert events[-1] == "end"
+    assert "error" in events, events
+
+
+async def test_progress_of_a_previous_attempt_is_not_shown_or_blocking(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    att1 = await _provisioned(ctx)
+    ing = EventIngestor(ctx)
+    await ing.ingest(signed_event(att1, 0, StatePayload(phase=RunnerPhase.FIT)))
+    await ing.ingest(signed_event(att1, 9, ProgressPayload(phase=RunnerPhase.SAMPLE, fraction=0.9)))
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, att1.run_id, for_update=True)
+        await apply_transition(s, run, RunTrigger.INFRA_RETRY, Actor.RECONCILER)
+    await Dispatcher(ctx, FakeExecutor()).dispatch_once()
+    async with ctx.db.session() as s:
+        att2 = await s.get(m.RunAttempt, (att1.run_id, 2))
+        assert att2 is not None
+    view = (await client.get(f"/v1/runs/{att1.run_id}")).json()
+    assert view["attempt"] == 2 and view["progress"] is None  # attempt 1's 90 % is stale
+    await ctx.hub.start()
+    frames: list[str] = []
+
+    async def consume() -> None:
+        async for frame in sse_stream(ctx, None, att1.run_id, 0):
+            frames.append(frame)
+
+    task = asyncio.create_task(consume())
+    await asyncio.sleep(0.2)
+    await ing.ingest(signed_event(att2, 1, ProgressPayload(phase=RunnerPhase.SAMPLE, fraction=0.1)))
+    await asyncio.sleep(0.3)
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, att1.run_id, for_update=True)
+        await apply_transition(s, run, RunTrigger.FAIL_USER, Actor.RECONCILER)
+    await asyncio.wait_for(task, 5)
+    parsed = [f for f in parse_frames("".join(frames)) if "event" in f]
+    assert parsed[0]["json"]["progress"] is None
+    progress = [f["json"] for f in parsed if f["event"] == "progress"]
+    assert [(p["attempt"], p["payload"]["fraction"]) for p in progress] == [(2, 0.1)]
 
 
 async def test_notification_hub_fans_out_on_commit(ctx: ServerContext) -> None:

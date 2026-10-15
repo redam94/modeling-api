@@ -12,20 +12,30 @@ services:
       - "127.0.0.1:5432:5432"
 
   # --- 2. Docker executor instead of local-process -----------------------------------------
-  # Runs each fit/score in its own container from the exact runner images (mapi/base-*),
-  # instead of as a subprocess of the worker. Trade-offs (docs/operations/docker.md):
-  #   + one container per run (separate filesystem, resource limits, `--network none` possible)
+  # Runs each fit/score in its own container from the exact runner images (mapi/base-*, built
+  # by `make docker-build`), instead of as a subprocess of the worker. The image is chosen per
+  # model plugin. Trade-offs (docs/operations/docker.md):
+  #   + one container per run (separate filesystem, resource limits, worker uid split)
   #   + exactly the production images
   #   - the worker gets the Docker socket, which is root-equivalent on the host
-  #   - run containers must join the gcs-shim network namespace to reach 127.0.0.1:4443
-  # The control-plane image (mapi/server) is enough for the worker in this mode.
+  #   - run containers join the gcs-shim network namespace (the bootstrap object and signed
+  #     URLs live at 127.0.0.1:4443), so they can also reach the API on 127.0.0.1:8000
+  # The worker keeps the mapi/worker image (it has the docker SDK and computes the catalog
+  # digest the same way as the local-process setup).
+  gcs-shim:
+    container_name: mapi-gcs-shim  # a fixed name for MAPI_DOCKER_NETWORK below
+
   worker:
-    image: mapi/server:${MAPI_VERSION:-0.1.0}
-    build: !reset null
-    command: ["worker"]
     user: "10001:${DOCKER_GID:-0}"   # the group that owns /var/run/docker.sock on the host
     environment:
       MAPI_EXECUTOR: docker
+      MAPI_DOCKER_NETWORK: container:mapi-gcs-shim
+      MAPI_DOCKER_IMAGE: mapi/base-bayes:${MAPI_VERSION:-0.1.0}
+      MAPI_DOCKER_IMAGES: >-
+        {"mmm": "mapi/base-bayes:${MAPI_VERSION:-0.1.0}",
+        "tabular": "mapi/base-bayes:${MAPI_VERSION:-0.1.0}",
+        "sklearn": "mapi/base-ml:${MAPI_VERSION:-0.1.0}",
+        "ts": "mapi/base-forecast:${MAPI_VERSION:-0.1.0}"}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 

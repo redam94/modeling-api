@@ -9,9 +9,19 @@ the database with the **executor's status API — the liveness source of truth**
   any other exit is classified with :func:`~mapi_spec.run.failure_class_for_exit`; infra
   failures retry (capped, and never after 30 min) once the old execution is confirmed gone;
   event silence only raises ``STALLED`` (a warning, never a failure); deadlines are enforced
-  by cancelling the execution;
-* ``CANCELLING`` → cancel at the executor, then ``cancel_confirmed`` once it is gone;
+  by cancelling the execution, recorded on the attempt so the stop is classified as
+  ``TIMEOUT`` (or finalized as ``PARTIAL`` when checkpoints were flushed), never as an
+  execution stopped outside the platform;
+* ``CANCELLING`` → cancel at the executor, then ``cancel_confirmed`` once it is gone —
+  unless the supervisor flushed its checkpoints and exited ``PARTIAL`` with a ``partial``
+  complete event: that run is finalized (→ ``PARTIAL``, resumable);
 * ``FINALIZING`` → make sure a finalize job is queued.
+
+The first time this process looks at an attempt it calls ``executor.adopt(nonce)`` even
+when a handle is stored: after an orchestrator restart that re-registers a local child's pid
+and re-attaches a container's log follower (the event dedupe on ``(run, attempt, seq)``
+makes the replay safe). An execution counts as lost only once a cancel has been requested
+and the executor no longer reports it pending or running.
 """
 
 from __future__ import annotations
@@ -37,7 +47,7 @@ from mapi_spec.run import (
 )
 from mapi_spec.storage import bootstrap_key
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
@@ -66,6 +76,10 @@ _FAIL_TRIGGERS = {
 }
 
 
+DEADLINE_STOP = "stopped by the platform at the run deadline"
+"""``run_attempts.exec_message`` of an attempt the reconciler cancelled at its deadline."""
+
+
 def _handle(att: m.RunAttempt) -> Handle | None:
     return Handle.model_validate(att.handle) if att.handle else None
 
@@ -74,6 +88,8 @@ class Reconciler:
     def __init__(self, ctx: ServerContext, executor: Executor) -> None:
         self.ctx = ctx
         self.executor = executor
+        self._attached: set[tuple[str, int]] = set()
+        """Attempts this process has re-attached to (``adopt``) since it started."""
 
     async def run_forever(self, stop: asyncio.Event) -> None:
         log.info("reconciler started (every %ss)", self.ctx.settings.reconcile_interval_s)
@@ -133,6 +149,16 @@ class Reconciler:
             await session.execute(select(m.Run).where(m.Run.id == run_id).with_for_update())
         ).scalar_one()
 
+    async def _attach(self, att: m.RunAttempt) -> Handle | None:
+        """The attempt's handle, re-attached through ``adopt`` once per process."""
+        stored = _handle(att)
+        key = (att.run_id, att.attempt)
+        if key in self._attached:
+            return stored or await self.executor.adopt(att.nonce)
+        adopted = await self.executor.adopt(att.nonce)
+        self._attached.add(key)
+        return adopted or stored
+
     async def _delete_bootstrap(self, nonce: str) -> None:
         with contextlib.suppress(Exception):
             await self.ctx.store.delete(self.ctx.buckets.bootstrap, bootstrap_key(nonce))
@@ -160,12 +186,13 @@ class Reconciler:
             if retry:
                 row.infra_retries += 1
             await apply_transition(session, row, trigger, Actor.RECONCILER, problem=problem)
-            return True
+        self._attached.discard((run.id, run.attempt))  # the attempt left this state
+        return True
 
     async def _cancelling(self, run: m.Run, att: m.RunAttempt | None) -> None:
         handle: Handle | None = None
         if att is not None and att.status != "abandoned":
-            handle = _handle(att) or await self.executor.adopt(att.nonce)
+            handle = await self._attach(att)
             if handle is None and att.status == "intent":
                 lease = run.lease_expires_at
                 if lease is not None and lease > now():
@@ -176,6 +203,12 @@ class Reconciler:
             status = await self.executor.status(handle)
             if not (status.state.terminal or status.state is ExecState.UNKNOWN):
                 return  # still stopping; the hard timeout is the backstop
+            if (
+                att is not None
+                and status.exit_code == RunnerExit.PARTIAL
+                and await self._cancelled_partial(run, att, status)
+            ):
+                return
         update: dict[str, object] = {}
         if att is not None:
             update = {"status": "finished" if handle else "abandoned", "finished_at": now()}
@@ -220,6 +253,39 @@ class Reconciler:
             attempt_update={"status": "abandoned", "finished_at": now()},
         )
 
+    async def _cancelled_partial(self, run: m.Run, att: m.RunAttempt, status: ExecStatus) -> bool:
+        """Finalize a cancelled run whose supervisor wrote a partial bundle (True = handled).
+
+        Returns True while the ``partial`` complete event may still be on its way (within
+        ``complete_event_grace_s`` of the exit) and once the run moved to ``FINALIZING``.
+        """
+        payload = att.complete_payload
+        if payload is None and await self._complete_arrived(att):
+            async with self.ctx.db.session() as session:
+                fresh = await session.get(m.RunAttempt, (att.run_id, att.attempt))
+                payload = fresh.complete_payload if fresh is not None else None
+        if payload is None:
+            finished = status.finished_at or now()
+            waited = (now() - finished).total_seconds()
+            return waited < self.ctx.settings.complete_event_grace_s
+        if payload.get("status") != "partial":
+            return False  # a finished fit the user cancelled anyway: plain cancellation
+        await self._delete_bootstrap(att.nonce)
+        moved = await self._transition(
+            run,
+            RunTrigger.COMPLETE,
+            expect_state=RunState.CANCELLING,
+            attempt_update={
+                "status": "finished",
+                "finished_at": att.finished_at or status.finished_at or now(),
+                "exit_code": status.exit_code,
+                "exec_state": status.state.value,
+            },
+        )
+        if moved:
+            await self._defer_finalize(run.id, run.attempt)
+        return True
+
     def _can_retry(self, run: m.Run) -> bool:
         s = self.ctx.settings
         started = run.started_at or run.queued_at or run.created_at
@@ -253,23 +319,33 @@ class Reconciler:
 
     async def _live(self, run: m.Run, att: m.RunAttempt) -> None:
         state = RunState(run.state)
-        handle = _handle(att) or await self.executor.adopt(att.nonce)
+        handle = await self._attach(att)
         if handle is None:
-            await self._lost(run, att, state, "the execution handle is missing")
+            await self._lost(run, att, state, "the execution handle is missing", None)
             return
         status = await self.executor.status(handle)
         if status.state in (ExecState.PENDING, ExecState.RUNNING):
             await self._check_running(run, att, handle, state)
             return
         if status.state is ExecState.UNKNOWN:
-            await self._lost(run, att, state, status.message or "the execution disappeared")
+            why = status.message or "the execution disappeared"
+            await self._lost(run, att, state, why, handle)
             return
         await self._finished(run, att, state, status)
 
-    async def _lost(self, run: m.Run, att: m.RunAttempt, state: RunState, why: str) -> None:
+    async def _lost(
+        self, run: m.Run, att: m.RunAttempt, state: RunState, why: str, handle: Handle | None
+    ) -> None:
         since = att.submitted_at or att.created_at
         if (now() - since).total_seconds() < self.ctx.settings.lost_execution_grace_s:
             return
+        if handle is not None:
+            # confirm the old execution is gone before a new attempt can run next to it
+            await self.executor.cancel(handle)
+            after = await self.executor.status(handle)
+            if after.state in (ExecState.PENDING, ExecState.RUNNING):
+                log.warning("run %s: execution reported lost is still running", run.id)
+                return
         await self._delete_bootstrap(att.nonce)
         await self._retry_or_fail(
             run,
@@ -283,8 +359,15 @@ class Reconciler:
     ) -> None:
         s = self.ctx.settings
         if now() > att.deadline + timedelta(seconds=s.deadline_grace_s):
-            log.warning("run %s passed its deadline; cancelling the execution", run.id)
-            await self.executor.cancel(handle)  # SIGTERM → partial flush; exit classifies
+            if att.exec_message != DEADLINE_STOP:
+                log.warning("run %s passed its deadline; cancelling the execution", run.id)
+                async with self.ctx.db.session() as session:
+                    await session.execute(
+                        update(m.RunAttempt)
+                        .where(m.RunAttempt.run_id == run.id, m.RunAttempt.attempt == att.attempt)
+                        .values(exec_message=DEADLINE_STOP)
+                    )
+            await self.executor.cancel(handle)  # SIGTERM → partial flush; see _finished
             return
         if state is not RunState.RUNNING:
             return
@@ -314,24 +397,32 @@ class Reconciler:
     ) -> None:
         code = status.exit_code
         finished = status.finished_at or now()
+        # the platform itself stopped it at the deadline: not "stopped outside the platform"
+        deadline_stop = att.exec_message == DEADLINE_STOP
+        stopped_outside = status.state is ExecState.CANCELLED and not deadline_stop
         base_update: dict[str, object] = {
             "exit_code": code,
             "exec_state": status.state.value,
-            "exec_message": (status.message or None),
+            "exec_message": DEADLINE_STOP if deadline_stop else (status.message or None),
             "status": "finished",
             "finished_at": att.finished_at or finished,
         }
         await self._delete_bootstrap(att.nonce)
-        if code in (RunnerExit.OK, RunnerExit.PARTIAL) and status.state is not ExecState.CANCELLED:
-            if att.complete_payload is not None:
+        if code in (RunnerExit.OK, RunnerExit.PARTIAL) and not stopped_outside:
+            waited = (now() - finished).total_seconds()
+            grace_over = waited >= self.ctx.settings.complete_event_grace_s
+            # before giving up, re-read the row: the event may have been ingested after this
+            # pass loaded the attempt (the executor reports the exit only once drained)
+            if att.complete_payload is not None or (
+                grace_over and await self._complete_arrived(att)
+            ):
                 moved = await self._transition(
                     run, RunTrigger.COMPLETE, expect_state=state, attempt_update=base_update
                 )
                 if moved:
                     await self._defer_finalize(run.id, run.attempt)
                 return
-            waited = (now() - finished).total_seconds()
-            if waited < self.ctx.settings.complete_event_grace_s:
+            if not grace_over:
                 return  # events can lag the exit (log pipeline); look again next pass
             await self._transition(
                 run,
@@ -341,6 +432,23 @@ class Reconciler:
                 problem=Problem.from_code(
                     ErrorCode.INFRA_ERROR,
                     f"the supervisor exited with {code} but no 'complete' event arrived",
+                ),
+            )
+            return
+        if deadline_stop:
+            payload = self._error_payload(att)
+            detail = f"the run passed its {run.timeout_s} s deadline and was stopped"
+            if payload is not None:
+                detail = f"{detail}: {payload.message}"
+            await self._transition(
+                run,
+                RunTrigger.FAIL_TIMEOUT,
+                expect_state=state,
+                attempt_update=base_update,
+                problem=Problem.from_code(
+                    ErrorCode.TIMEOUT,
+                    detail[:2000],
+                    untrusted_text=payload.untrusted_text if payload else None,
                 ),
             )
             return
@@ -367,13 +475,28 @@ class Reconciler:
             run, trigger, expect_state=state, attempt_update=base_update, problem=problem
         )
 
+    async def _complete_arrived(self, att: m.RunAttempt) -> bool:
+        async with self.ctx.db.session() as session:
+            payload = (
+                await session.execute(
+                    select(m.RunAttempt.complete_payload).where(
+                        m.RunAttempt.run_id == att.run_id, m.RunAttempt.attempt == att.attempt
+                    )
+                )
+            ).scalar_one_or_none()
+        return payload is not None
+
+    @staticmethod
+    def _error_payload(att: m.RunAttempt) -> ErrorPayload | None:
+        if att.error_payload:
+            with contextlib.suppress(ValidationError):
+                return ErrorPayload.model_validate(att.error_payload)
+        return None
+
     def _problem(
         self, run: m.Run, att: m.RunAttempt, code: int, fc: FailureClass | None
     ) -> Problem:
-        payload: ErrorPayload | None = None
-        if att.error_payload:
-            with contextlib.suppress(ValidationError):
-                payload = ErrorPayload.model_validate(att.error_payload)
+        payload = self._error_payload(att)
         if fc is FailureClass.INTEGRITY:
             # an input did not match its size/crc32c: the transition table has no
             # live → fail_integrity edge, so the run fails as infra with the integrity code

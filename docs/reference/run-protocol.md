@@ -43,7 +43,7 @@ sequenceDiagram
 | State | Meaning |
 |---|---|
 | `CREATED` | Accepted by the API; static validation and quota not yet decided |
-| `REJECTED` | Static validation or quota refused the run (terminal) |
+| `REJECTED` | Reserved for submissions refused by static validation or quota (terminal). The current server does not create such runs: see the note below the transition table. |
 | `QUEUED` | Waiting for the dispatcher |
 | `DISPATCHING` | Leased; intent row written; executor call in progress |
 | `PROVISIONING` | The executor accepted the execution; no event seen yet |
@@ -86,7 +86,15 @@ the code exhaustively, all 13 × 19 state and trigger pairs.
 | every non-terminal state except `CANCELLING` | `cancel` | `CANCELLING` | api | | |
 | `CANCELLING` | `cancel` / `event` | `CANCELLING` (no-op) | api / events | | |
 | `CANCELLING` | `cancel_confirmed` | `CANCELLED` | reconciler | | |
+| `CANCELLING` | `complete` | `FINALIZING` | reconciler | | |
 | `PARTIAL` | `resume` | `QUEUED` | api | | yes |
+
+**Invalid submissions create no run.** `POST /v1/runs` and the model `:score` action run
+static validation *before* a run row exists. When it finds an error, the
+request is refused with a 4xx problem whose `code` is the first error's and whose `errors`
+list every issue with its JSON pointer, and nothing is stored, so there is no `REJECTED` run
+and no run history for it. `CREATED → reject → REJECTED` stays in the table for a later
+server that records refused submissions.
 
 Rules that every component follows:
 
@@ -100,6 +108,10 @@ Rules that every component follows:
   30 minutes without user consent.
 - **Late events.** The events service drops verified events for runs that are already
   terminal. Every terminal state rejects `event`.
+- **Cancelling a `FINALIZING` run is a no-op at the API.** The table allows the edge, but
+  `POST /v1/runs/{id}:cancel` returns the run unchanged: the execution has already finished,
+  and the finalizer may already have reserved a version number and copied write-once bundle
+  objects.
 
 ## Bootstrap
 
@@ -232,7 +244,10 @@ for example `1` from a crashed supervisor, is `infra`.
 | 143 | `TERMINATED` | timeout: SIGTERM not handled in time |
 
 When the user cancels a run, the run is already in `CANCELLING`, so the exit code does not
-decide the outcome.
+decide the outcome, with one exception. A checkpointing fit that receives the SIGTERM flushes
+its last checkpoint, uploads a `partial` manifest, sends a `partial` `complete` event and exits
+with `16`. The reconciler then fires `complete` from `CANCELLING`, and the finalizer verifies the
+partial bundle, so the run ends `PARTIAL` and can be resumed. Any other exit ends `CANCELLED`.
 
 ## Outputs and finalisation
 

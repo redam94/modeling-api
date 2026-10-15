@@ -38,19 +38,21 @@ from mapi_spec.loader import spec_hash
 from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
-from mapi_spec.spec import ModelSpec, ScoreRequest
+from mapi_spec.spec import DEFAULT_FIT_SEED, ModelSpec, ScoreRequest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
-from mapi_server.services.bundles import verified_bundle_object
+from mapi_server.services.bundles import verified_bundle_object, verify_bundle_inputs
 from mapi_server.services.runs import Scope, apply_transition, create_run
 from mapi_server.services.runspec import StoredRef
 from mapi_server.services.specs import (
     Validation,
     check_score_request,
+    class_for_size,
+    data_cap_issue,
     pin_document,
     resolve_dataset,
     validate_document,
@@ -112,7 +114,11 @@ async def submit_spec_run(
     scope = ctx.scope
     _, rev = await load_revision(session, scope, spec_id, revision)
     v: Validation = await validate_document(
-        session, scope, ctx.catalogs, document=copy.deepcopy(rev.document)
+        session,
+        scope,
+        ctx.catalogs,
+        document=copy.deepcopy(rev.document),
+        resource_class=resource_class,
     )
     if not isinstance(v.typed, ModelSpec):
         raise MapiError(
@@ -123,6 +129,12 @@ async def submit_spec_run(
     spec = v.typed
     caps: Capabilities = v.resolved.model.capabilities
     payload = pin_document(rev.document, v)
+    if isinstance(payload.get("model"), dict):
+        # pin the effective seed like `use:` ranges, so lineage and replays record what the
+        # runner used (it falls back to DEFAULT_FIT_SEED when the spec omits one)
+        fit = payload["model"].setdefault("fit", {})
+        if isinstance(fit, dict) and fit.get("seed") is None:
+            fit["seed"] = DEFAULT_FIT_SEED
     if kind is RunKind.FIT and spec.model.fit.checkpoint is not None:
         checkpointable = caps.checkpointable
     else:
@@ -210,8 +222,10 @@ async def _model_job_inputs(
     ctx: ServerContext,
     mv: m.ModelVersion,
     job: EvaluateJob | DeriveJob | RenderJob,
+    read: list[m.DatasetVersion],
 ) -> dict[str, Any]:
-    """Inputs of an ``evaluate``/``derive``/``render`` run besides the bundle."""
+    """Inputs of an ``evaluate``/``derive``/``render`` run besides the bundle (the dataset
+    versions it reads are appended to ``read``)."""
     scope = ctx.scope
     if isinstance(job, RenderJob):
         if "plots.json" not in (mv.manifest.get("objects") or {}):
@@ -231,10 +245,12 @@ async def _model_job_inputs(
     if dv is None:
         dv = await _fit_dataset(session, mv)
     inputs = {INPUT_DATASET: data_ref(dv)}
+    read.append(dv)
     for name, ref in tables.items():
         tv = await _dataset_input(session, scope, ref, f"/params/request/side_tables/{name}")
         assert tv is not None
         inputs[side_table_input(name)] = data_ref(tv)
+        read.append(tv)
     return inputs
 
 
@@ -255,6 +271,7 @@ async def submit_model_run(
     mv = await _ready_model_version(session, scope, model_version_id)
     ref = await _model_ref(session, mv)
     inputs: dict[str, Any] = {}
+    read: list[m.DatasetVersion] = []
     payload: dict[str, Any]
     if kind is RunKind.SCORE:
         if request is None:
@@ -267,10 +284,14 @@ async def submit_model_run(
         payload["model"] = ref
         for name, dv in datasets.items():
             inputs[name] = data_ref(dv)
+            read.append(dv)
     else:
         job = parse_model_job_params(kind, dict(params or {}))
         payload = job.model_dump(mode="json", by_alias=True, exclude_none=True)
-        inputs.update(await _model_job_inputs(session, ctx, mv, job))
+        inputs.update(await _model_job_inputs(session, ctx, mv, job, read))
+    cap = data_cap_issue(resource_class or ResourceClass.S, read, "/resource_class")
+    if cap is not None:
+        raise ValidationFailed([cap])
     bundle = await verified_bundle_object(ctx.store, ctx.signer, mv, FIT_BUNDLE)
     inputs[BUNDLE_INPUT] = StoredRef(bundle.bucket, bundle.key, bundle.generation)
     if BUNDLE_MANIFEST_OUTPUT in (mv.manifest.get("objects") or {}):
@@ -330,6 +351,9 @@ async def submit_retry(
     """A *new* run from a failed one (same resolved payload and pinned inputs)."""
     if old.state != RunState.FAILED.value:
         raise Conflict(f"only failed runs can be retried (run is {old.state})")
+    if old.model_version_id is not None:  # its pinned bundle inputs must still verify
+        mv = await _ready_model_version(session, ctx.scope, old.model_version_id)
+        await verify_bundle_inputs(ctx.store, ctx.signer, mv, old.inputs)
     payload = copy.deepcopy(old.payload)
     if body.seed is not None:
         if old.kind == RunKind.FIT.value and isinstance(payload.get("model"), dict):
@@ -384,11 +408,14 @@ async def submit_ingest(
     )
     payload = job.model_dump(mode="json", by_alias=True, exclude_none=True)
     snapshot = await ctx.catalogs.get(session)
+    # plan §8.5: the smallest class whose dataset cap holds the upload (uploads are capped
+    # at class L's limit, so one always fits)
+    resource_class = class_for_size(upload.size_bytes) or ResourceClass.L
     run = await create_run(
         session,
         ctx.scope,
         kind=RunKind.INGEST,
-        resource_class=ResourceClass.S,
+        resource_class=resource_class,
         timeout_s=DEFAULT_TIMEOUT_S,
         payload=payload,
         inputs={INPUT_UPLOAD: StoredRef(upload.bucket, upload.object_name, generation)},

@@ -4,7 +4,9 @@ Per run, in order — each step durable before the next:
 
 1. **lease**: ``QUEUED → DISPATCHING`` under ``FOR UPDATE SKIP LOCKED`` (many dispatchers
    may run), and write the **intent row** ``(run, attempt, nonce, hmac_key)``; commit;
-2. write the :class:`~mapi_spec.run.RunSpec` to ``bootstrap/<nonce>`` (write-once);
+2. re-verify any bundle inputs against the model version's signed manifest (plan §8.6:
+   the signature is checked whenever URLs are minted), then write the
+   :class:`~mapi_spec.run.RunSpec` to ``bootstrap/<nonce>`` (write-once);
 3. ``executor.submit(RunSubmit, nonce)`` — rate-limited by a token bucket;
 4. record the handle and apply ``submitted`` (``DISPATCHING → PROVISIONING``).
 
@@ -19,13 +21,14 @@ import asyncio
 import contextlib
 import logging
 import os
+import re
 import socket
 import time
 from datetime import timedelta
 
 from mapi_spec._types import Duration
 from mapi_spec.errors import ErrorCode, MapiError, Problem
-from mapi_spec.executor import Executor, Handle, RunKind, RunSubmit
+from mapi_spec.executor import PLUGIN_LABEL, Executor, Handle, RunKind, RunSubmit
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger, new_hmac_key, new_nonce
 from mapi_spec.storage import NotFound, bootstrap_key
@@ -34,10 +37,14 @@ from sqlalchemy import select
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.executors import check_placement
+from mapi_server.services.bundles import BundleIntegrityError, verify_bundle_inputs
 from mapi_server.services.runs import apply_transition, now
 from mapi_server.services.runspec import build_runspec
 
 __all__ = ["Dispatcher", "TokenBucket"]
+
+_RESERVED_LABEL_PREFIX = "mapi.dev/"
+_NAMESPACE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 
 log = logging.getLogger(__name__)
 
@@ -175,6 +182,8 @@ class Dispatcher:
         handle: Handle | None = None
         error: Exception | None = None
         try:
+            if run.model_version_id is not None:
+                await self._verify_bundles(run)
             runspec = await build_runspec(
                 ctx.store, run=run, attempt=att, runs_bucket=ctx.buckets.runs
             )
@@ -191,7 +200,7 @@ class Dispatcher:
                 kind=RunKind(run.kind),
                 resource_class=ResourceClass(run.resource_class),
                 timeout=Duration(run.timeout_s),
-                labels={k: str(v)[:63] for k, v in list(run.labels.items())[:64]},
+                labels=await self._labels(run),
             )
             handle = await self.executor.submit(rs, att.nonce)
         except asyncio.CancelledError:
@@ -202,6 +211,43 @@ class Dispatcher:
             with contextlib.suppress(Exception):
                 handle = await self.executor.adopt(att.nonce)
         await self._record(run_id, attempt_no, att.nonce, handle, error)
+
+    async def _labels(self, run: m.Run) -> dict[str, str]:
+        """The run's labels for the executor, plus :data:`PLUGIN_LABEL` (platform-set only)."""
+        labels = {
+            k: str(v)[:63]
+            for k, v in list(run.labels.items())[:63]
+            if not k.startswith(_RESERVED_LABEL_PREFIX)
+        }
+        plugin = await self._plugin(run)
+        if plugin:
+            labels[PLUGIN_LABEL] = plugin
+        return labels
+
+    async def _plugin(self, run: m.Run) -> str | None:
+        """Namespace of the model plugin the run executes (``ts`` for ``ts.hsgp_trend@1``)."""
+        ref: object = None
+        async with self.ctx.db.session() as session:
+            if run.spec_id is not None and run.spec_revision is not None:
+                rev = await session.get(m.SpecRevision, (run.spec_id, run.spec_revision))
+                if rev is not None and rev.resolved:
+                    ref = (rev.resolved.get("model") or {}).get("resolved")
+            elif run.model_version_id is not None:
+                mv = await session.get(m.ModelVersion, run.model_version_id)
+                if mv is not None:
+                    ref = (mv.lineage or {}).get("plugin")
+        if not isinstance(ref, str) or "." not in ref:
+            return None
+        namespace = ref.split(".", 1)[0]
+        return namespace if _NAMESPACE.match(namespace) else None
+
+    async def _verify_bundles(self, run: m.Run) -> None:
+        async with self.ctx.db.session() as session:
+            mv = await session.get(m.ModelVersion, run.model_version_id)
+            if mv is None or mv.tenant_id != run.tenant_id or mv.project_id != run.project_id:
+                raise BundleIntegrityError("the run's model version no longer exists")
+            session.expunge(mv)
+        await verify_bundle_inputs(self.ctx.store, self.ctx.signer, mv, run.inputs)
 
     async def _record(
         self,
@@ -234,11 +280,18 @@ class Dispatcher:
             if run.state != RunState.DISPATCHING.value or run.attempt != attempt_no:
                 return
             detail = "the executor did not accept the execution"
-            if isinstance(error, MapiError):
+            code = ErrorCode.INFRA_ERROR
+            if isinstance(error, BundleIntegrityError):
+                # no URLs were minted; a bundle that fails verification never will verify
+                detail = f"the model bundle failed verification: {error.detail}"
+                code = ErrorCode.INTEGRITY_FAILURE
+                log.error("run %s/%s: %s", run_id, attempt_no, detail)
+            elif isinstance(error, MapiError):
                 detail = f"{detail}: {error.detail}"
             elif error is not None:
                 detail = f"{detail}: {type(error).__name__}"
-            permanent = isinstance(error, NotFound)  # an input object is gone: no retry
+            # an input object is gone, or the bundle does not verify: no retry
+            permanent = isinstance(error, NotFound | BundleIntegrityError)
             if not permanent and run.infra_retries < ctx.settings.max_infra_retries:
                 run.infra_retries += 1
                 await apply_transition(session, run, RunTrigger.INFRA_RETRY, Actor.DISPATCHER)
@@ -248,7 +301,7 @@ class Dispatcher:
                     run,
                     RunTrigger.FAIL_INFRA,
                     Actor.DISPATCHER,
-                    problem=Problem.from_code(ErrorCode.INFRA_ERROR, detail[:2000]),
+                    problem=Problem.from_code(code, detail[:2000]),
                 )
         with contextlib.suppress(Exception):
             await ctx.store.delete(ctx.buckets.bootstrap, bootstrap_key(nonce))

@@ -31,6 +31,30 @@ async def test_plot_validate_runs_the_sanitizer(client: httpx.AsyncClient) -> No
     assert r.status_code == 422
 
 
+async def test_unknown_host_headers_are_refused(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """DNS rebinding: a page on attacker.example re-pointed at 127.0.0.1 is same-origin to
+    itself, so CORS never applies; only the Host header gives it away."""
+    for host in ("attacker.example", "attacker.example:8000", "127.0.0.1.nip.io:5173"):
+        r = await client.get("/v1/runs", headers={"Host": host})
+        assert r.status_code == 400, (host, r.status_code)
+        r = await client.post("/internal/events", headers={"Host": host}, json={})
+        assert r.status_code == 400, host
+    for host in ("127.0.0.1:8000", "localhost:5173", "api:8000", "127.0.0.1"):
+        r = await client.get("/healthz", headers={"Host": host})
+        assert r.status_code == 200, (host, r.status_code)
+
+
+def test_allowed_hosts_setting(monkeypatch: object) -> None:
+    from mapi_server.settings import Settings
+
+    s = Settings(database_url="postgresql://x/y", api_url="http://mapi.internal:9000")
+    assert {"127.0.0.1", "localhost", "api", "mapi.internal"} <= set(s.trusted_hosts())
+    s = Settings(database_url="postgresql://x/y", allowed_hosts="a.example, b.example")  # type: ignore[arg-type]
+    assert s.allowed_hosts == ["a.example", "b.example"]
+
+
 async def test_healthz_and_readyz(client: httpx.AsyncClient) -> None:
     r = await client.get("/healthz")
     assert r.status_code == 200

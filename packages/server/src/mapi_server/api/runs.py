@@ -45,6 +45,7 @@ from mapi_server.api.common import (
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict
+from mapi_server.jsonlimits import loads_limited
 from mapi_server.services.runs import apply_transition, load_run, run_dto
 from mapi_server.services.submit import submit_retry, submit_run
 
@@ -222,7 +223,8 @@ async def sse_stream(
     async with ctx.hub.subscribe(run_id) as sub:
         async with ctx.db.session() as session:
             run = await load_run(session, None, run_id)
-            view = await run_view(session, run)
+            first_progress = await session.get(m.RunProgress, run_id)
+            view = run_dto(run, first_progress)
             last_log = (
                 await session.execute(
                     select(m.RunLog.attempt, m.RunLog.seq)
@@ -232,13 +234,22 @@ async def sse_stream(
                 )
             ).first()
         log_cursor: tuple[int, int] = (last_log[0], last_log[1]) if last_log else (0, -1)
-        progress_key = (view.attempt, view.progress.seq) if view.progress is not None else (0, -1)
+        # keyed by the progress row's own attempt: after an infra retry the row can still
+        # hold the previous attempt's (higher) seq, which must not hold back the new one
+        progress_key = (
+            (first_progress.attempt, first_progress.seq) if first_progress is not None else (0, -1)
+        )
         sent_state = view.state
         yield _frame(SseEventName.SNAPSHOT, view.model_dump_json(), retry=SSE_RETRY_MS)
         last_write = time.monotonic()
         while True:
             frames: list[str] = []
             async with ctx.db.session() as session:
+                # The state is read *before* the events (READ COMMITTED, separate statements):
+                # a commit that appends the final event and makes the run terminal is then
+                # either missed by both reads (seen next pass) or its event is read too, so
+                # ``end`` never goes out without the run's last event.
+                run = await load_run(session, None, run_id)
                 rows = list(
                     (
                         await session.execute(
@@ -252,7 +263,6 @@ async def sse_stream(
                 for e in rows:
                     frames.append(_frame(e.type, event_view(e).model_dump_json(), id=e.id))
                     cursor = e.id
-                run = await load_run(session, None, run_id)
                 progress = await session.get(m.RunProgress, run_id)
                 if progress is not None and (progress.attempt, progress.seq) > progress_key:
                     progress_key = (progress.attempt, progress.seq)
@@ -344,7 +354,6 @@ async def sse_stream(
 def _live_json(
     run_id: str, attempt: int, seq: int, ts: object, type_: str, payload: dict[str, object]
 ) -> str:
-    import json
     from datetime import datetime
 
     stamp = ts.isoformat().replace("+00:00", "Z") if isinstance(ts, datetime) else str(ts)
@@ -376,7 +385,7 @@ async def list_run_plots(
     The control plane decodes nothing but this size-capped JSON, read at the generation the
     finalizer verified.
     """
-    run = await load_run(session, None, run_id)
+    run = await load_run(session, ctx.scope, run_id)
     if run.state != RunState.SUCCEEDED.value:
         return Page[PlotSpec](items=[], next_cursor=None)
     att = await session.get(m.RunAttempt, (run.id, run.attempt))
@@ -393,7 +402,7 @@ async def list_run_plots(
         str(meta["bucket"]), str(meta["name"]), generation=int(meta["generation"]), max_bytes=cap
     )
     try:
-        docs = json.loads(raw)
+        docs = loads_limited(raw)
     except ValueError:
         docs = None
     if not isinstance(docs, list):
@@ -465,9 +474,15 @@ async def run_logs(
     operation_id="cancel_run",
 )
 async def cancel_run(ctx: Ctx, session: Session, run_id: RunId) -> Run:
-    """Idempotent: ``cancelling``, or the terminal state if the run already finished."""
+    """Idempotent: ``cancelling``, or the terminal state if the run already finished.
+
+    A ``finalizing`` run is left alone (the response shows it still finalizing): its
+    execution is over, and cancelling would only throw away a complete result after the
+    finalizer reserved a version number and copied write-once bundle objects.
+    """
     run = await load_run(session, ctx.scope, run_id, for_update=True)
-    if not RunState(run.state).terminal:
+    state = RunState(run.state)
+    if not state.terminal and state is not RunState.FINALIZING:
         await apply_transition(session, run, RunTrigger.CANCEL, Actor.API)
     return await run_view(session, run)
 

@@ -120,3 +120,33 @@ async def test_procrastinate_queue_finalizes(ctx: ServerContext) -> None:
     async with ctx.db.session() as s:
         done = await load_run(s, None, run_id)
     assert done.state == RunState.SUCCEEDED.value and done.output_model_version_id
+
+
+async def test_finalize_job_of_a_dead_worker_is_recovered(ctx: ServerContext) -> None:
+    """A SIGKILLed worker leaves its job in 'doing' (procrastinate only prunes the worker
+    row); the next defer must retry it instead of treating the run as being finalized."""
+    run_id = await queued_fit(ctx)
+    await Dispatcher(ctx, FakeExecutor()).dispatch_once()
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, run_id, for_update=True)
+        await apply_transition(s, run, RunTrigger.EVENT, Actor.EVENTS)
+        await apply_transition(s, run, RunTrigger.COMPLETE, Actor.RECONCILER)
+        att = await s.get(m.RunAttempt, (run_id, 1))
+        assert att is not None
+        s.expunge_all()
+    await simulate_outputs(ctx, run, att)
+    queue = ProcrastinateQueue(ctx.db.url, Finalizer(ctx))
+    try:
+        await queue.defer_finalize(run_id, 1)
+        async with ctx.db.session() as s:  # what a worker killed mid-job leaves behind
+            await s.execute(text("UPDATE procrastinate_jobs SET status = 'doing'"))
+        for _ in range(2):  # reconciler passes over the FINALIZING run
+            await queue.defer_finalize(run_id, 1)
+            await queue.run_worker(wait=False)
+    finally:
+        await queue.close()
+    async with ctx.db.session() as s:
+        done = await load_run(s, None, run_id)
+        jobs = (await s.execute(text("SELECT status FROM procrastinate_jobs"))).scalars().all()
+    assert done.state == RunState.SUCCEEDED.value, (done.state, jobs)
+    assert "doing" not in jobs

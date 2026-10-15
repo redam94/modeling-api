@@ -93,7 +93,11 @@ def run_dto(run: m.Run, progress: m.RunProgress | None = None) -> RunDTO:
         resource_class=ResourceClass(run.resource_class),
         timeout=Duration(run.timeout_s),
         executor=run.executor,
-        progress=progress_dto(progress) if not RunState(run.state).terminal else None,
+        progress=progress_dto(progress)
+        if progress is not None
+        and progress.attempt == run.attempt  # never a previous attempt's progress
+        and not RunState(run.state).terminal
+        else None,
         cost=RunCost(),
         labels=run.labels,
         created_at=run.created_at,
