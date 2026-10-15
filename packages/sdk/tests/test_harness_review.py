@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import numpy as np
 import pytest
 import xarray as xr
 from mapi_sdk.bundle import Bundle
@@ -338,3 +339,22 @@ def test_as_of_split_with_a_gap_evaluates_past_the_gap(registry: Registry) -> No
         ).replace("mode: train_only", "mode: evaluate_then_refit")
     )
     assert fit_spec(no_gap, data, None, registry).metrics.n_holdout == 3 * 8
+
+
+# ---------------------------------------------- plan-conformance-9 (predict past the fit)
+
+
+def test_predict_past_the_fit_runs_the_recursion_check(registry: Registry) -> None:
+    full = _lag_panel(weeks=30, extra=6)
+    spec = load_model_spec(
+        YLAG_SPEC.replace("  split: __SPLIT__\n", "").replace("evaluate_then_refit", "train_only")
+    )
+    bundle = fit_spec(spec, full.isel(time=slice(0, 30)), None, registry)
+    future = full.isel(time=slice(30, None)).drop_vars("y")
+    with pytest.raises(MapiError) as err:
+        score_bundle(bundle, req("mode: predict\n"), future, registry=registry)
+    assert err.value.code is ErrorCode.RECURSIVE_UNSUPPORTED
+    # one period ahead is covered by the lag (the target column is there, unknown)
+    one = full.isel(time=[30]).assign(y=lambda d: d["y"] * np.nan)
+    out = score_bundle(bundle, req("mode: predict\n"), one, registry=registry)
+    assert out["summary"].to_dataset()["y_hat"].sizes["time"] == 1

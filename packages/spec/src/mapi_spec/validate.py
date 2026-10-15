@@ -1078,10 +1078,41 @@ def validate_score_request(
                         )
                     )
 
-    # future covariates ----------------------------------------------------------------
+    # extension past the fit carried by the payload itself (no horizon needed) ---------
     inputs_ptr = "/scenario" if req.scenario is not None else "/data"
+    extension: dict[str, int] = {}
+    if inputs is not None and stage_schema is not None:
+        extension = _payload_extension(req, meta, inputs, stage_schema, canon)
+    if req.horizon is None and "recursion" not in caps.owns:
+        for step in executed:
+            ctx = step.context
+            if not step.depends_on_target or ctx is None or ctx.along not in extension:
+                continue
+            step_stage = rs.stages.get(step.input_stage)
+            sdim = step_stage.dims.get(ctx.along) if step_stage is not None else None
+            if (
+                stage_schema is None
+                or sdim is None
+                or (sdim.freq != stage_schema.dims[ctx.along].freq)
+            ):
+                continue  # a different frequency at the step's stage; judged in the sandbox
+            min_lag = ctx.min_lag if ctx.min_lag is not None else 1
+            periods = extension[ctx.along]
+            if periods > min_lag:
+                issues.append(
+                    _issue(
+                        ErrorCode.RECURSIVE_UNSUPPORTED,
+                        inputs_ptr,
+                        f"step {step.id!r} lags the target by {min_lag}; input data reaching "
+                        f"{periods} periods past the fit along {ctx.along!r} would need "
+                        "recursive forecasting (unsupported in v1)",
+                    )
+                )
+
+    # future covariates ----------------------------------------------------------------
     supplied = {canon(v) for v in inputs.vars} if inputs is not None else set()
-    if req.horizon is not None and stage_schema is not None:
+    extends = req.horizon is not None or any(v > 0 for v in extension.values())
+    if extends and stage_schema is not None:
         required = {n for n, v in stage_schema.vars.items() if v.future_required}
         if model_schema is not None:
             required |= {
@@ -1100,7 +1131,7 @@ def validate_score_request(
                     suggested_action="Provide them in a scenario dataset.",
                 )
             )
-        elif required and inputs is not None:
+        elif required and inputs is not None and req.horizon is not None:
             _check_horizon_coverage(req, meta, inputs, canon, inputs_ptr, issues)
 
     # input coords ---------------------------------------------------------------------
@@ -1291,6 +1322,31 @@ def validate_score_request(
                     )
                 )
     return issues
+
+
+def _payload_extension(
+    req: ScoreRequest,
+    meta: ScoreMetadata,
+    inputs: DataSummary,
+    stage_schema: DataSchema,
+    canon: Any,
+) -> dict[str, int]:
+    """Periods the payload reaches past the fit along each ``extend`` dim of the entry
+    stage (positive entries only)."""
+    out: dict[str, int] = {}
+    fit_stage = meta.fit_coords.get(req.inputs_stage, {})
+    for raw_dim, cs in inputs.coords.items():
+        dim = canon(raw_dim)
+        spec = stage_schema.dims.get(dim)
+        fit = fit_stage.get(dim)
+        if spec is None or spec.policy is not DimPolicy.EXTEND or fit is None:
+            continue
+        if cs.end is None or fit.end is None:
+            continue
+        e, fe = cs.ordinal(cs.end), fit.ordinal(fit.end)
+        if e is not None and fe is not None and e > fe:
+            out[dim] = e - fe
+    return out
 
 
 def _model_view(rs: ResolvedSpec) -> DataSchema | None:

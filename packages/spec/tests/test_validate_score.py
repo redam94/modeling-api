@@ -227,6 +227,49 @@ def test_recursive_forecast_rejected_at_score_time(catalog: Catalog) -> None:
     )
 
 
+def test_recursion_checked_from_the_payload_without_a_horizon(catalog: Catalog) -> None:
+    """A predict request whose data runs past the fit is a forecast in all but name."""
+    d = _e33()
+    d["pipeline"].insert(
+        4,
+        {
+            "id": "ylag",
+            "use": "core.lag@^1",
+            "with": {"vars": ["y"], "along": "time", "within": ["geo"], "lags": [1]},
+        },
+    )
+    d["data"]["split"]["last"] = 1
+    rs = _resolve(catalog, d, E33_RAW)
+    meta = ScoreMetadata(resolved=rs, fit_coords={"scale_spend": WEEKLY_FIT})  # type: ignore[arg-type]
+    predict = _req(mode="predict", horizon=None, interventions=None)
+    six = _plan_inputs(coords={"time": _time("2026-07-05", "2026-08-09", 6)})
+    err = _errors(validate_score_request(predict, meta, six))["RECURSIVE_UNSUPPORTED@/scenario"]
+    assert "lags the target by 1" in err.message and "6" in err.message
+    one = _plan_inputs(coords={"time": _time("2026-07-05", "2026-07-05", 1)})
+    in_range = _plan_inputs(coords={"time": _time("2026-05-03", "2026-06-28", 9)})
+    for ok in (one, in_range):
+        assert not any(
+            k.startswith("RECURSIVE_UNSUPPORTED")
+            for k in _errors(validate_score_request(predict, meta, ok))
+        )
+
+
+def test_future_covariates_checked_from_the_payload_without_a_horizon(
+    e33_meta: ScoreMetadata,
+) -> None:
+    predict = _req(mode="predict", horizon=None, interventions=None)
+    future = {"time": _time("2026-07-05", "2026-08-09", 6)}
+    issues = validate_score_request(
+        predict, e33_meta, _plan_inputs(vars=["holiday"], coords=future)
+    )
+    assert "spend" in _errors(issues)["MISSING_FUTURE_COVARIATE@/scenario"].message
+    past = {"time": _time("2026-05-03", "2026-06-28", 9)}
+    in_sample = _plan_inputs(vars=["holiday"], coords=past)
+    assert "MISSING_FUTURE_COVARIATE@/scenario" not in _errors(
+        validate_score_request(predict, e33_meta, in_sample)
+    )
+
+
 # ------------------------------------------------------------------------ future covariates
 
 
