@@ -2,7 +2,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowDownToLine } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
-import { useRunLogs } from "@/api/queries";
+import { MAX_LOG_LINES, useRunLogs } from "@/api/queries";
 import type { LogLine } from "@/api/types";
 import { ErrorNotice } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -166,8 +166,20 @@ export function LogsViewer({ runId, live }: { runId: string; live: boolean }) {
           </div>
         )}
       </div>
-      {logs.data?.next_cursor ? (
-        <p className="text-xs text-muted-foreground">Showing the first {lines.length} lines; older pages are not loaded.</p>
+      {logs.data?.dropped ? (
+        <p className="text-xs text-muted-foreground">
+          Showing the latest {MAX_LOG_LINES.toLocaleString()} lines; {logs.data.dropped.toLocaleString()} older lines are not kept in view.
+        </p>
+      ) : null}
+      {logs.data?.behind ? (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          {live ? "Loading newer lines…" : "Newer lines are not loaded yet."}
+          {live ? null : (
+            <Button variant="outline" size="sm" onClick={() => void logs.refetch()} disabled={logs.isFetching}>
+              Load more
+            </Button>
+          )}
+        </p>
       ) : null}
     </div>
   );
