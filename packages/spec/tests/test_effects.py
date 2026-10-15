@@ -110,6 +110,31 @@ def test_stacks() -> None:
         SchemaEffect.model_validate({"stacks": {"obs": ["geo"]}})
 
 
+def test_unstacks() -> None:
+    out, problems = _apply({"stacks": {"cell": ["geo", "date"]}})
+    assert problems == [] and out is not None
+    back, problems = apply_effect(
+        out, SchemaEffect.model_validate({"unstacks": {"cell": ["geo", "date"]}})
+    )
+    assert problems == [] and back is not None
+    assert back.vars["spend"].dims == ("geo", "date", "channel")
+    assert back.dims["geo"].kind == "categorical" and "cell" not in back.dims
+    declared = SchemaEffect.model_validate(
+        {
+            "transforms_dims": {"date": {"kind": "time", "policy": "extend"}},
+            "unstacks": {"cell": ["geo", "date"]},
+        }
+    )
+    back, problems = apply_effect(out, declared)
+    assert back is not None and back.dims["date"].policy is DimPolicy.EXTEND
+    _, problems = _apply({"unstacks": {"nope": ["a", "b"]}})
+    assert "unknown dim" in problems[0]
+    _, problems = _apply({"unstacks": {"date": ["geo", "b"]}})
+    assert "already exist" in problems[0]
+    with pytest.raises(ValidationError, match="at least two"):
+        SchemaEffect.model_validate({"unstacks": {"obs": ["geo"]}})
+
+
 def test_updates_and_derives() -> None:
     out, problems = _apply(
         {
