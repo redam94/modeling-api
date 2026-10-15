@@ -51,8 +51,10 @@ db-shell: ## Open psql on the dev database (embedded pgserver or DATABASE_URL)
 	$(UV) run python scripts/dev.py db-shell
 
 .PHONY: seed
-seed: ## Load the E33 demo datasets + spec into a running stack through the HTTP API
-	$(UV) run python scripts/seed.py $(if $(SIZE),--size $(SIZE))
+# Only a SIZE given on the make command line counts: toolchains (conda's compilers, for one)
+# export SIZE=<path of the binutils `size` tool> into the environment.
+seed: ## Load the E33 demo datasets + spec into a running stack (`make seed SIZE=full`)
+	$(UV) run python scripts/seed.py $(if $(filter command line,$(origin SIZE)),--size $(SIZE))
 
 .PHONY: clean-local
 clean-local: ## Delete local state in MAPI_DATA_DIR (.local: database, objects); YES=1 skips the prompt

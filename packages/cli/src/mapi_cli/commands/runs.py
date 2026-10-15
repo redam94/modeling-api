@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 import typer
-from mapi_client import RunEnd, RunEventFrame, RunSnapshot
+from mapi_client import RunEnd, RunEventFrame, RunLiveFrame, RunSnapshot
 from mapi_spec.executor import RunKind
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
@@ -116,7 +116,7 @@ def watch(
             for item in api.runs.stream_events(run_id, last_event_id=last_event_id):
                 if isinstance(item, RunSnapshot):
                     doc = {"event": "snapshot", "run": item.run.model_dump(mode="json")}
-                elif isinstance(item, RunEventFrame):
+                elif isinstance(item, RunEventFrame | RunLiveFrame):
                     doc = {"event": item.name.value, "data": item.event.model_dump(mode="json")}
                 else:
                     assert isinstance(item, RunEnd)
