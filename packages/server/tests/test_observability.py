@@ -162,3 +162,40 @@ def test_route_template_uses_the_matched_path() -> None:
 
     assert route_template(app, StarletteRequest(scope)) == "/v1/runs/{run_id}"
     _ = request
+
+
+async def test_worker_serves_its_own_metrics_on_request() -> None:
+    """The orchestrator's series (dispatch latency, finalize outcomes, ...) live in the
+    worker process: MAPI_WORKER_METRICS_PORT serves them there, with the same bearer rule."""
+    import asyncio
+    import socket
+
+    from mapi_server.__main__ import _worker_metrics_server
+    from mapi_server.settings import Profile, Settings
+
+    base = Settings(database_url="postgresql://unused/unused")
+    assert _worker_metrics_server(base) is None  # off unless a port is set
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    settings = base.model_copy(
+        update={
+            "worker_metrics_port": port,
+            "profile": Profile.MULTI_TENANT,
+            "metrics_token": "scrape",
+        }
+    )
+    server = _worker_metrics_server(settings)
+    task = asyncio.create_task(server.serve())
+    try:
+        for _ in range(100):
+            if server.started:
+                break
+            await asyncio.sleep(0.02)
+        async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{port}") as c:
+            assert (await c.get("/metrics")).status_code == 401
+            r = await c.get("/metrics", headers={"Authorization": "Bearer scrape"})
+            assert r.status_code == 200 and "mapi_dispatch_latency_seconds" in r.text
+    finally:
+        server.should_exit = True
+        await task

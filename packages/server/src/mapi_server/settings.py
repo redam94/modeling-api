@@ -417,6 +417,16 @@ class Settings(BaseSettings):
         True, description="Emit JSON logs (structlog); off gives a human console renderer"
     )
     metrics_enabled: bool = Field(True, description="Mount GET /metrics (Prometheus)")
+    worker_metrics_port: int | None = Field(
+        None,
+        ge=1,
+        le=65535,
+        description="Serve GET /metrics of the worker (dispatcher, reconciler, finalizer, "
+        "events) on this port; unset: the worker exposes no metrics",
+    )
+    worker_metrics_host: str = Field(
+        "127.0.0.1", description="Bind address of the worker's metrics endpoint"
+    )
     metrics_token: str | None = Field(
         None,
         repr=False,

@@ -48,6 +48,12 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_ALLOWED_HOSTS` | `127.0.0.1,localhost,api` | `Host` header values the API answers (comma-separated; the host of `MAPI_API_URL` is always allowed; `*` turns the check off). The DNS-rebinding guard of the unauthenticated M1 API |
 | `MAPI_DEBUG` | `false` | Put tracebacks into problem documents' `untrusted_text`. Never in production |
 | `MAPI_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
+| `MAPI_LOG_JSON` | `true` | One JSON object per log line (structlog, with `trace_id`/`span_id` and the request, run and tenant context); `false` gives a human console format |
+| `MAPI_METRICS_ENABLED` | `true` | Serve Prometheus metrics at `GET /metrics` (see [Observability](observability.md)) |
+| `MAPI_METRICS_TOKEN` | unset | Bearer a scraper must present on `GET /metrics`. Required in the `multi-tenant` profile, which refuses scrapes without it (the series carry tenant ids and spend) |
+| `MAPI_WORKER_METRICS_PORT`, `MAPI_WORKER_METRICS_HOST` | unset, `127.0.0.1` | Serve the worker's own `GET /metrics` (dispatcher, reconciler, finalizer series) on this address; same bearer rule as the API |
+| `MAPI_TRACING_ENABLED` | `true` | Create OpenTelemetry spans for requests, outgoing HTTP calls and runs |
+| `MAPI_OTLP_ENDPOINT` | unset | OTLP/HTTP collector to export spans to (also read from `OTEL_EXPORTER_OTLP_ENDPOINT`); unset creates spans without exporting them |
 | `MAPI_INTERNAL_TOKEN` | unset | If set (and Pub/Sub push authentication is not), `POST /internal/events` requires this bearer token. A multi-tenant profile with neither refuses every push |
 | `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | unset | Set both to require a Google-signed OIDC token from the push subscription's service account on `POST /internal/events` (see [Authentication](authentication.md#pubsub-push) and the Cloud Run settings below) |
 | `MAPI_SSE_HEARTBEAT_S` | `15` | Seconds between `: keepalive` comments on event streams |
@@ -84,6 +90,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_OIDC_CLIENT_ID`, `MAPI_OIDC_CLIENT_SECRET` | unset | The OAuth client registered for the BFF (the secret is optional for public clients; PKCE is always used) |
 | `MAPI_OIDC_REDIRECT_URI` | `$MAPI_API_URL/auth/callback` | The registered redirect URI |
 | `MAPI_OIDC_ALGORITHMS` | `RS256,ES256` | Accepted ID-token algorithms (asymmetric only) |
+| `MAPI_OIDC_CLI_CLIENT_IDS` | `mapi-cli` | Public OIDC clients of the same issuer whose ID tokens the API accepts as `Authorization: Bearer` (what `mapi login` sends). Comma-separated; empty accepts API tokens only. In the `dev` profile these clients may also use the built-in IdP with a loopback redirect |
 | `MAPI_OIDC_EXTRA_PARAMS` | `{}` | Extra authorization parameters as JSON, for example `{"hd": "acme.com"}` |
 | `MAPI_OPERATOR_EMAILS` | unset | Verified e-mails that sign in as platform operators (comma-separated) |
 | `MAPI_DEFAULT_TENANT_ADMINS` | unset | E-mails invited as admins of the default tenant at start-up (claimed at first sign-in with that verified e-mail) |
@@ -190,6 +197,8 @@ arguments. Never set them by hand.
 | `MAPI_WORKER_PYTHON` | The worker's interpreter (default: the supervisor's) |
 | `MAPI_BASE_IMAGE` | The base image recorded in the run's lineage |
 | `MAPI_REQUIRE_ISOLATION` | Set to `1` by the docker executor: the supervisor fails the run with `SANDBOX_VIOLATION` instead of running the worker in dev mode |
+| `MAPI_TRACEPARENT` | The W3C `traceparent` of the dispatching span, so the supervisor's stderr diagnostics carry the run's trace id (nothing is exported from the sandbox) |
+| `MAPI_LOG_JSON` | `1` (the default) makes the supervisor's stderr diagnostics JSON lines; `0` plain text |
 
 The supervisor passes the untrusted worker only an allow-list of variables
 (`mapi_spec.run.WORKER_ENV_ALLOWLIST`: `PATH`, `HOME`, `TMPDIR`, locale and thread-count
@@ -218,6 +227,7 @@ the entry point builds over it ([Container images](images.md#compile-caches-and-
 | `MAPI_CREDENTIALS` | Where `mapi login` keeps sign-ins (default `credentials.json` next to the config file; mode `0600`) |
 | `MAPI_OIDC_ISSUER` | The identity provider for `mapi login` (https, or plain http on a loopback address for a local development provider) |
 | `MAPI_OIDC_CLIENT_ID` | The OIDC client id of the CLI (default `mapi-cli`) |
+| `MAPI_OIDC_DISCOVERY_URL` | Where the issuer's discovery document is, when not under the issuer. The `dev` profile's built-in IdP has the issuer `https://dev-idp.mapi.localhost` and serves its document at `<api>/dev/idp` |
 | `MAPI_OIDC_CLIENT_SECRET` | Only for identity providers that require one from installed apps (for example Google "desktop" clients); never printed |
 
 Arguments (`--url`, `--token`, `--project`, `--profile`, or `Client(base_url=…, token=…,

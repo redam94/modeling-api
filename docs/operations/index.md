@@ -53,5 +53,12 @@ Whichever you choose:
 - [Google Cloud](gcp-deployment.md): the Terraform and deploy scripts of v0.3, step by step.
 - [Security hardening on Google Cloud](security-hardening.md): what each control does, and the
   M0 verification checklist.
+- [Authentication and isolation](authentication.md): sign-in, API tokens, operators,
+  row-level security and Pub/Sub push.
+- [Cloud Run Jobs executor](cloud-run.md): the v0.3 execution backend.
+- [Observability](observability.md): metrics, logs, traces, and the dashboards, alerts and
+  runbooks in `ops/`.
+- [Security suite](security-suite.md): the sandbox-escape probes and what each isolation level
+  must block.
 - [Configuration reference](configuration.md): every environment variable.
 - [Troubleshooting](troubleshooting.md): port conflicts and everything else.
