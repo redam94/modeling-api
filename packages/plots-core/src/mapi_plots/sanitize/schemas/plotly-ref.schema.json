@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:mapi:schema:plotly-dataset-ref:v1",
+  "title": "PlotlyDatasetRef",
+  "description": "Binds a Plotly data-array attribute to a column of a named PlotSpec dataset. The part before the first '.' is the dataset name; the rest is the column name.",
+  "type": "object",
+  "properties": {
+    "$ref": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_\\-]{0,63}\\.[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$"
+    }
+  },
+  "required": [
+    "$ref"
+  ],
+  "additionalProperties": false
+}

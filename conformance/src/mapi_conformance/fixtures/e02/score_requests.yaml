@@ -1,0 +1,24 @@
+# E02: long layout, coordinate canonicalisation and hyperprior new levels.
+- name: predict_in_sample
+  request: {mode: predict}
+  payload: fit_data
+  expect: {vars: [y_hat]}
+- name: shuffled_counties
+  request: {mode: predict}
+  payload: shuffled
+  expect: {vars: [y_hat]}
+- name: new_county_from_hyperprior
+  request: {mode: predict, output: {kind: expected, draws: 40}}
+  payload: new_county
+  expect: {groups: [summary, draws], sizes: {home: 6}, issues: [UNSEEN_LEVELS]}
+- name: counterfactual_first_floor
+  request: {mode: counterfactual, interventions: [{var: floor, set: 1.0}], output: {kind: predictive}}
+  payload: new_county
+  expect: {groups: [summary, baseline/summary, delta/summary]}
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: obs, periods: 3}}
+  expect_error: MODE_NOT_SUPPORTED
+- name: missing_covariate
+  request: {mode: predict}
+  payload: new_county_without_floor
+  expect_error: MISSING_FUTURE_COVARIATE

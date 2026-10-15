@@ -1,0 +1,25 @@
+{
+  "contract_version": "0.1",
+  "schemas": {
+    "backtest.json": "91e6e6fb6d9a8cca0c54dc8ead17ca46bc73aa49b3b6eab0834d993650807891",
+    "campaign.json": "ddec504b6a2d800e0cc89d84e55c6baa6225e5dab1060c7ea177d30a86209dc3",
+    "catalog-model.json": "0c7ff3203e1a1aca221d836d44998bcd1d5d7c84fc51a86087183bb771361ec4",
+    "catalog-plot.json": "fb4f4530970beb755f5571cb782b2fdbc332350fa0a6c719f0e1031af36e3884",
+    "catalog-step.json": "feb10b5e69a5d95b3e464dd8ae37da262c898509fcacc9871927a40129652522",
+    "catalog.json": "01681fd546c7e9f8e7bc9fbb31951763be324ffa0519cc2c869a8db0a3d5685c",
+    "dataschema.json": "5555b6553de498cac18f435d1f1e43e35b328a862d87a1027274561ca237b8f2",
+    "dataschematemplate.json": "d0817fab9fc007259889c5b8133ca2f59cdea521cac9528e3ff0cb0d39820738",
+    "datasummary.json": "3f80ea2ca1de9569b6f7bb95e9a1f19811eeef0b6576acaf58c1fa33fdad3eae",
+    "diagnostic.json": "6426cfa11cfdeb2b9cffee6e8cca196ca29dbaf458473e014d80697e2f6d6d88",
+    "document.json": "59bf9f6bcface1ef2228a0d9ec8549e9a4f85bda33ae1882494569ebf4a4123c",
+    "modelmanifest.json": "5ff46b3e94f4e3dc480df089e5da044d08008480dc6d2ea70e80a09d705d9759",
+    "modelspec.json": "4b86a35abecda5b80a50dbf6d8f3b834ca989ad922637a3f47fd5043bb216934",
+    "outputselector.json": "3e13442490e5a5ceb4493759985617cd67a4ee63880c1f880320b10f7ab5e339",
+    "plotspec.json": "8444eae43dc0a74031fe5691eacc1f8174a0b394b72bfecd32214cc2da0432c4",
+    "problem.json": "43ac69c23753101aa711ba92d9850dc82e0fa4f189e6c1b04bddd7ed8a133b32",
+    "sbc.json": "05baf4f491b6e3da183daab82eb7368dabc11811d71c458e987b3ed45cb0c071",
+    "schemaeffect.json": "54c9efc827c4fa3d28bd27e70374248be0b8a77466d31500343c266ed2bb10d9",
+    "scorerequest.json": "b4a823bb23b10a6eb392b07b2c0d4dd6afa41a22b1823a8b6a2621b143568483",
+    "sweep.json": "602b8027aea46e0a4ffa7b4b491aef9a85902b81d701ee980a249001c88b7b0e"
+  }
+}

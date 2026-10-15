@@ -1,0 +1,27 @@
+# Plan section 6.2: direct forecasts, pooled new stores and the quantile rules.
+- name: forecast_with_new_store
+  request: {mode: forecast, horizon: {dim: time, periods: 4}, output: {summary: [median, q10, q90]}}
+  payload: future
+  expect: {vars: [y_hat], sizes: {week: 4, stat: 3}, issues: [UNSEEN_LEVELS]}
+- name: promo_counterfactual
+  request:
+    mode: counterfactual
+    horizon: {dim: time, periods: 4}
+    interventions: [{var: promo_flag, set: 1.0}]
+  payload: future
+  expect: {groups: [summary, baseline/summary]}
+- name: quantiles_are_not_summed
+  request: {mode: forecast, horizon: {dim: time, periods: 4}, output: {aggregate: {over: [store_id]}}}
+  payload: future
+  expect_error: CAPABILITY_UNSUPPORTED
+- name: unseen_sku
+  request: {mode: predict}
+  payload: new_sku
+  expect_error: UNSEEN_LEVELS
+- name: missing_future_promo
+  request: {mode: forecast, horizon: {dim: time, periods: 4}}
+  payload: future_without_promo
+  expect_error: MISSING_FUTURE_COVARIATE
+- name: horizon_without_covariates
+  request: {mode: forecast, horizon: {dim: time, periods: 4}}
+  expect_error: MISSING_FUTURE_COVARIATE

@@ -1,0 +1,14 @@
+name: CI
+on:
+  push: {branches: [main, develop]}
+  pull_request:
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --all-packages
+      - run: make lint
+      - run: make typecheck
+      - run: uv run pytest -q -m "not docker and not cloud and not e2e" --cov --cov-report=xml

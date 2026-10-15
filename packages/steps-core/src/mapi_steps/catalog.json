@@ -1,0 +1,3203 @@
+{
+  "splits": [
+    {
+      "id": "core.time_holdout",
+      "kind": "time_holdout",
+      "masks_cells": false,
+      "ordered": true,
+      "settings_schema": {
+        "additionalProperties": false,
+        "description": "Hold out the end of an ordered dim: ``last`` periods, a ``fraction`` or ``after`` a coord.",
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "After"
+          },
+          "after_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+            "title": "After Step"
+          },
+          "allow_leakage": {
+            "default": false,
+            "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+            "title": "Allow Leakage",
+            "type": "boolean"
+          },
+          "dim": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dim",
+            "type": "string"
+          },
+          "fraction": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 1,
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fraction"
+          },
+          "last": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last"
+          }
+        },
+        "required": [
+          "dim"
+        ],
+        "title": "TimeHoldoutSplit",
+        "type": "object"
+      },
+      "summary": "Hold out the end of an ordered dim (last N, a fraction, or after a label)",
+      "summary_plain": "Tests the model on the most recent periods it has not seen",
+      "version": "1.0.0"
+    },
+    {
+      "id": "core.as_of",
+      "kind": "as_of",
+      "masks_cells": false,
+      "ordered": true,
+      "settings_schema": {
+        "additionalProperties": false,
+        "description": "Train on coords up to and including ``as_of``; hold out the rest (optionally ``gap``).",
+        "properties": {
+          "after_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+            "title": "After Step"
+          },
+          "allow_leakage": {
+            "default": false,
+            "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+            "title": "Allow Leakage",
+            "type": "boolean"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ],
+            "title": "As Of"
+          },
+          "dim": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dim",
+            "type": "string"
+          },
+          "gap": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Gap",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dim",
+          "as_of"
+        ],
+        "title": "AsOfSplit",
+        "type": "object"
+      },
+      "summary": "Train up to an as-of label, hold out the rest (optional gap)",
+      "summary_plain": "Pretends it is a past date and checks what the model would have said",
+      "version": "1.0.0"
+    },
+    {
+      "id": "core.leave_group_out",
+      "kind": "leave_group_out",
+      "masks_cells": false,
+      "ordered": false,
+      "settings_schema": {
+        "additionalProperties": false,
+        "description": "Hold out whole groups of ``dim`` (explicit ``groups`` or ``n`` random ones).",
+        "properties": {
+          "after_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+            "title": "After Step"
+          },
+          "allow_leakage": {
+            "default": false,
+            "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+            "title": "Allow Leakage",
+            "type": "boolean"
+          },
+          "dim": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dim",
+            "type": "string"
+          },
+          "groups": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                },
+                "maxItems": 10000,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Groups"
+          },
+          "n": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "N"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 4294967296,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Seed"
+          }
+        },
+        "required": [
+          "dim"
+        ],
+        "title": "LeaveGroupOutSplit",
+        "type": "object"
+      },
+      "summary": "Hold out whole groups (explicit or random)",
+      "summary_plain": "Checks how well the model handles markets or stores it has never seen",
+      "version": "1.0.0"
+    },
+    {
+      "id": "core.last_per_group",
+      "kind": "last_per_group",
+      "masks_cells": true,
+      "ordered": true,
+      "settings_schema": {
+        "additionalProperties": false,
+        "description": "Hold out the last ``last`` rows along ``dim`` within each group (``min_len`` kept).",
+        "properties": {
+          "after_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+            "title": "After Step"
+          },
+          "allow_leakage": {
+            "default": false,
+            "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+            "title": "Allow Leakage",
+            "type": "boolean"
+          },
+          "dim": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dim",
+            "type": "string"
+          },
+          "last": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Last",
+            "type": "integer"
+          },
+          "min_len": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Min Len",
+            "type": "integer"
+          },
+          "within": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Within",
+            "type": "array"
+          }
+        },
+        "required": [
+          "dim",
+          "within"
+        ],
+        "title": "LastPerGroupSplit",
+        "type": "object"
+      },
+      "summary": "Hold out the last rows of each group with at least min_len rows",
+      "summary_plain": "Tests each customer or store on its latest observations",
+      "version": "1.0.0"
+    },
+    {
+      "id": "core.mask_block",
+      "kind": "mask_block",
+      "masks_cells": true,
+      "ordered": false,
+      "settings_schema": {
+        "additionalProperties": false,
+        "description": "Hold out random blocks over ``dims`` (block sizes per dim) covering ``fraction``.",
+        "properties": {
+          "after_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+            "title": "After Step"
+          },
+          "allow_leakage": {
+            "default": false,
+            "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+            "title": "Allow Leakage",
+            "type": "boolean"
+          },
+          "block": {
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "type": "integer"
+              }
+            },
+            "title": "Block",
+            "type": "object"
+          },
+          "dims": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Dims",
+            "type": "array"
+          },
+          "fraction": {
+            "exclusiveMaximum": 1,
+            "exclusiveMinimum": 0,
+            "title": "Fraction",
+            "type": "number"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 4294967296,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Seed"
+          }
+        },
+        "required": [
+          "dims",
+          "fraction"
+        ],
+        "title": "MaskBlockSplit",
+        "type": "object"
+      },
+      "summary": "Hold out random blocks of cells over several dims",
+      "summary_plain": "Hides random patches of the data and checks the model fills them in",
+      "version": "1.0.0"
+    }
+  ],
+  "steps": [
+    {
+      "context": {
+        "along": "{along}",
+        "n": "{l_max}",
+        "within": "{within}"
+      },
+      "dim_params": [
+        "along",
+        "by"
+      ],
+      "effect": {
+        "template_params": [
+          "vars"
+        ],
+        "updates": {
+          "{*vars as v}": {
+            "dtype": "float64"
+          }
+        }
+      },
+      "id": "core.adstock",
+      "kind": "value",
+      "provides": [
+        "carryover"
+      ],
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "along": {
+            "default": "time",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Along",
+            "type": "string"
+          },
+          "alpha": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "geometric/delayed decay in [0, 1)",
+            "title": "Alpha"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Dim whose levels key per-level parameters",
+            "title": "By"
+          },
+          "k": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "weibull: shape (> 0)",
+            "title": "K"
+          },
+          "kind": {
+            "default": "geometric",
+            "enum": [
+              "geometric",
+              "delayed",
+              "weibull_pdf",
+              "weibull_cdf"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "l_max": {
+            "default": 12,
+            "maximum": 520,
+            "minimum": 1,
+            "title": "L Max",
+            "type": "integer"
+          },
+          "lam": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "weibull: scale (> 0)",
+            "title": "Lam"
+          },
+          "mask": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mask"
+          },
+          "normalize": {
+            "default": false,
+            "description": "Scale the weights to sum to 1",
+            "title": "Normalize",
+            "type": "boolean"
+          },
+          "theta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "delayed: lag of the peak effect (>= 0)",
+            "title": "Theta"
+          },
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "within": {
+            "default": [],
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Within",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars"
+        ],
+        "title": "AdstockSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Adstock (carry-over) with fixed parameters",
+      "summary_plain": "Spreads each period's media effect over the following periods",
+      "var_params": [
+        "vars",
+        "mask"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "along"
+      ],
+      "effect": {
+        "adds": {
+          "{out}": {
+            "dims": [
+              "{along}",
+              "{out}_feature"
+            ],
+            "dtype": "float64"
+          }
+        },
+        "template_params": [
+          "out",
+          "along"
+        ],
+        "transforms_dims": {
+          "{out}_feature": {
+            "kind": "categorical",
+            "policy": "fixed"
+          }
+        }
+      },
+      "id": "core.calendar",
+      "kind": "feature",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "along": {
+            "default": "time",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Along",
+            "type": "string"
+          },
+          "features": {
+            "items": {
+              "enum": [
+                "day_of_week",
+                "day_of_month",
+                "day_of_year",
+                "week_of_year",
+                "month",
+                "quarter",
+                "year",
+                "is_weekend",
+                "is_month_start",
+                "is_month_end"
+              ],
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Features",
+            "type": "array"
+          },
+          "out": {
+            "default": "calendar",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Out",
+            "type": "string"
+          }
+        },
+        "required": [
+          "features"
+        ],
+        "title": "CalendarSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Calendar features (day of week, month, ISO week, ...)",
+      "summary_plain": "Adds calendar facts such as the month or whether it is a weekend",
+      "version": "1.0.0"
+    },
+    {
+      "effect": {
+        "template_params": [
+          "vars"
+        ],
+        "updates": {
+          "{*vars as v}": {
+            "dtype": "float64"
+          }
+        }
+      },
+      "id": "core.clip",
+      "kind": "value",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Lower"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Upper"
+          },
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars"
+        ],
+        "title": "ClipSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Clip values to bounds",
+      "summary_plain": "Caps values that are too small or too large",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "along"
+      ],
+      "effect": {
+        "adds": {
+          "{*sum_vars as v}": {
+            "dims": [
+              "{*by}",
+              "{dim}"
+            ],
+            "dtype": "float64"
+          },
+          "{out}": {
+            "dims": [
+              "{*by}",
+              "{dim}"
+            ],
+            "dtype": "float64",
+            "units": "1"
+          }
+        },
+        "drops": [
+          "{time_var}",
+          "{*by}",
+          "{*sum_vars}",
+          "{along}"
+        ],
+        "template_params": [
+          "along",
+          "time_var",
+          "by",
+          "sum_vars",
+          "dim",
+          "freq",
+          "out"
+        ],
+        "transforms_dims": {
+          "{*by as b}": {
+            "kind": "categorical",
+            "policy": "fixed"
+          },
+          "{dim}": {
+            "freq": "{freq}",
+            "kind": "time",
+            "policy": "extend"
+          }
+        }
+      },
+      "id": "core.count_events",
+      "kind": "reshape",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "along": {
+            "default": "event",
+            "description": "Row dim of the event table",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Along",
+            "type": "string"
+          },
+          "by": {
+            "default": [],
+            "description": "Row variables that become dims",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "By",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "dim": {
+            "default": "time",
+            "description": "Name of the new time dim",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dim",
+            "type": "string"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Latest event time kept (ISO); the grid ends at its period",
+            "title": "End"
+          },
+          "freq": {
+            "description": "Period length of the counts, e.g. 'D' or 'W-SUN'",
+            "title": "Freq",
+            "type": "string"
+          },
+          "levels": {
+            "default": {},
+            "description": "Pinned levels per `by` variable (default: observed)",
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "title": "Levels",
+            "type": "object"
+          },
+          "out": {
+            "default": "count",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Out",
+            "type": "string"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Earliest event time kept (ISO); the grid starts at its period",
+            "title": "Start"
+          },
+          "sum_vars": {
+            "default": [],
+            "description": "Numeric row variables summed per period",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Sum Vars",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "time_var": {
+            "default": "timestamp",
+            "description": "Datetime variable along the rows",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Time Var",
+            "type": "string"
+          }
+        },
+        "required": [
+          "freq"
+        ],
+        "title": "CountEventsSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Count events per period on a dense grid",
+      "summary_plain": "Turns a list of events into counts per day, week or month",
+      "var_params": [
+        "time_var",
+        "by",
+        "sum_vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "dims"
+      ],
+      "effect": {
+        "adds": {
+          "{*dims as d}_code": {
+            "dims": [
+              "{d}"
+            ],
+            "dtype": "int64",
+            "role": "{role}"
+          }
+        },
+        "derives": {
+          "{*vars as v}_code": {
+            "dtype": "int64",
+            "from": "{v}",
+            "missing": "forbid",
+            "role": "{role}",
+            "units": "1"
+          }
+        },
+        "template_params": [
+          "vars",
+          "dims",
+          "role"
+        ]
+      },
+      "id": "core.encode_levels",
+      "kind": "feature",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "dims": {
+            "default": [],
+            "description": "Dims whose labels to encode",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Dims",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "fill_code": {
+            "default": -1,
+            "description": "Code for missing values and 'fill' unseen levels",
+            "title": "Fill Code",
+            "type": "integer"
+          },
+          "max_levels": {
+            "default": 100000,
+            "maximum": 1000000,
+            "minimum": 1,
+            "title": "Max Levels",
+            "type": "integer"
+          },
+          "role": {
+            "default": "covariate",
+            "enum": [
+              "covariate",
+              "index"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "unseen_levels": {
+            "default": "error",
+            "description": "error, fill (fill_code) or pooled (one shared code n_levels)",
+            "enum": [
+              "error",
+              "pooled",
+              "fill"
+            ],
+            "title": "Unseen Levels",
+            "type": "string"
+          },
+          "vars": {
+            "default": [],
+            "description": "Categorical variables to encode",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "title": "EncodeLevelsSettings",
+        "type": "object"
+      },
+      "stateful": true,
+      "summary": "Integer codes for categorical levels",
+      "summary_plain": "Numbers each category",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "dim"
+      ],
+      "id": "core.filter_coords",
+      "kind": "reshape",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "dim": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dim",
+            "type": "string"
+          },
+          "drop": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                },
+                "maxItems": 100000,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Drop"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Inclusive upper bound; also applies at score",
+            "title": "End"
+          },
+          "keep": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                },
+                "maxItems": 100000,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Keep"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Inclusive lower bound (ordered dims)",
+            "title": "Start"
+          }
+        },
+        "required": [
+          "dim"
+        ],
+        "title": "FilterCoordsSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Select labels of a dim",
+      "summary_plain": "Keeps only some markets, products or dates",
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "dims"
+      ],
+      "effect": {
+        "adds": {
+          "{out}": {
+            "dims": "{dims}",
+            "dtype": "float64",
+            "missing": "allow",
+            "role": "{role}",
+            "units": "{units}"
+          }
+        },
+        "template_params": [
+          "out",
+          "dims",
+          "role",
+          "units"
+        ]
+      },
+      "id": "core.formula",
+      "kind": "feature",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "dims": {
+            "default": [],
+            "description": "Dims of the result (broadcast if it has fewer)",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Dims",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "expr": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Expr",
+            "type": "string"
+          },
+          "out": {
+            "description": "Name of the new variable",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Out",
+            "type": "string"
+          },
+          "role": {
+            "default": "covariate",
+            "enum": [
+              "covariate",
+              "media",
+              "spend",
+              "control",
+              "constant",
+              "weight",
+              "exposure",
+              "mask"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Units"
+          }
+        },
+        "required": [
+          "out",
+          "expr"
+        ],
+        "title": "FormulaSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Derived variable from an arithmetic expression",
+      "summary_plain": "Creates a new column from a formula such as price * units",
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "along"
+      ],
+      "effect": {
+        "adds": {
+          "{out}": {
+            "dims": [
+              "{along}",
+              "{out}_mode"
+            ],
+            "dtype": "float64"
+          }
+        },
+        "template_params": [
+          "out",
+          "along"
+        ],
+        "transforms_dims": {
+          "{out}_mode": {
+            "kind": "categorical",
+            "policy": "fixed"
+          }
+        }
+      },
+      "id": "core.fourier",
+      "kind": "feature",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "along": {
+            "default": "time",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Along",
+            "type": "string"
+          },
+          "order": {
+            "default": 2,
+            "maximum": 50,
+            "minimum": 1,
+            "title": "Order",
+            "type": "integer"
+          },
+          "out": {
+            "default": "fourier",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Out",
+            "type": "string"
+          },
+          "period": {
+            "description": "Season length in units of `unit`",
+            "exclusiveMinimum": 0,
+            "title": "Period",
+            "type": "number"
+          },
+          "unit": {
+            "default": "step",
+            "description": "'step': periods of the dim's frequency; 'days': calendar days",
+            "enum": [
+              "step",
+              "days"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period"
+        ],
+        "title": "FourierSettings",
+        "type": "object"
+      },
+      "stateful": true,
+      "summary": "Fourier seasonality features",
+      "summary_plain": "Adds smooth repeating patterns (for example yearly seasonality)",
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "along",
+        "currency_dim"
+      ],
+      "effect": {
+        "template_params": [
+          "vars",
+          "to"
+        ],
+        "updates": {
+          "{*vars as v}": {
+            "dtype": "float64",
+            "units": "{to}"
+          }
+        }
+      },
+      "id": "core.fx_convert",
+      "invertible": true,
+      "kind": "value",
+      "settings_schema": {
+        "additionalProperties": false,
+        "description": "Convert local-currency variables with per-period exchange rates from a side table.",
+        "properties": {
+          "along": {
+            "default": "time",
+            "description": "Time dim shared by the data and the table",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Along",
+            "type": "string"
+          },
+          "currencies": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "description": "Local currency per level of currency_dim",
+            "title": "Currencies",
+            "type": "object"
+          },
+          "currency_dim": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Data dim whose levels have different local currencies (e.g. geo)",
+            "title": "Currency Dim"
+          },
+          "default_currency": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{3}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Currency of levels missing from currencies",
+            "title": "Default Currency"
+          },
+          "rate_var": {
+            "default": "rate",
+            "description": "Rate variable: units of `to` per local unit",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Rate Var",
+            "type": "string"
+          },
+          "table": {
+            "description": "Name of the side table in data.side_tables",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Table",
+            "type": "string"
+          },
+          "table_along": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Time dim name in the table, if different",
+            "title": "Table Along"
+          },
+          "table_currency_dim": {
+            "default": "currency",
+            "description": "Currency dim of the rate table",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Table Currency Dim",
+            "type": "string"
+          },
+          "to": {
+            "default": "EUR",
+            "description": "Target currency (ISO 4217)",
+            "pattern": "^[A-Z]{3}$",
+            "title": "To",
+            "type": "string"
+          },
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars",
+          "table"
+        ],
+        "title": "FxConvertSettings",
+        "type": "object"
+      },
+      "side_table_params": [
+        "table"
+      ],
+      "stateful": false,
+      "summary": "Currency conversion with per-period rates from a side table",
+      "summary_plain": "Converts money columns into one currency using daily exchange rates",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "along",
+        "by"
+      ],
+      "effect": {
+        "adds": {
+          "{out}": {
+            "dims": [
+              "{along}",
+              "{*by}"
+            ],
+            "dtype": "float64",
+            "role": "control"
+          }
+        },
+        "template_params": [
+          "out",
+          "along",
+          "by"
+        ]
+      },
+      "id": "core.holidays",
+      "kind": "feature",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "along": {
+            "default": "time",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Along",
+            "type": "string"
+          },
+          "by": {
+            "default": [],
+            "description": "Dims shared by table and data (e.g. country/geo)",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "By",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "freq": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Frequency of `along` (default: from the data)",
+            "title": "Freq"
+          },
+          "how": {
+            "default": "sum",
+            "description": "Aggregate table rows inside each data period (count or any)",
+            "enum": [
+              "sum",
+              "max"
+            ],
+            "title": "How",
+            "type": "string"
+          },
+          "missing_levels": {
+            "default": "error",
+            "description": "Levels of `by` dims absent from the table: error or zero",
+            "enum": [
+              "error",
+              "zero"
+            ],
+            "title": "Missing Levels",
+            "type": "string"
+          },
+          "out": {
+            "default": "holiday",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Out",
+            "type": "string"
+          },
+          "table": {
+            "description": "Side table with a daily (or finer) holiday variable",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Table",
+            "type": "string"
+          },
+          "table_along": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Time dim of the table, if different",
+            "title": "Table Along"
+          },
+          "table_var": {
+            "default": "holiday",
+            "description": "Indicator/weight variable in the table",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Table Var",
+            "type": "string"
+          }
+        },
+        "required": [
+          "table"
+        ],
+        "title": "HolidaysSettings",
+        "type": "object"
+      },
+      "side_table_params": [
+        "table"
+      ],
+      "stateful": false,
+      "summary": "Holiday indicators per period from a side table",
+      "summary_plain": "Marks periods that contain public holidays",
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "over"
+      ],
+      "effect": {
+        "template_params": [
+          "vars"
+        ],
+        "updates": {
+          "{*vars as v}": {
+            "dtype": "float64"
+          }
+        }
+      },
+      "id": "core.impute",
+      "kind": "value",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "along": {
+            "default": "time",
+            "description": "ffill: ordered dim to carry values along",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Along",
+            "type": "string"
+          },
+          "fill_value": {
+            "default": 0.0,
+            "description": "mean/median: statistic for unseen levels",
+            "title": "Fill Value",
+            "type": "number"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "maximum": 100000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "ffill: max consecutive missing values filled",
+            "title": "Limit"
+          },
+          "method": {
+            "default": "mean",
+            "enum": [
+              "mean",
+              "median",
+              "constant",
+              "ffill"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "over": {
+            "default": [],
+            "description": "mean/median: dims the statistic reduces over",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Over",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "unseen_levels": {
+            "default": "error",
+            "enum": [
+              "error",
+              "pooled",
+              "fill"
+            ],
+            "title": "Unseen Levels",
+            "type": "string"
+          },
+          "value": {
+            "default": 0.0,
+            "description": "constant: the fill value",
+            "title": "Value",
+            "type": "number"
+          },
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "within": {
+            "default": [],
+            "description": "ffill: group dims (dense) or row group vars (long)",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Within",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars"
+        ],
+        "title": "ImputeSettings",
+        "type": "object"
+      },
+      "stateful": true,
+      "summary": "Fill missing values (mean, median, constant or forward fill)",
+      "summary_plain": "Fills gaps in the data",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "context": {
+        "along": "{along}",
+        "min_lag": "{min:lags}",
+        "n": "{max:lags}",
+        "within": "{within}"
+      },
+      "depends_on_target": true,
+      "dim_params": [
+        "along"
+      ],
+      "effect": {
+        "derives": {
+          "{*vars as v}_lagged": {
+            "append_dims": [
+              "{lag_dim}"
+            ],
+            "dtype": "float64",
+            "from": "{v}",
+            "missing": "allow",
+            "role": "covariate"
+          }
+        },
+        "template_params": [
+          "vars",
+          "lag_dim"
+        ],
+        "transforms_dims": {
+          "{lag_dim}": {
+            "kind": "integer",
+            "policy": "fixed"
+          }
+        }
+      },
+      "id": "core.lag",
+      "kind": "feature",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "along": {
+            "default": "time",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Along",
+            "type": "string"
+          },
+          "fill": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Value for lags with no history (default NaN)",
+            "title": "Fill"
+          },
+          "lag_dim": {
+            "default": "lag",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Lag Dim",
+            "type": "string"
+          },
+          "lags": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "title": "Lags",
+            "type": "array"
+          },
+          "mask": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Boolean variable; cells where it is False count as missing",
+            "title": "Mask"
+          },
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "within": {
+            "default": [],
+            "description": "Group dims (dense) or row group variables (long)",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Within",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars",
+          "lags"
+        ],
+        "title": "LagSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Lagged copies of variables within groups",
+      "summary_plain": "Adds last period's (or earlier) values as extra columns",
+      "target_vars_param": "vars",
+      "var_params": [
+        "vars",
+        "mask"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "context": {
+        "along": "{along}",
+        "min_lag": 0,
+        "n": "{l_max}",
+        "within": "{within}"
+      },
+      "depends_on_target": true,
+      "dim_params": [
+        "along"
+      ],
+      "effect": {
+        "template_params": [
+          "vars",
+          "dim"
+        ],
+        "transforms_dims": {
+          "{dim}": {
+            "kind": "integer",
+            "policy": "fixed"
+          }
+        },
+        "updates": {
+          "{*vars as v}": {
+            "append_dims": [
+              "{dim}"
+            ],
+            "dtype": "float64"
+          }
+        }
+      },
+      "id": "core.lag_tensor",
+      "kind": "feature",
+      "provides": [
+        "carryover"
+      ],
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "along": {
+            "default": "time",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Along",
+            "type": "string"
+          },
+          "dim": {
+            "default": "lag",
+            "description": "Name of the new lag dim",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dim",
+            "type": "string"
+          },
+          "l_max": {
+            "description": "Number of lags, 0 .. l_max - 1",
+            "maximum": 520,
+            "minimum": 1,
+            "title": "L Max",
+            "type": "integer"
+          },
+          "mask": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Boolean variable; cells where it is False count as missing",
+            "title": "Mask"
+          },
+          "pad": {
+            "default": "zero",
+            "description": "History before a series starts: its first value, 0 or NaN",
+            "enum": [
+              "first",
+              "zero",
+              "nan"
+            ],
+            "title": "Pad",
+            "type": "string"
+          },
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "within": {
+            "default": [],
+            "description": "Group dims (dense) or row group variables (long)",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Within",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars",
+          "l_max"
+        ],
+        "title": "LagTensorSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Lag tensor (lags 0 .. l_max-1) for in-model carry-over",
+      "summary_plain": "Keeps recent history of each series for carry-over effects",
+      "target_vars_param": "vars",
+      "var_params": [
+        "vars",
+        "mask"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "effect": {
+        "template_params": [
+          "vars"
+        ],
+        "updates": {
+          "{*vars as v}": {
+            "dtype": "float64"
+          }
+        }
+      },
+      "id": "core.log1p",
+      "invertible": true,
+      "kind": "value",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars"
+        ],
+        "title": "VarsSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "log(1 + x) of the named variables",
+      "summary_plain": "Compresses large values with a logarithm",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "effect": {
+        "template_params": [
+          "vars"
+        ],
+        "updates": {
+          "{*vars as v}": {
+            "dtype": "float64"
+          }
+        }
+      },
+      "id": "core.logit",
+      "invertible": true,
+      "kind": "value",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "eps": {
+            "default": 1e-06,
+            "description": "Values are clipped to [eps, 1 - eps]",
+            "exclusiveMaximum": 0.5,
+            "exclusiveMinimum": 0,
+            "title": "Eps",
+            "type": "number"
+          },
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars"
+        ],
+        "title": "LogitSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Logit of proportions",
+      "summary_plain": "Maps shares between 0 and 1 onto an unbounded scale",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "over"
+      ],
+      "effect": {
+        "template_params": [
+          "vars"
+        ],
+        "updates": {
+          "{*vars as v}": {
+            "dtype": "float64",
+            "units": "1"
+          }
+        }
+      },
+      "id": "core.max_abs_scale",
+      "invertible": true,
+      "kind": "value",
+      "provides": [
+        "scaling"
+      ],
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "fill_value": {
+            "default": 1.0,
+            "description": "Scale used for unseen levels with 'fill'",
+            "exclusiveMinimum": 0,
+            "title": "Fill Value",
+            "type": "number"
+          },
+          "over": {
+            "description": "Dims the statistic reduces over",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Over",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "unseen_levels": {
+            "default": "error",
+            "description": "Unseen levels at score time: error, pooled (mean) or fill",
+            "enum": [
+              "error",
+              "pooled",
+              "fill"
+            ],
+            "title": "Unseen Levels",
+            "type": "string"
+          },
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars",
+          "over"
+        ],
+        "title": "ScaleSettings",
+        "type": "object"
+      },
+      "stateful": true,
+      "summary": "Divide by the maximum absolute value over the named dims",
+      "summary_plain": "Puts each series between -1 and 1",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "over"
+      ],
+      "effect": {
+        "template_params": [
+          "vars"
+        ],
+        "updates": {
+          "{*vars as v}": {
+            "dtype": "float64",
+            "units": "1"
+          }
+        }
+      },
+      "id": "core.mean_scale",
+      "invertible": true,
+      "kind": "value",
+      "provides": [
+        "scaling"
+      ],
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "fill_value": {
+            "default": 1.0,
+            "description": "Scale used for unseen levels with 'fill'",
+            "exclusiveMinimum": 0,
+            "title": "Fill Value",
+            "type": "number"
+          },
+          "over": {
+            "description": "Dims the statistic reduces over",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Over",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "unseen_levels": {
+            "default": "error",
+            "description": "Unseen levels at score time: error, pooled (mean) or fill",
+            "enum": [
+              "error",
+              "pooled",
+              "fill"
+            ],
+            "title": "Unseen Levels",
+            "type": "string"
+          },
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars",
+          "over"
+        ],
+        "title": "ScaleSettings",
+        "type": "object"
+      },
+      "stateful": true,
+      "summary": "Divide by the mean absolute value over the named dims",
+      "summary_plain": "Puts each series on a comparable scale (average becomes 1)",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "effect": {
+        "derives": {
+          "{*vars as v}_missing": {
+            "dtype": "float64",
+            "from": "{v}",
+            "missing": "forbid",
+            "role": "covariate",
+            "units": "1"
+          }
+        },
+        "template_params": [
+          "vars"
+        ]
+      },
+      "id": "core.missing_indicator",
+      "kind": "feature",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars"
+        ],
+        "title": "MissingIndicatorSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Indicators of missing values",
+      "summary_plain": "Flags where values were missing",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "effect": {
+        "derives": {
+          "{*vars as v}_onehot": {
+            "append_dims": [
+              "{v}_level"
+            ],
+            "dtype": "float64",
+            "from": "{v}",
+            "missing": "forbid",
+            "role": "covariate",
+            "units": "1"
+          }
+        },
+        "template_params": [
+          "vars"
+        ],
+        "transforms_dims": {
+          "{*vars as v}_level": {
+            "kind": "categorical",
+            "policy": "fixed"
+          }
+        }
+      },
+      "id": "core.one_hot",
+      "kind": "feature",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "drop_first": {
+            "default": false,
+            "title": "Drop First",
+            "type": "boolean"
+          },
+          "max_levels": {
+            "default": 256,
+            "maximum": 4096,
+            "minimum": 1,
+            "title": "Max Levels",
+            "type": "integer"
+          },
+          "unseen_levels": {
+            "default": "error",
+            "description": "error, fill (all zeros) or pooled (training level frequencies)",
+            "enum": [
+              "error",
+              "pooled",
+              "fill"
+            ],
+            "title": "Unseen Levels",
+            "type": "string"
+          },
+          "vars": {
+            "description": "Categorical variables to encode",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars"
+        ],
+        "title": "OneHotSettings",
+        "type": "object"
+      },
+      "stateful": true,
+      "summary": "One-hot indicators of categorical variables",
+      "summary_plain": "Turns categories into yes/no columns",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "effect": {
+        "template_params": [
+          "vars"
+        ],
+        "updates": {
+          "{*vars as v}": {
+            "dtype": "float64",
+            "missing": "allow"
+          }
+        }
+      },
+      "id": "core.replace_sentinel",
+      "kind": "value",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "above": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Values strictly above this are missing",
+            "title": "Above"
+          },
+          "below": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Values strictly below this are missing",
+            "title": "Below"
+          },
+          "sentinels": {
+            "default": [],
+            "description": "Exact codes that mean 'missing'",
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 64,
+            "title": "Sentinels",
+            "type": "array"
+          },
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars"
+        ],
+        "title": "ReplaceSentinelSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Turn sentinel codes into missing values",
+      "summary_plain": "Marks placeholder numbers such as -99 as missing",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "dim"
+      ],
+      "effect": {
+        "template_params": [
+          "dim",
+          "freq"
+        ],
+        "transforms_dims": {
+          "{dim}": {
+            "freq": "{freq}",
+            "kind": "time",
+            "policy": "extend"
+          }
+        }
+      },
+      "id": "core.resample",
+      "kind": "reshape",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "dim": {
+            "default": "time",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dim",
+            "type": "string"
+          },
+          "freq": {
+            "description": "Target frequency, e.g. 'W-SUN' or 'MS'",
+            "title": "Freq",
+            "type": "string"
+          },
+          "full_periods_only": {
+            "default": true,
+            "description": "Drop periods that are not fully covered by the source data",
+            "title": "Full Periods Only",
+            "type": "boolean"
+          },
+          "how": {
+            "default": "sum",
+            "enum": [
+              "sum",
+              "mean",
+              "max",
+              "min",
+              "first",
+              "last"
+            ],
+            "title": "How",
+            "type": "string"
+          },
+          "how_vars": {
+            "default": {},
+            "description": "Per-variable aggregation overriding `how`",
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "enum": [
+                  "sum",
+                  "mean",
+                  "max",
+                  "min",
+                  "first",
+                  "last"
+                ],
+                "type": "string"
+              }
+            },
+            "title": "How Vars",
+            "type": "object"
+          },
+          "skipna": {
+            "default": false,
+            "description": "Ignore missing values (a period with only missing values stays NaN)",
+            "title": "Skipna",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "freq"
+        ],
+        "title": "ResampleSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Aggregate a time dim to a coarser frequency",
+      "summary_plain": "Turns daily data into weekly or monthly totals",
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "by"
+      ],
+      "effect": {
+        "template_params": [
+          "vars"
+        ],
+        "updates": {
+          "{*vars as v}": {
+            "dtype": "float64",
+            "units": "1"
+          }
+        }
+      },
+      "id": "core.saturation",
+      "kind": "value",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "alpha": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "michaelis_menten / tanh: maximum (> 0)",
+            "title": "Alpha"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Dim whose levels key per-level parameters",
+            "title": "By"
+          },
+          "c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "tanh: initial cost per unit (> 0)",
+            "title": "C"
+          },
+          "half": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "hill: half-saturation point (> 0)",
+            "title": "Half"
+          },
+          "kind": {
+            "default": "logistic",
+            "enum": [
+              "logistic",
+              "hill",
+              "michaelis_menten",
+              "tanh"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "lam": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "logistic: rate (> 0); michaelis_menten: K",
+            "title": "Lam"
+          },
+          "slope": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "hill: slope (> 0)",
+            "title": "Slope"
+          },
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "vars"
+        ],
+        "title": "SaturationSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Saturation curve with fixed parameters",
+      "summary_plain": "Models diminishing returns of extra spend",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "dims"
+      ],
+      "effect": {
+        "stacks": {
+          "{new_dim}": "{dims}"
+        },
+        "template_params": [
+          "dims",
+          "new_dim"
+        ]
+      },
+      "id": "core.stack",
+      "kind": "reshape",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "dims": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 2,
+            "title": "Dims",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "new_dim": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "New Dim",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dims",
+          "new_dim"
+        ],
+        "title": "StackSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Stack dims into one",
+      "summary_plain": "Combines several dimensions into a single list of cells",
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "over"
+      ],
+      "effect": {
+        "template_params": [
+          "vars"
+        ],
+        "updates": {
+          "{*vars as v}": {
+            "dtype": "float64",
+            "units": "1"
+          }
+        }
+      },
+      "id": "core.standardize",
+      "invertible": true,
+      "kind": "value",
+      "provides": [
+        "scaling"
+      ],
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "ddof": {
+            "default": 0,
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Ddof",
+            "type": "integer"
+          },
+          "fill_mean": {
+            "default": 0.0,
+            "description": "Mean used for unseen levels with 'fill'",
+            "title": "Fill Mean",
+            "type": "number"
+          },
+          "fill_sd": {
+            "default": 1.0,
+            "description": "SD used for unseen levels with 'fill'",
+            "exclusiveMinimum": 0,
+            "title": "Fill Sd",
+            "type": "number"
+          },
+          "over": {
+            "description": "Dims the moments reduce over",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Over",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "unseen_levels": {
+            "default": "error",
+            "enum": [
+              "error",
+              "pooled",
+              "fill"
+            ],
+            "title": "Unseen Levels",
+            "type": "string"
+          },
+          "vars": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "with_mean": {
+            "default": true,
+            "title": "With Mean",
+            "type": "boolean"
+          },
+          "with_sd": {
+            "default": true,
+            "title": "With Sd",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "vars",
+          "over"
+        ],
+        "title": "StandardizeSettings",
+        "type": "object"
+      },
+      "stateful": true,
+      "summary": "Standardise to zero mean and unit variance over the named dims",
+      "summary_plain": "Centres each series and scales it to unit spread",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "group_dim",
+        "within_dim"
+      ],
+      "effect": {
+        "adds": {
+          "{group_dim}_idx": {
+            "dims": [
+              "{row_dim}"
+            ],
+            "dtype": "int64",
+            "index_of": "{group_dim}",
+            "role": "index"
+          },
+          "{within_dim}_idx": {
+            "dims": [
+              "{row_dim}"
+            ],
+            "dtype": "int64",
+            "index_of": "{within_dim}",
+            "role": "index"
+          }
+        },
+        "renames": {
+          "{within_dim}": "{row_dim}"
+        },
+        "template_params": [
+          "group_dim",
+          "within_dim",
+          "row_dim",
+          "vars"
+        ],
+        "transforms_dims": {
+          "{row_dim}": {
+            "kind": "integer",
+            "policy": "extend"
+          },
+          "{within_dim}": {
+            "kind": "integer",
+            "policy": "fixed"
+          }
+        },
+        "updates": {
+          "{*vars as v}": {
+            "missing": "allow",
+            "remove_dims": [
+              "{group_dim}"
+            ]
+          }
+        }
+      },
+      "id": "core.to_long",
+      "kind": "reshape",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "drop_missing": {
+            "default": "all",
+            "description": "Drop rows where every listed variable is missing",
+            "enum": [
+              "all",
+              "none"
+            ],
+            "title": "Drop Missing",
+            "type": "string"
+          },
+          "group_dim": {
+            "description": "Outer ragged dim (e.g. household)",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Group Dim",
+            "type": "string"
+          },
+          "mask": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Boolean padding mask (one of vars); rows where it is False go",
+            "title": "Mask"
+          },
+          "row_dim": {
+            "default": "obs",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Row Dim",
+            "type": "string"
+          },
+          "vars": {
+            "description": "Every variable on the padded grid",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "within_dim": {
+            "description": "Inner padded dim (e.g. trip position)",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Within Dim",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_dim",
+          "within_dim",
+          "vars"
+        ],
+        "title": "ToLongSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Padded ragged data to long form",
+      "summary_plain": "Turns a padded table into one row per observation",
+      "var_params": [
+        "vars"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "row_dim"
+      ],
+      "effect": {
+        "adds": {
+          "{mask_var}": {
+            "dims": [
+              "{group_dim}",
+              "{within_dim}"
+            ],
+            "dtype": "bool",
+            "role": "mask"
+          }
+        },
+        "drops": [
+          "{group}"
+        ],
+        "renames": {
+          "{row_dim}": "{within_dim}"
+        },
+        "template_params": [
+          "row_dim",
+          "group",
+          "group_dim",
+          "within_dim",
+          "vars",
+          "mask_var",
+          "group_policy"
+        ],
+        "transforms_dims": {
+          "{group_dim}": {
+            "kind": "categorical",
+            "policy": "{group_policy}"
+          },
+          "{within_dim}": {
+            "kind": "integer",
+            "policy": "extend"
+          }
+        },
+        "updates": {
+          "{*vars as v}": {
+            "append_dims": [
+              "{group_dim}"
+            ],
+            "dtype": "float64",
+            "missing": "allow"
+          }
+        }
+      },
+      "id": "core.to_padded",
+      "kind": "reshape",
+      "settings_schema": {
+        "$defs": {
+          "DimPolicy": {
+            "description": "What may happen to a dim's coordinates at score time.",
+            "enum": [
+              "fixed",
+              "extend",
+              "new_levels"
+            ],
+            "title": "DimPolicy",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "group": {
+            "description": "Variable along the rows naming each row's group",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Group",
+            "type": "string"
+          },
+          "group_dim": {
+            "description": "Name of the outer dim (existing or new)",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Group Dim",
+            "type": "string"
+          },
+          "group_policy": {
+            "$ref": "#/$defs/DimPolicy",
+            "default": "fixed"
+          },
+          "mask_var": {
+            "default": "mask",
+            "description": "Name of the boolean validity mask to add",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Mask Var",
+            "type": "string"
+          },
+          "row_dim": {
+            "default": "obs",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Row Dim",
+            "type": "string"
+          },
+          "vars": {
+            "description": "Every other variable on the rows",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Vars",
+            "type": "array",
+            "uniqueItems": true
+          },
+          "within_dim": {
+            "description": "Name of the new position dim",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Within Dim",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group",
+          "group_dim",
+          "within_dim",
+          "vars"
+        ],
+        "title": "ToPaddedSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Long ragged data to padded form with a mask",
+      "summary_plain": "Lines up each group's rows side by side, padding short groups",
+      "var_params": [
+        "vars",
+        "group"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "along"
+      ],
+      "effect": {
+        "adds": {
+          "{out}": {
+            "dims": [
+              "{along}"
+            ],
+            "dtype": "float64",
+            "role": "control"
+          }
+        },
+        "template_params": [
+          "out",
+          "along"
+        ]
+      },
+      "id": "core.trend",
+      "kind": "feature",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "along": {
+            "default": "time",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Along",
+            "type": "string"
+          },
+          "out": {
+            "default": "trend",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Out",
+            "type": "string"
+          },
+          "power": {
+            "default": 1,
+            "description": "Polynomial power of the scaled trend",
+            "maximum": 3,
+            "minimum": 1,
+            "title": "Power",
+            "type": "integer"
+          },
+          "scale_to_fit": {
+            "default": true,
+            "description": "Scale so the fitted range maps to [0, 1] (forecasts continue past 1)",
+            "title": "Scale To Fit",
+            "type": "boolean"
+          },
+          "unit": {
+            "default": "step",
+            "enum": [
+              "step",
+              "days"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "title": "TrendSettings",
+        "type": "object"
+      },
+      "stateful": true,
+      "summary": "Polynomial time trend",
+      "summary_plain": "Adds a steady upward or downward drift over time",
+      "version": "1.0.0"
+    },
+    {
+      "dim_params": [
+        "dim"
+      ],
+      "effect": {
+        "template_params": [
+          "dim",
+          "into"
+        ],
+        "unstacks": {
+          "{dim}": "{into}"
+        }
+      },
+      "id": "core.unstack",
+      "kind": "reshape",
+      "settings_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "dim": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dim",
+            "type": "string"
+          },
+          "into": {
+            "description": "The stacked levels",
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "minItems": 2,
+            "title": "Into",
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "dim",
+          "into"
+        ],
+        "title": "UnstackSettings",
+        "type": "object"
+      },
+      "stateful": false,
+      "summary": "Unstack a dim into several",
+      "summary_plain": "Splits a combined dimension back into its parts",
+      "version": "1.0.0"
+    }
+  ]
+}

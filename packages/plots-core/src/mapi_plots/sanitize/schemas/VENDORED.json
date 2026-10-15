@@ -1,0 +1,15 @@
+{
+  "vega-lite": {
+    "version": "6.4.1",
+    "url": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+    "file": "vega-lite-v6.4.1.json",
+    "sha256": "4f11cd379b7cac0ddee17eefea84c028bd41619ace28778acf843c009e43abd2"
+  },
+  "plotly": {
+    "version": "4.1.1",
+    "url": "https://raw.githubusercontent.com/plotly/plotly.js/v4.1.1/dist/plot-schema.json",
+    "source_sha256": "64895178a4f8cbc3cd10d7824e7ee44439066c15c08d258a09f1e60f463b6d1a",
+    "file": "plotly-structure-v4.1.1.json",
+    "sha256": "e704456ddc83a3b118cfaee65588022455456133ac1a7ac993c98d3e2faeb52a"
+  }
+}

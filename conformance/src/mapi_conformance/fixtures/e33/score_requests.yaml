@@ -1,0 +1,48 @@
+# E33 score requests. `payload` names a payload_<name>() builder in e33/data.py.
+- name: forecast_8w
+  payload: future             # daily local-currency spend for the 8 weeks after the fit
+  request:
+    mode: forecast
+    horizon: {dim: time, periods: 8}
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    output: {kind: expected, summary: [mean, hdi_90], draws: 50, units: original}
+  expect: {groups: [summary, draws], vars: [y_hat], sizes: {date: 8}}
+
+- name: new_market
+  payload: future_new_market  # the same weeks plus FR, a market unseen at fit
+  request:
+    mode: forecast
+    horizon: {dim: time, periods: 8}
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    output: {kind: expected, summary: [mean, hdi_90], draws: 50}
+  expect: {vars: [y_hat], sizes: {date: 8}, issues: [UNSEEN_LEVELS]}
+
+- name: weekly_eur_plan
+  payload: weekly_plan        # a planner's weekly EUR budget, entering after resampling
+  side_tables: false          # the fx table is only needed before the entry stage
+  request:
+    mode: forecast
+    horizon: {dim: time, periods: 8}
+    inputs_stage: weekly
+    output: {kind: expected, summary: [mean, hdi_90], draws: 50}
+  expect: {vars: [y_hat], sizes: {date: 8}}
+
+- name: counterfactual_tv
+  payload: window             # the last 4 weeks of the fit data
+  request:
+    mode: counterfactual
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    interventions: [{var: spend_local, sel: {channel: tv}, multiply: 1.2}]
+    output: {kind: predictive, summary: [mean, hdi_90], draws: 50}
+  expect: {groups: [summary, delta/summary]}
+
+- name: counterfactual_tv_plan
+  payload: window             # the baseline: the last 4 weeks of the fit data
+  scenario: window_tv_plan    # the same weeks with tv spend raised 20% (a planner's scenario)
+  request:
+    mode: counterfactual
+    data: dataset://growth/window@v1
+    scenario: dataset://growth/tv_plan@v1
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    output: {kind: predictive, summary: [mean, hdi_90], draws: 50}
+  expect: {groups: [summary, baseline/summary, delta/summary]}

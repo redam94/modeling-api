@@ -1,0 +1,35 @@
+[project]
+name = "mapi-conformance"
+version = "0.1.0"
+description = "Conformance corpus (pymc-challenges-style fixtures)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
+dependencies = [
+  "mapi-sdk",
+  "mapi-steps",
+  "mapi-pymc",
+  "mapi-sklearn",
+  "mapi-plots[recipes]",
+  "mapi-plugin-mmm",
+  "mapi-plugin-ts",
+  "mapi-plugin-tabular",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mapi_conformance"]
+
+[tool.uv.sources]
+mapi-sdk = { workspace = true }
+mapi-steps = { workspace = true }
+mapi-pymc = { workspace = true }
+mapi-sklearn = { workspace = true }
+mapi-plots = { workspace = true }
+mapi-plugin-mmm = { workspace = true }
+mapi-plugin-ts = { workspace = true }
+mapi-plugin-tabular = { workspace = true }

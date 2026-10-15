@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="modeling-api">
+  <title>modeling-api</title>
+  <!-- a labelled data cube: three named dims, one highlighted cell -->
+  <g stroke-linejoin="round" stroke-linecap="round">
+    <path d="M8.4 15 24 24 24 42 8.4 33Z" fill="#ffffff" fill-opacity="0.14"/>
+    <path d="M24 24 39.6 15 39.6 33 24 42Z" fill="#ffffff" fill-opacity="0.28"/>
+    <path d="M24 6 31.8 10.5 24 15 16.2 10.5Z" fill="#5eead4"/>
+    <g fill="none" stroke="#ffffff" stroke-width="1.4" stroke-opacity="0.75">
+      <path d="M16.2 19.5 31.8 10.5M31.8 19.5 16.2 10.5"/>
+      <path d="M16.2 19.5V37.5M8.4 24 24 33"/>
+      <path d="M31.8 19.5V37.5M24 33 39.6 24"/>
+    </g>
+    <path d="M24 6 39.6 15 39.6 33 24 42 8.4 33 8.4 15Z M8.4 15 24 24 39.6 15 M24 24V42" fill="none" stroke="#ffffff" stroke-width="2.6"/>
+  </g>
+</svg>
