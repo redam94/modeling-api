@@ -14,7 +14,9 @@ import pytest
 import xarray as xr
 from mapi_pymc.examples import (
     RADON_SCHEMA,
+    RADON_SPEC_YAML,
     TREND_SCHEMA,
+    TREND_SPEC_YAML,
     PanelModel,
     RadonModel,
     TrendModel,
@@ -24,42 +26,7 @@ from mapi_pymc.examples import (
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.harness import fit_spec
 from mapi_sdk.registry import Registry
-from mapi_spec import ModelSpec, load_model_spec, load_score_request
-from mapi_spec.spec import ScoreRequest
-
-RADON_SPEC = """
-apiVersion: mapi/v1
-kind: ModelSpec
-metadata: {name: radon, project: demo}
-data:
-  dataset: dataset://demo/radon@latest
-model:
-  use: examples.radon@^1
-  fit: {mode: train_only, seed: 3, tune: 150, draws: 150, chains: 2, engine: pymc,
-        keep: {log_likelihood: true, posterior_predictive: {thin: 5}},
-        prior_predictive: {draws: 40}}
-evaluate: {metrics: [elpd_loo]}
-"""
-
-TREND_SPEC = """
-apiVersion: mapi/v1
-kind: ModelSpec
-metadata: {name: trend, project: demo}
-data:
-  dataset: dataset://demo/trend@latest
-  split: {kind: time_holdout, dim: time, last: 6}
-model:
-  use: examples.trend@^1
-  fit: {mode: evaluate_then_refit, seed: 5, tune: 150, draws: 150, chains: 2, engine: pymc}
-evaluate: {metrics: [rmse, mape, coverage_90]}
-"""
-
-SCORE = "apiVersion: mapi/v1\nkind: ScoreRequest\nmodel: endpoint://demo/m\n"
-
-
-def score_request(body: str) -> ScoreRequest:
-    """A ScoreRequest from YAML lines appended to the common header."""
-    return load_score_request(SCORE + body)
+from mapi_spec import ModelSpec, load_model_spec
 
 
 @pytest.fixture(scope="session")
@@ -78,7 +45,7 @@ def radon_data() -> xr.Dataset:
 
 @pytest.fixture(scope="session")
 def radon_spec() -> ModelSpec:
-    return load_model_spec(RADON_SPEC)
+    return load_model_spec(RADON_SPEC_YAML)
 
 
 @pytest.fixture(scope="session")
@@ -94,7 +61,7 @@ def trend_data() -> xr.Dataset:
 @pytest.fixture(scope="session")
 def trend_bundle(registry: Registry, trend_data: xr.Dataset) -> Bundle:
     return fit_spec(
-        load_model_spec(TREND_SPEC), trend_data, registry=registry, raw_schema=TREND_SCHEMA
+        load_model_spec(TREND_SPEC_YAML), trend_data, registry=registry, raw_schema=TREND_SCHEMA
     )
 
 
