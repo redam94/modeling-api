@@ -331,6 +331,17 @@ async def test_push_rejections(
         run = await load_run(s, None, provisioned.run_id)
     assert att is not None and att.violations == 2
     assert run.state == RunState.PROVISIONING.value
+    # every refusal is audited: the two refused pushes platform-wide, the two forged
+    # events in the run's tenant (where its admins see them)
+    async with ctx.db.session() as s:
+        rejected = [
+            e for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "event.rejected"
+        ]  # fmt: skip
+    in_tenant = [e for e in rejected if e.resource_id == provisioned.run_id]
+    assert len(rejected) == 4 and len(in_tenant) == 2
+    assert {e.tenant_id for e in in_tenant} == {run.tenant_id}
+    assert sorted(e.details["reason"] for e in in_tenant) == ["bad_hmac", "identity_mismatch"]
 
 
 async def test_progress_pushes_are_coalesced_despite_reordering_and_duplicates(

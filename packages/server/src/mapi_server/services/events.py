@@ -24,6 +24,8 @@ from collections.abc import AsyncIterator, Mapping
 from enum import StrEnum
 from typing import Any
 
+from mapi_spec.audit import AuditAction, AuditOutcome, make_audit_event
+from mapi_spec.errors import ErrorCode
 from mapi_spec.executor import RunEvent
 from mapi_spec.run import (
     Actor,
@@ -39,6 +41,7 @@ from mapi_spec.run import (
     parse_payload,
     verify_event,
 )
+from mapi_spec.tenancy import PrincipalKind, ResourceKind
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -49,6 +52,7 @@ from mapi_server.db import models as m
 from mapi_server.executors.cloudrun import same_execution
 from mapi_server.jsonlimits import loads_limited
 from mapi_server.observability import metrics as obs_metrics
+from mapi_server.services.audit import add_audit
 from mapi_server.services.notify import notify_run
 from mapi_server.services.runs import append_event, apply_transition, now
 
@@ -178,6 +182,32 @@ class EventIngestor:
             update(m.RunAttempt)
             .where(m.RunAttempt.run_id == attempt.run_id, m.RunAttempt.attempt == attempt.attempt)
             .values(violations=m.RunAttempt.violations + 1)
+        )
+        # an authenticated push (or pipe line) whose event does not verify is a security
+        # signal in the run's tenant: audit it there (the operator and the tenant see it)
+        owner = (
+            await session.execute(
+                select(m.Run.tenant_id, m.Run.project_id).where(m.Run.id == attempt.run_id)
+            )
+        ).one_or_none()
+        await add_audit(
+            session,
+            [
+                make_audit_event(
+                    action=AuditAction.EVENT_REJECTED,
+                    resource_kind=ResourceKind.RUN,
+                    outcome=AuditOutcome.DENIED,
+                    ts=now(),
+                    fingerprint_key=b"",  # no client data to fingerprint
+                    tenant_id=owner.tenant_id if owner else None,
+                    project_id=owner.project_id if owner else None,
+                    actor_kind=PrincipalKind.SERVICE,
+                    actor_id=f"svc_{Actor.EVENTS.value}",
+                    resource_id=attempt.run_id,
+                    code=ErrorCode.SANDBOX_VIOLATION,
+                    details={"attempt": attempt.attempt, "reason": _violation_reason(why)},
+                )
+            ],
         )
 
     async def _persist(

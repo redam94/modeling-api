@@ -33,6 +33,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
+from mapi_server.observability import metrics as obs_metrics
 
 __all__ = [
     "PRICE_TABLE_INFO_KEY",
@@ -141,15 +142,21 @@ async def bill_attempts(
         except ValueError as exc:
             log.warning("run %s/%s cannot be priced: %s", run.id, att.attempt, exc)
             continue
-        await session.execute(
-            insert(m.CostLedgerEntry)
-            .values(
-                **entry.model_dump(mode="python", exclude={"kind", "resource_class"}),
-                kind=entry.kind.value,
-                resource_class=entry.resource_class.value,
+        inserted = (
+            await session.execute(
+                insert(m.CostLedgerEntry)
+                .values(
+                    **entry.model_dump(mode="python", exclude={"kind", "resource_class"}),
+                    kind=entry.kind.value,
+                    resource_class=entry.resource_class.value,
+                )
+                .on_conflict_do_nothing()
+                .returning(m.CostLedgerEntry.id)
             )
-            .on_conflict_do_nothing()
-        )
+        ).scalar_one_or_none()
+        if inserted is None:  # a concurrent transition billed this attempt first
+            continue
+        obs_metrics.record_cost_micros(entry.tenant_id, entry.amount_micros)
         written.append(entry)
     return written
 
