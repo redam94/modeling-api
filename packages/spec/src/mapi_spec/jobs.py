@@ -47,6 +47,7 @@ from mapi_spec.spec import ModelSpec, ScoreRequest
 __all__ = [
     "BUNDLE_MANIFEST_OUTPUT",
     "DATASET_OUTPUTS",
+    "DATASET_SCHEMA_ATTR",
     "DESCRIBE_OUTPUT",
     "FIT_BUNDLE",
     "FIT_SIDECARS",
@@ -101,6 +102,11 @@ def side_table_input(name: str) -> str:
         )
     return SIDE_TABLE_PREFIX + name
 
+
+DATASET_SCHEMA_ATTR: Final = "mapi_schema"
+"""Root attribute of a ``*.zarr.zip`` dataset holding its raw ``DataSchema`` as JSON. Ingest
+writes it; uploads of self-describing datasets may carry it (dim policies, roles, units) —
+otherwise ingest infers a schema (every dim ``fixed``, every variable a ``covariate``)."""
 
 # ------------------------------------------------------------------------------ output names
 INGEST_DATA: Final = "data.zarr.zip"
