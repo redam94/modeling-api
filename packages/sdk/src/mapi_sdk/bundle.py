@@ -28,8 +28,11 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import io
 import json
+import pickletools
 import platform
+import zipfile
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -135,16 +138,87 @@ def lib_versions() -> dict[str, str]:
     return out
 
 
+_PICKLE_SCAN_BYTES = 1 << 20
+_MAX_ARCHIVE_DEPTH = 3
+_MAX_ARCHIVE_MEMBERS = 10_000
+_MAX_MEMBER_BYTES = 256 * 1024**2
+
+
+def _is_pickle(data: bytes) -> bool:
+    """Whether ``data`` parses as a complete pickle (any protocol, 0-5) up to ``STOP``.
+
+    Only the opcode stream is parsed (:func:`pickletools.genops`); nothing is executed.
+    """
+    if not data:
+        return False
+    if data[:1] == b"\x80" and len(data) > 1 and data[1] in range(2, 6):
+        return True  # a PROTO 2-5 header, even if the stream is truncated
+    ops = 0
+    try:
+        for opcode, _arg, _pos in pickletools.genops(io.BytesIO(data[:_PICKLE_SCAN_BYTES])):
+            ops += 1
+            if opcode.name == "STOP":
+                return ops > 1
+    except Exception:  # not a pickle opcode stream (or truncated)
+        return False
+    return False
+
+
+def _npy_has_objects(data: bytes) -> bool:
+    """``.npy`` content whose dtype holds Python objects (loading it needs pickle)."""
+    if not data.startswith(b"\x93NUMPY"):
+        return False
+    try:
+        fh = io.BytesIO(data)
+        version = np.lib.format.read_magic(fh)
+        header = (
+            np.lib.format.read_array_header_1_0(fh)
+            if version == (1, 0)
+            else np.lib.format.read_array_header_2_0(fh)
+        )
+    except Exception:  # an unreadable header is not loadable either
+        return True
+    return bool(header[2].hasobject)
+
+
+def _pickle_reason(name: str, data: bytes, depth: int = 0) -> str | None:
+    if name.lower().endswith(_PICKLE_SUFFIXES):
+        return "its name says it is a pickle"
+    if _is_pickle(data):
+        return "it contains pickle data"
+    if _npy_has_objects(data):
+        return "it is a NumPy array of Python objects (pickled)"
+    if data[:4] == b"PK\x03\x04":
+        if depth >= _MAX_ARCHIVE_DEPTH:
+            return "it nests archives too deeply to inspect"
+        try:
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                infos = zf.infolist()
+                if len(infos) > _MAX_ARCHIVE_MEMBERS:
+                    return "it is an archive with too many members to inspect"
+                for info in infos:
+                    if info.is_dir():
+                        continue
+                    if info.file_size > _MAX_MEMBER_BYTES:
+                        return f"archive member {info.filename[:200]!r} is too large to inspect"
+                    why = _pickle_reason(info.filename, zf.read(info), depth + 1)
+                    if why is not None:
+                        return f"archive member {info.filename[:200]!r}: {why}"
+        except (zipfile.BadZipFile, OSError, RuntimeError, NotImplementedError):
+            # unreadable here (the format's own loader rejects it); still refuse archives
+            # that name pickle members in their directory
+            if any(m in data for m in (b".pkl", b".pickle", b".joblib")):
+                return "it is an unreadable archive naming pickle members"
+    return None
+
+
 def assert_no_pickle(native: Mapping[str, bytes]) -> None:
-    """Reject pickle-like native artifacts (by name or by content)."""
+    """Reject pickle-like native artifacts: by name, by pickle opcode stream (protocols
+    0-5), object-dtype ``.npy``/``.npz`` data, and recursively inside zip archives."""
     for name, data in native.items():
-        lower = name.lower()
-        if lower.endswith(_PICKLE_SUFFIXES):
-            raise BundleError(f"native artifact {name!r} looks like a pickle; use a safe format")
-        if data[:1] == b"\x80" and len(data) > 1 and data[1] in range(2, 6):
-            raise BundleError(f"native artifact {name!r} contains pickle data")
-        if data[:2] == b"PK" and (b"data.pkl" in data[:4096] or b".pkl" in data[-4096:]):
-            raise BundleError(f"native artifact {name!r} is an archive containing pickle data")
+        why = _pickle_reason(name, data)
+        if why is not None:
+            raise BundleError(f"native artifact {name!r} is rejected: {why}; use a safe format")
 
 
 def _subtree(tree: xr.DataTree, path: str) -> xr.DataTree:
