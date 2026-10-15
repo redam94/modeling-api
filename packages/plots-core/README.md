@@ -16,9 +16,9 @@ uv add "mapi-plots[recipes]"   # + recipe catalog, MMM pack, Altair/Plotly helpe
 ```python
 from mapi_plots import sanitize_plot, check_plot, SanitizeError
 
-result = sanitize_plot(plot_json)     # PlotSpec | dict | str | bytes -> SanitizeResult
-result.plot, result.changes           # sanitized PlotSpec, what was rewritten
-check_plot(plot_json)                 # every error and change, without raising
+result = sanitize_plot(plot_json)  # PlotSpec | dict | str | bytes -> SanitizeResult
+result.plot, result.changes  # sanitized PlotSpec, what was rewritten
+check_plot(plot_json)  # every error and change, without raising
 ```
 
 Vega-Lite is validated against the vendored v6.4.1 JSON Schema; Plotly figures against a
@@ -33,7 +33,7 @@ is stripped to `<b> <i> <br> <sub> <sup>`. `scripts/vendor_schemas.py` regenerat
 from mapi_plots.recipes import get_recipe
 
 plot = get_recipe("core.ppc_fan").render(score_output_tree, facet="market")
-plot.caption_plain   # plain-language reading with the numbers
+plot.caption_plain  # plain-language reading with the numbers
 ```
 
 `core.*`: data overview, prior predictive, convergence, posterior forest, PPC, fit/forecast

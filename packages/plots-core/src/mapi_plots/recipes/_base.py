@@ -46,7 +46,8 @@ VlType = Literal["quantitative", "temporal", "nominal", "ordinal"]
 
 def named(name: str) -> Any:
     """``alt.Data(name=...)``: a reference to one of the figure's named datasets."""
-    return alt.Data(name=name)  # type: ignore[no-untyped-call]
+    data_cls: Any = alt.Data  # altair's generated classes are untyped
+    return data_cls(name=name)
 
 
 class RecipeDataError(MapiError):

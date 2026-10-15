@@ -640,7 +640,8 @@ def sanitize_plotly(
         checker.frames(out["frames"], child_pointer(base, "frames"))
     if "config" in out:
         checker.config(out["config"], child_pointer(base, "config"))
-    return _strip(out, base, None, report)  # type: ignore[no-any-return]
+    stripped: dict[str, Any] = _strip(out, base, None, report)
+    return stripped
 
 
 def _tile_traces_only(traces: Any, ptr: str, report: SanitizeReport) -> None:

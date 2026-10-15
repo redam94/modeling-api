@@ -46,7 +46,8 @@ def _rankdata(x: np.ndarray) -> np.ndarray:
 
 def _z_scale(x: np.ndarray) -> np.ndarray:
     ranks = _rankdata(x)
-    return _ppf((ranks - 3 / 8) / (x.size + 1 / 4))  # type: ignore[no-any-return]
+    z: np.ndarray = _ppf((ranks - 3 / 8) / (x.size + 1 / 4))
+    return z
 
 
 def _split_chains(x: np.ndarray) -> np.ndarray:
@@ -86,7 +87,8 @@ def _autocov(x: np.ndarray) -> np.ndarray:
     m = 1 << int(np.ceil(np.log2(2 * n)))
     f = np.fft.rfft(centred, n=m, axis=1)
     acov = np.fft.irfft(f * np.conjugate(f), n=m, axis=1)[:, :n]
-    return acov / n  # type: ignore[no-any-return]
+    out: np.ndarray = acov / n
+    return out
 
 
 def _ess(x: np.ndarray) -> float:
@@ -202,7 +204,8 @@ def pit_values(draws: np.ndarray, observed: np.ndarray) -> np.ndarray:
     y = np.asarray(observed, dtype=float)
     less = (d < y[None, :]).mean(axis=0)
     equal = (d == y[None, :]).mean(axis=0)
-    return less + 0.5 * equal  # type: ignore[no-any-return]
+    pit: np.ndarray = less + 0.5 * equal
+    return pit
 
 
 def coverage_curve(

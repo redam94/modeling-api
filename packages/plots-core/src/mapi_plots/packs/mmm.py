@@ -209,12 +209,12 @@ def response_curves(inp: RecipeInput, s: ResponseCurveSettings) -> Figure:
         f"{pct(s.hdi_prob)} interval shaded. Steeper curves return more per extra unit of "
         "spend; flattening curves mean the channel is saturating."
     )
-    if current is not None:
+    if current is not None and c.current is not None:
         sat = []
         for i, ch in enumerate(c.channels):
             sub = curves[curves.channel == ch]
             slope = np.gradient(sub["point"].to_numpy(), sub["spend"].to_numpy())
-            here = float(np.interp(c.current[i], sub["spend"], slope))  # type: ignore[index]
+            here = float(np.interp(c.current[i], sub["spend"], slope))
             peak = float(np.nanmax(slope)) if np.isfinite(slope).any() else np.nan
             sat.append((here / peak if peak > 0 else np.nan, ch))
         valid = [x for x in sat if np.isfinite(x[0])]
