@@ -19,3 +19,4 @@ nav:
   - Reference:
       - Spec format: reference/spec-format.md
       - Python SDK: reference/sdk.md
+      - Built-in steps: reference/steps.md

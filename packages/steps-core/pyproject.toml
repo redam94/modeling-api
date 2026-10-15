@@ -1,14 +1,25 @@
 [project]
 name = "mapi-steps"
 version = "0.0.0"
-description = "Built-in preprocessing steps for modeling-api"
+description = "Built-in preprocessing steps for modeling-api (core.*) and their exported SchemaEffect catalog"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
 dependencies = [
+  "mapi-spec",
   "mapi-sdk",
+  "numpy>=2.0",
+  "pandas>=2.2",
+  "xarray>=2025.1",
+  "lark>=1.2",
 ]
+
+[project.entry-points."mapi.steps"]
+core = "mapi_steps:builtin_steps"
+
+[project.scripts]
+mapi-steps-catalog = "mapi_steps.catalog:main"
 
 [build-system]
 requires = ["hatchling>=1.25"]
@@ -18,4 +29,5 @@ build-backend = "hatchling.build"
 packages = ["src/mapi_steps"]
 
 [tool.uv.sources]
+mapi-spec = { workspace = true }
 mapi-sdk = { workspace = true }

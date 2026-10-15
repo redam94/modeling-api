@@ -10,7 +10,7 @@ referenced setting must be listed in ``template_params``. :func:`resolve_effect`
 template with concrete settings into a plain :class:`SchemaEffect`.
 
 Within one effect, operations apply in this order:
-``renames → drops → transforms_dims → stacks → updates → derives → adds``.
+``renames → drops → transforms_dims → stacks → unstacks → updates → derives → adds``.
 """
 
 from __future__ import annotations
@@ -104,7 +104,16 @@ class VarDerive(VarPatch):
     from_: Name = Field(..., alias="from")
 
 
-EFFECT_ORDER = ("renames", "drops", "transforms_dims", "stacks", "updates", "derives", "adds")
+EFFECT_ORDER = (
+    "renames",
+    "drops",
+    "transforms_dims",
+    "stacks",
+    "unstacks",
+    "updates",
+    "derives",
+    "adds",
+)
 
 
 class SchemaEffect(StrictModel):
@@ -119,6 +128,12 @@ class SchemaEffect(StrictModel):
     stacks: dict[Name, list[Name]] = Field(
         default_factory=dict, description="new dim -> component dims stacked into it"
     )
+    unstacks: dict[Name, list[Name]] = Field(
+        default_factory=dict,
+        description="stacked dim -> component dims restored from it (inverse of stacks); "
+        "component specs come from transforms_dims when declared there, else "
+        "categorical/fixed",
+    )
     updates: dict[Name, VarPatch] = Field(default_factory=dict)
     derives: dict[Name, VarDerive] = Field(default_factory=dict)
     template_params: list[str] = Field(default_factory=list)
@@ -131,11 +146,12 @@ class SchemaEffect(StrictModel):
         targets = list(self.renames.values())
         if dups := unique(targets):
             raise ValueError(f"several names renamed to the same target: {dups}")
-        for new, comps in self.stacks.items():
-            if len(comps) < 2:
-                raise ValueError(f"stack {new!r} needs at least two component dims")
-            if dups := unique(comps):
-                raise ValueError(f"stack {new!r} repeats dims {dups}")
+        for label, mapping in (("stack", self.stacks), ("unstack", self.unstacks)):
+            for new, comps in mapping.items():
+                if len(comps) < 2:
+                    raise ValueError(f"{label} {new!r} needs at least two component dims")
+                if dups := unique(comps):
+                    raise ValueError(f"{label} {new!r} repeats dims {dups}")
         return self
 
     @property
@@ -275,6 +291,28 @@ def apply_effect(schema: DataSchema, effect: SchemaEffect) -> tuple[DataSchema |
         for c in comps:
             del dims[c]
         dims[new_dim] = DimSpec(kind="index", policy=_stacked_policy(policies)).model_dump()
+
+    # 4b. unstacks
+    for old_dim, comps in effect.unstacks.items():
+        if old_dim not in dims:
+            problems.append(f"unstack {old_dim!r}: unknown dim")
+            continue
+        clash = [c for c in comps if c in vars_ or (c in dims and c not in effect.transforms_dims)]
+        if clash:
+            problems.append(f"unstack {old_dim!r}: names already exist {clash}")
+            continue
+        indexers = [v for v, spec in vars_.items() if spec.get("index_of") == old_dim]
+        if indexers:
+            problems.append(f"unstack {old_dim!r}: variables {sorted(indexers)} index it")
+            continue
+        for v in vars_.values():
+            if old_dim in v["dims"]:
+                at = list(v["dims"]).index(old_dim)
+                v["dims"] = (*v["dims"][:at], *comps, *v["dims"][at + 1 :])
+        del dims[old_dim]
+        for c in comps:
+            dims.setdefault(c, DimSpec(kind="categorical").model_dump())
+        ragged[:] = [r for r in ragged if old_dim not in (r["group_dim"], r["within_dim"])]
 
     # 5. updates
     for vname, patch in effect.updates.items():
