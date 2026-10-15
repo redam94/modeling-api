@@ -38,7 +38,7 @@ from mapi_spec.tokens import parse_token
 from rich.text import Text
 
 from mapi_cli.output import Output, safe, strip_control
-from mapi_cli.state import AppState, cli_errors, state
+from mapi_cli.state import EXIT_FAILURE, AppState, cli_errors, state
 
 __all__ = ["binding_conflict", "login", "logout", "use", "whoami"]
 
@@ -288,25 +288,23 @@ def logout(
     table = data if profile is None else dict(data.get("profiles", {})).get(profile, {})
     file_token = table.get("token") if isinstance(table, dict) else None
     revoked = None
+    revoke_error: MapiError | None = None
     if revoke and file_token:
-        cfg = st.config().with_overrides(token=str(file_token))
-        with Client(config=cfg) as api:
-            me = api.me()
-            if me.token is None:
-                raise MapiError(
-                    "the server did not identify the stored token", code=ErrorCode.NOT_FOUND
-                )
-            api.tokens.revoke(me.token.id)
-            revoked = me.token.id
+        try:
+            revoked = _revoke_stored_token(st, str(file_token))
+        except MapiError as exc:  # forget the local credentials anyway, then fail
+            revoke_error = exc
     removed_session = oidc_logout(st.config().with_overrides(token=None))
     if file_token:
         _persist(st, {}, unset=("token",))
-    doc = {
+    doc: dict[str, Any] = {
         "profile": profile,
         "signed_out": removed_session is not None,
         "token_removed": bool(file_token),
         "token_revoked": revoked,
     }
+    if revoke_error is not None:
+        doc["error"] = revoke_error.to_problem().model_dump(mode="json")
     if out.json_mode:
         out.emit_json(doc)
     elif removed_session is None and not file_token:
@@ -317,6 +315,30 @@ def logout(
             out.info(f"revoked token {revoked}")
     if os.environ.get(ENV_TOKEN, "").strip():
         out.warn("MAPI_TOKEN is still set in your environment")
+    if revoke_error is not None:
+        if not out.json_mode:
+            out.error(revoke_error)
+            out.warn(
+                "the token was removed from this machine but NOT revoked on the server: "
+                "revoke it with `mapi tokens revoke <id>` or in the web console"
+            )
+        raise typer.Exit(EXIT_FAILURE)
+
+
+def _revoke_stored_token(st: AppState, token: str) -> str:
+    """Revoke ``token`` on the server and return its id.
+
+    ``DELETE /v1/tokens/{id}`` is project-scoped, and a token only acts in the project it is
+    bound to, so the call is sent in the token's own project whatever the profile selects.
+    """
+    with Client(config=st.config().with_overrides(token=token)) as api:
+        me = api.me()
+    if me.token is None:
+        raise MapiError("the server did not identify the stored token", code=ErrorCode.NOT_FOUND)
+    bound = f"{me.token.tenant_id}/{me.token.project_id}"
+    with Client(config=st.config().with_overrides(token=token, project=bound)) as api:
+        api.tokens.revoke(me.token.id)
+    return me.token.id
 
 
 # -------------------------------------------------------------------------------- whoami

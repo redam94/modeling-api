@@ -346,6 +346,48 @@ def test_logout_with_revoke(
     assert "no stored credentials" in again.stderr
 
 
+def test_logout_revoke_uses_the_tokens_own_project(
+    mapi: Invoke, api: respx.MockRouter, example: Ex, isolated_env: Path
+) -> None:
+    # The profile selects another project than the token is bound to: the revocation must
+    # still go to the token's own project, or the server refuses it (403).
+    write_config(
+        isolated_env,
+        f'[profiles.ci]\nurl = "{URL}"\ntoken = "{TOKEN}"\nproject = "acme/other"\n',
+    )
+    api.get(f"{V1}/me").respond(200, json=token_me(example))
+    revoke = api.delete(f"{V1}/tokens/tok_01jaf3r1s2t3v4w5x6y7z8a9b0").respond(204)
+    res = mapi("--profile", "ci", "logout", "--revoke")
+    assert res.exit_code == 0, res.output
+    assert revoke.calls.last.request.headers[HEADER] == "acme/growth"
+    assert config_of(isolated_env)["profiles"]["ci"] == {"url": URL, "project": "acme/other"}
+
+
+def test_logout_revoke_failure_still_forgets_local_credentials(
+    mapi: Invoke, api: respx.MockRouter, example: Ex, isolated_env: Path
+) -> None:
+    write_config(isolated_env, f'[profiles.ci]\nurl = "{URL}"\ntoken = "{TOKEN}"\n')
+    api.get(f"{V1}/me").respond(200, json=token_me(example))
+    api.delete(f"{V1}/tokens/tok_01jaf3r1s2t3v4w5x6y7z8a9b0").respond(
+        403, json=problem(ErrorCode.FORBIDDEN, "not your token")
+    )
+    res = mapi("--profile", "ci", "logout", "--revoke")
+    assert res.exit_code == 1
+    assert "FORBIDDEN" in res.stderr and "not revoked" in res.stderr.lower()
+    # the credential is gone from disk even though the server kept it alive
+    assert config_of(isolated_env)["profiles"]["ci"] == {"url": URL}
+    assert_no_secret(res)
+    # an unreachable /me (revoked or expired token) is reported the same way
+    write_config(isolated_env, f'[profiles.ci]\nurl = "{URL}"\ntoken = "{TOKEN}"\n')
+    api.get(f"{V1}/me").respond(401, json=problem(ErrorCode.UNAUTHENTICATED, "expired"))
+    res = mapi("--profile", "ci", "--json", "logout", "--revoke")
+    assert res.exit_code == 1
+    doc = json.loads(res.stdout)
+    assert doc["token_removed"] is True and doc["token_revoked"] is None
+    assert doc["error"]["code"] == "UNAUTHENTICATED"
+    assert config_of(isolated_env)["profiles"]["ci"] == {"url": URL}
+
+
 # ------------------------------------------------------------------------------ tokens
 
 
