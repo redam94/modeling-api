@@ -35,6 +35,13 @@ milestone releases are tagged on `main`.
 - **`mapi-plots`**: a JSON-only PlotSpec sanitizer (pinned Vega-Lite 6.4.1 and plotly.js 4.1.1 schemas, an expression allow-list, HTML stripping) and role-bound templates.
   - The standard `core.*` recipe catalog, plus the `mmm.*` and `ml.*` domain packs.
   - Altair and Plotly converters with named Arrow datasets, and the `render_plots` batch entry point.
+- **`mapi-plugin-mmm`**: marketing-mix model plugins (entry point `mapi.models: mmm`).
+  - `mmm.hierarchical_geo` 1.3.0, the E33 hierarchical geo MMM: adstock over `core.lag_tensor` features, logistic/Hill saturation, channel effects partially pooled across geos, new geos from the hyperprior, additive contributions.
+  - Fit-cached derived quantities in original units: contributions, per-draw response-curve grids for Guided sliders, marginal cost/ROI; a decision objective for budgets; fast scoring.
+  - `mmm.pymc_marketing` 1.0.0, an adapter around pymc-marketing 1.2's `MMM` (verified on PyMC 6.3) that owns scaling, carry-over and units and never pickles.
+  - Declarative priors in pymc-marketing's dict form, typed per parameter so wrong priors fail static validation; a synthetic E33 simulator with known parameters and a parameter-recovery test.
+- **`mapi-sdk`**: `outputs.derived` with `cache: fit` is computed on the production fit through the plugin's `derive` hook; `ScoreContext.to_original` maps model-stage arrays to the output space.
+- Conformance fixtures `e33` and `pymc_marketing` (`mapi_conformance.fixtures`): spec, named score requests, data generator and expectations each.
 - Cross-package conformance suites:
   - the plan's xgboost spec through real steps, models and plots;
   - an E33-shaped `core.*` pipeline in front of a PyMC model.
@@ -44,3 +51,4 @@ milestone releases are tagged on `main`.
 - The plan's xgboost example names the real quantile plugin (`sklearn.tabular_quantiles`). A new `ml.feature_importance` recipe covers its plot list.
 - `core.fit_vs_actual` and `core.residuals_over_time` compare quantile and interval summaries cell by cell instead of refusing them.
 - The contract kit flags step settings whose defaults are missing from the exported JSON Schema (`default_factory`), and finds reverse-bound outputs when checking units.
+- Holdout metrics no longer invert the predictions of models that own `inverse_units` a second time.

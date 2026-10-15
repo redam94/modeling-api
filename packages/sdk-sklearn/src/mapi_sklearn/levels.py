@@ -130,7 +130,7 @@ def expand_new_levels(
         if enc.encoding == "onehot":
             block = np.zeros((int(hit.sum()), len(cols)))
             block[np.arange(block.shape[0]), level[hit]] = 1.0
-            X[np.ix_(np.flatnonzero(hit), cols)] = block
+            X[np.ix_(np.flatnonzero(hit), np.asarray(cols, dtype=np.intp))] = block
         else:
             X[hit, cols[0]] = level[hit].astype(float)
     m = orig.size

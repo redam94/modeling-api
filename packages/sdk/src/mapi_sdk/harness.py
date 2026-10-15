@@ -9,6 +9,10 @@
 * ``evaluate_then_refit``: refit states and model on train ∪ holdout so the context tails and
   terminal state come from the full data; the production bundle links the evaluation
   bundle and its metrics. ``train_only`` keeps the train fit as the result.
+* derived quantities the spec requests (``outputs.derived``) whose manifest declaration
+  says ``cache: fit`` are computed on the production fit by the plugin's ``derive`` hook,
+  over the first ``outputs.ui_draws`` draws of the thinning index, with
+  ``ScoreContext.to_original`` mapping them to the output space.
 
 :func:`score_bundle` implements scoring: CoordPlan checks, binding, interventions, entry at
 ``inputs_stage``, context replay, canonical coords, ``model.score``, context removal,
@@ -44,7 +48,7 @@ from mapi_sdk.pipeline import RAW, FitTrace, Pipeline
 from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.schema import check_dataset, infer_schema
 from mapi_sdk.split import SplitResult, split_dataset
-from mapi_sdk.steps import CancelToken
+from mapi_sdk.steps import CancelToken, StepState
 from mapi_sdk.summarise import (
     aggregate,
     default_summary_names,
@@ -379,6 +383,8 @@ def _fit_from(
     post = fitted.groups.get("posterior")
     if post is not None and {"chain", "draw"} <= set(post.dims):
         thin = thin_index(post.sizes["chain"], post.sizes["draw"], seed=env.seed)
+    if role == "production" or env.spec.model.fit.mode is not FitMode.EVALUATE_THEN_REFIT:
+        fitted.derived.update(_fit_derived(env, fitted, model_ds, states, thin))
     pinned = {
         t: env.side_tables[t]
         for t in sorted({t for st in rs.steps for t in st.side_tables})
@@ -415,6 +421,105 @@ def _fit_from(
     ):
         bundle.residuals = _residuals(env, bundle, model_ds)
     return bundle
+
+
+def _to_original(
+    pipeline: Pipeline, states: Mapping[str, StepState], tables: Mapping[str, xr.Dataset]
+) -> Callable[[xr.DataArray, str], xr.DataArray]:
+    """``ScoreContext.to_original`` for derived quantities: invert ``da`` (in the units of
+    input variable ``src``) back to the last reshape stage.
+
+    Inversion starts at the latest stage where ``src`` has no dims beyond those of ``da``:
+    a spend level ``(geo, channel, time)`` derived from a lag tensor ``spend(..., lag)``
+    starts before the lag step (lag 0 is the period's own spend).
+    """
+    stages = pipeline.stage_names
+    floor = pipeline.index(pipeline.last_reshape_stage)
+
+    def convert(da: xr.DataArray, src: str) -> xr.DataArray:
+        dims = {str(d) for d in da.dims}
+        start: str | None = None
+        for stage in reversed(stages[floor:]):
+            schema = pipeline.schema_at(stage)
+            if schema is not None and src in schema.vars and set(schema.vars[src].dims) <= dims:
+                start = stage
+                break
+        if start is None:
+            out = da.copy()
+            out.attrs = {**da.attrs, "output_space": pipeline.final_stage}
+            return out
+        key = "__derived__"
+        inv = pipeline.inverse_outputs(
+            xr.Dataset({key: da}),
+            states,
+            {key: src},
+            from_stage=start,
+            representation=Representation.DRAWS,
+            side_tables=tables,
+        )
+        return inv.data[key].rename(da.name)
+
+    return convert
+
+
+def _fit_derived(
+    env: _FitEnv,
+    fitted: Fitted,
+    model_ds: xr.Dataset,
+    states: Mapping[str, StepState],
+    thin: np.ndarray | None,
+) -> dict[str, xr.Dataset]:
+    """Derived quantities the spec requests (``outputs.derived``) that the model caches at
+    fit, computed on the model-stage fit data over the first ``outputs.ui_draws`` draws of
+    the bundle thinning index (plan §4.2)."""
+    decls = {d.name: d for d in fitted.manifest.derived}
+    wanted = [
+        n
+        for n in env.spec.outputs.derived
+        if n in decls and decls[n].cache == "fit" and n not in fitted.derived
+    ]
+    derive = getattr(env.plugin, "derive", None)
+    if not wanted or not callable(derive):
+        return {}
+    rs = env.resolved
+    ctx = ScoreContext(
+        mode="predict",
+        kind="expected",
+        seed=env.seed,
+        schema=fitted.schema,
+        policies=rs.model.effective_policies,
+        draw_index=None if thin is None else thin[: env.spec.outputs.ui_draws],
+        log=env.hooks.log,
+        cancel=env.hooks.cancel,
+        to_original=_to_original(env.pipeline, states, env.side_tables),
+    )
+    model_id = fitted.manifest.id
+    out: dict[str, xr.Dataset] = {}
+    for j, name in enumerate(wanted):
+        env.hooks.check()
+        try:
+            result = derive(fitted, name, model_ds, ctx)
+        except MapiError:
+            raise
+        except NotImplementedError:
+            raise MapiError(
+                f"model {model_id!r} declares derived quantity {name!r} but cannot compute it",
+                code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                pointer=f"/outputs/derived/{j}",
+            ) from None
+        except Exception as exc:
+            raise MapiError(
+                f"model {model_id!r} failed while deriving {name!r}",
+                code=ErrorCode.USER_CODE_ERROR,
+                untrusted_text=f"{type(exc).__name__}: {exc}"[:8000],
+            ) from exc
+        if not isinstance(result, xr.Dataset):
+            raise MapiError(
+                f"model {model_id!r} derive({name!r}) must return an xarray Dataset",
+                code=ErrorCode.USER_CODE_ERROR,
+            )
+        out[name] = result
+    return out
 
 
 def _var_sources(fitted: Fitted, schema: DataSchema | None) -> dict[str, str]:
@@ -854,30 +959,34 @@ def _score_metrics(
     observed = _observed_output(bundle, pipeline, scored, tables)
     report = MetricsReport()
     sources = _var_sources(bundle.model, bundle.resolved.model.input_schema)
-    pred_space = pipeline.inverse_outputs(
-        scored.pred,
-        bundle.states,
-        sources,
-        representation=rep,
-        retransform="smearing"
-        if bundle.model.settings.get("retransform") == "smearing"
-        else "median",
-        residuals=bundle.residuals,
-        side_tables=tables,
-    )
-    for var, src in sources.items():
-        if var not in pred_space.data or src not in observed:
-            continue
-        values, skipped = compute_metrics(
-            pred_space.data[var], observed[src], rep, names, mask=mask
+    if "inverse_units" in bundle.model.manifest.capabilities.owns:
+        # the model already reports original units; observed stay at the model stage too
+        pred_data = scored.pred
+        pred_spaces = {str(v): "model-owned" for v in scored.pred.data_vars}
+    else:
+        inv = pipeline.inverse_outputs(
+            scored.pred,
+            bundle.states,
+            sources,
+            representation=rep,
+            retransform="smearing"
+            if bundle.model.settings.get("retransform") == "smearing"
+            else "median",
+            residuals=bundle.residuals,
+            side_tables=tables,
         )
+        pred_data, pred_spaces = inv.data, inv.space
+    for var, src in sources.items():
+        if var not in pred_data or src not in observed:
+            continue
+        values, skipped = compute_metrics(pred_data[var], observed[src], rep, names, mask=mask)
         report.values.update(values)
         report.skipped.update(skipped)
         counted = observed[src].notnull()
         if mask is not None:
             counted = counted & mask.broadcast_like(counted).astype(bool)
         report.n_holdout = int(counted.sum())
-        report.output_space = pred_space.space.get(var)
+        report.output_space = pred_spaces.get(var)
         break
     else:
         for n in names:

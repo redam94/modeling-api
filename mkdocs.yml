@@ -18,6 +18,7 @@ nav:
       - Write a step or model plugin: guides/plugins.md
       - Bring a PyMC model: guides/pymc.md
       - Tabular models (scikit-learn, xgboost): guides/sklearn.md
+      - Marketing-mix models: guides/mmm.md
       - Plots, recipes and templates: guides/plots.md
   - Reference:
       - Spec format: reference/spec-format.md

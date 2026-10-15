@@ -1,0 +1,42 @@
+# pymc-marketing adapter score requests. `payload` names data built by data.py:payload().
+forecast_4w:
+  payload: future             # daily local-currency spend for 4 weeks after the fit
+  request:
+    apiVersion: mapi/v1
+    kind: ScoreRequest
+    model: endpoint://growth/pmm-geo
+    mode: forecast
+    horizon: {dim: time, periods: 4}
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    output: {kind: expected, summary: [mean, hdi_90], draws: 30}
+
+recent_window:
+  payload: window             # the last 4 fit weeks scored on their own (owned carry-over)
+  request:
+    apiVersion: mapi/v1
+    kind: ScoreRequest
+    model: endpoint://growth/pmm-geo
+    mode: predict
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    output: {kind: expected, summary: [mean]}
+
+full_series:
+  payload: full               # every fit week, for the carry-over comparison
+  request:
+    apiVersion: mapi/v1
+    kind: ScoreRequest
+    model: endpoint://growth/pmm-geo
+    mode: predict
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    output: {kind: expected, summary: [mean]}
+
+counterfactual_search:
+  payload: window
+  request:
+    apiVersion: mapi/v1
+    kind: ScoreRequest
+    model: endpoint://growth/pmm-geo
+    mode: counterfactual
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    interventions: [{var: spend_local, sel: {channel: search}, multiply: 1.5}]
+    output: {kind: expected, summary: [mean, hdi_90], draws: 30}

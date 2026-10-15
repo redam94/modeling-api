@@ -1,0 +1,55 @@
+# E33: hierarchical geo MMM - the plan's §6.1 spec scaled down for the corpus.
+# Differences from §6.1: lag_tensor/adstock l_max 4 (not 6), a tiny pymc fit (the nightly
+# corpus overrides the draws), no `dim_policies: {geo: fixed}` so the corpus can score a
+# new market, and the real core.fx_convert settings for a GBP market.
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: eu-geo-mmm, project: growth, labels: {family: mmm, fixture: e33}}
+
+data:
+  dataset: dataset://growth/eu_media_daily@latest
+  side_tables:
+    fx:       {ref: dataset://growth/fx_daily@latest, score_policy: supplied}
+    holidays: {ref: dataset://shared/holidays_eu@v3, score_policy: pinned}
+  bind:
+    dims: {geo: market, channel: channel, time: date}
+    vars: {y: revenue_local, spend: spend_local}
+  split: {kind: time_holdout, dim: time, last: 8, after_step: weekly}
+
+pipeline:
+  - id: to_eur
+    use: core.fx_convert@^1
+    with: {vars: [y, spend], table: fx, table_along: date, currency_dim: geo, currencies: {UK: GBP}, default_currency: EUR}
+  - {id: weekly,      use: core.resample@^1,   with: {dim: time, freq: W-SUN, how: sum, full_periods_only: true}}
+  - {id: scale_spend, use: core.mean_scale@^1, with: {vars: [spend], over: [time], unseen_levels: pooled}}
+  - {id: scale_y,     use: core.mean_scale@^1, with: {vars: [y], over: [time], unseen_levels: pooled}}
+  - {id: lags,        use: core.lag_tensor@^1, with: {vars: [spend], along: time, within: [geo], l_max: 4, pad: first}}
+  - {id: season,      use: core.fourier@^1,    with: {along: time, period: 52.18, order: 2, out: fourier}}
+  - {id: hols,        use: core.holidays@^1,   with: {table: holidays, table_along: date, along: time}}
+
+model:
+  use: mmm.hierarchical_geo@^1.3
+  settings:
+    pooling: partial
+    centred: false
+    adstock: {kind: geometric, l_max: 4}
+    saturation: {kind: logistic}
+    priors:
+      beta_channel: {distribution: HalfNormal, sigma: 1.0, dims: [channel]}
+      lam:          {distribution: Gamma, alpha: 3, beta: 1, dims: [channel]}
+  fit:
+    mode: evaluate_then_refit
+    engine: pymc
+    tune: 150
+    draws: 100
+    chains: 2
+    target_accept: 0.9
+    seed: 20261014
+    keep: {log_likelihood: true}
+
+outputs:
+  derived: [contributions, response_curves, marginal_cost]
+  plots: [core.ppc_fan, core.convergence, mmm.decomposition, mmm.response_curves]
+  ui_draws: 100
+evaluate: {metrics: [elpd_loo, coverage_90, mape]}
+execution: {resource_class: M, timeout: 45m}
