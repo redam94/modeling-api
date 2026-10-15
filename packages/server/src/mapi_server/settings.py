@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
+from mapi_spec.executor import RunKind
 from mapi_spec.localdev import (
     API_PORT,
     DEFAULT_ENV,
@@ -31,7 +32,9 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from mapi_server import __version__
 
 __all__ = [
+    "DEFAULT_DEV_USERS",
     "DEFAULT_DOCKER_IMAGES",
+    "DEFAULT_ESTIMATE_WALL_S",
     "ExecutorName",
     "ObjectStoreKind",
     "Profile",
@@ -47,12 +50,40 @@ DEFAULT_DOCKER_IMAGES: dict[str, str] = {
 }
 """Plugin namespace → the runner image ``make docker-build`` tags that ships it."""
 
+DEFAULT_DEV_USERS: tuple[str, ...] = ("admin@dev.local", "analyst@dev.local", "viewer@dev.local")
+"""Accounts of the development identity provider: the first is a platform operator and the
+admin of the ``default`` tenant, the second a ``runner`` and the third a ``viewer`` of the
+``default`` project."""
+
+DEFAULT_ESTIMATE_WALL_S: dict[str, float] = {
+    RunKind.FIT.value: 300.0,
+    RunKind.SCORE.value: 30.0,
+    RunKind.INGEST.value: 60.0,
+    RunKind.DESCRIBE.value: 60.0,
+    RunKind.VALIDATE.value: 30.0,
+    RunKind.EVALUATE.value: 120.0,
+    RunKind.DERIVE.value: 60.0,
+    RunKind.RENDER.value: 30.0,
+    RunKind.OPTIMIZE.value: 300.0,
+}
+"""Wall-time estimate per run kind (seconds, capped at the run's timeout): what a run is
+charged against vCPU-second quotas until its attempts are metered into the cost ledger."""
+
 
 class Profile(StrEnum):
-    """Deployment profile. The ``local-process`` executor refuses ``multi-tenant``."""
+    """Deployment profile.
+
+    * ``single-tenant`` (default): one ``default`` tenant and project; requests without
+      credentials act as the local administrator (the API listens on loopback only);
+    * ``multi-tenant``: every non-public route needs a session or an API token, and the
+      ``local-process`` executor is refused;
+    * ``dev``: multi-tenant semantics with the built-in development identity provider
+      (:mod:`mapi_server.devidp`), so the whole stack, sign-in included, works offline.
+    """
 
     SINGLE_TENANT = "single-tenant"
     MULTI_TENANT = "multi-tenant"
+    DEV = "dev"
 
 
 class ExecutorName(StrEnum):
@@ -119,7 +150,23 @@ class Settings(BaseSettings):
         description="postgresql:// URL; unset = embedded pgserver under data_dir/pg",
     )
     db_pool_size: int = Field(10, ge=1, le=200)
+    db_system_pool_size: int = Field(5, ge=1, le=200)
     db_echo: bool = False
+    database_app_url: str | None = Field(
+        None,
+        repr=False,
+        description="Login of the request-path role (row-level security applies). Unset: "
+        "connect with DATABASE_URL and SET ROLE db_app_role on every connection",
+    )
+    database_system_url: str | None = Field(
+        None,
+        repr=False,
+        description="Login of the platform role (dispatcher, reconciler, finalizer, events, "
+        "authentication lookups; bypasses row-level security). Unset: DATABASE_URL with "
+        "SET ROLE db_system_role",
+    )
+    db_app_role: str = Field("mapi_app", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
+    db_system_role: str = Field("mapi_system", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
 
     # ------------------------------------------------------------------------------- storage
     object_store: ObjectStoreKind = ObjectStoreKind.SHIM
@@ -204,6 +251,74 @@ class Settings(BaseSettings):
     internal_token: str | None = Field(
         None, repr=False, description="If set, POST /internal/events requires this bearer"
     )
+    pubsub_audience: str | None = Field(
+        None,
+        description="Audience of the OIDC token on Pub/Sub pushes to /internal/events; when "
+        "set (with pubsub_service_account) pushes must carry a Google-signed token",
+    )
+    pubsub_service_account: str | None = Field(
+        None, description="Service-account e-mail the push subscription authenticates as"
+    )
+    google_jwks_url: str = "https://www.googleapis.com/oauth2/v3/certs"
+
+    # -------------------------------------------------------------- authentication (M2)
+    auth_required: bool | None = Field(
+        None,
+        description="Require a session or API token on every non-public route (default: "
+        "required in every profile except single-tenant)",
+    )
+    server_secret: str | None = Field(
+        None,
+        repr=False,
+        description="Root secret of the token pepper and audit fingerprints (default: read "
+        "or create data_dir/keys/server-secret). Changing it invalidates every API token.",
+    )
+    server_secret_path: Path | None = None
+    cookie_secure: bool | None = Field(
+        None, description="Secure, __Host- prefixed cookies (default: on when api_url is https)"
+    )
+    oidc_issuer: str | None = Field(
+        None, description="OpenID Connect issuer (e.g. https://accounts.google.com)"
+    )
+    oidc_discovery_url: str | None = Field(
+        None, description="Default: <issuer>/.well-known/openid-configuration"
+    )
+    oidc_client_id: str | None = None
+    oidc_client_secret: str | None = Field(None, repr=False)
+    oidc_redirect_uri: str | None = Field(
+        None, description="Registered redirect URI (default: <api_url>/auth/callback)"
+    )
+    oidc_algorithms: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["RS256", "ES256"]
+    )
+    oidc_extra_params: dict[str, str] = Field(
+        default_factory=dict,
+        description='Extra authorization parameters, e.g. {"hd": "acme.com"} (JSON)',
+    )
+    operator_emails: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Verified e-mails that sign in as platform operators (comma-separated)",
+    )
+    default_tenant_admins: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="E-mails invited as admins of the default tenant at start-up "
+        "(comma-separated; the invitation is claimed at first sign-in)",
+    )
+    devidp_users: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: list(DEFAULT_DEV_USERS),
+        description="Accounts of the development identity provider (MAPI_PROFILE=dev only)",
+    )
+
+    # ---------------------------------------------------------------- quotas and cost (M2)
+    price_table_path: Path | None = Field(
+        None, description="JSON PriceTable (default: mapi_spec.cost.DEFAULT_PRICE_TABLE)"
+    )
+    estimate_wall_s: dict[str, float] = Field(default_factory=lambda: dict(DEFAULT_ESTIMATE_WALL_S))
+    rate_limits_enabled: bool = True
+    lease_candidates: int = Field(
+        500, ge=1, le=10_000, description="Queued runs the fair-share planner considers"
+    )
+    executor_report_interval_s: float = Field(10.0, gt=0)
     sse_heartbeat_s: float = Field(15.0, gt=0)
     sse_poll_s: float = Field(5.0, gt=0, description="Fallback poll when no NOTIFY arrives")
     max_sidecar_bytes: int = Field(8 * 1024 * 1024, ge=1024)
@@ -219,7 +334,14 @@ class Settings(BaseSettings):
             return parts
         return v
 
-    @field_validator("allowed_hosts", mode="before")
+    @field_validator(
+        "allowed_hosts",
+        "oidc_algorithms",
+        "operator_emails",
+        "default_tenant_admins",
+        "devidp_users",
+        mode="before",
+    )
     @classmethod
     def _hosts(cls, v: object) -> object:
         if isinstance(v, str):
@@ -236,12 +358,68 @@ class Settings(BaseSettings):
     def _origins(self) -> Settings:
         if self.web_origin.rstrip("/") == self.plots_origin.rstrip("/"):
             raise ValueError("the plot sandbox must be served from a different origin")
+        if self.db_app_role == self.db_system_role:
+            raise ValueError("db_app_role and db_system_role must be different roles")
+        if self.profile is not Profile.SINGLE_TENANT and self.auth_required is False:
+            raise ValueError("authentication cannot be turned off in a multi-tenant profile")
+        if bool(self.pubsub_audience) != bool(self.pubsub_service_account):
+            raise ValueError("set both pubsub_audience and pubsub_service_account, or neither")
+        weak = [a for a in self.oidc_algorithms if a.upper().startswith("HS") or a == "none"]
+        if weak:
+            raise ValueError("oidc_algorithms must be asymmetric (RS*, ES*, PS* or EdDSA)")
         return self
 
     # ------------------------------------------------------------------------- derived
     @property
     def buckets(self) -> Buckets:
         return Buckets(self.env)
+
+    @property
+    def multi_tenant(self) -> bool:
+        """Every profile except ``single-tenant`` (sign-in and tenant isolation are live)."""
+        return self.profile is not Profile.SINGLE_TENANT
+
+    @property
+    def requires_auth(self) -> bool:
+        """Must every non-public request carry a session or an API token?"""
+        if self.auth_required is not None:
+            return self.auth_required
+        return self.multi_tenant
+
+    @property
+    def devidp_enabled(self) -> bool:
+        """The built-in development identity provider (``MAPI_PROFILE=dev`` only)."""
+        return self.profile is Profile.DEV
+
+    @property
+    def secure_cookies(self) -> bool:
+        if self.cookie_secure is not None:
+            return self.cookie_secure
+        return self.api_url.startswith("https://")
+
+    @property
+    def secret_path(self) -> Path:
+        return self.server_secret_path or (self.data_dir / "keys" / "server-secret")
+
+    def effective_operator_emails(self) -> list[str]:
+        """``operator_emails`` plus, in the dev profile, the first development account."""
+        emails = [e.strip().lower() for e in self.operator_emails if e.strip()]
+        if self.devidp_enabled and self.devidp_users:
+            emails.append(self.devidp_users[0].strip().lower())
+        return emails
+
+    def redirect_uri(self) -> str:
+        """The OIDC redirect URI (``<api_url>/auth/callback`` unless configured)."""
+        return self.oidc_redirect_uri or f"{self.api_url.rstrip('/')}/auth/callback"
+
+    def allowed_origins(self) -> set[str]:
+        """Origins whose cookie-authenticated mutations pass the CSRF origin check."""
+        out: set[str] = set()
+        for url in (self.web_origin, self.api_url):
+            parts = urlsplit(url)
+            if parts.scheme and parts.netloc:
+                out.add(f"{parts.scheme}://{parts.netloc}")
+        return out
 
     @property
     def pg_dir(self) -> Path:

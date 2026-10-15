@@ -26,14 +26,17 @@ from mapi_spec.api import (
     SseEventName,
     parse_last_event_id,
 )
+from mapi_spec.audit import AuditAction
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunEventType, RunKind
 from mapi_spec.run import Actor, RunState, RunTrigger
+from mapi_spec.tenancy import Action, ResourceKind
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.api.common import (
     DEFAULT_LIMIT,
+    Auth,
     Ctx,
     Idempotency,
     IdempotencyKeyHeader,
@@ -46,6 +49,8 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict
 from mapi_server.jsonlimits import loads_limited
+from mapi_server.services.audit import write_audit
+from mapi_server.services.cost import run_costs
 from mapi_server.services.runs import apply_transition, load_run, run_dto
 from mapi_server.services.submit import submit_retry, submit_run
 
@@ -62,7 +67,8 @@ _MAX_RUN_PLOTS = 50
 
 async def run_view(session: AsyncSession, run: m.Run) -> Run:
     progress = await session.get(m.RunProgress, run.id)
-    return run_dto(run, progress)
+    costs = await run_costs(session, [run])
+    return run_dto(run, progress, cost=costs.get(run.id))
 
 
 async def render_run(session: AsyncSession, run_id: str, status_code: int) -> JSONResponse:
@@ -80,11 +86,14 @@ async def render_run(session: AsyncSession, run_id: str, status_code: int) -> JS
 )
 async def create_run(
     ctx: Ctx,
+    auth: Auth,
     session: Session,
     request: Request,
     body: RunCreate,
     idempotency_key: IdempotencyKeyHeader = None,
 ) -> JSONResponse:
+    if body.kind not in (RunKind.FIT, RunKind.VALIDATE):  # runs against a model version
+        auth.require(Action.RUN, ResourceKind.MODEL)
     idem = Idempotency(session, ctx.scope, idempotency_key)
     replay = await idem.begin("POST /v1/runs", await request.json())
     if replay is not None:
@@ -127,8 +136,9 @@ async def list_runs(
             )
         ).scalars()
     }
+    costs = await run_costs(session, rows)
     return Page[Run](
-        items=[run_dto(r, progress.get(r.id)) for r in rows],
+        items=[run_dto(r, progress.get(r.id), cost=costs.get(r.id)) for r in rows],
         next_cursor=encode_cursor(rows[-1].id) if more and rows else None,
     )
 
@@ -165,7 +175,7 @@ async def run_events(
     last_event_id: Annotated[str | None, Header(alias=LAST_EVENT_ID_HEADER)] = None,
 ) -> Response:
     """``Accept: text/event-stream`` → live SSE; anything else → a JSON page of events."""
-    async with ctx.db.session() as session:
+    async with ctx.data_session() as session:
         await load_run(session, ctx.scope, run_id)
         if "text/event-stream" not in request.headers.get("accept", ""):
             stmt = select(m.RunEvent).where(m.RunEvent.run_id == run_id)
@@ -221,7 +231,7 @@ async def sse_stream(
     settings = ctx.settings
     cursor = last_id
     async with ctx.hub.subscribe(run_id) as sub:
-        async with ctx.db.session() as session:
+        async with ctx.data_session() as session:
             run = await load_run(session, None, run_id)
             first_progress = await session.get(m.RunProgress, run_id)
             view = run_dto(run, first_progress)
@@ -244,7 +254,7 @@ async def sse_stream(
         last_write = time.monotonic()
         while True:
             frames: list[str] = []
-            async with ctx.db.session() as session:
+            async with ctx.data_session() as session:
                 # The state is read *before* the events (READ COMMITTED, separate statements):
                 # a commit that appends the final event and makes the run terminal is then
                 # either missed by both reads (seen next pass) or its event is read too, so
@@ -473,7 +483,7 @@ async def run_logs(
     status_code=status.HTTP_202_ACCEPTED,
     operation_id="cancel_run",
 )
-async def cancel_run(ctx: Ctx, session: Session, run_id: RunId) -> Run:
+async def cancel_run(ctx: Ctx, auth: Auth, session: Session, run_id: RunId) -> Run:
     """Idempotent: ``cancelling``, or the terminal state if the run already finished.
 
     A ``finalizing`` run is left alone (the response shows it still finalizing): its
@@ -484,6 +494,11 @@ async def cancel_run(ctx: Ctx, session: Session, run_id: RunId) -> Run:
     state = RunState(run.state)
     if not state.terminal and state is not RunState.FINALIZING:
         await apply_transition(session, run, RunTrigger.CANCEL, Actor.API)
+        await write_audit(
+            ctx.db,
+            [auth.audit(ctx, AuditAction.RUN_CANCEL, ResourceKind.RUN, resource_id=run.id)],
+            session=session,
+        )
     return await run_view(session, run)
 
 
@@ -546,7 +561,7 @@ async def wait_terminal(
     deadline = time.monotonic() + timeout
     async with ctx.hub.subscribe(run_id) as sub:
         while True:
-            async with ctx.db.session() as session:
+            async with ctx.data_session() as session:
                 run = await load_run(session, None, run_id)
             remaining = deadline - time.monotonic()
             if RunState(run.state).terminal or remaining <= 0:

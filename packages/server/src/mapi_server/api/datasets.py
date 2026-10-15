@@ -44,8 +44,9 @@ from mapi_server.api.common import (
     encode_cursor,
 )
 from mapi_server.db import models as m
-from mapi_server.errors import Conflict, NotFoundError
+from mapi_server.errors import Conflict, NotFoundError, ProblemWithHeaders
 from mapi_server.services.bundles import artifact_link
+from mapi_server.services.quotas import admit_storage
 from mapi_server.services.runs import now
 from mapi_server.services.submit import submit_ingest
 
@@ -172,6 +173,17 @@ async def create_upload(
             f"uploads are limited to {MAX_UPLOAD_BYTES} bytes",
             code=ErrorCode.PAYLOAD_TOO_LARGE,
             pointer="/body/size_bytes",
+        )
+    async with ctx.db.session() as system:
+        decision = await admit_storage(
+            session, system, tenant_id=ds.tenant_id, nbytes=body.size_bytes, now=now()
+        )
+    if not decision.allowed:
+        assert decision.code is not None
+        raise ProblemWithHeaders(
+            decision.message or "storage quota exceeded",
+            code=decision.code,
+            headers=decision.headers(),
         )
     upload_id = new_id("upl")
     name = quarantine_key(ds.tenant_id, upload_id)

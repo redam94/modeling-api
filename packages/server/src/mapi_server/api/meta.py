@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from functools import lru_cache
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Path
 from fastapi.responses import JSONResponse
@@ -18,27 +18,26 @@ from mapi_spec.api import (
 from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
 from mapi_spec.jsonschema_export import export_schemas
 from mapi_spec.refs import Version
-from pydantic import BaseModel, Field
-from sqlalchemy import select, text
+from sqlalchemy import text
 
 import mapi_server
-from mapi_server.api.common import DEFAULT_LIMIT, Ctx, Limit, Session, decode_cursor, encode_cursor
+from mapi_server.api.common import (
+    DEFAULT_LIMIT,
+    Auth,
+    Ctx,
+    Limit,
+    Session,
+    SystemSession,
+    decode_cursor,
+    encode_cursor,
+)
+from mapi_server.api.tenancy import project_dto, visible_projects
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
 
-__all__ = ["Me", "router"]
+__all__ = ["router"]
 
 router = APIRouter()
-
-
-class Me(BaseModel):
-    """The calling identity (M1: the local, unauthenticated default principal)."""
-
-    subject: str
-    tenant_id: str
-    project_ids: list[str]
-    auth: Literal["none", "oidc", "token"] = "none"
-    scopes: list[str] = Field(default_factory=list)
 
 
 @router.get("/healthz", response_model=Health, tags=["health"], operation_id="health")
@@ -93,38 +92,24 @@ async def readyz(ctx: Ctx) -> JSONResponse:
     return JSONResponse(body.model_dump(mode="json"), status_code=503 if hard_fail else 200)
 
 
-@router.get("/v1/me", response_model=Me, tags=["identity"], operation_id="get_me")
-async def me(ctx: Ctx) -> Me:
-    """M1 has no authentication: every caller is the local default principal."""
-    return Me(subject="local", tenant_id=ctx.scope.tenant_id, project_ids=[ctx.scope.project_id])
-
-
-def _project(p: m.Project) -> Project:
-    return Project(
-        id=p.id,
-        tenant_id=p.tenant_id,
-        name=p.name,
-        description=p.description,
-        created_at=p.created_at,
-    )
-
-
 @router.get(
     "/v1/projects", response_model=Page[Project], tags=["projects"], operation_id="list_projects"
 )
 async def list_projects(
-    ctx: Ctx, session: Session, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None
+    auth: Auth, system: SystemSession, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None
 ) -> Page[Project]:
+    """Every project the caller can act in, across its tenants (ordered by tenant, id)."""
+    rows = [p for p, role in await visible_projects(system, auth) if role is not None]
     after = decode_cursor(cursor)
-    stmt = select(m.Project).where(m.Project.tenant_id == ctx.scope.tenant_id)
     if after is not None:
-        stmt = stmt.where(m.Project.id > str(after))
-    rows = list((await session.execute(stmt.order_by(m.Project.id).limit(limit + 1))).scalars())
+        key = (str(after[0]), str(after[1]))
+        rows = [p for p in rows if (p.tenant_id, p.id) > key]
+    rows.sort(key=lambda p: (p.tenant_id, p.id))
     more = len(rows) > limit
     rows = rows[:limit]
     return Page[Project](
-        items=[_project(p) for p in rows],
-        next_cursor=encode_cursor(rows[-1].id) if more and rows else None,
+        items=[project_dto(p) for p in rows],
+        next_cursor=encode_cursor([rows[-1].tenant_id, rows[-1].id]) if more and rows else None,
     )
 
 
@@ -135,10 +120,12 @@ async def list_projects(
     operation_id="get_project",
 )
 async def get_project(ctx: Ctx, session: Session, project_id: str) -> Project:
-    p = await session.get(m.Project, (ctx.scope.tenant_id, project_id))
+    """The selected project (its tenant comes from ``X-Mapi-Project``, the token, or the
+    caller's only tenant)."""
+    p = await session.get(m.Project, (ctx.scope.tenant_id, ctx.scope.project_id))
     if p is None:
         raise NotFoundError("project", project_id)
-    return _project(p)
+    return project_dto(p)
 
 
 # ------------------------------------------------------------------------------- catalog
@@ -147,7 +134,7 @@ async def get_project(ctx: Ctx, session: Session, project_id: str) -> Project:
 @router.get(
     "/v1/catalog", response_model=CatalogResponse, tags=["catalog"], operation_id="get_catalog"
 )
-async def get_catalog(ctx: Ctx, session: Session) -> CatalogResponse:
+async def get_catalog(ctx: Ctx, session: SystemSession) -> CatalogResponse:
     snap = await ctx.catalogs.require(session)
     c = snap.catalog
     return CatalogResponse(
@@ -173,7 +160,7 @@ def _page_list(items: list[Any], limit: int, cursor: str | None) -> tuple[list[A
     operation_id="list_catalog_models",
 )
 async def list_catalog_models(
-    ctx: Ctx, session: Session, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None
+    ctx: Ctx, session: SystemSession, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None
 ) -> Page[ModelCatalogEntry]:
     snap = await ctx.catalogs.require(session)
     items = sorted(snap.catalog.models, key=lambda e: (e.id, Version.parse(e.version)))
@@ -188,7 +175,7 @@ async def list_catalog_models(
     operation_id="get_catalog_model",
 )
 async def get_catalog_model(
-    ctx: Ctx, session: Session, model_id: str, version: str
+    ctx: Ctx, session: SystemSession, model_id: str, version: str
 ) -> ModelCatalogEntry:
     snap = await ctx.catalogs.require(session)
     for entry in snap.catalog.models:
@@ -204,7 +191,7 @@ async def get_catalog_model(
     operation_id="list_catalog_steps",
 )
 async def list_catalog_steps(
-    ctx: Ctx, session: Session, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None
+    ctx: Ctx, session: SystemSession, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None
 ) -> Page[StepCatalogEntry]:
     snap = await ctx.catalogs.require(session)
     items = sorted(snap.catalog.steps, key=lambda e: (e.id, Version.parse(e.version)))
@@ -219,7 +206,7 @@ async def list_catalog_steps(
     operation_id="list_catalog_plots",
 )
 async def list_catalog_plots(
-    ctx: Ctx, session: Session, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None
+    ctx: Ctx, session: SystemSession, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None
 ) -> Page[PlotCatalogEntry]:
     snap = await ctx.catalogs.require(session)
     items = sorted(snap.catalog.plots, key=lambda e: (e.id, Version.parse(e.version)))

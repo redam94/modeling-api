@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
+from mapi_server.services.cost import bill_attempts, fold_cost
 from mapi_server.services.notify import notify_run
 
 __all__ = [
@@ -72,7 +73,9 @@ def progress_dto(p: m.RunProgress | None) -> ProgressSnapshot | None:
     )
 
 
-def run_dto(run: m.Run, progress: m.RunProgress | None = None) -> RunDTO:
+def run_dto(
+    run: m.Run, progress: m.RunProgress | None = None, *, cost: RunCost | None = None
+) -> RunDTO:
     return RunDTO(
         id=run.id,
         tenant_id=run.tenant_id,
@@ -98,7 +101,7 @@ def run_dto(run: m.Run, progress: m.RunProgress | None = None) -> RunDTO:
         and progress.attempt == run.attempt  # never a previous attempt's progress
         and not RunState(run.state).terminal
         else None,
-        cost=RunCost(),
+        cost=cost if cost is not None else _estimate_only(run),
         labels=run.labels,
         created_at=run.created_at,
         queued_at=run.queued_at,
@@ -106,6 +109,10 @@ def run_dto(run: m.Run, progress: m.RunProgress | None = None) -> RunDTO:
         finished_at=run.finished_at,
         updated_at=run.updated_at,
     )
+
+
+def _estimate_only(run: m.Run) -> RunCost:
+    return fold_cost((), run.estimate)
 
 
 async def load_run(
@@ -227,6 +234,9 @@ async def apply_transition(
         if rule.target is not RunState.SUCCEEDED:
             await _ingest_failed(session, run)
     await session.flush()
+    if rule.target.terminal or rule.new_attempt or rule.target is RunState.FINALIZING:
+        # an attempt's execution is over: meter it into the cost ledger (idempotent)
+        await bill_attempts(session, run)
     await notify_run(session, run.id, "run")
     return rule
 
