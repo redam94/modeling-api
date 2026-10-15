@@ -28,7 +28,7 @@ fmt: ## Auto-format Python code
 
 .PHONY: typecheck
 typecheck: ## mypy over the strictly-typed packages
-	$(UV) run mypy packages/spec/src packages/sdk/src packages/steps-core/src
+	$(UV) run mypy packages/spec/src packages/sdk/src packages/steps-core/src packages/sdk-pymc/src
 
 ## ---------------------------------------------------------------- tests
 .PHONY: test

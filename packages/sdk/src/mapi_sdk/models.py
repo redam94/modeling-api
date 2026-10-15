@@ -71,7 +71,12 @@ class ModelSettings(BaseModel):
 
 @dataclass(slots=True)
 class FitContext:
-    """Everything a plugin's ``fit`` may use besides data, settings and fit config."""
+    """Everything a plugin's ``fit`` may use besides data, settings and fit config.
+
+    ``checkpoint_sink`` is an engine-specific sink for segmented fits (for example
+    ``mapi_pymc.CheckpointSink``); the runner supplies one that writes to the run prefix.
+    ``None`` disables checkpointing.
+    """
 
     seed: int = 0
     schema: DataSchema | None = None
@@ -81,6 +86,7 @@ class FitContext:
     log: Callable[[str], None] | None = None
     on_progress: ProgressFn | None = None
     cancel: CancelToken | None = None
+    checkpoint_sink: Any | None = None
     rng: np.random.Generator = field(init=False)
 
     def __post_init__(self) -> None:
