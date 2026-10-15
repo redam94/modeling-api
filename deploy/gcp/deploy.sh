@@ -181,7 +181,7 @@ fi
 
 # ----------------------------------------------------------------------- 6. release record
 if [[ -f $images_file || $DRY_RUN == 1 ]]; then
-  bucket=$(backend_bucket "$env")
+  bucket=$(backend_bucket "$env" "$backend_config")
   sha=$(git -C "$REPO_ROOT" rev-parse --short=12 HEAD 2>/dev/null || echo unknown)
   release="$(utc_stamp)-$sha.json"
   run gcloud storage cp "$images_file" "gs://$bucket/mapi/$env/releases/$release"
@@ -202,7 +202,11 @@ smoke() {
   log "smoke: $api/readyz"
   curl "${curl_opts[@]}" -o /dev/null "$api/readyz"
   log "smoke: $web/ (with a Content-Security-Policy)"
-  curl "${curl_opts[@]}" -D - -o /dev/null "$web/" | grep -qi '^content-security-policy:' ||
+  # Headers into a variable first: `curl | grep -q` would fail under pipefail when grep
+  # exits early and curl gets SIGPIPE.
+  local headers
+  headers=$(curl "${curl_opts[@]}" -D - -o /dev/null "$web/")
+  grep -qi '^content-security-policy:' <<<"$headers" ||
     die "the web app answers without a Content-Security-Policy header"
   log "smoke: $plots/"
   curl "${curl_opts[@]}" -o /dev/null "$plots/"

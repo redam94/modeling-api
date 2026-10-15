@@ -79,6 +79,15 @@ resource "google_binary_authorization_attestor_iam_member" "attestor_attacher" {
   member   = "serviceAccount:${google_service_account.ci["ci-push"].email}"
 }
 
+# An attestation is a Container Analysis occurrence in this project.
+resource "google_project_iam_member" "attestation_writer" {
+  count = var.github == null ? 0 : 1
+
+  project = var.project_id
+  role    = "roles/containeranalysis.occurrences.editor"
+  member  = "serviceAccount:${google_service_account.ci["ci-push"].email}"
+}
+
 resource "google_container_analysis_note_iam_member" "attestor_occurrences" {
   count = var.github == null ? 0 : 1
 

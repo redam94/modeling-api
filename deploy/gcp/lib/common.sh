@@ -96,10 +96,10 @@ confirm() {
   [[ $answer == "$expected" ]] || die "not confirmed"
 }
 
-# backend_bucket ENV: the state bucket named in envs/ENV/backend.hcl.
+# backend_bucket ENV [FILE]: the state bucket named in FILE (default envs/ENV/backend.hcl).
 backend_bucket() {
-  local file
-  file="$(env_dir "$1")/backend.hcl"
+  local file=${2:-}
+  [[ -n $file ]] || file="$(env_dir "$1")/backend.hcl"
   if [[ ! -f $file && $DRY_RUN == 1 ]]; then
     printf '<state bucket>'
     return 0

@@ -221,6 +221,24 @@ account trusts exactly one GitHub environment, so a job can never assume more th
 environment allows. The very first apply of an environment (which creates these identities)
 is run by a person.
 
+The perimeter is an organisation-level resource, which project-level grants cannot cover:
+give the deployer `roles/accesscontextmanager.policyEditor` and the planner
+`roles/accesscontextmanager.policyReader` on the access policy yourself (or use a scoped
+access policy for the platform's projects). Once the perimeter is enforced, people who run
+Terraform or read the exec projects' logs from outside it need an access level
+(`vpc_sc.access_levels`); the deployer has its own ingress rule.
+
+## Limitations
+
+- **Bucket names are global.** The storage contract names buckets `mapi-{env}-{purpose}`
+  (`mapi_spec.storage.bucket_name`), so `mapi-prod-data` must be free in all of Cloud
+  Storage. If a name is taken, choose a more specific environment name (any name matching
+  `^[a-z][a-z0-9-]{0,15}$`, e.g. `acme-prod`, as a new `envs/` directory).
+- **KMS key rings are permanent.** Recreating a destroyed environment needs
+  `terraform import` of its key rings.
+- **`--traffic-only` rollbacks** cover the HTTP services only; the orchestrator and the Jobs
+  roll back with a release redeploy.
+
 ## Day-2 operations
 
 **Rollback.** Two ways:

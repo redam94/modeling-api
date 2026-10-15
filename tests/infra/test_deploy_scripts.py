@@ -546,3 +546,132 @@ def test_rollback_needs_exactly_one_mode(bash: str, stubs: Path, tmp_path: Path)
         out=tmp_path,
     )
     assert bad.returncode != 0 and "--release must look like" in bad.stderr
+
+
+# ------------------------------------------------------------- the real (non-dry) deploy path
+
+FAKE_TERRAFORM = """#!/bin/sh
+echo "terraform $*" >> "{log}"
+case " $* " in
+  *" output -json "*) if [ -f "{outputs}" ]; then cat "{outputs}"; else echo '{{}}'; fi ;;
+  *" plan "*) for a in "$@"; do case $a in -out=*) : > "${{a#-out=}}" ;; esac; done ;;
+esac
+exit 0
+"""
+FAKE_CURL = """#!/bin/sh
+echo "curl $*" >> "{log}"
+case " $* " in
+  *"%{{http_code}}"*) printf '404' ;;
+  *" -D - "*) printf 'HTTP/2 200\\r\\ncontent-security-policy: default-src none\\r\\n\\r\\n' ;;
+esac
+exit 0
+"""
+
+
+def _fake_cloud(tmp_path: Path, outputs: dict[str, object] | None) -> Path:
+    """Stubs that succeed: terraform (canned outputs), gcloud, docker, curl."""
+    bin_dir = tmp_path / "fake-bin"
+    bin_dir.mkdir()
+    log = tmp_path / "calls.log"
+    outputs_file = tmp_path / "tf-outputs.json"
+    if outputs is not None:
+        outputs_file.write_text(json.dumps({k: {"value": v} for k, v in outputs.items()}))
+    bodies = {
+        "terraform": FAKE_TERRAFORM.format(log=log, outputs=outputs_file),
+        "curl": FAKE_CURL.format(log=log),
+        "gcloud": f'#!/bin/sh\necho "gcloud $*" >> "{log}"\nexit 0\n',
+        "docker": f'#!/bin/sh\necho "docker $*" >> "{log}"\nexit 0\n',
+    }
+    for name, body in bodies.items():
+        path = bin_dir / name
+        path.write_text(body)
+        path.chmod(0o755)
+    return bin_dir
+
+
+def _outputs(services_deployed: bool) -> dict[str, object]:
+    run_app = {k: f"https://mapi-staging-{k}-1.europe-west4.run.app" for k in ("api", "events")}
+    return {
+        "control_project": "acme-stg-control",
+        "region": "europe-west4",
+        "services_deployed": services_deployed,
+        "urls": {
+            "api": "https://app.example.com",
+            "web": "https://app.example.com",
+            "plots": "https://plots.example.net",
+            "run_app": run_app,
+        },
+    }
+
+
+def _deploy(bash: str, tmp_path: Path, bin_dir: Path, *extra: str) -> tuple[int, str, list[str]]:
+    backend = tmp_path / "backend.hcl"
+    backend.write_text('bucket = "acme-tfstate"\nprefix = "mapi/staging"\n')
+    images = images_file(tmp_path / "images.json")
+    res = script(
+        bash,
+        "deploy",
+        "--env",
+        "staging",
+        "--images-file",
+        str(images),
+        "--backend-config",
+        str(backend),
+        "--plan-file",
+        str(tmp_path / "tfplan"),
+        *extra,
+        stubs=bin_dir,
+        out=tmp_path,
+    )
+    log = tmp_path / "calls.log"
+    return res.returncode, res.stderr, log.read_text().splitlines() if log.exists() else []
+
+
+def _position(lines: list[str], fragment: str) -> int:
+    return next(i for i, line in enumerate(lines) if fragment in line)
+
+
+def test_deploy_release_migrates_before_apply(bash: str, tmp_path: Path) -> None:
+    bin_dir = _fake_cloud(tmp_path, _outputs(services_deployed=True))
+    code, err, log = _deploy(bash, tmp_path, bin_dir, "--yes")
+    assert code == 0, err
+    update = _position(log, "gcloud run jobs update mapi-staging-migrate")
+    assert f"--image {REPO}/server@{DIGEST}" in log[update]
+    assert "--project acme-stg-control --quiet" in log[update]
+    execute = _position(log, "gcloud run jobs execute mapi-staging-migrate")
+    apply = _position(log, " apply -input=false")
+    record = _position(log, "gcloud storage cp")
+    assert update < execute < apply < record
+    assert "gs://acme-tfstate/mapi/staging/releases/" in log[record]
+    smoke = [line for line in log[record:] if line.startswith("curl")]
+    assert any("https://app.example.com/healthz" in c for c in smoke)
+    assert any("https://app.example.com/readyz" in c for c in smoke)
+    events = "-X POST https://mapi-staging-events-1.europe-west4.run.app/internal/events"
+    assert any(events in c for c in smoke)
+    assert "smoke test passed" in err
+
+
+def test_deploy_first_release_migrates_after_apply(bash: str, tmp_path: Path) -> None:
+    bin_dir = _fake_cloud(tmp_path, _outputs(services_deployed=False))
+    code, err, log = _deploy(bash, tmp_path, bin_dir, "--yes", "--skip-smoke")
+    # the stubbed apply leaves services_deployed false, so the post-apply check refuses
+    assert code != 0 and "did not include the Cloud Run workloads" in err
+    apply = _position(log, " apply -input=false")
+    execute = _position(log, "gcloud run jobs execute mapi-staging-migrate")
+    assert apply < execute, "the migrate job only exists after the first apply"
+
+
+def test_deploy_without_confirmation_stops_after_the_plan(bash: str, tmp_path: Path) -> None:
+    bin_dir = _fake_cloud(tmp_path, _outputs(services_deployed=True))
+    code, err, log = _deploy(bash, tmp_path, bin_dir)
+    assert code != 0 and "pass --yes" in err
+    assert any(" plan " in line for line in log)
+    assert not any(" apply " in line or "gcloud run jobs" in line for line in log)
+
+
+def test_deploy_refuses_a_public_events_service(bash: str, tmp_path: Path) -> None:
+    bin_dir = _fake_cloud(tmp_path, _outputs(services_deployed=True))
+    curl = bin_dir / "curl"
+    curl.write_text(curl.read_text().replace("printf '404'", "printf '200'"))
+    code, err, _ = _deploy(bash, tmp_path, bin_dir, "--yes")
+    assert code != 0 and "accepted an unauthenticated request" in err
