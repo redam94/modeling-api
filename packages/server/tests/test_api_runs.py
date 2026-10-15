@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -186,7 +187,7 @@ async def test_logs_and_events_pages(client: httpx.AsyncClient, ctx: ServerConte
                     project_id="default",
                     attempt=1,
                     seq=seq,
-                    ts=__import__("datetime").datetime.now(__import__("datetime").UTC),
+                    ts=datetime.now(UTC),
                     stream="stderr" if seq % 2 else "stdout",
                     line=f"line {seq}",
                     truncated=False,

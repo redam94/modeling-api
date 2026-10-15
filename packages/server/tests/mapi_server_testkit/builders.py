@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from mapi_server.context import ServerContext
@@ -32,6 +33,8 @@ from mapi_spec.storage import (
 )
 
 from .fake_runner import outputs_for
+
+CATALOG = Path(__file__).resolve().parent.parent / "fixtures" / "catalog.json"
 
 TREND_SCHEMA: dict[str, Any] = {
     "dims": {"t": {"kind": "time", "policy": "extend", "freq": "MS"}},
@@ -118,6 +121,44 @@ async def ready_dataset(
         )
         s.add(dv)
     return ds, dv
+
+
+async def queued_fit(ctx: ServerContext, *, yaml: str = TREND_SPEC) -> str:
+    """Store a ready dataset + a valid spec revision and submit a fit run (QUEUED)."""
+    from mapi_server.services.specs import validate_document
+    from mapi_server.services.submit import submit_spec_run
+
+    await ready_dataset(ctx)
+    async with ctx.db.session() as s:
+        v = await validate_document(s, ctx.scope, ctx.catalogs, text=yaml)
+        spec = m.Spec(
+            id=new_id("spc"),
+            tenant_id=ctx.scope.tenant_id,
+            project_id=ctx.scope.project_id,
+            name="trend",
+            kind="ModelSpec",
+            latest_revision=1,
+        )
+        s.add(spec)
+        await s.flush()
+        s.add(
+            m.SpecRevision(
+                spec_id=spec.id,
+                revision=1,
+                tenant_id=spec.tenant_id,
+                project_id=spec.project_id,
+                kind="ModelSpec",
+                hash=v.hash or "",
+                yaml=yaml,
+                document=v.document,
+                valid=v.valid,
+                issues=[],
+                resolved=v.resolved.model_dump(mode="json") if v.resolved else None,
+            )
+        )
+        await s.flush()
+        run = await submit_spec_run(s, ctx, kind=RunKind.FIT, spec_id=spec.id, revision=1)
+        return run.id
 
 
 async def runspec_from_bootstrap(ctx: ServerContext, nonce: str) -> RunSpec:
