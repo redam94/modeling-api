@@ -12,6 +12,12 @@ the database with the **executor's status API — the liveness source of truth**
   by cancelling the execution;
 * ``CANCELLING`` → cancel at the executor, then ``cancel_confirmed`` once it is gone;
 * ``FINALIZING`` → make sure a finalize job is queued.
+
+The first time this process looks at an attempt it calls ``executor.adopt(nonce)`` even
+when a handle is stored: after an orchestrator restart that re-registers a local child's pid
+and re-attaches a container's log follower (the event dedupe on ``(run, attempt, seq)``
+makes the replay safe). An execution counts as lost only once a cancel has been requested
+and the executor no longer reports it pending or running.
 """
 
 from __future__ import annotations
@@ -74,6 +80,8 @@ class Reconciler:
     def __init__(self, ctx: ServerContext, executor: Executor) -> None:
         self.ctx = ctx
         self.executor = executor
+        self._attached: set[tuple[str, int]] = set()
+        """Attempts this process has re-attached to (``adopt``) since it started."""
 
     async def run_forever(self, stop: asyncio.Event) -> None:
         log.info("reconciler started (every %ss)", self.ctx.settings.reconcile_interval_s)
@@ -133,6 +141,16 @@ class Reconciler:
             await session.execute(select(m.Run).where(m.Run.id == run_id).with_for_update())
         ).scalar_one()
 
+    async def _attach(self, att: m.RunAttempt) -> Handle | None:
+        """The attempt's handle, re-attached through ``adopt`` once per process."""
+        stored = _handle(att)
+        key = (att.run_id, att.attempt)
+        if key in self._attached:
+            return stored or await self.executor.adopt(att.nonce)
+        adopted = await self.executor.adopt(att.nonce)
+        self._attached.add(key)
+        return adopted or stored
+
     async def _delete_bootstrap(self, nonce: str) -> None:
         with contextlib.suppress(Exception):
             await self.ctx.store.delete(self.ctx.buckets.bootstrap, bootstrap_key(nonce))
@@ -160,12 +178,13 @@ class Reconciler:
             if retry:
                 row.infra_retries += 1
             await apply_transition(session, row, trigger, Actor.RECONCILER, problem=problem)
-            return True
+        self._attached.discard((run.id, run.attempt))  # the attempt left this state
+        return True
 
     async def _cancelling(self, run: m.Run, att: m.RunAttempt | None) -> None:
         handle: Handle | None = None
         if att is not None and att.status != "abandoned":
-            handle = _handle(att) or await self.executor.adopt(att.nonce)
+            handle = await self._attach(att)
             if handle is None and att.status == "intent":
                 lease = run.lease_expires_at
                 if lease is not None and lease > now():
@@ -253,23 +272,33 @@ class Reconciler:
 
     async def _live(self, run: m.Run, att: m.RunAttempt) -> None:
         state = RunState(run.state)
-        handle = _handle(att) or await self.executor.adopt(att.nonce)
+        handle = await self._attach(att)
         if handle is None:
-            await self._lost(run, att, state, "the execution handle is missing")
+            await self._lost(run, att, state, "the execution handle is missing", None)
             return
         status = await self.executor.status(handle)
         if status.state in (ExecState.PENDING, ExecState.RUNNING):
             await self._check_running(run, att, handle, state)
             return
         if status.state is ExecState.UNKNOWN:
-            await self._lost(run, att, state, status.message or "the execution disappeared")
+            why = status.message or "the execution disappeared"
+            await self._lost(run, att, state, why, handle)
             return
         await self._finished(run, att, state, status)
 
-    async def _lost(self, run: m.Run, att: m.RunAttempt, state: RunState, why: str) -> None:
+    async def _lost(
+        self, run: m.Run, att: m.RunAttempt, state: RunState, why: str, handle: Handle | None
+    ) -> None:
         since = att.submitted_at or att.created_at
         if (now() - since).total_seconds() < self.ctx.settings.lost_execution_grace_s:
             return
+        if handle is not None:
+            # confirm the old execution is gone before a new attempt can run next to it
+            await self.executor.cancel(handle)
+            after = await self.executor.status(handle)
+            if after.state in (ExecState.PENDING, ExecState.RUNNING):
+                log.warning("run %s: execution reported lost is still running", run.id)
+                return
         await self._delete_bootstrap(att.nonce)
         await self._retry_or_fail(
             run,
