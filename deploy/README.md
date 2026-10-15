@@ -7,7 +7,7 @@ laptop. In v0.2 (milestone M1, the local vertical slice) the supported targets a
 |---|---|---|
 | Laptop, no Docker | Supported | `make dev` ([docs/operations/local-development.md](../docs/operations/local-development.md)) |
 | Single host with Docker | Supported, single tenant | `docker-compose.yml` ([docs/operations/docker.md](../docs/operations/docker.md)) |
-| Google Cloud (Cloud Run Jobs, Cloud SQL, GCS) | Planned for v0.3 | Terraform under `infra/terraform` (not in this release) |
+| Google Cloud (Cloud Run Jobs, Cloud SQL, GCS) | v0.3, multi-tenant; validated and tested offline, not yet applied | Terraform under `infra/terraform`, scripts under [`deploy/gcp`](gcp) ([docs/operations/gcp-deployment.md](../docs/operations/gcp-deployment.md)) |
 
 Nothing here is multi-tenant yet. Every table and object key already carries `tenant_id` and
 `project_id` (always `default` in v0.2), so v0.3 can add authentication and row-level security
@@ -61,6 +61,23 @@ has no authentication**, so do not expose it to untrusted networks.
 - **Executor:** local-process inside the worker container by default. To run each job in its own
   container instead, use the docker executor in `compose.override.example.yml`, keeping in mind
   that the socket mount is root-equivalent on the host.
+
+## Google Cloud
+
+```bash
+deploy/gcp/bootstrap.sh --env dev ...        # APIs, state bucket, backend.hcl
+deploy/gcp/deploy.sh --env dev --foundation  # everything but the Cloud Run workloads
+deploy/gcp/build-push.sh --env dev           # images, pinned by digest
+deploy/gcp/deploy.sh --env dev               # plan, confirm, migrate, apply, smoke test
+deploy/gcp/rollback.sh --env dev --previous  # or --traffic-only in an incident
+```
+
+Every script takes `--help` and `--dry-run`. `.github/workflows/deploy.yml` runs the same flow
+from GitHub Actions (manual dispatch, Workload Identity Federation, required reviewers before
+the apply). The step-by-step guide is
+[docs/operations/gcp-deployment.md](../docs/operations/gcp-deployment.md); the controls and the
+M0 verification checklist are in
+[docs/operations/security-hardening.md](../docs/operations/security-hardening.md).
 
 ## Release gate
 

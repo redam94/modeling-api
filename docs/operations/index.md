@@ -8,14 +8,14 @@ v0.2 runs the whole platform on one machine, single-tenant. The two supported wa
 same services on the same ports, so URLs, the CLI, the Python client and the tests work with
 either.
 
-| | [Local, without Docker](local-development.md) | [Docker Compose](docker.md) | Google Cloud |
+| | [Local, without Docker](local-development.md) | [Docker Compose](docker.md) | [Google Cloud](gcp-deployment.md) (v0.3) |
 |---|---|---|---|
-| Command | `make dev` | `make docker-build && make compose-up` | – |
+| Command | `make dev` | `make docker-build && make compose-up` | `deploy/gcp/deploy.sh --env ENV` |
 | PostgreSQL | embedded (`pgserver`) or your `DATABASE_URL` | the official `postgres:16` image | Cloud SQL |
 | Object storage | the GCS shim, in `.local/gcs` | the GCS shim image, in a volume | Cloud Storage |
 | Runs execute as | `mapi-runner` subprocesses of the worker | subprocesses of the worker container, or one container per run | Cloud Run Jobs, one fresh sandbox per run |
 | Code | your working tree, with hot reload | the [container images](images.md) | the same images |
-| Use it for | development, demos, the end-to-end tests | checking the production images end to end | [v0.3](../roadmap/cloud.md) |
+| Use it for | development, demos, the end-to-end tests | checking the production images end to end | multi-tenant [v0.3](../roadmap/cloud.md): Terraform in `infra/terraform` |
 
 ```mermaid
 flowchart LR
@@ -50,5 +50,8 @@ Whichever you choose:
 - [Docker Compose](docker.md): the compose stack, its network layout and the executor choice.
 - [Container images](images.md): the six images, how they are built and the guards that keep
   them honest.
+- [Google Cloud](gcp-deployment.md): the Terraform and deploy scripts of v0.3, step by step.
+- [Security hardening on Google Cloud](security-hardening.md): what each control does, and the
+  M0 verification checklist.
 - [Configuration reference](configuration.md): every environment variable.
 - [Troubleshooting](troubleshooting.md): port conflicts and everything else.

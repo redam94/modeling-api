@@ -146,4 +146,4 @@ log "rolling '$env' back to ${release:-$images_file}"
 deploy_args=(--env "$env" --images-file "$images_file" --skip-migrate)
 [[ $DRY_RUN == 0 ]] || deploy_args+=(--dry-run)
 [[ $ASSUME_YES == 0 ]] || deploy_args+=(--yes)
-"$MAPI_REPO_ROOT/deploy/gcp/deploy.sh" "${deploy_args[@]}"
+"$REPO_ROOT/deploy/gcp/deploy.sh" "${deploy_args[@]}"

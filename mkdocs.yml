@@ -186,6 +186,8 @@ nav:
       - Local, without Docker: operations/local-development.md
       - Docker Compose: operations/docker.md
       - Container images: operations/images.md
+      - Google Cloud: operations/gcp-deployment.md
+      - Security hardening on Google Cloud: operations/security-hardening.md
       - Configuration reference: operations/configuration.md
       - Troubleshooting: operations/troubleshooting.md
   - Roadmap:

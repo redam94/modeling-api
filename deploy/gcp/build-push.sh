@@ -23,7 +23,7 @@ Options:
   --env ENV            environment (selects the default repository and output file)
   --repository REPO    REGION-docker.pkg.dev/PROJECT/REPO (default: terraform output
                        image_repository of the environment)
-  --images "NAMES"     subset to build (default: "$MAPI_RELEASE_IMAGES")
+  --images "NAMES"     subset to build (default: "$RELEASE_IMAGES")
   --tag TAG            image tag (default: <version>-<git short sha>)
   --out FILE           images file (default: deploy/gcp/.out/ENV/images.tfvars.json)
   --platform PLATFORM  target platform (default: linux/amd64, what Cloud Run runs)
@@ -39,7 +39,7 @@ EOF
 
 env=""
 repository=""
-images="$MAPI_RELEASE_IMAGES"
+images="$RELEASE_IMAGES"
 tag=""
 out=""
 platform="linux/amd64"
@@ -66,9 +66,9 @@ done
 [[ -n $env ]] || die "--env is required"
 valid_env "$env" || die "--env must match ^[a-z][a-z0-9-]{0,15}$"
 for name in $images; do
-  case " $MAPI_RELEASE_IMAGES " in
+  case " $RELEASE_IMAGES " in
     *" $name "*) ;;
-    *) die "unknown image '$name' (release images: $MAPI_RELEASE_IMAGES)" ;;
+    *) die "unknown image '$name' (release images: $RELEASE_IMAGES)" ;;
   esac
 done
 
@@ -88,7 +88,7 @@ fi
   die "--repository must look like REGION-docker.pkg.dev/PROJECT/REPO"
 registry=${repository%%/*}
 
-cd "$MAPI_REPO_ROOT"
+cd "$REPO_ROOT"
 if [[ $allow_dirty == 0 && -n $(git status --porcelain --untracked-files=no) ]]; then
   die "the working tree has uncommitted changes; commit them or pass --allow-dirty"
 fi

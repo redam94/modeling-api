@@ -5,13 +5,13 @@
 # Every command that changes something (or calls a cloud API) goes through `run`, which only
 # prints it under --dry-run.
 
-MAPI_REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
-MAPI_TF_ROOT="$MAPI_REPO_ROOT/infra/terraform"
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
+TF_ROOT="$REPO_ROOT/infra/terraform"
 DRY_RUN=${DRY_RUN:-0}
 ASSUME_YES=${ASSUME_YES:-0}
 
 # The five images a release consists of (images/<name>/Dockerfile, target runtime).
-MAPI_RELEASE_IMAGES="server web base-bayes base-ml base-forecast"
+RELEASE_IMAGES="server web base-bayes base-ml base-forecast"
 
 log() { printf '==> %s\n' "$*" >&2; }
 warn() { printf 'warning: %s\n' "$*" >&2; }
@@ -64,14 +64,14 @@ valid_env() {
 
 # env_dir ENV: the Terraform root of an environment (must exist).
 env_dir() {
-  local dir="$MAPI_TF_ROOT/envs/$1"
+  local dir="$TF_ROOT/envs/$1"
   [[ -d $dir ]] || die "no Terraform environment '$1' (expected $dir)"
   printf '%s' "$dir"
 }
 
 # out_dir ENV: local scratch for an environment (images files, plans, outputs). Not committed.
 out_dir() {
-  local dir="${MAPI_DEPLOY_OUT:-$MAPI_REPO_ROOT/deploy/gcp/.out}/$1"
+  local dir="${MAPI_DEPLOY_OUT:-$REPO_ROOT/deploy/gcp/.out}/$1"
   mkdir -p "$dir"
   printf '%s' "$dir"
 }
@@ -147,7 +147,7 @@ if missing:
 bad = [k for k, v in images.items() if not re.search(r"@sha256:[0-9a-f]{64}$", v)]
 if bad:
     sys.exit("not pinned by digest: " + ", ".join(bad))
-' "$1" "$MAPI_RELEASE_IMAGES"
+' "$1" "$RELEASE_IMAGES"
 }
 
 utc_stamp() { date -u +%Y%m%dT%H%M%SZ; }

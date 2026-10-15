@@ -149,10 +149,10 @@ if [[ $foundation == 0 && $skip_migrate == 0 ]]; then
     migrate_args+=(--image "$server_image")
   fi
   if [[ $DRY_RUN == 0 ]] && tf_outputs "$env" "$outputs" && [[ $(json_get "$outputs" services_deployed) == "true" ]]; then
-    "$MAPI_REPO_ROOT/deploy/gcp/migrate.sh" "${migrate_args[@]}" \
+    "$REPO_ROOT/deploy/gcp/migrate.sh" "${migrate_args[@]}" \
       --project "$(json_get "$outputs" control_project)" --region "$(json_get "$outputs" region)"
   elif [[ $DRY_RUN == 1 ]]; then
-    "$MAPI_REPO_ROOT/deploy/gcp/migrate.sh" "${migrate_args[@]}" --project "<control project>" --region "<region>"
+    "$REPO_ROOT/deploy/gcp/migrate.sh" "${migrate_args[@]}" --project "<control project>" --region "<region>"
   else
     log "first release: the migrate job is created by this apply; migrations run right after it"
     migrate_after=1
@@ -167,7 +167,7 @@ if [[ $DRY_RUN == 0 ]]; then
 fi
 
 if [[ $migrate_after == 1 ]]; then
-  "$MAPI_REPO_ROOT/deploy/gcp/migrate.sh" "${migrate_args[@]}" \
+  "$REPO_ROOT/deploy/gcp/migrate.sh" "${migrate_args[@]}" \
     --project "$(json_get "$outputs" control_project)" --region "$(json_get "$outputs" region)"
 fi
 
@@ -182,7 +182,7 @@ fi
 # ----------------------------------------------------------------------- 6. release record
 if [[ -f $images_file || $DRY_RUN == 1 ]]; then
   bucket=$(backend_bucket "$env")
-  sha=$(git -C "$MAPI_REPO_ROOT" rev-parse --short=12 HEAD 2>/dev/null || echo unknown)
+  sha=$(git -C "$REPO_ROOT" rev-parse --short=12 HEAD 2>/dev/null || echo unknown)
   release="$(utc_stamp)-$sha.json"
   run gcloud storage cp "$images_file" "gs://$bucket/mapi/$env/releases/$release"
   log "release recorded as $release"
