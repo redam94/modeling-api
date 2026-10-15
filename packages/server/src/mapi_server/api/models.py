@@ -231,7 +231,7 @@ async def redirect_model_ui(
 
 
 async def _score_result(ctx: ServerContext, run_id: str) -> ScoreCallResult:
-    async with ctx.db.session() as session:
+    async with ctx.data_session() as session:
         run = await load_run(session, ctx.scope, run_id)
         view = await run_view(session, run)
         outputs: list[ArtifactLink] = []
@@ -269,7 +269,7 @@ async def score_model(
     """Score with replayed preprocessing. ``Prefer: wait=N`` (≤ 60) waits up to N s:
     200 with output links if the run finished, else 202 with the run."""
     raw = await request.json()
-    async with ctx.db.session() as session:
+    async with ctx.data_session() as session:
         model, mv = await _mv(ctx, session, model_id, version)
         target = body.request.model
         expected = ModelVersionRef(model.project_id, model.name, f"v{mv.version}")

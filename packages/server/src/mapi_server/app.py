@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from typing import Any
 
+import httpx
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -44,7 +45,7 @@ from mapi_server.api import (
     usage,
 )
 from mapi_server.api import auth as auth_routes
-from mapi_server.auth.oidc import HttpOidcProvider, OidcClient
+from mapi_server.auth.oidc import HttpOidcProvider, JwksCache, OidcClient
 from mapi_server.auth.request import CSRF_HEADER, access_for, authenticate
 from mapi_server.context import FinalizeQueue, ServerContext
 from mapi_server.db import Database, resolve_database_url
@@ -142,6 +143,22 @@ def build_oidc(settings: Settings, devidp: DevIdP | None) -> OidcClient | None:
     return None
 
 
+def build_push_jwks(settings: Settings) -> JwksCache | None:
+    """Google's JWKS (cached) when Pub/Sub push authentication is configured."""
+    if not settings.pubsub_audience:
+        return None
+    url = settings.google_jwks_url
+
+    async def fetch() -> Mapping[str, Any]:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            doc: Mapping[str, Any] = r.json()
+            return doc
+
+    return JwksCache(fetch)
+
+
 def build_context(
     settings: Settings,
     *,
@@ -181,6 +198,7 @@ def build_context(
         price_table=price_table,
         devidp=devidp,
         oidc=build_oidc(settings, devidp),
+        push_jwks=build_push_jwks(settings),
     )
     aclose = getattr(ctx.store, "aclose", None)
     if owned_store and callable(aclose):

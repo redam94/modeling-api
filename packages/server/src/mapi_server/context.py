@@ -26,7 +26,7 @@ from mapi_server.services.signing import BundleSigner
 from mapi_server.settings import Settings
 
 if TYPE_CHECKING:
-    from mapi_server.auth.oidc import OidcClient
+    from mapi_server.auth.oidc import JwksCache, OidcClient
     from mapi_server.auth.request import RequestAuth
     from mapi_server.devidp import DevIdP
 
@@ -57,6 +57,8 @@ class ServerContext:
     price_table: PriceTable = DEFAULT_PRICE_TABLE
     oidc: OidcClient | None = None
     devidp: DevIdP | None = None
+    push_jwks: JwksCache | None = None
+    """Google's signing keys for Pub/Sub push tokens (when push OIDC is configured)."""
     request: RequestAuth | None = None
     """The authenticated caller (request views only; ``None`` in the orchestrator)."""
 
