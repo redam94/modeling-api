@@ -4,6 +4,9 @@ Documents are parsed with the strict loader (no anchors/tags, size/depth/node ca
 validated as typed documents, then checked against the cached catalog and the *stored*
 ``DataSchema`` of the referenced dataset version — never against data. Everything is
 reported at once as :class:`~mapi_spec.errors.Issue` objects with JSON pointers.
+
+The per-class data caps (plan §8.5) are checked here too: the stored sizes of the dataset
+and side-table versions a run would read must fit the resource class's dataset cap.
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ from mapi_spec.errors import (
 from mapi_spec.jobs import INPUT_DATASET, INPUT_SCENARIO, SCORE_INPUTS, side_table_input
 from mapi_spec.loader import check_limits, parse_document, parse_text, spec_hash
 from mapi_spec.refs import DatasetRef, EndpointRef, ModelVersionRef
+from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import ModelSpec, ScoreRequest
 from mapi_spec.validate import ResolvedSpec, ScoreMetadata, validate_score_request, validate_spec
@@ -38,6 +42,8 @@ __all__ = [
     "DOCUMENT_KINDS",
     "Validation",
     "check_score_request",
+    "class_for_size",
+    "data_cap_issue",
     "first_error",
     "pin_document",
     "resolve_dataset",
@@ -71,6 +77,38 @@ class Validation:
 
 def _issue(code: ErrorCode, pointer: str, message: str) -> Issue:
     return Issue(code=code, pointer=pointer, message=message[:2000])
+
+
+def class_for_size(size_bytes: int) -> ResourceClass | None:
+    """The smallest resource class whose dataset cap holds ``size_bytes`` (plan §8.5)."""
+    for rc in ResourceClass:
+        if size_bytes <= RESOURCE_CLASSES[rc].max_dataset_bytes:
+            return rc
+    return None
+
+
+def _gb(n: int) -> str:
+    return f"{n / 1e9:.2f} GB"
+
+
+def data_cap_issue(
+    resource_class: ResourceClass,
+    versions: list[m.DatasetVersion],
+    pointer: str = "/execution/resource_class",
+) -> Issue | None:
+    """``PAYLOAD_TOO_LARGE`` when the input data exceeds the class's dataset cap."""
+    total = sum(v.size_bytes or 0 for v in versions)
+    cap = RESOURCE_CLASSES[resource_class].max_dataset_bytes
+    if total <= cap:
+        return None
+    message = (
+        f"the input data ({_gb(total)}) exceeds the {_gb(cap)} dataset cap of resource "
+        f"class {resource_class.value}"
+    )
+    need = class_for_size(total)
+    if need is not None:
+        message += f"; use resource class {need.value} or larger"
+    return _issue(ErrorCode.PAYLOAD_TOO_LARGE, pointer, message)
 
 
 async def resolve_dataset(
@@ -141,9 +179,14 @@ async def validate_document(
     text: str | None = None,
     document: dict[str, Any] | None = None,
     dataset_override: str | None = None,
+    resource_class: ResourceClass | None = None,
 ) -> Validation:
     """Parse and statically validate one document. Parse/size errors raise; everything
-    else is reported as issues (so editors get every problem at once)."""
+    else is reported as issues (so editors get every problem at once).
+
+    ``resource_class`` overrides the spec's ``execution.resource_class`` for the data-cap
+    check (a run submitted with an explicit class).
+    """
     data: Any = parse_text(text) if text is not None else document
     if text is None:
         check_limits(data)
@@ -163,7 +206,9 @@ async def validate_document(
         return out
     if isinstance(typed, ModelSpec):
         out.typed = typed
-        await _validate_model_spec(session, scope, catalogs, typed, out, dataset_override)
+        await _validate_model_spec(
+            session, scope, catalogs, typed, out, dataset_override, resource_class
+        )
     elif isinstance(typed, ScoreRequest):
         out.typed = typed
         await _validate_score(session, scope, typed, out)
@@ -185,6 +230,7 @@ async def _validate_model_spec(
     spec: ModelSpec,
     out: Validation,
     dataset_override: str | None,
+    resource_class: ResourceClass | None = None,
 ) -> None:
     if spec.metadata.project != scope.project_id:
         out.issues.append(
@@ -219,6 +265,13 @@ async def _validate_model_spec(
         out.issues.append(_issue(ErrorCode.REF_UNRESOLVED, pointer, why or "dataset not found"))
         return
     out.dataset = dv
+    cap = data_cap_issue(
+        resource_class or spec.execution.resource_class,
+        [dv, *out.side_tables.values()],
+        "/resource_class" if resource_class is not None else "/execution/resource_class",
+    )
+    if cap is not None:
+        out.issues.append(cap)
     if dv.data_schema is None:
         out.issues.append(
             _issue(ErrorCode.SCHEMA_INVALID, pointer, "the dataset version has no stored schema")
