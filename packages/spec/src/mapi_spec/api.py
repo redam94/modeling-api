@@ -36,15 +36,13 @@ from pydantic import (
     model_validator,
 )
 
-from mapi_spec._dto import (
-    Id,
-    RequestModel,
-    ResponseModel,
-    Sha256,
-    TenantId,
-    dto_examples,
-    new_id,
-)
+from mapi_spec._dto import Id as Id  # re-exported: clients annotate ids with it
+from mapi_spec._dto import RequestModel as _Request
+from mapi_spec._dto import ResponseModel as _Response
+from mapi_spec._dto import Sha256 as Sha256
+from mapi_spec._dto import TenantId as TenantId
+from mapi_spec._dto import dto_examples as _examples
+from mapi_spec._dto import new_id
 from mapi_spec._types import Duration, LabelKey, LabelValue, MetricName, Slug
 from mapi_spec.admin import ExecutorHealth, KillSwitches, KillSwitchUpdate
 from mapi_spec.audit import AuditEvent
@@ -204,12 +202,7 @@ SSE_HEARTBEAT: Final = ": keepalive\n\n"
 """Comment frame sent every :data:`SSE_HEARTBEAT_SECONDS` when no event was sent."""
 
 
-# ======================================================================================= bases
-
-_Request = RequestModel
-_Response = ResponseModel
-_examples = dto_examples
-
+# ===================================================================================== examples
 
 _TS = "2026-10-15T09:30:00Z"
 _RUN_ID = "run_01jaf3q2x8m9v7k5h4g3f2e1d0"

@@ -91,7 +91,7 @@ def test_adjacent_transpositions_are_detected() -> None:
         "",
         "mapi_",
         "Bearer mapi_7k2m9q4x_0123",
-        "MAPI_7K2M9Q4X_0123456789ABCDEFGHJKMNPQRSTVWXYZ0000000",
+        str(FIXED).upper(),  # tokens are lowercase only
         "mapi_7k2m9q4i_0123456789abcdefghjkmnpqrstvwxyz0000000",
         "xapi_7k2m9q4x_0123456789abcdefghjkmnpqrstvwxyz0000000",
         "mapi_7k2m9q4x_0123456789abcdefghjkmnpqrstvwxyz0000000",
