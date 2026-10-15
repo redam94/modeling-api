@@ -20,9 +20,9 @@ forecasting, and unstacks predictions back to labelled arrays.
 from mapi_sdk.harness import fit_spec, score_bundle
 from mapi_sklearn.testing import demand_dataset, demand_registry, demand_schema, demand_spec
 
-data = demand_dataset()                                   # store x sku x week demand
+data = demand_dataset()  # store x sku x week demand
 bundle = fit_spec(
-    demand_spec("sklearn.tabular_quantiles@^1"),          # xgboost, quantiles 5%..95%
+    demand_spec("sklearn.tabular_quantiles@^1"),  # xgboost, quantiles 5%..95%
     data,
     registry=demand_registry(),
     raw_schema=demand_schema(data),
