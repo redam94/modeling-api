@@ -147,6 +147,8 @@ def check_expression(expr: str, *, max_chars: int = 2000) -> list[str]:
             close = tokens[i + 2][1] if i + 2 < len(tokens) else ""
             if key_kind not in ("str", "num") or close != "]":
                 problems.append("computed member access needs a string or number literal")
+            elif prev == "event" and tokens[i + 1][1][1:-1] == "view":
+                problems.append("'event.view' is not allowed")
         elif kind == "op" and text == "/" and prev in ("", "(", ",", "=", ":", "?", "[", "!"):
             problems.append("regular expression literals are not allowed")
     # stable, de-duplicated order

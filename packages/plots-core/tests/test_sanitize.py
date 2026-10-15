@@ -134,6 +134,22 @@ BENIGN_VL: list[dict[str, Any]] = [
         ],
         "params": [{"name": "brush", "select": {"type": "interval", "encodings": ["x"]}}],
     },
+    {  # interaction params with a toggle expression, a legend binding and usermeta
+        "data": {"name": "d"},
+        "mark": "point",
+        "encoding": {
+            "x": {"field": "a", "type": "quantitative"},
+            "color": {"field": "g", "type": "nominal"},
+        },
+        "params": [
+            {
+                "name": "pick",
+                "select": {"type": "point", "fields": ["g"], "toggle": "event.shiftKey"},
+                "bind": {"legend": "dblclick[event.altKey]"},
+            }
+        ],
+        "usermeta": {"note": "kept"},
+    },
     {
         "datasets": {"inline": [{"a": 1}, {"a": 2}]},
         "data": {"name": "inline"},
@@ -453,6 +469,8 @@ def test_safe_expressions(expr: str) -> None:
         ("globalThis", "not allowed"),
         ("new Date()", "not allowed"),
         ("self", "not allowed"),
+        ("event['view']", "event.view"),
+        ('event["view"].window', "event.view"),
     ],
 )
 def test_unsafe_expressions(expr: str, fragment: str) -> None:
