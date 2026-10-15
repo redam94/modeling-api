@@ -46,7 +46,7 @@ from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger, new_hmac_key, new_nonce
 from mapi_spec.storage import NotFound, bootstrap_key
 from mapi_spec.tenancy import TenantStatus, TrustTier
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -75,6 +75,19 @@ _RESERVED_LABEL_PREFIX = "mapi.dev/"
 _NAMESPACE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 
 log = logging.getLogger(__name__)
+
+MAX_RETRY_AFTER_S = 64.0
+"""A backend's ``Retry-After`` is honoured up to this long (one answer cannot park the queue)."""
+
+
+def _rate_limited(error: Exception | None) -> bool:
+    """Is ``error`` the backend's 429 (nothing was created, so the attempt is not lost)?"""
+    status = (
+        getattr(error, "status_code", None)
+        or getattr(error, "status", None)  # CloudRunRateLimited (after its own retries)
+        or getattr(error, "code", None)
+    )
+    return status in (429, ErrorCode.RATE_LIMITED, "429")
 
 
 def _over_budget(policy: QuotaPolicy, usage: QuotaUsage) -> bool:
@@ -106,18 +119,17 @@ class Dispatcher:
 
     def _throttled(self, error: Exception | None) -> float | None:
         """Seconds to back off if ``error`` is the backend's 429 (``None`` otherwise)."""
-        status = (
-            getattr(error, "status_code", None)
-            or getattr(error, "status", None)  # CloudRunRateLimited (after its own retries)
-            or getattr(error, "code", None)
-        )
-        if status not in (429, ErrorCode.RATE_LIMITED, "429"):
+        if not _rate_limited(error):
             return None
         retry_after = getattr(error, "retry_after", None)
         self._throttle_streak += 1
         return backoff_seconds(
             self._throttle_streak,
-            retry_after=float(retry_after) if isinstance(retry_after, int | float) else None,
+            retry_after=(
+                min(float(retry_after), MAX_RETRY_AFTER_S)
+                if isinstance(retry_after, int | float)
+                else None
+            ),
         )
 
     async def report(self) -> None:
@@ -363,18 +375,55 @@ class Dispatcher:
 
     async def dispatch_once(self) -> int:
         leased = await self.lease()
-        for run_id, attempt in leased:
-            await self.bucket.acquire()
-            pause = self._backoff_until - time.monotonic()
-            if pause > 0:  # the backend answered 429: wait it out, then submit once
-                await asyncio.sleep(pause)
-            try:
-                await self.submit(run_id, attempt)
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                log.exception("dispatch of %s/%s failed unexpectedly", run_id, attempt)
+        if not leased:
+            return 0
+        # Runs are submitted one after another, and a submit may take minutes (the token
+        # bucket, a 429 back-off inside the executor). Keep every lease of the batch alive
+        # until its run is recorded, so the reconciler never takes a run this dispatcher is
+        # still working on (a lease only lapses when the dispatcher itself is gone).
+        pending = set(leased)
+        keeper = asyncio.create_task(self._keep_leased(pending))
+        try:
+            for run_id, attempt in leased:
+                await self.bucket.acquire()
+                pause = self._backoff_until - time.monotonic()
+                if pause > 0:  # the backend answered 429: wait it out, then submit once
+                    await asyncio.sleep(pause)
+                try:
+                    await self.submit(run_id, attempt)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    log.exception("dispatch of %s/%s failed unexpectedly", run_id, attempt)
+                pending.discard((run_id, attempt))
+        finally:
+            keeper.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await keeper
         return len(leased)
+
+    async def _keep_leased(self, pending: set[tuple[str, int]]) -> None:
+        """Extend the leases of ``pending`` runs every third of a lease until cancelled."""
+        lease_s = self.ctx.settings.dispatch_lease_s
+        while True:
+            await asyncio.sleep(lease_s / 3)
+            for run_id, attempt in list(pending):
+                try:
+                    async with self.ctx.db.session() as session:
+                        await session.execute(
+                            update(m.Run)
+                            .where(
+                                m.Run.id == run_id,
+                                m.Run.attempt == attempt,
+                                m.Run.state == RunState.DISPATCHING.value,
+                                m.Run.lease_owner == self.name,
+                            )
+                            .values(lease_expires_at=now() + timedelta(seconds=lease_s))
+                        )
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    log.warning("could not extend the lease of %s/%s", run_id, attempt)
 
     async def submit(self, run_id: str, attempt_no: int) -> None:
         ctx = self.ctx
@@ -521,7 +570,11 @@ class Dispatcher:
                 detail = f"{detail}: {type(error).__name__}"
             # an input object is gone, or the bundle does not verify: no retry
             permanent = isinstance(error, NotFound | BundleIntegrityError)
-            if not permanent and run.infra_retries < ctx.settings.max_infra_retries:
+            if _rate_limited(error):
+                # the backend refused to create anything (429): requeue without using up
+                # an infrastructure retry; the dispatcher's back-off paces the next submit
+                await apply_transition(session, run, RunTrigger.INFRA_RETRY, Actor.DISPATCHER)
+            elif not permanent and run.infra_retries < ctx.settings.max_infra_retries:
                 run.infra_retries += 1
                 await apply_transition(session, run, RunTrigger.INFRA_RETRY, Actor.DISPATCHER)
             else:

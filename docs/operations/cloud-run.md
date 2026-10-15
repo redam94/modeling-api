@@ -89,9 +89,14 @@ never retried blindly: the next submit of that nonce adopts first.
 orchestrator keeps a token bucket at `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE` (default 150 — split
 the quota between orchestrator replicas). A `429` answer means nothing was created: the
 executor puts every submitter into a shared cool-down (exponential back-off from
-`MAPI_CLOUDRUN_BACKOFF_BASE_S`, at least the server's `Retry-After`), counts the answer as an
-alarm (`ALARM cloudrun-jobs: jobs.run answered 429` in the log, `throttled_last_hour` in the
-executor health) and retries the same nonce.
+`MAPI_CLOUDRUN_BACKOFF_BASE_S`, at least the server's `Retry-After` but never more than
+`MAPI_CLOUDRUN_BACKOFF_CAP_S`), counts the answer as an alarm (`ALARM cloudrun-jobs: jobs.run
+answered 429` in the log, `throttled_last_hour` in the executor health) and retries the same
+nonce. When `MAPI_CLOUDRUN_MAX_429_RETRIES` answers in a row are exhausted the run goes back
+to the queue for a new attempt, without using up one of its `MAPI_MAX_INFRA_RETRIES`: a
+throttling storm delays runs, it never fails them. While a dispatcher works through a batch it
+keeps extending the leases of the runs it has not submitted yet, so the reconciler never
+takes over a run whose submit is only slow.
 
 ### Fan-out with `taskCount`
 

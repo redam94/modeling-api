@@ -140,7 +140,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 |---|---|---|
 | `MAPI_DISPATCH_RATE_PER_MINUTE`, `MAPI_DISPATCH_BURST` | `180`, `10` | Token bucket in front of the executor (Cloud Run's `jobs.run` quota) |
 | `MAPI_DISPATCH_BATCH`, `MAPI_DISPATCH_POLL_S` | `10`, `1` | Queued runs leased per pass, and the pause between passes |
-| `MAPI_DISPATCH_LEASE_S` | `120` | How long a dispatcher's lease on a run lasts |
+| `MAPI_DISPATCH_LEASE_S` | `120` | How long a dispatcher's lease on a run lasts; a live dispatcher extends it every third of that while the run waits to be submitted |
 | `MAPI_RECONCILE_INTERVAL_S` | `10` | The reconciler's level-triggered loop |
 | `MAPI_STALL_INTERVALS` | `15` | A run is `stalled` (a warning) after this many progress intervals of silence |
 | `MAPI_COMPLETE_EVENT_GRACE_S` | `60` | How long to wait for a run's `complete` event after the executor reports an exit |

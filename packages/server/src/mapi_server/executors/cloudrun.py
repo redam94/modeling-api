@@ -546,7 +546,10 @@ class CloudRunJobsExecutor:
                     throttled,
                     base=self._backoff_base,
                     cap=self._backoff_cap,
-                    retry_after=exc.retry_after,
+                    # honoured, but capped: one answer must not park every submit for long
+                    retry_after=(
+                        None if exc.retry_after is None else min(exc.retry_after, self._backoff_cap)
+                    ),
                 ) * (1.0 + self._jitter())
                 log.warning(
                     "ALARM cloudrun-jobs: jobs.run answered 429 for run %s (%s in a row, "
