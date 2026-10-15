@@ -73,6 +73,9 @@ class ModelSettings(BaseModel):
 class FitContext:
     """Everything a plugin's ``fit`` may use besides data, settings and fit config.
 
+    ``schema`` is the model's resolved input schema (its template); ``stage_schema`` is the
+    schema of the pipeline stage the data comes from, with every variable and its role.
+
     ``checkpoint_sink`` is an engine-specific sink for segmented fits (for example
     ``mapi_pymc.CheckpointSink``); the runner supplies one that writes to the run prefix.
     ``None`` disables checkpointing.
@@ -87,6 +90,7 @@ class FitContext:
     on_progress: ProgressFn | None = None
     cancel: CancelToken | None = None
     checkpoint_sink: Any | None = None
+    stage_schema: DataSchema | None = None
     rng: np.random.Generator = field(init=False)
 
     def __post_init__(self) -> None:

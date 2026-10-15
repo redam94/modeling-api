@@ -1919,16 +1919,22 @@ version = "0.0.0"
 source = { editable = "packages/sdk-sklearn" }
 dependencies = [
     { name = "mapi-sdk" },
+    { name = "numpy" },
     { name = "scikit-learn" },
+    { name = "scipy" },
     { name = "skops" },
+    { name = "xarray" },
     { name = "xgboost" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "mapi-sdk", editable = "packages/sdk" },
+    { name = "numpy", specifier = ">=2.0" },
     { name = "scikit-learn", specifier = ">=1.6" },
+    { name = "scipy", specifier = ">=1.13" },
     { name = "skops", specifier = ">=0.11" },
+    { name = "xarray", specifier = ">=2025.1" },
     { name = "xgboost", specifier = ">=3.0" },
 ]
 

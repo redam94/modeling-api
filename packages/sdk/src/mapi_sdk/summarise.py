@@ -30,6 +30,7 @@ from mapi_spec.capabilities import (
     ParsedSummary,
     Representation,
     can_aggregate,
+    default_summary,
     parse_summary,
 )
 from mapi_spec.errors import CapabilityError, ErrorCode
@@ -37,6 +38,7 @@ from mapi_spec.errors import CapabilityError, ErrorCode
 __all__ = [
     "REP_DIMS",
     "aggregate",
+    "default_summary_names",
     "hdi",
     "interp_quantile",
     "select_draws",
@@ -297,6 +299,48 @@ _STATS = {
     Representation.MOMENTS: _moment_stats,
     Representation.POINT: _point_stats,
 }
+
+
+def _quantile_name(level: float) -> str | None:
+    """The summary name for quantile ``level`` (``q10``, ``q2_5``), or ``None``."""
+    text = f"{level * 100:.3f}".rstrip("0").rstrip(".")
+    whole, _, frac = text.partition(".")
+    name = f"q{whole}_{frac}" if frac else f"q{whole}"
+    try:
+        parsed = parse_summary(name)
+    except ValueError:
+        return None
+    return name if parsed.level is not None and math.isclose(parsed.level, level) else None
+
+
+def default_summary_names(ds: xr.Dataset, rep: Representation) -> list[str]:
+    """The representation's default summaries, adapted to what ``ds`` can support.
+
+    Quantile outputs only support levels inside their stored grid (never extrapolated),
+    so a default such as ``q5`` is replaced by the lowest stored level (``q95`` by the
+    highest) when the grid does not reach it; ``median`` is kept only if 0.5 is covered.
+    Explicitly requested summaries are never rewritten.
+    """
+    names = default_summary(rep)
+    if rep is not Representation.QUANTILES or "quantile" not in ds.coords:
+        return names
+    levels = np.asarray(ds["quantile"].values, dtype=float)
+    if levels.size == 0:
+        return names
+    lo, hi = float(levels.min()), float(levels.max())
+    out: list[str] = []
+    for name in names:
+        level = parse_summary(name).level
+        level = 0.5 if level is None else level
+        if lo - 1e-9 <= level <= hi + 1e-9:
+            out.append(name)
+            continue
+        if name == "median":
+            continue
+        swap = _quantile_name(lo if level < lo else hi)
+        if swap is not None and swap not in out:
+            out.append(swap)
+    return out or [n for n in (_quantile_name(lo),) if n is not None]
 
 
 def summarise(ds: xr.Dataset, rep: Representation, names: Sequence[str]) -> xr.Dataset:

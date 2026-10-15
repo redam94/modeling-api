@@ -528,3 +528,31 @@ def test_enter_at_a_later_stage_skips_earlier_side_tables(
             registry=registry,
         )
     assert err.value.code is ErrorCode.SIDE_TABLE_COVERAGE
+
+
+def test_fit_context_carries_the_stage_schema(
+    registry: Registry, e33_spec: Callable[..., ModelSpec], panel: tuple[xr.Dataset, xr.Dataset]
+) -> None:
+    """Plugins see the model-stage schema (every variable and its role), not only the template."""
+    from mapi_sdk.models import FitContext, FitOutput
+    from mapi_sdk.testing import toy
+    from mapi_spec.spec import FitConfig
+
+    seen: list[FitContext] = []
+
+    class _Spy(toy.LinearModel):
+        id = "test.spy"
+
+        def fit(self, ds: xr.Dataset, s: Any, cfg: FitConfig, ctx: FitContext) -> FitOutput:
+            seen.append(ctx)
+            return super().fit(ds, s, cfg, ctx)
+
+    reg = registry.copy()
+    reg.register_model(_Spy)
+    data, fx = panel
+    spec = e33_spec(model="test.spy@^1", mode="train_only", metrics="rmse")
+    fit_spec(spec, data, {"fx": fx}, reg)
+    stage = seen[0].stage_schema
+    assert stage is not None and {"spend", "spend_lag", "fourier"} <= set(stage.vars)
+    assert stage.vars["y"].role.value == "target"
+    assert seen[0].schema is not None and "spend" not in seen[0].schema.vars

@@ -45,7 +45,13 @@ from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.schema import check_dataset, infer_schema
 from mapi_sdk.split import SplitResult, split_dataset
 from mapi_sdk.steps import CancelToken
-from mapi_sdk.summarise import aggregate, select_draws, summarise, thin_index
+from mapi_sdk.summarise import (
+    aggregate,
+    default_summary_names,
+    select_draws,
+    summarise,
+    thin_index,
+)
 from mapi_sdk.wire import write_zarr_zip
 
 __all__ = [
@@ -333,6 +339,7 @@ def _fit_from(
         on_progress=hooks.window(*progress),
         cancel=hooks.cancel,
         checkpoint_sink=hooks.checkpoint_sink,
+        stage_schema=rs.stages.get(rs.model_stage),
     )
     try:
         out = env.plugin.fit(model_ds, s, env.spec.model.fit, fctx)
@@ -730,7 +737,11 @@ def score_bundle(
     pred, space, retrans = finish(main.pred)
     pred, flagged = aggregate(pred, rep, _canonical_agg(req.output, binding))
     groups: dict[str, xr.Dataset] = {}
-    names = req.output.summary_for(rep)
+    names = (
+        list(req.output.summary)
+        if req.output.summary is not None
+        else default_summary_names(pred, rep)
+    )
     groups["summary"] = summarise(pred, rep, names)
     if req.output.draws > 0:
         if bundle.thin is None:
