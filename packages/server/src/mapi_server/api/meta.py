@@ -100,6 +100,10 @@ async def list_projects(
 ) -> Page[Project]:
     """Every project the caller can act in, across its tenants (ordered by tenant, id)."""
     rows = [p for p, role in await visible_projects(system, auth) if role is not None]
+    if auth.token is not None:  # a token sees only the project it is bound to
+        rows = [
+            p for p in rows if (p.tenant_id, p.id) == (auth.token.tenant_id, auth.token.project_id)
+        ]
     after = decode_cursor(cursor)
     if after is not None:
         key = (str(after[0]), str(after[1]))

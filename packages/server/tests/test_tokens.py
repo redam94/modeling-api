@@ -68,6 +68,9 @@ async def test_mint_list_use_and_revoke(ctx: ServerContext, client: httpx.AsyncC
         ("acme", ["growth"])
     ]
     assert (await tok.get("/v1/datasets")).status_code == 200  # the token's own project
+    projects = (await tok.get("/v1/projects")).json()["items"]
+    assert [(p["tenant_id"], p["id"]) for p in projects] == [("acme", "growth")]
+    assert len((await web.get("/v1/projects")).json()["items"]) == 1  # ana: growth only
     r = await tok.post("/v1/datasets", json={"name": "x"})
     assert r.status_code == 403 and r.json()["code"] == "FORBIDDEN"  # models:read only
     r = await tok.get("/v1/datasets", headers={PROJECT_HEADER: "acme/other"})
