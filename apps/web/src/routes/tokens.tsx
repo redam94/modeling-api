@@ -420,7 +420,7 @@ function SecretDialog({ created, onClose }: { created: TokenCreated; onClose: ()
             <CopyButton value={secret} label="Copy token" onCopied={() => setAcknowledged(true)} />
           </div>
           <p className="text-xs text-muted-foreground">
-            Use it as <Mono>Authorization: Bearer mapi_…</Mono>. It works in {token.tenant_id}/{token.project_id} until {absoluteTime(token.expires_at)}.
+            Send it as <Mono>Authorization: Bearer mapi_…</Mono>; it works in {token.tenant_id}/{token.project_id} until {absoluteTime(token.expires_at)}.
           </p>
         </div>
         <details className="rounded-md border p-3 text-[13px]">

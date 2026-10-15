@@ -713,7 +713,7 @@ function KillSwitchesTab() {
                 ) : null}
               </p>
             ) : null}
-            <div className="grid gap-5 lg:grid-cols-2">
+            <div className="grid items-start gap-5 lg:grid-cols-2">
               <Card className={cn(!enabled && "border-destructive/40")}>
                 <CardHeader>
                   <div>
@@ -1061,9 +1061,9 @@ function AuditTab() {
       ) : rows.length === 0 ? (
         <EmptyState icon={<ScrollText />} title="No audit events match" />
       ) : (
-        <div className="overflow-x-auto rounded-lg border bg-card [contain:inline-size]">
+        <div className="max-h-[70vh] overflow-auto rounded-lg border bg-card [contain:inline-size]">
           <table className="w-full text-[13px]" aria-label="Audit log">
-            <thead>
+            <thead className="sticky top-0 z-[1] bg-card">
               <tr className="border-b text-left text-xs text-muted-foreground">
                 <th scope="col" className="h-9 px-3 font-medium">Time (UTC)</th>
                 <th scope="col" className="px-3 font-medium">Action</th>

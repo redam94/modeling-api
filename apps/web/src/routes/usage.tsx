@@ -305,7 +305,7 @@ export function UsagePage() {
                   <CardDescription>{tenantScope ? "Every project in the organisation." : "Runs started with an API token; browser and CLI sessions are listed as “Signed-in users”."}</CardDescription>
                 </div>
                 {!tenantScope ? (
-                  <Link to="/tokens" className="text-xs text-muted-foreground hover:text-foreground">
+                  <Link to="/tokens" className="shrink-0 text-xs whitespace-nowrap text-muted-foreground hover:text-foreground">
                     Manage tokens
                   </Link>
                 ) : null}
