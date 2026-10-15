@@ -559,3 +559,14 @@ def test_only_the_orchestrator_holds_the_platform_database_login() -> None:
         block = block[: block.index("}")]
         assert re.search(rf'MAPI_DB_PLATFORM\s*=\s*"{platform}"', block), workload
     assert re.search(r'MAPI_DB_GATEWAY_ROLE\s*=\s*"mapi_gateway"', locals_tf)
+
+
+def test_the_api_identity_only_reads_objects() -> None:
+    """The API never writes or deletes objects (signed PUTs act as url_signer; copies and
+    deletes are the orchestrator's), so the internet-facing identity holds read roles only:
+    it cannot overwrite or delete a tenant's pending uploads."""
+    iam = strip_comments((TF_ROOT / "modules" / "data" / "iam.tf").read_text())
+    grants = re.findall(r'\["(\w+)", "(\w+)", "api"\]', iam)
+    assert grants, "the api has bucket grants"
+    assert all(role in {"reader", "objectViewer"} for _, role in grants), grants
+    assert ("quarantine", "reader") in grants, "stat of an upload by name, no list"

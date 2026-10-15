@@ -2,7 +2,7 @@
 #
 #                 quarantine          bootstrap           runs                bundles             data
 #   orchestrator  objectUser          objectUser          objectUser          creator + viewer    creator + viewer
-#   api           objectUser          -                   objectViewer        objectViewer        objectViewer
+#   api           reader              -                   objectViewer        objectViewer        objectViewer
 #   url_signer    reader + writer     -                   reader + writer     reader              reader
 #                                                         + delete under .../checkpoints/ only
 #   url_uploader  writer              -                   writer              -                   -
@@ -89,7 +89,8 @@ locals {
       ["data", "objectCreator", "orchestrator"],
       ["data", "objectViewer", "orchestrator"],
 
-      ["quarantine", "objectUser", "api"],
+      # stat of an upload by name only: the API never writes or deletes objects
+      ["quarantine", "reader", "api"],
       ["runs", "objectViewer", "api"],
       ["bundles", "objectViewer", "api"],
       ["data", "objectViewer", "api"],
