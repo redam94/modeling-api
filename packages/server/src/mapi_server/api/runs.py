@@ -474,9 +474,15 @@ async def run_logs(
     operation_id="cancel_run",
 )
 async def cancel_run(ctx: Ctx, session: Session, run_id: RunId) -> Run:
-    """Idempotent: ``cancelling``, or the terminal state if the run already finished."""
+    """Idempotent: ``cancelling``, or the terminal state if the run already finished.
+
+    A ``finalizing`` run is left alone (the response shows it still finalizing): its
+    execution is over, and cancelling would only throw away a complete result after the
+    finalizer reserved a version number and copied write-once bundle objects.
+    """
     run = await load_run(session, ctx.scope, run_id, for_update=True)
-    if not RunState(run.state).terminal:
+    state = RunState(run.state)
+    if not state.terminal and state is not RunState.FINALIZING:
         await apply_transition(session, run, RunTrigger.CANCEL, Actor.API)
     return await run_view(session, run)
 

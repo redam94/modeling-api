@@ -106,6 +106,7 @@ describe("run state", () => {
     expect(isTerminal("stalled")).toBe(false);
     expect(isCancellable("cancelling")).toBe(false);
     expect(isCancellable("running")).toBe(true);
+    expect(isCancellable("finalizing")).toBe(false);
     expect(nextResourceClass("S")).toBe("M");
     expect(nextResourceClass("M")).toBe("L");
     expect(nextResourceClass("L")).toBeNull();

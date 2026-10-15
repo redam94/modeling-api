@@ -100,6 +100,10 @@ Rules that every component follows:
   30 minutes without user consent.
 - **Late events.** The events service drops verified events for runs that are already
   terminal. Every terminal state rejects `event`.
+- **Cancelling a `FINALIZING` run is a no-op at the API.** The table allows the edge, but
+  `POST /v1/runs/{id}:cancel` returns the run unchanged: the execution has already finished,
+  and the finalizer may already have reserved a version number and copied write-once bundle
+  objects.
 
 ## Bootstrap
 
