@@ -435,6 +435,13 @@ class Pipeline:
                 attrs["units"] = units
             else:
                 attrs.pop("units", None)
+            freqs = {
+                str(d): schema.dims[str(d)].freq
+                for d in inv.dims
+                if schema is not None and str(d) in schema.dims and schema.dims[str(d)].freq
+            }
+            if freqs:
+                attrs["freq"] = freqs
             attrs["output_space"] = reached
             attrs["retransform"] = label
             inv.attrs = attrs

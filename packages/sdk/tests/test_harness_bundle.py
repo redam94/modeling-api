@@ -450,3 +450,45 @@ def test_schema_mismatch_from_steps_is_reported(
             {"fx": fx},
             registry,
         )
+
+
+def test_enter_at_a_later_stage_skips_earlier_side_tables(
+    registry: Registry,
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    raw_schema: DataSchema,
+) -> None:
+    """A weekly EUR plan enters after ``weekly``: the fx side table is not needed."""
+    data, fx = panel
+    spec = e33_spec(mode="evaluate_then_refit", metrics="rmse")
+    tables = dict(spec.data.side_tables)
+    tables["fx"] = tables["fx"].model_copy(update={"score_policy": ScorePolicy.SUPPLIED})
+    spec = spec.model_copy(update={"data": spec.data.model_copy(update={"side_tables": tables})})
+    b = fit_spec(spec, data, {"fx": fx}, registry, raw_schema=raw_schema)
+    weekly_fit = b.fit_coords["weekly"]["time"].values
+    future = np.array([weekly_fit[-1] + np.timedelta64(7 * k, "D") for k in range(1, 4)])
+    plan = xr.Dataset(
+        {"spend": (("geo", "channel", "time"), np.full((3, 2, 3), 700.0))},
+        coords={"geo": ["NL", "DE", "FR"], "channel": ["tv", "search"], "time": future},
+    )
+    out = score_bundle(
+        b,
+        req(
+            "mode: forecast\nhorizon: {dim: time, periods: 3}\ninputs_stage: weekly\noutput: {names: canonical}\n"
+        ),
+        plan,
+        registry=registry,
+        return_full=True,
+    )
+    pred = out["predictions"].to_dataset()["y_hat"]
+    assert pred.sizes["time"] == 3 and bool(np.isfinite(pred).all())
+    assert pred.attrs["freq"] == {"time": "W-SUN"}
+    assert pred.attrs["output_space"] == "weekly" and pred.attrs["units"] == "EUR"
+    with pytest.raises(MapiError) as err:
+        score_bundle(
+            b,
+            req("mode: forecast\nhorizon: {dim: time, periods: 3}\n"),
+            _future(data),
+            registry=registry,
+        )
+    assert err.value.code is ErrorCode.SIDE_TABLE_COVERAGE
