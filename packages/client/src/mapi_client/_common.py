@@ -164,6 +164,11 @@ class ScoreResult:
     def done(self) -> bool:
         return self.run.state.terminal
 
+    @property
+    def tree_link(self) -> ArtifactLink | None:
+        """The output link holding the result DataTree (first ``*.zarr.zip``)."""
+        return tree_output(self.outputs)
+
     @classmethod
     def from_call(cls, res: ScoreCallResult, tree: xr.DataTree | None = None) -> ScoreResult:
         return cls(run=res.run, outputs=list(res.outputs), tree=tree)

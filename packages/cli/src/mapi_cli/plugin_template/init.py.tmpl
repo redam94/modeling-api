@@ -1,0 +1,12 @@
+"""{{dist}}: model plugin(s) for modeling-api.
+
+``PLUGINS`` is the ``mapi.models`` entry point: every model class listed here is registered
+by the runner (ids must live in your own namespace, ``{{namespace}}.*``; the built-in
+namespaces ``core``, ``mmm``, ``ml``, ``sklearn``, ``ts`` and ``tabular`` are reserved).
+"""
+
+from {{module}}.model import GroupMeanModel, GroupMeanSettings
+
+PLUGINS = [GroupMeanModel]
+
+__all__ = ["PLUGINS", "GroupMeanModel", "GroupMeanSettings"]

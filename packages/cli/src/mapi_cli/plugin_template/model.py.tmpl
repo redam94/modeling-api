@@ -1,0 +1,106 @@
+"""{{plugin_id}}: a baseline model scaffolded by ``mapi plugin init``.
+
+``GroupMeanModel`` predicts each group's training mean of the target (optionally shrunk
+toward the global mean); new groups get the global mean (``pooled``) or zero. It is a
+minimal but complete :class:`~mapi_sdk.models.CustomModel`: replace ``fit``/``score`` with
+your model and keep ``mapi plugin test`` (the contract kit) green.
+
+The platform owns coordinates: binding dataset names to the canonical names below
+(``geo``, ``time``, ``y``), reindexing score data to the fit order, flagging new levels
+(``geo__is_new``), inverse transforms and reverse binding of the outputs.
+"""
+
+from __future__ import annotations
+
+from typing import Any, ClassVar
+
+import numpy as np
+import xarray as xr
+from mapi_sdk.models import (
+    PREDICTIONS,
+    CustomModel,
+    FitContext,
+    FitOutput,
+    Fitted,
+    ModelSettings,
+    ScoreContext,
+    new_level_mask,
+)
+from mapi_spec import Capabilities, Representation
+from mapi_spec.spec import FitConfig, ScoreRequest
+from pydantic import Field
+
+__all__ = ["GroupMeanModel", "GroupMeanSettings"]
+
+GROUP, TIME, TARGET = "geo", "time", "y"
+
+
+class GroupMeanSettings(ModelSettings):
+    """Validated settings; exported as JSON Schema for the editor and the API."""
+
+    shrinkage: float = Field(
+        0.0, ge=0.0, le=1.0, description="Weight of the global mean in each group's level"
+    )
+
+
+class GroupMeanModel(CustomModel[GroupMeanSettings]):
+    id = "{{plugin_id}}"
+    version = "0.1.0"
+    description = "Per-group mean of the target (a baseline to start from)"
+    Settings = GroupMeanSettings
+    capabilities = Capabilities(
+        inference="point",
+        representation=Representation.POINT,
+        score_modes=frozenset({"predict", "forecast", "evaluate"}),
+    )
+    # the data the model accepts, in canonical names: one categorical group dim whose new
+    # levels are pooled, one time dim that may be extended, and a float target
+    schema_template: ClassVar[dict[str, Any]] = {
+        "template": {
+            "dims": {
+                GROUP: {
+                    "kind": "categorical",
+                    "policy": "new_levels",
+                    "new_level_strategy": "pooled",
+                },
+                TIME: {"kind": "time", "policy": "extend"},
+            },
+            "vars": {
+                TARGET: {
+                    "dims": [GROUP, TIME],
+                    "dtype": "float64",
+                    "role": "target",
+                    "missing": "allow",
+                }
+            },
+        }
+    }
+    outputs: ClassVar[dict[str, Any]] = {"y_hat": {"dims": [GROUP, TIME], "units_of": TARGET}}
+    pad_extend = False  # predictions do not depend on the position along time
+
+    def fit(
+        self, ds: xr.Dataset, s: GroupMeanSettings, cfg: FitConfig, ctx: FitContext
+    ) -> FitOutput:
+        y = ds[TARGET]
+        global_level = float(y.mean(skipna=True))
+        level = (1.0 - s.shrinkage) * y.mean(TIME, skipna=True) + s.shrinkage * global_level
+        ctx.progress(1.0, "group means computed")
+        params = xr.Dataset({"level": level, "global_level": ((), global_level)})
+        return FitOutput(groups={"params": params})
+
+    def score(
+        self, fitted: Fitted, ds: xr.Dataset, req: ScoreRequest, ctx: ScoreContext
+    ) -> xr.DataTree:
+        params = fitted.group("params")
+        groups = ds[GROUP].values
+        known = params["level"].reindex({GROUP: groups}).values
+        is_new = np.asarray(new_level_mask(ds, GROUP).values, dtype=bool) | np.isnan(known)
+        fill = 0.0 if ctx.strategy(GROUP) == "zero" else float(params["global_level"])
+        level = np.where(is_new, fill, known)
+        values = np.repeat(level[:, None], ds.sizes[TIME], axis=1)
+        y_hat = xr.DataArray(
+            values,
+            dims=[GROUP, TIME],
+            coords={GROUP: groups, TIME: ds[TIME].values},
+        )
+        return xr.DataTree.from_dict({PREDICTIONS: xr.Dataset({"y_hat": y_hat})})

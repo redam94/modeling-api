@@ -1,0 +1,21 @@
+# {{dist}}
+
+A modeling-api model plugin, scaffolded by `mapi plugin init`.
+
+- `src/{{module}}/model.py`: `GroupMeanModel` (`{{plugin_id}}`), a baseline
+  `CustomModel` predicting each group's mean. Replace `fit` and `score` with your model.
+- `tests/test_contract.py`: the contract kit (`mapi_sdk.testing.check_model`).
+
+```bash
+mapi plugin test            # run the contract kit locally
+pip install -e .            # register the entry point (mapi.models)
+mapi catalog models         # the plugin now appears in the local catalog
+```
+
+Use it from a spec:
+
+```yaml
+model:
+  use: {{plugin_id}}@^0.1
+  settings: {shrinkage: 0.1}
+```
