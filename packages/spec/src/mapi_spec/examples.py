@@ -100,7 +100,7 @@ pipeline:
   - {id: cal,   use: core.calendar@^1, with: {along: time, features: [week_of_year, month]}}
   - {id: logy,  use: core.log1p@^1,   with: {vars: [y]}}
 model:
-  use: sklearn.tabular_regressor@^1
+  use: sklearn.tabular_quantiles@^1   # quantile uncertainty: a manifest declares one representation
   settings:
     estimator: {kind: xgboost.XGBRegressor, params: {n_estimators: 600, max_depth: 6, learning_rate: 0.05}}
     rows: [store, sku, time]

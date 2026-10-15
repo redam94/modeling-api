@@ -155,7 +155,7 @@ MMM: dict[str, Any] = {
     ],
 }
 XGB: dict[str, Any] = {
-    "id": "sklearn.tabular_regressor",
+    "id": "sklearn.tabular_quantiles",
     "version": "1.0.0",
     "capabilities": {
         "inference": "point",
