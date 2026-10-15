@@ -268,6 +268,16 @@ def test_whoami_for_a_token(mapi: Invoke, api: respx.MockRouter, example: Ex) ->
     assert_no_secret(js)
 
 
+def test_a_token_bound_elsewhere_is_flagged(
+    mapi: Invoke, api: respx.MockRouter, example: Ex
+) -> None:
+    api.get(f"{V1}/me").respond(200, json=token_me(example))
+    res = mapi("--url", URL, "--token", TOKEN, "--project", "acme/retail", "whoami")
+    assert res.exit_code == 0 and "bound to acme/growth" in res.stderr
+    ok = mapi("--url", URL, "--token", TOKEN, "--project", "growth", "whoami")
+    assert "bound to" not in ok.stderr
+
+
 def test_whoami_unauthenticated_hints_login(mapi: Invoke, api: respx.MockRouter) -> None:
     api.get(f"{V1}/me").respond(401, json=problem(ErrorCode.UNAUTHENTICATED, "sign in"))
     res = mapi("--url", URL, "whoami")

@@ -40,7 +40,7 @@ from rich.text import Text
 from mapi_cli.output import Output, safe
 from mapi_cli.state import AppState, cli_errors, state
 
-__all__ = ["login", "logout", "use", "whoami"]
+__all__ = ["binding_conflict", "login", "logout", "use", "whoami"]
 
 
 # ------------------------------------------------------------------------------- helpers
@@ -71,6 +71,21 @@ def _who(me: Me) -> str:
     if isinstance(p, TokenPrincipal):
         return f"token {p.id} (owner {p.owner_id})"
     return p.id
+
+
+def binding_conflict(me: Me, project: str | None) -> str | None:
+    """A warning when the API token is bound to another project than the selected one
+    (every project-scoped request would be refused with 403)."""
+    if me.token is None or not project:
+        return None
+    sel = parse_project_selector(project)
+    bound = f"{me.token.tenant_id}/{me.token.project_id}"
+    if sel.project_id == me.token.project_id and sel.tenant_id in (None, me.token.tenant_id):
+        return None
+    return (
+        f"the API token is bound to {bound} but the selected project is {project}: "
+        f"run `mapi use {bound}` or mint a token in {project}"
+    )
 
 
 def _read_token_input() -> str:
@@ -213,6 +228,9 @@ def _report_login(
         "expires_at": session.expires_at.isoformat() if session else None,
         "token": describe_token(cfg.token) if session is None and cfg.token else None,
     }
+    conflict = binding_conflict(me, cfg.project) if me is not None else None
+    if conflict:
+        out.warn(conflict)
     if out.json_mode:
         out.emit_json(doc)
         return
@@ -295,6 +313,9 @@ def whoami(ctx: typer.Context) -> None:
     session = None
     if cfg.token is None and cfg.credentials_file is not None:
         session = CredentialStore(cfg.credentials_file).load(cfg.profile_key)
+    conflict = binding_conflict(me, cfg.project)
+    if conflict:
+        out.warn(conflict)
     if out.json_mode:
         out.emit_json(
             {
