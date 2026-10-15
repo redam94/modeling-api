@@ -340,13 +340,27 @@ and skip otherwise.
 
 | Check | Command | Result |
 |---|---|---|
-| Python suite | `make test` | VERIFY_PYTEST |
-| Lint and import contracts | `make lint` | VERIFY_LINT |
-| Type checks | `make typecheck` | VERIFY_TYPECHECK |
-| Conformance corpus (tiny) | `make conformance` | VERIFY_CONFORMANCE |
-| Web: lint, typecheck, unit, smoke, build | `make web-check` | VERIFY_WEB |
-| Docs | `make docs-build` (MkDocs `--strict`) | VERIFY_DOCS |
-| End to end, M1 and M2, API and browser | `make e2e` | VERIFY_E2E |
+| Python suite | `make test` | 4141 passed, 11 skipped (optional cloud SDKs not installed, Linux-only `prctl`, Debian `cp`, `shellcheck`, the three documented `local-process` conformance skips), 45 deselected (`docker`, `cloud`, `e2e`) |
+| Lint and import contracts | `make lint` | ruff and format clean (569 files); import contracts 4 kept, 0 broken |
+| Type checks | `make typecheck` | mypy clean on every package (`--strict` for spec, gcs-shim, runner, server, client and cli) |
+| Conformance corpus (tiny) | `make conformance` | 7/7 fixtures passed (e02, c08, e24, xgb and sklearn store demand, e33, pymc-marketing) in 77 s |
+| Web: lint, typecheck, unit, smoke, build | `make web-check` | web: 146 Vitest tests; plot sandbox: 60; Playwright smoke: 26; both production builds OK |
+| Docs | `make docs-build` (MkDocs `--strict`) | built with no warnings |
+| End to end, M1 and M2, API and browser | `make e2e` | API suites 28 passed, 1 skipped (the opt-in burst): M1 E33 stack, corpus on the stack, the docs walkthroughs, M2 tenancy. Browser `@e2e` suites 14 passed: the stack smoke tests, the M1 flow and the M2 flow |
+
+## Known gaps (not cloud-specific)
+
+- **Executor conformance reports are not stored.** The suite computes a
+  `ConformanceReport` per backend and checks `passed_for`, but the server never records one.
+  As a result:
+    - `GET /v1/admin/executors` always answers `conformance_passed: false` with "no executor
+      conformance report has been recorded";
+    - enabling an executor is not gated on a stored report at run time (plan §8.4).
+
+    Placement by trust tier *is* enforced: `verified` and `public` tenants are refused on
+    `local-process`.
+- **The nightly workflow has not run yet.** `.github/workflows/nightly.yml` has no remote
+  to run on here, and its gVisor job (installing `runsc` on the runner) is untested.
 
 ## What remains for real GCP
 
