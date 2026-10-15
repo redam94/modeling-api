@@ -1,7 +1,10 @@
 """``docker`` / ``docker-gvisor``: run the supervisor in a locked-down container (plan §8.4).
 
-Each attempt is a fresh container from the configured base image with: no network (or an
-*internal* network holding only the GCS shim), a read-only root filesystem with a size-capped
+Each attempt is a fresh container from the base image that ships the run's model plugin
+(``images`` maps the plugin namespace from :data:`~mapi_spec.executor.PLUGIN_LABEL` to an
+image; everything else uses ``image``) with: no network (only usable with a non-network
+bootstrap transport), the GCS shim's network namespace (``container:<shim>``, the compose
+setup) or an internal network holding only the shim, a read-only root filesystem with a size-capped
 ``/tmp`` tmpfs, all capabilities dropped, ``no-new-privileges``, a non-root user, pids/CPU/
 memory limits from the resource class, and optionally the gVisor runtime (``runsc``).
 Identifiers travel in the environment only; the container's stdout is the event pipe.
@@ -14,12 +17,13 @@ import asyncio
 import contextlib
 import logging
 import threading
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Mapping
 from datetime import datetime
 from typing import Any
 
 from mapi_spec._types import Duration
 from mapi_spec.executor import (
+    PLUGIN_LABEL,
     ExecState,
     ExecStatus,
     ExecutorCaps,
@@ -72,6 +76,7 @@ class DockerExecutor:
         *,
         image: str,
         bootstrap_url_template: str,
+        images: Mapping[str, str] | None = None,
         exec_token: str | None = None,
         command: list[str] | None = None,
         network: str = "none",
@@ -84,6 +89,7 @@ class DockerExecutor:
         RunnerEnv(run_id="probe", nonce="0" * 64, bootstrap_url=bootstrap_url_template)
         self.name = "docker-gvisor" if gvisor else "docker"
         self._image = image
+        self._images = dict(images or {})
         self._template = bootstrap_url_template
         self._token = exec_token
         self._command = command
@@ -131,6 +137,10 @@ class DockerExecutor:
             checkpoint_storage=True,
         )
 
+    def image_for(self, rs: RunSubmit) -> str:
+        """The base image that ships the run's plugin (the default for plugin-less runs)."""
+        return self._images.get(rs.labels.get(PLUGIN_LABEL, ""), self._image)
+
     def container_options(self, rs: RunSubmit, nonce: str) -> dict[str, Any]:
         """Keyword arguments for ``containers.run`` (pure; unit-tested without a daemon)."""
         spec = RESOURCE_CLASSES[rs.resource_class]
@@ -140,7 +150,7 @@ class DockerExecutor:
         env["PYTHONUNBUFFERED"] = "1"
         scratch = spec.scratch_bytes or 1024**3
         opts: dict[str, Any] = {
-            "image": self._image,
+            "image": self.image_for(rs),
             "environment": env,
             "detach": True,
             "network_mode": self._network,

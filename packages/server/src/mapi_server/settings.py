@@ -28,7 +28,24 @@ from mapi_spec.storage import Buckets
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
-__all__ = ["ExecutorName", "ObjectStoreKind", "Profile", "Settings", "local_image_digest"]
+from mapi_server import __version__
+
+__all__ = [
+    "DEFAULT_DOCKER_IMAGES",
+    "ExecutorName",
+    "ObjectStoreKind",
+    "Profile",
+    "Settings",
+    "local_image_digest",
+]
+
+DEFAULT_DOCKER_IMAGES: dict[str, str] = {
+    "mmm": f"mapi/base-bayes:{__version__}",
+    "tabular": f"mapi/base-bayes:{__version__}",
+    "sklearn": f"mapi/base-ml:{__version__}",
+    "ts": f"mapi/base-forecast:{__version__}",
+}
+"""Plugin namespace → the runner image ``make docker-build`` tags that ships it."""
 
 
 class Profile(StrEnum):
@@ -133,10 +150,19 @@ class Settings(BaseSettings):
         default_factory=lambda: _default_runner_command(),
         description="argv of the supervisor (shell-quoted string in the environment)",
     )
-    docker_image: str = "mapi/base-bayes:local"
+    docker_image: str = Field(
+        f"mapi/base-bayes:{__version__}",
+        description="Runner image for runs without a mapped plugin (ingest, describe, ...)",
+    )
+    docker_images: dict[str, str] = Field(
+        default_factory=lambda: dict(DEFAULT_DOCKER_IMAGES),
+        description="Plugin namespace → runner image (JSON in the environment)",
+    )
     docker_network: str = Field(
         "none",
-        description="'none' (no network) or an internal network that only contains the shim",
+        description="Network of run containers: 'container:<gcs-shim container>' (share the "
+        "shim's namespace, so 127.0.0.1:4443 works) or an internal network holding only the "
+        "shim. 'none' is refused while the bootstrap URL is HTTP (nothing would be reachable).",
     )
     docker_runtime_gvisor: str = "runsc"
     executor_workdir: Path | None = None

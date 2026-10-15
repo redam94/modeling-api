@@ -571,8 +571,21 @@ class TestCompose:
             (svc, v) for svc, spec in data["services"].items() for v in spec.get("volumes", [])
         ]
         assert mounts == [("worker", "/var/run/docker.sock:/var/run/docker.sock")]
-        assert data["services"]["worker"]["environment"]["MAPI_EXECUTOR"] == "docker"
+        worker = data["services"]["worker"]
+        env = worker["environment"]
+        assert env["MAPI_EXECUTOR"] == "docker"
         assert data["services"]["postgres"]["ports"] == ["127.0.0.1:5432:5432"]
+        # run containers join the shim's network namespace (the bootstrap and signed URLs
+        # point at 127.0.0.1:4443); --network none could not fetch the bootstrap object
+        shim = data["services"]["gcs-shim"]["container_name"]
+        assert env["MAPI_DOCKER_NETWORK"] == f"container:{shim}"
+        # the images `make docker-build` tags, chosen per plugin
+        assert env["MAPI_DOCKER_IMAGE"] == "mapi/base-bayes:${MAPI_VERSION:-0.1.0}"
+        images = json.loads(env["MAPI_DOCKER_IMAGES"])
+        assert images["ts"] == "mapi/base-forecast:${MAPI_VERSION:-0.1.0}"
+        assert images["sklearn"] == "mapi/base-ml:${MAPI_VERSION:-0.1.0}"
+        # the worker keeps the runner-capable mapi/worker image (docker SDK, uv.lock digest)
+        assert "image" not in worker and "build" not in worker
 
 
 # ================================================================================ .env.example

@@ -21,13 +21,14 @@ import asyncio
 import contextlib
 import logging
 import os
+import re
 import socket
 import time
 from datetime import timedelta
 
 from mapi_spec._types import Duration
 from mapi_spec.errors import ErrorCode, MapiError, Problem
-from mapi_spec.executor import Executor, Handle, RunKind, RunSubmit
+from mapi_spec.executor import PLUGIN_LABEL, Executor, Handle, RunKind, RunSubmit
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger, new_hmac_key, new_nonce
 from mapi_spec.storage import NotFound, bootstrap_key
@@ -41,6 +42,9 @@ from mapi_server.services.runs import apply_transition, now
 from mapi_server.services.runspec import build_runspec
 
 __all__ = ["Dispatcher", "TokenBucket"]
+
+_RESERVED_LABEL_PREFIX = "mapi.dev/"
+_NAMESPACE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 
 log = logging.getLogger(__name__)
 
@@ -196,7 +200,7 @@ class Dispatcher:
                 kind=RunKind(run.kind),
                 resource_class=ResourceClass(run.resource_class),
                 timeout=Duration(run.timeout_s),
-                labels={k: str(v)[:63] for k, v in list(run.labels.items())[:64]},
+                labels=await self._labels(run),
             )
             handle = await self.executor.submit(rs, att.nonce)
         except asyncio.CancelledError:
@@ -207,6 +211,35 @@ class Dispatcher:
             with contextlib.suppress(Exception):
                 handle = await self.executor.adopt(att.nonce)
         await self._record(run_id, attempt_no, att.nonce, handle, error)
+
+    async def _labels(self, run: m.Run) -> dict[str, str]:
+        """The run's labels for the executor, plus :data:`PLUGIN_LABEL` (platform-set only)."""
+        labels = {
+            k: str(v)[:63]
+            for k, v in list(run.labels.items())[:63]
+            if not k.startswith(_RESERVED_LABEL_PREFIX)
+        }
+        plugin = await self._plugin(run)
+        if plugin:
+            labels[PLUGIN_LABEL] = plugin
+        return labels
+
+    async def _plugin(self, run: m.Run) -> str | None:
+        """Namespace of the model plugin the run executes (``ts`` for ``ts.hsgp_trend@1``)."""
+        ref: object = None
+        async with self.ctx.db.session() as session:
+            if run.spec_id is not None and run.spec_revision is not None:
+                rev = await session.get(m.SpecRevision, (run.spec_id, run.spec_revision))
+                if rev is not None and rev.resolved:
+                    ref = (rev.resolved.get("model") or {}).get("resolved")
+            elif run.model_version_id is not None:
+                mv = await session.get(m.ModelVersion, run.model_version_id)
+                if mv is not None:
+                    ref = (mv.lineage or {}).get("plugin")
+        if not isinstance(ref, str) or "." not in ref:
+            return None
+        namespace = ref.split(".", 1)[0]
+        return namespace if _NAMESPACE.match(namespace) else None
 
     async def _verify_bundles(self, run: m.Run) -> None:
         async with self.ctx.db.session() as session:

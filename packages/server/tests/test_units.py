@@ -19,7 +19,7 @@ from mapi_server.services.signing import SIGNATURE_ALG, BundleSigner
 from mapi_server.settings import Settings, local_image_digest
 from mapi_server.storage import MemoryObjectStore, list_all
 from mapi_spec._types import Duration
-from mapi_spec.executor import ExecState, Isolation, RunKind, RunSubmit
+from mapi_spec.executor import PLUGIN_LABEL, ExecState, Isolation, RunKind, RunSubmit
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import (
     Actor,
@@ -238,6 +238,49 @@ def test_docker_container_options_lock_the_sandbox_down() -> None:
     assert gopts["runtime"] == "runsc" and gopts["network_mode"] == "sb"
     assert gv.name == "docker-gvisor" and gv.caps().isolation is Isolation.GVISOR
     assert not gv.caps().egress_enforced
+
+
+def test_docker_image_is_chosen_per_plugin() -> None:
+    ex = DockerExecutor(
+        image="mapi/base-bayes:9",
+        images={"ts": "mapi/base-forecast:9", "sklearn": "mapi/base-ml:9"},
+        bootstrap_url_template=TEMPLATE,
+    )
+
+    def image(labels: dict[str, str]) -> str:
+        rs = RunSubmit(run_id="run_1", kind=RunKind.FIT, labels=labels)
+        return str(ex.container_options(rs, "a" * 64)["image"])
+
+    assert image({PLUGIN_LABEL: "ts"}) == "mapi/base-forecast:9"
+    assert image({PLUGIN_LABEL: "sklearn"}) == "mapi/base-ml:9"
+    assert image({PLUGIN_LABEL: "mmm"}) == "mapi/base-bayes:9"  # not mapped: the default
+    assert image({}) == "mapi/base-bayes:9"  # ingest / describe
+
+
+def test_docker_settings_default_to_the_built_images() -> None:
+    from mapi_server import __version__
+    from mapi_server.executors import ExecutorRefused, build_executor
+    from mapi_server.settings import ExecutorName
+
+    s = Settings(database_url="postgresql://x/y")
+    assert s.docker_image == f"mapi/base-bayes:{__version__}"  # what `make docker-build` tags
+    assert s.docker_images == {
+        "mmm": f"mapi/base-bayes:{__version__}",
+        "tabular": f"mapi/base-bayes:{__version__}",
+        "sklearn": f"mapi/base-ml:{__version__}",
+        "ts": f"mapi/base-forecast:{__version__}",
+    }
+    # --network none cannot reach the HTTP bootstrap URL: refuse at start, not per run
+    with pytest.raises(ExecutorRefused, match="MAPI_DOCKER_NETWORK"):
+        build_executor(Settings(database_url="postgresql://x/y", executor=ExecutorName.DOCKER))
+    ok = build_executor(
+        Settings(
+            database_url="postgresql://x/y",
+            executor=ExecutorName.DOCKER,
+            docker_network="container:mapi-gcs-shim",
+        )
+    )
+    assert isinstance(ok, DockerExecutor)
 
 
 async def test_docker_executor_lifecycle_with_a_fake_client() -> None:

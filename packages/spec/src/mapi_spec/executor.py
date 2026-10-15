@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from enum import IntEnum, StrEnum
-from typing import Protocol, runtime_checkable
+from typing import Final, Protocol, runtime_checkable
 
 from pydantic import Field, JsonValue, field_validator
 
@@ -20,6 +20,7 @@ from mapi_spec.errors import Problem
 from mapi_spec.resources import ResourceClass
 
 __all__ = [
+    "PLUGIN_LABEL",
     "ExecState",
     "ExecStatus",
     "Executor",
@@ -33,6 +34,11 @@ __all__ = [
 ]
 
 _RUN_ID = r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$"
+
+PLUGIN_LABEL: Final = "mapi.dev/plugin"
+""":attr:`RunSubmit.labels` key the dispatcher sets to the model plugin's namespace (``mmm``,
+``ts``, ``sklearn``, ...) so an executor can pick the base image that ships the plugin. Users
+cannot set ``mapi.dev/`` labels on a submission."""
 
 
 class Isolation(IntEnum):

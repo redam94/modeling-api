@@ -15,7 +15,7 @@ from mapi_server.services.reconciler import Reconciler
 from mapi_server.services.runs import apply_transition, load_run, now
 from mapi_server_testkit.builders import queued_fit, simulate_outputs
 from mapi_server_testkit.fake_executor import FakeExecutor
-from mapi_spec.executor import ExecState, ExecStatus, Handle, RunSubmit
+from mapi_spec.executor import PLUGIN_LABEL, ExecState, ExecStatus, Handle, RunSubmit
 from mapi_spec.run import (
     Actor,
     ErrorPayload,
@@ -81,6 +81,7 @@ async def test_dispatch_writes_intent_row_and_bootstrap_before_submit(
     assert seen["bootstrap"] is not None, "the RunSpec must exist before the executor call"
     rs = seen["rs"]
     assert isinstance(rs, RunSubmit) and rs.payload == {}  # nothing secret travels in submit
+    assert rs.labels[PLUGIN_LABEL] == "ts"  # the executor picks the base image by plugin
     att = await _attempt(ctx, run_id)
     assert att.nonce == nonce and att.status == "submitted" and att.handle is not None
     run = await _state(ctx, run_id)
