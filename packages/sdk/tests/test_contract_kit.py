@@ -397,3 +397,159 @@ def test_output_space_covers_outputs_that_inherit_the_target(
     result = report.get("output_space_and_units")
     assert result.passed and not result.skipped, report.summary()
     assert "y_hat in weekly (EUR)" in result.detail
+
+
+# ------------------------------------------------------------- typed errors on extend dims
+
+
+def _panel_template(time_kind: str, max_extension: int | None = None) -> dict[str, Any]:
+    time: dict[str, Any] = {"kind": time_kind, "policy": "extend"}
+    if max_extension is not None:
+        time["max_extension"] = max_extension
+    return {
+        "template": {
+            "dims": {
+                "geo": {
+                    "kind": "categorical",
+                    "policy": "new_levels",
+                    "new_level_strategy": "pooled",
+                },
+                "time": time,
+            },
+            "vars": {
+                "y": {
+                    "dims": ["geo", "time"],
+                    "dtype": "float64",
+                    "role": "target",
+                    "missing": "allow",
+                }
+            },
+        }
+    }
+
+
+class _IntTime(toy.LinearModel):
+    """The toy linear model over an integer extend dim (observation index)."""
+
+    id = "test.inttime"
+    schema_template = _panel_template("integer")
+
+
+class _Bounded(toy.LinearModel):
+    """The toy linear model whose time dim supports at most 6 future periods (C08-style)."""
+
+    id = "test.bounded"
+    schema_template = _panel_template("time", max_extension=6)
+
+
+INT_SPEC = """
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: int-panel, project: kit}
+data:
+  dataset: dataset://kit/int_panel@latest
+  bind: {dims: {geo: geo, time: t}, vars: {y: y}}
+  split: {kind: time_holdout, dim: time, last: 4}
+pipeline:
+  - {id: scale_x, use: toy.scale@^1, with: {vars: [x], over: [time], unseen_levels: pooled}}
+model:
+  use: test.inttime@^1
+  fit: {mode: train_only, seed: 3}
+evaluate: {metrics: [rmse]}
+"""
+
+TYPED = ["manifest", "fit", "extend_typed_errors"]
+
+
+def test_extend_errors_cover_integer_dims(registry: Registry) -> None:
+    from mapi_sdk.schema import infer_schema
+
+    rng = np.random.default_rng(1)
+    data = xr.Dataset(
+        {
+            "y": (("geo", "t"), rng.uniform(1, 2, (3, 24))),
+            "x": (("geo", "t"), rng.uniform(0, 1, (3, 24))),
+        },
+        coords={"geo": ["a", "b", "c"], "t": np.arange(100, 148, 2)},  # step 2
+    )
+    schema = infer_schema(data, targets=["y"], policies={"t": "extend"})
+    fixture = ModelFixture(spec=INT_SPEC, data=data, raw_schema=schema, registry=registry)
+    report = check_model(_IntTime, fixture, checks=TYPED)
+    result = report.get("extend_typed_errors")
+    assert result.passed and not result.skipped, report.summary()
+    assert "int64" in result.detail and "NON_CONTIGUOUS_EXTENSION" in result.detail
+
+
+def _toy_fixture(
+    spec: ModelSpec, panel: tuple[xr.Dataset, xr.Dataset], schema: DataSchema, reg: Registry
+) -> ModelFixture:
+    data, fx = panel
+    return ModelFixture(
+        spec=spec, data=data, side_tables={"fx": fx}, raw_schema=schema, registry=reg
+    )
+
+
+def test_horizon_beyond_max_extension_is_a_typed_error(
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    raw_schema: DataSchema,
+    registry: Registry,
+) -> None:
+    spec = e33_spec(model="test.bounded@^1", mode="train_only", metrics="rmse")
+    report = check_model(
+        _Bounded,
+        _toy_fixture(spec, panel, raw_schema, registry),
+        checks=["manifest", "fit", "horizon_exceeds_fit"],
+    )
+    result = report.get("horizon_exceeds_fit")
+    assert result.passed and not result.skipped, report.summary()
+    assert "HORIZON_EXCEEDS_FIT for 7 periods" in result.detail
+    # without max_extension the check does not apply
+    plain = check_model(
+        toy.LinearModel,
+        _toy_fixture(e33_spec(model="toy.linear@^1", metrics="rmse"), panel, raw_schema, registry),
+        checks=["manifest", "fit", "horizon_exceeds_fit", "recursive_unsupported"],
+    )
+    assert plain.get("horizon_exceeds_fit").skipped
+    assert plain.get("recursive_unsupported").skipped
+
+
+def test_forecast_without_a_future_covariate_is_a_typed_error(
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    raw_schema: DataSchema,
+    registry: Registry,
+) -> None:
+    spend = raw_schema.vars["spend_local"].model_copy(update={"future_required": True})
+    schema = raw_schema.model_copy(update={"vars": {**raw_schema.vars, "spend_local": spend}})
+    spec = e33_spec(model="toy.linear@^1", mode="train_only", metrics="rmse")
+    report = check_model(
+        toy.LinearModel,
+        _toy_fixture(spec, panel, schema, registry),
+        checks=["manifest", "fit", "missing_future_covariate"],
+    )
+    result = report.get("missing_future_covariate")
+    assert result.passed and not result.skipped, report.summary()
+    assert "spend_local" in result.detail and "MISSING_FUTURE_COVARIATE" in result.detail
+
+
+def test_horizon_longer_than_a_target_lag_is_a_typed_error(
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    raw_schema: DataSchema,
+    registry: Registry,
+) -> None:
+    doc = e33_spec(model="toy.linear@^1", mode="train_only", metrics="rmse").model_dump(
+        mode="json", by_alias=True, exclude_unset=True
+    )
+    lags = next(s for s in doc["pipeline"] if s["id"] == "lags")
+    lags["with"] = {"vars": ["y"], "along": "time", "within": ["geo"], "lags": [4, 5], "fill": 0.0}
+    spec = ModelSpec.model_validate(doc)
+    report = check_model(
+        toy.LinearModel,
+        _toy_fixture(spec, panel, raw_schema, registry),
+        checks=["manifest", "fit", "recursive_unsupported"],
+    )
+    result = report.get("recursive_unsupported")
+    assert result.passed and not result.skipped, report.summary()
+    assert "horizon of 5 (minimum target lag 4)" in result.detail

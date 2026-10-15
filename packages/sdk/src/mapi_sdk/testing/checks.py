@@ -33,7 +33,7 @@ from mapi_spec.capabilities import (
 from mapi_spec.effects import StepKind, apply_effect
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.loader import load_model_spec
-from mapi_spec.schema import DataSchema, DimPolicy
+from mapi_spec.schema import DataSchema, DimPolicy, DimSpec
 from mapi_spec.spec import AsOfSplit, ModelSpec, ScorePolicy, ScoreRequest, TimeHoldoutSplit
 
 from mapi_sdk._util import dtype_family
@@ -480,6 +480,7 @@ def _request(
     mode: str = "predict",
     *,
     horizon_dim: str | None = None,
+    periods: int = 1,
     interventions: list[dict[str, Any]] | None = None,
     **output: Any,
 ) -> ScoreRequest:
@@ -496,7 +497,7 @@ def _request(
     if mode in ("evaluate", "filter"):
         doc["data"] = "dataset://contract/kit@v1"
     if horizon_dim is not None:
-        doc["horizon"] = {"dim": horizon_dim, "periods": 1}
+        doc["horizon"] = {"dim": horizon_dim, "periods": periods}
     if interventions:
         doc["interventions"] = interventions
     return ScoreRequest.model_validate(doc)
@@ -516,8 +517,11 @@ def check_model(
     checks: Sequence[str] | None = None,
 ) -> ContractReport:
     """Run the model contract checks: fit, bundle round trip, coordinate handling, typed
-    errors, context-window equivalence, evaluate path == score path, output space,
-    aggregation legality, additive contributions, no pickle and seed determinism."""
+    errors for every dim policy (unseen levels; gaps and out-of-range coords on datetime and
+    integer extend dims; horizons past ``max_extension``; forecasts missing a future-required
+    covariate; horizons longer than a target lag), unsupported modes, context-window
+    equivalence, evaluate path == score path, output space, aggregation legality, additive
+    contributions, no pickle and seed determinism."""
     reg = (fixture.registry or default_registry()).copy()
     reg.register_model(plugin, replace=True)
     spec = fixture.model_spec()
@@ -747,16 +751,10 @@ def check_model(
                 )
         return "; ".join(notes)
 
-    def c_extend_errors() -> str:
-        tdim = raw_time_dim()
-        if tdim is None:
-            raise _Skip("no extend dim at the raw stage")
-        coords = data[tdim].values
-        if coords.dtype.kind != "M" or len(coords) < 4:
-            raise _Skip("extend checks need a datetime dim")
-        n = len(coords)
-
-        def shifted(values: np.ndarray, periods: int) -> np.ndarray:
+    def shift_labels(tdim: str, values: np.ndarray, periods: int) -> np.ndarray:
+        """``values`` (labels of raw extend dim ``tdim``) moved ``periods`` periods along."""
+        coords = np.asarray(data[tdim].values)
+        if coords.dtype.kind == "M":
             # calendar frequencies (MS, QS, ...) have no fixed step: shift by whole periods
             freq = raw_time_freq()
             if freq is not None:
@@ -765,14 +763,115 @@ def check_model(
                     [np.datetime64(pd.Timestamp(v) + periods * offset, "ns") for v in values]
                 )
             return np.asarray(values + (coords[1] - coords[0]) * periods)
+        diffs = np.diff(np.unique(coords))
+        step = diffs[diffs > 0].min() if diffs.size else 1
+        return np.asarray(values + step * periods, dtype=coords.dtype)
 
+    def extend_labels() -> tuple[str, np.ndarray]:
+        tdim = raw_time_dim()
+        if tdim is None:
+            raise _Skip("no extend dim at the raw stage")
+        coords = np.asarray(data[tdim].values)
+        if coords.dtype.kind not in "Miu":
+            raise _Skip(f"extend dim {tdim!r} has neither datetime nor integer labels")
+        if len(coords) < 4:
+            raise _Skip(f"extend dim {tdim!r} has fewer than 4 labels")
+        return tdim, coords
+
+    def c_extend_errors() -> str:
+        tdim, coords = extend_labels()
+        n = len(coords)
         gap = data.isel({tdim: slice(n // 2, None)}).assign_coords(
-            {tdim: shifted(coords[n // 2 :], n + 30)}
+            {tdim: shift_labels(tdim, coords[n // 2 :], n + 30)}
         )
         notes = [_expect_code(ErrorCode.NON_CONTIGUOUS_EXTENSION, lambda: score(_request(), gap))]
-        before = data.isel({tdim: slice(0, 3)}).assign_coords({tdim: shifted(coords[:3], -400)})
+        before = data.isel({tdim: slice(0, 3)}).assign_coords(
+            {tdim: shift_labels(tdim, coords[:3], -400)}
+        )
         notes.append(_expect_code(ErrorCode.COORD_NOT_ALLOWED, lambda: score(_request(), before)))
-        return "; ".join(notes)
+        return f"{tdim!r} ({coords.dtype}): " + "; ".join(notes)
+
+    def model_view() -> DataSchema | None:
+        """Model-stage schema overlaid with the model's input schema (as the CoordPlan sees)."""
+        rs = fit_once().resolved
+        final, inp = rs.stages.get(rs.model_stage), rs.model.input_schema
+        if final is None or inp is None:
+            return inp if final is None else final
+        return final.model_copy(
+            update={"dims": {**final.dims, **inp.dims}, "vars": {**final.vars, **inp.vars}}
+        )
+
+    def horizon_dim() -> tuple[str, DimSpec]:
+        """The (canonical) extend dim a forecast horizon runs along."""
+        if "forecast" not in caps.score_modes:
+            raise _Skip("the model does not forecast")
+        view = model_view()
+        dims = view.dims if view is not None else {}
+        split = spec.data.split
+        preferred = split.forecast_dim if split is not None else None
+        extend = [n for n, d in dims.items() if d.policy is DimPolicy.EXTEND]
+        if not extend:
+            raise _Skip("the model has no extend dim to forecast along")
+        name = preferred if preferred in extend else extend[0]
+        return name, dims[name]
+
+    def c_horizon() -> str:
+        hdim, d = horizon_dim()
+        if d.max_extension is None:
+            raise _Skip(f"extend dim {hdim!r} declares no max_extension")
+        limit = d.max_extension
+        over = _request("forecast", horizon_dim=hdim, periods=limit + 1)
+        note = _expect_code(ErrorCode.HORIZON_EXCEEDS_FIT, lambda: score(over, None))
+        try:  # the boundary itself must be accepted (other errors, e.g. covariates, are fine)
+            score(_request("forecast", horizon_dim=hdim, periods=limit), None)
+        except MapiError as exc:
+            if exc.code is ErrorCode.HORIZON_EXCEEDS_FIT:
+                raise AssertionError(
+                    f"a horizon of max_extension={limit} along {hdim!r} was rejected"
+                ) from exc
+        return f"{note} for {limit + 1} periods along {hdim!r}; {limit} accepted"
+
+    def c_future_covariates() -> str:
+        hdim, _ = horizon_dim()
+        stage = fit_once().resolved.stages.get("raw")
+        if stage is None:
+            raise _Skip("no raw stage schema")
+        view = model_view()
+        required = {n for n, v in stage.vars.items() if v.future_required}
+        if view is not None:
+            required |= {n for n, v in view.vars.items() if v.future_required and n in stage.vars}
+        required -= set(stage.targets)
+        names = [binding_dim(n) for n in sorted(required) if binding_dim(n) in data]
+        if not names:
+            raise _Skip("no future-required covariates")
+        tdim, _ = extend_labels()
+        w = window()
+        k = int(w.sizes[tdim])
+        # a contiguous future payload: the last k rows moved k periods ahead, targets dropped
+        future = w.assign_coords({tdim: shift_labels(tdim, np.asarray(w[tdim].values), k)})
+        targets = [binding_dim(t) for t in stage.targets]
+        future = future.drop_vars([t for t in targets if t in future])
+        req = _request("forecast", horizon_dim=hdim)
+        note = _expect_code(
+            ErrorCode.MISSING_FUTURE_COVARIATE, lambda: score(req, future.drop_vars(names[0]))
+        )
+        return f"forecast without {names[0]!r}: {note}"
+
+    def c_recursive() -> str:
+        hdim, _ = horizon_dim()
+        if "recursion" in caps.owns:
+            raise _Skip("the model owns recursion")
+        lags = [
+            st.context.min_lag if st.context.min_lag is not None else 1
+            for st in fit_once().resolved.steps
+            if st.depends_on_target and st.context is not None and st.context.along == hdim
+        ]
+        if not lags:
+            raise _Skip(f"no step lags the target along {hdim!r}")
+        periods = min(lags) + 1
+        req = _request("forecast", horizon_dim=hdim, periods=periods)
+        note = _expect_code(ErrorCode.RECURSIVE_UNSUPPORTED, lambda: score(req, None))
+        return f"{note} for a horizon of {periods} (minimum target lag {min(lags)})"
 
     def c_modes() -> str:
         unsupported = [
@@ -946,6 +1045,9 @@ def check_model(
         ("subset_scoring", c_subset),
         ("new_level_policies", c_new_levels),
         ("extend_typed_errors", c_extend_errors),
+        ("horizon_exceeds_fit", c_horizon),
+        ("missing_future_covariate", c_future_covariates),
+        ("recursive_unsupported", c_recursive),
         ("unsupported_mode", c_modes),
         ("context_window_equivalence", c_context_window),
         ("evaluate_path_equals_score_path", c_evaluate_path),
