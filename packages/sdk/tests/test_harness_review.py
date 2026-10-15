@@ -175,3 +175,50 @@ def test_pinned_side_tables_cannot_be_replaced_at_score(
     ref = score_bundle(prod, req(), window, registry=registry)["summary"].to_dataset()
     other = score_bundle(prod, req(), window, side_tables={"fx": fx * 5}, registry=registry)
     xr.testing.assert_identical(ref, other["summary"].to_dataset())
+
+
+# ------------------------------------------------------ statistics-3 (unsorted score coords)
+
+LAG_SPEC = """
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: lagx, project: growth}
+data:
+  dataset: dataset://growth/sales@latest
+pipeline:
+  - {id: lags, use: toy.lag@^1, with: {vars: [x], along: time, within: [geo], lags: [1, 2]}}
+model:
+  use: toy.linear@^1
+  settings: {features: [x_lag]}
+  fit: {mode: train_only, seed: 1}
+"""
+
+FORECAST_4 = "mode: forecast\nhorizon: {dim: time, periods: 4}\noutput: {names: canonical}\n"
+
+
+def _lag_panel(weeks: int = 30, extra: int = 4) -> xr.Dataset:
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(0)
+    time = pd.date_range("2024-01-07", periods=weeks + extra, freq="W-SUN").as_unit("ns")
+    x = rng.uniform(0, 1, (3, weeks + extra))
+    y = 1 + 2 * np.roll(x, 1, axis=1) + 0.01 * rng.standard_normal(x.shape)
+    return xr.Dataset(
+        {"y": (("geo", "time"), y), "x": (("geo", "time"), x)},
+        coords={"geo": ["a", "b", "c"], "time": time},
+    )
+
+
+def test_unsorted_score_coords_are_ordered_before_the_pipeline(registry: Registry) -> None:
+    full = _lag_panel()
+    bundle = fit_spec(load_model_spec(LAG_SPEC), full.isel(time=slice(0, 30)), None, registry)
+    fut = full.isel(time=slice(30, None)).drop_vars("y")
+    a = score_bundle(bundle, req(FORECAST_4), fut, registry=registry)["summary"].to_dataset()
+    shuffled = fut.isel(time=[3, 1, 2, 0])
+    b = score_bundle(bundle, req(FORECAST_4), shuffled, registry=registry)["summary"].to_dataset()
+    xr.testing.assert_allclose(a["y_hat"], b["y_hat"].sel(time=a["time"]))
+    dup = fut.isel(time=[0, 0, 1, 2])
+    with pytest.raises(MapiError) as err:
+        score_bundle(bundle, req(FORECAST_4), dup, registry=registry)
+    assert err.value.code is ErrorCode.COORD_NOT_ALLOWED

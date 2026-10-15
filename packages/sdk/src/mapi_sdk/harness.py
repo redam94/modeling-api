@@ -28,11 +28,12 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from mapi_spec.capabilities import REPRESENTATION_RULES, OutputSelector, Representation
-from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
+from mapi_spec.errors import CoordPlanError, ErrorCode, Issue, MapiError, Severity
 from mapi_spec.loader import load_model_spec, load_score_request
-from mapi_spec.schema import DataSchema, Role
+from mapi_spec.schema import DataSchema, DimPolicy, Role
 from mapi_spec.spec import FitMode, ModelSpec, ScorePolicy, ScoreRequest
 from mapi_spec.validate import ResolvedSpec, apply_defaults, validate_spec
 
@@ -699,6 +700,38 @@ def _horizon_payload(bundle: Bundle, req: ScoreRequest) -> xr.Dataset:
     return horizon_frame(stage_coords, hdim, until=end, freq=sfreq)
 
 
+def _order_payload(ds: xr.Dataset, schema: DataSchema | None) -> xr.Dataset:
+    """Sort a score payload along its ordered dims before any step runs.
+
+    Look-back steps (lags, adstock, forward fill) shift by *position*, so a payload whose
+    time labels arrive out of order would silently get wrong features. Dims that are
+    ``time``, ``ordered`` or ``extend`` at the entry stage are sorted; duplicate labels
+    there are rejected (``COORD_NOT_ALLOWED``).
+    """
+    if schema is None:
+        return ds
+    for d in list(ds.dims):
+        dim = str(d)
+        spec = schema.dims.get(dim)
+        if spec is None or dim not in ds.coords:
+            continue
+        if not (spec.kind == "time" or spec.ordered or spec.policy is DimPolicy.EXTEND):
+            continue
+        values = np.asarray(ds[dim].values)
+        if values.dtype.kind not in "iufM" or values.size < 2:
+            continue
+        index = pd.Index(values)
+        if index.has_duplicates:
+            raise CoordPlanError(
+                f"score coords of {dim!r} repeat labels; an ordered dim needs unique labels",
+                code=ErrorCode.COORD_NOT_ALLOWED,
+                pointer="/data",
+            )
+        if not index.is_monotonic_increasing:
+            ds = ds.sortby(dim)
+    return ds
+
+
 @dataclass(slots=True)
 class _Scored:
     pred: xr.Dataset
@@ -769,12 +802,14 @@ def score_bundle(
                 pointer="/data",
             )
         data = _horizon_payload(bundle, req)
-    data = binding.apply(normalise_dataset(data), missing="ignore")
+    entry_schema = rs.stages.get(req.inputs_stage)
+    data = _order_payload(binding.apply(normalise_dataset(data), missing="ignore"), entry_schema)
 
     plan = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws)
     issues = plan.check(data)
     if scenario is not None:
         scenario = binding.apply(normalise_dataset(scenario), missing="ignore")
+        scenario = _order_payload(scenario, entry_schema)
         issues += [i for i in plan.check(scenario) if i not in issues]
     # pinned tables always replay the version stored at fit; callers only supply the others
     tables = {
