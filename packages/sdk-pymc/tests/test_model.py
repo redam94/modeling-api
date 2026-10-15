@@ -233,6 +233,35 @@ def test_crn_counterfactual_delta_has_less_variance_than_independent_noise(
     xr.testing.assert_allclose(d_exp, delta)
 
 
+def test_seasonal_trend_forecast_keeps_its_phase(registry: Registry) -> None:
+    from mapi_pymc.examples import TREND_SCHEMA, TREND_SPEC_YAML, trend_dataset
+
+    data = trend_dataset(weeks=156, seed=1)
+    t = np.arange(156)
+    data = data.assign(y=data["y"] + 0.5 * np.sin(2 * np.pi * t / 52.18))
+    spec = load_model_spec(
+        TREND_SPEC_YAML.replace(
+            "use: examples.trend@^1", "use: examples.trend@^1\n  settings: {order: 1}"
+        )
+        .replace("engine: pymc", "engine: map")
+        .replace("evaluate_then_refit", "train_only")
+    )
+    b = fit_spec(spec, data, registry=registry, raw_schema=TREND_SCHEMA)
+    assert "gamma" in b.model.posterior
+    start = b.fit_coords["raw"].sizes["time"]  # train_only: the last 6 weeks are held out
+    assert start == 150
+    req = score_request(
+        "mode: forecast\nhorizon: {dim: time, periods: 26}\noutput: {kind: expected}\n"
+    )
+    pred = _pred(score_bundle(b, req, None, registry=registry, return_full=True))["y"]
+    truth = (
+        2
+        + 1.5 * (start + np.arange(26)) / 52
+        + 0.5 * np.sin(2 * np.pi * (start + np.arange(26)) / 52.18)
+    )
+    np.testing.assert_allclose(pred.squeeze(("chain", "draw")).values, truth, atol=0.25)
+
+
 def test_time_extension_forecast(trend_bundle: Bundle, registry: Registry) -> None:
     assert set(trend_bundle.metrics.values) >= {"rmse", "mape", "coverage_90"}
     assert trend_bundle.metrics.values["rmse"] < 0.5

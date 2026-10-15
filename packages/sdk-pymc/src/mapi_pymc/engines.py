@@ -280,10 +280,12 @@ def _sample_pymc(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> Engin
     chunk = plan.checkpoint_every or plan.draws
     saved = 0
     start_states, start_points = list(chains.states), list(chains.points)
+    start_divs = list(chains.divergences)
     try:
         while chains.completed < plan.draws:
             n = min(chunk, plan.draws - chains.completed)
             start_states, start_points = list(chains.states), list(chains.points)
+            start_divs = list(chains.divergences)
             for c in range(plan.chains):
                 step.sampling_state = chains.states[c]
                 point = chains.points[c]
@@ -313,6 +315,7 @@ def _sample_pymc(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> Engin
     except RunCancelled:
         # roll back to the last chunk boundary every chain reached, flush, re-raise
         chains.states, chains.points = start_states, start_points
+        chains.divergences = start_divs
         _trim(chains)
         if hooks.sink is not None and chains.completed:
             _save(hooks, plan, chains)
