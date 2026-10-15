@@ -1674,6 +1674,7 @@ name = "mapi-conformance"
 version = "0.0.0"
 source = { editable = "conformance" }
 dependencies = [
+    { name = "mapi-plots", extra = ["recipes"] },
     { name = "mapi-plugin-mmm" },
     { name = "mapi-plugin-tabular" },
     { name = "mapi-plugin-ts" },
@@ -1685,6 +1686,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "mapi-plots", extras = ["recipes"], editable = "packages/plots-core" },
     { name = "mapi-plugin-mmm", editable = "plugins/mmm" },
     { name = "mapi-plugin-tabular", editable = "plugins/tabular" },
     { name = "mapi-plugin-ts", editable = "plugins/ts" },

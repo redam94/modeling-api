@@ -11,6 +11,7 @@ dependencies = [
   "mapi-steps",
   "mapi-pymc",
   "mapi-sklearn",
+  "mapi-plots[recipes]",
   "mapi-plugin-mmm",
   "mapi-plugin-ts",
   "mapi-plugin-tabular",
@@ -28,6 +29,7 @@ mapi-sdk = { workspace = true }
 mapi-steps = { workspace = true }
 mapi-pymc = { workspace = true }
 mapi-sklearn = { workspace = true }
+mapi-plots = { workspace = true }
 mapi-plugin-mmm = { workspace = true }
 mapi-plugin-ts = { workspace = true }
 mapi-plugin-tabular = { workspace = true }
