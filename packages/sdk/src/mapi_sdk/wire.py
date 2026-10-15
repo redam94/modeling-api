@@ -126,6 +126,11 @@ class WireLimits:
     max_zip_entries: int = 200_000
     max_uncompressed_bytes: int = 4 * 1024**3
     max_array_bytes: int = 2 * 1024**3
+    max_store_elements: int = 256 * 1024**2
+    """zarr zips: elements every array of the store may declare in total."""
+    max_expansion: int = 4096
+    """zarr zips: declared (decoded) bytes may exceed the archive's stored bytes by at most
+    this factor (beyond a small floor), since missing chunks decode to the fill value."""
     max_decoded_bytes: int = 64 * 1024**2
     """XrJSON: bytes the decoded arrays may take (fixed-width strings cost ``4 * longest``
     per element, so one long string among many short ones cannot blow up memory)."""
@@ -663,8 +668,19 @@ def zip_entries(
     return out
 
 
+_EXPANSION_FLOOR = 256 * 1024**2
+
+
 def _check_zarr_metadata(entries: Mapping[str, bytes], limits: WireLimits) -> None:
+    """Validate every ``zarr.json`` before any chunk is decoded.
+
+    The declared shapes are what decoding allocates (a missing chunk becomes its fill
+    value), so they are budgeted as a whole: element count (``max_store_elements``),
+    decoded bytes (``max_uncompressed_bytes``) and expansion over the bytes the archive
+    actually stores (``max_expansion``).
+    """
     total_elements = 0
+    total_bytes = 0
     for name, raw in entries.items():
         base = name.rsplit("/", 1)[-1]
         if base in (".zarray", ".zgroup", ".zattrs", ".zmetadata"):
@@ -707,6 +723,7 @@ def _check_zarr_metadata(entries: Mapping[str, bytes], limits: WireLimits) -> No
             raise PayloadLimitError(f"{name[:200]!r}: too many dims")
         n = math.prod(shape)
         total_elements += n
+        total_bytes += n * _ZARR_ITEMSIZE[dtype]
         if n * _ZARR_ITEMSIZE[dtype] > limits.max_array_bytes:
             raise PayloadLimitError(f"{name[:200]!r}: array exceeds the size limit")
         attrs = meta.get("attributes") or {}
@@ -715,8 +732,28 @@ def _check_zarr_metadata(entries: Mapping[str, bytes], limits: WireLimits) -> No
             cal = attrs.get("calendar", "standard")
             if cal not in _STANDARD_CALENDARS:
                 raise WireFormatError(f"{name[:200]!r}: calendar {str(cal)[:40]!r} unsupported")
-    if total_elements * 8 > limits.max_uncompressed_bytes * 4:
+    if total_elements > limits.max_store_elements:
+        raise PayloadLimitError(
+            f"store declares {total_elements} elements; at most {limits.max_store_elements}"
+        )
+    if total_bytes > limits.max_uncompressed_bytes:
         raise PayloadLimitError("store declares more data than allowed")
+    stored = sum(len(v) for v in entries.values())
+    if total_bytes > max(limits.max_expansion * stored, _EXPANSION_FLOOR):
+        raise PayloadLimitError(
+            f"store declares {total_bytes} bytes of data but the archive holds only {stored}"
+        )
+
+
+def _check_strings(ds: xr.Dataset, limits: WireLimits, where: str) -> None:
+    """vlen-utf8 lengths are not in the metadata: enforce ``max_string_chars`` after decode."""
+    for name, var in ds.variables.items():
+        dt = var.dtype
+        if dt.kind == "U" and dt.itemsize // 4 > limits.max_string_chars:
+            label = (where + str(name))[:200]
+            raise PayloadLimitError(
+                f"{label}: a string exceeds {limits.max_string_chars} characters"
+            )
 
 
 def _memory_store(entries: Mapping[str, bytes]) -> MemoryStore:
@@ -741,7 +778,9 @@ def read_zarr_zip(
         ).load()
     except (ValueError, KeyError, TypeError, OSError, zarr.errors.BaseZarrError) as exc:
         raise WireFormatError(f"zarr store could not be decoded: {exc}") from None
-    return _decode(ds)
+    out = _decode(ds)
+    _check_strings(out, limits, "")
+    return out
 
 
 def read_datatree_zip(
@@ -763,6 +802,8 @@ def read_datatree_zip(
     except (ValueError, KeyError, TypeError, OSError, zarr.errors.BaseZarrError) as exc:
         raise WireFormatError(f"zarr tree could not be decoded: {exc}") from None
     nodes = {node.path: _decode(node.to_dataset(inherit=False)) for node in tree.subtree}
+    for path, node_ds in nodes.items():
+        _check_strings(node_ds, limits, path.rstrip("/") + "/")
     return xr.DataTree.from_dict(nodes)
 
 

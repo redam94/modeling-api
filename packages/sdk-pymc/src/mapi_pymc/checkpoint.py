@@ -49,6 +49,7 @@ _KEY_RE = re.compile(r"^[0-9a-f]{16,64}$")
 _ALLOWED_MODULES = ("pymc.", "mapi_pymc.")
 _CHECKPOINT_LIMITS = WireLimits(
     max_elements=500_000_000,
+    max_store_elements=500_000_000,
     max_variables=65_536,
     max_uncompressed_bytes=16 * 1024**3,
     max_array_bytes=8 * 1024**3,
