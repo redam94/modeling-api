@@ -164,6 +164,10 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   finish, so every queued run used to be admitted and dispatched against the same figure.
   Admission now adds the estimates of admitted, unmetered runs, and the dispatcher adds the
   estimates of started runs and of each run it leases in the same pass.
+- **server**: held runs can no longer fill the dispatcher's window of queued runs and stall
+  fair share for every tenant. Runs of suspended tenants, uploaded code paused by the kill
+  switch and non-internal work past the spend cap are left out in SQL, and each tenant takes
+  at most `MAPI_LEASE_CANDIDATES_PER_TENANT` (50) of the window.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 

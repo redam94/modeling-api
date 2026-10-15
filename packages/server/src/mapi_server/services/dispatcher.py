@@ -28,7 +28,7 @@ from collections import deque
 from datetime import datetime, timedelta
 
 from mapi_spec._types import Duration
-from mapi_spec.admin import kill_switch_decision
+from mapi_spec.admin import KillSwitches, kill_switch_decision
 from mapi_spec.errors import ErrorCode, MapiError, Problem
 from mapi_spec.executor import PLUGIN_LABEL, Executor, Handle, RunKind, RunSubmit
 from mapi_spec.quotas import (
@@ -46,7 +46,7 @@ from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger, new_hmac_key, new_nonce
 from mapi_spec.storage import NotFound, bootstrap_key
 from mapi_spec.tenancy import TenantStatus, TrustTier
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -186,8 +186,12 @@ class Dispatcher:
     async def lease(self) -> list[tuple[str, int]]:
         """Lease queued runs by weighted fair share and write their intent rows.
 
-        Up to ``lease_candidates`` queued runs are locked (``SKIP LOCKED``); runs the kill
-        switches hold back, and runs of tenants that are not active, stay queued. The rest go
+        Up to ``lease_candidates`` queued runs are locked (``SKIP LOCKED``), at most
+        ``lease_candidates_per_tenant`` of each tenant, oldest first. Runs that would be held
+        whatever the plan (tenants that are not active, uploaded code while the kill switch
+        pauses it, every non-internal tenant once the spend cap is reached) are left out of
+        that window in SQL, so they can never crowd out other tenants' runs; the ones held
+        afterwards (a tenant over budget) take at most their per-tenant share. The rest go
         through :func:`mapi_spec.quotas.plan_leases` with the free global capacity (the
         global ``concurrent_runs`` limit minus dispatched tasks, at most ``dispatch_batch``),
         each tenant's remaining ``concurrent_runs`` and its running tasks, so interactive
@@ -196,21 +200,27 @@ class Dispatcher:
         s = self.ctx.settings
         leased: list[tuple[str, int]] = []
         async with self.ctx.db.session() as session:
+            at = now()
+            switches = await kill_switches(session)
+            spent = 0
+            if switches.global_spend_cap_micros is not None:
+                # metered + started but not yet metered (queued work is not spent until leased)
+                spent = await global_spend(session, switches, now=at) + await in_flight_spend(
+                    session, switches, states=DISPATCHED_STATES
+                )
             rows = list(
                 (
                     await session.execute(
                         select(m.Run)
-                        .where(m.Run.state == RunState.QUEUED.value)
+                        .where(m.Run.id.in_(self._window(switches, spent)))
                         .order_by(m.Run.queued_at, m.Run.id)
-                        .limit(s.lease_candidates)
                         .with_for_update(skip_locked=True)
                     )
                 ).scalars()
             )
             if not rows:
                 return leased
-            at = now()
-            plan = await self._plan(session, rows, at)
+            plan = await self._plan(session, rows, at, switches=switches, spent=spent)
             by_id = {r.id: r for r in rows}
             for pick in plan:
                 run = by_id[pick.run_id]
@@ -256,8 +266,53 @@ class Dispatcher:
                 leased.append((run.id, run.attempt))
         return leased
 
+    def _window(self, switches: KillSwitches, spent: int) -> Select[tuple[str]]:
+        """Ids of the queued runs the planner looks at this pass (see :meth:`lease`)."""
+        s = self.ctx.settings
+        held_tenant = (
+            select(m.Tenant.id)
+            .where(m.Tenant.id == m.Run.tenant_id, m.Tenant.status != TenantStatus.ACTIVE.value)
+            .exists()
+        )
+        conds: list[ColumnElement[bool]] = [m.Run.state == RunState.QUEUED.value, ~held_tenant]
+        if not switches.untrusted_execution_enabled:
+            conds.append(m.Run.untrusted_code.is_(False))
+        cap = switches.global_spend_cap_micros
+        if cap is not None and spent >= cap:  # only internal tenants may still start runs
+            conds.append(
+                select(m.Tenant.id)
+                .where(
+                    m.Tenant.id == m.Run.tenant_id,
+                    m.Tenant.trust_tier == TrustTier.INTERNAL.value,
+                )
+                .exists()
+            )
+        ranked = (
+            select(
+                m.Run.id.label("id"),
+                m.Run.queued_at.label("queued_at"),
+                func.row_number()
+                .over(partition_by=m.Run.tenant_id, order_by=(m.Run.queued_at, m.Run.id))
+                .label("rank"),
+            )
+            .where(*conds)
+            .subquery()
+        )
+        return (
+            select(ranked.c.id)
+            .where(ranked.c.rank <= s.lease_candidates_per_tenant)
+            .order_by(ranked.c.queued_at, ranked.c.id)
+            .limit(s.lease_candidates)
+        )
+
     async def _plan(
-        self, session: AsyncSession, rows: list[m.Run], at: datetime
+        self,
+        session: AsyncSession,
+        rows: list[m.Run],
+        at: datetime,
+        *,
+        switches: KillSwitches | None = None,
+        spent: int | None = None,
     ) -> list[LeaseCandidate]:
         """Which of the locked queued runs to lease now (kill switches, caps, fair share)."""
         s = self.ctx.settings
@@ -269,13 +324,14 @@ class Dispatcher:
                 )
             ).scalars()
         }
-        switches = await kill_switches(session)
-        spent = 0
-        if switches.global_spend_cap_micros is not None:
-            # metered + started but not yet metered (queued work is not spent until leased)
-            spent = await global_spend(session, switches, now=at) + await in_flight_spend(
-                session, switches, states=DISPATCHED_STATES
-            )
+        if switches is None:
+            switches = await kill_switches(session)
+        if spent is None:
+            spent = 0
+            if switches.global_spend_cap_micros is not None:
+                spent = await global_spend(session, switches, now=at) + await in_flight_spend(
+                    session, switches, states=DISPATCHED_STATES
+                )
         load = (
             await session.execute(
                 select(m.Run.tenant_id, func.count(), func.coalesce(func.sum(m.Run.task_count), 0))

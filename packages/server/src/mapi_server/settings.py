@@ -423,6 +423,13 @@ class Settings(BaseSettings):
     lease_candidates: int = Field(
         500, ge=1, le=10_000, description="Queued runs the fair-share planner considers"
     )
+    lease_candidates_per_tenant: int = Field(
+        50,
+        ge=1,
+        le=10_000,
+        description="At most this many of them per tenant (a tenant whose runs are held "
+        "cannot fill the window)",
+    )
     executor_report_interval_s: float = Field(10.0, gt=0)
     sse_heartbeat_s: float = Field(15.0, gt=0)
     sse_poll_s: float = Field(5.0, gt=0, description="Fallback poll when no NOTIFY arrives")

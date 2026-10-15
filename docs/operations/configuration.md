@@ -103,7 +103,8 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_PRICE_TABLE_PATH` | unset | A JSON `PriceTable`; unset: Cloud Run-like list prices (`mapi_spec.cost.DEFAULT_PRICE_TABLE`) |
 | `MAPI_ESTIMATE_WALL_S` | fit 300, score 30, ingest 60, … | Per run kind, the wall time (seconds, capped at the run's timeout) a run is charged against vCPU-second quotas until it is metered (JSON) |
 | `MAPI_RATE_LIMITS_ENABLED` | `true` | Enforce `requests_per_minute` at token, tenant and global level |
-| `MAPI_LEASE_CANDIDATES` | `500` | Queued runs the dispatcher's fair-share planner considers per pass |
+| `MAPI_LEASE_CANDIDATES` | `500` | Queued runs the dispatcher's fair-share planner considers per pass (runs held by a suspended tenant, the kill switches or the spend cap are not among them) |
+| `MAPI_LEASE_CANDIDATES_PER_TENANT` | `50` | At most this many of them per tenant, so one tenant's held runs cannot crowd out the others |
 | `MAPI_EXECUTOR_REPORT_INTERVAL_S` | `10` | How often each dispatcher reports executor health for `/v1/admin/executors` |
 
 **Object storage**

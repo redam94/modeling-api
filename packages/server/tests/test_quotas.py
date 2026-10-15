@@ -460,6 +460,47 @@ async def test_the_spend_cap_counts_work_in_flight(
         assert (await load_run(s, None, runs[2])).state == RunState.QUEUED.value
 
 
+async def test_held_runs_cannot_fill_the_lease_window(
+    ctx: ServerContext, client: httpx.AsyncClient, tenants: None
+) -> None:
+    """Runs that would be held anyway (suspended tenant, paused untrusted code, a tenant
+    over budget) never fill the window of queued runs the planner looks at, so other
+    tenants' runs behind them still start."""
+    ctx.settings = ctx.settings.model_copy(
+        update={"lease_candidates": 5, "lease_candidates_per_tenant": 2}
+    )
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    old = [await _queue(ctx, "big", minutes_ago=60 - i) for i in range(6)]
+    fresh = await _queue(ctx, "small", minutes_ago=1)
+    # 1. a suspended tenant keeps its queue, out of the window
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Tenant).where(m.Tenant.id == "big").values(status="suspended"))
+    assert await _leased(ctx, dispatcher) == [fresh]
+    # 2. untrusted code paused platform-wide
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Tenant).where(m.Tenant.id == "big").values(status="active"))
+        await s.execute(update(m.Run).where(m.Run.id.in_(old)).values(untrusted_code=True))
+    await client.put(
+        "/v1/admin/kill-switches", json={"untrusted_execution_enabled": False, "reason": "drill"}
+    )
+    fresh = await _queue(ctx, "small", minutes_ago=1)
+    assert await _leased(ctx, dispatcher) == [fresh]
+    # 3. a tenant over its budget holds at most lease_candidates_per_tenant slots
+    await client.put(
+        "/v1/admin/kill-switches", json={"untrusted_execution_enabled": True, "reason": "drill"}
+    )
+    await _policy(ctx, "tenant", "big", vcpu_seconds_per_day=0)
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Run).where(m.Run.id.in_(old)).values(untrusted_code=False))
+        for row in (await s.execute(select(m.Run).where(m.Run.id.in_(old)))).scalars():
+            row.estimate = {"vcpu_seconds": 10.0}
+    fresh = await _queue(ctx, "small", minutes_ago=1)
+    assert await _leased(ctx, dispatcher) == [fresh]
+    async with ctx.db.session() as s:
+        states = {(await load_run(s, None, r)).state for r in old}
+    assert states == {RunState.QUEUED.value}
+
+
 async def test_shared_tiers_need_a_sandboxing_executor(ctx: ServerContext) -> None:
     await make_tenant(ctx, "pub", tier="public", projects=("main",))
     run_id = await _queue(ctx, "pub")
