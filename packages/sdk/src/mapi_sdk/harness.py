@@ -311,6 +311,7 @@ def _fit_from(
         log=hooks.log,
         on_progress=None,
         cancel=hooks.cancel,
+        stage_schema=rs.stages.get(rs.model_stage),
     )
     try:
         out = env.plugin.fit(model_ds, s, env.spec.model.fit, fctx)
