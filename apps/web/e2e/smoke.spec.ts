@@ -191,3 +191,41 @@ test("theme can be switched to dark", async ({ page }) => {
   await page.getByRole("radio", { name: "Dark" }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
 });
+
+test.describe("phone layout (375 px)", () => {
+  test.use({ viewport: { width: 375, height: 800 } });
+  const DATASET = "ds_01jaf3a1b2c3d4e5f6g7h8j9k0";
+
+  const pages: [string, string][] = [
+    ["/", "1 run in flight"],
+    [`/models/${MODEL}/versions/1`, "Diagnostics"],
+    [`/datasets/${DATASET}`, "Versions"],
+    [`/runs/${RUNNING}`, "attempt 1"],
+    [`/score?model=${MODEL}&version=1`, "Outputs"],
+  ];
+  for (const [path, marker] of pages) {
+    test(`${path} does not scroll horizontally`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.getByRole("main").getByText(marker).first()).toBeVisible();
+      await page.waitForTimeout(500); // let lazy content lay out (SSE keeps the network busy)
+      const { scroll, client } = await page.evaluate(() => ({
+        scroll: document.documentElement.scrollWidth,
+        client: document.documentElement.clientWidth,
+      }));
+      expect(scroll, `${path} is ${scroll}px wide in a ${client}px viewport`).toBeLessThanOrEqual(client);
+    });
+  }
+
+  test("the compact nav shows every destination, Settings included", async ({ page }) => {
+    await page.goto("/");
+    const nav = page.getByRole("navigation", { name: "Primary (compact)" });
+    for (const label of ["Home", "Datasets", "Build", "Runs", "Models", "Score", "Catalog", "Settings"]) {
+      const link = nav.getByRole("link", { name: label, exact: true });
+      await expect(link).toBeVisible();
+      const box = await link.boundingBox();
+      expect(box, label).not.toBeNull();
+      expect(box!.x, label).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width, label).toBeLessThanOrEqual(375);
+    }
+  });
+});

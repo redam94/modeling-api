@@ -146,7 +146,12 @@ export const Tabs = TabsPrimitive.Root;
 export function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.List>) {
   return (
     <TabsPrimitive.List
-      className={cn("inline-flex items-center gap-1 border-b border-border text-muted-foreground", className)}
+      // Scrolls sideways instead of widening the page on narrow screens. The baseline is an inset
+      // shadow (not a border) so the active tab's underline is not clipped by the overflow box.
+      className={cn(
+        "inline-flex max-w-full items-center gap-1 overflow-x-auto overflow-y-hidden text-muted-foreground shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:thin]",
+        className,
+      )}
       {...props}
     />
   );
@@ -156,7 +161,7 @@ export function TabsTrigger({ className, ...props }: React.ComponentProps<typeof
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "-mb-px inline-flex items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-[13px] font-medium whitespace-nowrap transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground [&_svg]:size-4",
+        "inline-flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-[13px] font-medium whitespace-nowrap transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground [&_svg]:size-4",
         className,
       )}
       {...props}

@@ -122,9 +122,9 @@ const VERSION_STATUS = { ready: "success", ingesting: "info", failed: "danger" }
 
 function VersionDetail({ version }: { version: DatasetVersion }) {
   return (
-    <div className="grid gap-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <Mono className="text-[15px] font-semibold">{version.ref}</Mono>
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <Mono className="min-w-0 text-[15px] font-semibold break-all">{version.ref}</Mono>
         <CopyButton value={version.ref} label="Copy reference" />
         <Badge variant={VERSION_STATUS[version.status]}>{version.status}</Badge>
         {version.ingest_run_id ? (
@@ -216,7 +216,7 @@ export function DatasetDetailPage() {
           </CardContent>
         </Card>
       ) : null}
-      <div className="grid gap-6 lg:grid-cols-[13rem_1fr]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[13rem_minmax(0,1fr)]">
         <nav aria-label="Versions" className="grid content-start gap-0.5">
           <h2 className="px-2 pb-1 text-xs font-medium text-muted-foreground">Versions</h2>
           {versions.isPending ? <LoadingRows rows={3} /> : null}

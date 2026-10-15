@@ -183,7 +183,9 @@ export function Progress({
 
 export function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div className="relative w-full overflow-x-auto">
+    // `contain: inline-size` keeps a wide table from widening its (grid) ancestors on narrow
+    // screens: it scrolls inside its own box instead of making the page scroll sideways.
+    <div className="relative w-full overflow-x-auto [contain:inline-size]">
       <table className={cn("w-full caption-bottom text-[13px]", className)} {...props} />
     </div>
   );
