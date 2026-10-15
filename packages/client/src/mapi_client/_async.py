@@ -578,7 +578,9 @@ class AsyncRuns(_Resource):
                                 if last is not None and item.id <= last:
                                     continue
                                 last = item.id
-                                failures = 0
+                            # a healthy connection (it delivered a frame): a later cut is a
+                            # normal proxy/request limit, not a failure towards max_reconnects
+                            failures = 0
                             yield item
                             if isinstance(item, RunEnd):
                                 return

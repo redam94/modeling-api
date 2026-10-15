@@ -351,6 +351,30 @@ def test_stream_gives_up_after_max_reconnects(
         list(client.runs.stream_events("run_01", max_reconnects=2))
 
 
+def test_stream_survives_many_healthy_reconnects(
+    client: Client, api: respx.MockRouter, example: Ex, sleeps: list[float]
+) -> None:
+    """A long fit behind a proxy that cuts every connection (Cloud Run's request limit)
+    emits only live progress: every healthy connection resets the failure budget."""
+    run = Run.model_validate(run_json(example))
+    done = Run.model_validate(run_json(example, "succeeded"))
+    cut = [_sse(encode_sse("snapshot", run), _live("progress", i)) for i in range(8)]
+    final = _sse(encode_sse("snapshot", run), encode_sse("end", done))
+    route = api.get(f"{V1}/runs/run_01/events").mock(side_effect=[*cut, final])
+    items = list(client.runs.stream_events("run_01", max_reconnects=2))
+    assert isinstance(items[-1], RunEnd) and route.call_count == 9
+    assert len(sleeps) == 8
+
+
+def test_stream_empty_connections_still_count_as_failures(
+    client: Client, api: respx.MockRouter
+) -> None:
+    route = api.get(f"{V1}/runs/run_01/events").mock(side_effect=lambda req: _sse(": hb\n\n"))
+    with pytest.raises(TransportError, match="ended before the run did"):
+        list(client.runs.stream_events("run_01", max_reconnects=2))
+    assert route.call_count == 3
+
+
 def test_stream_errors_are_not_retried(client: Client, api: respx.MockRouter) -> None:
     api.get(f"{V1}/runs/nope/events").respond(
         404, json=Problem.from_code(ErrorCode.NOT_FOUND, "no run").model_dump(mode="json")

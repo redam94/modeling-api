@@ -570,6 +570,8 @@ class Runs(_Resource):
         Yields :class:`RunSnapshot` (first frame of each connection), :class:`RunEventFrame`
         and finally :class:`RunEnd`. A dropped connection is resumed with ``Last-Event-ID``
         (after the server's ``retry`` delay); events are never yielded twice.
+        ``max_reconnects`` bounds *consecutive* connections that delivered no frame, so a
+        long run behind a proxy that cuts every connection is followed to the end.
         """
         path = calls.run_events_path(run_id)
         last = last_event_id
@@ -607,7 +609,9 @@ class Runs(_Resource):
                                 if last is not None and item.id <= last:
                                     continue  # replayed twice by an overlapping reconnect
                                 last = item.id
-                                failures = 0
+                            # a healthy connection (it delivered a frame): a later cut is a
+                            # normal proxy/request limit, not a failure towards max_reconnects
+                            failures = 0
                             yield item
                             if isinstance(item, RunEnd):
                                 return
