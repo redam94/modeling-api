@@ -42,13 +42,15 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MAPI_PROFILE` | `single-tenant` | `single-tenant` or `multi-tenant`. The `local-process` executor refuses `multi-tenant` |
-| `MAPI_TENANT_ID`, `MAPI_PROJECT_ID` | `default` | The single tenant and project of an M1 install |
+| `MAPI_PROFILE` | `single-tenant` | `single-tenant`, `multi-tenant` or `dev` (multi-tenant with the built-in development identity provider). The `local-process` executor refuses `multi-tenant` |
+| `MAPI_TENANT_ID`, `MAPI_PROJECT_ID` | `default` | The platform's own tenant and project (the only ones of a single-tenant install; platform runs such as `describe` live there) |
 | `MAPI_API_HOST`, `MAPI_API_PORT` | `127.0.0.1`, `8000` | Bind address of `mapi-server api` when started without `--host`/`--port` |
 | `MAPI_ALLOWED_HOSTS` | `127.0.0.1,localhost,api` | `Host` header values the API answers (comma-separated; the host of `MAPI_API_URL` is always allowed; `*` turns the check off). The DNS-rebinding guard of the unauthenticated M1 API |
 | `MAPI_DEBUG` | `false` | Put tracebacks into problem documents' `untrusted_text`. Never in production |
 | `MAPI_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
-| `MAPI_INTERNAL_TOKEN` | unset | If set, `POST /internal/events` (simulated Pub/Sub pushes) requires this bearer token |
+| `MAPI_INTERNAL_TOKEN` | unset | If set (and Pub/Sub push authentication is not), `POST /internal/events` requires this bearer token. A multi-tenant profile with neither refuses every push |
+| `MAPI_PUBSUB_AUDIENCE`, `MAPI_PUBSUB_SERVICE_ACCOUNT` | unset | Set both to require a Google-signed OIDC token from the push subscription's service account on `POST /internal/events` (see [Authentication](authentication.md#pubsub-push)) |
+| `MAPI_GOOGLE_JWKS_URL` | `https://www.googleapis.com/oauth2/v3/certs` | Google's signing keys for push tokens |
 | `MAPI_SSE_HEARTBEAT_S` | `15` | Seconds between `: keepalive` comments on event streams |
 | `MAPI_SSE_POLL_S` | `5` | Fallback poll of an event stream when no PostgreSQL `NOTIFY` arrives |
 | `MAPI_MAX_SIDECAR_BYTES` | 8 MiB | Largest JSON sidecar (`plots.json`, `diagnostics.json`, …) the control plane will parse |
@@ -57,14 +59,46 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
     The CLI and the Python client read `MAPI_PROFILE` as the name of a *config-file profile*;
     the server reads it as the *deployment profile*. Do not export a client profile name in a
     shell that starts `make dev` or `mapi-server`: the server refuses any value other than
-    `single-tenant` or `multi-tenant`.
+    `single-tenant`, `multi-tenant` or `dev`.
 
 **Database**
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MAPI_DB_POOL_SIZE` | `10` | Connections per process (plus as many overflow connections) |
+| `MAPI_DB_POOL_SIZE` | `10` | Request-path connections per process (plus as many overflow connections) |
+| `MAPI_DB_SYSTEM_POOL_SIZE` | `5` | Platform-role connections per process |
 | `MAPI_DB_ECHO` | `false` | Log every SQL statement |
+| `MAPI_DATABASE_APP_URL` | unset | Dedicated login of the request-path role (row-level security applies). Unset: `DATABASE_URL` with the start-up option `role=$MAPI_DB_APP_ROLE` |
+| `MAPI_DATABASE_SYSTEM_URL` | unset | Dedicated login of the platform role (dispatcher, reconciler, finalizer, events, authentication lookups, operator endpoints). Unset: `DATABASE_URL` with `role=$MAPI_DB_SYSTEM_ROLE` |
+| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE` | `mapi_app`, `mapi_system` | The two runtime roles `mapi-server migrate` creates and grants (see [Authentication](authentication.md#row-level-security)) |
+
+**Authentication (v0.3)**
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_AUTH_REQUIRED` | on, except `single-tenant` | Require a session or API token on every non-public route. Cannot be turned off in a multi-tenant profile |
+| `MAPI_SERVER_SECRET` | from `MAPI_SERVER_SECRET_PATH` | Root secret of the API-token pepper and the audit fingerprints. Every API instance must share it; changing it invalidates every token |
+| `MAPI_SERVER_SECRET_PATH` | `$MAPI_DATA_DIR/keys/server-secret` | File holding the root secret (`0600`, created by `mapi-server migrate`) |
+| `MAPI_COOKIE_SECURE` | on when `MAPI_API_URL` is `https` | `__Host-` prefixed, `Secure` session cookies. Off: `mapi_session`/`mapi_csrf` for plain-HTTP development |
+| `MAPI_OIDC_ISSUER` | unset | The OpenID provider (for example `https://accounts.google.com`). Unset outside the `dev` profile: browser sign-in is off, tokens still work |
+| `MAPI_OIDC_DISCOVERY_URL` | `<issuer>/.well-known/openid-configuration` | Where the provider's metadata is |
+| `MAPI_OIDC_CLIENT_ID`, `MAPI_OIDC_CLIENT_SECRET` | unset | The OAuth client registered for the BFF (the secret is optional for public clients; PKCE is always used) |
+| `MAPI_OIDC_REDIRECT_URI` | `$MAPI_API_URL/auth/callback` | The registered redirect URI |
+| `MAPI_OIDC_ALGORITHMS` | `RS256,ES256` | Accepted ID-token algorithms (asymmetric only) |
+| `MAPI_OIDC_EXTRA_PARAMS` | `{}` | Extra authorization parameters as JSON, for example `{"hd": "acme.com"}` |
+| `MAPI_OPERATOR_EMAILS` | unset | Verified e-mails that sign in as platform operators (comma-separated) |
+| `MAPI_DEFAULT_TENANT_ADMINS` | unset | E-mails invited as admins of the default tenant at start-up (claimed at first sign-in with that verified e-mail) |
+| `MAPI_DEVIDP_USERS` | `admin@dev.local,analyst@dev.local,viewer@dev.local` | The `dev` profile's accounts: the first is an operator and tenant admin, the second a runner, the rest viewers |
+
+**Quotas and cost (v0.3)**
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_PRICE_TABLE_PATH` | unset | A JSON `PriceTable`; unset: Cloud Run-like list prices (`mapi_spec.cost.DEFAULT_PRICE_TABLE`) |
+| `MAPI_ESTIMATE_WALL_S` | fit 300, score 30, ingest 60, … | Per run kind, the wall time (seconds, capped at the run's timeout) a run is charged against vCPU-second quotas until it is metered (JSON) |
+| `MAPI_RATE_LIMITS_ENABLED` | `true` | Enforce `requests_per_minute` at token, tenant and global level |
+| `MAPI_LEASE_CANDIDATES` | `500` | Queued runs the dispatcher's fair-share planner considers per pass |
+| `MAPI_EXECUTOR_REPORT_INTERVAL_S` | `10` | How often each dispatcher reports executor health for `/v1/admin/executors` |
 
 **Object storage**
 

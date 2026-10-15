@@ -33,6 +33,168 @@
         "title": "Aggregation",
         "type": "object"
       },
+      "ApiToken": {
+        "description": "A token as listed by the API. It never carries the secret or its hash.",
+        "examples": [
+          {
+            "budget_period": "month",
+            "created_at": "2026-10-15T09:30:00Z",
+            "display": "mapi_7k2m9q4x_…",
+            "expires_at": "2026-11-14T09:30:00Z",
+            "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+            "last_used_at": "2026-10-16T08:00:00Z",
+            "name": "atlas-optimiser",
+            "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+            "prefix": "7k2m9q4x",
+            "project_id": "growth",
+            "rate_limit_per_minute": 120,
+            "scopes": [
+              "score:geo-mmm-prod",
+              "models:read"
+            ],
+            "status": "active",
+            "tenant_id": "acme",
+            "vcpu_seconds_budget": 36000
+          }
+        ],
+        "properties": {
+          "budget_period": {
+            "$ref": "#/components/schemas/BudgetPeriod",
+            "default": "month"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display": {
+            "description": "Redacted form, mapi_<prefix>_…",
+            "title": "Display",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "owner_id": {
+            "description": "Principal id of the user or service that minted it",
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "prefix": {
+            "examples": [
+              "7k2m9q4x"
+            ],
+            "pattern": "^[0123456789abcdefghjkmnpqrstvwxyz]{8}$",
+            "title": "Prefix",
+            "type": "string"
+          },
+          "project_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "rate_limit_per_minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Limit Per Minute"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "scopes": {
+            "items": {
+              "examples": [
+                "models:read",
+                "runs:create",
+                "score:geo-mmm-prod"
+              ],
+              "maxLength": 140,
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TokenStatus"
+          },
+          "tenant_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "vcpu_seconds_budget": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vcpu Seconds Budget"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "project_id",
+          "owner_id",
+          "name",
+          "prefix",
+          "display",
+          "scopes",
+          "status",
+          "created_at",
+          "expires_at"
+        ],
+        "title": "ApiToken",
+        "type": "object"
+      },
       "ArtifactLink": {
         "description": "A short-lived, generation-pinned signed GET URL for one artifact (HTTP Range works).",
         "examples": [
@@ -109,6 +271,263 @@
         "title": "ArtifactLink",
         "type": "object"
       },
+      "AuditAction": {
+        "description": "Audited actions (``<resource>.<verb>``). New actions are additive.",
+        "enum": [
+          "auth.login",
+          "auth.login_failed",
+          "auth.logout",
+          "tenant.create",
+          "tenant.update",
+          "tenant.suspend",
+          "tenant.reactivate",
+          "tenant.delete",
+          "project.create",
+          "project.update",
+          "project.delete",
+          "member.add",
+          "member.update",
+          "member.remove",
+          "token.create",
+          "token.revoke",
+          "token.auth_failed",
+          "quota.update",
+          "quota.delete",
+          "quota.denied",
+          "kill_switch.update",
+          "run.create",
+          "run.cancel",
+          "run.integrity_failure",
+          "dataset.download",
+          "model.artifact_link",
+          "endpoint.promote",
+          "plugin.publish",
+          "plugin.yank",
+          "event.rejected"
+        ],
+        "title": "AuditAction",
+        "type": "string"
+      },
+      "AuditEvent": {
+        "description": "One audit row. ``tenant_id`` is ``None`` for platform-level actions.",
+        "examples": [
+          {
+            "action": "token.create",
+            "actor_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+            "actor_kind": "user",
+            "details": {
+              "expires_in_days": 30,
+              "scopes": [
+                "score:geo-mmm-prod"
+              ]
+            },
+            "id": "aud_01jaf3w1x2y3z4a5b6c7d8e9f0",
+            "ip_hash": "hmac-sha256:0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+            "outcome": "success",
+            "project_id": "growth",
+            "request_id": "req-7f3a",
+            "resource_id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+            "resource_kind": "token",
+            "tenant_id": "acme",
+            "ts": "2026-10-15T09:30:00Z",
+            "user_agent_hash": "hmac-sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90"
+          },
+          {
+            "action": "quota.denied",
+            "actor_id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+            "actor_kind": "token",
+            "code": "QUOTA_EXCEEDED",
+            "details": {
+              "limit_name": "vcpu_seconds_per_day",
+              "scope": "tenant"
+            },
+            "id": "aud_01jaf3w9x8y7z6a5b4c3d2e1f0",
+            "outcome": "denied",
+            "project_id": "growth",
+            "resource_kind": "run",
+            "tenant_id": "acme",
+            "token_id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+            "ts": "2026-10-15T09:30:00Z"
+          }
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/AuditAction"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "actor_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrincipalKind"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None: unauthenticated caller"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorCode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Problem code of a denial or error"
+          },
+          "details": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Details",
+            "type": "object"
+          },
+          "id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "ip_hash": {
+            "anyOf": [
+              {
+                "pattern": "^hmac-sha256:[0-9a-f]{32}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Hash"
+          },
+          "operator": {
+            "default": false,
+            "description": "The actor acted as a platform operator",
+            "title": "Operator",
+            "type": "boolean"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/AuditOutcome"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "resource_id": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Id"
+          },
+          "resource_kind": {
+            "$ref": "#/components/schemas/ResourceKind"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "token_id": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when the actor used an API token",
+            "title": "Token Id"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          },
+          "user_agent_hash": {
+            "anyOf": [
+              {
+                "pattern": "^hmac-sha256:[0-9a-f]{32}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Agent Hash"
+          }
+        },
+        "required": [
+          "id",
+          "ts",
+          "action",
+          "resource_kind",
+          "outcome"
+        ],
+        "title": "AuditEvent",
+        "type": "object"
+      },
+      "AuditOutcome": {
+        "enum": [
+          "success",
+          "denied",
+          "error"
+        ],
+        "title": "AuditOutcome",
+        "type": "string"
+      },
       "Binding": {
         "additionalProperties": false,
         "description": "Canonical name → dataset name, for dims and variables (``geo: market``).\n\nNames that are not bound keep their dataset name. The binding is stored in the bundle\nand reversed on every output by default.",
@@ -138,6 +557,15 @@
         },
         "title": "Binding",
         "type": "object"
+      },
+      "BudgetPeriod": {
+        "description": "Window of a per-token vCPU-second budget (UTC calendar day or month).",
+        "enum": [
+          "day",
+          "month"
+        ],
+        "title": "BudgetPeriod",
+        "type": "string"
       },
       "BundleManifest": {
         "additionalProperties": false,
@@ -497,6 +925,16 @@
         "title": "Capabilities",
         "type": "object"
       },
+      "CaseOutcome": {
+        "enum": [
+          "passed",
+          "failed",
+          "skipped",
+          "error"
+        ],
+        "title": "CaseOutcome",
+        "type": "string"
+      },
       "CatalogResponse": {
         "description": "The static catalog the control plane validates against (no plugin code involved).",
         "examples": [
@@ -707,6 +1145,141 @@
         "title": "CompletePayload",
         "type": "object"
       },
+      "ConformanceCaseId": {
+        "enum": [
+          "submit",
+          "adopt_after_dispatcher_crash",
+          "duplicate_submit",
+          "cancel_mid_run",
+          "timeout",
+          "stalled_not_lost",
+          "confirmed_cancel_before_retry",
+          "checkpoint_resume",
+          "oom_classification",
+          "fanout_task_count",
+          "generation_verification",
+          "rate_limit_backoff"
+        ],
+        "title": "ConformanceCaseId",
+        "type": "string"
+      },
+      "ConformanceReport": {
+        "description": "One run of the suite against one executor.",
+        "examples": [
+          {
+            "environment": "nightly",
+            "executor": "cloudrun-jobs",
+            "finished_at": "2026-10-15T02:24:00Z",
+            "results": [
+              {
+                "case_id": "submit",
+                "duration_seconds": 61.0,
+                "outcome": "passed"
+              },
+              {
+                "case_id": "rate_limit_backoff",
+                "duration_seconds": 33.5,
+                "outcome": "passed"
+              }
+            ],
+            "started_at": "2026-10-15T02:00:00Z",
+            "suite_version": "1"
+          }
+        ],
+        "properties": {
+          "environment": {
+            "default": "pr",
+            "enum": [
+              "pr",
+              "nightly",
+              "manual"
+            ],
+            "title": "Environment",
+            "type": "string"
+          },
+          "executor": {
+            "title": "Executor",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ConformanceResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "suite_version": {
+            "default": "1",
+            "title": "Suite Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "executor",
+          "started_at"
+        ],
+        "title": "ConformanceReport",
+        "type": "object"
+      },
+      "ConformanceResult": {
+        "examples": [
+          {
+            "case_id": "stalled_not_lost",
+            "duration_seconds": 41.2,
+            "outcome": "passed"
+          }
+        ],
+        "properties": {
+          "case_id": {
+            "$ref": "#/components/schemas/ConformanceCaseId"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/CaseOutcome"
+          },
+          "problems": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Problems",
+            "type": "array"
+          }
+        },
+        "required": [
+          "case_id",
+          "outcome"
+        ],
+        "title": "ConformanceResult",
+        "type": "object"
+      },
       "ContextNeed": {
         "additionalProperties": false,
         "description": "Per-group tail a step needs at score time: ``n`` rows along ``along`` within groups.\n\n``min_lag`` is the smallest lag the step applies (for recursive-forecast checks);\nit defaults to 1 when the step depends on the target.",
@@ -875,6 +1448,64 @@
           "size"
         ],
         "title": "CoordSummary",
+        "type": "object"
+      },
+      "CostTotals": {
+        "description": "Sums over ledger entries (one currency).",
+        "examples": [
+          {
+            "amount_micros": 93600,
+            "attempts": 3,
+            "currency": "USD",
+            "gib_seconds": 14400,
+            "runs": 3,
+            "vcpu_seconds": 3600
+          }
+        ],
+        "properties": {
+          "amount_micros": {
+            "default": 0,
+            "title": "Amount Micros",
+            "type": "integer"
+          },
+          "attempts": {
+            "default": 0,
+            "description": "Distinct (run, attempt) pairs",
+            "minimum": 0.0,
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{3}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "gib_seconds": {
+            "default": 0,
+            "title": "Gib Seconds",
+            "type": "number"
+          },
+          "runs": {
+            "default": 0,
+            "description": "Distinct runs",
+            "minimum": 0.0,
+            "title": "Runs",
+            "type": "integer"
+          },
+          "vcpu_seconds": {
+            "default": 0,
+            "title": "Vcpu Seconds",
+            "type": "number"
+          }
+        },
+        "title": "CostTotals",
         "type": "object"
       },
       "DataRef": {
@@ -1888,6 +2519,268 @@
         "title": "EvaluateCall",
         "type": "object"
       },
+      "ExecutorCaps": {
+        "additionalProperties": false,
+        "description": "What an executor can do; placement rules are enforced against these.",
+        "properties": {
+          "checkpoint_storage": {
+            "default": false,
+            "title": "Checkpoint Storage",
+            "type": "boolean"
+          },
+          "classes": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceClass"
+            },
+            "title": "Classes",
+            "type": "array"
+          },
+          "dns_enforced": {
+            "default": false,
+            "title": "Dns Enforced",
+            "type": "boolean"
+          },
+          "egress_enforced": {
+            "default": false,
+            "title": "Egress Enforced",
+            "type": "boolean"
+          },
+          "gpus": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Gpus",
+            "type": "array"
+          },
+          "isolation": {
+            "$ref": "#/components/schemas/Isolation"
+          },
+          "max_runtime": {
+            "description": "Duration such as '45m', '1h30m' or '90s'.",
+            "examples": [
+              "45m",
+              "1h30m"
+            ],
+            "pattern": "^(?=.)(\\d+h)?(\\d+m)?(\\d+s)?$",
+            "title": "Max Runtime",
+            "type": "string"
+          },
+          "max_tasks": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Max Tasks",
+            "type": "integer"
+          },
+          "regions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "isolation"
+        ],
+        "title": "ExecutorCaps",
+        "type": "object"
+      },
+      "ExecutorHealth": {
+        "description": "One executor as the admin console shows it.",
+        "examples": [
+          {
+            "allows_public_tenants": true,
+            "caps": {
+              "checkpoint_storage": true,
+              "classes": [
+                "S",
+                "M",
+                "L"
+              ],
+              "dns_enforced": true,
+              "egress_enforced": true,
+              "isolation": 3,
+              "max_runtime": "1h",
+              "max_tasks": 10000,
+              "regions": [
+                "europe-west1"
+              ]
+            },
+            "checked_at": "2026-10-15T09:30:00Z",
+            "conformance": {
+              "environment": "nightly",
+              "executor": "cloudrun-jobs",
+              "finished_at": "2026-10-15T02:24:00Z",
+              "results": [
+                {
+                  "case_id": "submit",
+                  "duration_seconds": 61.0,
+                  "outcome": "passed"
+                },
+                {
+                  "case_id": "rate_limit_backoff",
+                  "duration_seconds": 33.5,
+                  "outcome": "passed"
+                }
+              ],
+              "started_at": "2026-10-15T02:00:00Z",
+              "suite_version": "1"
+            },
+            "conformance_passed": true,
+            "enabled": true,
+            "failures_last_hour": 1,
+            "last_success_at": "2026-10-15T09:30:00Z",
+            "name": "cloudrun-jobs",
+            "queued_runs": 4,
+            "regions": [
+              "europe-west1"
+            ],
+            "running_executions": 37,
+            "status": "ok",
+            "submit_rate_limit_per_minute": 180,
+            "submits_last_minute": 52,
+            "throttled_last_hour": 0
+          }
+        ],
+        "properties": {
+          "allows_public_tenants": {
+            "title": "Allows Public Tenants",
+            "type": "boolean"
+          },
+          "caps": {
+            "$ref": "#/components/schemas/ExecutorCaps"
+          },
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "conformance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConformanceReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conformance_passed": {
+            "default": false,
+            "title": "Conformance Passed",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "failures_last_hour": {
+            "default": 0,
+            "description": "Attempts failed as infra errors",
+            "minimum": 0.0,
+            "title": "Failures Last Hour",
+            "type": "integer"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "name": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "title": "Name",
+            "type": "string"
+          },
+          "queued_runs": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Queued Runs",
+            "type": "integer"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "running_executions": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Running Executions",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExecutorStatus"
+          },
+          "submit_rate_limit_per_minute": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submit Rate Limit Per Minute"
+          },
+          "submits_last_minute": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Submits Last Minute",
+            "type": "integer"
+          },
+          "throttled_last_hour": {
+            "default": 0,
+            "description": "429 answers from the backend",
+            "minimum": 0.0,
+            "title": "Throttled Last Hour",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "enabled",
+          "status",
+          "caps",
+          "allows_public_tenants",
+          "checked_at"
+        ],
+        "title": "ExecutorHealth",
+        "type": "object"
+      },
+      "ExecutorStatus": {
+        "enum": [
+          "ok",
+          "degraded",
+          "down",
+          "disabled"
+        ],
+        "title": "ExecutorStatus",
+        "type": "string"
+      },
       "FailureClass": {
         "description": "Why a run ended ``FAILED``; each maps to one stable :class:`ErrorCode`.",
         "enum": [
@@ -2184,6 +3077,18 @@
         "title": "InlineArrow",
         "type": "object"
       },
+      "InternalService": {
+        "enum": [
+          "api",
+          "dispatcher",
+          "reconciler",
+          "finalizer",
+          "events",
+          "pubsub-push"
+        ],
+        "title": "InternalService",
+        "type": "string"
+      },
       "Intervention": {
         "additionalProperties": false,
         "description": "Change ``var`` on the coords selected by ``sel``: exactly one of multiply/add/set.",
@@ -2274,6 +3179,18 @@
         "title": "Intervention",
         "type": "object"
       },
+      "Isolation": {
+        "description": "How strongly a backend isolates a run (ordered: higher is stronger).",
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "title": "Isolation",
+        "type": "integer"
+      },
       "Issue": {
         "additionalProperties": false,
         "description": "One problem found while validating a document, located by a JSON pointer.",
@@ -2338,6 +3255,185 @@
         "type": "object"
       },
       "JsonValue": {},
+      "KillSwitchUpdate": {
+        "additionalProperties": false,
+        "description": "``PUT /v1/admin/kill-switches``: fields left out keep their value; ``reason`` is\nrequired so the audit log says why.",
+        "examples": [
+          {
+            "reason": "incident 2026-10-15",
+            "untrusted_execution_enabled": false
+          },
+          {
+            "global_spend_cap_micros": 500000000,
+            "reason": "daily cap for the beta"
+          }
+        ],
+        "properties": {
+          "clear_spend_cap": {
+            "default": false,
+            "description": "Remove the spend cap",
+            "title": "Clear Spend Cap",
+            "type": "boolean"
+          },
+          "global_spend_cap_micros": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Global Spend Cap Micros"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          },
+          "spend_cap_period": {
+            "anyOf": [
+              {
+                "enum": [
+                  "day",
+                  "month"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spend Cap Period"
+          },
+          "untrusted_execution_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Untrusted Execution Enabled"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "KillSwitchUpdate",
+        "type": "object"
+      },
+      "KillSwitches": {
+        "description": "Platform-wide emergency controls (operators only; every change is audited).",
+        "examples": [
+          {
+            "global_spend_cap_micros": 500000000,
+            "reason": "incident 2026-10-15: suspected sandbox probe; code runs paused",
+            "spend_cap_currency": "USD",
+            "spend_cap_period": "day",
+            "untrusted_execution_enabled": false,
+            "updated_at": "2026-10-15T09:30:00Z",
+            "updated_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0"
+          }
+        ],
+        "properties": {
+          "global_spend_cap_micros": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stop new compute once the platform spent this much",
+            "title": "Global Spend Cap Micros"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "spend_cap_currency": {
+            "default": "USD",
+            "pattern": "^[A-Z]{3}$",
+            "title": "Spend Cap Currency",
+            "type": "string"
+          },
+          "spend_cap_period": {
+            "default": "day",
+            "enum": [
+              "day",
+              "month"
+            ],
+            "title": "Spend Cap Period",
+            "type": "string"
+          },
+          "untrusted_execution_enabled": {
+            "default": true,
+            "description": "Off: no run of tenant-uploaded plugin code is accepted or leased",
+            "title": "Untrusted Execution Enabled",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          }
+        },
+        "title": "KillSwitches",
+        "type": "object"
+      },
+      "LimitName": {
+        "description": "Every limit a :class:`QuotaDecision` can name.",
+        "enum": [
+          "requests_per_minute",
+          "max_resource_class",
+          "max_fanout_tasks",
+          "concurrent_runs",
+          "vcpu_seconds_per_day",
+          "vcpu_seconds_per_month",
+          "storage_bytes",
+          "egress_bytes_per_month",
+          "untrusted_execution",
+          "global_spend"
+        ],
+        "title": "LimitName",
+        "type": "string"
+      },
       "Lineage": {
         "description": "Everything a model version came from (plan §8.6).",
         "examples": [
@@ -2653,47 +3749,375 @@
         "type": "object"
       },
       "Me": {
-        "description": "The calling identity (M1: the local, unauthenticated default principal).",
+        "description": "``GET /v1/me``: who the caller is and where they may act.\n\nFor a token, ``tenants`` holds exactly the token's project and ``token`` the token\nitself (its scopes narrow every role shown here).",
+        "examples": [
+          {
+            "auth": "session",
+            "operator": false,
+            "principal": {
+              "email": "ana@acme.example",
+              "email_verified": true,
+              "id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+              "issuer": "https://accounts.google.com",
+              "kind": "user",
+              "name": "Ana Analyst",
+              "subject": "110169484474386276334"
+            },
+            "tenants": [
+              {
+                "projects": [
+                  {
+                    "name": "Growth",
+                    "project_id": "growth",
+                    "role": "runner",
+                    "tenant_id": "acme"
+                  }
+                ],
+                "tenant": {
+                  "created_at": "2026-10-15T09:30:00Z",
+                  "data_residency": "eu",
+                  "id": "acme",
+                  "name": "Acme Retail",
+                  "status": "active",
+                  "trust_tier": "verified"
+                }
+              }
+            ]
+          }
+        ],
         "properties": {
           "auth": {
-            "default": "none",
             "enum": [
-              "none",
-              "oidc",
-              "token"
+              "session",
+              "token",
+              "service"
             ],
             "title": "Auth",
             "type": "string"
           },
-          "project_ids": {
-            "items": {
-              "type": "string"
+          "operator": {
+            "default": false,
+            "title": "Operator",
+            "type": "boolean"
+          },
+          "principal": {
+            "discriminator": {
+              "mapping": {
+                "service": "#/components/schemas/ServicePrincipal",
+                "token": "#/components/schemas/TokenPrincipal",
+                "user": "#/components/schemas/UserPrincipal"
+              },
+              "propertyName": "kind"
             },
-            "title": "Project Ids",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserPrincipal"
+              },
+              {
+                "$ref": "#/components/schemas/TokenPrincipal"
+              },
+              {
+                "$ref": "#/components/schemas/ServicePrincipal"
+              }
+            ],
+            "title": "Principal"
+          },
+          "tenants": {
+            "items": {
+              "$ref": "#/components/schemas/MeTenant"
+            },
+            "title": "Tenants",
             "type": "array"
           },
-          "scopes": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Scopes",
-            "type": "array"
-          },
-          "subject": {
-            "title": "Subject",
+          "token": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiToken"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "principal",
+          "auth"
+        ],
+        "title": "Me",
+        "type": "object"
+      },
+      "MeProject": {
+        "description": "A project the caller can act in, with the caller's effective role there.",
+        "examples": [
+          {
+            "name": "Growth",
+            "project_id": "growth",
+            "role": "runner",
+            "tenant_id": "acme"
+          }
+        ],
+        "properties": {
+          "name": {
+            "title": "Name",
             "type": "string"
           },
+          "project_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ProjectRole"
+          },
           "tenant_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
             "title": "Tenant Id",
             "type": "string"
           }
         },
         "required": [
-          "subject",
           "tenant_id",
-          "project_ids"
+          "project_id",
+          "name",
+          "role"
         ],
-        "title": "Me",
+        "title": "MeProject",
+        "type": "object"
+      },
+      "MeTenant": {
+        "description": "A tenant the caller belongs to; ``role`` is the tenant-wide role (``None`` when the\ncaller only has project memberships).",
+        "examples": [
+          {
+            "projects": [
+              {
+                "name": "Growth",
+                "project_id": "growth",
+                "role": "runner",
+                "tenant_id": "acme"
+              }
+            ],
+            "tenant": {
+              "created_at": "2026-10-15T09:30:00Z",
+              "data_residency": "eu",
+              "id": "acme",
+              "name": "Acme Retail",
+              "status": "active",
+              "trust_tier": "verified"
+            }
+          }
+        ],
+        "properties": {
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/MeProject"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectRole"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/Tenant"
+          }
+        },
+        "required": [
+          "tenant"
+        ],
+        "title": "MeTenant",
+        "type": "object"
+      },
+      "Membership": {
+        "description": "A role grant. ``project_id=None`` grants the role on the tenant and every project.",
+        "examples": [
+          {
+            "created_at": "2026-10-15T09:30:00Z",
+            "created_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0",
+            "display_name": "Ana Analyst",
+            "email": "ana@acme.example",
+            "principal_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+            "principal_kind": "user",
+            "project_id": "growth",
+            "role": "runner",
+            "tenant_id": "acme"
+          },
+          {
+            "created_at": "2026-10-15T09:30:00Z",
+            "email": "it@acme.example",
+            "principal_id": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0",
+            "role": "admin",
+            "tenant_id": "acme"
+          }
+        ],
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "principal_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Principal Id",
+            "type": "string"
+          },
+          "principal_kind": {
+            "default": "user",
+            "enum": [
+              "user",
+              "service_account"
+            ],
+            "title": "Principal Kind",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ProjectRole"
+          },
+          "tenant_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "principal_id",
+          "role",
+          "created_at"
+        ],
+        "title": "Membership",
+        "type": "object"
+      },
+      "MembershipCreate": {
+        "additionalProperties": false,
+        "description": "Add a member (tenant-wide or to one project, by path). Give a known ``principal_id``\nor an ``email`` to invite (claimed at first login with that verified e-mail).",
+        "examples": [
+          {
+            "email": "ana@acme.example",
+            "role": "runner"
+          },
+          {
+            "principal_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+            "role": "viewer"
+          }
+        ],
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "pattern": "^[^@\\s]{1,64}@[^@\\s]{1,255}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "principal_id": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^(?:usr|sa)_[0-9a-z]{26}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Principal Id"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ProjectRole"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "MembershipCreate",
+        "type": "object"
+      },
+      "MembershipUpdate": {
+        "additionalProperties": false,
+        "description": "Change a member's role (the last admin of a tenant or project cannot be demoted).",
+        "examples": [
+          {
+            "role": "editor"
+          }
+        ],
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/ProjectRole"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "MembershipUpdate",
         "type": "object"
       },
       "MetricPayload": {
@@ -3398,6 +4822,72 @@
         "title": "OutputSelector",
         "type": "object"
       },
+      "Page_ApiToken_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ApiToken"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[ApiToken]",
+        "type": "object"
+      },
+      "Page_AuditEvent_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[AuditEvent]",
+        "type": "object"
+      },
       "Page_DatasetVersion_": {
         "examples": [
           {
@@ -3464,6 +4954,39 @@
         "title": "Page[Dataset]",
         "type": "object"
       },
+      "Page_ExecutorHealth_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExecutorHealth"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[ExecutorHealth]",
+        "type": "object"
+      },
       "Page_LogLine_": {
         "examples": [
           {
@@ -3495,6 +5018,39 @@
           "items"
         ],
         "title": "Page[LogLine]",
+        "type": "object"
+      },
+      "Page_Membership_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Membership"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[Membership]",
         "type": "object"
       },
       "Page_ModelCatalogEntry_": {
@@ -3728,6 +5284,39 @@
         "title": "Page[Project]",
         "type": "object"
       },
+      "Page_QuotaPolicy_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QuotaPolicy"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[QuotaPolicy]",
+        "type": "object"
+      },
       "Page_RunEventView_": {
         "examples": [
           {
@@ -3891,6 +5480,39 @@
           "items"
         ],
         "title": "Page[StepCatalogEntry]",
+        "type": "object"
+      },
+      "Page_Tenant_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Tenant"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[Tenant]",
         "type": "object"
       },
       "PlotBindings": {
@@ -4429,6 +6051,16 @@
         "title": "PlotValidateResponse",
         "type": "object"
       },
+      "PrincipalKind": {
+        "enum": [
+          "user",
+          "service_account",
+          "token",
+          "service"
+        ],
+        "title": "PrincipalKind",
+        "type": "string"
+      },
       "Problem": {
         "additionalProperties": false,
         "description": "RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).",
@@ -4718,6 +6350,426 @@
         ],
         "title": "Project",
         "type": "object"
+      },
+      "ProjectCreate": {
+        "additionalProperties": false,
+        "description": "``POST /v1/tenants/{tenant_id}/projects`` (tenant admins).",
+        "examples": [
+          {
+            "description": "EU media mix models",
+            "id": "growth",
+            "name": "Growth"
+          }
+        ],
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ProjectCreate",
+        "type": "object"
+      },
+      "ProjectRole": {
+        "description": "Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last).",
+        "enum": [
+          "viewer",
+          "editor",
+          "runner",
+          "admin"
+        ],
+        "title": "ProjectRole",
+        "type": "string"
+      },
+      "ProjectUpdate": {
+        "additionalProperties": false,
+        "description": "``PATCH /v1/tenants/{tenant_id}/projects/{project_id}`` (project admins).",
+        "examples": [
+          {
+            "description": "EU and UK media mix models"
+          }
+        ],
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "ProjectUpdate",
+        "type": "object"
+      },
+      "QuotaLimitStatus": {
+        "description": "One limit of one level as shown in ``/usage`` (``remaining`` is ``None`` if unlimited).",
+        "examples": [
+          {
+            "fraction_used": 0.5,
+            "limit": 86400,
+            "limit_name": "vcpu_seconds_per_day",
+            "remaining": 43200,
+            "resets_at": "2026-10-16T00:00:00Z",
+            "scope": "tenant",
+            "subject_id": "acme",
+            "used": 43200
+          }
+        ],
+        "properties": {
+          "fraction_used": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fraction Used"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "limit_name": {
+            "$ref": "#/components/schemas/LimitName"
+          },
+          "remaining": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining"
+          },
+          "resets_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resets At"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/QuotaScope"
+          },
+          "subject_id": {
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "used": {
+            "title": "Used",
+            "type": "number"
+          }
+        },
+        "required": [
+          "scope",
+          "subject_id",
+          "limit_name",
+          "used"
+        ],
+        "title": "QuotaLimitStatus",
+        "type": "object"
+      },
+      "QuotaLimits": {
+        "additionalProperties": false,
+        "description": "Limits at one level. ``None`` = no limit at this level (other levels still apply).",
+        "properties": {
+          "concurrent_runs": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concurrent Runs"
+          },
+          "egress_bytes_per_month": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Egress Bytes Per Month"
+          },
+          "max_fanout_tasks": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Fanout Tasks"
+          },
+          "max_resource_class": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResourceClass"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requests_per_minute": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requests Per Minute"
+          },
+          "storage_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Bytes"
+          },
+          "vcpu_seconds_per_day": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vcpu Seconds Per Day"
+          },
+          "vcpu_seconds_per_month": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vcpu Seconds Per Month"
+          }
+        },
+        "title": "QuotaLimits",
+        "type": "object"
+      },
+      "QuotaPolicy": {
+        "description": "The limits in force for one subject at one level.",
+        "examples": [
+          {
+            "limits": {
+              "concurrent_runs": 40,
+              "max_fanout_tasks": 256,
+              "max_resource_class": "L",
+              "vcpu_seconds_per_day": 172800,
+              "vcpu_seconds_per_month": 1000000
+            },
+            "note": "beta customer, doubled daily compute",
+            "scope": "tenant",
+            "subject_id": "acme",
+            "updated_at": "2026-10-15T09:30:00Z",
+            "updated_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0"
+          },
+          {
+            "limits": {
+              "concurrent_runs": 700
+            },
+            "scope": "global",
+            "subject_id": "*"
+          }
+        ],
+        "properties": {
+          "limits": {
+            "$ref": "#/components/schemas/QuotaLimits"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/QuotaScope"
+          },
+          "subject_id": {
+            "maxLength": 64,
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          }
+        },
+        "required": [
+          "scope",
+          "subject_id",
+          "limits"
+        ],
+        "title": "QuotaPolicy",
+        "type": "object"
+      },
+      "QuotaPolicyUpsert": {
+        "additionalProperties": false,
+        "description": "``PUT /v1/admin/quotas``: create or replace the policy for ``(scope, subject_id)``.",
+        "examples": [
+          {
+            "limits": {
+              "concurrent_runs": 40,
+              "vcpu_seconds_per_day": 172800
+            },
+            "note": "beta customer, doubled daily compute",
+            "scope": "tenant",
+            "subject_id": "acme"
+          }
+        ],
+        "properties": {
+          "limits": {
+            "$ref": "#/components/schemas/QuotaLimits"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/QuotaScope"
+          },
+          "subject_id": {
+            "maxLength": 64,
+            "title": "Subject Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "subject_id",
+          "limits"
+        ],
+        "title": "QuotaPolicyUpsert",
+        "type": "object"
+      },
+      "QuotaScope": {
+        "description": "Policy level, most specific first.",
+        "enum": [
+          "token",
+          "tenant",
+          "global"
+        ],
+        "title": "QuotaScope",
+        "type": "string"
       },
       "RaggedSpec": {
         "additionalProperties": false,
@@ -5009,6 +7061,32 @@
         },
         "title": "ResourceHint",
         "type": "object"
+      },
+      "ResourceKind": {
+        "enum": [
+          "tenant",
+          "tenant_member",
+          "project",
+          "member",
+          "token",
+          "catalog",
+          "dataset",
+          "spec",
+          "run",
+          "model",
+          "endpoint",
+          "plot",
+          "plugin",
+          "usage",
+          "billing",
+          "audit",
+          "quota",
+          "kill_switch",
+          "executor",
+          "event"
+        ],
+        "title": "ResourceKind",
+        "type": "string"
       },
       "Role": {
         "description": "What a variable means to a model.",
@@ -6261,6 +8339,100 @@
         "title": "ScorecardItem",
         "type": "object"
       },
+      "ServicePrincipal": {
+        "additionalProperties": false,
+        "description": "An internal platform component (bypasses RLS through its own database role).",
+        "properties": {
+          "id": {
+            "pattern": "^svc_[a-z][a-z0-9-]{1,40}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "service",
+            "default": "service",
+            "title": "Kind",
+            "type": "string"
+          },
+          "service": {
+            "$ref": "#/components/schemas/InternalService"
+          }
+        },
+        "required": [
+          "id",
+          "service"
+        ],
+        "title": "ServicePrincipal",
+        "type": "object"
+      },
+      "SessionInfo": {
+        "description": "``GET /auth/session``: is the browser signed in, as whom, until when.",
+        "examples": [
+          {
+            "authenticated": true,
+            "expires_at": "2026-10-15T21:30:00Z",
+            "login_url": "/auth/login",
+            "operator": false,
+            "principal": {
+              "email": "ana@acme.example",
+              "email_verified": true,
+              "id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+              "issuer": "https://accounts.google.com",
+              "kind": "user",
+              "name": "Ana Analyst",
+              "subject": "110169484474386276334"
+            }
+          },
+          {
+            "authenticated": false,
+            "login_url": "/auth/login"
+          }
+        ],
+        "properties": {
+          "authenticated": {
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "login_url": {
+            "default": "/auth/login",
+            "description": "Where to send the browser to sign in",
+            "title": "Login Url",
+            "type": "string"
+          },
+          "operator": {
+            "default": false,
+            "title": "Operator",
+            "type": "boolean"
+          },
+          "principal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserPrincipal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "authenticated"
+        ],
+        "title": "SessionInfo",
+        "type": "object"
+      },
       "Severity": {
         "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
         "enum": [
@@ -7013,6 +9185,479 @@
         "title": "TemplateParam",
         "type": "object"
       },
+      "Tenant": {
+        "description": "The billing, isolation and quota boundary.",
+        "examples": [
+          {
+            "created_at": "2026-10-15T09:30:00Z",
+            "data_residency": "eu",
+            "id": "acme",
+            "name": "Acme Retail",
+            "status": "active",
+            "trust_tier": "verified"
+          }
+        ],
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "data_residency": {
+            "default": "us",
+            "description": "A multi-region (eu, us, asia) or one cloud region (europe-west1)",
+            "examples": [
+              "eu",
+              "us",
+              "europe-west1"
+            ],
+            "pattern": "^(?:[a-z]{2,6}|[a-z]+-[a-z]+[0-9]{1,2})$",
+            "title": "Data Residency",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TenantStatus",
+            "default": "active"
+          },
+          "status_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Reason"
+          },
+          "trust_tier": {
+            "$ref": "#/components/schemas/TrustTier"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "trust_tier",
+          "created_at"
+        ],
+        "title": "Tenant",
+        "type": "object"
+      },
+      "TenantAdminUpdate": {
+        "additionalProperties": false,
+        "description": "``PATCH /v1/admin/tenants/{tenant_id}`` (operators). Changing ``data_residency`` only\naffects where *new* runs are placed; moving stored data is a separate procedure.",
+        "examples": [
+          {
+            "status": "suspended",
+            "status_reason": "payment overdue"
+          },
+          {
+            "trust_tier": "internal"
+          }
+        ],
+        "properties": {
+          "data_residency": {
+            "anyOf": [
+              {
+                "description": "A multi-region (eu, us, asia) or one cloud region (europe-west1)",
+                "examples": [
+                  "eu",
+                  "us",
+                  "europe-west1"
+                ],
+                "pattern": "^(?:[a-z]{2,6}|[a-z]+-[a-z]+[0-9]{1,2})$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Residency"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TenantStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Reason"
+          },
+          "trust_tier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrustTier"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "TenantAdminUpdate",
+        "type": "object"
+      },
+      "TenantCreate": {
+        "additionalProperties": false,
+        "description": "``POST /v1/admin/tenants`` (operators). ``initial_admin_email`` is invited as tenant\nadmin; the invitation is claimed at first login with that verified e-mail.",
+        "examples": [
+          {
+            "data_residency": "eu",
+            "id": "acme",
+            "initial_admin_email": "it@acme.example",
+            "name": "Acme Retail",
+            "trust_tier": "verified"
+          }
+        ],
+        "properties": {
+          "data_residency": {
+            "default": "us",
+            "description": "A multi-region (eu, us, asia) or one cloud region (europe-west1)",
+            "examples": [
+              "eu",
+              "us",
+              "europe-west1"
+            ],
+            "pattern": "^(?:[a-z]{2,6}|[a-z]+-[a-z]+[0-9]{1,2})$",
+            "title": "Data Residency",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Id",
+            "type": "string"
+          },
+          "initial_admin_email": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "pattern": "^[^@\\s]{1,64}@[^@\\s]{1,255}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial Admin Email"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "trust_tier": {
+            "$ref": "#/components/schemas/TrustTier",
+            "default": "verified"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "TenantCreate",
+        "type": "object"
+      },
+      "TenantStatus": {
+        "description": "``suspended`` tenants are read-only; ``deleting`` tenants are inaccessible.",
+        "enum": [
+          "active",
+          "suspended",
+          "deleting"
+        ],
+        "title": "TenantStatus",
+        "type": "string"
+      },
+      "TenantUpdate": {
+        "additionalProperties": false,
+        "description": "``PATCH /v1/tenants/{tenant_id}`` (tenant admins): the display name only.",
+        "examples": [
+          {
+            "name": "Acme Retail Group"
+          }
+        ],
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "TenantUpdate",
+        "type": "object"
+      },
+      "TokenCreate": {
+        "additionalProperties": false,
+        "description": "``POST /v1/tokens``: mint a token for the caller in the selected project.\n\nThe token can never do more than its owner's role allows at the time of use. Limits are\noptional: ``None`` means the tenant's defaults apply (they always apply in addition).",
+        "examples": [
+          {
+            "budget_period": "month",
+            "expires_in_days": 30,
+            "name": "atlas-optimiser",
+            "rate_limit_per_minute": 120,
+            "scopes": [
+              "score:geo-mmm-prod",
+              "models:read"
+            ],
+            "vcpu_seconds_budget": 36000
+          }
+        ],
+        "properties": {
+          "budget_period": {
+            "$ref": "#/components/schemas/BudgetPeriod",
+            "default": "month"
+          },
+          "expires_in_days": {
+            "default": 90,
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Expires In Days",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+            "title": "Name",
+            "type": "string"
+          },
+          "rate_limit_per_minute": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Limit Per Minute"
+          },
+          "scopes": {
+            "items": {
+              "examples": [
+                "models:read",
+                "runs:create",
+                "score:geo-mmm-prod"
+              ],
+              "maxLength": 140,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "title": "Scopes",
+            "type": "array"
+          },
+          "vcpu_seconds_budget": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vcpu Seconds Budget"
+          }
+        },
+        "required": [
+          "name",
+          "scopes"
+        ],
+        "title": "TokenCreate",
+        "type": "object"
+      },
+      "TokenCreated": {
+        "description": "``201`` body of ``POST /v1/tokens``: the only time ``secret`` is ever returned.",
+        "examples": [
+          {
+            "secret": "mapi_7k2m9q4x_0123456789abcdefghjkmnpqrstvwxyz072gj7d",
+            "token": {
+              "budget_period": "month",
+              "created_at": "2026-10-15T09:30:00Z",
+              "display": "mapi_7k2m9q4x_…",
+              "expires_at": "2026-11-14T09:30:00Z",
+              "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+              "last_used_at": "2026-10-16T08:00:00Z",
+              "name": "atlas-optimiser",
+              "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+              "prefix": "7k2m9q4x",
+              "project_id": "growth",
+              "rate_limit_per_minute": 120,
+              "scopes": [
+                "score:geo-mmm-prod",
+                "models:read"
+              ],
+              "status": "active",
+              "tenant_id": "acme",
+              "vcpu_seconds_budget": 36000
+            }
+          }
+        ],
+        "properties": {
+          "secret": {
+            "description": "The full token. Store it now; it is not shown again.",
+            "pattern": "^mapi_(?P<prefix>[0123456789abcdefghjkmnpqrstvwxyz]{8})_(?P<secret>[0123456789abcdefghjkmnpqrstvwxyz]{32})(?P<checksum>[0123456789abcdefghjkmnpqrstvwxyz]{7})$",
+            "title": "Secret",
+            "type": "string"
+          },
+          "token": {
+            "$ref": "#/components/schemas/ApiToken"
+          }
+        },
+        "required": [
+          "token",
+          "secret"
+        ],
+        "title": "TokenCreated",
+        "type": "object"
+      },
+      "TokenPrincipal": {
+        "additionalProperties": false,
+        "description": "A request authenticated with an API token (acts as ``owner_id``, narrowed by scopes).",
+        "properties": {
+          "id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "token",
+            "default": "token",
+            "title": "Kind",
+            "type": "string"
+          },
+          "owner_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "owner_kind": {
+            "default": "user",
+            "enum": [
+              "user",
+              "service_account"
+            ],
+            "title": "Owner Kind",
+            "type": "string"
+          },
+          "prefix": {
+            "pattern": "^[0-9a-hjkmnp-tv-z]{8}$",
+            "title": "Prefix",
+            "type": "string"
+          },
+          "project_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Scopes",
+            "type": "array"
+          },
+          "tenant_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "prefix",
+          "owner_id",
+          "tenant_id",
+          "project_id",
+          "scopes"
+        ],
+        "title": "TokenPrincipal",
+        "type": "object"
+      },
+      "TokenStatus": {
+        "enum": [
+          "active",
+          "expired",
+          "revoked"
+        ],
+        "title": "TokenStatus",
+        "type": "string"
+      },
+      "TrustTier": {
+        "description": "How much the platform trusts a tenant's code and data (plan §2, §7, §9).",
+        "enum": [
+          "internal",
+          "verified",
+          "public",
+          "self-hosted-trusted"
+        ],
+        "title": "TrustTier",
+        "type": "string"
+      },
       "UploadCreate": {
         "additionalProperties": false,
         "description": "Ask for a signed PUT URL into the quarantine bucket for one file.",
@@ -7155,6 +9800,207 @@
           "created_at"
         ],
         "title": "UploadSession",
+        "type": "object"
+      },
+      "UsageReport": {
+        "description": "``GET /v1/usage`` (one project) and ``GET /v1/tenants/{tenant_id}/usage`` (whole\ntenant): ledger totals for one UTC period and the quota limits in force now.\n\nQuery: ``period=day|month`` (default ``month``), ``start`` (an RFC 3339 instant inside\nthe period; default: now), ``group_by``.",
+        "examples": [
+          {
+            "end": "2026-11-01T00:00:00Z",
+            "group_by": "resource_class",
+            "groups": {
+              "M": {
+                "amount_micros": 93600,
+                "attempts": 3,
+                "currency": "USD",
+                "gib_seconds": 14400,
+                "runs": 3,
+                "vcpu_seconds": 3600
+              }
+            },
+            "period": "month",
+            "price_versions": [
+              "cloudrun-list-2026-10"
+            ],
+            "project_id": "growth",
+            "quotas": [
+              {
+                "fraction_used": 0.5,
+                "limit": 86400,
+                "limit_name": "vcpu_seconds_per_day",
+                "remaining": 43200,
+                "resets_at": "2026-10-16T00:00:00Z",
+                "scope": "tenant",
+                "subject_id": "acme",
+                "used": 43200
+              }
+            ],
+            "start": "2026-10-01T00:00:00Z",
+            "tenant_id": "acme",
+            "totals": {
+              "amount_micros": 93600,
+              "attempts": 3,
+              "currency": "USD",
+              "gib_seconds": 14400,
+              "runs": 3,
+              "vcpu_seconds": 3600
+            }
+          }
+        ],
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "group_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "resource_class",
+                  "project",
+                  "day",
+                  "token",
+                  "run"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group By"
+          },
+          "groups": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CostTotals"
+            },
+            "title": "Groups",
+            "type": "object"
+          },
+          "period": {
+            "enum": [
+              "day",
+              "month"
+            ],
+            "title": "Period",
+            "type": "string"
+          },
+          "price_versions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Price Versions",
+            "type": "array"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "quotas": {
+            "items": {
+              "$ref": "#/components/schemas/QuotaLimitStatus"
+            },
+            "title": "Quotas",
+            "type": "array"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "tenant_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/CostTotals"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "period",
+          "start",
+          "end",
+          "totals"
+        ],
+        "title": "UsageReport",
+        "type": "object"
+      },
+      "UserPrincipal": {
+        "additionalProperties": false,
+        "description": "A person authenticated by OIDC. ``(issuer, subject)`` is the stable identity; the\nplatform id ``usr_…`` is assigned at first login.",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "email_verified": {
+            "default": false,
+            "title": "Email Verified",
+            "type": "boolean"
+          },
+          "id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "issuer": {
+            "pattern": "^https://[^\\s]{1,500}$",
+            "title": "Issuer",
+            "type": "string"
+          },
+          "kind": {
+            "const": "user",
+            "default": "user",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "subject": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "issuer",
+          "subject"
+        ],
+        "title": "UserPrincipal",
         "type": "object"
       },
       "ValidateRequest": {
@@ -7614,13 +10460,182 @@
     }
   },
   "info": {
-    "description": "Contract version 0.1. Errors are RFC 7807 problem documents (`application/problem+json`) with stable `code`s. M1 is single-tenant and unauthenticated (listens on 127.0.0.1).",
+    "description": "Contract version 0.1. Errors are RFC 7807 problem documents (`application/problem+json`) with stable `code`s. Programs authenticate with `Authorization: Bearer mapi_…` API tokens, browsers with the BFF session (`/auth/login`); project-scoped routes act in the project named by the `X-Mapi-Project: <tenant>/<project>` header (or the token's project). The single-tenant profile accepts credential-less requests on loopback as the local administrator.",
     "summary": "Typed xarray modelling runtime: control plane API (v1)",
     "title": "modeling-api",
     "version": "0.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/auth/callback": {
+      "get": {
+        "description": "Finish sign-in: one-time transaction, state check, code exchange, ID-token checks.",
+        "operationId": "auth_callback",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 2048,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Signed in; redirect to the return path"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Sign-in failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Auth Callback",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/login": {
+      "get": {
+        "description": "Start sign-in: Authorization Code + PKCE (S256) + nonce, state kept server-side.",
+        "operationId": "auth_login",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "return_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 2048,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Return To"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to the identity provider"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Auth Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "description": "End the session (idempotent) and clear the cookies. Cookie-authenticated, so it\nneeds the CSRF header like every other mutation.",
+        "operationId": "auth_logout",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Auth Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/session": {
+      "get": {
+        "description": "Is this browser signed in? The CSRF token comes back in ``X-CSRF-Token``.",
+        "operationId": "auth_session",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Auth Session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/healthz": {
       "get": {
         "description": "Process liveness (never touches dependencies).",
@@ -7733,6 +10748,756 @@
         "summary": "Readyz",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/v1/admin/audit": {
+      "get": {
+        "description": "The platform audit log (every tenant and platform-level actions), newest first.",
+        "operationId": "admin_list_audit",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tenant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AuditAction"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AuditOutcome"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Outcome"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AuditEvent_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin List Audit",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/executors": {
+      "get": {
+        "operationId": "admin_list_executors",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ExecutorHealth_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin List Executors",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/executors/{name}": {
+      "get": {
+        "operationId": "admin_get_executor",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9-]{0,63}$",
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutorHealth"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Get Executor",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/kill-switches": {
+      "get": {
+        "operationId": "admin_get_kill_switches",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KillSwitches"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Get Kill Switches",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "description": "Flip kill switches. Enforced at run creation and by the dispatcher at lease time.",
+        "operationId": "admin_put_kill_switches",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KillSwitchUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KillSwitches"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Put Kill Switches",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/quotas": {
+      "get": {
+        "description": "Stored policies (tier defaults apply where none is stored).",
+        "operationId": "admin_list_quotas",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/QuotaScope"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scope"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subject_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_QuotaPolicy_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin List Quotas",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "operationId": "admin_put_quota",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotaPolicyUpsert"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaPolicy"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Put Quota",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/quotas/{scope}/{subject_id}": {
+      "delete": {
+        "operationId": "admin_delete_quota",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scope",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/QuotaScope"
+            }
+          },
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Delete Quota",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/tenants": {
+      "get": {
+        "operationId": "admin_list_tenants",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TenantStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "trust_tier",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TrustTier"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Trust Tier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_Tenant_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin List Tenants",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "description": "Create a tenant; ``initial_admin_email`` is invited as its tenant admin.",
+        "operationId": "admin_create_tenant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tenant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Create Tenant",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/tenants/{tenant_id}": {
+      "get": {
+        "operationId": "admin_get_tenant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tenant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Get Tenant",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "description": "Change a tenant's name, tier, status or residency. Suspended tenants are read-only;\n``deleting`` tenants are inaccessible (their data is removed by a separate procedure).",
+        "operationId": "admin_update_tenant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantAdminUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tenant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Update Tenant",
+        "tags": [
+          "admin"
         ]
       }
     },
@@ -8501,7 +12266,7 @@
     },
     "/v1/me": {
       "get": {
-        "description": "M1 has no authentication: every caller is the local default principal.",
+        "description": "Who is calling, and the tenants, projects and roles they can act in. For a token:\nonly its own project (its scopes narrow every role shown).",
         "operationId": "get_me",
         "responses": {
           "200": {
@@ -8515,8 +12280,9 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Me",
+        "summary": "Get Me",
         "tags": [
+          "tenants",
           "identity"
         ]
       }
@@ -9260,6 +13026,7 @@
     },
     "/v1/projects": {
       "get": {
+        "description": "Every project the caller can act in, across its tenants (ordered by tenant, id).",
         "operationId": "list_projects",
         "parameters": [
           {
@@ -9321,6 +13088,7 @@
     },
     "/v1/projects/{project_id}": {
       "get": {
+        "description": "The selected project (its tenant comes from ``X-Mapi-Project``, the token, or the\ncaller's only tenant).",
         "operationId": "get_project",
         "parameters": [
           {
@@ -10578,6 +14346,1460 @@
           "specs"
         ]
       }
+    },
+    "/v1/tenants": {
+      "get": {
+        "description": "Tenants the caller belongs to (operators: use ``/v1/admin/tenants`` for all).",
+        "operationId": "list_tenants",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_Tenant_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tenants",
+        "tags": [
+          "tenants"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}": {
+      "get": {
+        "operationId": "get_tenant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tenant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tenant",
+        "tags": [
+          "tenants"
+        ]
+      },
+      "patch": {
+        "operationId": "update_tenant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tenant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Tenant",
+        "tags": [
+          "tenants"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/audit": {
+      "get": {
+        "description": "The tenant's audit log, newest first (tenant admins).",
+        "operationId": "list_tenant_audit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AuditAction"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AuditOutcome"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Outcome"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AuditEvent_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tenant Audit",
+        "tags": [
+          "tenants"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/members": {
+      "get": {
+        "operationId": "list_tenant_members",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_Membership_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tenant Members",
+        "tags": [
+          "tenants"
+        ]
+      },
+      "post": {
+        "operationId": "add_tenant_member",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembershipCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Membership"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Tenant Member",
+        "tags": [
+          "tenants"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/members/{principal_id}": {
+      "delete": {
+        "operationId": "remove_tenant_member",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "principal_id",
+            "required": true,
+            "schema": {
+              "pattern": "^(?:usr|sa)_[0-9a-z]{26}$",
+              "title": "Principal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Tenant Member",
+        "tags": [
+          "tenants"
+        ]
+      },
+      "patch": {
+        "operationId": "update_tenant_member",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "principal_id",
+            "required": true,
+            "schema": {
+              "pattern": "^(?:usr|sa)_[0-9a-z]{26}$",
+              "title": "Principal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembershipUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Membership"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Tenant Member",
+        "tags": [
+          "tenants"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/projects": {
+      "get": {
+        "operationId": "list_tenant_projects",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_Project_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tenant Projects",
+        "tags": [
+          "tenants",
+          "projects"
+        ]
+      },
+      "post": {
+        "operationId": "create_project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Project",
+        "tags": [
+          "tenants",
+          "projects"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/projects/{project_id}": {
+      "delete": {
+        "description": "Delete an empty project (its memberships and tokens go with it). 409 while it holds\ndatasets, specs, runs or models, and for the platform's default project.",
+        "operationId": "delete_project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Project",
+        "tags": [
+          "tenants",
+          "projects"
+        ]
+      },
+      "patch": {
+        "operationId": "update_project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Project",
+        "tags": [
+          "tenants",
+          "projects"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/projects/{project_id}/members": {
+      "get": {
+        "description": "Project grants plus tenant-wide grants (which apply to every project).",
+        "operationId": "list_members",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_Membership_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Members",
+        "tags": [
+          "tenants"
+        ]
+      },
+      "post": {
+        "operationId": "add_member",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembershipCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Membership"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Project Member",
+        "tags": [
+          "tenants"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/projects/{project_id}/members/{principal_id}": {
+      "delete": {
+        "operationId": "remove_member",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "principal_id",
+            "required": true,
+            "schema": {
+              "pattern": "^(?:usr|sa)_[0-9a-z]{26}$",
+              "title": "Principal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Project Member",
+        "tags": [
+          "tenants"
+        ]
+      },
+      "patch": {
+        "operationId": "update_member",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "principal_id",
+            "required": true,
+            "schema": {
+              "pattern": "^(?:usr|sa)_[0-9a-z]{26}$",
+              "title": "Principal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembershipUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Membership"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Project Member",
+        "tags": [
+          "tenants"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/usage": {
+      "get": {
+        "description": "Cost of the whole tenant (tenant admins).",
+        "operationId": "get_tenant_usage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "month",
+              "enum": [
+                "day",
+                "month"
+              ],
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "resource_class",
+                    "project",
+                    "day",
+                    "token",
+                    "run"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Group By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tenant Usage",
+        "tags": [
+          "usage",
+          "tenants"
+        ]
+      }
+    },
+    "/v1/tokens": {
+      "get": {
+        "description": "The caller's tokens in the project, newest first (``all=true``: everyone's).",
+        "operationId": "list_tokens",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "all",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "All",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TokenStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ApiToken_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tokens",
+        "tags": [
+          "tokens"
+        ]
+      },
+      "post": {
+        "description": "Mint a token in the selected project; ``secret`` is returned now and never again.",
+        "operationId": "create_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Token",
+        "tags": [
+          "tokens"
+        ]
+      }
+    },
+    "/v1/tokens/{token_id}": {
+      "delete": {
+        "description": "Revoke a token (idempotent). The next request with it is ``401``.",
+        "operationId": "revoke_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token_id",
+            "required": true,
+            "schema": {
+              "pattern": "^tok_[0-9a-z]{26}$",
+              "title": "Token Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Token",
+        "tags": [
+          "tokens"
+        ]
+      },
+      "get": {
+        "operationId": "get_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token_id",
+            "required": true,
+            "schema": {
+              "pattern": "^tok_[0-9a-z]{26}$",
+              "title": "Token Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiToken"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Token",
+        "tags": [
+          "tokens"
+        ]
+      }
+    },
+    "/v1/usage": {
+      "get": {
+        "description": "Cost of the selected project for one UTC period, and the quotas in force now.",
+        "operationId": "get_usage",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "month",
+              "enum": [
+                "day",
+                "month"
+              ],
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "resource_class",
+                    "project",
+                    "day",
+                    "token",
+                    "run"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Group By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Usage",
+        "tags": [
+          "usage"
+        ]
+      }
     }
   },
   "tags": [
@@ -10588,7 +15810,22 @@
       "name": "identity"
     },
     {
+      "name": "auth"
+    },
+    {
+      "name": "tenants"
+    },
+    {
       "name": "projects"
+    },
+    {
+      "name": "tokens"
+    },
+    {
+      "name": "usage"
+    },
+    {
+      "name": "admin"
     },
     {
       "name": "catalog"

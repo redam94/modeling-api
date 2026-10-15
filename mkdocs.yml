@@ -186,6 +186,7 @@ nav:
       - Local, without Docker: operations/local-development.md
       - Docker Compose: operations/docker.md
       - Container images: operations/images.md
+      - Authentication and isolation: operations/authentication.md
       - Configuration reference: operations/configuration.md
       - Troubleshooting: operations/troubleshooting.md
   - Roadmap:
