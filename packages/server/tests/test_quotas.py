@@ -1,0 +1,359 @@
+"""Quotas at run creation, request-rate limits, kill switches, weighted fair-share leasing in
+the dispatcher, and the cost ledger (metered attempts → ``Run.cost`` and ``/v1/usage``)."""
+
+from __future__ import annotations
+
+from datetime import timedelta
+
+import httpx
+import pytest
+from mapi_server.context import ServerContext
+from mapi_server.db import models as m
+from mapi_server.services.dispatcher import Dispatcher
+from mapi_server.services.finalizer import Finalizer
+from mapi_server.services.queue import InlineFinalizeQueue
+from mapi_server.services.reconciler import Reconciler
+from mapi_server.services.runs import load_run, now
+from mapi_server_testkit.builders import TREND_SPEC, ready_dataset, simulate_outputs
+from mapi_server_testkit.fake_executor import FakeExecutor
+from mapi_server_testkit.identity import (
+    grant_role,
+    make_tenant,
+    make_token,
+    make_user,
+    session_caller,
+    token_caller,
+)
+from mapi_spec.api import Run, UsageReport, new_id
+from mapi_spec.cost import DEFAULT_PRICE_TABLE, estimate_cost
+from mapi_spec.resources import ResourceClass
+from mapi_spec.run import RunState
+from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert
+
+pytestmark = pytest.mark.integration
+
+
+async def _spec(client: httpx.AsyncClient) -> str:
+    await_ = await client.post("/v1/specs", json={"yaml": TREND_SPEC})
+    assert await_.status_code == 201, await_.text
+    return str(await_.json()["id"])
+
+
+async def _policy(ctx: ServerContext, scope: str, subject: str, **limits: object) -> None:
+    async with ctx.db.session() as s:
+        await s.execute(
+            insert(m.QuotaPolicy)
+            .values(scope=scope, subject_id=subject, limits=limits, updated_at=now())
+            .on_conflict_do_update(index_elements=["scope", "subject_id"], set_={"limits": limits})
+        )
+
+
+async def _runs(ctx: ServerContext) -> list[m.Run]:
+    async with ctx.db.session() as s:
+        return list((await s.execute(select(m.Run).order_by(m.Run.created_at))).scalars())
+
+
+# ============================================================================= admission
+
+
+async def test_run_creation_is_admitted_against_tenant_quotas(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    await ready_dataset(ctx)
+    spec_id = await _spec(client)
+    fit = {"kind": "fit", "spec_id": spec_id, "revision": 1}
+    r = await client.post("/v1/runs", json=fit)
+    assert r.status_code == 201, r.text
+    first = Run.model_validate(r.json())
+    assert first.cost.estimated and first.cost.estimate_micros
+    expected = estimate_cost(ResourceClass.S, 300.0, table=DEFAULT_PRICE_TABLE)
+    assert first.cost.estimate_micros == expected.amount_micros
+    [row] = await _runs(ctx)
+    assert row.priority == "batch" and row.created_by is not None
+
+    await _policy(ctx, "tenant", "default", concurrent_runs=1)
+    r = await client.post("/v1/runs", json=fit)
+    assert r.status_code == 429 and r.json()["code"] == "QUOTA_EXCEEDED"
+    assert "concurrent_runs" in r.json()["detail"] and "retry-after" not in r.headers
+    assert len(await _runs(ctx)) == 1  # nothing was created
+
+    await _policy(ctx, "tenant", "default", vcpu_seconds_per_day=700)  # 600 in flight + 600
+    r = await client.post("/v1/runs", json=fit)
+    assert r.status_code == 429 and "vcpu_seconds_per_day" in r.json()["detail"]
+    assert int(r.headers["retry-after"]) > 0
+
+    await _policy(ctx, "tenant", "default", max_resource_class="S")
+    r = await client.post("/v1/runs", json={**fit, "resource_class": "M"})
+    assert r.status_code == 429 and "max_resource_class" in r.json()["detail"]
+    assert (await client.post("/v1/runs", json=fit)).status_code == 201
+
+    async with ctx.db.session() as s:
+        denied = [
+            e for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "quota.denied"
+        ]  # fmt: skip
+    assert len(denied) == 3 and all(e.outcome == "denied" for e in denied)
+    assert {e.details["limit_name"] for e in denied} == {
+        "concurrent_runs", "vcpu_seconds_per_day", "max_resource_class",
+    }  # fmt: skip
+
+
+async def test_token_vcpu_budget_and_global_concurrency(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    await ready_dataset(ctx)
+    spec_id = await _spec(client)
+    fit = {"kind": "fit", "spec_id": spec_id, "revision": 1}
+    owner = await make_user(ctx, "ci@default.test")
+    await grant_role(ctx, owner, "default", None, "runner")
+    secret = await make_token(ctx, owner, "default", "default", ["runs:create"],
+                              vcpu_seconds_budget=1000, budget_period="day")  # fmt: skip
+    tok = token_caller(client, secret)
+    assert (await tok.post("/v1/runs", json=fit)).status_code == 201  # 600 vCPU-s estimate
+    r = await tok.post("/v1/runs", json=fit)
+    assert r.status_code == 429 and r.json()["detail"].startswith("token tok_")
+    # the local admin has no token budget, but the global level still applies
+    await _policy(ctx, "global", "*", concurrent_runs=1)
+    r = await client.post("/v1/runs", json=fit)
+    assert r.status_code == 429 and r.json()["detail"].startswith("global")
+
+
+async def test_kill_switches_refuse_new_compute(
+    ctx: ServerContext, client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import mapi_server.services.submit as submit
+
+    await ready_dataset(ctx)
+    spec_id = await _spec(client)
+    fit = {"kind": "fit", "spec_id": spec_id, "revision": 1}
+    r = await client.put(
+        "/v1/admin/kill-switches",
+        json={"untrusted_execution_enabled": False, "reason": "drill"},
+    )
+    assert r.status_code == 200 and r.json()["untrusted_execution_enabled"] is False
+    assert (await client.post("/v1/runs", json=fit)).status_code == 201  # built-in: fine
+    monkeypatch.setattr(submit, "_overlay", lambda *a: True)  # pretend it ships tenant code
+    r = await client.post("/v1/runs", json=fit)
+    assert r.status_code == 429 and "uploaded plugin code is paused" in r.json()["detail"]
+    monkeypatch.undo()
+    # the spend cap: internal tenants are exempt, others stop once it is reached
+    await client.put(
+        "/v1/admin/kill-switches", json={"global_spend_cap_micros": 1000, "reason": "beta cap"}
+    )
+    async with ctx.db.session() as s:
+        s.add(
+            m.CostLedgerEntry(
+                id=new_id("cle"), tenant_id="other", project_id="p", run_id="run_x", attempt=1,
+                kind="actual", resource_class="S", task_count=1, wall_seconds=1,
+                vcpu_seconds=2, gib_seconds=8, price_version="v", amount_micros=5000,
+                currency="USD", recorded_at=now(),
+            )
+        )  # fmt: skip
+    assert (await client.post("/v1/runs", json=fit)).status_code == 201  # default: internal
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Tenant).values(trust_tier="self-hosted-trusted"))
+    r = await client.post("/v1/runs", json=fit)
+    assert r.status_code == 429 and "spend cap" in r.json()["detail"]
+    assert int(r.headers["retry-after"]) > 0
+    switches = (await client.get("/v1/admin/kill-switches")).json()
+    assert switches["global_spend_cap_micros"] == 1000 and switches["reason"] == "beta cap"
+
+
+async def test_tenant_request_rate_limit(ctx: ServerContext, client: httpx.AsyncClient) -> None:
+    await make_tenant(ctx, "acme", projects=("growth",))
+    u = await make_user(ctx, "ana@acme.test")
+    await grant_role(ctx, u, "acme", None, "viewer")
+    ana = await session_caller(ctx, client, u, tenant_id="acme", project_id="growth")
+    await _policy(ctx, "tenant", "acme", requests_per_minute=2)
+    assert [(await ana.get("/v1/runs")).status_code for _ in range(2)] == [200, 200]
+    r = await ana.get("/v1/runs")
+    assert r.status_code == 429 and r.json()["code"] == "RATE_LIMITED"
+    assert "Retry-After" in r.headers
+    # another tenant is unaffected
+    assert (await client.get("/v1/runs")).status_code == 200
+
+
+async def test_storage_quota_blocks_uploads_only(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    ds = (await client.post("/v1/datasets", json={"name": "big"})).json()
+    await _policy(ctx, "tenant", "default", storage_bytes=1000)
+    body = {"filename": "x.csv", "content_type": "text/csv", "size_bytes": 2000}
+    r = await client.post(f"/v1/datasets/{ds['id']}/uploads", json=body)
+    assert r.status_code == 429 and "storage_bytes" in r.json()["detail"]
+    assert (await client.get(f"/v1/datasets/{ds['id']}")).status_code == 200
+
+
+# ============================================================================ fair share
+
+
+async def _queue(
+    ctx: ServerContext,
+    tenant: str,
+    *,
+    kind: str = "fit",
+    state: str = "queued",
+    minutes_ago: float = 0,
+    untrusted: bool = False,
+) -> str:
+    ts = now() - timedelta(minutes=minutes_ago)
+    run_id = new_id("run")
+    async with ctx.db.session() as s:
+        s.add(
+            m.Run(
+                id=run_id, tenant_id=tenant, project_id="main", kind=kind, state=state,
+                attempt=1, resource_class="S", timeout_s=600, labels={}, payload={},
+                inputs={}, checkpointable=False, infra_retries=0, finalize_attempts=0,
+                finalize={}, last_event_id=0, created_at=ts, updated_at=ts, queued_at=ts,
+                priority="interactive" if kind == "score" else "batch",
+                task_count=1, untrusted_code=untrusted,
+            )
+        )  # fmt: skip
+    return run_id
+
+
+async def _leased(ctx: ServerContext, dispatcher: Dispatcher) -> list[str]:
+    return [run_id for run_id, _ in await dispatcher.lease()]
+
+
+@pytest.fixture
+async def tenants(ctx: ServerContext) -> None:
+    for t in ("big", "small"):
+        await make_tenant(ctx, t, tier="internal", projects=("main",))
+
+
+async def test_interactive_work_and_idle_tenants_go_first(
+    ctx: ServerContext, tenants: None
+) -> None:
+    ctx.settings.dispatch_batch = 2
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    for i in range(3):
+        await _queue(ctx, "big", state="running", minutes_ago=30 + i)
+    big = [await _queue(ctx, "big", minutes_ago=20 - i) for i in range(4)]
+    score = await _queue(ctx, "small", kind="score", minutes_ago=1)
+    fit = await _queue(ctx, "small", minutes_ago=0.5)
+    # small has nothing running: its score (weight 4) then its fit beat big's older fits
+    assert await _leased(ctx, dispatcher) == [score, fit]
+    # now small runs 2 tasks and big 3: big's oldest fit is next, then small vs big again
+    nxt = await _leased(ctx, dispatcher)
+    assert nxt[0] == big[0] and len(nxt) == 2
+
+
+async def test_tenant_and_global_concurrency_caps(ctx: ServerContext, tenants: None) -> None:
+    ctx.settings.dispatch_batch = 10
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    await _queue(ctx, "big", state="running", minutes_ago=5)
+    queued_big = [await _queue(ctx, "big", minutes_ago=3 - i) for i in range(3)]
+    queued_small = [await _queue(ctx, "small", minutes_ago=2 - i) for i in range(2)]
+    await _policy(ctx, "tenant", "big", concurrent_runs=2)
+    await _policy(ctx, "global", "*", concurrent_runs=3)
+    leased = await _leased(ctx, dispatcher)
+    # global: 3 - 1 running = 2 slots; big may add only 1 more; fair share alternates
+    assert len(leased) == 2 and set(leased) <= set(queued_big + queued_small)
+    assert sum(r in queued_big for r in leased) <= 1
+    assert await _leased(ctx, dispatcher) == []  # global capacity exhausted
+
+
+async def test_dispatcher_holds_runs_the_kill_switches_or_tenant_status_stop(
+    ctx: ServerContext, client: httpx.AsyncClient, tenants: None
+) -> None:
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    untrusted = await _queue(ctx, "big", untrusted=True, minutes_ago=2)
+    trusted = await _queue(ctx, "small", minutes_ago=1)
+    await client.put(
+        "/v1/admin/kill-switches", json={"untrusted_execution_enabled": False, "reason": "drill"}
+    )
+    assert await _leased(ctx, dispatcher) == [trusted]
+    async with ctx.db.session() as s:
+        assert (await load_run(s, None, untrusted)).state == RunState.QUEUED.value
+        await s.execute(update(m.Tenant).where(m.Tenant.id == "big").values(status="suspended"))
+    await client.put(
+        "/v1/admin/kill-switches", json={"untrusted_execution_enabled": True, "reason": "drill"}
+    )
+    assert await _leased(ctx, dispatcher) == []  # suspended tenants keep their queue
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Tenant).where(m.Tenant.id == "big").values(status="active"))
+    assert await _leased(ctx, dispatcher) == [untrusted]
+
+
+async def test_shared_tiers_need_a_sandboxing_executor(ctx: ServerContext) -> None:
+    await make_tenant(ctx, "pub", tier="public", projects=("main",))
+    run_id = await _queue(ctx, "pub")
+    dispatcher = Dispatcher(ctx, FakeExecutor())  # PROCESS isolation
+    assert await _leased(ctx, dispatcher) == []
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, run_id)
+    assert run.state == RunState.FAILED.value and "gvisor" in (run.problem or {})["detail"]
+
+
+async def test_executor_health_is_reported(ctx: ServerContext, client: httpx.AsyncClient) -> None:
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    await dispatcher.report()
+    page = (await client.get("/v1/admin/executors")).json()
+    [health] = page["items"]
+    assert health["name"] == "fake" and health["status"] == "ok"
+    assert health["allows_public_tenants"] is False
+    assert (await client.get("/v1/admin/executors/fake")).status_code == 200
+    assert (await client.get("/v1/admin/executors/nope")).status_code == 404
+
+
+# =============================================================================== cost
+
+
+async def test_finished_attempts_are_metered_into_the_ledger(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    executor = FakeExecutor()
+    ctx.queue = InlineFinalizeQueue(Finalizer(ctx))
+    dispatcher, reconciler = Dispatcher(ctx, executor), Reconciler(ctx, executor)
+    await ready_dataset(ctx)
+    spec_id = await _spec(client)
+    run_id = (
+        await client.post("/v1/runs", json={"kind": "fit", "spec_id": spec_id, "revision": 1})
+    ).json()["id"]
+    await dispatcher.dispatch_once()
+    async with ctx.db.session() as s:
+        att = await s.get(m.RunAttempt, (run_id, 1))
+        assert att is not None
+        # pretend the execution started 5 minutes ago
+        att.submitted_at = now() - timedelta(minutes=5)
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, run_id)
+        att = await s.get(m.RunAttempt, (run_id, 1))
+        assert att is not None
+    executor.finish(att.nonce, 0)
+    await simulate_outputs(ctx, run, att)
+    await reconciler.reconcile_run(run_id)
+    assert isinstance(ctx.queue, InlineFinalizeQueue)
+    await ctx.queue.drain()
+    view = Run.model_validate((await client.get(f"/v1/runs/{run_id}")).json())
+    assert view.state == RunState.SUCCEEDED
+    cost = view.cost
+    assert not cost.estimated and cost.attempts_billed == 1
+    assert cost.currency == "USD" and cost.price_version == DEFAULT_PRICE_TABLE.version
+    assert cost.vcpu_seconds is not None and 590 <= cost.vcpu_seconds <= 640  # 2 vCPU × ~300 s
+    assert cost.amount_micros is not None and cost.amount_micros > 0
+    assert cost.usd == pytest.approx(cost.amount_micros / 1e6)
+    async with ctx.db.session() as s:
+        [entry] = list((await s.execute(select(m.CostLedgerEntry))).scalars())
+        # billing is idempotent: another terminal pass writes nothing new
+        from mapi_server.services.cost import bill_attempts
+
+        run = await load_run(s, None, run_id)
+        assert await bill_attempts(s, run) == []
+    assert entry.executor == "fake" and entry.token_id is None and entry.kind == "actual"
+    usage = UsageReport.model_validate(
+        (await client.get("/v1/usage", params={"group_by": "resource_class"})).json()
+    )
+    assert usage.totals.runs == 1 and usage.totals.amount_micros == cost.amount_micros
+    assert set(usage.groups) == {"S"} and usage.price_versions == [DEFAULT_PRICE_TABLE.version]
+    assert any(q.limit_name == "concurrent_runs" for q in usage.quotas)
+    day = UsageReport.model_validate(
+        (await client.get("/v1/usage", params={"period": "day"})).json()
+    )
+    assert day.totals.runs == 1 and (day.end - day.start) == timedelta(days=1)
+    tenant = UsageReport.model_validate(
+        (await client.get("/v1/tenants/default/usage", params={"group_by": "run"})).json()
+    )
+    assert set(tenant.groups) == {run_id}

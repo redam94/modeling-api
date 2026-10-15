@@ -60,6 +60,41 @@ def test_migrations_round_trip_and_match_the_models(scratch_db: str) -> None:
     assert "runs" in _tables(scratch_db)
 
 
+def test_tenancy_migration_adopts_v02_rows_and_enables_rls(scratch_db: str) -> None:
+    """v0.2 rows carry (tenant, project) ids, possibly without tenant/project rows of their
+    own; 0003 creates them, back-fills run priorities and turns on forced RLS."""
+    upgrade(scratch_db, "0002")
+    with psycopg.connect(scratch_db, autocommit=True) as conn:
+        for run_id, kind in (("run_a", "fit"), ("run_b", "score")):
+            conn.execute(
+                "INSERT INTO runs (id, tenant_id, project_id, kind, state, attempt, "
+                "resource_class, timeout_s, labels, payload, inputs, checkpointable, "
+                "infra_retries, finalize_attempts, finalize, last_event_id) VALUES "
+                "(%s, 'legacy', 'p1', %s, 'succeeded', 1, 'S', 60, '{}', '{}', '{}', false, "
+                "0, 0, '{}', 0)",
+                (run_id, kind),
+            )
+    upgrade(scratch_db)
+    with psycopg.connect(scratch_db) as conn:
+        tenants = conn.execute("SELECT id, trust_tier, status FROM tenants").fetchall()
+        assert tenants == [("legacy", "internal", "active")]
+        projects = conn.execute("SELECT tenant_id, id FROM projects").fetchall()
+        assert projects == [("legacy", "p1")]
+        prio = dict(conn.execute("SELECT id, priority FROM runs").fetchall())
+        assert prio == {"run_a": "batch", "run_b": "interactive"}
+        rls = conn.execute(
+            "SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE relname = 'runs'"
+        ).fetchone()
+        assert rls == (True,)
+    downgrade(scratch_db, "0002")
+    assert "memberships" not in _tables(scratch_db)
+    with psycopg.connect(scratch_db) as conn:
+        off = conn.execute("SELECT relrowsecurity FROM pg_class WHERE relname = 'runs'")
+        assert off.fetchone() == (False,)
+    upgrade(scratch_db)  # the roles already exist: still idempotent
+    assert "memberships" in _tables(scratch_db)
+
+
 def test_every_table_is_classified_for_row_level_security() -> None:
     """A new table is either a tenant table (with ``tenant_id``; RLS in a migration) or a
     declared platform table: nothing is left unclassified."""
