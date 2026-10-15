@@ -129,7 +129,8 @@ async def test_shared_tiers_wait_for_passing_evidence_for_the_current_caps(
     assert await _state(ctx, pub) == RunState.QUEUED.value
     await dispatcher.report()
     health = await _health(client, ex)
-    assert health["enabled"] is False and health["status"] == "disabled"
+    # ``enabled`` is the operators' switch; missing evidence only holds the shared tiers
+    assert health["enabled"] is True and health["status"] != "disabled"
     assert health["shared_tiers_enabled"] is False and health["conformance_passed"] is False
     assert "no executor conformance or security-suite report" in health["message"]
 

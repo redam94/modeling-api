@@ -147,7 +147,10 @@ async def placement_problem(
     rows = list(
         (
             await system.execute(
-                select(m.ExecutorReport).where(m.ExecutorReport.checked_at >= now - FRESH_REPORT)
+                select(m.ExecutorReport).where(
+                    m.ExecutorReport.enabled.is_(True),
+                    m.ExecutorReport.checked_at >= now - FRESH_REPORT,
+                )
             )
         ).scalars()
     )

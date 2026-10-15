@@ -211,8 +211,10 @@ curl -X PUT "$API/v1/admin/executors/cloudrun-jobs/evidence" -H 'content-type: a
 ```
 
 Until then the dispatcher leaves `verified` and `public` runs queued (it never fails them for
-missing evidence), and `GET /v1/admin/executors` shows the executor as `disabled` with the
-reason, plus `conformance_passed`, `security_passed` and `shared_tiers_enabled`. Evidence
+missing evidence), and `GET /v1/admin/executors` shows `shared_tiers_enabled: false` with the
+reason in `message`, plus `conformance_passed` and `security_passed`. The executor itself stays
+enabled for the trusted tiers: `enabled` and the `disabled` status are the operators' switch
+(`PUT /v1/admin/executors/{name}`, incident containment), never the evidence gate's. Evidence
 recorded for other caps (a changed region list, a flipped `MAPI_CLOUDRUN_DNS_ENFORCED`) no
 longer counts. `internal` and `self_hosted_trusted` tenants are not gated.
 
