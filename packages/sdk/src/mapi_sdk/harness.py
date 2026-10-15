@@ -34,18 +34,31 @@ from mapi_spec.capabilities import REPRESENTATION_RULES, OutputSelector, Represe
 from mapi_spec.errors import CoordPlanError, ErrorCode, Issue, MapiError, Severity
 from mapi_spec.loader import load_model_spec, load_score_request
 from mapi_spec.schema import DataSchema, DimPolicy, Role
-from mapi_spec.spec import FitMode, ModelSpec, ScorePolicy, ScoreRequest
+from mapi_spec.spec import (
+    FitMode,
+    LastPerGroupSplit,
+    ModelSpec,
+    ScorePolicy,
+    ScoreRequest,
+    Split,
+)
 from mapi_spec.validate import ResolvedSpec, apply_defaults, validate_spec
 
 from mapi_sdk._util import json_safe, normalise_dataset
 from mapi_sdk.binding import BindingMap
 from mapi_sdk.bundle import Bundle, MetricsReport, assert_no_pickle, new_manifest
 from mapi_sdk.context import drop_context
-from mapi_sdk.coords import CoordPlan, canonicalise_coords, horizon_frame, next_label
+from mapi_sdk.coords import (
+    CanonicalPlan,
+    CoordPlan,
+    canonicalise_coords,
+    horizon_frame,
+    next_label,
+)
 from mapi_sdk.errors import SchemaValidationError, StepError
 from mapi_sdk.metrics import compute_metrics, elpd
 from mapi_sdk.models import PREDICTIONS, FitContext, FitOutput, Fitted, ModelPlugin, ScoreContext
-from mapi_sdk.pipeline import RAW, FitTrace, Pipeline
+from mapi_sdk.pipeline import RAW, FitTrace, Pipeline, ReplayTrace
 from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.schema import check_dataset, infer_schema
 from mapi_sdk.split import SplitResult, split_dataset
@@ -261,6 +274,7 @@ def fit_spec(
     )
     hooks.check()
     sr = split_dataset(prefix.data, split, schema=resolved.stages.get(split_stage), seed=env.seed)
+    _check_recursion(resolved, split, sr)
     hooks.progress(0.15, "split the data")
     evaluation = _fit_from(
         env, prefix, sr.train, start=split_stage, role="evaluation", progress=(0.15, 0.45)
@@ -288,6 +302,36 @@ def fit_spec(
     _add_elpd(env, production)
     hooks.progress(1.0, "fit complete")
     return production
+
+
+def _check_recursion(rs: ResolvedSpec, split: Split, sr: SplitResult) -> None:
+    """Reject target lags shorter than the holdout once its length is known.
+
+    Static validation can only judge ``time_holdout: last``; ``fraction``/``after`` and
+    ``as_of`` (plus its ``gap``) holdouts are measured here, before the evaluation scores
+    the holdout with its own observed targets feeding the lags.
+    """
+    fdim = split.forecast_dim
+    if fdim is None or sr.is_masked or "recursion" in rs.model.capabilities.owns:
+        return
+    if isinstance(split, LastPerGroupSplit):
+        periods = split.last
+    elif fdim in sr.holdout.dims:
+        periods = int(sr.holdout.sizes[fdim]) + int(getattr(split, "gap", 0) or 0)
+    else:
+        return
+    for idx, s in enumerate(rs.steps):
+        ctx = s.context
+        if not s.depends_on_target or ctx is None or ctx.along != fdim:
+            continue
+        min_lag = ctx.min_lag if ctx.min_lag is not None else 1
+        if periods > min_lag:
+            raise MapiError(
+                f"step {s.id!r} lags the target by {min_lag} along {fdim!r} but the holdout "
+                f"spans {periods} periods; recursive forecasting is not supported in v1",
+                code=ErrorCode.RECURSIVE_UNSUPPORTED,
+                pointer=f"/pipeline/{idx}",
+            )
 
 
 def _add_elpd(env: _FitEnv, bundle: Bundle) -> None:
@@ -605,14 +649,20 @@ def _evaluate(env: _FitEnv, evaluation: Bundle, sr: SplitResult, split_stage: st
     )
     req = _internal_request(env.spec, mode, split_stage, output, seed=env.seed)
     names = list(env.spec.evaluate.metrics) or list(DEFAULT_EVAL_METRICS)
+    payload, observed = sr.holdout, None
+    if sr.is_masked and any(s.depends_on_target for s in env.resolved.steps):
+        # cell-level split: held-out targets must not feed target-dependent features
+        # (lags of y) - score the target-masked data, compare against the full data
+        payload, observed = sr.train, sr.holdout
     tree = score_bundle(
         evaluation,
         req,
-        sr.holdout,
+        payload,
         side_tables=env.side_tables,
         registry=env.registry,
         metrics=[m for m in names if not m.startswith("elpd_")],
         metric_mask=sr.holdout_mask,
+        observed=observed,
     )
     report = MetricsReport.model_validate_json(tree.attrs["metrics"])
     report.split = json_safe(
@@ -755,6 +805,7 @@ def score_bundle(
     metrics: Sequence[str] | None = None,
     metric_mask: xr.DataArray | None = None,
     hooks: FitHooks | None = None,
+    observed: xr.Dataset | None = None,
 ) -> xr.DataTree:
     """Score a fitted bundle; returns a ``DataTree``.
 
@@ -767,7 +818,9 @@ def score_bundle(
     from the bundle thinning index), ``predictions`` (full representation, when
     ``return_full``), and for counterfactuals ``baseline/...`` and ``delta/...``. Root
     attrs carry the representation, output kind, units/output space, retransformation
-    labels, non-error issues and - in ``evaluate`` mode - the metrics.
+    labels, non-error issues and - in ``evaluate`` mode - the metrics. ``observed``
+    (evaluation of cell-level splits) gives the observed targets for metrics when ``data``
+    has them masked.
     """
     req = load_score_request(request) if isinstance(request, str) else request
     registry = registry or default_registry()
@@ -833,7 +886,7 @@ def score_bundle(
     seed = req.seed if req.seed is not None else (bundle.model.fit_config.seed or 0)
     targets = rs.model.input_schema.targets if rs.model.input_schema is not None else []
 
-    def run(ds: xr.Dataset) -> _Scored:
+    def prepare(ds: xr.Dataset) -> tuple[ReplayTrace, xr.Dataset, CanonicalPlan]:
         hooks.check()
         trace = pipeline.transform(
             ds,
@@ -844,14 +897,23 @@ def score_bundle(
             cancel=hooks.cancel,
             log=hooks.log,
         )
-        model_ds = trace.data
         canon, plan = canonicalise_coords(
-            model_ds,
+            trace.data,
             bundle.fit_coords[rs.model_stage],
             rs.model.input_schema,
             pad_extend=bool(getattr(plugin, "pad_extend", True)),
             marks=trace.marks,
         )
+        return trace, canon, plan
+
+    def observe(trace: ReplayTrace, plan: CanonicalPlan) -> xr.Dataset:
+        model_ds = trace.data
+        return plan.restore(
+            drop_context(model_ds[[t for t in targets if t in model_ds]], trace.marks)
+        )
+
+    def run(ds: xr.Dataset) -> _Scored:
+        trace, canon, plan = prepare(ds)
         ctx = ScoreContext(
             mode=req.mode,
             kind=req.output.kind,
@@ -874,9 +936,7 @@ def score_bundle(
                 untrusted_text=f"{type(exc).__name__}: {exc}"[:8000],
             ) from exc
         pred = plan.restore(drop_context(_predictions(tree), trace.marks))
-        observed = plan.restore(
-            drop_context(model_ds[[t for t in targets if t in model_ds]], trace.marks)
-        )
+        observed = observe(trace, plan)
         extra = {
             name: child.to_dataset(inherit=False)
             for name, child in tree.children.items()
@@ -889,6 +949,12 @@ def score_bundle(
         scored = _apply_interventions(scored, req, binding)
     main = run(scored)
     issues += main.issues
+    if observed is not None:
+        # cell-level evaluation: features come from the target-masked payload, the
+        # observed targets for metrics from the full one
+        obs_in = binding.apply(normalise_dataset(observed), missing="ignore")
+        obs_trace, _, obs_plan = prepare(_order_payload(obs_in, entry_schema))
+        main.observed = observe(obs_trace, obs_plan)
     baseline = run(data) if counterfactual else None
 
     def finish(pred: xr.Dataset) -> tuple[xr.Dataset, dict[str, str], dict[str, str]]:

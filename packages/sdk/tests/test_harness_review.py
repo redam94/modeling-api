@@ -258,3 +258,59 @@ def test_recursion_is_rejected_whatever_raw_schema_is_given(registry: Registry) 
         with pytest.raises(MapiError) as err:
             fit_spec(spec, data, None, registry, raw_schema=schema)
         assert err.value.code is ErrorCode.RECURSIVE_UNSUPPORTED
+
+
+@pytest.mark.parametrize(
+    "split",
+    [
+        "{kind: time_holdout, dim: time, fraction: 0.15}",
+        "{kind: time_holdout, dim: time, after: '2024-06-30'}",
+        "{kind: as_of, dim: time, as_of: '2024-06-30'}",
+    ],
+)
+def test_runtime_recursion_check_once_the_holdout_length_is_known(
+    registry: Registry, split: str
+) -> None:
+    """A holdout whose length is only known at run time is still checked against the lag."""
+    data = _lag_panel(weeks=30, extra=0)
+    with pytest.raises(MapiError) as err:
+        fit_spec(_ylag_spec(split), data, None, registry)
+    assert err.value.code is ErrorCode.RECURSIVE_UNSUPPORTED
+    assert err.value.pointer == "/pipeline/0"
+
+
+def test_cell_level_split_scores_holdout_without_its_own_targets(registry: Registry) -> None:
+    """mask_block: held-out targets never feed lag features of the evaluation score."""
+    import numpy as np
+    from mapi_sdk.models import FitContext, FitOutput, Fitted, ScoreContext
+    from mapi_sdk.testing import toy
+    from mapi_spec.spec import FitConfig, ScoreRequest
+
+    seen: list[xr.Dataset] = []
+
+    class _Spy(toy.LinearModel):
+        id = "test.spy_lag"
+
+        def fit(self, ds: xr.Dataset, s: Any, cfg: FitConfig, ctx: FitContext) -> FitOutput:
+            return super().fit(ds, s, cfg, ctx)
+
+        def score(
+            self, fitted: Fitted, ds: xr.Dataset, req: ScoreRequest, ctx: ScoreContext
+        ) -> xr.DataTree:
+            seen.append(ds)
+            return super().score(fitted, ds, req, ctx)
+
+    reg = registry.copy()
+    reg.register_model(_Spy)
+    data = _lag_panel(weeks=30, extra=0)
+    split = "{kind: mask_block, dims: [geo, time], block: {time: 5}, fraction: 0.3, seed: 3}"
+    text = YLAG_SPEC.replace("__SPLIT__", split).replace("toy.linear@^1", "test.spy_lag@^1")
+    bundle = fit_spec(load_model_spec(text), data, None, reg)
+    assert bundle.metrics.n_holdout is not None and bundle.metrics.n_holdout > 0
+    assert np.isfinite(bundle.metrics.values["rmse"])
+    ev_inputs = seen[0]  # the evaluation's score call (holdout through the score path)
+    ylag = ev_inputs["y_lag"].sel(lag=1)
+    # wherever the true previous target is known, the feature equals it; held-out cells
+    # give NaN lags, so the number of NaN lag features exceeds the series starts
+    starts = ev_inputs.sizes["geo"]
+    assert int(ylag.isnull().sum()) > starts
