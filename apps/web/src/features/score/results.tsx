@@ -15,7 +15,7 @@ import { PlotFrame } from "@/features/plots/plot-frame";
 import type { JsonObject } from "@mapi/plot-sandbox/protocol";
 import { decodeArrow, type DecodedTable, type Row } from "@/lib/arrow";
 import { fetchArtifactBytes, fetchArtifactJson } from "@/lib/artifacts";
-import { formatBytes, formatNumber, relativeTime } from "@/lib/format";
+import { formatBytes, formatNumber, formatTimestamp, relativeTime } from "@/lib/format";
 import { distinctOn, pivotStats } from "@/lib/summary";
 import { cn } from "@/lib/utils";
 
@@ -41,14 +41,19 @@ function ArrowOutput({ link }: { link: ArtifactLink }) {
 function ResultTable({ table, name }: { table: DecodedTable; name: string }) {
   const columns = useMemo<ColumnDef<Row, unknown>[]>(
     () =>
-      table.columns.map((c) => ({
-        accessorKey: c.name,
-        header: c.name,
-        cell: ({ getValue }) => {
-          const v = getValue() as Row[string];
-          return typeof v === "number" ? <span className="tabular">{formatNumber(v)}</span> : v === null ? <span className="text-muted-foreground">—</span> : String(v);
-        },
-      })),
+      table.columns.map((c) => {
+        const temporal = /timestamp|date/i.test(c.type);
+        return {
+          accessorKey: c.name,
+          header: c.name,
+          cell: ({ getValue }) => {
+            const v = getValue() as Row[string];
+            if (typeof v === "number") return <span className="tabular">{formatNumber(v)}</span>;
+            if (v === null) return <span className="text-muted-foreground">—</span>;
+            return temporal && typeof v === "string" ? <span className="tabular whitespace-nowrap">{formatTimestamp(v)}</span> : String(v);
+          },
+        };
+      }),
     [table.columns],
   );
   const numeric = table.columns.filter((c) => /float|int|decimal/i.test(c.type)).map((c) => c.name);

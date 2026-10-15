@@ -5,7 +5,7 @@
  */
 import { expect, test } from "@playwright/test";
 
-const API = process.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
+const API = (process.env.VITE_API_BASE ?? process.env.MAPI_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
 
 test.describe("@e2e local stack", () => {
   test.beforeAll(async ({ request }) => {

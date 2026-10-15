@@ -5,7 +5,7 @@ import { stripAnsi } from "./ansi";
 import { ArtifactError, fetchArtifactBytes, fetchArtifactJson } from "./artifacts";
 import { crc32c, crc32cBase64 } from "./crc32c";
 import { detectDelimiter, guessColumn, parseCsv } from "./csv";
-import { formatBytes, formatDuration, shortId } from "./format";
+import { formatBytes, formatDuration, formatTimestamp, shortId } from "./format";
 import { formatPointer, parsePointer, pointerWithin } from "./pointer";
 import { isCancellable, isTerminal, nextResourceClass } from "./run-state";
 import { distinctOn, pivotStats } from "./summary";
@@ -191,5 +191,13 @@ describe("score summaries", () => {
     const rows = pivotStats(table).rows;
     expect(distinctOn(rows, ["date", "market", "y_hat_mean", undefined])).toHaveLength(1);
     expect(distinctOn(rows, ["component"])).toHaveLength(2);
+  });
+});
+
+describe("formatTimestamp", () => {
+  it("drops a midnight time and keeps others", () => {
+    expect(formatTimestamp("2023-08-06T00:00:00.000Z")).toBe("2023-08-06");
+    expect(formatTimestamp("2023-08-06T13:05:00Z")).toBe("2023-08-06 13:05:00");
+    expect(formatTimestamp("not a date")).toBe("not a date");
   });
 });

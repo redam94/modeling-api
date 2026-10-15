@@ -24,6 +24,7 @@ apps/*/dist/
 .pnpm-store/
 playwright-report/
 test-results/
+apps/web/e2e/screenshots/
 
 # --- Local state ---
 .local/

@@ -256,7 +256,12 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
         frame["split"] = pd.to_datetime(split) if b.temporal else split
     base = alt.Chart()
     layers: list[Any] = []
-    pairs = interval_columns(s.levels)
+    # a summary-only score result carries only the intervals it was asked for (hdi_90)
+    pairs = [
+        (lv, lo_c, hi_c)
+        for lv, lo_c, hi_c in interval_columns(s.levels)
+        if lo_c in frame and bool(frame[lo_c].notna().any())
+    ]
     for i, (_, lo_c, hi_c) in enumerate(pairs):
         layers.append(
             base.mark_area(opacity=0.15 + 0.15 * i, color="#3366cc").encode(
@@ -290,9 +295,15 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
     else:
         chart = layer
     lv_txt = " and ".join(pct(lv) for lv, _, _ in reversed(pairs))
+    bands_txt = (
+        ""
+        if not pairs
+        else f"; the shaded band is the {lv_txt} interval"
+        if len(pairs) == 1
+        else f"; the shaded bands are the {lv_txt} intervals"
+    )
     caption = (
-        f"The line is the model's {s.point} estimate of {b.var}; the shaded bands are the "
-        f"{lv_txt} intervals"
+        f"The line is the model's {s.point} estimate of {b.var}{bands_txt}"
         + ("; dots are the actual values" if "observed" in frame else "")
         + "."
     )
