@@ -198,6 +198,41 @@ def test_worker_claimed_infra_error_is_not_a_retryable_infra_exit(gcs: ShimGcs) 
     assert "INFRA_ERROR" in err.message and "reported by the worker" in err.message
 
 
+_SPOOF_CHARS = set("\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069\x1b\x07")
+
+
+def _strings(value: object) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [s for k, v in value.items() for s in (*_strings(k), *_strings(v))]
+    if isinstance(value, list):
+        return [s for v in value for s in _strings(v)]
+    return []
+
+
+def test_worker_text_is_stripped_of_bidi_and_control_characters(gcs: ShimGcs) -> None:
+    run = make_run(gcs, RunKind.DESCRIBE, {})
+    result = run_supervisor(run, registry=f"{TESTING}:spoofing_registry")
+    assert result.code == RunnerExit.USER_ERROR, result.stderr
+    assert_signed_stream(result)
+    kinds = {e.type for e in result.events}
+    assert {
+        RunEventType.STATE,
+        RunEventType.PROGRESS,
+        RunEventType.WARNING,
+        RunEventType.DIAGNOSTIC,
+        RunEventType.METRIC,
+        RunEventType.ERROR,
+    } <= kinds
+    seen = [s for e in result.events for s in _strings(e.payload)]
+    assert any("safetxt.exe" in s for s in seen), seen  # the text itself survives
+    dirty = [s for s in seen if _SPOOF_CHARS & set(s)]
+    assert not dirty, dirty
+    err = _error(result)
+    assert err.untrusted_text is not None and "\nline 2" in err.untrusted_text
+
+
 def test_invalid_job_spec_fails_as_user_error(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.FIT, {"apiVersion": "mapi/v1", "kind": "ModelSpec"})
     result = run_supervisor(run, registry=f"{TESTING}:empty_registry")

@@ -69,6 +69,9 @@ image only and never carry secrets:
 - **Logs are capped.** ANSI escapes, control characters and bidi overrides are stripped.
   Lines are cut at `limits.log_line_bytes` (4 KB) and flagged `truncated`. More than
   `limits.log_total_bytes` (20 MB) of worker output is `SANDBOX_VIOLATION (log_flood)`.
+- **Worker text is cleaned.** The same stripping applies to every other string the worker
+  sends: state and progress messages, warnings, diagnostics, metric labels, and error and
+  issue messages. Line breaks become spaces, except in `untrusted_text`.
 - **Progress is coalesced.** At most one `progress` event is sent per
   `limits.progress_interval_s` (2 s), and the newest value wins.
 - **Outputs are uploaded only from regular files.** The supervisor opens each file with

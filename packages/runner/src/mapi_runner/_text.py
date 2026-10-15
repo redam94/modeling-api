@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
-__all__ = ["LineSplitter", "clean_line", "truncate_utf8"]
+__all__ = ["LineSplitter", "clean_line", "clean_text", "clean_tree", "truncate_utf8"]
 
 # CSI (ESC [ ... final), OSC (ESC ] ... BEL | ESC \), DCS/SOS/PM/APC strings, two-byte escapes
 _ANSI = re.compile(
@@ -15,7 +16,10 @@ _ANSI = re.compile(
     r"|\x9b[0-?]*[ -/]*[@-~]"
 )
 # C0 controls except TAB, DEL, and C1 controls; bidi overrides and isolates (spoofing)
-_CONTROL = re.compile(r"[\x00-\x08\x0a-\x1f\x7f\x80-\x9f‪-‮⁦-⁩]")
+_CONTROL = re.compile(r"[\x00-\x08\x0a-\x1f\x7f\x80-\x9f\u202a-\u202e\u2066-\u2069]")
+# the same, keeping LF (multi-line untrusted text such as tracebacks)
+_CONTROL_KEEP_LF = re.compile(r"[\x00-\x08\x0b-\x1f\x7f\x80-\x9f\u202a-\u202e\u2066-\u2069]")
+_BREAKS = re.compile(r"\r\n?|\n")
 
 
 def clean_line(text: str) -> str:
@@ -23,6 +27,36 @@ def clean_line(text: str) -> str:
     text = _ANSI.sub("", text)
     text = _CONTROL.sub("", text)
     return text.replace("\t", " ")
+
+
+def clean_text(text: str, *, multiline: bool = False) -> str:
+    """:func:`clean_line` for worker-authored messages: line breaks become spaces, or are
+    kept as ``\\n`` when ``multiline`` (tracebacks and other ``untrusted_text``)."""
+    text = _ANSI.sub("", text)
+    if multiline:
+        text = _CONTROL_KEEP_LF.sub("", _BREAKS.sub("\n", text))
+    else:
+        text = _CONTROL.sub("", _BREAKS.sub(" ", text))
+    return text.replace("\t", " ")
+
+
+def clean_tree(value: Any, *, multiline_keys: frozenset[str] = frozenset()) -> Any:
+    """Every string (keys included) of a JSON-like value through :func:`clean_text`;
+    values under a key in ``multiline_keys`` keep their line breaks."""
+    if isinstance(value, str):
+        return clean_text(value)
+    if isinstance(value, dict):
+        out: dict[Any, Any] = {}
+        for k, v in value.items():
+            key = clean_text(k) if isinstance(k, str) else k
+            if isinstance(v, str) and k in multiline_keys:
+                out[key] = clean_text(v, multiline=True)
+            else:
+                out[key] = clean_tree(v, multiline_keys=multiline_keys)
+        return out
+    if isinstance(value, list | tuple):
+        return [clean_tree(v, multiline_keys=multiline_keys) for v in value]
+    return value
 
 
 def truncate_utf8(text: str, max_bytes: int) -> tuple[str, bool]:

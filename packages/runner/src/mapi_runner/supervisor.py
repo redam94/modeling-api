@@ -69,6 +69,7 @@ from mapi_spec.storage import PostPolicy, SignedPut
 from pydantic import BaseModel, ValidationError
 
 from mapi_runner import __version__
+from mapi_runner._text import clean_text, clean_tree
 from mapi_runner.bootstrap import BootstrapError, fetch_and_delete
 from mapi_runner.channel import (
     MAX_START_FRAME,
@@ -129,6 +130,18 @@ _LIB_DISTS: Final = (
     "xgboost",
 )
 _READ_BYTES: Final = 64 * 1024
+_MULTILINE: Final = frozenset({"untrusted_text"})
+
+
+def _clean[M: BaseModel](payload: M) -> M:
+    """A worker-authored payload with every string stripped of ANSI escapes, control
+    characters and bidi overrides (as captured log lines are), so it cannot spoof text in
+    the web app or the CLI. ``untrusted_text`` keeps its line breaks."""
+    raw = clean_tree(payload.model_dump(mode="json", by_alias=True), multiline_keys=_MULTILINE)
+    try:
+        return type(payload).model_validate(raw)
+    except ValidationError as exc:
+        raise ProtocolError(f"invalid worker message after text cleaning: {exc}") from exc
 
 
 class Termination(StrEnum):
@@ -548,9 +561,9 @@ class Supervisor:
             self._state(msg.payload.phase, msg.payload.message)
         elif isinstance(msg, ProgressMessage):
             assert self.progress is not None
-            self.progress.offer(msg.payload)
+            self.progress.offer(_clean(msg.payload))
         elif isinstance(msg, DiagnosticMessage | WarningMessage | MetricMessage):
-            self._emit(msg.payload)
+            self._emit(_clean(msg.payload))
         elif isinstance(msg, CheckpointMessage):
             self._checkpoint(msg)
         elif isinstance(msg, ResultMessage):
@@ -675,13 +688,16 @@ class Supervisor:
     def _from_worker_error(self, err: ErrorMessage) -> _Failure:
         fc = _WORKER_CLASSES.get(err.code, FailureClass.USER)
         for issue in err.issues[:20]:
+            message = clean_text(issue.message)[:2000]
             self._emit(
                 Diagnostic(
                     code=issue.code.value,
                     severity="error" if issue.severity.value == "error" else "warning",
-                    message_expert=issue.message[:2000],
-                    message_plain=issue.message[:2000],
-                    suggested_action=issue.suggested_action,
+                    message_expert=message,
+                    message_plain=message,
+                    suggested_action=None
+                    if issue.suggested_action is None
+                    else clean_text(issue.suggested_action)[:2000],
                 )
             )
         detail = err.message if not err.untrusted_text else f"{err.message}\n{err.untrusted_text}"
@@ -820,7 +836,7 @@ class Supervisor:
                 message=failure.message[:2000],
                 untrusted_text=None
                 if failure.untrusted_text is None
-                else failure.untrusted_text[:65536],
+                else clean_text(failure.untrusted_text, multiline=True)[:65536],
             )
         )
 
@@ -832,7 +848,8 @@ class Supervisor:
     def _state(self, phase: RunnerPhase, message: str | None) -> None:
         if self.progress is not None:
             self.progress.flush()
-        self._emit(StatePayload(phase=phase, message=None if message is None else message[:500]))
+        text = None if message is None else clean_text(message)[:500]
+        self._emit(StatePayload(phase=phase, message=text))
 
     def _stderr(self, message: str) -> None:
         with contextlib.suppress(OSError):
