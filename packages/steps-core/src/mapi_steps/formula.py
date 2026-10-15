@@ -40,7 +40,7 @@ from mapi_sdk.steps import Step, StepContext, StepSettings, StepState
 from mapi_spec.effects import StepKind
 from pydantic import Field, JsonValue, field_validator
 
-from mapi_steps._common import Name, NameList, schema_error
+from mapi_steps._common import Name, NameList, assign_vars, schema_error
 
 __all__ = ["FormulaError", "FormulaStep", "compile_formula", "evaluate"]
 
@@ -410,4 +410,4 @@ class FormulaStep(Step[FormulaSettings, StepState]):
         da = da.transpose(*s.dims)
         da = da.drop_vars([c for c in da.coords if c not in da.dims])
         da.attrs = {} if s.units is None else {"units": s.units}
-        return ds.assign({s.out: da})
+        return assign_vars(ds, {s.out: da})

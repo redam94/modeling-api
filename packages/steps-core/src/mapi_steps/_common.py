@@ -14,8 +14,8 @@ Operations receive a float array with ``along`` as the **last** axis.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
-from typing import Annotated, Any
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from typing import Annotated
 
 import numpy as np
 import pandas as pd
@@ -29,17 +29,18 @@ __all__ = [
     "Name",
     "NameList",
     "apply_along",
+    "assign_vars",
     "first_valid",
     "float_values",
     "group_codes",
     "is_dense",
     "level_param",
     "present",
-    "reduce_over",
     "require_dim",
     "require_vars",
     "schema_error",
     "shift_last",
+    "state_array",
 ]
 
 NAME_RE = r"^[A-Za-z_][A-Za-z0-9_.\-]{0,127}$"
@@ -170,12 +171,30 @@ def first_valid(a: np.ndarray) -> np.ndarray:
 # ---------------------------------------------------------------------- reductions & state
 
 
-def reduce_over(
-    da: xr.DataArray, over: Sequence[str], fn: Callable[[xr.DataArray, list[str]], xr.DataArray]
-) -> xr.DataArray:
-    """Reduce ``da`` over the named dims it has (labelled by the remaining dims)."""
-    dims = [d for d in over if d in da.dims]
-    return fn(da, dims)
+def assign_vars(ds: xr.Dataset, new: Mapping[str, xr.DataArray]) -> xr.Dataset:
+    """``ds.assign(new)`` that is safe on stacked (MultiIndex) dims.
+
+    Coordinates a result shares with ``ds`` (equal indexes, MultiIndex levels included) are
+    dropped from the result first, so ``ds`` provides them and xarray never deletes a single
+    MultiIndex level. Coordinates of new dims (``lag``, ``fourier_mode`` ...) are kept.
+    """
+    clean: dict[str, xr.DataArray] = {}
+    for name, da in new.items():
+        drop: set[str] = set()
+        for d in map(str, da.dims):
+            if d in da.indexes and d in ds.indexes and da.indexes[d].equals(ds.indexes[d]):
+                drop |= {str(c) for c in da.xindexes.get_all_coords(d)}
+        drop |= {str(c) for c in da.coords if c not in da.xindexes and c in ds.coords}
+        clean[name] = da.drop_vars(sorted(drop)) if drop else da
+    return ds.assign(clean)
+
+
+def state_array(da: xr.DataArray) -> xr.DataArray:
+    """A learned array ready to store: no attrs, only dim/index coordinates (MultiIndex
+    levels of stacked dims are kept with their index)."""
+    out = da.drop_vars([c for c in da.coords if c not in da.dims and c not in da.xindexes])
+    out.attrs = {}
+    return out
 
 
 def align(
@@ -220,8 +239,3 @@ def level_param(
         dims=[by],
         coords={by: like[by].values},
     )
-
-
-def copy_attrs(src: Mapping[Hashable, Any], dst: xr.DataArray) -> xr.DataArray:
-    dst.attrs = dict(src)
-    return dst

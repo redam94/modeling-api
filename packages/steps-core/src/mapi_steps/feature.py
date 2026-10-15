@@ -27,6 +27,7 @@ from mapi_steps._common import (
     Name,
     NameList,
     apply_along,
+    assign_vars,
     first_valid,
     present,
     require_dim,
@@ -136,7 +137,7 @@ class FourierStep(Step[FourierSettings, FourierState]):
             dims=[s.along, mode_dim],
             coords={s.along: values, mode_dim: modes},
         )
-        return ds.assign({s.out: feats})
+        return assign_vars(ds, {s.out: feats})
 
 
 # ================================================================================ trend
@@ -196,7 +197,9 @@ class TrendStep(Step[TrendSettings, TrendState]):
             values, st.origin, freq=st.freq, unit=s.unit, step_id=ctx.step_id, dim=s.along
         )
         trend = (pos / st.span) ** s.power
-        return ds.assign({s.out: xr.DataArray(trend, dims=[s.along], coords={s.along: values})})
+        return assign_vars(
+            ds, {s.out: xr.DataArray(trend, dims=[s.along], coords={s.along: values})}
+        )
 
 
 # ============================================================================= calendar
@@ -284,7 +287,7 @@ class CalendarStep(Step[CalendarSettings, StepState]):
             dims=[s.along, fdim],
             coords={s.along: values, fdim: list(s.features)},
         )
-        return ds.assign({s.out: feats})
+        return assign_vars(ds, {s.out: feats})
 
 
 # ============================================================================= holidays
@@ -359,7 +362,7 @@ class HolidaysStep(Step[HolidaysSettings, StepState]):
         per_period = self._align_by(per_period, ds, s, ctx)
         out = per_period.transpose(s.along, *s.by).astype(np.float64)
         out.attrs = {}
-        return ds.assign({s.out: out})
+        return assign_vars(ds, {s.out: out})
 
     def _per_period(
         self, var: xr.DataArray, labels: np.ndarray, s: HolidaysSettings, ctx: StepContext
@@ -506,7 +509,7 @@ class LagStep(Step[LagSettings, StepState]):
             res = res.transpose(*da.dims, s.lag_dim)
             res.attrs = dict(ds[v].attrs)
             out[f"{v}_lagged"] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
 
 class LagTensorSettings(_LagBase):
@@ -592,7 +595,7 @@ class LagTensorStep(Step[LagTensorSettings, StepState]):
             res = xr.concat(parts, dim=pd.Index(lags, name=s.dim)).transpose(*da.dims, s.dim)
             res.attrs = dict(ds[v].attrs)
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
 
 # ======================================================================= categorical codes
@@ -710,7 +713,7 @@ class OneHotStep(Step[OneHotSettings, StepState]):
                 coords={**{d: da[d].values for d in da.dims if d in da.coords}, ldim: levels[keep]},
             )
             out[f"{v}_onehot"] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
 
 class EncodeLevelsSettings(StepSettings):
@@ -808,7 +811,7 @@ class EncodeLevelsStep(Step[EncodeLevelsSettings, StepState]):
             labels = np.asarray(ds[d].values)
             codes = self._codes(labels, levels_of(f"dim:{d}"), s, d, ctx.step_id)
             out[f"{d}_code"] = xr.DataArray(codes, dims=[d], coords={d: labels})
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
 
 # ===================================================================== missing indicators
@@ -850,4 +853,4 @@ class MissingIndicatorStep(Step[MissingIndicatorSettings, StepState]):
         out = {}
         for v in present(ds, s.vars):
             out[f"{v}_missing"] = ds[v].isnull().astype(np.float64)
-        return ds.assign(out)
+        return assign_vars(ds, out)

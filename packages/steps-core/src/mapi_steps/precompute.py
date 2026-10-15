@@ -36,6 +36,7 @@ from mapi_steps._common import (
     Name,
     NameList,
     apply_along,
+    assign_vars,
     first_valid,
     level_param,
     present,
@@ -226,7 +227,7 @@ class AdstockStep(Step[AdstockSettings, StepState]):
             res = total.where(x.notnull()).transpose(*da.dims)
             res.attrs = dict(da.attrs)
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
 
 # =========================================================================== saturation
@@ -325,4 +326,4 @@ class SaturationStep(Step[SaturationSettings, StepState]):
             res = res.transpose(*da.dims)
             res.attrs = {**da.attrs, "units": "1"}
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)

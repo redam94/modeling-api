@@ -26,10 +26,12 @@ from mapi_steps._common import (
     NameList,
     align,
     apply_along,
+    assign_vars,
     float_values,
     present,
     require_vars,
     schema_error,
+    state_array,
 )
 
 __all__ = [
@@ -244,7 +246,7 @@ class FxConvertStep(Step[FxConvertSettings, StepState]):
             else:
                 res.attrs.pop("units", None)
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
     def transform(
         self, ds: xr.Dataset, s: FxConvertSettings, st: StepState, ctx: StepContext
@@ -298,8 +300,7 @@ class _ScaleStep(Step[ScaleSettings, StepState]):
                 raise schema_error(ctx.step_id, f"variable {v!r} has none of the dims {s.over}")
             stat = self._stat(abs(_as_float(ds[v])), dims)
             stat = stat.where(np.isfinite(stat) & (stat > 0), 1.0)
-            stat.attrs = {}
-            arrays[f"scale__{v}"] = stat.drop_vars([c for c in stat.coords if c not in stat.dims])
+            arrays[f"scale__{v}"] = state_array(stat)
         return StepState(arrays=xr.Dataset(arrays))
 
     def _scale(
@@ -315,7 +316,7 @@ class _ScaleStep(Step[ScaleSettings, StepState]):
             res = (_as_float(ds[v]) / self._scale(v, ds, s, st, ctx)).transpose(*ds[v].dims)
             res.attrs = {**ds[v].attrs, "units": "1"}
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
     def inverse(
         self, ds: xr.Dataset, s: ScaleSettings, st: StepState, ctx: StepContext
@@ -325,7 +326,7 @@ class _ScaleStep(Step[ScaleSettings, StepState]):
             res = (_as_float(ds[v]) * self._scale(v, ds, s, st, ctx)).transpose(*ds[v].dims)
             res.attrs = {k: a for k, a in ds[v].attrs.items() if k != "units"}
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
 
 class MeanScaleStep(_ScaleStep):
@@ -399,8 +400,7 @@ class StandardizeStep(Step[StandardizeSettings, StepState]):
             mean = mean.fillna(0.0)
             sd = sd.where(np.isfinite(sd) & (sd > 0), 1.0)
             for name, arr in (("mean", mean), ("sd", sd)):
-                arr.attrs = {}
-                arrays[f"{name}__{v}"] = arr.drop_vars([c for c in arr.coords if c not in arr.dims])
+                arrays[f"{name}__{v}"] = state_array(arr)
         return StepState(arrays=xr.Dataset(arrays))
 
     def _moments(
@@ -419,7 +419,7 @@ class StandardizeStep(Step[StandardizeSettings, StepState]):
             res = ((_as_float(ds[v]) - mean) / sd).transpose(*ds[v].dims)
             res.attrs = {**ds[v].attrs, "units": "1"}
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
     def inverse(
         self, ds: xr.Dataset, s: StandardizeSettings, st: StepState, ctx: StepContext
@@ -430,7 +430,7 @@ class StandardizeStep(Step[StandardizeSettings, StepState]):
             res = (_as_float(ds[v]) * sd + mean).transpose(*ds[v].dims)
             res.attrs = {k: a for k, a in ds[v].attrs.items() if k != "units"}
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
 
 # ===================================================================== pointwise transforms
@@ -464,16 +464,17 @@ class Log1pStep(Step[VarsSettings, StepState]):
                 raise schema_error(ctx.step_id, f"log1p needs values > -1 in {v!r}")
             res = xr.apply_ufunc(np.log1p, x, keep_attrs=True)
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
     def inverse(
         self, ds: xr.Dataset, s: VarsSettings, st: StepState, ctx: StepContext
     ) -> xr.Dataset:
-        return ds.assign(
+        return assign_vars(
+            ds,
             {
                 v: xr.apply_ufunc(np.expm1, _as_float(ds[v]), keep_attrs=True)
                 for v in present(ds, s.vars)
-            }
+            },
         )
 
 
@@ -507,7 +508,7 @@ class LogitStep(Step[LogitSettings, StepState]):
             p = x.clip(s.eps, 1 - s.eps)
             res = xr.apply_ufunc(_logit, p, keep_attrs=True)
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
     def inverse(
         self, ds: xr.Dataset, s: LogitSettings, st: StepState, ctx: StepContext
@@ -516,7 +517,7 @@ class LogitStep(Step[LogitSettings, StepState]):
         for v in present(ds, s.vars):
             x = _as_float(ds[v])
             out[v] = xr.apply_ufunc(_expit, x, keep_attrs=True)
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
 
 def _logit(p: np.ndarray) -> np.ndarray:
@@ -589,10 +590,7 @@ class ImputeStep(Step[ImputeSettings, ImputeState]):
                 x = _as_float(ds[v])
                 stat = x.mean(dims, skipna=True) if s.method == "mean" else x.median(dims)
                 stat = stat.fillna(s.fill_value)
-                stat.attrs = {}
-                arrays[f"value__{v}"] = stat.drop_vars(
-                    [c for c in stat.coords if c not in stat.dims]
-                )
+                arrays[f"value__{v}"] = state_array(stat)
         elif s.method == "ffill" and self._carries(ds, s):
             for v in s.vars:
                 if s.along not in ds[v].dims:
@@ -628,7 +626,7 @@ class ImputeStep(Step[ImputeSettings, ImputeState]):
                     res = self._ffill(x, ds, s, st, ctx, v)
             res.attrs = dict(ds[v].attrs)
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
     def _ffill(
         self,
@@ -752,7 +750,7 @@ class ReplaceSentinelStep(Step[ReplaceSentinelSettings, StepState]):
             res = x.where(~bad)
             res.attrs = dict(ds[v].attrs)
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)
 
 
 class ClipSettings(StepSettings):
@@ -789,4 +787,4 @@ class ClipStep(Step[ClipSettings, StepState]):
             res = _as_float(ds[v]).clip(s.lower, s.upper)
             res.attrs = dict(ds[v].attrs)
             out[v] = res
-        return ds.assign(out)
+        return assign_vars(ds, out)

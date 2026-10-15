@@ -239,3 +239,83 @@ def test_reshape_steps_are_stateless() -> None:
         assert not step.stateful()
         assert step.kind.value == "reshape"
         assert isinstance(step().new_state(), StepState)
+
+
+@pytest.mark.parametrize("how", ["sum", "mean", "max", "min", "first", "last"])
+@pytest.mark.parametrize("skipna", [False, True])
+def test_resample_aggregations_match_pandas(data: Any, how: str, skipna: bool) -> None:
+    daily = data.daily(days=21)
+    daily["y"][0, 2] = np.nan
+    out = run(ms.ResampleStep, daily, {"freq": "W-SUN", "how": how, "skipna": skipna})
+    weeks = [daily["y"].sel(geo="NL").isel(time=slice(7 * w, 7 * w + 7)).values for w in range(3)]
+
+    def reduce(week: np.ndarray) -> float:
+        vals = week[~np.isnan(week)] if skipna else week
+        if how in ("first", "last"):
+            vals = vals if skipna else week
+            return float(vals[0] if how == "first" else vals[-1])
+        if vals.size == 0:
+            return float("nan")
+        fn = {"sum": np.sum, "mean": np.mean, "max": np.max, "min": np.min}[how]
+        return float(fn(vals))
+
+    np.testing.assert_allclose(out["y"].sel(geo="NL").values, [reduce(w) for w in weeks])
+
+
+@pytest.mark.filterwarnings("error::FutureWarning")
+def test_value_and_feature_steps_work_on_stacked_dims(weekly: xr.Dataset) -> None:
+    """Steps after ``core.stack`` keep the MultiIndex (no single-level deletions) and their
+    state survives the bundle round trip."""
+    from mapi_sdk.pipeline import Pipeline
+    from mapi_sdk.testing import check_step
+
+    spend = weekly[["spend"]]
+    pipe = Pipeline.build(
+        [
+            ("st", ms.StackStep, {"dims": ["geo", "channel"], "new_dim": "cell"}),
+            ("sc", ms.MeanScaleStep, {"vars": ["spend"], "over": ["time"]}),
+            ("lg", ms.LagTensorStep, {"vars": ["spend"], "l_max": 2}),
+            ("un", ms.UnstackStep, {"dim": "cell", "into": ["geo", "channel"]}),
+        ]
+    )
+    trace = pipe.fit(spend, keep_stages=True)
+    scale = trace.states["sc"].array("scale__spend")
+    assert list(scale.indexes["cell"].names) == ["geo", "channel"]
+    out = trace.data["spend"]
+    assert set(out.dims) == {"geo", "channel", "time", "lag"}
+    xr.testing.assert_allclose(
+        out.sel(lag=0, drop=True).transpose(*spend["spend"].dims),
+        spend["spend"] / abs(spend["spend"]).mean("time"),
+    )
+    stacked = trace.stages["st"]
+    # (the kit's own unseen-level probe cannot relabel a MultiIndex dim; not checked here)
+    report = check_step(
+        ms.MeanScaleStep, stacked, {"vars": ["spend"], "over": ["time"]}, raise_on_failure=False
+    )
+    for name in ("transform_equals_fit_output", "effect_matches_output", "inverse_roundtrip"):
+        assert report.get(name).passed, report.summary()
+    assert report.get("state_bundle_roundtrip").passed, report.summary()
+
+
+TO_PADDED = {"group": "hh_id", "group_dim": "hh", "within_dim": "trip", "vars": ["y", "x"]}
+
+
+def test_to_padded_group_code_paths(data: Any) -> None:
+    long = data.long()
+    with_dim = long.assign_coords(hh=["h1", "h2", "h3", "h4"])
+    out = run(ms.ToPaddedStep, with_dim, TO_PADDED)
+    assert list(out["hh"].values) == ["h1", "h2", "h3", "h4"]
+    assert not bool(out["mask"].sel(hh="h4").any())  # a declared group without rows
+    n = with_dim.sizes["obs"]
+    bad = with_dim.assign(hh_id=(("obs",), np.array(["zz"] * n)))
+    with pytest.raises(MapiError, match="not levels"):
+        run(ms.ToPaddedStep, bad, TO_PADDED)
+    idx = with_dim.assign(hh_id=(("obs",), np.full(n, 9)))
+    with pytest.raises(MapiError, match="indexes outside"):
+        run(ms.ToPaddedStep, idx, TO_PADDED)
+    holes = long.assign(hh_id=(("obs",), np.array([None] + ["h1"] * (n - 1), dtype=object)))
+    with pytest.raises(MapiError, match="missing values"):
+        run(ms.ToPaddedStep, holes, TO_PADDED)
+    two_d = long.assign(hh_id=long["y"].expand_dims(k=2))
+    with pytest.raises(MapiError, match="1-D"):
+        run(ms.ToPaddedStep, two_d, TO_PADDED)
