@@ -31,7 +31,17 @@ from mapi_spec._types import Duration
 from mapi_spec.admin import kill_switch_decision
 from mapi_spec.errors import ErrorCode, MapiError, Problem
 from mapi_spec.executor import PLUGIN_LABEL, Executor, Handle, RunKind, RunSubmit
-from mapi_spec.quotas import LeaseCandidate, PriorityClass, backoff_seconds, plan_leases
+from mapi_spec.quotas import (
+    LeaseCandidate,
+    PriorityClass,
+    QuotaDemand,
+    QuotaPolicy,
+    QuotaScope,
+    QuotaUsage,
+    backoff_seconds,
+    evaluate_quota,
+    plan_leases,
+)
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger, new_hmac_key, new_nonce
 from mapi_spec.storage import NotFound, bootstrap_key
@@ -49,6 +59,7 @@ from mapi_server.services.quotas import (
     global_policy,
     global_spend,
     kill_switches,
+    quota_usage,
     tenant_policy,
 )
 from mapi_server.services.runs import apply_transition, now
@@ -60,6 +71,19 @@ _RESERVED_LABEL_PREFIX = "mapi.dev/"
 _NAMESPACE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 
 log = logging.getLogger(__name__)
+
+
+def _over_budget(policy: QuotaPolicy, usage: QuotaUsage) -> bool:
+    """Is the tenant past a vCPU-second limit? (Its queued runs' estimates are already in
+    ``usage``: admission kept it within the limits, so this is only true when an operator
+    tightened them since.)"""
+    lim = policy.limits
+    return (
+        lim.vcpu_seconds_per_day is not None and usage.vcpu_seconds_today > lim.vcpu_seconds_per_day
+    ) or (
+        lim.vcpu_seconds_per_month is not None
+        and usage.vcpu_seconds_month > lim.vcpu_seconds_per_month
+    )
 
 
 class TokenBucket:
@@ -270,6 +294,7 @@ class Dispatcher:
         if global_cap is not None:
             capacity = max(0, min(capacity, global_cap - sum(running_tasks.values())))
         left: dict[str, int | None] = {}
+        budgets: dict[str, tuple[QuotaPolicy, QuotaUsage]] = {}
         candidates: list[LeaseCandidate] = []
         held = 0
         for run in rows:
@@ -289,10 +314,23 @@ class Dispatcher:
                 held += 1
                 continue
             if run.tenant_id not in left:
-                limit = (await tenant_policy(session, run.tenant_id, tier)).limits.concurrent_runs
+                policy = await tenant_policy(session, run.tenant_id, tier)
+                limit = policy.limits.concurrent_runs
                 left[run.tenant_id] = (
                     None if limit is None else limit - running_runs.get(run.tenant_id, 0)
                 )
+                usage = await quota_usage(session, QuotaScope.TENANT, run.tenant_id, now=at)
+                budgets[run.tenant_id] = (policy, usage)
+            # the quota decision at dispatch: a run admitted under looser limits (an operator
+            # tightened them since) waits until the window resets instead of starting
+            policy, usage = budgets[run.tenant_id]
+            demand = QuotaDemand(resource_class=ResourceClass(run.resource_class))
+            if (
+                _over_budget(policy, usage)
+                or not evaluate_quota([(policy, usage)], demand, now=at).allowed
+            ):
+                held += 1
+                continue
             candidates.append(
                 LeaseCandidate(
                     run_id=run.id,

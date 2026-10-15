@@ -298,6 +298,27 @@ async def test_executor_health_is_reported(ctx: ServerContext, client: httpx.Asy
     assert (await client.get("/v1/admin/executors/nope")).status_code == 404
 
 
+async def test_runs_admitted_under_looser_limits_wait_at_dispatch(
+    ctx: ServerContext, tenants: None
+) -> None:
+    """The dispatcher's own quota decision: limits tightened after admission hold the queue."""
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    run_id = await _queue(ctx, "big")
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.Run).where(m.Run.id == run_id).values(estimate={"vcpu_seconds": 600})
+        )
+    await _policy(ctx, "tenant", "big", vcpu_seconds_per_day=100)
+    assert await _leased(ctx, dispatcher) == []
+    await _policy(ctx, "tenant", "big", vcpu_seconds_per_day=600, max_resource_class="S")
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Run).where(m.Run.id == run_id).values(resource_class="M"))
+    assert await _leased(ctx, dispatcher) == []
+    # exactly at the vCPU limit (its own estimate) and within the class: it starts
+    await _policy(ctx, "tenant", "big", vcpu_seconds_per_day=600, max_resource_class="M")
+    assert await _leased(ctx, dispatcher) == [run_id]
+
+
 # =============================================================================== cost
 
 
