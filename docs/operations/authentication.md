@@ -143,8 +143,10 @@ Rotate the root secret only together with every token: all existing tokens stop 
 
 ## Operators
 
-Users whose **verified** e-mail is in `MAPI_OPERATOR_EMAILS` are platform operators (the
-flag follows the configuration at every sign-in). With a browser session they may use
+Users whose **verified** e-mail is in `MAPI_OPERATOR_EMAILS` are platform operators. The
+server decides this on every request from the current configuration, so removing an address
+takes effect at once for browser sessions and `mapi login` ID tokens alike; nobody needs to
+sign in again. With a browser session they may use
 `/v1/admin/*` (tenants, quota policies, kill switches, executor health, the platform audit
 log) and read metadata of every tenant: tenants, members, token listings, runs and usage.
 No role, flag or token lets them read datasets, specs, models or plots. Every change and

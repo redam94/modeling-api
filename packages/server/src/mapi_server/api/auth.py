@@ -35,6 +35,7 @@ from mapi_server.auth.identity import (
     claim_or_create_user,
     create_session,
     delete_session,
+    is_operator,
     load_session,
     local_principal,
     pop_login,
@@ -279,7 +280,7 @@ async def auth_session(request: Request) -> JSONResponse:
                 info = SessionInfo(
                     authenticated=True,
                     principal=user_principal(user),
-                    operator=user.operator,
+                    operator=is_operator(user, ctx.settings.effective_operator_emails()),
                     expires_at=min(sess.expires_at, sess.last_seen_at + SESSION_IDLE_TTL),
                 )
                 headers[CSRF_HEADER] = sess.csrf_token

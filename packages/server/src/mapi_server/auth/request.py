@@ -69,6 +69,7 @@ from mapi_server.auth.identity import (
     LOCAL_USER_ID,
     AccountDisabled,
     claim_or_create_user,
+    is_operator,
     load_session,
     local_principal,
     memberships_of,
@@ -373,7 +374,7 @@ async def _from_id_token(s: AsyncSession, ctx: ServerContext, raw: str) -> _Reso
             raise unauthenticated("this account is disabled") from None
     elif user.status != "active":
         raise unauthenticated("this account is disabled")
-    return _Resolved(Credential.SESSION, user_principal(user), user.operator)
+    return _Resolved(Credential.SESSION, user_principal(user), is_operator(user, operators))
 
 
 def _check_csrf(ctx: ServerContext, request: Request, sess: m.WebSession) -> None:
@@ -411,7 +412,8 @@ async def _credentials(
             raise unauthenticated("the session has expired; sign in again")
         sess, user = loaded
         _check_csrf(ctx, request, sess)
-        return _Resolved(Credential.SESSION, user_principal(user), user.operator, session=sess)
+        operator = is_operator(user, ctx.settings.effective_operator_emails())
+        return _Resolved(Credential.SESSION, user_principal(user), operator, session=sess)
     if not ctx.settings.requires_auth:
         return _Resolved(Credential.LOCAL, local_principal(), operator=True)
     raise unauthenticated()

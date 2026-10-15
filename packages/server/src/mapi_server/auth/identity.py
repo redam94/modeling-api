@@ -34,6 +34,7 @@ __all__ = [
     "create_session",
     "delete_session",
     "invite_user",
+    "is_operator",
     "load_session",
     "local_principal",
     "membership_dto",
@@ -97,6 +98,19 @@ def _norm_email(email: str | None) -> str | None:
 
 class AccountDisabled(Exception):
     """A verified sign-in for an account an operator disabled (it stays disabled)."""
+
+
+def is_operator(user: m.User, operator_emails: Iterable[str]) -> bool:
+    """Is this user a platform operator under the *current* configuration?
+
+    Decided on every request from the verified e-mail, so removing an address from the
+    operator list takes effect at once for sessions and CLI ID tokens alike (the stored
+    ``users.operator`` flag only records the status at the last sign-in).
+    """
+    email = _norm_email(user.email)
+    if not email or not user.email_verified or user.issuer is None:
+        return False
+    return email in {e.strip().lower() for e in operator_emails if e.strip()}
 
 
 # ======================================================================================= users

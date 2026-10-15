@@ -26,7 +26,10 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
-    return settings.model_copy(update={"profile": Profile.MULTI_TENANT})
+    # operators are whoever the configuration names (decided on every request)
+    return settings.model_copy(
+        update={"profile": Profile.MULTI_TENANT, "operator_emails": ["ops@platform.test"]}
+    )
 
 
 async def _operator(ctx: ServerContext, client: httpx.AsyncClient) -> Caller:

@@ -132,6 +132,9 @@ is tested against fakes, and the Terraform is validated and tested against mocke
 - **server**: signing in again no longer re-activates a disabled account. `/auth/callback`
   refuses it with the generic `401` and audits `auth.login_failed`; only an invitation becomes
   active at its first sign-in.
+- **server**: operator status is decided on every request from `MAPI_OPERATOR_EMAILS` (and
+  the dev profile's first account). Before, a demoted operator kept operator powers through
+  `mapi login` ID tokens indefinitely and through browser sessions until they expired.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
