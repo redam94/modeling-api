@@ -1,0 +1,133 @@
+"""Shared fixtures: reference plugins, synthetic data and fitted radon/trend bundles.
+
+Fits use tiny settings (tune/draws of 100-150, 2 chains) with the seed-deterministic
+``pymc`` engine; module-scoped fixtures fit once per test module.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import numpy as np
+import pymc as pm
+import pytest
+import xarray as xr
+from mapi_pymc.examples import (
+    RADON_SCHEMA,
+    TREND_SCHEMA,
+    PanelModel,
+    RadonModel,
+    TrendModel,
+    radon_dataset,
+    trend_dataset,
+)
+from mapi_sdk.bundle import Bundle
+from mapi_sdk.harness import fit_spec
+from mapi_sdk.registry import Registry
+from mapi_spec import ModelSpec, load_model_spec, load_score_request
+from mapi_spec.spec import ScoreRequest
+
+RADON_SPEC = """
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: radon, project: demo}
+data:
+  dataset: dataset://demo/radon@latest
+model:
+  use: examples.radon@^1
+  fit: {mode: train_only, seed: 3, tune: 150, draws: 150, chains: 2, engine: pymc,
+        keep: {log_likelihood: true, posterior_predictive: {thin: 5}},
+        prior_predictive: {draws: 40}}
+evaluate: {metrics: [elpd_loo]}
+"""
+
+TREND_SPEC = """
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: trend, project: demo}
+data:
+  dataset: dataset://demo/trend@latest
+  split: {kind: time_holdout, dim: time, last: 6}
+model:
+  use: examples.trend@^1
+  fit: {mode: evaluate_then_refit, seed: 5, tune: 150, draws: 150, chains: 2, engine: pymc}
+evaluate: {metrics: [rmse, mape, coverage_90]}
+"""
+
+SCORE = "apiVersion: mapi/v1\nkind: ScoreRequest\nmodel: endpoint://demo/m\n"
+
+
+def score_request(body: str) -> ScoreRequest:
+    """A ScoreRequest from YAML lines appended to the common header."""
+    return load_score_request(SCORE + body)
+
+
+@pytest.fixture(scope="session")
+def registry() -> Registry:
+    reg = Registry()
+    reg.register_model(RadonModel)
+    reg.register_model(TrendModel)
+    reg.register_model(PanelModel)
+    return reg
+
+
+@pytest.fixture(scope="session")
+def radon_data() -> xr.Dataset:
+    return radon_dataset(counties=6, per_county=8, seed=0)
+
+
+@pytest.fixture(scope="session")
+def radon_spec() -> ModelSpec:
+    return load_model_spec(RADON_SPEC)
+
+
+@pytest.fixture(scope="session")
+def radon_bundle(registry: Registry, radon_data: xr.Dataset, radon_spec: ModelSpec) -> Bundle:
+    return fit_spec(radon_spec, radon_data, registry=registry, raw_schema=RADON_SCHEMA)
+
+
+@pytest.fixture(scope="session")
+def trend_data() -> xr.Dataset:
+    return trend_dataset(weeks=60, seed=0)
+
+
+@pytest.fixture(scope="session")
+def trend_bundle(registry: Registry, trend_data: xr.Dataset) -> Bundle:
+    return fit_spec(
+        load_model_spec(TREND_SPEC), trend_data, registry=registry, raw_schema=TREND_SCHEMA
+    )
+
+
+@pytest.fixture
+def linear_model() -> tuple[pm.Model, np.ndarray, np.ndarray]:
+    """A small linear regression with dims (``x`` data, ``mu`` deterministic, ``y`` obs)."""
+    rng = np.random.default_rng(42)
+    x = rng.standard_normal(20)
+    y = 1.0 + 2.0 * x + 0.5 * rng.standard_normal(20)
+    with pm.Model(coords={"obs": np.arange(20)}) as model:
+        xd = pm.Data("x", x, dims="obs")
+        a = pm.Normal("alpha", 0.0, 2.0)
+        b = pm.Normal("beta", 0.0, 2.0)
+        s = pm.HalfNormal("sigma", 1.0)
+        mu = pm.Deterministic("mu", a + b * xd, dims="obs")
+        pm.Normal("y", mu, s, observed=y, dims="obs")
+    return model, x, y
+
+
+def posterior_of(model: pm.Model, **kw: Any) -> xr.DataTree:
+    """Sample ``model`` with the in-process PyMC sampler (tiny, seeded)."""
+    opts: dict[str, Any] = {
+        "draws": 100,
+        "tune": 100,
+        "chains": 2,
+        "random_seed": 42,
+        "progressbar": False,
+        "nuts_sampler": "pymc",
+        "cores": 1,
+        "compute_convergence_checks": False,
+    }
+    opts.update(kw)
+    with model:
+        out = pm.sample(**opts)
+    assert isinstance(out, xr.DataTree)
+    return out
