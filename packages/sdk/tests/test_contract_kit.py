@@ -21,7 +21,7 @@ from mapi_sdk.testing import (
 )
 from mapi_spec import DataSchema, ModelSpec, StepKind
 from mapi_spec.spec import FitConfig, ScoreRequest
-from pydantic import JsonValue
+from pydantic import Field, JsonValue
 
 BIND = {
     "dims": {"geo": "market", "time": "date"},
@@ -122,6 +122,17 @@ class _NeedsTarget(toy.Log1pStep):
         return ds.assign({v: np.log1p(ds[v]) for v in s.vars})
 
 
+class _HiddenDefaultSettings(toy.VarsSettings):
+    extra_dims: list[str] = Field(default_factory=list)
+
+
+class _HiddenDefault(toy.Log1pStep):
+    """Its default is invisible in the exported JSON Schema (default_factory)."""
+
+    id = "test.hiddendefault"
+    Settings = _HiddenDefaultSettings
+
+
 def test_broken_steps_fail_specific_checks(
     weekly: xr.Dataset, raw_target_schema: Callable[[xr.Dataset], DataSchema]
 ) -> None:
@@ -132,6 +143,7 @@ def test_broken_steps_fail_specific_checks(
         (_Mutator, {"vars": ["y"]}, "transform_pure_and_deterministic"),
         (_BadInverse, {"vars": ["y"]}, "inverse_roundtrip"),
         (_NeedsTarget, {"vars": ["y"]}, "absent_target_tolerated"),
+        (_HiddenDefault, {"vars": ["y"]}, "catalog_entry"),
     ]
     for step, settings, failing in cases:
         report = check_step(

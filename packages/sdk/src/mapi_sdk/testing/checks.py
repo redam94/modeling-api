@@ -212,6 +212,24 @@ def check_step(
             raise AssertionError(
                 f"settings do not validate against the exported schema: {errors[0].message}"
             )
+        raw_props = entry.settings_schema.get("properties")
+        props: dict[str, Any] = raw_props if isinstance(raw_props, dict) else {}
+
+        def exported(name: str) -> bool:
+            prop = props.get(name)
+            return isinstance(prop, dict) and "default" in prop
+
+        hidden = sorted(
+            name
+            for name, f in type(s).model_fields.items()
+            if f.default_factory is not None and not exported(f.alias or name)
+        )
+        if hidden:
+            raise AssertionError(
+                f"the defaults of {hidden} are missing from the exported settings schema "
+                "(default_factory); use plain defaults such as Field(default=[]) so the control "
+                "plane can apply them before rendering the effect template"
+            )
         return f"exported {entry.ref}"
 
     def fit_deterministic() -> None:
