@@ -2,7 +2,8 @@
 /**
  * Capture the documentation screenshots from a running, seeded local stack.
  *
- *   make dev                                    # shell 1 (any ports: MAPI_* variables)
+ *   make dev                                    # shell 1 (any ports: MAPI_* variables;
+ *                                               #   signs in as MAPI_DEV_ACCOUNT on a dev stack)
  *   make seed                                   # shell 2
  *   uv run python scripts/seed.py --export demo/
  *   uv run mapi datasets upload demo/eu_media_future.zarr.zip --name eu_media_future
@@ -33,6 +34,17 @@ const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
 const page = await context.newPage();
 page.setDefaultTimeout(30_000);
+
+// A `make dev` stack runs the dev profile: sign in through its development identity provider
+// (MAPI_DEV_ACCOUNT, default admin@dev.local). A single-tenant stack needs no sign-in.
+const API = (process.env.MAPI_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
+const session = await (await page.request.get(`${API}/auth/session`)).json();
+if (!session.authenticated) {
+  const account = process.env.MAPI_DEV_ACCOUNT || "admin@dev.local";
+  await page.goto(`${API}/auth/login?return_to=${encodeURIComponent("/")}`);
+  await page.getByRole("link", { name: account, exact: true }).click();
+  await page.waitForURL((url) => url.toString().startsWith(WEB), { waitUntil: "commit" });
+}
 
 async function shot(name, target) {
   await page.mouse.move(0, 0);
