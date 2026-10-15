@@ -485,3 +485,16 @@ def test_point_model_capability_checks(catalog: Catalog, xgb_raw: DataSchema) ->
     assert by_ptr["/evaluate/metrics/3"].severity is Severity.WARNING
     assert by_ptr["/outputs/plots/0"].code is ErrorCode.CAPABILITY_UNSUPPORTED
     assert by_ptr["/execution/resource_class"].code is ErrorCode.CAPABILITY_UNSUPPORTED
+
+
+def test_target_dependence_after_dynamic_step(catalog: Catalog) -> None:
+    """Behind a dynamic step, lags of non-target vars are still not treated as recursive."""
+    d = _e33()
+    d["pipeline"].insert(4, {"id": "dyn", "use": "core.dyn@^1", "with": {}})
+    lag = {"vars": ["spend"], "along": "time", "within": ["geo"], "lags": [1]}
+    d["pipeline"].insert(5, {"id": "slag", "use": "core.lag@^1", "with": lag})
+    res = _run(catalog, d)
+    assert ErrorCode.RECURSIVE_UNSUPPORTED.value not in _codes(res, None)
+    lag["vars"] = ["y"]
+    res = _run(catalog, d)
+    assert ErrorCode.RECURSIVE_UNSUPPORTED.value in _codes(res)

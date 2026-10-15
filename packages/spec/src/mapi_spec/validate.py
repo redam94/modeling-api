@@ -457,7 +457,9 @@ def validate_spec(spec: ModelSpec, catalog: Catalog, raw_schema: DataSchema) -> 
         else:
             stages.append(Stage(call.id, None))
 
-        input_schema = stages[-2].schema
+        # Best effort when the input stage is unknown (e.g. after a dynamic step): judge target
+        # dependence against the last statically known stage.
+        input_schema = next((st.schema for st in reversed(stages[:-1]) if st.schema), None)
         resolved_steps.append(
             ResolvedStep(
                 id=call.id,
