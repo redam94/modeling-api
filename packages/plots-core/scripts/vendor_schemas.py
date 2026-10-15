@@ -50,6 +50,8 @@ def _leaf(spec: dict[str, Any]) -> dict[str, Any]:
         out["x"] = spec.get("extras", [])
     if spec["valType"] == "subplotid":
         out["d"] = spec.get("dflt")
+        if spec.get("regex"):
+            out["r"] = spec["regex"]
     if spec["valType"] == "info_array" and spec.get("dimensions") in (2, "1-2"):
         out["dim"] = spec["dimensions"]
     return out

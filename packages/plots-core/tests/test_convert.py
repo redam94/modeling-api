@@ -182,6 +182,39 @@ def test_from_plotly_frames_template_and_dicts() -> None:
     assert plain.title == "d"
 
 
+def _px_figures() -> dict[str, Any]:
+    px = pytest.importorskip("plotly.express")
+    rng = np.random.default_rng(0)
+    df = pd.DataFrame(
+        {
+            "x": rng.normal(size=60),
+            "y": rng.normal(size=60),
+            "z": rng.normal(size=60),
+            "g": rng.choice(list("abc"), 60),
+            "t": np.tile(np.arange(6), 10),
+            "iso": rng.choice(["USA", "FRA", "DEU"], 60),
+        }
+    )
+    return {
+        "facets": px.scatter(df, x="x", y="y", color="g", facet_col="g", marginal_x="histogram"),
+        "bar": px.bar(df, x="g", y="y", color="g", barmode="group"),
+        "box": px.box(df, x="g", y="y", points="all"),
+        "imshow": px.imshow(rng.random((4, 4)), text_auto=True),
+        "geo": px.scatter_geo(df, locations="iso", color="g"),
+        "choropleth": px.choropleth(df, locations="iso", color="y"),
+        "scatter3d": px.scatter_3d(df, x="x", y="y", z="z"),
+        "animation": px.scatter(df, x="x", y="y", animation_frame="t"),
+        "sunburst": px.sunburst(df, path=["g", "iso"]),
+    }
+
+
+def test_plotly_express_figures_pass_the_sanitizer() -> None:
+    for name, fig in _px_figures().items():
+        for keep in (False, True):
+            plot = from_plotly(fig, id=name, keep_template=keep)
+            assert plot.kind == "plotly", name
+
+
 def test_from_plotly_rejects_unsafe_figures() -> None:
     fig = go.Figure(go.Scatter(x=[1], y=[1]))
     fig.update_layout(images=[{"source": "https://evil.example/x.png", "x": 0, "y": 0}])

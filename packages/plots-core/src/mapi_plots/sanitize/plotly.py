@@ -304,8 +304,10 @@ class _Checker:
                 return
             if leaf.get("a"):
                 for i, item in enumerate(v):
-                    if not isinstance(item, list | dict):
-                        self.scalar(item, leaf, child_pointer(ptr, i))
+                    if isinstance(item, list | dict):
+                        self.bad(child_pointer(ptr, i), f"expected a {t} value per item")
+                        return
+                    self.scalar(item, leaf, child_pointer(ptr, i))
                 return
             self.bad(ptr, f"expected a {t} value, not a list")
             return
@@ -344,8 +346,11 @@ class _Checker:
         elif t == "flaglist":
             ok = _flags_ok(v, leaf.get("f", []), leaf.get("x", []))
         elif t == "subplotid":
-            dflt = leaf.get("d") or ""
-            ok = isinstance(v, str) and bool(re.match(rf"^{re.escape(dflt)}\d*$", v))
+            if isinstance(leaf.get("r"), str):
+                ok = isinstance(v, str) and bool(_enum_regex(leaf["r"]).match(v))
+            else:
+                dflt = leaf.get("d") or ""
+                ok = isinstance(v, str) and bool(re.match(rf"^{re.escape(dflt)}\d*$", v))
         elif t == "colorscale":
             ok = isinstance(v, str)
         elif t in ("data_array", "info_array", "colorlist"):
