@@ -12,8 +12,9 @@ import pytest
 import xarray as xr
 from mapi_sdk.binding import BindingMap
 from mapi_sdk.registry import Registry
+from mapi_sdk.schema import infer_schema
 from mapi_sdk.testing import toy
-from mapi_spec import ModelSpec, load_model_spec
+from mapi_spec import DataSchema, ModelSpec, load_model_spec
 
 E33_TOY = """
 apiVersion: mapi/v1
@@ -94,3 +95,11 @@ def e33_spec() -> Callable[..., ModelSpec]:
 def weekly_panel() -> Callable[..., xr.Dataset]:
     """Factory: a weekly (geo, time) panel with ``y`` and ``x``."""
     return _weekly_panel
+
+
+@pytest.fixture
+def raw_schema(panel: tuple[xr.Dataset, xr.Dataset]) -> DataSchema:
+    """Raw schema of the toy panel: markets allow new levels (pooled), days extend."""
+    schema = infer_schema(panel[0], targets=["revenue_local"], policies={"market": "new_levels"})
+    market = schema.dims["market"].model_copy(update={"new_level_strategy": "pooled"})
+    return schema.model_copy(update={"dims": {**schema.dims, "market": market}})

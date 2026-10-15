@@ -114,7 +114,6 @@ def test_summaries_per_representation() -> None:
     assert err.value.code is ErrorCode.CAPABILITY_UNSUPPORTED
     i = summarise(INTERVAL, R.INTERVAL, ["interval", "point"])
     assert i["y_hat"].sel(stat="point").values.tolist() == [2.0, 4.0]
-    assert "midpoint" in i["y_hat"].attrs.get("point_note", "") or True
     with_point = INTERVAL.reindex(bound=["lower", "upper", "point"], fill_value=0.0)
     assert summarise(with_point, R.INTERVAL, ["point"])["y_hat"].values.tolist() == [[0.0, 0.0]]
     p = summarise(POINT, R.POINT, ["point", "mean"])

@@ -383,7 +383,7 @@ class PanelSettings(ModelSettings):
     features: list[str] | None = None
     ridge: float = Field(1e-6, ge=0)
     retransform: Literal["median", "smearing"] = "median"
-    quantiles: list[float] = Field(default_factory=lambda: [0.1, 0.5, 0.9])
+    quantiles: list[float] = Field(default_factory=lambda: [0.05, 0.1, 0.5, 0.9, 0.95])
 
 
 _PANEL_TEMPLATE: dict[str, Any] = {
