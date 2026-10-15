@@ -1,0 +1,13 @@
+# Security headers of the app origin (plan §9: CSP on the app origin; §10.3: plots only in an
+# iframe from MAPI_PLOTS_ORIGIN). No 'unsafe-eval' and no inline scripts. Inline *styles* are
+# allowed because Radix/Monaco inject style elements. MAPI_WEB_SCRIPT_SRC_EXTRA (default
+# empty) is an explicit, reviewed escape hatch for script-src.
+# Trusted Types are report-only until the SPA ships its policy; flip to enforcing then.
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' ${MAPI_WEB_SCRIPT_SRC_EXTRA}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ${MAPI_API_URL} ${MAPI_GCS_ENDPOINT}; worker-src 'self' blob:; frame-src ${MAPI_PLOTS_ORIGIN}; child-src ${MAPI_PLOTS_ORIGIN} blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'; manifest-src 'self'" always;
+add_header Content-Security-Policy-Report-Only "require-trusted-types-for 'script'" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header Referrer-Policy "no-referrer" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()" always;
+add_header Cross-Origin-Opener-Policy "same-origin" always;
+add_header Cross-Origin-Resource-Policy "same-origin" always;

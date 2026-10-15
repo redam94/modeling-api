@@ -1,0 +1,36 @@
+# The plot sandbox origin (MAPI_PLOTS_ORIGIN), port 8081 (plan §10.3). Pages here render
+# inside <iframe sandbox="allow-scripts"> (no same-origin) on the app, so their documents have
+# an opaque origin: module scripts, styles and the topojson pack are fetched in CORS mode, which
+# is why every response carries Access-Control-Allow-Origin: * (static, public, no cookies).
+# Nothing here can reach the API: there is no proxy and connect-src is limited to /topojson/.
+server {
+  listen 8081;
+  server_name _;
+  root /usr/share/nginx/html/plots;
+  index index.html;
+
+  include /tmp/nginx/conf.d/plots-headers.inc;
+
+  location = /healthz {
+    access_log off;
+    default_type text/plain;
+    return 200 "ok\n";
+  }
+
+  location /assets/ {
+    expires 1y;
+    try_files $uri =404;
+  }
+
+  # Self-hosted map assets (plan §10.1); the only connect-src target.
+  location /topojson/ {
+    expires 1d;
+    try_files $uri =404;
+  }
+
+  location / {
+    limit_except GET HEAD { deny all; }
+    expires -1;
+    try_files $uri $uri/ /index.html;
+  }
+}

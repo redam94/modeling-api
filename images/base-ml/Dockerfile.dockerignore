@@ -1,0 +1,72 @@
+# Build context filter for images/base-ml/Dockerfile (BuildKit uses this file instead
+# of the root .dockerignore). The shared block below must stay identical to the root
+# file; tests/devops/test_container_invariants.py checks it.
+
+# VCS, editors, agent state
+.git
+.github
+.claude
+.remember
+.idea
+.vscode
+**/.DS_Store
+
+# Plans are never committed and never shipped
+plans
+docs/architecture-plan.md
+**/*.plan.md
+
+# Secrets and local state
+.env
+.env.*
+!.env.example
+.local
+**/*.pem
+**/*.key
+**/credentials*.json
+**/*service-account*.json
+
+# Python build/test output
+.venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.hypothesis
+**/htmlcov
+**/.coverage
+**/coverage.xml
+**/dist
+**/build
+**/*.egg-info
+
+# Node build/test output
+**/node_modules
+.pnpm-store
+**/playwright-report
+**/test-results
+
+# Data and docs output
+**/*.zarr.zip
+**/*.nc
+site
+docs/reference/generated
+
+# Infrastructure state
+**/.terraform
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfplan
+
+# ---- Python images: only the uv workspace is needed -------------------------------------
+apps
+docs
+mkdocs.yml
+infra
+ops
+security
+deploy
+**/tests
+images/*
+!images/common
