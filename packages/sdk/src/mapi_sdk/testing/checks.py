@@ -730,10 +730,14 @@ def check_model(
                 if sch is not None and decl.units_of in sch.vars
                 else None
             )
-            got = tree["predictions"][var].attrs.get("units")
+            # outputs are reverse-bound: 'y' bound to 'revenue_local' comes back as the latter
+            preds = tree["predictions"]
+            name = binding_dim(var)
+            out = preds[name] if name in preds.data_vars else preds[var]
+            got = out.attrs.get("units")
             if want != got:
                 raise AssertionError(f"{var}: units {got!r} but stage {stage!r} says {want!r}")
-            if tree["predictions"][var].attrs.get("output_space") != stage:
+            if out.attrs.get("output_space") != stage:
                 raise AssertionError(f"{var}: missing output_space attribute")
             notes.append(f"{var} in {stage} ({want})")
         if not notes:

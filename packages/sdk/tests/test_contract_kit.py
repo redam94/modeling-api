@@ -268,3 +268,35 @@ def test_pytest_plugin_fixtures(
     data, fx = mapi_panel
     assert {"revenue_local", "spend_local"} <= set(data.data_vars) and "rate" in fx
     assert StepKind.VALUE.value == "value"
+
+
+class _SameName(toy.LinearModel):
+    """Names its output after the bound target ('y' comes back as 'revenue_local')."""
+
+    id = "test.samename"
+    outputs: ClassVar[dict[str, Any]] = {"y": {"dims": ["geo", "time"], "units_of": "y"}}
+
+    def score(
+        self, fitted: Fitted, ds: xr.Dataset, req: ScoreRequest, ctx: ScoreContext
+    ) -> xr.DataTree:
+        pred = super().score(fitted, ds, req, ctx)["predictions"].to_dataset()
+        return xr.DataTree.from_dict({"predictions": pred.rename(y_hat="y")})
+
+
+def test_output_units_follow_the_reverse_binding(
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    raw_schema: DataSchema,
+    registry: Registry,
+) -> None:
+    data, fx = panel
+    fixture = ModelFixture(
+        spec=e33_spec(model="test.samename@^1", metrics="rmse"),
+        data=data,
+        side_tables={"fx": fx},
+        raw_schema=raw_schema,
+        registry=registry,
+    )
+    report = check_model(_SameName, fixture, checks=["manifest", "fit", "output_space_and_units"])
+    result = report.get("output_space_and_units")
+    assert result.passed and not result.skipped, report.summary()
