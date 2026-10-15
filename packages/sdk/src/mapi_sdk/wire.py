@@ -125,6 +125,9 @@ class WireLimits:
     max_zip_entries: int = 200_000
     max_uncompressed_bytes: int = 4 * 1024**3
     max_array_bytes: int = 2 * 1024**3
+    max_decoded_bytes: int = 64 * 1024**2
+    """XrJSON: bytes the decoded arrays may take (fixed-width strings cost ``4 * longest``
+    per element, so one long string among many short ones cannot blow up memory)."""
 
 
 DEFAULT_LIMITS = WireLimits()
@@ -258,11 +261,20 @@ class _Budget:
     def __init__(self, limits: WireLimits) -> None:
         self.limits = limits
         self.elements = 0
+        self.decoded = 0
 
     def take(self, n: int) -> None:
         self.elements += n
         if self.elements > self.limits.max_elements:
             raise PayloadLimitError(f"payload has more than {self.limits.max_elements} elements")
+
+    def take_bytes(self, n: int, name: str) -> None:
+        self.decoded += n
+        if self.decoded > self.limits.max_decoded_bytes:
+            raise PayloadLimitError(
+                f"{name}: the payload would decode to more than "
+                f"{self.limits.max_decoded_bytes} bytes"
+            )
 
 
 def _shape_and_leaves(
@@ -316,6 +328,15 @@ def _infer_dtype(leaves: Sequence[Any], name: str) -> str:
     if all(isinstance(v, str) for v in leaves):
         return "str"
     raise WireFormatError(f"{name}: values have mixed or unsupported types; give an explicit dtype")
+
+
+def _decoded_size(entry: _Entry) -> int:
+    """Bytes the decoded array takes (``<U{longest}`` for strings: 4 bytes per char)."""
+    n = len(entry.leaves)
+    if entry.dtype == "str":
+        longest = max((len(v) for v in entry.leaves if isinstance(v, str)), default=1)
+        return n * max(longest, 1) * 4
+    return n * 8
 
 
 def _decode_values(leaves: list[Any], shape: list[int], dtype: str, name: str) -> np.ndarray:
@@ -446,6 +467,7 @@ def from_xrjson(obj: Mapping[str, Any], *, limits: WireLimits = DEFAULT_LIMITS) 
         ]
         if math.prod(shape) != len(entry.leaves):
             raise WireFormatError(f"{name}: data does not match the sizes of its dims")
+        budget.take_bytes(_decoded_size(entry), name)
         values = _decode_values(entry.leaves, shape, entry.dtype, name)
         (coords if is_coord else data_vars)[name] = xr.Variable(entry.dims, values, entry.attrs)
     attrs = _check_attrs(obj.get("attrs") or {}, limits, "dataset")
