@@ -190,6 +190,10 @@ def test_a_redirect_with_the_wrong_state_is_ignored(idp: FakeIdp, cfg: ClientCon
         assert err.value.code == 400
         with pytest.raises(urllib.error.HTTPError):
             urllib.request.urlopen(redirect.replace("/callback", "/other"))
+        flood = "&".join(f"p{i}=x" for i in range(40))
+        with pytest.raises(urllib.error.HTTPError) as err:
+            urllib.request.urlopen(f"{redirect}?{flood}")
+        assert err.value.code == 400
         good(url)
 
     session = login(cfg, open_browser=open_url, timeout=10)

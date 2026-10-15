@@ -344,6 +344,7 @@ def _handler(cb: _Callback) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         server_version = "mapi-login"
         sys_version = ""
+        timeout = 10  # a local client that connects and stalls cannot block the listener
 
         def log_message(self, format: str, *args: Any) -> None:
             return
@@ -362,7 +363,11 @@ def _handler(cb: _Callback) -> type[BaseHTTPRequestHandler]:
             if url.path != "/callback" or cb.done.is_set():
                 self._page(404, "Not found", "This address only receives one sign-in.")
                 return
-            query = parse_qs(url.query, max_num_fields=16)
+            try:
+                query = parse_qs(url.query, max_num_fields=16)
+            except ValueError:
+                self._page(400, "Sign-in not recognised", "Start again from the terminal.")
+                return
             state = query.get("state", [""])[0]
             if not secrets.compare_digest(state.encode(), cb.expected_state.encode()):
                 # not our redirect (a stale tab, or another local process): keep waiting
@@ -386,6 +391,13 @@ def _handler(cb: _Callback) -> type[BaseHTTPRequestHandler]:
             cb.done.set()
 
     return Handler
+
+
+class _QuietServer(HTTPServer):
+    """The loopback listener: a broken or hostile local request never prints a traceback."""
+
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        return
 
 
 def _authorize_url(endpoint: str, params: Mapping[str, str]) -> str:
@@ -414,7 +426,7 @@ class LoopbackLogin:
             raise ConfigError("the login listener must bind a loopback address")
         state, nonce, verifier = random_state(), random_state(), pkce_verifier()
         cb = _Callback(expected_state=state)
-        server = HTTPServer((self.host, self.port), _handler(cb))
+        server = _QuietServer((self.host, self.port), _handler(cb))
         server.timeout = 0.5
         redirect_uri = f"http://{self.host}:{server.server_address[1]}/callback"
         url = _authorize_url(
