@@ -1,30 +1,164 @@
 site_name: modeling-api
 site_description: Fit, score and share labelled multi-dimensional models — safely.
+site_author: Matthew Reda
+copyright: Documentation CC BY 4.0 · SDK Apache-2.0 · Platform AGPLv3 or commercial
 docs_dir: docs
 exclude_docs: |
   architecture-plan.md
+  snippets/
+
 theme:
   name: material
-  features: [navigation.tabs, navigation.sections, content.code.copy, search.suggest]
+  logo: assets/logo.svg
+  favicon: assets/favicon.svg
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - toc.follow
   palette:
-    - scheme: default
-      toggle: {icon: material/weather-night, name: Dark mode}
-    - scheme: slate
-      toggle: {icon: material/weather-sunny, name: Light mode}
-markdown_extensions: [admonition, tables, attr_list, md_in_html, pymdownx.details, pymdownx.superfences, pymdownx.tabbed]
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle: {icon: material/weather-night, name: Switch to dark mode}
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle: {icon: material/weather-sunny, name: Switch to light mode}
+
+extra_css:
+  - stylesheets/extra.css
+
+hooks:
+  - scripts/mkdocs_hooks.py
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths:
+            - packages/spec/src
+            - packages/sdk/src
+            - packages/sdk-pymc/src
+            - packages/sdk-sklearn/src
+            - packages/steps-core/src
+            - packages/plots-core/src
+          options:
+            docstring_style: google
+            docstring_options:
+              ignore_init_summary: true
+            show_source: false
+            show_root_heading: false
+            show_root_toc_entry: false
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            members_order: source
+            filters: ["!^_"]
+            heading_level: 2
+            show_if_no_docstring: false
+            show_labels: false
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.snippets:
+      base_path: [docs/snippets, "."]
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
 nav:
   - Home: index.md
+  - Getting started:
+      - getting-started/index.md
+      - Your first model: getting-started/first-model.md
+      - Runs and executors: getting-started/executor.md
+  - Concepts:
+      - concepts/index.md
+      - Labelled data: concepts/labelled-data.md
+      - Pipelines and stages: concepts/pipelines.md
+      - Representations and summaries: concepts/representations.md
+      - Bundles: concepts/bundles.md
+      - Coord plans and typed errors: concepts/coord-plans.md
+      - Capabilities and manifests: concepts/capabilities.md
   - Guides:
+      - Port a model in 15 minutes: guides/port-a-model.md
       - Write a step or model plugin: guides/plugins.md
       - Bring a PyMC model: guides/pymc.md
       - Tabular models (scikit-learn, xgboost): guides/sklearn.md
       - Marketing-mix models: guides/mmm.md
-      - Plots, recipes and templates: guides/plots.md
       - Forecasting and sequential models: guides/time-series.md
+      - Plots, recipes and templates: guides/plots.md
       - Conformance corpus: guides/conformance.md
   - Reference:
       - Spec format: reference/spec-format.md
+      - Spec schema: reference/generated/spec-schema.md
       - Python SDK: reference/sdk.md
       - Built-in steps: reference/steps.md
+      - Steps catalog: reference/generated/steps-catalog.md
       - Built-in models: reference/models.md
+      - Models catalog: reference/generated/models-catalog.md
       - Plots and the sanitizer: reference/plots.md
+      - Plot recipes catalog: reference/generated/plots-catalog.md
+      - Error codes: reference/generated/error-codes.md
+      - API reference:
+          - reference/api/index.md
+          - mapi_spec: reference/api/spec.md
+          - mapi_sdk: reference/api/sdk.md
+          - mapi_pymc: reference/api/pymc.md
+          - mapi_sklearn: reference/api/sklearn.md
+          - mapi_steps: reference/api/steps.md
+          - mapi_plots: reference/api/plots.md
+  - Roadmap:
+      - roadmap/index.md
+      - Platform API (v0.2): roadmap/platform-api.md
+      - Cloud execution (v0.3): roadmap/cloud.md
+      - Guided UI and integrations (v0.4): roadmap/guided-ui.md
+  - Project:
+      - Licensing: project/licensing.md
+      - Contributing: project/contributing.md
+      - Changelog: project/changelog.md
