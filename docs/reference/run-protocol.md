@@ -110,7 +110,9 @@ per-execution values are `MAPI_RUN_ID` and `MAPI_NONCE`.
    written as 64 lowercase hex characters (`new_nonce()`).
 2. The dispatcher writes a **`RunSpec`** to `gs://mapi-{env}-bootstrap/{nonce}`
    (`mapi_spec.run.RunSpec`, schema `runspec.json`).
-3. The dispatcher calls `Executor.submit`.
+3. The dispatcher calls `Executor.submit(RunSubmit, nonce)`. For every out-of-process
+   executor, `RunSubmit.payload` stays empty: the executor sees only the run id, attempt,
+   kind, resource class, timeout and labels. Everything secret travels in the `RunSpec`.
 4. The supervisor resolves `MAPI_BOOTSTRAP_URL`, GETs the object, and **deletes it
    immediately**. It then validates the object as a `RunSpec` and starts the worker with
    `worker_environ()`, an allow-listed environment in which every `MAPI_*` variable is
