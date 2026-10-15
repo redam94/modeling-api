@@ -10,7 +10,7 @@ pnpm install                              # from the repo root (pnpm workspace)
 pnpm --filter @mapi/web dev               # http://127.0.0.1:5173 against VITE_API_BASE
 pnpm --filter @mapi/web dev:mock          # same, with the API mocked by MSW (no backend)
 pnpm --filter @mapi/plot-sandbox dev      # http://127.0.0.1:5174, needed for every plot
-pnpm --filter @mapi/web test              # Vitest + Playwright smoke (mocked API, chromium)
+pnpm --filter @mapi/web test              # Vitest + Playwright smoke (mock-mode production build, chromium)
 pnpm --filter @mapi/web e2e               # @e2e specs against a running local stack
 ```
 
@@ -18,6 +18,7 @@ pnpm --filter @mapi/web e2e               # @e2e specs against a running local s
 |---|---|---|
 | `VITE_API_BASE` | `http://127.0.0.1:8000` | Control-plane base URL. The API must allow this app's origin (CORS, `MAPI_WEB_ORIGIN`). |
 | `VITE_PLOTS_ORIGIN` | `http://127.0.0.1:5174` | Origin of `apps/plot-sandbox`; must differ from the app origin. |
+| `VITE_STORAGE_ORIGINS` | `http://127.0.0.1:4443` | Origins of signed storage URLs (CSP `connect-src`), comma separated. |
 
 ## API client
 
@@ -36,6 +37,12 @@ Code refers to DTOs only through `src/api/types.ts`.
 
 ## Security rules the UI follows
 
+- Production builds carry a strict CSP (`csp.ts`): `script-src 'self'`, `connect-src` limited to
+  the API and storage origins, `frame-src` the plot sandbox only, and
+  `require-trusted-types-for 'script'` with a default policy that admits same-origin script URLs
+  only (`src/trusted-types.ts`). Serve the same policy as a header with
+  `frame-ancestors 'none'` (as `vite preview` does). The Playwright smoke suite runs this build
+  in mock mode and fails on any violation.
 - Every Vega-Lite / Plotly plot, first-party ones included, renders in the plot-sandbox iframe
   (`sandbox="allow-scripts"`, separate origin). See `apps/plot-sandbox/README.md` for the
   protocol; the parent side is `src/features/plots/plot-host.ts`.
