@@ -19,6 +19,7 @@ import base64
 import hashlib
 import os
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
@@ -35,6 +36,7 @@ __all__ = [
     "ManifestSigner",
     "decode_signature",
     "encode_signature",
+    "load_trusted_keys",
     "verify_signature_bytes",
 ]
 
@@ -122,8 +124,22 @@ class LocalSigner:
         return cls(ec.generate_private_key(ec.SECP256R1()))
 
     @classmethod
-    def from_file(cls, path: Path, *, create: bool = True) -> LocalSigner:
-        """Load the PEM key at ``path``; create it (mode 0600) if missing and ``create``."""
+    def from_file(
+        cls, path: Path, *, create: bool = True, trusted_paths: Sequence[Path] = ()
+    ) -> LocalSigner:
+        """Load the PEM key at ``path``; create it (mode 0600) if missing and ``create``.
+
+        ``trusted_paths``: retired keys (public or private PEM) whose signatures still
+        verify, so a rotation does not invalidate the bundles they signed.
+        """
+        trusted = load_trusted_keys(trusted_paths)
+        signer = cls._from_file(path, create=create)
+        if trusted:
+            signer._trusted = {**trusted, **signer._trusted}
+        return signer
+
+    @classmethod
+    def _from_file(cls, path: Path, *, create: bool) -> LocalSigner:
         if path.exists():
             key = serialization.load_pem_private_key(path.read_bytes(), password=None)
             if not isinstance(key, ec.EllipticCurvePrivateKey):
@@ -150,12 +166,12 @@ class LocalSigner:
             try:
                 os.link(tmp, path)
             except FileExistsError:
-                return cls.from_file(path, create=False)
+                return cls._from_file(path, create=False)
             except OSError:  # no hard links on this filesystem: exclusive create instead
                 try:
                     out = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
                 except FileExistsError:
-                    return cls.from_file(path, create=False)
+                    return cls._from_file(path, create=False)
                 with os.fdopen(out, "wb") as fh:
                     fh.write(pem)
         finally:
@@ -193,6 +209,30 @@ class LocalSigner:
         except ValueError:
             return False
         return verify_signature_bytes(public, sig.alg, raw, bundle_manifest_signing_bytes(manifest))
+
+
+def load_trusted_keys(paths: Sequence[Path]) -> dict[str, ec.EllipticCurvePublicKey]:
+    """``key_id -> public key`` of retired P-256 signing keys (public or private PEM)."""
+    out: dict[str, ec.EllipticCurvePublicKey] = {}
+    for path in paths:
+        try:
+            data = Path(path).read_bytes()
+        except OSError as exc:
+            raise ValueError(f"trusted bundle-signing key {path}: {exc.strerror}") from None
+        public: object
+        try:
+            public = serialization.load_pem_public_key(data)
+        except ValueError:
+            try:
+                public = serialization.load_pem_private_key(data, password=None).public_key()
+            except (ValueError, TypeError):
+                raise ValueError(f"trusted bundle-signing key {path} is not a PEM key") from None
+        if not isinstance(public, ec.EllipticCurvePublicKey) or not isinstance(
+            public.curve, ec.SECP256R1
+        ):
+            raise ValueError(f"trusted bundle-signing key {path} is not an EC P-256 key")
+        out[_key_id(public)] = public
+    return out
 
 
 BundleSigner = LocalSigner

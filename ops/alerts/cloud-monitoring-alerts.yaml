@@ -6,17 +6,22 @@
 # source of truth for the thresholds.
 #
 # Two metric sources are used:
-#   * prometheus.googleapis.com/mapi_*   — the /metrics series, scraped by Managed Service
-#     for Prometheus (GMP) from the API and worker (the names below use the PromQL dialect
-#     via a prometheusQueryLanguageCondition).
-#   * run.googleapis.com/*               — Cloud Run Jobs quota/usage, native to GCP, used for
-#     the jobs.run 429 alert the control plane cannot see itself.
+#   * prometheus.googleapis.com/mapi_*   — the /metrics series in Managed Service for
+#     Prometheus (GMP), written by the collector sidecar of the api, events and orchestrator
+#     workloads (Terraform var metrics_collector; docs/operations/gcp-deployment.md#metrics).
+#     Without that sidecar these policies have no data and never fire. The security-suite
+#     series arrives through the Pushgateway (ops/README.md). The names below use the PromQL
+#     dialect via a prometheusQueryLanguageCondition.
+#   * serviceruntime.googleapis.com/api/request_count (resource consumed_api) — the Cloud Run
+#     Admin API's own count of RunJob calls by response code, native to GCP, for the jobs.run
+#     429 alert. (Cloud Run *jobs* export no request_count; that metric is for services.)
 #
 # Replace ${PROJECT_ID} and the notification channel ids before applying.
 
 ---
-# 429s on jobs.run: Cloud Run reports request_count with response_code_class; alert when the
-# Admin API throttles run submissions (plan §8.3 — 429s raise an alarm).
+# 429s on jobs.run: the Admin API's RunJob calls answered 429 (plan §8.3 — 429s raise an
+# alarm), from GCP's own API metrics and from the orchestrator's counter. 403/404 and the
+# API's 429s to tenants (their own quotas) are other signals and do not count.
 displayName: "mapi — jobs.run 429 throttling"
 documentation:
   content: |
@@ -26,20 +31,60 @@ documentation:
   mimeType: text/markdown
 combiner: OR
 conditions:
-  - displayName: "RunJob 429 rate > 0.1/s over 5m"
+  - displayName: "Admin API answered 429 to RunJob, sustained 5m"
     conditionThreshold:
       filter: >
-        resource.type = "cloud_run_job" AND
-        metric.type = "run.googleapis.com/job/request_count" AND
-        metric.labels.response_code_class = "4xx"
+        resource.type = "consumed_api" AND
+        metric.type = "serviceruntime.googleapis.com/api/request_count" AND
+        resource.labels.service = "run.googleapis.com" AND
+        resource.labels.method = monitoring.regex.full_match(".*RunJob") AND
+        metric.labels.response_code = 429
       aggregations:
         - alignmentPeriod: 300s
           perSeriesAligner: ALIGN_RATE
           crossSeriesReducer: REDUCE_SUM
+          groupByFields: ["resource.labels.project_id", "resource.labels.location"]
       comparison: COMPARISON_GT
-      thresholdValue: 0.1
+      thresholdValue: 0
       duration: 300s
       trigger: { count: 1 }
+  - displayName: "orchestrator counted jobs.run 429s, sustained 5m"
+    conditionPrometheusQueryLanguage:
+      query: sum by (executor) (rate(mapi_executor_submit_throttled_total[5m])) > 0
+      duration: 300s
+      evaluationInterval: 60s
+severity: WARNING
+
+---
+# Running executions at 70 % of Cloud Run's 1,000 per project and region (plan §8.8).
+displayName: "mapi — Cloud Run running executions at 70% of quota"
+documentation:
+  content: |
+    The exec project's running Cloud Run job executions passed 700 of the 1,000 quota.
+    Tighten per-tenant concurrent_runs (or the global cap), or shard across exec projects
+    or regions. Runbook: ops/runbooks/stuck-runs.md
+  mimeType: text/markdown
+combiner: OR
+conditions:
+  - displayName: "running executions > 700 for 10m"
+    conditionThreshold:
+      filter: >
+        resource.type = "cloud_run_job" AND
+        metric.type = "run.googleapis.com/job/running_executions"
+      aggregations:
+        - alignmentPeriod: 60s
+          perSeriesAligner: ALIGN_MAX
+          crossSeriesReducer: REDUCE_SUM
+          groupByFields: ["resource.labels.project_id", "resource.labels.location"]
+      comparison: COMPARISON_GT
+      thresholdValue: 700
+      duration: 600s
+      trigger: { count: 1 }
+  - displayName: "orchestrator view: running executions > 700 for 10m"
+    conditionPrometheusQueryLanguage:
+      query: max by (executor) (mapi_executor_running_executions{executor=~"cloudrun.*"}) > 700
+      duration: 600s
+      evaluationInterval: 60s
 severity: WARNING
 
 ---
@@ -85,7 +130,7 @@ conditions:
   - displayName: "spend ratio >= 0.70"
     conditionPrometheusQueryLanguage:
       query: >
-        (mapi_global_spend_micros / clamp_min(mapi_global_spend_cap_micros, 1)) >= 0.70
+        (mapi_global_spend_micros / (mapi_global_spend_cap_micros > 0)) >= 0.70
       duration: 300s
       evaluationInterval: 60s
 severity: WARNING
@@ -102,7 +147,7 @@ conditions:
   - displayName: "spend ratio >= 0.90"
     conditionPrometheusQueryLanguage:
       query: >
-        (mapi_global_spend_micros / clamp_min(mapi_global_spend_cap_micros, 1)) >= 0.90
+        (mapi_global_spend_micros / (mapi_global_spend_cap_micros > 0)) >= 0.90
       duration: 60s
       evaluationInterval: 60s
 severity: CRITICAL
@@ -126,7 +171,7 @@ conditions:
 severity: CRITICAL
 
 ---
-displayName: "mapi — quota rejections at 70%"
+displayName: "mapi — quota rejections sustained"
 documentation:
   content: "Sustained quota rejections. Confirm expected usage vs abuse. Runbook: ops/runbooks/incident-response.md"
   mimeType: text/markdown
@@ -134,7 +179,7 @@ combiner: OR
 conditions:
   - displayName: "QUOTA_EXCEEDED rejections sustained"
     conditionPrometheusQueryLanguage:
-      query: sum(rate(mapi_quota_rejections_total{code="QUOTA_EXCEEDED"}[15m])) > 0.05
+      query: sum by (scope) (rate(mapi_quota_rejections_total{code="QUOTA_EXCEEDED"}[15m])) > 0.05
       duration: 900s
       evaluationInterval: 60s
 severity: WARNING

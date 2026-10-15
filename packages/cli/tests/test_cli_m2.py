@@ -346,6 +346,48 @@ def test_logout_with_revoke(
     assert "no stored credentials" in again.stderr
 
 
+def test_logout_revoke_uses_the_tokens_own_project(
+    mapi: Invoke, api: respx.MockRouter, example: Ex, isolated_env: Path
+) -> None:
+    # The profile selects another project than the token is bound to: the revocation must
+    # still go to the token's own project, or the server refuses it (403).
+    write_config(
+        isolated_env,
+        f'[profiles.ci]\nurl = "{URL}"\ntoken = "{TOKEN}"\nproject = "acme/other"\n',
+    )
+    api.get(f"{V1}/me").respond(200, json=token_me(example))
+    revoke = api.delete(f"{V1}/tokens/tok_01jaf3r1s2t3v4w5x6y7z8a9b0").respond(204)
+    res = mapi("--profile", "ci", "logout", "--revoke")
+    assert res.exit_code == 0, res.output
+    assert revoke.calls.last.request.headers[HEADER] == "acme/growth"
+    assert config_of(isolated_env)["profiles"]["ci"] == {"url": URL, "project": "acme/other"}
+
+
+def test_logout_revoke_failure_still_forgets_local_credentials(
+    mapi: Invoke, api: respx.MockRouter, example: Ex, isolated_env: Path
+) -> None:
+    write_config(isolated_env, f'[profiles.ci]\nurl = "{URL}"\ntoken = "{TOKEN}"\n')
+    api.get(f"{V1}/me").respond(200, json=token_me(example))
+    api.delete(f"{V1}/tokens/tok_01jaf3r1s2t3v4w5x6y7z8a9b0").respond(
+        403, json=problem(ErrorCode.FORBIDDEN, "not your token")
+    )
+    res = mapi("--profile", "ci", "logout", "--revoke")
+    assert res.exit_code == 1
+    assert "FORBIDDEN" in res.stderr and "not revoked" in res.stderr.lower()
+    # the credential is gone from disk even though the server kept it alive
+    assert config_of(isolated_env)["profiles"]["ci"] == {"url": URL}
+    assert_no_secret(res)
+    # an unreachable /me (revoked or expired token) is reported the same way
+    write_config(isolated_env, f'[profiles.ci]\nurl = "{URL}"\ntoken = "{TOKEN}"\n')
+    api.get(f"{V1}/me").respond(401, json=problem(ErrorCode.UNAUTHENTICATED, "expired"))
+    res = mapi("--profile", "ci", "--json", "logout", "--revoke")
+    assert res.exit_code == 1
+    doc = json.loads(res.stdout)
+    assert doc["token_removed"] is True and doc["token_revoked"] is None
+    assert doc["error"]["code"] == "UNAUTHENTICATED"
+    assert config_of(isolated_env)["profiles"]["ci"] == {"url": URL}
+
+
 # ------------------------------------------------------------------------------ tokens
 
 
@@ -485,6 +527,7 @@ def test_admin_kill_switches(mapi: Invoke, api: respx.MockRouter, example: Ex) -
     assert json.loads(put.calls.last.request.content) == {
         "untrusted_execution_enabled": False,
         "clear_spend_cap": False,
+        "cancel_untrusted_runs": False,
         "reason": "incident 42",
     }
     assert "PAUSED" in ok.stdout
@@ -497,6 +540,29 @@ def test_admin_kill_switches(mapi: Invoke, api: respx.MockRouter, example: Ex) -
     same = mapi("--url", URL, "admin", "kill-switches", "set", "--untrusted-code", "on",
                 "--reason", "noop", "--yes")  # fmt: skip
     assert same.exit_code == 1 and "nothing to change" in same.stderr
+
+
+def test_admin_kill_switches_cancel_untrusted_runs(
+    mapi: Invoke, api: respx.MockRouter, example: Ex
+) -> None:
+    # untrusted code is already paused: cancelling the in-flight runs is still a change
+    api.get(f"{V1}/admin/kill-switches").respond(200, json=example(KillSwitches))
+    put = api.put(f"{V1}/admin/kill-switches").respond(200, json=example(KillSwitches))
+    args = ("--url", URL, "admin", "kill-switches", "set", "--cancel-untrusted-runs")
+    alone = mapi(*args, "--reason", "incident 42", "--yes")
+    assert alone.exit_code == 1 and "--untrusted-code off" in alone.stderr and not put.called
+    full = (*args, "--untrusted-code", "off", "--reason", "incident 42")
+    declined = mapi(*full, input="n\n")
+    assert declined.exit_code == 1 and not put.called
+    assert "Cancel EVERY unfinished run of uploaded code" in declined.stderr
+    ok = mapi(*full, input="y\n")
+    assert ok.exit_code == 0, ok.output
+    assert json.loads(put.calls.last.request.content) == {
+        "untrusted_execution_enabled": False,
+        "clear_spend_cap": False,
+        "cancel_untrusted_runs": True,
+        "reason": "incident 42",
+    }
 
 
 def test_admin_quotas(mapi: Invoke, api: respx.MockRouter, example: Ex) -> None:
@@ -556,6 +622,25 @@ def test_admin_executors_and_audit(mapi: Invoke, api: respx.MockRouter, example:
     api.get(f"{V1}/admin/executors/cloudrun-jobs").respond(200, json=example(ExecutorHealth))
     got = mapi("--url", URL, "admin", "executors", "get", "cloudrun-jobs")
     assert got.exit_code == 0 and "MICROVM" in got.stdout
+    put = api.put(f"{V1}/admin/executors/cloudrun-jobs").respond(
+        200, json=example(ExecutorHealth, enabled=False, status="disabled")
+    )
+    off = ("--url", URL, "admin", "executors", "disable", "cloudrun-jobs")
+    declined = mapi(*off, "--reason", "incident 42", input="n\n")
+    assert declined.exit_code == 1 and not put.called
+    assert "Stop placing runs on cloudrun-jobs" in declined.stderr
+    assert mapi(*off).exit_code == 2  # --reason is required
+    res = mapi(*off, "--reason", "incident 42", "--yes")
+    assert res.exit_code == 0, res.output
+    assert json.loads(put.calls.last.request.content) == {
+        "enabled": False,
+        "reason": "incident 42",
+    }
+    assert "disabled" in res.stdout
+    on = mapi("--url", URL, "admin", "executors", "enable", "cloudrun-jobs", "--reason",
+              "resolved", "--yes")  # fmt: skip
+    assert on.exit_code == 0, on.output
+    assert json.loads(put.calls.last.request.content)["enabled"] is True
     audit = api.get(f"{V1}/admin/audit").respond(200, json=page([example(AuditEvent)]))
     res = mapi("--url", URL, "admin", "audit", "--tenant", "acme", "--action", "token.create",
                "--since", "2026-10-01")  # fmt: skip

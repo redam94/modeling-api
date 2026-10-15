@@ -38,6 +38,7 @@ mapi admin quotas set tenant acme --vcpu-seconds-per-day 172800 --concurrent-run
     --storage 200GiB --note "beta customer"
 mapi admin tenants update acme --status suspended --reason "payment overdue"
 mapi admin executors ls
+mapi admin executors disable cloudrun-jobs --reason "incident 2026-10-15: contain"
 mapi admin audit --tenant acme --action token.create --since 2026-10-01
 # --8<-- [end:admin]
 

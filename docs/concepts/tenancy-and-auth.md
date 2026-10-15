@@ -36,7 +36,7 @@ tenant has:
 |---|---|---|
 | Trust tier | `internal`, `verified`, `public`, `self-hosted-trusted` | Where its runs may execute, and its default quotas |
 | Status | `active`, `suspended`, `deleting` | `suspended` tenants can read but not change or run anything; `deleting` tenants are inaccessible |
-| Data residency | A multi-region (`eu`, `us`, `asia`) or one region (`europe-west1`) | Runs are only placed on executors in a matching region |
+| Data residency | A multi-region (`eu`, `us`, `asia`) or one region (`europe-west1`) | Runs go only to executors that declare a matching region (Cloud Run Jobs declare theirs). The self-hosted executors (`local-process`, `docker`, `docker-gvisor`) declare no region and are not checked: there the install's location is the residency |
 
 The trust tier decides placement. This is enforced by the dispatcher, never by tenant
 configuration:

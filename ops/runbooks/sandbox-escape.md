@@ -19,28 +19,42 @@ Signals and what they mean:
 
 ## 0. First 5 minutes — contain
 
-1. **Flip the kill switch.** `PUT /v1/admin/kill-switches` with
-   `untrusted_execution_enabled=false` and a reason. This denies all untrusted-code runs with
-   `QUOTA_EXCEEDED` at the global scope. If a specific executor is implicated, also disable it
-   (its `ExecutorHealth.enabled=false`) so the dispatcher stops placing runs on it.
-2. **Freeze the blast radius.** Identify the tenant(s) and model version(s) from the alert's
+1. **Flip the kill switch and cancel what is running.** `PUT /v1/admin/kill-switches` with
+   `untrusted_execution_enabled=false`, `cancel_untrusted_runs=true` and a reason
+   (`mapi admin kill-switches set --untrusted-code off --cancel-untrusted-runs --reason ...`,
+   or **Admin → Kill switches → Cancel running uploaded code**). New untrusted-code runs are
+   denied with `QUOTA_EXCEEDED` at the global scope, and every unfinished run of uploaded code
+   (queued or already executing, on every tenant) moves to `cancelling`; the reconciler then
+   cancels the executions (SIGTERM, then the hard timeout). Pausing *without*
+   `cancel_untrusted_runs` only holds new work: a confirmed escape would keep running until
+   its own timeout. The audit event's `details.cancelled_runs` says how many were cancelled.
+   Runs already `finalizing` are left alone (their execution is over); their outputs still
+   go through the integrity check.
+2. **Disable the implicated executor.** `PUT /v1/admin/executors/{name}` with
+   `{"enabled": false, "reason": ...}` (`mapi admin executors disable <name> --reason ...`, or
+   **Admin → Executors → Disable**). Orchestrators lease nothing onto a disabled executor,
+   including built-in (trusted) runs, and their periodic health reports never re-enable it.
+   It shows `status=disabled` with your reason in `GET /v1/admin/executors`.
+3. **Freeze the blast radius.** Identify the tenant(s) and model version(s) from the alert's
    `run_id`/`tenant_id`. Suspend the tenant (`status=suspended` → read-only) if the escape is
    tenant-originated.
-3. Declare SEV1, open the bridge, assign an incident commander and a security lead.
+4. Declare SEV1, open the bridge, assign an incident commander and a security lead.
 
 ## 1. Rotate the credentials the escape could have reached (plan §9)
 
 An escape may have read in-sandbox material. Rotate, in this order:
 
-1. **The bundle-signing key.** Rotating the signer invalidates every outstanding
-   object-scoped signed URL (they are checked when minted against the signed manifest). See
-   [rotating keys](rotating-keys.md#bundle-signing-key). After rotation, re-mint URLs only
-   after re-verifying bundles.
+1. **The bundle-signing key.** Follow [rotating keys, on compromise](rotating-keys.md#on-compromise):
+   do not keep the old key trusted, so no new URL is minted for a bundle it signed until
+   that bundle is re-verified and re-finalized.
 2. **The per-run HMAC root / bootstrap keys.** New runs already get a fresh per-run key; the
    concern is the signing/exec-token material. Rotate the GCS shim exec principal token
    (`gs://…/_shim/keys/exec.json` locally; the exec service-account key in cloud) so any
    leaked bootstrap token is dead. See [rotating keys](rotating-keys.md#hmac--exec-tokens).
-3. **The internal events token** (`MAPI_INTERNAL_TOKEN`) if forged events were seen.
+3. **The internal events token** (`MAPI_INTERNAL_TOKEN`, local and self-hosted only) if forged
+   events were seen. On GCP, pushes carry a Google-signed OIDC token instead. Check the push
+   identity and the events service's invoker grant (see
+   [rotating keys](rotating-keys.md#hmac--exec-tokens)).
 
 Rotation is only safe once every signer/verifier shares the new key — roll the API and worker
 together (they both load the bundle-signing key written by `mapi-server migrate`).
@@ -82,7 +96,8 @@ Template:
 ## 5. Recover
 
 - Only after the failed control is fixed and the security suite is green on the implicated
-  executor: re-enable the executor, then clear the kill switch.
+  executor: re-enable the executor (`mapi admin executors enable <name> --reason ...`), then
+  clear the kill switch. Runs cancelled in step 0 stay cancelled; tenants resubmit them.
 - Re-verify and re-mint URLs for quarantined-but-clean bundles; crypto-shred anything
   confirmed compromised (per-tenant CMEK where enabled).
 - Keep untrusted execution paused until the suite stays green per policy (cut line B requires

@@ -204,6 +204,15 @@ test("operators manage tenants, kill switches, executors and the audit log", asy
   const cloudrun = page.getByRole("region", { name: "Executor cloudrun-jobs" });
   await expect(cloudrun.getByText("conformance passed")).toBeVisible();
   await expect(page.getByRole("region", { name: "Executor local-process" }).getByText("1 conformance case(s) failing")).toBeVisible();
+  // incident containment: stop placing runs on an executor (audited, reason required)
+  await cloudrun.getByRole("button", { name: "Disable" }).click();
+  const off = page.getByRole("dialog", { name: "Disable cloudrun-jobs?" });
+  await off.getByLabel("Reason (recorded in the audit log)").fill("incident 42: contain");
+  await expect(off.getByRole("button", { name: "Confirm" })).toBeDisabled();
+  await off.getByLabel("Type DISABLE to confirm").fill("DISABLE");
+  await off.getByRole("button", { name: "Confirm" }).click();
+  await expect(cloudrun.getByText(/disabled by an operator: incident 42: contain/)).toBeVisible();
+  await expect(cloudrun.getByRole("button", { name: "Enable" })).toBeVisible();
 
   await page.getByRole("tab", { name: "Audit log" }).click();
   const log = page.getByRole("table", { name: "Audit log" });

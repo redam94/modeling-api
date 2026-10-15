@@ -64,7 +64,8 @@ module "stack" {
       client_id             = var.oidc_client_id
       client_secret_version = var.oidc_client_secret_version
     }
-    kms = { protection_level = "HSM" }
+    kms               = { protection_level = "HSM" }
+    metrics_collector = { image = var.metrics_collector_image }
   }
   oidc_client_secret = var.oidc_client_secret
 

@@ -661,6 +661,7 @@ _DENIED_AUDIT: Final[dict[str, tuple[AuditAction, ResourceKind]]] = {
     "admin_delete_quota": (AuditAction.QUOTA_DELETE, ResourceKind.QUOTA),
     "admin_put_kill_switches": (AuditAction.KILL_SWITCH_UPDATE, ResourceKind.KILL_SWITCH),
     "admin_put_executor_evidence": (AuditAction.EXECUTOR_EVIDENCE_UPDATE, ResourceKind.EXECUTOR),
+    "admin_put_executor": (AuditAction.EXECUTOR_UPDATE, ResourceKind.EXECUTOR),
     "create_token": (AuditAction.TOKEN_CREATE, ResourceKind.TOKEN),
     "revoke_token": (AuditAction.TOKEN_REVOKE, ResourceKind.TOKEN),
     "add_member": (AuditAction.MEMBER_ADD, ResourceKind.MEMBER),

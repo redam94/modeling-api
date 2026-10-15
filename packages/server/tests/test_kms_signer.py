@@ -234,6 +234,50 @@ def test_load_signer_selects_kms(tmp_path: Any, monkeypatch: pytest.MonkeyPatch)
     assert created == {"version": V2, "trusted_versions": [V1]}
 
 
+def test_local_key_rotation_keeps_old_bundles_verifiable(tmp_path: Any) -> None:
+    """The rotating-keys runbook: the new PEM signs, the retired one (listed in
+    MAPI_SIGNING_TRUSTED_KEY_PATHS, private or public PEM) still verifies what it signed.
+    Without it every earlier model version would fail INTEGRITY_FAILURE."""
+    keys = tmp_path / "keys"
+    keys.mkdir()
+    old_path, new_path = keys / "old.pem", keys / "bundle-signing-p256.pem"
+    old = LocalSigner.from_file(old_path)
+    signed_before = old.sign(_manifest())
+    new = LocalSigner.generate()
+    new_path.write_bytes(
+        new._private.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+    )
+    common: dict[str, Any] = {
+        "database_url": "postgresql://x/y",
+        "data_dir": tmp_path,
+        "signing_key_path": new_path,
+    }
+    alone = load_signer(Settings(**common))
+    assert alone.key_id == new.key_id and not alone.verify(signed_before)
+    # the public half is enough (and is what operators should keep on the hosts)
+    pub_path = keys / "old.pub.pem"
+    pub_path.write_text(old.public_pem())
+    for trusted in (str(old_path), f"{pub_path}, {old_path}"):
+        rotated = load_signer(Settings(**common, signing_trusted_key_paths=trusted))
+        assert rotated.key_id == new.key_id  # new signatures use the new key
+        assert rotated.verify(signed_before)
+        assert rotated.verify(new.sign(_manifest()))
+    with pytest.raises(ValueError, match="trusted bundle-signing key"):
+        load_signer(Settings(**common, signing_trusted_key_paths=str(keys / "missing.pem")))
+    rsa_pem = rsa.generate_private_key(public_exponent=65537, key_size=2048).public_key()
+    (keys / "rsa.pem").write_bytes(
+        rsa_pem.public_bytes(
+            serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+    )
+    with pytest.raises(ValueError, match="P-256"):
+        load_signer(Settings(**common, signing_trusted_key_paths=str(keys / "rsa.pem")))
+
+
 # ----------------------------------------------------------- end to end: finalizer
 
 

@@ -12,9 +12,10 @@ groups:
   - name: mapi.recording
     interval: 30s
     rules:
-      # Fraction of the global spend cap currently consumed (0..1); NaN when no cap is set.
+      # Fraction of the global spend cap currently consumed (0..1). No value when no cap is
+      # set: the server publishes cap 0 then, and `> 0` drops that series.
       - record: mapi:global_spend_ratio
-        expr: mapi_global_spend_micros / clamp_min(mapi_global_spend_cap_micros, 1)
+        expr: mapi_global_spend_micros / (mapi_global_spend_cap_micros > 0)
       # Per-minute rates of the signals the alerts below page on.
       - record: mapi:integrity_failures:rate5m
         expr: sum(rate(mapi_integrity_failures_total[5m]))
@@ -22,8 +23,11 @@ groups:
         expr: sum by (reason) (rate(mapi_sandbox_violations_total[5m]))
       - record: mapi:quota_rejections:rate5m
         expr: sum by (scope, code) (rate(mapi_quota_rejections_total[5m]))
-      - record: mapi:jobs_run_429:rate5m
-        expr: sum(rate(mapi_http_requests_total{route="/v1/runs", method="POST", status="429"}[5m]))
+      # 429s from the executor backend (Cloud Run jobs.run), counted where they happen. Not
+      # the API's own 429s to tenants: submission is asynchronous, so a backend throttle
+      # never reaches POST /v1/runs (tenant quota rejections are mapi_quota_rejections_total).
+      - record: mapi:executor_submit_throttled:rate5m
+        expr: sum by (executor) (rate(mapi_executor_submit_throttled_total[5m]))
       # Runs that have been STALLED across the fleet (a gauge sampled each reconcile pass).
       - record: mapi:runs_stalled
         expr: sum(mapi_runs_active{state="stalled"})
@@ -92,24 +96,41 @@ groups:
   - name: mapi.saturation
     rules:
       - alert: MapiJobsRun429
-        # 429s from jobs.run / the dispatcher token bucket (plan §8.3: 429s raise an alarm).
-        expr: mapi:jobs_run_429:rate5m > 0.1
+        # Cloud Run answered 429 to jobs.run, sustained (plan §8.3: 429s raise an alarm).
+        # Every answer counts, also the ones the executor absorbed with its retries.
+        expr: mapi:executor_submit_throttled:rate5m > 0
         for: 5m
         labels: { severity: ticket, team: platform-ops }
         annotations:
-          summary: "429s on jobs.run ({{ $value | printf \"%.2f\" }}/s)"
+          summary: "429s on jobs.run from {{ $labels.executor }} ({{ $value | printf \"%.3f\" }}/s)"
           description: >
             The run-submission path is being throttled. Check the per-region jobs.run rate
             (180/min) and per-tenant fan-out; shard across exec projects at 70% (§8.8).
           runbook: ops/runbooks/stuck-runs.md
 
-      - alert: MapiQuota70
-        # A tenant sustained above ~70% of its allowance (rejections are the visible signal).
-        expr: sum(rate(mapi_quota_rejections_total{code="QUOTA_EXCEEDED"}[15m])) > 0.05
+      - alert: MapiRunningExecutions70
+        # Plan §8.8: Cloud Run allows 1,000 running executions per project and region; alert
+        # at 70 %. Each orchestrator reports the same fleet-wide value (from the run table),
+        # hence max. One executor name per exec project and region.
+        expr: max by (executor) (mapi_executor_running_executions{executor=~"cloudrun.*"}) > 700
+        for: 10m
+        labels: { severity: ticket, team: platform-ops }
+        annotations:
+          summary: "{{ $labels.executor }}: {{ $value | printf \"%.0f\" }} running executions (70 % of the 1,000 quota)"
+          description: >
+            Sweeps or a tenant's fan-out are filling the project's running-execution quota.
+            Tighten per-tenant concurrent_runs or the global cap (700 by default), or shard
+            across exec projects/regions before submissions start failing (§8.8).
+          runbook: ops/runbooks/stuck-runs.md
+
+      - alert: MapiQuotaRejections
+        # Callers keep hitting a quota (a limit is reached: rejections are what the server
+        # exports; it does not export usage against each limit, so there is no 70 % signal).
+        expr: sum by (scope) (rate(mapi_quota_rejections_total{code="QUOTA_EXCEEDED"}[15m])) > 0.05
         for: 15m
         labels: { severity: ticket, team: platform-ops }
         annotations:
-          summary: "Quota rejections sustained ({{ $labels.scope }})"
+          summary: "Quota rejections sustained at the {{ $labels.scope }} level"
           description: "A tenant/token is hitting its quota; confirm it is expected, not abuse."
           runbook: ops/runbooks/incident-response.md
 
@@ -140,7 +161,9 @@ groups:
 
       - alert: MapiNoProgressIngested
         # The events service upserts progress; a flatline means the ingest path is down.
-        expr: sum(rate(mapi_events_ingested_total{result="accepted"}[10m])) == 0
+        # `or vector(0)`: the accepted counter has no series before the first accepted event,
+        # so an ingest path broken since deploy would otherwise read as "no data".
+        expr: (sum(rate(mapi_events_ingested_total{result="accepted"}[10m])) or vector(0)) == 0
           and sum(mapi_runs_active{state=~"running|provisioning"}) > 0
         for: 10m
         labels: { severity: page, team: platform-ops }

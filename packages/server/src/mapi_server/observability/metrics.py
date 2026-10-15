@@ -38,6 +38,7 @@ __all__ = [
     "record_cost_micros",
     "record_dispatch_latency",
     "record_event_ingested",
+    "record_executor_throttled",
     "record_finalize_outcome",
     "record_http_request",
     "record_ingestion_lag",
@@ -49,6 +50,7 @@ __all__ = [
     "record_time_to_running",
     "render",
     "set_active_runs",
+    "set_executor_running",
     "set_global_spend",
     "set_metrics",
 ]
@@ -158,6 +160,21 @@ class Metrics:
             registry=r,
             multiprocess_mode="livesum",
         )
+        self.executor_submit_throttled_total = Counter(
+            "mapi_executor_submit_throttled_total",
+            "429 answers from an executor backend to a submission (Cloud Run jobs.run), "
+            "each one, retried or not. Not the API's own 429s to tenants.",
+            ["executor"],
+            registry=r,
+        )
+        self.executor_running_executions = Gauge(
+            "mapi_executor_running_executions",
+            "Runs holding a live execution on this executor (fleet-wide, from the run table; "
+            "each orchestrator reports the same value, so aggregate with max).",
+            ["executor"],
+            registry=r,
+            multiprocess_mode="max",
+        )
         self.http_requests_total = Counter(
             "mapi_http_requests_total",
             "HTTP requests handled by the API, by method, route template and status.",
@@ -221,6 +238,10 @@ def set_active_runs(counts: dict[str, int], *, states: Sequence[str]) -> None:
         METRICS.runs_active.labels(state=state).set(counts.get(state, 0))
 
 
+def set_executor_running(executor: str, executions: int) -> None:
+    METRICS.executor_running_executions.labels(executor=executor).set(max(0, executions))
+
+
 def record_dispatch_latency(seconds: float) -> None:
     METRICS.dispatch_latency.observe(max(0.0, seconds))
 
@@ -247,6 +268,10 @@ def record_integrity_failure(tenant_id: str) -> None:
 
 def record_sandbox_violation(reason: str) -> None:
     METRICS.sandbox_violations_total.labels(reason=reason).inc()
+
+
+def record_executor_throttled(executor: str) -> None:
+    METRICS.executor_submit_throttled_total.labels(executor=executor).inc()
 
 
 def record_quota_rejection(scope: str, code: str) -> None:

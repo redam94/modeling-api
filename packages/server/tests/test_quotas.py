@@ -188,6 +188,22 @@ async def test_kill_switches_refuse_new_compute(
     assert _sample("mapi_global_spend_cap_micros") == 1000
     switches = (await client.get("/v1/admin/kill-switches")).json()
     assert switches["global_spend_cap_micros"] == 1000 and switches["reason"] == "beta cap"
+    # clearing the cap clears the gauges, or MapiGlobalSpendCap90 would keep firing
+    r = await client.put(
+        "/v1/admin/kill-switches", json={"clear_spend_cap": True, "reason": "beta over"}
+    )
+    assert r.status_code == 200 and r.json()["global_spend_cap_micros"] is None
+    assert _sample("mapi_global_spend_micros") == 0
+    assert _sample("mapi_global_spend_cap_micros") == 0
+    obs_metrics.set_global_spend(5000, 1000)  # a stale value from another code path
+    assert (await client.post("/v1/runs", json=fit)).status_code == 201
+    assert _sample("mapi_global_spend_cap_micros") == 0  # admission refreshes it too
+    # a new cap is published at once, before the next admission
+    await client.put(
+        "/v1/admin/kill-switches", json={"global_spend_cap_micros": 2000, "reason": "again"}
+    )
+    assert _sample("mapi_global_spend_cap_micros") == 2000
+    assert _sample("mapi_global_spend_micros") == 5000
 
 
 async def test_tenant_request_rate_limit(ctx: ServerContext, client: httpx.AsyncClient) -> None:
@@ -546,6 +562,34 @@ async def test_runs_the_executor_cannot_place_are_refused_at_admission(
     assert (await client.post("/v1/runs", json=fit)).status_code == 201
 
 
+async def test_orchestrators_lease_only_their_tiers(ctx: ServerContext, tenants: None) -> None:
+    """Two orchestrators serving different exec pools (one per tier group) must never take
+    each other's runs: leasing is filtered by MAPI_DISPATCH_TIERS."""
+    await make_tenant(ctx, "own", tier="self-hosted-trusted", projects=("main",))
+    internal = await _queue(ctx, "big", minutes_ago=2)
+    hosted = await _queue(ctx, "own", minutes_ago=1)
+    ctx.settings.dispatch_tiers = ["self-hosted-trusted"]  # the "other pool" orchestrator
+    assert await _leased(ctx, Dispatcher(ctx, FakeExecutor(), name="pool-b")) == [hosted]
+    async with ctx.db.session() as s:
+        assert (await load_run(s, None, internal)).state == RunState.QUEUED.value
+    ctx.settings.dispatch_tiers = ["internal", "verified"]
+    assert await _leased(ctx, Dispatcher(ctx, FakeExecutor(), name="pool-a")) == [internal]
+    # unset (the default): one orchestrator serves every tier
+    ctx.settings.dispatch_tiers = []
+    third = await _queue(ctx, "own")
+    assert await _leased(ctx, Dispatcher(ctx, FakeExecutor())) == [third]
+
+
+def test_dispatch_tiers_setting_parses() -> None:
+    from mapi_server.settings import Settings
+
+    s = Settings(database_url="postgresql://x/y", dispatch_tiers="public, verified")
+    assert [t.value for t in s.dispatch_tiers] == ["public", "verified"]
+    assert Settings(database_url="postgresql://x/y").dispatch_tiers == []
+    with pytest.raises(ValueError):
+        Settings(database_url="postgresql://x/y", dispatch_tiers="gold")
+
+
 async def test_shared_tiers_need_a_sandboxing_executor(ctx: ServerContext) -> None:
     await make_tenant(ctx, "pub", tier="public", projects=("main",))
     run_id = await _queue(ctx, "pub")
@@ -565,6 +609,110 @@ async def test_executor_health_is_reported(ctx: ServerContext, client: httpx.Asy
     assert health["allows_public_tenants"] is False
     assert (await client.get("/v1/admin/executors/fake")).status_code == 200
     assert (await client.get("/v1/admin/executors/nope")).status_code == 404
+
+
+async def test_report_exports_running_executions_for_the_quota_alert(
+    ctx: ServerContext, tenants: None, metrics: Metrics
+) -> None:
+    """Plan §8.8: alert at 70 % of the 1,000 running executions per project and region. The
+    orchestrator's report publishes this executor's live executions from the run table."""
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    for state in ("provisioning", "running", "stalled", "cancelling", "finalizing", "queued"):
+        run_id = await _queue(ctx, "big", state=state)
+        async with ctx.db.session() as s:
+            await s.execute(update(m.Run).where(m.Run.id == run_id).values(executor="fake"))
+    other = await _queue(ctx, "small", state="running")
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Run).where(m.Run.id == other).values(executor="elsewhere"))
+    await dispatcher.report()
+    # finalizing: the execution is over; queued: none yet; another executor: not ours
+    assert _sample("mapi_executor_running_executions", executor="fake") == 4
+
+
+async def test_operators_disable_an_executor_and_the_dispatcher_stops_leasing(
+    ctx: ServerContext, client: httpx.AsyncClient, tenants: None
+) -> None:
+    """Containment step of the sandbox-escape runbook: an operator disables the executor,
+    the next orchestrator report keeps it disabled, and nothing is leased onto it."""
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    await dispatcher.report()
+    queued = await _queue(ctx, "big")
+    r = await client.put(
+        "/v1/admin/executors/fake", json={"enabled": False, "reason": "incident 42: escape"}
+    )
+    assert r.status_code == 200, r.text
+    health = r.json()
+    assert health["enabled"] is False and health["status"] == "disabled"
+    assert "incident 42" in health["message"]
+    await dispatcher.report()  # the orchestrator's periodic report must not re-enable it
+    health = (await client.get("/v1/admin/executors/fake")).json()
+    assert health["enabled"] is False and health["status"] == "disabled"
+    assert await _leased(ctx, dispatcher) == []
+    async with ctx.db.session() as s:
+        assert (await load_run(s, None, queued)).state == RunState.QUEUED.value
+        audit = [
+            e for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "executor.update"
+        ]  # fmt: skip
+    assert len(audit) == 1 and audit[0].resource_id == "fake"
+    assert audit[0].details == {"enabled": False, "reason": "incident 42: escape"}
+    r = await client.put("/v1/admin/executors/fake", json={"enabled": True, "reason": "fixed"})
+    assert r.status_code == 200 and r.json()["status"] == "ok"
+    assert await _leased(ctx, dispatcher) == [queued]
+    r = await client.put("/v1/admin/executors/nope", json={"enabled": False, "reason": "x y"})
+    assert r.status_code == 404
+
+
+async def test_kill_switch_can_cancel_in_flight_untrusted_runs(
+    ctx: ServerContext, client: httpx.AsyncClient, tenants: None
+) -> None:
+    """Pausing untrusted execution holds new work; ``cancel_untrusted_runs`` also stops the
+    tenant-code runs already placed (a confirmed escape must not run to its timeout)."""
+    running = await _queue(ctx, "big", state="running", untrusted=True)
+    provisioning = await _queue(ctx, "big", state="provisioning", untrusted=True)
+    queued = await _queue(ctx, "small", untrusted=True)
+    finalizing = await _queue(ctx, "big", state="finalizing", untrusted=True)
+    trusted = await _queue(ctx, "small", state="running")
+    done = await _queue(ctx, "big", state="succeeded", untrusted=True)
+    # it only makes sense together with pausing untrusted execution
+    r = await client.put(
+        "/v1/admin/kill-switches", json={"cancel_untrusted_runs": True, "reason": "drill"}
+    )
+    assert r.status_code == 422
+    r = await client.put(
+        "/v1/admin/kill-switches", json={"untrusted_execution_enabled": False, "reason": "drill"}
+    )
+    assert r.status_code == 200
+    async with ctx.db.session() as s:  # pausing alone leaves in-flight runs alone
+        assert (await load_run(s, None, running)).state == RunState.RUNNING.value
+    r = await client.put(
+        "/v1/admin/kill-switches",
+        json={
+            "untrusted_execution_enabled": False,
+            "cancel_untrusted_runs": True,
+            "reason": "incident 42: escape",
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["untrusted_execution_enabled"] is False
+    async with ctx.db.session() as s:
+        states = {
+            run_id: (await load_run(s, None, run_id)).state
+            for run_id in (running, provisioning, queued, finalizing, trusted, done)
+        }
+        audit = [
+            e for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "kill_switch.update"
+        ]  # fmt: skip
+    assert states == {
+        running: RunState.CANCELLING.value,
+        provisioning: RunState.CANCELLING.value,
+        queued: RunState.CANCELLING.value,
+        finalizing: RunState.FINALIZING.value,  # the execution is already over
+        trusted: RunState.RUNNING.value,
+        done: RunState.SUCCEEDED.value,
+    }
+    assert audit[-1].details["cancelled_runs"] == 3
 
 
 async def test_cloud_run_throttling_reaches_the_admin_console(
@@ -588,7 +736,7 @@ async def test_cloud_run_throttling_reaches_the_admin_console(
     assert "429" in health["message"]
 
 
-def test_dispatcher_backs_off_on_a_cloud_run_429(ctx: ServerContext) -> None:
+def test_dispatcher_backs_off_on_a_cloud_run_429(ctx: ServerContext, metrics: Metrics) -> None:
     """A jobs.run 429 the executor could not absorb (``CloudRunRateLimited``) puts the
     dispatcher into back-off, honouring Retry-After, and counts toward its health."""
     from mapi_server.executors.cloudrun import CloudRunError, CloudRunRateLimited
@@ -599,6 +747,22 @@ def test_dispatcher_backs_off_on_a_cloud_run_429(ctx: ServerContext) -> None:
     first = dispatcher._throttled(CloudRunRateLimited("429"))
     second = dispatcher._throttled(CloudRunRateLimited("429"))
     assert first is not None and second is not None and second >= first
+    # the backend-throttle alarm counts them (an executor without its own health report)
+    assert _sample("mapi_executor_submit_throttled_total", executor="fake") == 3
+
+
+def test_self_reporting_executors_are_not_counted_twice(
+    ctx: ServerContext, metrics: Metrics
+) -> None:
+    """cloudrun-jobs counts every 429 itself (retries included): the one it finally raises
+    to the dispatcher is not counted again."""
+    from mapi_server.executors.cloudrun import CloudRunJobsExecutor, CloudRunRateLimited
+    from mapi_server.executors.fake_cloudrun import FakeCloudRun
+    from mapi_server_testkit.conformance import INVENTORY
+
+    executor = CloudRunJobsExecutor(FakeCloudRun.for_inventory(INVENTORY), INVENTORY)
+    assert Dispatcher(ctx, executor)._throttled(CloudRunRateLimited("429")) is not None
+    assert _sample("mapi_executor_submit_throttled_total", executor="cloudrun-jobs") == 0
 
 
 async def test_runs_admitted_under_looser_limits_wait_at_dispatch(

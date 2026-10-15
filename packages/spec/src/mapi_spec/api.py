@@ -48,6 +48,7 @@ from mapi_spec.admin import (
     ExecutorEvidence,
     ExecutorEvidenceUpdate,
     ExecutorHealth,
+    ExecutorUpdate,
     KillSwitches,
     KillSwitchUpdate,
 )
@@ -123,6 +124,7 @@ __all__ = [
     "ExecutorEvidence",
     "ExecutorEvidenceUpdate",
     "ExecutorHealth",
+    "ExecutorUpdate",
     "GlobalSpend",
     "Health",
     "HealthCheck",
@@ -2081,6 +2083,11 @@ M2_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "AdminUsageReport", 200, errors=_FB, query=("period", "start"),
     ),
     EndpointDecl(
+        "PUT", "/v1/admin/executors/{name}", "admin_put_executor",
+        "Enable or disable an executor (audited; reason required)", "ExecutorHealth", 200,
+        request="ExecutorUpdate", errors=(*_BODY, *_NF, *_FB),
+    ),
+    EndpointDecl(
         "GET", "/v1/admin/audit", "admin_list_audit", "The platform audit log",
         "Page[AuditEvent]", 200, errors=_FB, paginated=True,
         query=(*_PAGE, "tenant_id", "project_id", "actor_id", "action", "outcome", "since",
@@ -2219,6 +2226,7 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "admin_get_executor": _op(_RK.EXECUTOR, _AC.READ),
     "admin_get_executor_evidence": _op(_RK.EXECUTOR, _AC.READ),
     "admin_put_executor_evidence": _op(_RK.EXECUTOR, _AC.UPDATE),
+    "admin_put_executor": _op(_RK.EXECUTOR, _AC.UPDATE),
     "admin_list_audit": _op(_RK.AUDIT, _AC.READ),
     "admin_get_usage": _op(_RK.BILLING, _AC.READ),
     # session and internal

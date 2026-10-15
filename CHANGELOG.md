@@ -241,6 +241,62 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   are named after their images, rollbacks are marked); dry runs no longer claim what they did
   not do.
 
+### Fixed (M2 review: CLI, operations and docs)
+- **server**: incident containment can now stop running tenant code. `PUT /v1/admin/executors/{name}`
+  (audited `executor.update`, reason required; `mapi admin executors disable|enable`, a
+  Disable button in Admin → Executors) disables an executor: orchestrators lease nothing onto
+  it and their periodic reports no longer reset `enabled` to true. The kill-switch update
+  takes `cancel_untrusted_runs` (with `untrusted_execution_enabled=false`; `mapi admin
+  kill-switches set --cancel-untrusted-runs`, "Cancel running uploaded code" in the web app),
+  which moves every unfinished run of uploaded code to `cancelling`. The sandbox-escape and
+  incident-response runbooks use both.
+- **ops**: the jobs.run 429 alarm (plan §8.3) watches Cloud Run's 429s. The orchestrator
+  exports `mapi_executor_submit_throttled_total{executor}` (every 429, retried ones
+  included), and `MapiJobsRun429` and the dashboard use it instead of the API's own 429s to
+  tenants on `POST /v1/runs`. The Cloud Monitoring policy uses
+  `serviceruntime.googleapis.com/api/request_count` (RunJob, `response_code=429`). Its old
+  filter named a metric that Cloud Run jobs do not export, and it counted every 4xx.
+- **ops**: the plan's alert on running executions at 70 % of Cloud Run's 1,000 (§8.8)
+  exists. The orchestrator's report exports `mapi_executor_running_executions{executor}` from
+  the run table; `MapiRunningExecutions70` and a Cloud Monitoring policy on
+  `run.googleapis.com/job/running_executions` fire above 700.
+- **infra**: on GCP the `mapi_*` series reach Cloud Monitoring.
+  - The orchestrator serves its own `/metrics` on `127.0.0.1:9464`. Before, the dispatch,
+    reconcile and finalize series had no endpoint in the cloud.
+  - api, events and the orchestrator run a collector sidecar (`metrics_collector_image`, an
+    OpenTelemetry Collector pinned by digest). It scrapes `/metrics` over loopback with the
+    metrics bearer and writes to Managed Service for Prometheus.
+  - Without an image Terraform warns that the alerts and dashboard stay empty.
+  - The nightly security jobs push `mapi_security_probe_unexpected` to the Pushgateway at
+    `MAPI_PUSHGATEWAY_URL`.
+  - `gcp-deployment.md` has a Metrics section.
+- **server**: rotating the local bundle-signing key no longer breaks every existing model.
+  `MAPI_SIGNING_TRUSTED_KEY_PATHS` lists retired keys (public or private PEM) that still
+  verify. Terraform gains `control.kms_trusted_key_versions` (`MAPI_KMS_TRUSTED_KEY_VERSIONS`
+  on every server workload). The key-rotation runbook now gives the real local and Cloud KMS
+  procedures and the compromise path. It no longer tells GCP operators to rotate a
+  Pub/Sub "internal token": pushes there are OIDC-authenticated.
+- **docs**: data residency is enforced only on executors that declare regions (Cloud Run
+  Jobs). The self-hosted executors are not checked, and the tenancy page now says so instead
+  of promising a region match everywhere.
+- **server**: `MAPI_DISPATCH_TIERS` restricts an orchestrator to some trust tiers. Two
+  orchestrators serving different exec pools can no longer lease each other's runs (leasing
+  was not pool-aware, so public-tier code could land in the paid pool).
+  `gcp-deployment.md` no longer suggests a second orchestrator without it, and says that one
+  environment deploys one pool until M5.
+- **ops**: three Prometheus rule fixes.
+  - `MapiQuota70` is now `MapiQuotaRejections`. It fires on rejections, not at 70 %, and it
+    aggregates `by (scope)`, so its summary names the scope.
+  - `MapiNoProgressIngested` also fires when no event was ever accepted (`or vector(0)`).
+  - Clearing the spend cap now resets `mapi_global_spend_micros` and
+    `mapi_global_spend_cap_micros` to 0, both at once and at every admission. The spend
+    ratio ignores a cap of 0, so `MapiGlobalSpendCap90` stops firing.
+- **cli**: `mapi logout --revoke` revokes the token in the project it is bound to (it was
+  refused with 403 when another project was selected) and forgets the local credentials even
+  when the revocation fails, then exits 1.
+- **security**: the report writers create their directory, so `make security-suite` (and both
+  nightly security jobs) no longer fail on a fresh checkout without `.local/`.
+
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
 The platform now runs end to end on one machine. From the Expert web app (or the CLI, the Python

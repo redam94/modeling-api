@@ -93,6 +93,17 @@ def test_report_json_and_metrics_round_trip(tmp_path) -> None:
     assert 'executor="docker-gvisor"' in metrics
 
 
+def test_report_writers_create_missing_parent_directories(tmp_path) -> None:
+    # A fresh CI checkout has no ``.local/`` (it is ignored); the nightly job writes there.
+    report = build_report("local-process", isolation_for("local-process"), run_probes())
+    jpath = tmp_path / ".local" / "nested" / "report.json"
+    mpath = tmp_path / ".local" / "security-local-process.prom"
+    report.write_json(jpath)
+    report.write_metrics(mpath)
+    assert json.loads(jpath.read_text())["executor"] == "local-process"
+    assert "mapi_security_probe_total" in mpath.read_text()
+
+
 def test_docker_executors_skip_isolation_without_a_daemon() -> None:
     # No Docker daemon here: isolation probes must come back SKIPPED (never ERROR), and the
     # platform probes still run and block. So the suite is usable on a laptop.

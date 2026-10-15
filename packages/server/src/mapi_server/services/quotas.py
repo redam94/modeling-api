@@ -285,6 +285,8 @@ async def kill_switch_check(
         metered = await global_spend(s, switches, now=now)
         obs_metrics.set_global_spend(metered, switches.global_spend_cap_micros)
         spent = metered + await in_flight_spend(s, switches)
+    else:  # no cap: no ratio (a stale cap would keep the spend alerts firing)
+        obs_metrics.set_global_spend(0, 0)
     return _observed(
         kill_switch_decision(
             switches,

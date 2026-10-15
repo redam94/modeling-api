@@ -35,7 +35,8 @@ variables {
   github       = { repository = "acme/modeling-api" }
   state_bucket = "acme-tfstate"
   control = {
-    oidc = { client_id = "mock-client.apps.googleusercontent.com", client_secret_version = 1 }
+    oidc              = { client_id = "mock-client.apps.googleusercontent.com", client_secret_version = 1 }
+    metrics_collector = { image = "europe-west4-docker.pkg.dev/acme-test-build/mirror/otelcol-google@sha256:6666666666666666666666666666666666666666666666666666666666666666" }
   }
   oidc_client_secret = "mock-oauth-client-secret"
 }

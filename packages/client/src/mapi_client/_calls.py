@@ -29,6 +29,7 @@ from mapi_spec.api import (
     ExecutorEvidence,
     ExecutorEvidenceUpdate,
     ExecutorHealth,
+    ExecutorUpdate,
     Health,
     KillSwitches,
     KillSwitchUpdate,
@@ -843,6 +844,11 @@ def admin_get_usage(
         params=usage_params(period, start, None),
         scoped=False,
     )
+
+
+def admin_put_executor(name: str, body: ExecutorUpdate) -> Call[ExecutorHealth]:
+    path = f"{_ADMIN}/executors/{segment(name)}"
+    return Call("PUT", path, parse_model(ExecutorHealth), json=dump(body), scoped=False)
 
 
 def admin_list_audit(

@@ -74,18 +74,20 @@ module "control" {
   security_policy    = var.security_policy
   oidc_client_secret = var.oidc_client_secret
 
-  network           = lookup(var.control, "network", {})
-  database          = lookup(var.control, "database", {})
-  secret_versions   = lookup(var.control, "secret_versions", {})
-  oidc              = lookup(var.control, "oidc", {})
-  identity_platform = lookup(var.control, "identity_platform", {})
-  kms               = lookup(var.control, "kms", {})
-  services          = lookup(var.control, "services", {})
-  pubsub            = lookup(var.control, "pubsub", {})
-  extra_env         = lookup(var.control, "extra_env", {})
-  dispatch_pool     = lookup(var.control, "dispatch_pool", null)
-  kms_key_version   = lookup(var.control, "kms_key_version", 1)
-  events_args       = lookup(var.control, "events_args", ["api", "--host", "0.0.0.0", "--port", "8080"])
+  network                  = lookup(var.control, "network", {})
+  database                 = lookup(var.control, "database", {})
+  secret_versions          = lookup(var.control, "secret_versions", {})
+  oidc                     = lookup(var.control, "oidc", {})
+  identity_platform        = lookup(var.control, "identity_platform", {})
+  kms                      = lookup(var.control, "kms", {})
+  services                 = lookup(var.control, "services", {})
+  pubsub                   = lookup(var.control, "pubsub", {})
+  extra_env                = lookup(var.control, "extra_env", {})
+  metrics_collector        = lookup(var.control, "metrics_collector", {})
+  dispatch_pool            = lookup(var.control, "dispatch_pool", null)
+  kms_key_version          = lookup(var.control, "kms_key_version", 1)
+  kms_trusted_key_versions = lookup(var.control, "kms_trusted_key_versions", [])
+  events_args              = lookup(var.control, "events_args", ["api", "--host", "0.0.0.0", "--port", "8080"])
 
   depends_on = [google_project_service.this]
 }

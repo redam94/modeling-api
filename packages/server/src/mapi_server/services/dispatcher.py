@@ -75,6 +75,7 @@ from mapi_server.services.runspec import build_runspec
 __all__ = ["Dispatcher", "TokenBucket"]
 
 _RESERVED_LABEL_PREFIX = "mapi.dev/"
+_WITH_EXECUTION = tuple(s.value for s in RunState if s.has_execution)
 _NAMESPACE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 
 log = logging.getLogger(__name__)
@@ -129,6 +130,10 @@ class Dispatcher:
         """Seconds to back off if ``error`` is the backend's 429 (``None`` otherwise)."""
         if not _rate_limited(error):
             return None
+        if not callable(getattr(self.executor, "health", None)):
+            # executors with their own health report (cloudrun-jobs) count every 429 they
+            # see, retries included; the one they finally raise is not counted twice
+            obs_metrics.record_executor_throttled(self.executor.name)
         retry_after = getattr(error, "retry_after", None)
         self._throttle_streak += 1
         return backoff_seconds(
@@ -149,16 +154,16 @@ class Dispatcher:
                 q.popleft()
         ts = now()
         caps = self.executor.caps()
-        # Enabled = every tier its caps admit is backed by evidence: an executor whose caps
-        # allow shared tiers is enabled only with passing, unexpired conformance and security
-        # reports for these caps (plan §8.4). Others serve the trusted tiers only.
+        # An executor whose caps allow shared tiers takes them only with passing, unexpired
+        # conformance and security reports for these caps (plan §8.4); without them it serves
+        # the trusted tiers only, and the report says why.
         gate: str | None = None
         if caps.allows_public_tenants():
             async with self.ctx.db.session() as session:
                 gate = await shared_tiers_gate(session, self.executor.name, caps, now=ts)
         values = {
             "name": self.executor.name,
-            "enabled": gate is None,
+            "enabled": True,
             "caps": caps.model_dump(mode="json"),
             "submits_last_minute": len(self._submits),
             "submit_rate_limit_per_minute": int(self.ctx.settings.dispatch_rate_per_minute),
@@ -184,10 +189,23 @@ class Dispatcher:
             values["message"] = h.message
         if gate is not None:
             values["message"] = f"verified and public tenants are held: {gate}"[:500]
-        update = {k: v for k, v in values.items() if k != "name"}
+        # ``enabled`` belongs to the operators (PUT /v1/admin/executors/{name}): a report
+        # creates the row enabled but never re-enables an executor someone disabled
+        update = {k: v for k, v in values.items() if k not in ("name", "enabled")}
         if values["last_success_at"] is None:
             update.pop("last_success_at")
         async with self.ctx.db.session() as session:
+            # the Cloud Run quota of running executions per project and region (plan §8.8,
+            # alert at 70 %): runs of this executor that hold a live execution
+            running = (
+                await session.execute(
+                    select(func.count()).where(
+                        m.Run.executor == self.executor.name,
+                        m.Run.state.in_(_WITH_EXECUTION),
+                    )
+                )
+            ).scalar_one()
+            obs_metrics.set_executor_running(self.executor.name, int(running))
             await session.execute(
                 pg_insert(m.ExecutorReport)
                 .values(**values)
@@ -229,6 +247,10 @@ class Dispatcher:
         s = self.ctx.settings
         leased: list[tuple[str, int]] = []
         async with self.ctx.db.session() as session:
+            report = await session.get(m.ExecutorReport, self.executor.name)
+            if report is not None and not report.enabled:
+                log.debug("executor %s is disabled by an operator: not leasing", report.name)
+                return leased
             at = now()
             switches = await kill_switches(session)
             spent = 0
@@ -306,6 +328,15 @@ class Dispatcher:
         conds: list[ColumnElement[bool]] = [m.Run.state == RunState.QUEUED.value, ~held_tenant]
         if not switches.untrusted_execution_enabled:
             conds.append(m.Run.untrusted_code.is_(False))
+        if s.dispatch_tiers:
+            # several orchestrators, one exec pool each: only this pool's tiers
+            conds.append(
+                m.Run.tenant_id.in_(
+                    select(m.Tenant.id).where(
+                        m.Tenant.trust_tier.in_([TrustTier(t).value for t in s.dispatch_tiers])
+                    )
+                )
+            )
         cap = switches.global_spend_cap_micros
         if cap is not None and spent >= cap:  # only internal tenants may still start runs
             conds.append(

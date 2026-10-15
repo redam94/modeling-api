@@ -28,6 +28,7 @@ from mapi_spec.api import (
     ExecutorEvidence,
     ExecutorEvidenceUpdate,
     ExecutorHealth,
+    ExecutorUpdate,
     Health,
     IngestMapping,
     KillSwitches,
@@ -1140,6 +1141,12 @@ class Admin(_Resource):
     ) -> AdminUsageReport:
         """Cost by tenant for a UTC ``day`` or ``month`` and spend against the global cap."""
         return self._c.send(calls.admin_get_usage(period=period, start=start))
+
+    def set_executor(self, name: str, *, enabled: bool, reason: str) -> ExecutorHealth:
+        """Enable or disable an executor (``reason`` is required and audited). A disabled
+        executor gets no new runs; runs already on it keep running."""
+        body = ExecutorUpdate(enabled=enabled, reason=reason)
+        return self._c.send(calls.admin_put_executor(name, body))
 
     def audit(
         self,

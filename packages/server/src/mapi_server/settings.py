@@ -26,7 +26,7 @@ from mapi_spec.localdev import (
     WEB_PORT,
 )
 from mapi_spec.storage import Buckets
-from mapi_spec.tenancy import DEFAULT_RESIDENCY, residency_of_region
+from mapi_spec.tenancy import DEFAULT_RESIDENCY, TrustTier, residency_of_region
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
@@ -338,6 +338,12 @@ class Settings(BaseSettings):
     dispatch_batch: int = Field(10, ge=1, le=1000)
     dispatch_poll_s: float = Field(1.0, gt=0)
     dispatch_lease_s: float = Field(120.0, gt=0)
+    dispatch_tiers: Annotated[list[TrustTier], NoDecode] = Field(
+        default_factory=list,
+        description="Trust tiers whose runs this orchestrator leases (comma-separated); "
+        "empty: every tier. Give each orchestrator a disjoint list when several serve "
+        "different exec pools, so tenant tiers never share a pool",
+    )
     reconcile_interval_s: float = Field(10.0, gt=0)
     stall_intervals: int = Field(15, ge=2, description="K: silence > K x progress interval")
     complete_event_grace_s: float = Field(60.0, ge=0)
@@ -366,6 +372,12 @@ class Settings(BaseSettings):
         None,
         description="PEM of the bundle-signing key (default: data_dir/keys/"
         "bundle-signing-p256.pem); every process that signs or verifies bundles must share it",
+    )
+    signing_trusted_key_paths: Annotated[list[Path], NoDecode] = Field(
+        default_factory=list,
+        description="PEM files (public or private) of retired bundle-signing keys whose "
+        "signatures still verify (comma-separated): key rotation without invalidating the "
+        "bundles the old key signed",
     )
     signing_key_create: bool = Field(
         True,
@@ -538,6 +550,8 @@ class Settings(BaseSettings):
         "devidp_users",
         "pubsub_push_subscriptions",
         "kms_trusted_key_versions",
+        "signing_trusted_key_paths",
+        "dispatch_tiers",
         mode="before",
     )
     @classmethod

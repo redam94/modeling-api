@@ -90,9 +90,20 @@ variable "default_residency" {
 }
 
 variable "kms_key_version" {
-  description = "Version of the bundle-signing key the server signs with (MAPI_KMS_KEY_VERSION). Bump after creating a new version; list the old one in extra_env MAPI_KMS_TRUSTED_KEY_VERSIONS while bundles it signed are live."
+  description = "Version of the bundle-signing key the server signs with (MAPI_KMS_KEY_VERSION). Bump after creating a new version; list the old one in kms_trusted_key_versions while bundles it signed are live (ops/runbooks/rotating-keys.md)."
   type        = number
   default     = 1
+}
+
+variable "kms_trusted_key_versions" {
+  description = "Older versions of the bundle-signing key whose signatures still verify (MAPI_KMS_TRUSTED_KEY_VERSIONS on every server workload). Without them, every bundle signed before a rotation fails INTEGRITY_FAILURE."
+  type        = list(number)
+  default     = []
+
+  validation {
+    condition     = !contains(var.kms_trusted_key_versions, var.kms_key_version)
+    error_message = "kms_trusted_key_versions lists retired versions; the active one is kms_key_version."
+  }
 }
 
 # ----------------------------------------------------------------------------------- network
@@ -243,6 +254,22 @@ variable "events_args" {
   description = "Arguments of the events service container. Until mapi-server has a dedicated `events` command, it runs the API app; ingress is internal-only and only the Pub/Sub push identity may invoke it."
   type        = list(string)
   default     = ["api", "--host", "0.0.0.0", "--port", "8080"]
+}
+
+variable "metrics_collector" {
+  description = "The metrics collector sidecar of api, events and orchestrator: an OpenTelemetry Collector (the Google-built otelcol-google, mirrored into Artifact Registry and pinned by digest) that scrapes each workload's /metrics over loopback with the metrics bearer and writes the series to Managed Service for Prometheus. Without an image no mapi_* series reach Cloud Monitoring: the PromQL alert policies and the dashboard stay empty."
+  type = object({
+    image           = optional(string)
+    scrape_interval = optional(string, "30s")
+    cpu             = optional(string, "1")
+    memory          = optional(string, "512Mi")
+  })
+  default = {}
+
+  validation {
+    condition     = var.metrics_collector.image == null || can(regex("^[a-z0-9.-]+(:[0-9]+)?/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$", var.metrics_collector.image))
+    error_message = "metrics_collector.image must be pinned by digest (registry/path@sha256:<64 hex>)."
+  }
 }
 
 variable "extra_env" {

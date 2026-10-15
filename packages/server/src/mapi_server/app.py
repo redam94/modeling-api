@@ -124,7 +124,11 @@ def load_signer(settings: Settings) -> ManifestSigner:
             settings.kms_key_version, trusted_versions=settings.kms_trusted_key_versions
         )
     try:
-        return LocalSigner.from_file(settings.key_path, create=settings.signing_key_create)
+        return LocalSigner.from_file(
+            settings.key_path,
+            create=settings.signing_key_create,
+            trusted_paths=settings.signing_trusted_key_paths,
+        )
     except FileNotFoundError:
         raise RuntimeError(
             f"no bundle-signing key at {settings.key_path} and MAPI_SIGNING_KEY_CREATE is off: "

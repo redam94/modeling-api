@@ -145,6 +145,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_DISPATCH_RATE_PER_MINUTE`, `MAPI_DISPATCH_BURST` | `180`, `10` | Token bucket in front of the executor (Cloud Run's `jobs.run` quota) |
 | `MAPI_DISPATCH_BATCH`, `MAPI_DISPATCH_POLL_S` | `10`, `1` | Queued runs leased per pass, and the pause between passes |
 | `MAPI_DISPATCH_LEASE_S` | `120` | How long a dispatcher's lease on a run lasts; a live dispatcher extends it every third of that while the run waits to be submitted (for at most ten lease lengths per submit) |
+| `MAPI_DISPATCH_TIERS` | all | Trust tiers whose runs this orchestrator leases (comma-separated). Several orchestrators that serve different exec pools need disjoint lists, or any of them leases any tenant's runs |
 | `MAPI_RECONCILE_INTERVAL_S` | `10` | The reconciler's level-triggered loop |
 | `MAPI_STALL_INTERVALS` | `15` | A run is `stalled` (a warning) after this many progress intervals of silence |
 | `MAPI_COMPLETE_EVENT_GRACE_S` | `60` | How long to wait for a run's `complete` event after the executor reports an exit |
@@ -164,6 +165,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_IMAGE_DIGEST` | `sha256` of `uv.lock` | The runner image digest the catalog is cached under |
 | `MAPI_UV_LOCK_PATH` | found above the working directory | The `uv.lock` whose hash is the local image digest |
 | `MAPI_SIGNING_KEY_PATH` | `$MAPI_DATA_DIR/keys/bundle-signing-p256.pem` | The EC P-256 key that signs bundle manifests (standing in for Cloud KMS). The worker signs and the API verifies, so both must load the same file. `mapi-server migrate` creates it |
+| `MAPI_SIGNING_TRUSTED_KEY_PATHS` | none | Retired bundle-signing keys (PEM files, public or private; comma-separated) whose signatures still verify, so a key rotation does not break the models the old key signed (`ops/runbooks/rotating-keys.md`) |
 | `MAPI_SIGNING_KEY_CREATE` | `true` | Create the key on first use when it is missing. Compose turns it off for `api` and `worker`, so a missing key fails start-up instead of a new key being minted |
 | `MAPI_SIGNER` | `local` | `local`: the key file above. `kms`: a Cloud KMS asymmetric key version signs (`gcp` extra) |
 | `MAPI_KMS_KEY_VERSION` | unset | With `MAPI_SIGNER=kms`: the `projects/…/cryptoKeyVersions/N` that signs new manifests |
@@ -336,6 +338,7 @@ variable changes where they keep local files:
 | Variable | Meaning |
 |---|---|
 | `MAPI_DEPLOY_OUT` | Local scratch of `deploy/gcp/*.sh`: images files, saved plans, Terraform outputs (default `deploy/gcp/.out`, one directory per environment; never committed) |
+| `MAPI_PUSHGATEWAY_URL` | Repository secret of the nightly workflow: the Pushgateway the security jobs push `mapi_security_probe_unexpected` to (unset: no push; `ops/README.md`) |
 
 The variables Terraform sets on the Cloud Run services (the deployment contract with
 `mapi-server`) are listed in [Deploy to Google Cloud](gcp-deployment.md#environment-of-the-cloud-run-workloads).

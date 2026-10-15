@@ -38,6 +38,47 @@ locals {
 
   services_ready = var.images.server != null && var.images.web != null
 
+  # ------------------------------------------------------------------- metrics collection
+  # Each server workload serves GET /metrics (bearer: the metrics-token secret). Nothing
+  # outside the instance reaches it (the load balancer routes only /v1, /auth and health;
+  # the orchestrator has no ingress), so a collector sidecar scrapes it over loopback and
+  # writes to Managed Service for Prometheus, where the alert policies and dashboard read.
+  collector_enabled = var.metrics_collector.image != null
+  metrics_ports     = { api = 8080, events = 8080, orchestrator = 9464 }
+  collector_config = {
+    for w, port in local.metrics_ports : w => yamlencode({
+      receivers = {
+        prometheus = {
+          config = {
+            scrape_configs = [{
+              job_name        = "mapi-${w}"
+              scrape_interval = var.metrics_collector.scrape_interval
+              metrics_path    = "/metrics"
+              # expanded by the collector from its own environment (Secret Manager)
+              authorization  = { type = "Bearer", credentials = "$${env:MAPI_METRICS_TOKEN}" }
+              static_configs = [{ targets = ["127.0.0.1:${port}"], labels = { mapi_workload = w } }]
+            }]
+          }
+        }
+      }
+      processors = {
+        resourcedetection = { detectors = ["env", "gcp"], timeout = "10s" }
+        memory_limiter    = { check_interval = "1s", limit_percentage = 65, spike_limit_percentage = 20 }
+        batch             = {}
+      }
+      exporters = { googlemanagedprometheus = {} }
+      service = {
+        pipelines = {
+          metrics = {
+            receivers  = ["prometheus"]
+            processors = ["resourcedetection", "memory_limiter", "batch"]
+            exporters  = ["googlemanagedprometheus"]
+          }
+        }
+      }
+    })
+  }
+
   # The one exec pool this orchestrator dispatches to (see var.dispatch_pool).
   private_pools = sort([for k, p in var.exec_pools : k if !p.public])
   dispatch_pool = coalesce(
@@ -75,6 +116,10 @@ locals {
     MAPI_DATA_DIR        = "/tmp/mapi"
     MAPI_SIGNER          = "kms"
     MAPI_KMS_KEY_VERSION = "${google_kms_crypto_key.bundle_signing.id}/cryptoKeyVersions/${var.kms_key_version}"
+    # retired versions that still verify the bundles they signed (key rotation)
+    MAPI_KMS_TRUSTED_KEY_VERSIONS = join(",", [
+      for v in var.kms_trusted_key_versions : "${google_kms_crypto_key.bundle_signing.id}/cryptoKeyVersions/${v}"
+    ])
     MAPI_URL_SIGNER      = google_service_account.sa["url-signer"].email
     MAPI_URL_UPLOADER    = google_service_account.sa["url-uploader"].email
     MAPI_DB_APP_ROLE     = "mapi_app"
@@ -102,6 +147,10 @@ locals {
       MAPI_EXECUTOR         = "cloudrun-jobs"
       MAPI_CLOUDRUN_PROJECT = var.exec_pools[local.dispatch_pool].project
       MAPI_CLOUDRUN_REGION  = var.exec_pools[local.dispatch_pool].region
+      # the dispatcher, reconciler and finalizer series live in this process: serve them on
+      # loopback for the collector sidecar (local.metrics_ports.orchestrator)
+      MAPI_WORKER_METRICS_PORT = "9464"
+      MAPI_WORKER_METRICS_HOST = "127.0.0.1"
     }, lookup(var.extra_env, "orchestrator", {}))
 
     migrate = merge(local.env_common, lookup(var.extra_env, "migrate", {}))
