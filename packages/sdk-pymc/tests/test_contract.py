@@ -91,15 +91,19 @@ def test_radon_model_passes_the_contract_kit() -> None:
     fixture = ModelFixture(
         spec=RADON_SPEC_YAML, data=radon_dataset(), raw_schema=RADON_SCHEMA, registry=reg
     )
-    # long layout: the kit's categorical checks slice the ``county`` coordinate, which does
-    # not carry the observations; the radon tests cover shuffled/subset/new-level scoring.
-    report = check_model(RadonModel, fixture, raise_on_failure=False, checks=sorted(CORE))
+    # long layout: the kit moves ``county_idx`` with the ``county`` labels it shuffles,
+    # subsets the rows of one county and adds a new county as new rows
+    report = check_model(RadonModel, fixture, raise_on_failure=False)
     assert report.ok, report.summary()
     assert {r.name for r in report.results if not r.skipped} >= {
         "fit",
         "bundle_roundtrip_no_pickle",
+        "shuffled_scoring",
+        "subset_scoring",
+        "new_level_policies",
         "seed_determinism",
     }
+    assert "long layout" in report.get("subset_scoring").detail
 
 
 @pytest.mark.mapi_contract
