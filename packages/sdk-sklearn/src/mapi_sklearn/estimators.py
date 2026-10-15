@@ -15,6 +15,7 @@ In a spec::
 from __future__ import annotations
 
 import importlib
+import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal
@@ -137,7 +138,6 @@ class GradientBoostingRegressorParams(Params):
     learning_rate: float = Field(0.1, gt=0, le=10)
     n_estimators: int = Field(100, ge=1, le=10_000)
     subsample: Fraction = 1.0
-    criterion: Literal["friedman_mse", "squared_error"] = "friedman_mse"
     min_samples_split: int = Field(2, ge=2, le=1_000_000)
     min_samples_leaf: int = Field(1, ge=1, le=1_000_000)
     max_depth: int | None = Field(3, ge=1, le=64)
@@ -313,33 +313,16 @@ AnyChoice = (
 # ---------------------------------------------------------------------------------- entries
 
 QuantileMode = Literal["native_multi", "per_level"]
+# Types skops does not trust by default but these fitted estimators contain. Kept minimal:
+# the test suite fits every kind under every loss/quantile mode and checks the lists suffice.
+# (``functools.partial`` only ever wraps ``check_array`` here; any other callable inside it
+# shows up as its own untrusted type and is refused.)
 _TREE = frozenset({"sklearn.tree._tree.Tree"})
 _HIST = frozenset(
     {
         "functools.partial",
         "sklearn.ensemble._hist_gradient_boosting.predictor.TreePredictor",
         "sklearn.utils.validation.check_array",
-        "sklearn.ensemble._hist_gradient_boosting.binning._BinMapper",
-        "sklearn._loss.loss.AbsoluteError",
-        "sklearn._loss.loss.HalfSquaredError",
-        "sklearn._loss.loss.HalfGammaLoss",
-        "sklearn._loss.loss.HalfPoissonLoss",
-        "sklearn._loss.loss.PinballLoss",
-        "sklearn._loss.link.IdentityLink",
-        "sklearn._loss.link.LogLink",
-        "sklearn._loss.link.Interval",
-    }
-)
-_GB = frozenset(
-    {
-        *_TREE,
-        "sklearn._loss.loss.AbsoluteError",
-        "sklearn._loss.loss.HalfSquaredError",
-        "sklearn._loss.loss.HuberLoss",
-        "sklearn._loss.loss.PinballLoss",
-        "sklearn._loss.link.IdentityLink",
-        "sklearn._loss.link.Interval",
-        "sklearn.dummy.DummyRegressor",
     }
 )
 
@@ -488,7 +471,7 @@ ESTIMATORS: dict[str, EstimatorEntry] = {
             quantile_setter=_set("alpha"),
             loss_param="loss",
             quantile_loss="quantile",
-            trusted=_GB,
+            trusted=_TREE,
             description="Gradient-boosted regression trees.",
         ),
         EstimatorEntry(
@@ -621,6 +604,8 @@ def choice_from_instance(est: Any) -> AnyChoice:
 
 
 def _same(a: Any, b: Any) -> bool:
+    if isinstance(a, float) and isinstance(b, float) and math.isnan(a) and math.isnan(b):
+        return True
     try:
         return bool(a == b)
     except Exception:  # pragma: no cover - array-valued params
