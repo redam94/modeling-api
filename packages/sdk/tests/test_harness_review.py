@@ -155,3 +155,23 @@ async def test_inproc_executor_resolves_baseline_and_scenario(
     tree = ex.result(h)
     delta = tree["delta/summary"].to_dataset()["y_hat"].sel(stat="mean")
     assert float(abs(delta).max()) > 1.0
+
+
+# ------------------------------------------------- quality-security-1 (pinned side tables)
+
+
+def test_pinned_side_tables_cannot_be_replaced_at_score(
+    prod: Bundle, registry: Registry, panel: tuple[xr.Dataset, xr.Dataset]
+) -> None:
+    data, fx = panel
+    window = data.isel(date=slice(-28, None))
+    assert prod.resolved.side_tables["fx"].value == "pinned"
+    named = req("mode: predict\nside_tables: {fx: dataset://growth/fx_other@v2}\n")
+    with pytest.raises(MapiError) as err:
+        score_bundle(prod, named, window, side_tables={"fx": fx * 5}, registry=registry)
+    assert err.value.code is ErrorCode.SIDE_TABLE_COVERAGE
+    assert err.value.pointer == "/side_tables/fx"
+    # a pinned table handed over by the caller (e.g. a runner passing every table) is ignored
+    ref = score_bundle(prod, req(), window, registry=registry)["summary"].to_dataset()
+    other = score_bundle(prod, req(), window, side_tables={"fx": fx * 5}, registry=registry)
+    xr.testing.assert_identical(ref, other["summary"].to_dataset())

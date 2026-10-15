@@ -137,6 +137,13 @@ def test_supplied_side_table_required_at_raw_stage(e33_meta: ScoreMetadata) -> N
     )
 
 
+def test_pinned_side_table_cannot_be_supplied(e33_meta: ScoreMetadata) -> None:
+    """``pinned`` replays the fit-time version; a request may not swap it (replay contract)."""
+    req = _req(side_tables={"holidays": "dataset://shared/holidays_other@v9"})
+    errs = _errors(validate_score_request(req, e33_meta, _plan_inputs()))
+    assert list(errs) == ["SIDE_TABLE_COVERAGE@/side_tables/holidays"]
+
+
 # --------------------------------------------------------------------------------- horizon
 
 

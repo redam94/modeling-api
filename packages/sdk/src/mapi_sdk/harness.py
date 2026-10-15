@@ -776,9 +776,14 @@ def score_bundle(
     if scenario is not None:
         scenario = binding.apply(normalise_dataset(scenario), missing="ignore")
         issues += [i for i in plan.check(scenario) if i not in issues]
+    # pinned tables always replay the version stored at fit; callers only supply the others
     tables = {
+        **{
+            k: normalise_dataset(v)
+            for k, v in (side_tables or {}).items()
+            if rs.side_tables.get(k) is not ScorePolicy.PINNED
+        },
         **bundle.side_tables,
-        **{k: normalise_dataset(v) for k, v in (side_tables or {}).items()},
     }
     needed = sorted({t for s in rs.steps_after(req.inputs_stage) for t in s.side_tables})
     for t in needed:

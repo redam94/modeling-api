@@ -971,6 +971,17 @@ def validate_score_request(
                     f"the model has no side table named {name!r}",
                 )
             )
+        elif rs.side_tables[name] is ScorePolicy.PINNED:
+            issues.append(
+                _issue(
+                    ErrorCode.SIDE_TABLE_COVERAGE,
+                    json_pointer("side_tables", name),
+                    f"side table {name!r} has score_policy 'pinned': scoring replays the "
+                    "version used at fit, so it cannot be supplied",
+                    suggested_action="Drop it from side_tables, or refit with score_policy "
+                    "'latest' or 'supplied'.",
+                )
+            )
     for name in sorted(needed):
         if rs.side_tables.get(name) is ScorePolicy.SUPPLIED and name not in req.side_tables:
             issues.append(
