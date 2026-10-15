@@ -9,12 +9,11 @@
  * Once the app has rendered, an ended session never tears it down: a dialog asks the user to
  * sign in again, so unsaved work on the page survives.
  */
-import { useQueryClient } from "@tanstack/react-query";
 import { LogIn, LogOut, RefreshCw } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { ApiError } from "@/api/client";
-import { qk, useMe, useSession } from "@/api/queries";
+import { useMe, useSession } from "@/api/queries";
 import { currentPath, logout, signIn } from "@/api/session";
 import type { SessionInfo } from "@/api/types";
 import { ErrorNotice, Spinner } from "@/components/common";
@@ -29,7 +28,7 @@ import { buildWorkspace, localMe, WorkspaceContext, type Workspace } from "./wor
 export function WorkspaceGate({ children }: { children: ReactNode }) {
   useApplyTheme();
   const session = useSession();
-  const expired = useAuth((s) => s.expired);
+  const expired = useAuth((s) => s.expired && !s.dismissed);
   const entered = useRef(false);
   const state = session.data;
   const sessionMode = state?.mode === "session";
@@ -188,23 +187,16 @@ function FanArt() {
 }
 
 function SessionExpiredDialog({ info }: { info: SessionInfo | null }) {
-  const clear = useAuth((s) => s.clearExpired);
-  const qc = useQueryClient();
+  const dismiss = useAuth((s) => s.dismiss);
   return (
-    <Dialog open onOpenChange={(open) => !open && clear()}>
+    <Dialog open onOpenChange={(open) => !open && dismiss()}>
       <DialogContent>
         <DialogTitle>Your session has ended</DialogTitle>
         <DialogDescription>
           Sign in again to keep working. Until then the page stays as it is, but nothing can be loaded or saved.
         </DialogDescription>
         <DialogFooter>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              clear();
-              void qc.invalidateQueries({ queryKey: qk.session });
-            }}
-          >
+          <Button variant="ghost" onClick={dismiss}>
             Stay on this page
           </Button>
           <Button onClick={() => signIn(currentPath(), info)}>

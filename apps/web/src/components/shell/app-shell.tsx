@@ -1,8 +1,9 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { AlertTriangle, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
+import { AlertTriangle, LogIn, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { useReady } from "@/api/queries";
+import { signIn } from "@/api/session";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,6 +22,7 @@ import { useHotkeys } from "@/hooks/use-hotkeys";
 import { useApplyTheme } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
 import { useUi, type Persona, type ThemePreference } from "@/stores/ui";
+import { useAuth } from "@/stores/auth";
 import { useScope } from "@/stores/scope";
 
 import { CommandPalette, ShortcutsDialog } from "./command-palette";
@@ -146,6 +148,21 @@ export function PersonaToggle() {
 /** Routes that work without a selected project (operators may belong to none). */
 const PROJECTLESS = ["/admin", "/settings"];
 
+/** After "Stay on this page" in the session-expired dialog: a quiet way back in. */
+function SignedOutBanner() {
+  const show = useAuth((s) => s.expired && s.dismissed);
+  if (!show) return null;
+  return (
+    <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-info/35 bg-info/8 px-4 py-2 text-[13px] md:px-6">
+      <LogIn className="size-4 text-info" aria-hidden />
+      <span>You are signed out. The page stays as it is, but nothing can be loaded or saved.</span>
+      <Button size="sm" variant="outline" className="h-7" onClick={() => signIn()}>
+        Sign in again
+      </Button>
+    </div>
+  );
+}
+
 function TenantStatusBanner() {
   const ws = useWorkspace();
   const t = ws.current?.tenant;
@@ -255,13 +272,13 @@ export function AppShell({ children }: { children?: ReactNode }) {
         <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
           <div className="flex h-12 items-center gap-3 px-4 md:px-6">
             <ProjectSwitcher />
-            <Button variant="ghost" size="icon-sm" onClick={() => setPaletteOpen(true)} aria-label="Jump to…" className="md:hidden">
+            <Button variant="ghost" size="icon-sm" onClick={() => setPaletteOpen(true)} aria-label="Jump to…" className="lg:hidden">
               <Search />
             </Button>
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="hidden h-8 w-56 items-center gap-2 rounded-md border bg-card px-2.5 text-[13px] text-muted-foreground hover:text-foreground md:flex xl:w-72"
+              className="hidden h-8 w-56 items-center gap-2 rounded-md border bg-card px-2.5 text-[13px] text-muted-foreground hover:text-foreground lg:flex xl:w-72"
             >
               <Search className="size-4" />
               Jump to…
@@ -272,7 +289,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
             </button>
             <div className="ml-auto flex min-w-0 items-center gap-2">
               <HealthDot />
-              <PersonaToggle />
+              <div className="hidden sm:block">
+                <PersonaToggle />
+              </div>
               <ThemeMenu />
               <UserMenu />
             </div>
@@ -282,6 +301,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
               <CompactNavLink key={item.to} item={item} />
             ))}
           </nav>
+          <SignedOutBanner />
           <TenantStatusBanner />
         </header>
         <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
