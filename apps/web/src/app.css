@@ -24,16 +24,18 @@
   --muted-foreground: #5b6577;
   --accent: #efecff;
   --accent-foreground: #2d2380;
-  --destructive: #c93a32;
+  --destructive: #b42f28;
   --destructive-foreground: #ffffff;
   --border: #dde1e8;
-  --input: #cfd5df;
+  /* Form field borders: 3:1 against card and page (WCAG 1.4.11). */
+  --input: #808a9c;
   --ring: #5b4bdb;
   --sidebar: #eceef4;
 
-  --success: #23855a;
-  --warning: #b7791f;
-  --info: #2f6fc2;
+  /* Status colours double as text (12px badges on their own tint): 4.5:1 or better. */
+  --success: #1b6b48;
+  --warning: #855510;
+  --info: #255da6;
 
   --series-1: #5b4bdb;
   --series-2: #1f8a70;
@@ -62,10 +64,10 @@
   --muted-foreground: #98a1b1;
   --accent: #2a2650;
   --accent-foreground: #d9d4ff;
-  --destructive: #f0645a;
+  --destructive: #f47068;
   --destructive-foreground: #1b0b09;
   --border: #2a3140;
-  --input: #364052;
+  --input: #66718a;
   --ring: #a094ff;
   --sidebar: #121721;
 
