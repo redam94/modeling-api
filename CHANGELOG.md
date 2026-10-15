@@ -148,6 +148,26 @@ milestone releases are tagged on `main`.
   used CRLF for models created empty on Windows user agents), so Fit is enabled; the run page's
   result column no longer overflows; result tables show dates as dates.
 - **devops**: `make seed` ignores a `SIZE` exported by other toolchains (conda).
+- **devops**: the compose `api` and `worker` containers start. The `mapi/server` and
+  `mapi/worker` images bake `uv.lock` and set `MAPI_UV_LOCK_PATH`, so both resolve the same
+  image digest. Before, neither could resolve one and both failed at start-up.
+- **devops**: compose keeps the bundle-signing key on a `keys` volume that `migrate` writes and
+  `api`/`worker` mount read-only (`MAPI_SIGNING_KEY_PATH`, `MAPI_SIGNING_KEY_CREATE=false`).
+  Each container used to mint its own key on its tmpfs, so the API rejected every bundle the
+  worker signed, and a restart orphaned every model. `mapi-server migrate` now creates the key,
+  and concurrent first starts converge on one key.
+- **server**: `mapi-server api|worker|dev` make themselves non-dumpable on Linux, so
+  local-process runs (same uid) cannot read their environment or memory. The worker's start-up
+  warning and the operations docs state what such runs can still read.
+- **server**: a `Prefer: wait` long-poll stops waiting when its client disconnects.
+- **client**: `models.score()` extends the read timeout of each long-poll by its `wait` and
+  treats a read timeout as "still running", so scores slower than about 90 s no longer raise
+  `TransportError`. `stream_events()` counts only connections that deliver nothing towards
+  `max_reconnects`, so it follows long fits behind proxies that cut connections.
+- **cli**: run progress and state messages are never parsed as rich markup (no terminal
+  hyperlink injection, no `MarkupError` aborting `mapi fit`).
+- **devops**: `.env.example` documents every `mapi-server` setting, and the devops test now
+  derives the list from `Settings`.
 
 ## [0.1.0] — M0: contract layer — 2026-10-15
 

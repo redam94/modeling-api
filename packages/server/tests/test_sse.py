@@ -237,6 +237,28 @@ async def test_notification_hub_fans_out_on_commit(ctx: ServerContext) -> None:
     ctx.hub._dispatch("not json")  # malformed payloads are ignored
 
 
+async def test_prefer_wait_stops_when_the_client_disconnects(ctx: ServerContext) -> None:
+    """An abandoned long-poll (client timed out and retried) must not keep its waiter and
+    notification subscription alive for the whole Prefer: wait interval."""
+    from mapi_server.api.runs import wait_terminal
+
+    run_id = await queued_fit(ctx)
+    checks = 0
+
+    async def disconnected() -> bool:
+        nonlocal checks
+        checks += 1
+        return checks >= 2
+
+    started = asyncio.get_running_loop().time()
+    run = await asyncio.wait_for(
+        wait_terminal(ctx, run_id, 30.0, disconnected=disconnected), timeout=5
+    )
+    assert asyncio.get_running_loop().time() - started < 5
+    assert run.id == run_id and not RunState(run.state).terminal
+    assert ctx.hub.subscriber_count(run_id) == 0
+
+
 async def test_score_with_prefer_wait_returns_202_while_running(
     client: httpx.AsyncClient, ctx: ServerContext
 ) -> None:

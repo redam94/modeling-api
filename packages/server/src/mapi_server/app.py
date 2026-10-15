@@ -45,6 +45,7 @@ __all__ = [
     "build_context",
     "create_app",
     "ensure_scope",
+    "load_signer",
     "openapi_document",
     "startup",
 ]
@@ -78,6 +79,18 @@ def _with_event_payloads(doc: dict[str, Any]) -> dict[str, Any]:
 log = logging.getLogger(__name__)
 
 
+def load_signer(settings: Settings) -> BundleSigner:
+    """The bundle-signing key at ``settings.key_path`` (created if allowed and missing)."""
+    try:
+        return BundleSigner.from_file(settings.key_path, create=settings.signing_key_create)
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"no bundle-signing key at {settings.key_path} and MAPI_SIGNING_KEY_CREATE is off: "
+            "run `mapi-server migrate` first (it creates the key), or check that the key "
+            "volume is mounted and MAPI_SIGNING_KEY_PATH points into it"
+        ) from None
+
+
 def build_context(
     settings: Settings,
     *,
@@ -87,6 +100,7 @@ def build_context(
     database_url: str | None = None,
 ) -> ServerContext:
     """Wire the process-wide services (no I/O besides starting an embedded Postgres)."""
+    signer = signer or load_signer(settings)
     url = database_url or resolve_database_url(settings)
     db = Database(url, pool_size=settings.db_pool_size, echo=settings.db_echo)
     owned_store = store is None
@@ -97,7 +111,7 @@ def build_context(
         catalogs=CatalogService(
             settings.resolve_image_digest(), catalog_path=settings.catalog_path
         ),
-        signer=signer or BundleSigner.from_file(settings.key_path),
+        signer=signer,
         hub=NotificationHub(db.url),
         queue=queue,
     )

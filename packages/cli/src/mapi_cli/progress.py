@@ -39,11 +39,13 @@ class EventRenderer:
         self.show_logs = show_logs
         self.enabled = not output.json_mode
         self._progress = Progress(
-            TextColumn("[bold]{task.description}"),
+            # Titles and messages are shown verbatim: markup=False, so a "[link=...]" or a
+            # stray "[/]" in a worker-supplied message is text, never rich markup.
+            TextColumn("{task.description}", style="bold", markup=False),
             BarColumn(),
             TextColumn("{task.percentage:>3.0f}%"),
             TimeElapsedColumn(),
-            TextColumn("{task.fields[message]}"),
+            TextColumn("{task.fields[message]}", markup=False),
             console=output.err,
             transient=False,
         )

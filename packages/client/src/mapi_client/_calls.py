@@ -407,6 +407,7 @@ def score_model(
         _ACCEPTED_OR_REPLAY,
         json=dump(body),
         headers=headers,
+        server_wait=float(wait) if wait else None,
     )
 
 

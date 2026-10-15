@@ -35,6 +35,7 @@ from mapi_spec.api import (
     RunEventView,
     RunRetry,
     ScoreCall,
+    ScoreCallResult,
     SpecCreate,
     SpecDoc,
     SpecRevision,
@@ -58,6 +59,7 @@ from mapi_client._common import (
     ScoreResult,
     as_run_create,
     as_score_request,
+    call_timeout,
     dataset_version_error,
     events_page_with_cursor,
     http_timeout,
@@ -181,6 +183,7 @@ class Client:
                     params=dict(call.params) or None,
                     json=call.json,
                     headers=dict(call.headers),
+                    timeout=call_timeout(self.config, call.server_wait),
                 )
             except httpx.TransportError as exc:
                 if self._retry.should_retry(call, attempt, None):
@@ -567,6 +570,8 @@ class Runs(_Resource):
         Yields :class:`RunSnapshot` (first frame of each connection), :class:`RunEventFrame`
         and finally :class:`RunEnd`. A dropped connection is resumed with ``Last-Event-ID``
         (after the server's ``retry`` delay); events are never yielded twice.
+        ``max_reconnects`` bounds *consecutive* connections that delivered no frame, so a
+        long run behind a proxy that cuts every connection is followed to the end.
         """
         path = calls.run_events_path(run_id)
         last = last_event_id
@@ -604,7 +609,9 @@ class Runs(_Resource):
                                 if last is not None and item.id <= last:
                                     continue  # replayed twice by an overlapping reconnect
                                 last = item.id
-                                failures = 0
+                            # a healthy connection (it delivered a frame): a later cut is a
+                            # normal proxy/request limit, not a failure towards max_reconnects
+                            failures = 0
                             yield item
                             if isinstance(item, RunEnd):
                                 return
@@ -715,7 +722,9 @@ class Models(_Resource):
 
         Sends ``Prefer: wait=<wait>``; while the run is not done, the same request is
         replayed with the same ``Idempotency-Key`` (no second run is created) until it
-        finishes or ``timeout`` passes (``TimeoutError``). With the ``xarray`` extra and
+        finishes or ``timeout`` passes (``TimeoutError``). The read timeout of each call is
+        the client's ``timeout`` plus ``wait``, and a read timeout counts as "still running".
+        With the ``xarray`` extra and
         ``download=True`` the scored ``xr.DataTree`` is fetched (CRC32C-verified) into
         :attr:`ScoreResult.tree`.
         """
@@ -729,12 +738,22 @@ class Models(_Resource):
         while True:
             remaining = None if deadline is None else deadline - time.monotonic()
             this_wait = wait if remaining is None else max(0, min(wait, int(remaining)))
-            res = self._c.send(
-                calls.score_model(model_id, version, body, wait=this_wait, idempotency_key=key)
-            )
-            if res.done or res.run.state.terminal:
+            res: ScoreCallResult | None
+            try:
+                res = self._c.send(
+                    calls.score_model(model_id, version, body, wait=this_wait, idempotency_key=key)
+                )
+            except TransportError as exc:
+                # No answer within wait + timeout: the run is still going. Replaying the
+                # same Idempotency-Key is safe (no second run); anything else is a failure.
+                if not isinstance(exc.__cause__, httpx.ReadTimeout):
+                    raise
+                res = None
+            if res is not None and (res.done or res.run.state.terminal):
                 break
             if deadline is not None and time.monotonic() >= deadline:
+                if res is None:
+                    raise TimeoutError(f"score request {key} is still running after {timeout} s")
                 raise TimeoutError(f"score run {res.run.id} is still {res.run.state.value}")
             if this_wait < 1:
                 self._c._sleep(poll_interval)

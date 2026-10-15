@@ -189,7 +189,16 @@ class Settings(BaseSettings):
     )
     image_digest: str | None = Field(None, pattern=r"^sha256:[0-9a-f]{64}$")
     uv_lock_path: Path | None = None
-    signing_key_path: Path | None = None
+    signing_key_path: Path | None = Field(
+        None,
+        description="PEM of the bundle-signing key (default: data_dir/keys/"
+        "bundle-signing-p256.pem); every process that signs or verifies bundles must share it",
+    )
+    signing_key_create: bool = Field(
+        True,
+        description="Create the signing key when it is missing; off where `mapi-server "
+        "migrate` creates it on shared storage (compose api/worker)",
+    )
 
     # ------------------------------------------------------------------------------ API misc
     internal_token: str | None = Field(

@@ -351,6 +351,30 @@ def test_stream_gives_up_after_max_reconnects(
         list(client.runs.stream_events("run_01", max_reconnects=2))
 
 
+def test_stream_survives_many_healthy_reconnects(
+    client: Client, api: respx.MockRouter, example: Ex, sleeps: list[float]
+) -> None:
+    """A long fit behind a proxy that cuts every connection (Cloud Run's request limit)
+    emits only live progress: every healthy connection resets the failure budget."""
+    run = Run.model_validate(run_json(example))
+    done = Run.model_validate(run_json(example, "succeeded"))
+    cut = [_sse(encode_sse("snapshot", run), _live("progress", i)) for i in range(8)]
+    final = _sse(encode_sse("snapshot", run), encode_sse("end", done))
+    route = api.get(f"{V1}/runs/run_01/events").mock(side_effect=[*cut, final])
+    items = list(client.runs.stream_events("run_01", max_reconnects=2))
+    assert isinstance(items[-1], RunEnd) and route.call_count == 9
+    assert len(sleeps) == 8
+
+
+def test_stream_empty_connections_still_count_as_failures(
+    client: Client, api: respx.MockRouter
+) -> None:
+    route = api.get(f"{V1}/runs/run_01/events").mock(side_effect=lambda req: _sse(": hb\n\n"))
+    with pytest.raises(TransportError, match="ended before the run did"):
+        list(client.runs.stream_events("run_01", max_reconnects=2))
+    assert route.call_count == 3
+
+
 def test_stream_errors_are_not_retried(client: Client, api: respx.MockRouter) -> None:
     api.get(f"{V1}/runs/nope/events").respond(
         404, json=Problem.from_code(ErrorCode.NOT_FOUND, "no run").model_dump(mode="json")
@@ -649,6 +673,61 @@ def test_score_timeout(client: Client, api: respx.MockRouter, example: Ex) -> No
     req = {"model": "model://default/eu@v1"}
     with pytest.raises(TimeoutError):
         client.models.score("mdl_1", 1, req, timeout=0.01, poll_interval=0.0)
+
+
+def test_score_read_timeout_covers_the_prefer_wait(api: respx.MockRouter, example: Ex) -> None:
+    """The server may hold a ``Prefer: wait=60`` response for 60 s: the read timeout of
+    that request must exceed it, whatever the client's (shorter) default timeout is."""
+    done = example(ScoreCallResult) | {"outputs": []}
+    seen: list[dict[str, Any]] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        seen.append(dict(request.extensions["timeout"]))
+        return httpx.Response(200, json=done)
+
+    api.post(f"{V1}/models/mdl_1/versions/1:score").mock(side_effect=respond)
+    get = api.get(f"{V1}/runs/run_01").respond(200, json=run_json(example))
+    with Client(config=ClientConfig(base_url=BASE, timeout=1.5)) as c:
+        c.models.score("mdl_1", 1, {"model": "model://default/eu@v1"}, download=False)
+        c.models.score("mdl_1", 1, {"model": "model://default/eu@v1"}, wait=5, download=False)
+        c.runs.get("run_01")
+    assert seen[0]["read"] >= 60 + 1.5 and seen[0]["connect"] == 1.5
+    assert seen[1]["read"] >= 5 + 1.5
+    assert get.calls[0].request.extensions["timeout"]["read"] == 1.5  # other calls: untouched
+
+
+def test_score_keeps_waiting_through_read_timeouts(
+    api: respx.MockRouter, example: Ex, sleeps: list[float]
+) -> None:
+    """A read timeout on the keyed score call means "still running", not a failure: the
+    same Idempotency-Key is replayed until the run finishes or ``timeout`` passes."""
+    done = example(ScoreCallResult) | {"outputs": []}
+    route = api.post(f"{V1}/models/mdl_1/versions/1:score").mock(
+        side_effect=[httpx.ReadTimeout("slow")] * 4 + [httpx.Response(200, json=done)]
+    )
+    with Client(config=ClientConfig(base_url=BASE, max_retries=2), sleep=sleeps) as c:
+        res = c.models.score("mdl_1", 1, {"model": "model://default/eu@v1"}, timeout=600)
+    assert res.done and route.call_count == 5
+    keys = {call.request.headers["Idempotency-Key"] for call in route.calls}
+    assert len(keys) == 1
+
+
+def test_score_read_timeouts_still_honour_the_deadline(
+    api: respx.MockRouter, sleeps: list[float]
+) -> None:
+    api.post(f"{V1}/models/mdl_1/versions/1:score").mock(side_effect=httpx.ReadTimeout("slow"))
+    config = ClientConfig(base_url=BASE, max_retries=0)
+    with Client(config=config, sleep=sleeps) as c, pytest.raises(TimeoutError):
+        c.models.score("mdl_1", 1, {"model": "model://default/eu@v1"}, timeout=0.01)
+
+
+def test_score_connection_errors_are_not_treated_as_waiting(
+    api: respx.MockRouter, sleeps: list[float]
+) -> None:
+    api.post(f"{V1}/models/mdl_1/versions/1:score").mock(side_effect=httpx.ConnectError("no"))
+    config = ClientConfig(base_url=BASE, max_retries=1)
+    with Client(config=config, sleep=sleeps) as c, pytest.raises(TransportError):
+        c.models.score("mdl_1", 1, {"model": "model://default/eu@v1"}, timeout=600)
 
 
 def test_downloads_are_verified(

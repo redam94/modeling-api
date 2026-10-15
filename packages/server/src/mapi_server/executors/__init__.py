@@ -9,6 +9,9 @@ Placement is enforced in code (:func:`check_placement`), never by tenant configu
 
 from __future__ import annotations
 
+import logging
+import os
+
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import Executor, ExecutorCaps
 from mapi_spec.resources import ResourceClass
@@ -27,6 +30,9 @@ __all__ = [
     "check_placement",
     "docker_available",
 ]
+
+
+log = logging.getLogger(__name__)
 
 
 class PlacementRefused(MapiError):
@@ -49,6 +55,18 @@ def build_executor(settings: Settings) -> Executor:
     """The executor selected by ``MAPI_EXECUTOR``."""
     template = settings.bootstrap_url_template()
     if settings.executor is ExecutorName.LOCAL_PROCESS:
+        uid = os.getuid() if hasattr(os, "getuid") else "?"
+        log.warning(
+            "local-process executor: runs execute plugin code under the same uid (%s) and "
+            "filesystem as this orchestrator. Run code can read the object store's control "
+            "key (%s), the bundle-signing key (%s) and the executions directory (%s), so "
+            "bundle signatures and finalizer checks do not hold against it. Use it only with "
+            "trusted plugin code; the docker executor runs each attempt in its own container",
+            uid,
+            settings.gcs_key_path("control"),
+            settings.key_path,
+            settings.workdir,
+        )
         return LocalProcessExecutor(
             command=settings.runner_command,
             bootstrap_url_template=template,

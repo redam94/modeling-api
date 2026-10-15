@@ -12,6 +12,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import os
+import tempfile
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
@@ -68,9 +69,28 @@ class BundleSigner:
             serialization.PrivateFormat.PKCS8,
             serialization.NoEncryption(),
         )
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(fd, "wb") as fh:
-            fh.write(pem)
+        # Publish atomically: write a private (0600) temp file, then hard-link it into place.
+        # link() fails if another process (api and worker starting together) created the
+        # key first; that key wins, so every process ends up trusting the same one.
+        fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(pem)
+                fh.flush()
+                os.fsync(fh.fileno())
+            try:
+                os.link(tmp, path)
+            except FileExistsError:
+                return cls.from_file(path, create=False)
+            except OSError:  # no hard links on this filesystem: exclusive create instead
+                try:
+                    out = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                except FileExistsError:
+                    return cls.from_file(path, create=False)
+                with os.fdopen(out, "wb") as fh:
+                    fh.write(pem)
+        finally:
+            os.unlink(tmp)
         return signer
 
     def public_pem(self) -> str:

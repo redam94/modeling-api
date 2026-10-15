@@ -170,3 +170,26 @@ async def test_async_spec_upsert(aclient: AsyncClient, api: respx.MockRouter, ex
     rev = api.post(f"{V1}/specs/{doc['id']}/revisions").respond(201, json=example(SpecRevision))
     assert (await aclient.specs.upsert(yaml)).revision == 2
     assert json.loads(rev.calls.last.request.content)["parent_revision"] == 2
+
+
+async def test_async_score_outlasts_its_read_timeout(
+    api: respx.MockRouter, example: Ex, asleeps: AsyncSleeps
+) -> None:
+    """The long-poll's read timeout covers Prefer: wait, and a read timeout means "still
+    running" (the same Idempotency-Key is replayed), not a TransportError."""
+    done = example(ScoreCallResult) | {"outputs": []}
+    reads: list[float] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        reads.append(request.extensions["timeout"]["read"])
+        if len(reads) <= 3:
+            raise httpx.ReadTimeout("slow", request=request)
+        return httpx.Response(200, json=done)
+
+    route = api.post(f"{V1}/models/mdl_1/versions/1:score").mock(side_effect=respond)
+    config = ClientConfig(base_url=BASE, timeout=1.5, max_retries=2)
+    async with AsyncClient(config=config, sleep=asleeps) as c:
+        res = await c.models.score("mdl_1", 1, {"model": "model://default/eu@v1"}, timeout=600)
+    assert res.done and route.call_count == 4
+    assert min(reads) >= 60 + 1.5
+    assert len({call.request.headers["Idempotency-Key"] for call in route.calls}) == 1

@@ -16,6 +16,11 @@
 # docs/operations/docker.md explains the trade-off and the docker-executor alternative
 # (compose.override.example.yml).
 #
+# Durable state: postgres (pgdata), the shim's objects and principal keys (gcsdata), and the
+# bundle-signing key (keys). `migrate` creates that key once; `api` (verifies bundle manifests)
+# and `worker` (its finalizer signs them) mount the same volume read-only, so they share one
+# key, and it survives restarts. Everything under MAPI_DATA_DIR (/tmp) is per-container scratch.
+#
 # Every service runs as a non-root user with a read-only root filesystem, a tmpfs on /tmp,
 # no Linux capabilities and no-new-privileges (postgres excepted: the official image starts
 # as root to fix data-directory ownership, then drops to the postgres user).
@@ -29,7 +34,8 @@ x-mapi-env: &mapi-env
   MAPI_API_URL: http://127.0.0.1:8000
   MAPI_WEB_ORIGIN: http://127.0.0.1:5173
   MAPI_PLOTS_ORIGIN: http://127.0.0.1:5174
-  MAPI_DATA_DIR: /tmp/mapi-data   # scratch only; durable state is in postgres and gcsdata
+  MAPI_DATA_DIR: /tmp/mapi-data   # per-container scratch (executions, caches); never keys
+  MAPI_SIGNING_KEY_PATH: /var/lib/mapi/keys/bundle-signing-p256.pem   # on the `keys` volume
 
 x-hardening: &hardening
   read_only: true
@@ -91,9 +97,11 @@ services:
     <<: *hardening
     restart: "no"
     user: "10001:10001"
-    command: ["migrate"]
+    command: ["migrate"]          # database migrations, then the bundle-signing key
     environment:
       <<: *mapi-env
+    volumes:
+      - keys:/var/lib/mapi/keys   # the only writer of the signing key
     tmpfs:
       - /tmp:size=64m,mode=1777
     depends_on:
@@ -111,8 +119,10 @@ services:
     environment:
       <<: *mapi-env
       MAPI_GCS_ROOT: /shim/gcs    # the shim's principal key files (control, exec)
+      MAPI_SIGNING_KEY_CREATE: "false"   # load migrate's key; never mint a private one
     volumes:
       - gcsdata:/shim:ro
+      - keys:/var/lib/mapi/keys:ro
     tmpfs:
       - /tmp:size=128m,mode=1777
     depends_on:
@@ -141,8 +151,10 @@ services:
       <<: *mapi-env
       MAPI_EXECUTOR: ${MAPI_EXECUTOR:-local-process}
       MAPI_GCS_ROOT: /shim/gcs    # control key for the store, exec token for local runs
+      MAPI_SIGNING_KEY_CREATE: "false"   # sign with migrate's key, the one the api trusts
     volumes:
       - gcsdata:/shim:ro
+      - keys:/var/lib/mapi/keys:ro
     tmpfs:
       # Runs (scratch, compile caches, HOME) live here, like Cloud Run's in-memory filesystem.
       - /tmp:size=${MAPI_WORKER_TMPFS:-4g},mode=1777
@@ -213,3 +225,4 @@ services:
 volumes:
   pgdata:
   gcsdata:
+  keys:       # the bundle-signing key (migrate writes it; api and worker read it)

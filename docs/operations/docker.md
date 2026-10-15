@@ -45,6 +45,10 @@ Every Python image uses the same multi-stage pattern:
    non-editable. Every version comes from `uv.lock`.
 3. **`runtime`** starts again from the same `python:3.12-slim` base, adds `tini` (and `g++` for
    the PyMC images), creates user `10001`, and copies in only the virtual environment.
+   The images that run `mapi-server` (`mapi/server` and `mapi/worker`) also copy `uv.lock` to
+   `/opt/mapi/uv.lock` and set `MAPI_UV_LOCK_PATH` to it. Its SHA-256 is the *image digest*
+   that the API and the orchestrator cache the step and model catalog under, the same value
+   `make dev` computes. Both images are built from one lock, so `api` and `worker` agree.
 
 The package set is the `MAPI_PACKAGES` build argument. `images/common/install_packages.py` turns
 it into `uv sync` calls. The xgboost dependency `nvidia-nccl-cu13`, a 300 MB wheel used only for
@@ -127,6 +131,18 @@ need a public form and an internal form. With a shared namespace, `127.0.0.1:444
 subprocess. That is exactly the `make dev` topology, and it matches the `LocalDev` defaults. The
 `web` container reaches the API as `api:8000`, which is a network alias of the shim's container.
 
+**Durable state.** Three named volumes outlive the containers: `pgdata` (the database),
+`gcsdata` (the shim's objects and principal key files) and `keys` (the bundle-signing key).
+The worker's finalizer signs every bundle manifest, and the API verifies that signature
+before it hands out an artifact link, a `ui/` view or a plot, and before it accepts a score
+request. Both must therefore load the *same* key, and the key must survive restarts.
+`migrate` creates it once at `/var/lib/mapi/keys/bundle-signing-p256.pem`
+(`MAPI_SIGNING_KEY_PATH`). `api` and `worker` mount the volume read-only, with
+`MAPI_SIGNING_KEY_CREATE=false`, so a missing key fails start-up loudly instead of a new key
+being minted silently. `MAPI_DATA_DIR` (`/tmp/mapi-data`) is per-container scratch.
+`make compose-down VOLUMES=1` deletes the key along with the data. A new key cannot verify old
+bundles, so delete it only together with the database and the objects.
+
 **Hardening.** Every `mapi/*` service runs as a non-root user, with a read-only root filesystem,
 a tmpfs on `/tmp`, all Linux capabilities dropped and `no-new-privileges`. Ports are published on
 `127.0.0.1` only. The PostgreSQL password comes from `.env`, and compose refuses to start
@@ -150,7 +166,7 @@ no Docker socket and is daemon-agnostic. Its trade-offs:
 
 | | local-process in `mapi/worker` (default) | docker executor (`compose.override.example.yml`) |
 |---|---|---|
-| Isolation | Process only: runs share the worker's filesystem, `/tmp` and memory limit | One container per run, from the exact runner image, with its own limits; `--network none` is possible |
+| Isolation | Process only: runs share the worker's uid, filesystem (including its keys, see below), `/tmp` and memory limit | One container per run, from the exact runner image, with its own limits and a network that reaches only the shim |
 | Images | One large image holding every plugin plus the control plane | `mapi/worker` for the orchestrator, and per run the `mapi/base-*` image that ships the run's plugin (`MAPI_DOCKER_IMAGES`) |
 | Privileges | None beyond the worker's own | The worker mounts `/var/run/docker.sock`, which is **root-equivalent on the host** |
 | Networking | Runs reach `127.0.0.1:4443` directly | Run containers join the `gcs-shim` network namespace (`MAPI_DOCKER_NETWORK=container:mapi-gcs-shim`) |
@@ -176,7 +192,25 @@ process's environment, or write to its event pipe. The executor also sets
 rather than run the worker under its own uid.
 
 Neither mode is a multi-tenant boundary. Both are single-tenant local stacks, and the
-local-process executor is meant to refuse any multi-tenant profile. The worker's `/tmp` is the
+local-process executor refuses any multi-tenant profile.
+
+**What a local-process run can reach.** Every run is a subprocess of `mapi-server worker` and
+runs as the same uid, `10001`. There is no uid split before v0.3. Run code, meaning plugins
+and the steps they load, can therefore read everything the orchestrator can read:
+
+- the shim's control key (`/shim/gcs/_shim/keys/control.json`): `storage.admin` on every
+  bucket, enough to read or rewrite bundles, datasets and run outputs and to mint signed
+  URLs;
+- the bundle-signing key (`/var/lib/mapi/keys/`), enough to forge a manifest the API accepts;
+- the executions directory under `/tmp/mapi-data`, including the pid files that name the
+  nonces of runs in flight.
+
+In this mode, then, bundle signatures and the finalizer's output checks protect against
+accidents, not against hostile plugin code. The orchestrator marks itself non-dumpable, so
+run code cannot ptrace it or read its `/proc/<pid>/environ` (`DATABASE_URL` with the
+password) or its memory. The worker also logs this warning at start-up. Run only trusted
+plugin code under local-process. The docker executor does not have this exposure: each
+attempt runs in its own container with none of these files mounted. The worker's `/tmp` is the
 scratch space for local-process runs. Size it with `MAPI_WORKER_TMPFS`, `MAPI_WORKER_MEMORY` and
 `MAPI_WORKER_CPUS` in `.env`.
 
@@ -221,7 +255,12 @@ in CI and by `make release-check`) fails if anything is unpinned.
 
 `.github/workflows/ci.yml` builds every image, plus the `worker` target, on each push and pull
 request, using the GitHub Actions layer cache. Images are never pushed. A separate job checks the
-digest pins and validates both compose files with `docker compose config`. The web image is
+digest pins and validates both compose files with `docker compose config`.
+
+With the images built and a Docker daemon running, `uv run pytest tests/devops/test_compose_smoke.py -m docker`
+boots `postgres`, `gcs-shim`, `migrate`, `api` and `worker` under a throw-away project name.
+It publishes no host ports. It then checks that `api` and `worker` started and that they agree
+on the values bundle verification depends on. The web image is
 skipped, with a notice, until the pnpm workspace is in the tree.
 
 ## Troubleshooting
@@ -251,6 +290,11 @@ The `api` container is unhealthy
     logs), or that the `DATABASE_URL` password does not match the database volume, which happens
     after you change `POSTGRES_PASSWORD`. In that case reset with `make compose-down VOLUMES=1`;
     this deletes the data.
+
+`no bundle-signing key at /var/lib/mapi/keys/... and MAPI_SIGNING_KEY_CREATE is off`
+:   `api` or `worker` started before `migrate` created the key, or without the `keys` volume.
+    Check `make compose-logs SERVICE=migrate`. Never point the two at different keys: the API
+    would reject every bundle the worker signs with `INTEGRITY_FAILURE`.
 
 `mapi-entrypoint: /tmp/mapi-cache is not writable`
 :   The container runs with a read-only root filesystem but without a writable `/tmp`. Add
