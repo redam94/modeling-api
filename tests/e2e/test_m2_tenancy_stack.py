@@ -307,7 +307,7 @@ def test_bff_cookie_sign_in_csrf_and_logout(stack: Stack, tenants: tuple[Side, S
         assert "/dev/idp/authorize" in authorize and "code_challenge_method=S256" in authorize
         page = browser.get(authorize)  # the IdP's account chooser
         assert page.status_code == 200 and acme.email in page.text
-        r = browser.get(authorize + "&" + httpx.QueryParams({"login_hint": acme.email}).__str__())
+        r = browser.get(f"{authorize}&{httpx.QueryParams({'login_hint': acme.email})}")
         assert r.status_code == 302
         callback = urlsplit(r.headers["location"])
         assert callback.path == "/auth/callback"
