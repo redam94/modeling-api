@@ -9,6 +9,10 @@ import { defineConfig, devices } from "@playwright/test";
  */
 const e2e = Boolean(process.env.MAPI_E2E);
 const sandboxDir = new URL("../plot-sandbox/", import.meta.url).pathname;
+// The @e2e suite can reuse a running `make dev` stack on other ports (MAPI_WEB_ORIGIN /
+// MAPI_PLOTS_ORIGIN, as scripts/dev.py uses them); the smoke suite always uses the defaults.
+const webOrigin = (e2e && process.env.MAPI_WEB_ORIGIN) || "http://127.0.0.1:5173";
+const plotsOrigin = (e2e && process.env.MAPI_PLOTS_ORIGIN) || "http://127.0.0.1:5174";
 
 export default defineConfig({
   testDir: "e2e",
@@ -20,7 +24,7 @@ export default defineConfig({
   timeout: 45_000,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL: "http://127.0.0.1:5173",
+    baseURL: webOrigin,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
@@ -31,14 +35,14 @@ export default defineConfig({
       command: e2e
         ? "pnpm exec vite"
         : "pnpm exec vite build --mode mock --outDir dist/mock --emptyOutDir && pnpm exec vite preview --mode mock --outDir dist/mock",
-      url: "http://127.0.0.1:5173",
+      url: webOrigin,
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
     },
     {
       command: "pnpm exec vite",
       cwd: sandboxDir,
-      url: "http://127.0.0.1:5174",
+      url: plotsOrigin,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
