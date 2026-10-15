@@ -77,6 +77,7 @@ class _Exec:
     pid: int
     readers: list[asyncio.Task[None]] = field(default_factory=list)
     watchdog: asyncio.Task[None] | None = None
+    stopper: asyncio.Task[None] | None = None
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     finished_at: datetime | None = None
     cancelled: bool = False
@@ -268,11 +269,18 @@ class LocalProcessExecutor:
         )
 
     async def cancel(self, h: Handle) -> None:
+        """SIGTERM now, SIGKILL after ``cancel_grace_s`` in the background.
+
+        Never waits for the process: the reconciler cancels inline in its serial pass, and
+        the next pass observes the terminal status. Repeated calls do not re-signal.
+        """
         ex = self._execs.get(h.nonce)
         if ex is None:
             return
         ex.cancelled = True
-        await self._terminate(ex)
+        if ex.stopper is None:
+            ex.stopper = asyncio.create_task(self._terminate(ex), name=f"stop-{h.run_id}")
+            await asyncio.sleep(0)  # let the SIGTERM go out before returning
 
     def event_source(self) -> AsyncIterator[RunEvent]:
         return self._iter_events()
@@ -284,6 +292,9 @@ class LocalProcessExecutor:
     async def aclose(self) -> None:
         """Terminate every child (used on shutdown of a dev process)."""
         for ex in list(self._execs.values()):
+            if ex.stopper is not None:
+                with contextlib.suppress(Exception):
+                    await ex.stopper
             if ex.proc is not None and ex.proc.returncode is None:
                 await self._terminate(ex)
             if ex.watchdog is not None:
@@ -297,7 +308,14 @@ class LocalProcessExecutor:
             return
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.killpg(ex.pid, signal.SIGTERM)
-        if ex.proc is None:
+        if ex.proc is None:  # adopted: no child handle to wait on; poll the pid instead
+            loop = asyncio.get_running_loop()
+            until = loop.time() + self._grace
+            while _pid_alive(ex.pid) and loop.time() < until:
+                await asyncio.sleep(0.1)
+            if _pid_alive(ex.pid):
+                with contextlib.suppress(ProcessLookupError, PermissionError):
+                    os.killpg(ex.pid, signal.SIGKILL)
             return
         try:
             await asyncio.wait_for(ex.proc.wait(), self._grace)

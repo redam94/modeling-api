@@ -98,6 +98,7 @@ class DockerExecutor:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._followers: dict[str, threading.Thread] = {}
         self._cancelled: set[str] = set()
+        self._stopping: dict[str, asyncio.Task[None]] = {}
 
     @staticmethod
     def _default_client() -> Any:
@@ -236,16 +237,34 @@ class DockerExecutor:
         )
 
     async def cancel(self, h: Handle) -> None:
+        """Start ``docker stop`` (SIGTERM, SIGKILL after the grace) without waiting for it.
+
+        ``container.stop`` blocks for up to the grace period; the reconciler cancels inline
+        in its serial pass, so the stop runs in a background task and the next pass
+        observes the exit. Repeated calls while a stop is in flight do nothing.
+        """
         if h.external_id is None:
             return
         self._cancelled.add(h.nonce)
+        pending = self._stopping.get(h.nonce)
+        if pending is not None and not pending.done():
+            return
         try:
             container = await asyncio.to_thread(self.client.containers.get, h.external_id)
         except Exception as exc:
             if type(exc).__name__ == "NotFound":
                 return
             raise
-        await asyncio.to_thread(container.stop, timeout=int(self._grace))
+        task = asyncio.create_task(
+            asyncio.to_thread(container.stop, timeout=int(self._grace)),
+            name=f"docker-stop-{h.run_id}",
+        )
+        task.add_done_callback(lambda t: self._stopped(h, t))
+        self._stopping[h.nonce] = task
+
+    def _stopped(self, h: Handle, task: asyncio.Task[None]) -> None:
+        if not task.cancelled() and task.exception() is not None:
+            log.warning("docker stop of run %s failed: %r", h.run_id, task.exception())
 
     def event_source(self) -> AsyncIterator[RunEvent]:
         return self._iter_events()

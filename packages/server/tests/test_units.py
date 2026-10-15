@@ -179,7 +179,12 @@ class _FakeContainer:
     def logs(self, **_: Any) -> list[bytes]:
         return []
 
+    stop_delay = 0.0
+
     def stop(self, timeout: int) -> None:
+        import time
+
+        time.sleep(self.stop_delay)  # the real SDK blocks up to `timeout` seconds
         self.attrs["State"] = {"Status": "exited", "ExitCode": 143}
 
 
@@ -250,8 +255,19 @@ async def test_docker_executor_lifecycle_with_a_fake_client() -> None:
             break
         await asyncio.sleep(0.01)
     assert (await ex.status(h)).state is ExecState.RUNNING
+    assert fake.containers.container is not None
+    fake.containers.container.stop_delay = 1.0
+    import time
+
+    started = time.monotonic()
     await ex.cancel(h)
-    st = await ex.status(h)
+    await ex.cancel(h)  # a later reconcile pass: no second stop, no wait
+    assert time.monotonic() - started < 0.5, "cancel must not block the reconcile pass"
+    for _ in range(100):
+        st = await ex.status(h)
+        if st.state.terminal:
+            break
+        await asyncio.sleep(0.05)
     assert st.state is ExecState.CANCELLED and st.exit_code == 143
     assert fake.containers.container is not None
     fake.containers.container.attrs["State"] = {

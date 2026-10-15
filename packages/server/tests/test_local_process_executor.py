@@ -204,3 +204,33 @@ async def test_orphan_adoption_by_pid_file(tmp_path: Path) -> None:
         await second.status(Handle(executor="local-process", run_id="r", nonce="e" * 64))
     ).state is ExecState.UNKNOWN
     await first.aclose()
+
+
+async def test_cancel_returns_at_once_and_escalates_in_the_background(tmp_path: Path) -> None:
+    """The reconciler cancels inline in its serial pass: cancel() must not wait out the
+    grace period (that would stall every other run), but SIGKILL still follows it."""
+    import time
+
+    stubborn = """
+    import signal, time
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    print("ready", flush=True)
+    time.sleep(60)
+    """
+    ex = LocalProcessExecutor(
+        command=_script(tmp_path, stubborn),
+        bootstrap_url_template=TEMPLATE,
+        workdir=tmp_path / "w",
+        cancel_grace_s=1.5,
+    )
+    h = await ex.submit(_submit(), NONCE)
+    await asyncio.sleep(0.5)
+    started = time.monotonic()
+    await ex.cancel(h)
+    await ex.cancel(h)  # repeated by later reconcile passes: still no wait
+    assert time.monotonic() - started < 0.5
+    assert (await ex.status(h)).state is ExecState.RUNNING  # SIGTERM ignored for now
+    await _wait_done(ex, h, limit=10)
+    st = await ex.status(h)
+    assert st.state is ExecState.CANCELLED and st.exit_code == 137
+    await ex.aclose()
