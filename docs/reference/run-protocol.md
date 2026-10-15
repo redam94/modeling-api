@@ -86,6 +86,7 @@ the code exhaustively, all 13 × 19 state and trigger pairs.
 | every non-terminal state except `CANCELLING` | `cancel` | `CANCELLING` | api | | |
 | `CANCELLING` | `cancel` / `event` | `CANCELLING` (no-op) | api / events | | |
 | `CANCELLING` | `cancel_confirmed` | `CANCELLED` | reconciler | | |
+| `CANCELLING` | `complete` | `FINALIZING` | reconciler | | |
 | `PARTIAL` | `resume` | `QUEUED` | api | | yes |
 
 Rules that every component follows:
@@ -236,7 +237,10 @@ for example `1` from a crashed supervisor, is `infra`.
 | 143 | `TERMINATED` | timeout: SIGTERM not handled in time |
 
 When the user cancels a run, the run is already in `CANCELLING`, so the exit code does not
-decide the outcome.
+decide the outcome, with one exception. A checkpointing fit that receives the SIGTERM flushes
+its last checkpoint, uploads a `partial` manifest, sends a `partial` `complete` event and exits
+with `16`. The reconciler then fires `complete` from `CANCELLING`, and the finalizer verifies the
+partial bundle, so the run ends `PARTIAL` and can be resumed. Any other exit ends `CANCELLED`.
 
 ## Outputs and finalisation
 

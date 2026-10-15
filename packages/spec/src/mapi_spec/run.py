@@ -371,6 +371,9 @@ def _build_table() -> dict[tuple[RunState, RunTrigger], TransitionRule]:
     add(S.CANCELLING, T.CANCEL, S.CANCELLING, A.API)
     add(S.CANCELLING, T.EVENT, S.CANCELLING, A.EVENTS)
     add(S.CANCELLING, T.CANCEL_CONFIRMED, S.CANCELLED, A.RECONCILER)
+    # On SIGTERM a checkpointing supervisor flushes and exits PARTIAL with a ``partial``
+    # complete event (plan §8.7 step 3): that bundle is finalized (→ PARTIAL, resumable).
+    add(S.CANCELLING, T.COMPLETE, S.FINALIZING, A.RECONCILER)
 
     add(S.PARTIAL, T.RESUME, S.QUEUED, A.API, new_attempt=True)
     return {(r.source, r.trigger): r for r in rules}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import httpx
 import pytest
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
@@ -392,6 +393,53 @@ async def test_cancel_flow_confirms_after_the_executor_stops(
     run = await _state(ctx, run_id)
     assert run.state == RunState.CANCELLED.value
     assert executor.only().cancelled == 1
+
+
+async def test_cancelled_checkpointed_fit_finalizes_as_partial_and_can_resume(
+    ctx: ServerContext,
+    client: httpx.AsyncClient,
+    executor: FakeExecutor,
+    wired: tuple[Dispatcher, Reconciler],
+) -> None:
+    """Plan §8.7: on SIGTERM the supervisor flushes its checkpoints and writes a PARTIAL
+    bundle; the run must end PARTIAL (resumable), not CANCELLED with the bundle dropped."""
+    dispatcher, reconciler = wired
+    run_id, att = await _provisioned(ctx, dispatcher)
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, run_id, for_update=True)
+        await apply_transition(s, run, RunTrigger.EVENT, Actor.EVENTS)
+        await apply_transition(s, run, RunTrigger.CANCEL, Actor.API)
+    ex = executor.only()
+    ex.refuse_cancel = True  # what the supervisor does with the SIGTERM is scripted here:
+    ex.status = ExecStatus(state=ExecState.CANCELLED, exit_code=16, finished_at=now())
+    run = await _state(ctx, run_id)
+    await simulate_outputs(ctx, run, att, mode="partial")  # partial manifest + complete event
+    await reconciler.reconcile_run(run_id)
+    await ctx.queue.drain()  # type: ignore[union-attr]
+    run = await _state(ctx, run_id)
+    assert run.state == RunState.PARTIAL.value, (run.state, run.problem)
+    assert ex.cancelled == 1
+    r = await client.post(f"/v1/runs/{run_id}:resume")
+    assert r.status_code == 202 and r.json()["state"] == "queued"
+
+
+async def test_cancel_waits_briefly_for_the_partial_complete_event(
+    ctx: ServerContext, executor: FakeExecutor, wired: tuple[Dispatcher, Reconciler]
+) -> None:
+    dispatcher, reconciler = wired
+    ctx.settings.complete_event_grace_s = 3600
+    run_id, _att = await _provisioned(ctx, dispatcher)
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, run_id, for_update=True)
+        await apply_transition(s, run, RunTrigger.CANCEL, Actor.API)
+    ex = executor.only()
+    ex.refuse_cancel = True
+    ex.status = ExecStatus(state=ExecState.CANCELLED, exit_code=16, finished_at=now())
+    await reconciler.reconcile_run(run_id)  # exit 16 but no complete event yet: wait
+    assert (await _state(ctx, run_id)).state == RunState.CANCELLING.value
+    ctx.settings.complete_event_grace_s = 0
+    await reconciler.reconcile_run(run_id)  # it never came: plain cancellation
+    assert (await _state(ctx, run_id)).state == RunState.CANCELLED.value
 
 
 async def test_cancel_of_a_queued_run_is_confirmed_without_an_execution(

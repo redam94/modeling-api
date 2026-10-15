@@ -12,7 +12,9 @@ the database with the **executor's status API — the liveness source of truth**
   by cancelling the execution, recorded on the attempt so the stop is classified as
   ``TIMEOUT`` (or finalized as ``PARTIAL`` when checkpoints were flushed), never as an
   execution stopped outside the platform;
-* ``CANCELLING`` → cancel at the executor, then ``cancel_confirmed`` once it is gone;
+* ``CANCELLING`` → cancel at the executor, then ``cancel_confirmed`` once it is gone —
+  unless the supervisor flushed its checkpoints and exited ``PARTIAL`` with a ``partial``
+  complete event: that run is finalized (→ ``PARTIAL``, resumable);
 * ``FINALIZING`` → make sure a finalize job is queued.
 
 The first time this process looks at an attempt it calls ``executor.adopt(nonce)`` even
@@ -201,6 +203,12 @@ class Reconciler:
             status = await self.executor.status(handle)
             if not (status.state.terminal or status.state is ExecState.UNKNOWN):
                 return  # still stopping; the hard timeout is the backstop
+            if (
+                att is not None
+                and status.exit_code == RunnerExit.PARTIAL
+                and await self._cancelled_partial(run, att, status)
+            ):
+                return
         update: dict[str, object] = {}
         if att is not None:
             update = {"status": "finished" if handle else "abandoned", "finished_at": now()}
@@ -244,6 +252,39 @@ class Reconciler:
             "the dispatcher stopped before the execution was submitted",
             attempt_update={"status": "abandoned", "finished_at": now()},
         )
+
+    async def _cancelled_partial(self, run: m.Run, att: m.RunAttempt, status: ExecStatus) -> bool:
+        """Finalize a cancelled run whose supervisor wrote a partial bundle (True = handled).
+
+        Returns True while the ``partial`` complete event may still be on its way (within
+        ``complete_event_grace_s`` of the exit) and once the run moved to ``FINALIZING``.
+        """
+        payload = att.complete_payload
+        if payload is None and await self._complete_arrived(att):
+            async with self.ctx.db.session() as session:
+                fresh = await session.get(m.RunAttempt, (att.run_id, att.attempt))
+                payload = fresh.complete_payload if fresh is not None else None
+        if payload is None:
+            finished = status.finished_at or now()
+            waited = (now() - finished).total_seconds()
+            return waited < self.ctx.settings.complete_event_grace_s
+        if payload.get("status") != "partial":
+            return False  # a finished fit the user cancelled anyway: plain cancellation
+        await self._delete_bootstrap(att.nonce)
+        moved = await self._transition(
+            run,
+            RunTrigger.COMPLETE,
+            expect_state=RunState.CANCELLING,
+            attempt_update={
+                "status": "finished",
+                "finished_at": att.finished_at or status.finished_at or now(),
+                "exit_code": status.exit_code,
+                "exec_state": status.state.value,
+            },
+        )
+        if moved:
+            await self._defer_finalize(run.id, run.attempt)
+        return True
 
     def _can_retry(self, run: m.Run) -> bool:
         s = self.ctx.settings
