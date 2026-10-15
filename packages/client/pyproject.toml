@@ -11,6 +11,10 @@ dependencies = [
   "httpx>=0.27",
 ]
 
+[project.optional-dependencies]
+# xr.Dataset uploads and xr.DataTree score results (validated zarr-zip IO from the SDK)
+xarray = ["mapi-sdk", "xarray>=2025.1"]
+
 [build-system]
 requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
@@ -20,3 +24,4 @@ packages = ["src/mapi_client"]
 
 [tool.uv.sources]
 mapi-spec = { workspace = true }
+mapi-sdk = { workspace = true }
