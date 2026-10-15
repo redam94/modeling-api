@@ -1,0 +1,60 @@
+# Hierarchical geo marketing-mix model (conformance fixture E33).
+#
+# Daily local-currency spend and revenue per market and channel are converted to EUR,
+# resampled to full weeks, scaled, given adstock lags, seasonality and holidays, then fitted
+# with a partially pooled Bayesian MMM. The train/holdout split happens after `weekly`, so
+# the last 8 *weeks* are held out; `evaluate_then_refit` refits on all data afterwards.
+#
+# Fit locally:  mapi fit {{file}} --data data.zarr.zip --side-table fx=fx.zarr.zip \
+#                                  --side-table holidays=holidays.zarr.zip
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: {{name}}, project: {{project}}, labels: {family: mmm, template: geo-mmm}}
+
+data:
+  dataset: dataset://{{project}}/eu_media_daily@latest
+  side_tables:
+    fx:       {ref: dataset://{{project}}/fx_daily@latest, score_policy: supplied}
+    holidays: {ref: dataset://{{project}}/holidays_eu@v3, score_policy: pinned}
+  bind:                      # canonical name: dataset name
+    dims: {geo: market, channel: channel, time: date}
+    vars: {y: revenue_local, spend: spend_local}
+  split: {kind: time_holdout, dim: time, last: 8, after_step: weekly}   # 'time' is weekly here
+
+pipeline:
+  - id: to_eur
+    use: core.fx_convert@^1
+    with: {vars: [y, spend], table: fx, table_along: date, currency_dim: geo, currencies: {UK: GBP}, default_currency: EUR}
+  - {id: weekly,      use: core.resample@^1,   with: {dim: time, freq: W-SUN, how: sum, full_periods_only: true}}
+  - {id: scale_spend, use: core.mean_scale@^1, with: {vars: [spend], over: [time], unseen_levels: pooled}}
+  - {id: scale_y,     use: core.mean_scale@^1, with: {vars: [y], over: [time], unseen_levels: pooled}}
+  - {id: lags,        use: core.lag_tensor@^1, with: {vars: [spend], along: time, within: [geo], l_max: 4, pad: first}}
+  - {id: season,      use: core.fourier@^1,    with: {along: time, period: 52.18, order: 2, out: fourier}}
+  - {id: hols,        use: core.holidays@^1,   with: {table: holidays, table_along: date, along: time}}
+
+model:
+  use: mmm.hierarchical_geo@^1.3
+  settings:
+    pooling: partial
+    centred: false
+    adstock: {kind: geometric, l_max: 4}
+    saturation: {kind: logistic}
+    priors:                  # pymc-marketing Prior dict form; canonical dim names only
+      beta_channel: {distribution: HalfNormal, sigma: 1.0, dims: [channel]}
+      lam:          {distribution: Gamma, alpha: 3, beta: 1, dims: [channel]}
+  fit:
+    mode: evaluate_then_refit
+    engine: pymc
+    tune: 150                # raise tune/draws/chains for real analyses
+    draws: 100
+    chains: 2
+    target_accept: 0.9
+    seed: 20261014
+    keep: {log_likelihood: true}
+
+outputs:
+  derived: [contributions, response_curves, marginal_cost]
+  plots: [core.ppc_fan, core.convergence, mmm.decomposition, mmm.response_curves]
+  ui_draws: 100
+evaluate: {metrics: [elpd_loo, coverage_90, mape]}
+execution: {resource_class: M, timeout: 45m}

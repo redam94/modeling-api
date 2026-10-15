@@ -1985,16 +1985,24 @@ name = "mapi-cli"
 version = "0.1.0"
 source = { editable = "packages/cli" }
 dependencies = [
-    { name = "mapi-client" },
+    { name = "mapi-client", extra = ["xarray"] },
     { name = "mapi-sdk" },
+    { name = "mapi-spec" },
     { name = "rich" },
     { name = "typer" },
 ]
 
+[package.optional-dependencies]
+samples = [
+    { name = "mapi-conformance" },
+]
+
 [package.metadata]
 requires-dist = [
-    { name = "mapi-client", editable = "packages/client" },
+    { name = "mapi-client", extras = ["xarray"], editable = "packages/client" },
+    { name = "mapi-conformance", marker = "extra == 'samples'", editable = "conformance" },
     { name = "mapi-sdk", editable = "packages/sdk" },
+    { name = "mapi-spec", editable = "packages/spec" },
     { name = "rich", specifier = ">=13" },
     { name = "typer", specifier = ">=0.12" },
 ]
@@ -2004,14 +2012,24 @@ name = "mapi-client"
 version = "0.1.0"
 source = { editable = "packages/client" }
 dependencies = [
+    { name = "google-crc32c" },
     { name = "httpx" },
     { name = "mapi-spec" },
 ]
 
+[package.optional-dependencies]
+xarray = [
+    { name = "mapi-sdk" },
+    { name = "xarray" },
+]
+
 [package.metadata]
 requires-dist = [
+    { name = "google-crc32c", specifier = ">=1.5" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "mapi-sdk", marker = "extra == 'xarray'", editable = "packages/sdk" },
     { name = "mapi-spec", editable = "packages/spec" },
+    { name = "xarray", marker = "extra == 'xarray'", specifier = ">=2025.1" },
 ]
 
 [[package]]
