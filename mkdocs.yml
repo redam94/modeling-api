@@ -58,6 +58,7 @@ plugins:
             - packages/sdk-sklearn/src
             - packages/steps-core/src
             - packages/plots-core/src
+            - packages/runner/src
           options:
             docstring_style: google
             docstring_options:
@@ -148,6 +149,7 @@ nav:
       - HTTP API (v1): reference/http-api.md
       - Run protocol: reference/run-protocol.md
       - GCS shim: reference/gcs-shim.md
+      - Runner: reference/runner.md
       - API reference:
           - reference/api/index.md
           - mapi_spec: reference/api/spec.md
@@ -156,6 +158,7 @@ nav:
           - mapi_sklearn: reference/api/sklearn.md
           - mapi_steps: reference/api/steps.md
           - mapi_plots: reference/api/plots.md
+          - mapi_runner: reference/api/runner.md
   - Roadmap:
       - roadmap/index.md
       - Platform API (v0.2): roadmap/platform-api.md

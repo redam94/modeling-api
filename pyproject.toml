@@ -75,7 +75,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.importlinter]
-root_packages = ["mapi_server", "mapi_spec", "mapi_plots"]
+root_packages = ["mapi_server", "mapi_spec", "mapi_plots", "mapi_runner"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
@@ -95,3 +95,17 @@ name = "Plot sanitizer and templates are JSON-only (control-plane safe)"
 type = "forbidden"
 source_modules = ["mapi_plots.sanitize", "mapi_plots.templates", "mapi_plots._testing"]
 forbidden_modules = ["numpy", "xarray", "pandas", "altair", "plotly", "pyarrow", "mapi_sdk"]
+
+[[tool.importlinter.contracts]]
+name = "Runner supervisor never imports plugin code, the SDK or array libraries"
+type = "forbidden"
+source_modules = [
+  "mapi_runner.supervisor", "mapi_runner.__main__", "mapi_runner.bootstrap",
+  "mapi_runner.channel", "mapi_runner.events", "mapi_runner.jobs", "mapi_runner.outputs",
+  "mapi_runner.sandbox", "mapi_runner.transfer", "mapi_runner._text",
+]
+forbidden_modules = [
+  "mapi_runner.worker", "mapi_runner.testing", "mapi_sdk", "mapi_pymc", "mapi_sklearn",
+  "mapi_steps", "mapi_plots", "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular",
+  "numpy", "xarray", "pandas",
+]

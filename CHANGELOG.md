@@ -31,6 +31,14 @@ milestone releases are tagged on `main`.
   filesystem backend. `ShimObjectStore` and the import-guarded `GcsObjectStore` implement
   `mapi_spec.storage.ObjectStore`, and a `pytest11` plugin provides the `gcs_shim` fixture.
   See `docs/reference/gcs-shim.md`.
+- **runner**: `mapi-runner`, the sandboxed run harness. A trusted supervisor reads and deletes
+  the bootstrap object, starts the untrusted worker with a scrubbed environment (uid 10001 and
+  no-new-privs as root, dev mode otherwise), signs every stdout event, caps logs, events,
+  scratch and outputs, handles SIGTERM/deadline with partial manifests from checkpoints, and
+  uploads outputs plus a signed `OutputManifest`. The worker runs `ingest` (CSV/Parquet with a
+  column mapping or the MFF preset, zarr zip, netCDF), `describe`, `validate` (dry run), `fit`
+  (bundle, sidecars, plots, `ui/` views, checkpoints), `score`, `evaluate`, `derive` and
+  `render` through the SDK harness. See `docs/reference/runner.md`.
 
 ## [0.1.0] — M0: contract layer — 2026-10-15
 
