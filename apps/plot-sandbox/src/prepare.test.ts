@@ -40,6 +40,23 @@ describe("prepareVegaLite", () => {
     expect((out.config as Record<string, unknown>).background).toBeNull();
   });
 
+  it("fits unit and layered views to the frame width but pads composite views", () => {
+    const unit = prepareVegaLite({ mark: "bar", data: { name: "contrib" } }, datasets, "light");
+    expect(unit.autosize).toEqual({ type: "fit-x", contains: "padding" });
+    const layered = prepareVegaLite({ layer: [{ mark: "line" }], width: 400 }, datasets, "light");
+    expect(layered.autosize).toEqual({ type: "fit-x", contains: "padding" });
+    for (const composite of [
+      { vconcat: [{ mark: "bar", width: 240 }] },
+      { hconcat: [{ mark: "bar" }] },
+      { facet: { field: "geo", type: "nominal" }, spec: { layer: [{ mark: "line" }], width: 240 } },
+    ]) {
+      const out = prepareVegaLite(composite, datasets, "light");
+      expect(out.autosize).toEqual({ type: "pad" });
+      expect(out.width).toBeUndefined();
+    }
+    expect(prepareVegaLite({ vconcat: [], autosize: "none" }, datasets, "light").autosize).toBe("none");
+  });
+
   it("keeps the spec's own width, inline datasets and config overrides", () => {
     const out = prepareVegaLite(
       { mark: "bar", width: 300, datasets: { inline: [{ a: 1 }] }, config: { axis: { labelFontSize: 20 } } },

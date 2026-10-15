@@ -205,6 +205,9 @@ def test_convergence_flags_the_disagreeing_chain(bundle: Any) -> None:
         "ESS tail",
         "status",
     }
+    header = table[table["status"] == "header"]
+    assert header["text"].tolist() == ["parameter", "R-hat", "ESS bulk", "ESS tail", "status"]
+    assert header["x"].is_monotonic_increasing and header["x"].iloc[1] >= 0.5
 
 
 def test_convergence_all_good_and_limits() -> None:
