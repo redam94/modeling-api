@@ -180,7 +180,7 @@ def test_invalid_choices(raw: dict[str, Any], fragment: str) -> None:
 
 def test_choice_from_instances() -> None:
     choice = resolve_choice(Ridge(alpha=3.0, random_state=9))
-    assert choice.kind == "sklearn.Ridge" and choice.params.alpha == 3.0  # type: ignore[union-attr]
+    assert choice.kind == "sklearn.Ridge" and choice.params.alpha == 3.0
     xchoice = resolve_choice(xgb.XGBRegressor(n_estimators=12, max_depth=2))
     assert xchoice.params.n_estimators == 12  # type: ignore[union-attr]
     assert resolve_choice(choice) is choice
