@@ -27,6 +27,9 @@ variables {
     server = "europe-west4-docker.pkg.dev/acme-test-build/mapi-test-images/server@sha256:1111111111111111111111111111111111111111111111111111111111111111"
     web    = "europe-west4-docker.pkg.dev/acme-test-build/mapi-test-images/web@sha256:2222222222222222222222222222222222222222222222222222222222222222"
   }
+  metrics_collector = {
+    image = "europe-west4-docker.pkg.dev/acme-test-build/mapi-test-images/otelcol-google@sha256:3333333333333333333333333333333333333333333333333333333333333333"
+  }
   # `terraform test` needs every ephemeral input set in both phases; with
   # oidc.client_secret_version = 0 (the default) the value is never read.
   oidc_client_secret = "unused"
@@ -218,4 +221,79 @@ run "pooling_needs_enterprise_plus" {
   }
 
   expect_failures = [var.database]
+}
+
+run "metrics_reach_cloud_monitoring" {
+  command = apply
+
+  assert {
+    condition = alltrue([
+      for svc in [google_cloud_run_v2_service.api[0], google_cloud_run_v2_service.events[0]] :
+      length(svc.template[0].containers) == 2 && svc.template[0].containers[1].name == "collector"
+    ])
+    error_message = "api and events run a collector sidecar."
+  }
+
+  assert {
+    condition     = length(google_cloud_run_v2_worker_pool.orchestrator[0].template[0].containers) == 2
+    error_message = "The orchestrator runs a collector sidecar."
+  }
+
+  assert {
+    condition = anytrue([
+      for e in google_cloud_run_v2_worker_pool.orchestrator[0].template[0].containers[0].env :
+      e.name == "MAPI_WORKER_METRICS_PORT" && e.value == "9464"
+    ])
+    error_message = "The orchestrator serves its own series (dispatch, reconcile, finalize)."
+  }
+
+  assert {
+    condition = alltrue([
+      for pair in [
+        [google_cloud_run_v2_service.api[0].template[0].containers[1], "127.0.0.1:8080"],
+        [google_cloud_run_v2_service.events[0].template[0].containers[1], "127.0.0.1:8080"],
+        [google_cloud_run_v2_worker_pool.orchestrator[0].template[0].containers[1], "127.0.0.1:9464"],
+        ] : anytrue([
+          for e in pair[0].env :
+          e.name == "COLLECTOR_CONFIG" && strcontains(e.value, pair[1]) && strcontains(e.value, "googlemanagedprometheus")
+      ])
+    ])
+    error_message = "Each collector scrapes its own workload over loopback and writes to Managed Service for Prometheus."
+  }
+
+  assert {
+    condition = alltrue([
+      for c in [
+        google_cloud_run_v2_service.api[0].template[0].containers[1],
+        google_cloud_run_v2_worker_pool.orchestrator[0].template[0].containers[1],
+        ] : anytrue([
+          for e in c.env : e.name == "MAPI_METRICS_TOKEN" && length(e.value_source) == 1
+      ])
+    ])
+    error_message = "The collector presents the metrics bearer from Secret Manager."
+  }
+}
+
+run "no_collector_without_an_image" {
+  command = apply
+
+  variables {
+    metrics_collector = {}
+  }
+
+  # the release still deploys, with a warning that nothing reaches Cloud Monitoring
+  expect_failures = [check.metrics_collection]
+
+  assert {
+    condition     = length(google_cloud_run_v2_service.api[0].template[0].containers) == 1
+    error_message = "No sidecar until a collector image is configured."
+  }
+
+  assert {
+    condition = anytrue([
+      for e in google_cloud_run_v2_worker_pool.orchestrator[0].template[0].containers[0].env :
+      e.name == "MAPI_WORKER_METRICS_PORT"
+    ])
+    error_message = "The orchestrator serves its metrics either way (a collector can be added later)."
+  }
 }

@@ -46,10 +46,14 @@ ops/
 
 Two series referenced by the alerts are produced outside the server process:
 
-- `mapi_security_probe_unexpected{executor}` — the nightly security suite
-  (`python -m mapi_security run`, `security/README.md`) pushes this to a Pushgateway; a
-  non-zero value means a probe's outcome disagreed with the expected matrix on an enforcing
-  executor.
+- `mapi_security_probe_unexpected{executor}` — written by the nightly security suite
+  (`python -m mapi_security run --metrics FILE`, `security/README.md`). The nightly workflow
+  pushes the file to the Pushgateway at the `MAPI_PUSHGATEWAY_URL` repository secret
+  (grouping `job=mapi_security`, `executor`); Prometheus or Managed Service for Prometheus
+  must scrape that Pushgateway for `MapiSecurityProbeFailure` to see it. Without the secret
+  the series exists only as a workflow artifact, and the red nightly job is the only
+  signal. A non-zero value means a probe's outcome disagreed with the expected matrix on an
+  enforcing executor.
 - `serviceruntime.googleapis.com/api/request_count` (resource `consumed_api`, service
   `run.googleapis.com`, method `…RunJob`, `response_code=429`) — GCP's own count of the
   Admin API's 429s to jobs.run, used by the Cloud Monitoring alert next to the server's
@@ -59,7 +63,9 @@ Two series referenced by the alerts are produced outside the server process:
 
 **Grafana:** Dashboards → Import → upload `dashboards/grafana-mapi-overview.json`, select your
 Prometheus data source. Scrape the API and worker `/metrics` (annotate pods/services, or add a
-static scrape target).
+static scrape target) with the `MAPI_METRICS_TOKEN` bearer. The worker serves `/metrics`
+only with `MAPI_WORKER_METRICS_PORT` set; the dispatcher, reconciler and finalizer series
+(dispatch latency, integrity failures, running executions, jobs.run 429s) exist only there.
 
 **Prometheus alerts:** add `alerts/prometheus-rules.yml` to `rule_files:` (or convert to a
 `PrometheusRule` CRD). Point `runbook` annotations at your rendered copy of `ops/runbooks/`.
@@ -68,9 +74,11 @@ static scrape target).
 `gcloud monitoring dashboards create --config-from-file=dashboards/cloud-monitoring-mapi-overview.json`
 and each alert policy with
 `gcloud alpha monitoring policies create --policy-from-file=…` (the YAML is multi-document —
-split it, or manage via `google_monitoring_alert_policy` in Terraform). Requires Managed
-Service for Prometheus scraping the `mapi_*` series. Replace `${PROJECT_ID}` and notification
-channel ids first.
+split it, or manage via `google_monitoring_alert_policy` in Terraform). The PromQL policies
+need the `mapi_*` series in Managed Service for Prometheus: on GCP the Terraform collector
+sidecar writes them (`metrics_collector_image`, see `docs/operations/gcp-deployment.md`,
+Metrics); without it they have no data and never fire. Replace `${PROJECT_ID}` and
+notification channel ids first.
 
 ## Enabling the signals in the server
 

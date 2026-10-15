@@ -231,6 +231,22 @@ def test_spend_ratio_has_no_value_without_a_cap() -> None:
         assert "clamp_min" not in query and "mapi_global_spend_cap_micros > 0" in query
 
 
+def test_nightly_security_jobs_push_the_probe_metric() -> None:
+    """MapiSecurityProbeFailure reads mapi_security_probe_unexpected, which only the nightly
+    suite produces: both security jobs must push their textfile (to the Pushgateway that
+    Prometheus / Managed Service for Prometheus scrapes), not only upload it."""
+    yaml = pytest.importorskip("yaml")
+    wf = yaml.safe_load((ROOT / ".github" / "workflows" / "nightly.yml").read_text())
+    for job in ("security-local-process", "security-gvisor"):
+        steps = wf["jobs"][job]["steps"]
+        pushes = [s for s in steps if "MAPI_PUSHGATEWAY_URL" in str(s.get("run", ""))]
+        assert pushes, f"{job} does not push its metrics"
+        assert "always()" in str(pushes[0].get("if", "")), f"{job} must push on failure too"
+        assert "secrets.MAPI_PUSHGATEWAY_URL" in str(wf["jobs"][job].get("env", {}))
+    readme = (OPS / "README.md").read_text()
+    assert "MAPI_PUSHGATEWAY_URL" in readme
+
+
 def test_runbook_links_resolve() -> None:
     runbooks = OPS / "runbooks"
     files = {p.name for p in runbooks.glob("*.md")}

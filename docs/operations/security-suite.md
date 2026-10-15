@@ -26,7 +26,9 @@ make security-suite EXECUTOR=docker-gvisor      # sandbox probes inside a gVisor
 `make security-suite` exits non-zero when any outcome is unacceptable for the executor's
 isolation level. It also writes `.local/security-<executor>.prom`, which exports
 `mapi_security_probe_unexpected{executor}` for a textfile collector or a Pushgateway. The
-`MapiSecurityProbeFailure` alert in `ops/alerts/` watches that series.
+`MapiSecurityProbeFailure` alert in `ops/alerts/` watches that series. The nightly workflow
+pushes the file to the Pushgateway named by the `MAPI_PUSHGATEWAY_URL` repository secret;
+without that secret the alert has no data and the failing nightly job is the signal.
 
 ## The probes
 

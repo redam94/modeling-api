@@ -6,9 +6,12 @@
 # source of truth for the thresholds.
 #
 # Two metric sources are used:
-#   * prometheus.googleapis.com/mapi_*   — the /metrics series, scraped by Managed Service
-#     for Prometheus (GMP) from the API and worker (the names below use the PromQL dialect
-#     via a prometheusQueryLanguageCondition).
+#   * prometheus.googleapis.com/mapi_*   — the /metrics series in Managed Service for
+#     Prometheus (GMP), written by the collector sidecar of the api, events and orchestrator
+#     workloads (Terraform var metrics_collector; docs/operations/gcp-deployment.md#metrics).
+#     Without that sidecar these policies have no data and never fire. The security-suite
+#     series arrives through the Pushgateway (ops/README.md). The names below use the PromQL
+#     dialect via a prometheusQueryLanguageCondition.
 #   * serviceruntime.googleapis.com/api/request_count (resource consumed_api) — the Cloud Run
 #     Admin API's own count of RunJob calls by response code, native to GCP, for the jobs.run
 #     429 alert. (Cloud Run *jobs* export no request_count; that metric is for services.)

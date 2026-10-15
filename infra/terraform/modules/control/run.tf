@@ -17,6 +17,14 @@ locals {
   }
 }
 
+# A release without a collector deploys, but nothing reaches Cloud Monitoring: say so.
+check "metrics_collection" {
+  assert {
+    condition     = !local.services_ready || local.collector_enabled
+    error_message = "metrics_collector.image is not set: no mapi_* series reach Managed Service for Prometheus, so the PromQL alert policies and the dashboard stay empty (docs/operations/gcp-deployment.md, Metrics)."
+  }
+}
+
 # Revisions depend on the secret versions and accessor grants they reference, so a revision
 # never starts before its secrets can be read (the depends_on lists below).
 
@@ -61,6 +69,7 @@ resource "google_cloud_run_v2_service" "api" {
     }
 
     containers {
+      name  = "server"
       image = var.images.server
       args  = ["api", "--host", "0.0.0.0", "--port", "8080"]
 
@@ -115,6 +124,38 @@ resource "google_cloud_run_v2_service" "api" {
         period_seconds = 30
       }
     }
+
+    # metrics: scrape /metrics over loopback, write to Managed Service for Prometheus
+    dynamic "containers" {
+      for_each = local.collector_enabled ? ["collector"] : []
+      content {
+        name  = containers.value
+        image = var.metrics_collector.image
+        args  = ["--config=env:COLLECTOR_CONFIG"]
+
+        resources {
+          limits = {
+            cpu    = var.metrics_collector.cpu
+            memory = var.metrics_collector.memory
+          }
+        }
+
+        env {
+          name  = "COLLECTOR_CONFIG"
+          value = local.collector_config.api
+        }
+
+        env {
+          name = "MAPI_METRICS_TOKEN"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.this["metrics-token"].secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+    }
   }
 
   depends_on = [
@@ -161,6 +202,7 @@ resource "google_cloud_run_v2_service" "events" {
     }
 
     containers {
+      name  = "server"
       image = var.images.server
       args  = var.events_args
 
@@ -205,6 +247,38 @@ resource "google_cloud_run_v2_service" "events" {
         }
         period_seconds    = 5
         failure_threshold = 24
+      }
+    }
+
+    # metrics: scrape /metrics over loopback, write to Managed Service for Prometheus
+    dynamic "containers" {
+      for_each = local.collector_enabled ? ["collector"] : []
+      content {
+        name  = containers.value
+        image = var.metrics_collector.image
+        args  = ["--config=env:COLLECTOR_CONFIG"]
+
+        resources {
+          limits = {
+            cpu    = var.metrics_collector.cpu
+            memory = var.metrics_collector.memory
+          }
+        }
+
+        env {
+          name  = "COLLECTOR_CONFIG"
+          value = local.collector_config.events
+        }
+
+        env {
+          name = "MAPI_METRICS_TOKEN"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.this["metrics-token"].secret_id
+              version = "latest"
+            }
+          }
+        }
       }
     }
   }
@@ -320,6 +394,7 @@ resource "google_cloud_run_v2_worker_pool" "orchestrator" {
     }
 
     containers {
+      name  = "server"
       image = var.images.server
       args  = ["worker"]
 
@@ -345,6 +420,38 @@ resource "google_cloud_run_v2_worker_pool" "orchestrator" {
           value_source {
             secret_key_ref {
               secret  = google_secret_manager_secret.this[env.value].secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+    }
+
+    # metrics: scrape /metrics over loopback, write to Managed Service for Prometheus
+    dynamic "containers" {
+      for_each = local.collector_enabled ? ["collector"] : []
+      content {
+        name  = containers.value
+        image = var.metrics_collector.image
+        args  = ["--config=env:COLLECTOR_CONFIG"]
+
+        resources {
+          limits = {
+            cpu    = var.metrics_collector.cpu
+            memory = var.metrics_collector.memory
+          }
+        }
+
+        env {
+          name  = "COLLECTOR_CONFIG"
+          value = local.collector_config.orchestrator
+        }
+
+        env {
+          name = "MAPI_METRICS_TOKEN"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.this["metrics-token"].secret_id
               version = "latest"
             }
           }

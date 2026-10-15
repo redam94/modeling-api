@@ -38,11 +38,21 @@ jobs:
   security-local-process:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # optional: where MapiSecurityProbeFailure reads mapi_security_probe_unexpected from
+      MAPI_PUSHGATEWAY_URL: ${{ secrets.MAPI_PUSHGATEWAY_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --all-packages
       - run: make security-suite EXECUTOR=local-process
+      - name: Push the probe metrics to the Pushgateway
+        if: always() && env.MAPI_PUSHGATEWAY_URL != ''
+        run: |
+          f=.local/security-local-process.prom
+          test -f "$f" || { echo "::warning::$f was not written"; exit 0; }
+          curl --fail --silent --show-error --data-binary @"$f" \
+            "$MAPI_PUSHGATEWAY_URL/metrics/job/mapi_security/executor/local-process"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -54,6 +64,8 @@ jobs:
     # The isolation probes inside a locked-down gVisor container (they must all be BLOCKED).
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      MAPI_PUSHGATEWAY_URL: ${{ secrets.MAPI_PUSHGATEWAY_URL }}
     steps:
       - uses: actions/checkout@v4
       - name: Free disk space for the scientific image
@@ -77,6 +89,13 @@ jobs:
             --build-arg VERSION=${{ steps.meta.outputs.version }} --build-arg VCS_REF=${{ github.sha }} \
             -t mapi/worker:latest .
       - run: make security-suite EXECUTOR=docker-gvisor
+      - name: Push the probe metrics to the Pushgateway
+        if: always() && env.MAPI_PUSHGATEWAY_URL != ''
+        run: |
+          f=.local/security-docker-gvisor.prom
+          test -f "$f" || { echo "::warning::$f was not written"; exit 0; }
+          curl --fail --silent --show-error --data-binary @"$f" \
+            "$MAPI_PUSHGATEWAY_URL/metrics/job/mapi_security/executor/docker-gvisor"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

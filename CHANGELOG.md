@@ -143,6 +143,16 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   exists. The orchestrator's report exports `mapi_executor_running_executions{executor}` from
   the run table; `MapiRunningExecutions70` and a Cloud Monitoring policy on
   `run.googleapis.com/job/running_executions` fire above 700.
+- **infra**: on GCP the `mapi_*` series reach Cloud Monitoring.
+  - The orchestrator serves its own `/metrics` on `127.0.0.1:9464`. Before, the dispatch,
+    reconcile and finalize series had no endpoint in the cloud.
+  - api, events and the orchestrator run a collector sidecar (`metrics_collector_image`, an
+    OpenTelemetry Collector pinned by digest). It scrapes `/metrics` over loopback with the
+    metrics bearer and writes to Managed Service for Prometheus.
+  - Without an image Terraform warns that the alerts and dashboard stay empty.
+  - The nightly security jobs push `mapi_security_probe_unexpected` to the Pushgateway at
+    `MAPI_PUSHGATEWAY_URL`.
+  - `gcp-deployment.md` has a Metrics section.
 - **ops**: three Prometheus rule fixes.
   - `MapiQuota70` is now `MapiQuotaRejections`. It fires on rejections, not at 70 %, and it
     aggregates `by (scope)`, so its summary names the scope.

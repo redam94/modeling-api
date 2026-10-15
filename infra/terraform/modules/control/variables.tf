@@ -234,6 +234,22 @@ variable "events_args" {
   default     = ["api", "--host", "0.0.0.0", "--port", "8080"]
 }
 
+variable "metrics_collector" {
+  description = "The metrics collector sidecar of api, events and orchestrator: an OpenTelemetry Collector (the Google-built otelcol-google, mirrored into Artifact Registry and pinned by digest) that scrapes each workload's /metrics over loopback with the metrics bearer and writes the series to Managed Service for Prometheus. Without an image no mapi_* series reach Cloud Monitoring: the PromQL alert policies and the dashboard stay empty."
+  type = object({
+    image           = optional(string)
+    scrape_interval = optional(string, "30s")
+    cpu             = optional(string, "1")
+    memory          = optional(string, "512Mi")
+  })
+  default = {}
+
+  validation {
+    condition     = var.metrics_collector.image == null || can(regex("^[a-z0-9.-]+(:[0-9]+)?/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$", var.metrics_collector.image))
+    error_message = "metrics_collector.image must be pinned by digest (registry/path@sha256:<64 hex>)."
+  }
+}
+
 variable "extra_env" {
   description = "Additional plain environment variables per workload (api, events, orchestrator, migrate, web). Never put secrets here."
   type        = map(map(string))

@@ -85,3 +85,9 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "metrics_collector_image" {
+  description = "The OpenTelemetry Collector sidecar image (Google-built otelcol-google, mirrored into Artifact Registry) pinned by digest. It ships the mapi_* series to Managed Service for Prometheus; null: no metrics in Cloud Monitoring."
+  type        = string
+  default     = null
+}

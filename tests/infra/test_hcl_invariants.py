@@ -434,3 +434,25 @@ def test_server_workloads_get_only_real_settings() -> None:
         "MAPI_CLOUDRUN_PROJECT", "MAPI_EXECUTOR",
     ):  # fmt: skip
         assert required in names, required
+
+
+def test_every_server_workload_ships_its_metrics_to_cloud_monitoring() -> None:
+    """The orchestrator records the dispatch, reconcile and finalize series in its own
+    process: it must serve them, and each server workload needs a collector that scrapes
+    /metrics (with the bearer) and writes to Managed Service for Prometheus. Nothing else
+    reaches /metrics in the cloud (the load balancer routes only /v1, /auth and health)."""
+    locals_tf = strip_comments((TF_ROOT / "modules" / "control" / "locals.tf").read_text())
+    orchestrator = locals_tf.split("    orchestrator = merge(", 1)[1].split("}, lookup(", 1)[0]
+    assert re.search(r'MAPI_WORKER_METRICS_PORT\s*=\s*"?\d+', orchestrator)
+    assert re.search(r'MAPI_WORKER_METRICS_HOST\s*=\s*"127\.0\.0\.1"', orchestrator)
+    assert "googlemanagedprometheus" in locals_tf
+    assert "${env:MAPI_METRICS_TOKEN}" in locals_tf  # the collector presents the bearer
+    run_tf = strip_comments((TF_ROOT / "modules" / "control" / "run.tf").read_text())
+    for workload in ("api", "events", "orchestrator"):
+        assert f"local.collector_config.{workload}" in run_tf, workload
+    variables = (TF_ROOT / "modules" / "control" / "variables.tf").read_text()
+    block = re.search(r'variable "metrics_collector" \{(.*?)\n\}', variables, re.S)
+    assert block and "sha256:[0-9a-f]{64}" in block.group(1), "the collector is digest-pinned"
+    for env in ENVS:
+        main = (TF_ROOT / "envs" / env / "main.tf").read_text()
+        assert "var.metrics_collector_image" in main, env

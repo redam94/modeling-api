@@ -30,3 +30,7 @@ github_repository = "acme/modeling-api"
 state_bucket      = "acme-mapi-tfstate"
 
 # images: written by deploy/gcp/build-push.sh and passed with -var-file; leave unset here.
+
+# Metrics: the collector sidecar that ships /metrics to Managed Service for Prometheus
+# (docs/operations/gcp-deployment.md, Metrics). Mirror the Google-built collector and pin it.
+# metrics_collector_image = "europe-west4-docker.pkg.dev/acme-mapi-build/mirror/otelcol-google@sha256:<64 hex>"

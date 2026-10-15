@@ -239,6 +239,40 @@ Terraform or read the exec projects' logs from outside it need an access level
 - **`--traffic-only` rollbacks** cover the HTTP services only; the orchestrator and the Jobs
   roll back with a release redeploy.
 
+## Metrics
+
+The alert policies in `ops/alerts/cloud-monitoring-alerts.yaml` and the Cloud Monitoring
+dashboard read the `mapi_*` series from Managed Service for Prometheus. Nothing outside an
+instance can scrape them: the load balancer routes only `/v1`, `/auth/*` and the health
+checks, and the orchestrator has no ingress at all. So each server workload (api, events,
+orchestrator) runs a **collector sidecar**, an OpenTelemetry Collector that scrapes the
+workload's `/metrics` over `127.0.0.1` every 30 s with the `metrics-token` bearer and writes
+the series to Managed Service for Prometheus. The orchestrator serves its own series (dispatch
+latency, finalize outcomes, integrity failures, running executions, jobs.run 429s) on
+`127.0.0.1:9464`. The runtime identities already hold `roles/monitoring.metricWriter`.
+
+Mirror the Google-built collector image into the build project's registry, pin it by digest,
+and set it per environment:
+
+```bash
+gcloud artifacts docker images copy \
+  us-docker.pkg.dev/cloud-ops-agents-artifacts/google-cloud-opentelemetry-collector/otelcol-google:<version> \
+  europe-west4-docker.pkg.dev/<build project>/mirror/otelcol-google:<version>
+# terraform.tfvars
+metrics_collector_image = "europe-west4-docker.pkg.dev/<build project>/mirror/otelcol-google@sha256:<digest>"
+```
+
+Without it, a release still deploys, but Terraform warns (`check.metrics_collection`) and
+no `mapi_*` series reaches Cloud Monitoring. Then the PromQL alerts (integrity failure,
+`STALLED` rate, spend caps) can never fire. `control.metrics_collector` also takes
+`scrape_interval`, `cpu` and `memory`. The api and events services allocate CPU only
+while they serve requests, so an idle instance is scraped late; that is acceptable for
+alerts evaluated over 5 to 15 minutes.
+
+The security-suite series (`mapi_security_probe_unexpected`) comes from the nightly
+workflow, which pushes it to the Pushgateway named by the `MAPI_PUSHGATEWAY_URL` repository
+secret (`ops/README.md`).
+
 ## Day-2 operations
 
 **Rollback.** Two ways:
@@ -298,6 +332,7 @@ server does not read. Plain values:
 | `MAPI_OIDC_ISSUER`, `MAPI_OIDC_CLIENT_ID` | api | Browser sign-in |
 | `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT`, `MAPI_PUBSUB_PUSH_SUBSCRIPTIONS` | events | What a valid Pub/Sub push token must say, and the one subscription allowed to push |
 | `MAPI_EXECUTOR` | orchestrator | `cloudrun-jobs` |
+| `MAPI_WORKER_METRICS_PORT`, `MAPI_WORKER_METRICS_HOST` | orchestrator | `9464` on `127.0.0.1`: the orchestrator's own `/metrics` (dispatch, reconcile, finalize series), for the collector sidecar |
 | `MAPI_CLOUDRUN_PROJECT`, `MAPI_CLOUDRUN_REGION` | orchestrator | The exec pool it dispatches to (`control.dispatch_pool`, default the first non-public pool); its Jobs follow the default `mapi-{env}-{base}-{class}` names |
 | `MAPI_BOOTSTRAP_URL` | Jobs | `gs://mapi-{env}-bootstrap/{nonce}` (set on each Job, read by the runner) |
 
@@ -311,7 +346,7 @@ From Secret Manager (references, resolved when a revision starts):
 | `MAPI_DATABASE_URL` | orchestrator | `db-url-orchestrator` (procrastinate needs LISTEN) |
 | `MAPI_DATABASE_URL` | migrate | `db-url-migrate`: role `mapi_migrate` (schema owner), direct |
 | `MAPI_SERVER_SECRET` | all | The root of the API-token pepper and the audit fingerprint key; rotating it (`control.secret_versions.server_secret`) invalidates every API token |
-| `MAPI_METRICS_TOKEN` | api, events, orchestrator | The bearer Prometheus presents on `GET /metrics` (the multi-tenant profile refuses scrapes without it) |
+| `MAPI_METRICS_TOKEN` | api, events, orchestrator, collector sidecars | The bearer a scraper presents on `GET /metrics` (the multi-tenant profile refuses scrapes without it) |
 | `MAPI_OIDC_CLIENT_SECRET` | api | Only once a client secret version exists |
 
 One orchestrator serves one exec pool. A second pool (for example a separate project for
