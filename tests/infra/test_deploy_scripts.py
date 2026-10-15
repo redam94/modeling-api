@@ -160,7 +160,25 @@ def test_bootstrap_dry_run(bash: str, stubs: Path, tmp_path: Path) -> None:
     assert "--uniform-bucket-level-access" in create and "--public-access-prevention" in create
     assert "gcloud storage buckets update gs://acme-dev-build-mapi-tfstate --versioning" in out
     assert 'bucket = "acme-dev-build-mapi-tfstate"' in out and 'prefix = "mapi/dev"' in out
-    assert calls(stubs) == [], "a dry run executes nothing"
+    # only read-only calls run: whether the state bucket exists decides what the preview shows
+    assert calls(stubs) == [
+        "gcloud storage buckets describe gs://acme-dev-build-mapi-tfstate --project acme-dev-build"
+    ], "a dry run changes nothing"
+
+
+def test_bootstrap_dry_run_previews_an_existing_state_bucket(
+    bash: str, stubs: Path, tmp_path: Path
+) -> None:
+    """The preview matches what a real run would do: no create for a bucket that exists."""
+    describe_ok = stubs / "gcloud"
+    describe_ok.write_text(
+        f'#!/bin/sh\necho "gcloud $*" >> "{stubs.parent / "calls.log"}"\n'
+        'case "$1 $2 $3" in "storage buckets describe") exit 0 ;; esac\nexit 97\n'
+    )
+    res = script(bash, "bootstrap", *BOOTSTRAP, "--dry-run", stubs=stubs, out=tmp_path)
+    assert res.returncode == 0, res.stderr
+    assert "gcloud storage buckets create" not in res.stdout
+    assert "state bucket gs://acme-dev-build-mapi-tfstate exists" in res.stderr
 
 
 def test_bootstrap_needs_an_exec_project(bash: str, stubs: Path, tmp_path: Path) -> None:
@@ -311,6 +329,10 @@ def test_deploy_dry_run(bash: str, stubs: Path, tmp_path: Path) -> None:
     assert "/mapi/staging/releases/" in lines[index("gcloud storage cp")]
     assert "would smoke-test" in res.stdout
     assert calls(stubs) == []
+    # nothing ran, and the summary does not claim otherwise
+    for claim in ("==> migrations applied", "==> release recorded as", "==> deployed 'staging'"):
+        assert claim not in res.stderr, claim
+    assert "dry run: nothing was deployed to 'staging'" in res.stderr
 
 
 def test_deploy_plan_only_stops_after_plan(bash: str, stubs: Path, tmp_path: Path) -> None:
@@ -440,6 +462,7 @@ def test_migrate_dry_run(bash: str, stubs: Path, tmp_path: Path) -> None:
         "--project acme-prod-control --wait"
     ) in res.stdout
     assert calls(stubs) == []
+    assert "migrations applied" not in res.stderr and "dry run" in res.stderr
 
 
 def test_migrate_requires_a_digest(bash: str, stubs: Path, tmp_path: Path) -> None:

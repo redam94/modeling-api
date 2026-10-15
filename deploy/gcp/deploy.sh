@@ -196,7 +196,11 @@ if [[ -f $images_file || $DRY_RUN == 1 ]]; then
     release="$(utc_stamp)-RELEASEID.json"
   fi
   run gcloud storage cp "$images_file" "gs://$bucket/mapi/$env/releases/$release"
-  log "release recorded as $release"
+  if [[ $DRY_RUN == 1 ]]; then
+    log "dry run: the release would be recorded as $release"
+  else
+    log "release recorded as $release"
+  fi
 fi
 
 # ---------------------------------------------------------------------------- 7. smoke test
@@ -237,4 +241,8 @@ elif [[ $DRY_RUN == 1 ]]; then
 else
   smoke
 fi
-log "deployed '$env'"
+if [[ $DRY_RUN == 1 ]]; then
+  log "dry run: nothing was deployed to '$env'"
+else
+  log "deployed '$env'"
+fi
