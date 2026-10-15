@@ -1,0 +1,36 @@
+# Copy to terraform.tfvars (git-ignored) and fill in. Environment policy (sizes, protection,
+# retention) is in main.tf; only names and ids belong here. Never put secrets in this file:
+# pass the OAuth client secret as TF_VAR_oidc_client_secret.
+
+region          = "europe-west4"
+bucket_location = "europe-west4"
+
+projects = {
+  control = "acme-mapi-dev-control"
+  data    = "acme-mapi-dev-data"
+  build   = "acme-mapi-dev-build"
+}
+
+# One exec project is enough in dev; public tenants are not admitted there.
+exec_pools = {
+  paid = { project_id = "acme-mapi-dev-exec", classes = ["S", "M"] }
+}
+
+# Optional in dev: without an organisation access policy the perimeter is skipped (a check
+# warns on every plan). With one, the perimeter runs in dry-run mode.
+# access_policy_id = "123456789012"
+
+# Optional: serve app.dev.example.com and plots.dev.example.net through a load balancer.
+# domains = { web = "app.dev.example.com", plots = "plots.dev.example.net" }
+
+# oidc_client_id             = "1234567890-abc.apps.googleusercontent.com"
+# oidc_client_secret_version = 1   # with TF_VAR_oidc_client_secret set for that apply
+
+github_repository = "acme/modeling-api"
+state_bucket      = "acme-mapi-tfstate"
+
+# images: written by deploy/gcp/build-push.sh and passed with -var-file; leave unset here.
+
+# Metrics: the collector sidecar that ships /metrics to Managed Service for Prometheus
+# (docs/operations/gcp-deployment.md, Metrics). Mirror the Google-built collector and pin it.
+# metrics_collector_image = "europe-west4-docker.pkg.dev/acme-mapi-build/mirror/otelcol-google@sha256:<64 hex>"

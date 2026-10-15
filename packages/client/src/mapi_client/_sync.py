@@ -5,7 +5,8 @@ from __future__ import annotations
 import os
 import time
 import uuid
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, overload
 
@@ -13,16 +14,30 @@ import httpx
 from mapi_spec.api import (
     LAST_EVENT_ID_HEADER,
     MAX_PREFER_WAIT_SECONDS,
+    PROJECT_HEADER,
     SSE_RETRY_MS,
+    AdminUsageReport,
+    ApiToken,
     ArtifactLink,
+    AuditEvent,
     CatalogResponse,
     Dataset,
     DatasetCreate,
     DatasetVersion,
     DatasetVersionCreate,
+    ExecutorEvidence,
+    ExecutorEvidenceUpdate,
+    ExecutorHealth,
+    ExecutorUpdate,
     Health,
     IngestMapping,
+    KillSwitches,
+    KillSwitchUpdate,
     LogLine,
+    Me,
+    Membership,
+    MembershipCreate,
+    MembershipUpdate,
     Model,
     ModelVersion,
     Page,
@@ -30,6 +45,10 @@ from mapi_spec.api import (
     PlotSpec,
     PlotValidateResponse,
     Project,
+    ProjectCreate,
+    ProjectUpdate,
+    QuotaPolicy,
+    QuotaPolicyUpsert,
     Run,
     RunCreate,
     RunEventView,
@@ -40,17 +59,30 @@ from mapi_spec.api import (
     SpecDoc,
     SpecRevision,
     SpecRevisionCreate,
+    Tenant,
+    TenantAdminUpdate,
+    TenantCreate,
+    TenantUpdate,
+    TokenCreate,
+    TokenCreated,
     UploadCreate,
     UploadSession,
+    UsageGroupBy,
+    UsagePeriod,
+    UsageReport,
     ValidateRequest,
     ValidateResponse,
 )
+from mapi_spec.audit import AuditAction, AuditOutcome
 from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
+from mapi_spec.quotas import QuotaLimits, QuotaScope
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
 from mapi_spec.spec import ScoreRequest
+from mapi_spec.tenancy import ProjectRole, TenantStatus, TrustTier
+from mapi_spec.tokens import DEFAULT_TOKEN_TTL_DAYS, BudgetPeriod, TokenStatus
 from pydantic import JsonValue
 
 from mapi_client import _calls as calls
@@ -70,9 +102,9 @@ from mapi_client._common import (
     tree_output,
     version_done,
 )
-from mapi_client._http import Call, RetryPolicy
-from mapi_client.auth import BearerAuth
-from mapi_client.config import ClientConfig, load_config
+from mapi_client._http import Call, RetryPolicy, RetryState
+from mapi_client.auth import default_auth
+from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
 from mapi_client.pagination import Paginator
 from mapi_client.sse import RunEnd, RunEventFrame, RunStreamItem, SseDecoder, to_stream_item
@@ -103,7 +135,10 @@ class Client:
     ...     run = api.runs.wait(run.id)
 
     Settings come from :func:`~mapi_client.config.load_config` unless ``config`` is given
-    (arguments, ``MAPI_URL``/``MAPI_TOKEN``, ``~/.config/mapi/config.toml``, defaults).
+    (arguments, ``MAPI_URL``/``MAPI_TOKEN``/``MAPI_PROJECT``, ``~/.config/mapi/config.toml``,
+    defaults). Credentials: the configured token, else the sign-in ``mapi login`` stored for
+    the profile (see :func:`~mapi_client.auth.default_auth`). ``project``
+    (``<tenant>/<project>``) is sent as ``X-Mapi-Project`` on project-scoped requests.
     """
 
     def __init__(
@@ -111,6 +146,7 @@ class Client:
         base_url: str | None = None,
         *,
         token: str | None = None,
+        project: str | None = None,
         config: ClientConfig | None = None,
         auth: httpx.Auth | None = None,
         transport: httpx.BaseTransport | None = None,
@@ -118,9 +154,11 @@ class Client:
         retry: RetryPolicy | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
-        self.config = config or load_config(url=base_url, token=token)
-        if auth is None and self.config.token is not None:
-            auth = BearerAuth(self.config.token)
+        self.config = config or load_config(url=base_url, token=token, project=project)
+        if config is not None and project is not None:
+            self.config = self.config.with_overrides(project=project)
+        if auth is None:
+            auth = default_auth(self.config)
         self._retry = retry or RetryPolicy(max_retries=self.config.max_retries)
         self._sleep = sleep
         self._http = httpx.Client(
@@ -147,6 +185,10 @@ class Client:
         self.runs = Runs(self)
         self.models = Models(self)
         self.plots = Plots(self)
+        self.tenants = Tenants(self)
+        self.tokens = Tokens(self)
+        self.usage = Usage(self)
+        self.admin = Admin(self)
 
     # ---------------------------------------------------------------------- lifecycle
     def close(self) -> None:
@@ -160,7 +202,27 @@ class Client:
         self.close()
 
     def __repr__(self) -> str:
-        return f"Client(base_url={self.config.base_url!r})"
+        return f"Client(base_url={self.config.base_url!r}, project={self.project!r})"
+
+    # ----------------------------------------------------------------------- project
+    @property
+    def project(self) -> str | None:
+        """The ``X-Mapi-Project`` selector of project-scoped requests."""
+        return self.config.project
+
+    def use(self, project: str | None) -> None:
+        """Select the project for subsequent requests (``<tenant>/<project>``)."""
+        self.config = self.config.with_overrides(
+            project=None if project is None else check_project(project)
+        )
+
+    def scope_headers(self) -> dict[str, str]:
+        """``X-Mapi-Project`` for a project-scoped request (empty without a selection)."""
+        return {PROJECT_HEADER: self.config.project} if self.config.project else {}
+
+    def me(self) -> Me:
+        """``GET /v1/me``: who you are and where you may act (v0.3)."""
+        return self.send(calls.get_me())
 
     # ------------------------------------------------------------------------ health
     def health(self) -> Health:
@@ -173,8 +235,9 @@ class Client:
 
     # ------------------------------------------------------------------------- core
     def send[T](self, call: Call[T]) -> T:
-        """Send one described request with retries for idempotent calls."""
-        attempt = 0
+        """Send one described request; see :class:`RetryPolicy` for what is resent."""
+        state = RetryState()
+        headers = {**self.scope_headers(), **call.headers} if call.scoped else dict(call.headers)
         while True:
             try:
                 response = self._http.request(
@@ -182,22 +245,22 @@ class Client:
                     call.path,
                     params=dict(call.params) or None,
                     json=call.json,
-                    headers=dict(call.headers),
+                    headers=headers,
                     timeout=call_timeout(self.config, call.server_wait),
                 )
             except httpx.TransportError as exc:
-                if self._retry.should_retry(call, attempt, None):
-                    self._sleep(self._retry.delay(attempt))
-                    attempt += 1
+                wait = self._retry.plan(call, state, None)
+                if wait is not None:
+                    self._sleep(wait)
                     continue
                 raise TransportError(
                     f"{call.method} {call.path} failed: {type(exc).__name__}: {exc}"
                 ) from exc
             if response.status_code in call.expect:
                 return call.parse(response)
-            if self._retry.should_retry(call, attempt, response):
-                self._sleep(self._retry.delay(attempt, response))
-                attempt += 1
+            wait = self._retry.plan(call, state, response)
+            if wait is not None:
+                self._sleep(wait)
                 continue
             if response.status_code < 400:
                 raise unexpected(
@@ -578,7 +641,11 @@ class Runs(_Resource):
         failures = 0
         retry_ms = SSE_RETRY_MS
         while True:
-            headers = {"Accept": "text/event-stream", "Cache-Control": "no-cache"}
+            headers = {
+                "Accept": "text/event-stream",
+                "Cache-Control": "no-cache",
+                **self._c.scope_headers(),
+            }
             if last is not None:
                 headers[LAST_EVENT_ID_HEADER] = str(last)
             cause: BaseException | None = None
@@ -781,3 +848,329 @@ class Plots(_Resource):
     def validate(self, spec: PlotSpec | Mapping[str, Any]) -> PlotValidateResponse:
         plot = spec if isinstance(spec, PlotSpec) else PlotSpec.model_validate(dict(spec))
         return self._c.send(calls.validate_plot(plot))
+
+
+# ====================================================================== M2 resources (v0.3)
+
+
+class Tenants(_Resource):
+    """Tenants the caller belongs to: projects, members, usage and audit (v0.3)."""
+
+    def list(self, *, limit: int | None = None) -> Paginator[Tenant]:
+        return self._c.page_iter(lambda cur: calls.list_tenants(limit, cur))
+
+    def get(self, tenant_id: str) -> Tenant:
+        return self._c.send(calls.get_tenant(tenant_id))
+
+    def rename(self, tenant_id: str, name: str) -> Tenant:
+        """Change the display name (tenant admins)."""
+        return self._c.send(calls.update_tenant(tenant_id, TenantUpdate(name=name)))
+
+    def projects(self, tenant_id: str, *, limit: int | None = None) -> Paginator[Project]:
+        return self._c.page_iter(lambda cur: calls.list_tenant_projects(tenant_id, limit, cur))
+
+    def create_project(
+        self, tenant_id: str, project_id: str, name: str, *, description: str | None = None
+    ) -> Project:
+        body = ProjectCreate(id=project_id, name=name, description=description)
+        return self._c.send(calls.create_project(tenant_id, body))
+
+    def update_project(
+        self,
+        tenant_id: str,
+        project_id: str,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Project:
+        fields = {k: v for k, v in (("name", name), ("description", description)) if v}
+        body = ProjectUpdate.model_validate(fields)
+        return self._c.send(calls.update_project(tenant_id, project_id, body))
+
+    def delete_project(self, tenant_id: str, project_id: str) -> None:
+        """Delete an empty project (``CONFLICT`` while it holds data)."""
+        self._c.send(calls.delete_project(tenant_id, project_id))
+
+    def members(
+        self, tenant_id: str, project_id: str | None = None, *, limit: int | None = None
+    ) -> Paginator[Membership]:
+        """Tenant-wide members, or the members of one project (incl. tenant-wide grants)."""
+        return self._c.page_iter(lambda cur: calls.list_members(tenant_id, project_id, limit, cur))
+
+    def add_member(
+        self,
+        tenant_id: str,
+        role: ProjectRole | str,
+        *,
+        project_id: str | None = None,
+        principal_id: str | None = None,
+        email: str | None = None,
+    ) -> Membership:
+        """Grant ``role`` to a known principal or invite an ``email``."""
+        body = MembershipCreate(principal_id=principal_id, email=email, role=ProjectRole(role))
+        return self._c.send(calls.add_member(tenant_id, project_id, body))
+
+    def set_role(
+        self,
+        tenant_id: str,
+        principal_id: str,
+        role: ProjectRole | str,
+        *,
+        project_id: str | None = None,
+    ) -> Membership:
+        body = MembershipUpdate(role=ProjectRole(role))
+        return self._c.send(calls.update_member(tenant_id, project_id, principal_id, body))
+
+    def remove_member(
+        self, tenant_id: str, principal_id: str, *, project_id: str | None = None
+    ) -> None:
+        self._c.send(calls.remove_member(tenant_id, project_id, principal_id))
+
+    def usage(
+        self,
+        tenant_id: str,
+        *,
+        period: UsagePeriod | None = None,
+        start: datetime | None = None,
+        group_by: UsageGroupBy | None = None,
+    ) -> UsageReport:
+        """Cost and quotas of the whole tenant (tenant admins)."""
+        return self._c.send(
+            calls.get_tenant_usage(tenant_id, period=period, start=start, group_by=group_by)
+        )
+
+    def audit(
+        self,
+        tenant_id: str,
+        *,
+        limit: int | None = None,
+        project_id: str | None = None,
+        actor_id: str | None = None,
+        action: AuditAction | str | None = None,
+        outcome: AuditOutcome | str | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
+    ) -> Paginator[AuditEvent]:
+        """The tenant's audit log (tenant admins)."""
+        return self._c.page_iter(
+            lambda cur: calls.list_tenant_audit(
+                tenant_id,
+                limit,
+                cur,
+                project_id=project_id,
+                actor_id=actor_id,
+                action=action,
+                outcome=outcome,
+                since=since,
+                until=until,
+            )
+        )
+
+
+class Tokens(_Resource):
+    """API tokens of the selected project. Secrets are returned once, by :meth:`create`."""
+
+    def list(
+        self,
+        *,
+        all_owners: bool = False,
+        status: TokenStatus | str | None = None,
+        limit: int | None = None,
+    ) -> Paginator[ApiToken]:
+        """Your tokens (``all_owners``: everyone's, project admins)."""
+        return self._c.page_iter(
+            lambda cur: calls.list_tokens(limit, cur, all_owners=all_owners, status=status)
+        )
+
+    def create(
+        self,
+        name: str,
+        scopes: Sequence[str],
+        *,
+        expires_in_days: int = DEFAULT_TOKEN_TTL_DAYS,
+        rate_limit_per_minute: int | None = None,
+        vcpu_seconds_budget: float | None = None,
+        budget_period: BudgetPeriod | str = BudgetPeriod.MONTH,
+    ) -> TokenCreated:
+        """Mint a token. ``TokenCreated.secret`` is the only copy of the secret: store it.
+
+        The request is never resent after a lost response (that could mint two tokens).
+        """
+        body = TokenCreate(
+            name=name,
+            scopes=list(scopes),
+            expires_in_days=expires_in_days,
+            rate_limit_per_minute=rate_limit_per_minute,
+            vcpu_seconds_budget=vcpu_seconds_budget,
+            budget_period=BudgetPeriod(budget_period),
+        )
+        return self._c.send(calls.create_token(body))
+
+    def get(self, token_id: str) -> ApiToken:
+        return self._c.send(calls.get_token(token_id))
+
+    def revoke(self, token_id: str) -> None:
+        """Revoke a token (idempotent)."""
+        self._c.send(calls.revoke_token(token_id))
+
+
+class Usage(_Resource):
+    """Metered cost and quota headroom (v0.3)."""
+
+    def get(
+        self,
+        *,
+        period: UsagePeriod | None = None,
+        start: datetime | None = None,
+        group_by: UsageGroupBy | None = None,
+    ) -> UsageReport:
+        """The selected project's usage for a UTC day or month (default: this month)."""
+        return self._c.send(calls.get_usage(period=period, start=start, group_by=group_by))
+
+    def tenant(
+        self,
+        tenant_id: str,
+        *,
+        period: UsagePeriod | None = None,
+        start: datetime | None = None,
+        group_by: UsageGroupBy | None = None,
+    ) -> UsageReport:
+        """The whole tenant's usage (tenant admins)."""
+        return self._c.tenants.usage(tenant_id, period=period, start=start, group_by=group_by)
+
+
+class Admin(_Resource):
+    """Platform operator endpoints (``/v1/admin``). Every change is audited."""
+
+    def tenants(
+        self,
+        *,
+        status: TenantStatus | str | None = None,
+        trust_tier: TrustTier | str | None = None,
+        limit: int | None = None,
+    ) -> Paginator[Tenant]:
+        return self._c.page_iter(
+            lambda cur: calls.admin_list_tenants(limit, cur, status=status, trust_tier=trust_tier)
+        )
+
+    def tenant(self, tenant_id: str) -> Tenant:
+        return self._c.send(calls.admin_get_tenant(tenant_id))
+
+    def create_tenant(self, body: TenantCreate | Mapping[str, Any]) -> Tenant:
+        tc = body if isinstance(body, TenantCreate) else TenantCreate.model_validate(dict(body))
+        return self._c.send(calls.admin_create_tenant(tc))
+
+    def update_tenant(self, tenant_id: str, body: TenantAdminUpdate | Mapping[str, Any]) -> Tenant:
+        """Change a tenant's tier, status (``status_reason`` required) or residency."""
+        upd = (
+            body
+            if isinstance(body, TenantAdminUpdate)
+            else TenantAdminUpdate.model_validate(dict(body))
+        )
+        return self._c.send(calls.admin_update_tenant(tenant_id, upd))
+
+    def quotas(
+        self,
+        *,
+        scope: QuotaScope | str | None = None,
+        subject_id: str | None = None,
+        limit: int | None = None,
+    ) -> Paginator[QuotaPolicy]:
+        return self._c.page_iter(
+            lambda cur: calls.admin_list_quotas(limit, cur, scope=scope, subject_id=subject_id)
+        )
+
+    def set_quota(
+        self,
+        scope: QuotaScope | str,
+        subject_id: str,
+        limits: QuotaLimits | Mapping[str, Any],
+        *,
+        note: str | None = None,
+    ) -> QuotaPolicy:
+        """Create or replace the policy of ``(scope, subject_id)`` (unset limits: none)."""
+        body = QuotaPolicyUpsert(
+            scope=QuotaScope(scope),
+            subject_id=subject_id,
+            limits=limits
+            if isinstance(limits, QuotaLimits)
+            else QuotaLimits.model_validate(dict(limits)),
+            note=note,
+        )
+        return self._c.send(calls.admin_put_quota(body))
+
+    def delete_quota(self, scope: QuotaScope | str, subject_id: str) -> None:
+        """Remove a policy (the tier default applies again)."""
+        self._c.send(calls.admin_delete_quota(scope, subject_id))
+
+    def kill_switches(self) -> KillSwitches:
+        return self._c.send(calls.admin_get_kill_switches())
+
+    def set_kill_switches(self, update: KillSwitchUpdate | Mapping[str, Any]) -> KillSwitches:
+        """Flip kill switches (``reason`` is required and audited)."""
+        body = (
+            update
+            if isinstance(update, KillSwitchUpdate)
+            else KillSwitchUpdate.model_validate(dict(update))
+        )
+        return self._c.send(calls.admin_put_kill_switches(body))
+
+    def executors(self, *, limit: int | None = None) -> Paginator[ExecutorHealth]:
+        return self._c.page_iter(lambda cur: calls.admin_list_executors(limit, cur))
+
+    def executor(self, name: str) -> ExecutorHealth:
+        return self._c.send(calls.admin_get_executor(name))
+
+    def executor_evidence(self, name: str) -> ExecutorEvidence:
+        """The conformance and security-suite reports recorded for an executor."""
+        return self._c.send(calls.admin_get_executor_evidence(name))
+
+    def record_executor_evidence(
+        self, name: str, update: ExecutorEvidenceUpdate | Mapping[str, Any]
+    ) -> ExecutorEvidence:
+        """Record suite results; shared tiers need both, passing, for the current caps."""
+        body = (
+            update
+            if isinstance(update, ExecutorEvidenceUpdate)
+            else ExecutorEvidenceUpdate.model_validate(dict(update))
+        )
+        return self._c.send(calls.admin_put_executor_evidence(name, body))
+
+    def usage(
+        self, *, period: str | None = None, start: datetime | str | None = None
+    ) -> AdminUsageReport:
+        """Cost by tenant for a UTC ``day`` or ``month`` and spend against the global cap."""
+        return self._c.send(calls.admin_get_usage(period=period, start=start))
+
+    def set_executor(self, name: str, *, enabled: bool, reason: str) -> ExecutorHealth:
+        """Enable or disable an executor (``reason`` is required and audited). A disabled
+        executor gets no new runs; runs already on it keep running."""
+        body = ExecutorUpdate(enabled=enabled, reason=reason)
+        return self._c.send(calls.admin_put_executor(name, body))
+
+    def audit(
+        self,
+        *,
+        limit: int | None = None,
+        tenant_id: str | None = None,
+        project_id: str | None = None,
+        actor_id: str | None = None,
+        action: AuditAction | str | None = None,
+        outcome: AuditOutcome | str | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
+    ) -> Paginator[AuditEvent]:
+        """The platform audit log."""
+        return self._c.page_iter(
+            lambda cur: calls.admin_list_audit(
+                limit,
+                cur,
+                tenant_id=tenant_id,
+                project_id=project_id,
+                actor_id=actor_id,
+                action=action,
+                outcome=outcome,
+                since=since,
+                until=until,
+            )
+        )

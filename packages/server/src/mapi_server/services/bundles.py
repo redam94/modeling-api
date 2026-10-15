@@ -29,7 +29,7 @@ from pydantic import ValidationError
 
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
-from mapi_server.services.signing import BundleSigner
+from mapi_server.services.signing import ManifestSigner
 
 __all__ = [
     "BUNDLE_INPUT_OBJECTS",
@@ -52,7 +52,7 @@ class BundleIntegrityError(MapiError):
     default_code = ErrorCode.INTEGRITY_FAILURE
 
 
-def verified_manifest(signer: BundleSigner, mv: m.ModelVersion) -> BundleManifest:
+def verified_manifest(signer: ManifestSigner, mv: m.ModelVersion) -> BundleManifest:
     """The model version's manifest, only if its signature and identity check out."""
     try:
         manifest = BundleManifest.model_validate(mv.manifest)
@@ -72,7 +72,7 @@ def verified_manifest(signer: BundleSigner, mv: m.ModelVersion) -> BundleManifes
 
 
 async def verified_bundle_object(
-    store: ObjectStore, signer: BundleSigner, mv: m.ModelVersion, name: str
+    store: ObjectStore, signer: ManifestSigner, mv: m.ModelVersion, name: str
 ) -> BundleObject:
     manifest = verified_manifest(signer, mv)
     obj = manifest.objects.get(name)
@@ -88,7 +88,7 @@ async def verified_bundle_object(
 
 
 async def verify_bundle_inputs(
-    store: ObjectStore, signer: BundleSigner, mv: m.ModelVersion, inputs: Mapping[str, Any]
+    store: ObjectStore, signer: ManifestSigner, mv: m.ModelVersion, inputs: Mapping[str, Any]
 ) -> None:
     """Raise :class:`BundleIntegrityError` unless every bundle input of a run is exactly the
     object the model version's signed manifest records (bucket, key and generation), and that

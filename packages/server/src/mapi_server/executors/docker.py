@@ -4,9 +4,11 @@ Each attempt is a fresh container from the base image that ships the run's model
 (``images`` maps the plugin namespace from :data:`~mapi_spec.executor.PLUGIN_LABEL` to an
 image; everything else uses ``image``) with: no network (only usable with a non-network
 bootstrap transport), the GCS shim's network namespace (``container:<shim>``, the compose
-setup) or an internal network holding only the shim, a read-only root filesystem with a size-capped
-``/tmp`` tmpfs, ``no-new-privileges``, pids/CPU/memory limits from the resource class, and
-optionally the gVisor runtime (``runsc``).
+setup) or an internal network holding only the shim (declare it with ``network_isolated`` /
+``MAPI_DOCKER_NETWORK_ISOLATED`` so the caps report enforced egress and DNS; the shared-tier
+gate then checks the security suite's network probes), a read-only root filesystem with a
+size-capped ``/tmp`` tmpfs, ``no-new-privileges``, pids/CPU/memory limits from the resource
+class, and optionally the gVisor runtime (``runsc``).
 
 **Uid split (plan §8.1).** The supervisor starts as root with every capability dropped except
 the few the split needs (``CHOWN``/``FOWNER`` for the worker's scratch directory,
@@ -98,6 +100,7 @@ class DockerExecutor:
         exec_token: str | None = None,
         command: list[str] | None = None,
         network: str = "none",
+        network_isolated: bool = False,
         gvisor: bool = False,
         gvisor_runtime: str = "runsc",
         user: str = "0:0",
@@ -112,6 +115,7 @@ class DockerExecutor:
         self._token = exec_token
         self._command = command
         self._network = network
+        self._network_isolated = network == "none" or network_isolated
         self._gvisor = gvisor
         self._runtime = gvisor_runtime
         self._user = user
@@ -153,8 +157,10 @@ class DockerExecutor:
         strong = self._gvisor and self.splits_uids  # dev mode is never a gVisor-grade boundary
         return ExecutorCaps(
             isolation=Isolation.GVISOR if strong else Isolation.PROCESS,
-            egress_enforced=self._network == "none",
-            dns_enforced=self._network == "none",
+            # "none", or a network the operator declared isolated (internal, only the shim):
+            # the shared-tier gate also wants the security suite's network probes blocked
+            egress_enforced=self._network_isolated,
+            dns_enforced=self._network_isolated,
             max_runtime=Duration(24 * 3600),
             classes=[ResourceClass.S, ResourceClass.M, ResourceClass.L],
             max_tasks=1,

@@ -24,6 +24,8 @@ from collections.abc import AsyncIterator, Mapping
 from enum import StrEnum
 from typing import Any
 
+from mapi_spec.audit import AuditAction, AuditOutcome, make_audit_event
+from mapi_spec.errors import ErrorCode
 from mapi_spec.executor import RunEvent
 from mapi_spec.run import (
     Actor,
@@ -39,6 +41,7 @@ from mapi_spec.run import (
     parse_payload,
     verify_event,
 )
+from mapi_spec.tenancy import PrincipalKind, ResourceKind
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -46,7 +49,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.executors.cloudrun import same_execution
 from mapi_server.jsonlimits import loads_limited
+from mapi_server.observability import metrics as obs_metrics
+from mapi_server.services.audit import add_audit
 from mapi_server.services.notify import notify_run
 from mapi_server.services.runs import append_event, apply_transition, now
 
@@ -101,6 +107,17 @@ def _stream_label(payload: BaseModel) -> str:
     return payload.stream if isinstance(payload, LogPayload) else ""
 
 
+def _violation_reason(why: str) -> str:
+    """Map a violation message to a bounded metric label."""
+    if "HMAC" in why:
+        return "bad_hmac"
+    if "execution label" in why:
+        return "identity_mismatch"
+    if "payload" in why:
+        return "bad_payload"
+    return "other"
+
+
 class EventIngestor:
     """Verifies and persists run events; shared by the pipe pump and the HTTP endpoint."""
 
@@ -108,7 +125,24 @@ class EventIngestor:
         self.ctx = ctx
 
     async def ingest(self, event: RunEvent, *, execution: str | None = None) -> IngestResult:
-        async with self.ctx.db.session() as session:
+        """Verify, deduplicate and persist one event, recording the outcome to metrics."""
+        result = await self._ingest(event, execution=execution)
+        obs_metrics.record_event_ingested(result.value)
+        if result is IngestResult.ACCEPTED:
+            obs_metrics.record_ingestion_lag((now() - event.ts).total_seconds())
+        return result
+
+    async def _ingest(self, event: RunEvent, *, execution: str | None = None) -> IngestResult:
+        # Only the run's tenant is looked up on the platform session (the events service
+        # holds no row-level-security bypass); everything else happens in a tenant session.
+        async with self.ctx.db.session() as lookup:
+            tenant_id = (
+                await lookup.execute(select(m.Run.tenant_id).where(m.Run.id == event.run_id))
+            ).scalar_one_or_none()
+        if tenant_id is None:
+            log.warning("event for unknown run %s", event.run_id)
+            return IngestResult.UNKNOWN_ATTEMPT
+        async with self.ctx.db.tenant_session(tenant_id) as session:
             attempt = await session.get(m.RunAttempt, (event.run_id, event.attempt))
             if attempt is None:
                 log.warning("event for unknown run/attempt %s/%s", event.run_id, event.attempt)
@@ -116,7 +150,7 @@ class EventIngestor:
             if not verify_event(event, attempt.hmac_key):
                 await self._violation(session, attempt, "event HMAC verification failed")
                 return IngestResult.BAD_HMAC
-            if execution is not None and attempt.external_id not in (None, execution):
+            if not same_execution(attempt.external_id, execution):
                 await self._violation(session, attempt, "event execution label mismatch")
                 return IngestResult.IDENTITY_MISMATCH
             try:
@@ -146,12 +180,43 @@ class EventIngestor:
 
     async def _violation(self, session: AsyncSession, attempt: m.RunAttempt, why: str) -> None:
         log.warning(
-            "sandbox violation on run %s attempt %s: %s", attempt.run_id, attempt.attempt, why
+            "sandbox violation on run %s attempt %s: %s",
+            attempt.run_id,
+            attempt.attempt,
+            why,
+            extra={"security_alert": True, "run_id": attempt.run_id},
         )
+        obs_metrics.record_sandbox_violation(_violation_reason(why))
         await session.execute(
             update(m.RunAttempt)
             .where(m.RunAttempt.run_id == attempt.run_id, m.RunAttempt.attempt == attempt.attempt)
             .values(violations=m.RunAttempt.violations + 1)
+        )
+        # an authenticated push (or pipe line) whose event does not verify is a security
+        # signal in the run's tenant: audit it there (the operator and the tenant see it)
+        owner = (
+            await session.execute(
+                select(m.Run.tenant_id, m.Run.project_id).where(m.Run.id == attempt.run_id)
+            )
+        ).one_or_none()
+        await add_audit(
+            session,
+            [
+                make_audit_event(
+                    action=AuditAction.EVENT_REJECTED,
+                    resource_kind=ResourceKind.RUN,
+                    outcome=AuditOutcome.DENIED,
+                    ts=now(),
+                    fingerprint_key=b"",  # no client data to fingerprint
+                    tenant_id=owner.tenant_id if owner else None,
+                    project_id=owner.project_id if owner else None,
+                    actor_kind=PrincipalKind.SERVICE,
+                    actor_id=f"svc_{Actor.EVENTS.value}",
+                    resource_id=attempt.run_id,
+                    code=ErrorCode.SANDBOX_VIOLATION,
+                    details={"attempt": attempt.attempt, "reason": _violation_reason(why)},
+                )
+            ],
         )
 
     async def _persist(

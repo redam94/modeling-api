@@ -162,6 +162,8 @@ def _source_files() -> Iterator[Path]:
         for path in (ROOT / top).rglob("*"):
             if SKIP_PARTS.intersection(path.relative_to(ROOT).parts) or not path.is_file():
                 continue
+            if path.name == "gen_docs_platform.py":  # names variables to explain them
+                continue
             if path.suffix in TEXT_SUFFIXES or path.name == "Dockerfile":
                 yield path
 
@@ -192,6 +194,58 @@ def test_configuration_reference_names_every_variable() -> None:
         if f"`MAPI_{field.upper()}`" not in page:
             missing.append(f"MAPI_{field.upper()} (mapi_server.settings.Settings)")
     assert not missing, "document these in docs/operations/configuration.md:\n" + "\n".join(missing)
+
+
+def test_generated_platform_pages(tmp_path: Path) -> None:
+    """Permissions, metrics, alerts, runbooks and the variable index come from the code."""
+    from mapi_server.observability.metrics import Metrics
+    from mapi_spec.tenancy import PERMISSIONS, ResourceKind
+
+    gen = _load("gen_docs_platform.py")
+    assert set(gen.RESOURCE_LABELS) == {r.value for r in ResourceKind}
+    assert gen.generate(tmp_path), "the generator wrote nothing"
+    frag = tmp_path / "fragments"
+
+    matrix = (frag / "roles-matrix.md").read_text("utf-8")
+    rows = [ln for ln in matrix.splitlines() if ln.startswith("| ") and "---" not in ln]
+    assert len(rows) == len(PERMISSIONS) + 1  # the header
+    assert "`kill_switch`" in matrix and "internal services only" in matrix
+    assert "`models:read`" in (frag / "token-scopes.md").read_text("utf-8")
+    assert "`public` | isolation ≥ gvisor" in (frag / "trust-tiers.md").read_text("utf-8")
+
+    metrics = (frag / "metrics.md").read_text("utf-8")
+    exported = Metrics().render().decode()
+    for name in re.findall(r"^\| `(mapi_[a-z_]+)`", metrics, re.M):
+        assert f"# TYPE {name} " in exported, name
+    assert metrics.count("\n| `mapi_") >= 15
+
+    alerts = (frag / "alerts.md").read_text("utf-8")
+    assert "`MapiIntegrityFailure` | page" in alerts and "{{" not in alerts
+    runbooks = (frag / "runbooks.md").read_text("utf-8")
+    assert all(f"`{p.relative_to(ROOT).as_posix()}`" in runbooks
+               for p in (ROOT / "ops" / "runbooks").glob("*.md"))  # fmt: skip
+
+    env = (tmp_path / "environment-variables.md").read_text("utf-8")
+    unexplained = [
+        ln for ln in env.splitlines() if ln.startswith("| `MAPI_") and ln.endswith("| — |")
+    ]
+    assert not unexplained, (
+        "explain these in configuration.md (or gen_docs_platform.NOT_READ):\n"
+        + ("\n".join(unexplained))
+    )
+    assert gen.generate(tmp_path) == [], "regenerating unchanged content must not rewrite files"
+
+
+def test_every_generated_fragment_marker_exists() -> None:
+    gen = _load("gen_docs_platform.py")
+    names = set(gen.fragment_names())
+    used = set()
+    for page in DOCS.rglob("*.md"):
+        used |= set(
+            re.findall(r"^<!-- generated: ([a-z0-9-]+) -->$", page.read_text("utf-8"), re.M)
+        )
+    assert used <= names, f"pages embed unknown fragments: {sorted(used - names)}"
+    assert used == names, f"fragments no page embeds: {sorted(names - used)}"
 
 
 # ---------------------------------------------------------------------- OpenAPI explorer
@@ -232,6 +286,7 @@ def test_screenshots_are_small_and_used() -> None:
 @pytest.fixture(scope="module")
 def stack(tmp_path_factory: pytest.TempPathFactory) -> Iterator[tuple[Path, dict[str, str]]]:
     """A working directory with the demo files, against the running stack (make dev)."""
+    from mapi_conformance.stack import stack_auth
     from mapi_spec.localdev import LocalDev
 
     local = LocalDev.from_environ(os.environ)
@@ -244,6 +299,15 @@ def stack(tmp_path_factory: pytest.TempPathFactory) -> Iterator[tuple[Path, dict
     (work / "scripts").symlink_to(ROOT / "scripts", target_is_directory=True)
     env = _env(MAPI_API_URL=local.api_url)
     env.pop("MAPI_PROFILE", None)
+    # a stack that requires sign-in (the dev profile of `make dev`): the walkthroughs run as
+    # MAPI_TOKEN in MAPI_PROJECT, exactly as their docs tell a reader to
+    data_dir = Path(local.data_dir)
+    auth = stack_auth(
+        local.api_url, data_dir=data_dir if data_dir.is_absolute() else ROOT / data_dir
+    )
+    if auth.token:
+        env["MAPI_TOKEN"] = auth.token
+        env["MAPI_PROJECT"] = auth.project or "default/default"
     for args in (
         [sys.executable, "scripts/seed.py", "--export", "demo/"],
         [sys.executable, "scripts/seed.py"],
@@ -295,3 +359,55 @@ def test_remote_cli_walkthrough(stack: tuple[Path, dict[str, str]]) -> None:
     out = _bash(SNIPPETS / "cli_remote.sh", work, env, timeout=1800)
     assert "valid (remote checks" in out
     assert "wrote forecast.zarr.zip" in out
+
+
+def _dev_stack_env(tmp_path: Path, **extra: str) -> dict[str, str]:
+    """The environment of a walkthrough that signs in through the dev profile's IdP."""
+    from mapi_spec.localdev import LocalDev
+
+    local = LocalDev.from_environ(os.environ)
+    try:
+        me = httpx.get(f"{local.api_url.rstrip('/')}/v1/me", timeout=5)
+    except httpx.HTTPError as exc:  # pragma: no cover - depends on the stack
+        pytest.fail(f"the API at {local.api_url} is not reachable ({exc}); run make dev first")
+    if me.status_code != 401:
+        pytest.skip("the walkthrough needs a stack that requires sign-in (the dev profile)")
+    env = _env(
+        MAPI_API_URL=local.api_url,
+        MAPI_CONFIG=str(tmp_path / "config.toml"),
+        MAPI_CREDENTIALS=str(tmp_path / "credentials.json"),
+        **extra,
+    )
+    for name in ("MAPI_PROFILE", "MAPI_TOKEN", "MAPI_PROJECT", "MAPI_URL"):
+        env.pop(name, None)
+    return env
+
+
+@pytest.mark.e2e
+@pytest.mark.integration
+@needs_shell
+def test_admin_walkthrough(tmp_path: Path) -> None:
+    """The Administration guide, as the dev profile's operator and a tenant admin."""
+    import secrets
+
+    env = _dev_stack_env(tmp_path, TENANT=f"docs-{secrets.token_hex(3)}")
+    out = _bash(SNIPPETS / "admin_tour.sh", tmp_path, env, timeout=600)
+    assert env["TENANT"] in out and "growth" in out
+    assert "viewer@dev.local\trunner\tgrowth" in out
+    assert "analyst@dev.local\tadmin\t(tenant-wide)" in out
+    assert "Revoked tok_" in out
+    assert "admin tour: done" in out
+
+
+@pytest.mark.e2e
+@pytest.mark.integration
+@needs_shell
+def test_auth_walkthrough(tmp_path: Path) -> None:
+    """The Authentication guide: a sign-in, a token, what its scopes allow, revocation."""
+    out = _bash(SNIPPETS / "auth_tour.sh", tmp_path, _dev_stack_env(tmp_path), timeout=300)
+    lines = out.splitlines()
+    assert lines[0] == "anonymous: 401"
+    assert '"auth":"session"' in lines[1] and '"auth":"token"' in out
+    assert out.count('{"status":403,"code":"FORBIDDEN"}') == 3
+    assert "revoke: 204" in out
+    assert lines[-1] == '{"status":401,"code":"UNAUTHENTICATED"}'

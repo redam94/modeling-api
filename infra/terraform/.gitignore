@@ -1,0 +1,17 @@
+# Local, per-operator files: never committed.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+terraform.tfvars
+*.auto.tfvars
+*.auto.tfvars.json
+backend.hcl
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# The provider lock files ARE committed (.terraform.lock.hcl).

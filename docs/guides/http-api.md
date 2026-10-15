@@ -21,6 +21,12 @@ Start the stack and load the demo first: `make dev`, `make seed`,
 `uv run mapi datasets upload demo/eu_media_future.zarr.zip --name eu_media_future`
 (see the [quickstart](../getting-started/quickstart.md)).
 
+From v0.3, `make dev` requires sign-in. Set `MAPI_TOKEN` to an API token (the web app's
+Tokens page, or `mapi tokens create`) and `MAPI_PROJECT` to the `<tenant>/<project>` it acts
+in. The script's `api` function then adds `Authorization: Bearer …` and `X-Mapi-Project` to
+every API call. It never sends them to signed storage URLs, which carry their own
+authorization. See [authentication](../operations/authentication.md).
+
 ## Health and the catalog
 
 ```bash
@@ -28,7 +34,7 @@ Start the stack and load the demo first: `make dev`, `make seed`,
 ```
 
 ```text
-{"status":"ok","version":"0.2.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
+{"status":"ok","version":"0.3.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
 mmm.hierarchical_geo@1.3.0  draws
 mmm.pymc_marketing@1.0.0  draws
 sklearn.tabular_bootstrap@1.0.0  draws

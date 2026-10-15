@@ -1,10 +1,14 @@
-# Cloud and multi-tenant core <span class="mapi-badge mapi-badge--soon">coming in v0.3</span>
+# Cloud and multi-tenant core <span class="mapi-badge">v0.3</span>
 
-!!! abstract "Status: next (milestone M2)"
-    v0.3 runs fits and scores in the cloud, one fresh sandbox per run, and makes the platform
-    multi-tenant for a private beta. The run protocol it uses (bootstrap object, signed
-    events, verified outputs, signed bundle manifests) already runs locally in
-    [v0.2](platform-api.md); v0.3 replaces the local pieces with their cloud counterparts.
+!!! abstract "Status: this release (milestone M2), a private beta"
+    v0.3 makes the platform multi-tenant and gives it a cloud execution backend: one fresh
+    sandbox per run on Cloud Run Jobs. The run protocol (bootstrap object, signed events,
+    verified outputs, signed bundle manifests) is the one that already ran locally in
+    [v0.2](platform-api.md); v0.3 adds the cloud counterparts of the local pieces.
+    Everything multi-tenant runs on a laptop too (`make dev`). The cloud pieces are tested
+    against fakes, and a [short checklist](../operations/gcp-deployment.md#before-you-start-the-verify-m0-checklist)
+    of cloud behaviours waits for a real project. To use it: [Administration](../guides/administration.md),
+    [Authentication](../guides/authentication.md), [Deploy to Google Cloud](../operations/gcp-deployment.md).
 
 ## One sandbox per run
 
@@ -34,14 +38,14 @@ flowchart TB
   preempted fit resumes where it stopped. (Checkpoints, `partial` runs and resume already work
   locally in v0.2.)
 
-| Local in v0.2 | In the cloud in v0.3 |
+| Local (`make dev`, Compose) | On Google Cloud in v0.3 |
 |---|---|
 | `local-process` / `docker` executor | Cloud Run Jobs, a fixed inventory of base image × resource class |
 | Worker as your user (`DEV_MODE_ISOLATION`) | Worker under its own uid, `no_new_privs`, in a microVM |
 | GCS shim with emulated principals | Cloud Storage with IAM, VPC Service Controls |
 | Events from the supervisor's stdout pipe | Cloud Logging → Pub/Sub push → `POST /internal/events` |
 | EC P-256 key in `.local/keys/` | Cloud KMS asymmetric signatures, same bytes |
-| No authentication, `127.0.0.1` only | OIDC for people, scoped tokens for programs |
+| The development IdP, `127.0.0.1` only | OIDC for people, scoped tokens for programs |
 
 ## Multi-tenant core
 
@@ -50,8 +54,20 @@ flowchart TB
 - Scoped API tokens with their own budgets; per-tenant quotas in vCPU-seconds; interactive and
   batch priority classes so one big sweep cannot starve everyone's scoring.
 - A per-run cost ledger shown in the UI.
+- The contracts for all of this are already published: see
+  [Tenancy and authentication](../concepts/tenancy-and-auth.md),
+  [Quotas and cost](../concepts/quotas-and-cost.md) and the
+  [multi-tenant HTTP API](../reference/http-api.md#multi-tenant-api).
 - Other backends plug in through the same `Executor` protocol, each gated by an executor
   conformance suite.
+- The infrastructure is code: Terraform for the control, exec, data and build projects and the
+  VPC Service Controls perimeter, with deploy scripts and a GitHub Actions workflow. See
+  [Deploy to Google Cloud](../operations/gcp-deployment.md) and
+  [Security hardening on Google Cloud](../operations/security-hardening.md).
+
+The Cloud Run executor, the authenticated Pub/Sub event path, KMS manifest signing and the
+hardened Cloud Storage driver are described in [Cloud Run Jobs executor](../operations/cloud-run.md)
+(tested against fakes; no live cloud yet).
 
 ## What it means for plugins
 

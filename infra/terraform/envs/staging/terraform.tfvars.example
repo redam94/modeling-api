@@ -1,0 +1,30 @@
+# Copy to terraform.tfvars (git-ignored) and fill in. Never put secrets in this file: pass the
+# OAuth client secret as TF_VAR_oidc_client_secret.
+
+region          = "europe-west4"
+bucket_location = "europe-west4"
+
+projects = {
+  control = "acme-mapi-stg-control"
+  data    = "acme-mapi-stg-data"
+  build   = "acme-mapi-stg-build"
+}
+
+exec_pools = {
+  paid   = { project_id = "acme-mapi-stg-exec-paid" }
+  public = { project_id = "acme-mapi-stg-exec-public", public = true, classes = ["S"], subnet_cidr = "10.80.0.0/20" }
+}
+
+access_policy_id = "123456789012"
+
+domains = { web = "app.staging.example.com", plots = "plots.staging.example.net" }
+
+oidc_client_id             = "1234567890-abc.apps.googleusercontent.com"
+oidc_client_secret_version = 1
+
+github_repository = "acme/modeling-api"
+state_bucket      = "acme-mapi-tfstate"
+
+# Metrics: the collector sidecar that ships /metrics to Managed Service for Prometheus
+# (docs/operations/gcp-deployment.md, Metrics). Mirror the Google-built collector and pin it.
+# metrics_collector_image = "europe-west4-docker.pkg.dev/acme-mapi-build/mirror/otelcol-google@sha256:<64 hex>"

@@ -4,7 +4,7 @@
 # (ts.hsgp_trend, ts.gaussian_hmm) on PyMC, with the SDK, built-in steps and plot recipes.
 # No marketing-mix stack (pymc-marketing) and no tabular models. Build from the repo root:
 #
-#   docker build -f images/base-forecast/Dockerfile -t mapi/base-forecast:0.2.0 .
+#   docker build -f images/base-forecast/Dockerfile -t mapi/base-forecast:0.3.0 .
 #
 # See docs/operations/docker.md.
 

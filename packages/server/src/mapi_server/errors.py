@@ -29,8 +29,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 __all__ = [
     "Conflict",
     "NotFoundError",
+    "ProblemWithHeaders",
     "install_error_handlers",
     "problem_response",
+    "unauthenticated",
 ]
 
 log = logging.getLogger(__name__)
@@ -45,6 +47,23 @@ class NotFoundError(MapiError):
 
 class Conflict(MapiError):
     default_code = ErrorCode.CONFLICT
+
+
+class ProblemWithHeaders(MapiError):
+    """A :class:`MapiError` whose response carries HTTP headers (``Retry-After`` on 429,
+    ``WWW-Authenticate`` on 401)."""
+
+    def __init__(
+        self, detail: str, *, code: ErrorCode, headers: dict[str, str] | None = None
+    ) -> None:
+        super().__init__(detail, code=code)
+        self.headers: dict[str, str] = dict(headers or {})
+
+
+def unauthenticated(detail: str = "authentication is required") -> ProblemWithHeaders:
+    return ProblemWithHeaders(
+        detail, code=ErrorCode.UNAUTHENTICATED, headers={"WWW-Authenticate": "Bearer"}
+    )
 
 
 _HTTP_CODES: dict[int, ErrorCode] = {
@@ -89,7 +108,11 @@ def install_error_handlers(app: FastAPI, *, debug: bool = False) -> None:
     async def _mapi(request: Request, exc: MapiError) -> JSONResponse:
         if exc.status >= 500:
             log.error("request failed: %s %s: %r", request.method, request.url.path, exc)
-        return problem_response(exc.to_problem(instance=request.url.path))
+        headers = getattr(exc, "headers", None)
+        return problem_response(
+            exc.to_problem(instance=request.url.path),
+            headers=dict(headers) if isinstance(headers, dict) and headers else None,
+        )
 
     @app.exception_handler(RequestValidationError)
     async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:

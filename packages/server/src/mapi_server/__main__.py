@@ -19,8 +19,8 @@ import logging
 import signal
 import socket
 import sys
-from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from collections.abc import Iterator, Sequence
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
 from mapi_server.hardening import harden_process
@@ -35,10 +35,9 @@ log = logging.getLogger("mapi_server")
 
 
 def _setup_logging(settings: Settings) -> None:
-    logging.basicConfig(
-        level=getattr(logging, settings.log_level.upper()),
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    from mapi_server.observability import setup_observability
+
+    setup_observability(settings.obs_settings())
 
 
 def cmd_migrate(settings: Settings) -> int:
@@ -49,12 +48,25 @@ def cmd_migrate(settings: Settings) -> int:
     """
     from mapi_server.db import resolve_database_url
     from mapi_server.db.migrate import upgrade
-    from mapi_server.services.signing import BundleSigner
+    from mapi_server.services.secrets import load_server_secrets
+    from mapi_server.services.signing import LocalSigner
+    from mapi_server.settings import SignerKind
 
     url = resolve_database_url(settings)
-    upgrade(url)
+    upgrade(
+        url,
+        app_role=settings.db_app_role,
+        system_role=settings.db_system_role,
+        gateway_role=settings.db_gateway_role,
+        default_residency=settings.effective_default_residency(),
+    )
     log.info("database is at the latest migration")
-    signer = BundleSigner.from_file(settings.key_path, create=True)
+    load_server_secrets(settings, create=True)  # token pepper and audit key; shared by all
+    log.info("server secret ready (%s)", "environment" if settings.server_secret else "file")
+    if settings.signer is SignerKind.KMS:
+        log.info("bundle manifests are signed by KMS key %s", settings.kms_key_version)
+        return 0
+    signer = LocalSigner.from_file(settings.key_path, create=True)
     log.info("bundle-signing key %s at %s", signer.key_id, settings.key_path)
     return 0
 
@@ -75,10 +87,51 @@ async def _worker(settings: Settings) -> None:
     await startup(ctx, listen=False)
     orch = Orchestrator(ctx, build_executor(settings))
     _install_stop(orch.stop)
+    metrics = _worker_metrics_server(settings)
+    serving = asyncio.create_task(metrics.serve(), name="metrics") if metrics else None
     try:
         await orch.run()
     finally:
+        if metrics is not None and serving is not None:
+            metrics.should_exit = True
+            with contextlib.suppress(Exception, asyncio.CancelledError):
+                await serving
         await shutdown(ctx)
+
+
+def _worker_metrics_server(settings: Settings) -> Any:
+    """A small HTTP server for the worker's ``GET /metrics`` (``MAPI_WORKER_METRICS_PORT``):
+    the dispatcher, reconciler, finalizer and pipe event ingestion record their series in
+    this process, not in the API's. Same bearer rule as the API's endpoint."""
+    if not (settings.metrics_enabled and settings.worker_metrics_port):
+        return None
+    import uvicorn
+    from fastapi import FastAPI
+
+    from mapi_server.observability.middleware import add_metrics_endpoint
+    from mapi_server.settings import Profile
+
+    app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None)
+    add_metrics_endpoint(
+        app,
+        token=settings.metrics_token,
+        require_token=settings.profile is Profile.MULTI_TENANT,
+    )
+
+    class _Server(uvicorn.Server):
+        @contextlib.contextmanager
+        def capture_signals(self) -> Iterator[None]:  # the worker owns SIGINT/SIGTERM
+            yield
+
+    config = uvicorn.Config(
+        app,
+        host=settings.worker_metrics_host,
+        port=settings.worker_metrics_port,
+        log_level="warning",
+        lifespan="off",
+        access_log=False,
+    )
+    return _Server(config)
 
 
 def cmd_worker(settings: Settings) -> int:

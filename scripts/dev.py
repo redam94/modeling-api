@@ -20,6 +20,15 @@ plots       ``pnpm --filter @mapi/plot-sandbox dev ...       TCP port accepts co
             --port 5174 --strictPort``
 ==========  ===============================================  =================================
 
+The servers run in the ``dev`` profile unless ``MAPI_STACK_PROFILE`` says otherwise
+(``single-tenant`` or ``multi-tenant``): multi-tenant with the built-in development identity
+provider at ``/dev/idp``, the ``default`` tenant and project, and the seeded accounts of
+``MAPI_DEVIDP_USERS`` (``admin@dev.local`` is the tenant admin and a platform operator). The
+web app signs in through it; scripts use :func:`mapi_client.oidc.dev_idp_login`. The variable
+is not ``MAPI_PROFILE`` because the CLI reads that one as its config-file profile. Outside the
+single-tenant profile ``POST /internal/events`` needs a bearer: a random
+``MAPI_INTERNAL_TOKEN`` is kept in ``$MAPI_DATA_DIR/dev/internal-token`` (mode 0600).
+
 Addresses come from :class:`mapi_spec.localdev.LocalDev` (``MAPI_API_URL``,
 ``MAPI_GCS_ENDPOINT``, ``MAPI_WEB_ORIGIN``, ``MAPI_PLOTS_ORIGIN``, ``MAPI_DATA_DIR``,
 ``MAPI_ENV``, ``DATABASE_URL``), and every service gets the same resolved values in its
@@ -43,6 +52,7 @@ import dataclasses
 import importlib.util
 import json
 import os
+import secrets
 import shlex
 import shutil
 import signal
@@ -61,6 +71,9 @@ from typing import Literal, Protocol, TextIO
 ROOT = Path(__file__).resolve().parent.parent
 SUPERVISOR = "dev"
 EXECUTOR_ENV = "MAPI_EXECUTOR"
+STACK_PROFILE_ENV = "MAPI_STACK_PROFILE"
+STACK_PROFILES = ("dev", "single-tenant", "multi-tenant")
+DEFAULT_STACK_PROFILE = "dev"
 """Executor backend for ``mapi-server worker`` (``local-process`` in dev and compose)."""
 
 _COLORS = ("36", "32", "33", "35", "34", "96", "92", "93", "95", "94")
@@ -97,6 +110,8 @@ class DevConfig:
     web_origin: str
     plots_origin: str
     data_dir: Path
+    profile: str = DEFAULT_STACK_PROFILE
+    """The servers' ``MAPI_PROFILE`` (from ``MAPI_STACK_PROFILE``)."""
 
     @classmethod
     def from_environ(cls, environ: Mapping[str, str], root: Path = ROOT) -> DevConfig:
@@ -106,6 +121,11 @@ class DevConfig:
         data_dir = Path(local.data_dir)
         if not data_dir.is_absolute():
             data_dir = root / data_dir
+        profile = environ.get(STACK_PROFILE_ENV, "").strip() or DEFAULT_STACK_PROFILE
+        if profile not in STACK_PROFILES:
+            raise ValueError(
+                f"{STACK_PROFILE_ENV}={profile!r}: expected one of {', '.join(STACK_PROFILES)}"
+            )
         return cls(
             env=local.env,
             database_url=local.database_url,
@@ -114,6 +134,7 @@ class DevConfig:
             web_origin=local.web_origin,
             plots_origin=local.plots_origin,
             data_dir=data_dir,
+            profile=profile,
         )
 
     @property
@@ -127,6 +148,22 @@ class DevConfig:
     @property
     def state_file(self) -> Path:
         return self.data_dir / "dev" / "supervisor.json"
+
+    @property
+    def internal_token_file(self) -> Path:
+        return self.data_dir / "dev" / "internal-token"
+
+    def internal_token(self) -> str:
+        """The stack's ``MAPI_INTERNAL_TOKEN`` (created once, mode 0600)."""
+        path = self.internal_token_file
+        if path.exists():
+            return path.read_text(encoding="utf-8").strip()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        token = secrets.token_urlsafe(32)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(token + "\n")
+        return token
 
     def service_env(self, database_url: str | None) -> dict[str, str]:
         """The variables every service receives (on top of the caller's environment)."""
@@ -148,7 +185,11 @@ class DevConfig:
             ENV_PLOTS_ORIGIN: self.plots_origin,
             ENV_DATA_DIR: str(self.data_dir),
             "PYTHONUNBUFFERED": "1",
+            # overrides a MAPI_PROFILE the caller may have exported for the CLI
+            "MAPI_PROFILE": self.profile,
         }
+        if self.profile != "single-tenant":
+            env["MAPI_INTERNAL_TOKEN"] = self.internal_token()
         if database_url:
             env[ENV_DATABASE_URL] = database_url
         return env
@@ -896,7 +937,11 @@ def cmd_env(args: argparse.Namespace, cfg: DevConfig, environ: Mapping[str, str]
     url, _ = _database_url(cfg, start=False)
     if url is None:
         print("# embedded PostgreSQL is not running: DATABASE_URL omitted (`make dev` first)")
+    print(f"# servers run with MAPI_PROFILE={cfg.profile} (not exported: the CLI reads it as")
+    print("# its config-file profile; set MAPI_STACK_PROFILE to change it)")
     for key, value in sorted(cfg.service_env(url).items()):
+        if key == "MAPI_PROFILE":
+            continue
         print(f"export {key}={shlex.quote(value)}")
     return 0
 

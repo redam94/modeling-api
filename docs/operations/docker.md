@@ -1,7 +1,8 @@
 # Docker Compose <span class="mapi-badge">v0.2</span>
 
-`docker-compose.yml` runs the platform's [container images](images.md) as a single-tenant
-stack on one machine: the same services as `make dev`, on the same ports, but from the
+`docker-compose.yml` runs the platform's [container images](images.md) as a local stack on
+one machine, in the `dev` profile like `make dev` (sign in as `admin@dev.local`; see
+[signing in](local-development.md#signing-in)): the same services as `make dev`, on the same ports, but from the
 exact images that production uses. You do not need Docker for development (see
 [Local, without Docker](local-development.md)); use compose to check the images end to end or
 to run a self-contained demo. What is inside each image, how it is built and the build-time
@@ -107,6 +108,17 @@ shim's network namespace (`container:mapi-gcs-shim`). An internal Docker network
 only the shim also works, provided `MAPI_GCS_ENDPOINT` names the shim on that network.
 `none` would leave the runner with nothing to fetch its bootstrap object from, so the worker
 refuses to start with it.
+
+**docker-gvisor for verified and public tenants.** Shared tiers need an executor with
+egress and DNS enforced. Since `none` is not usable, put the run containers on an internal
+network that holds nothing but the shim (`docker network create --internal mapi-sandbox`,
+the shim attached to it and to nothing that routes out), set
+`MAPI_DOCKER_NETWORK=mapi-sandbox` and declare it with `MAPI_DOCKER_NETWORK_ISOLATED=true`
+(`host`, `bridge` and `default` are refused). The executor then reports enforced egress and
+DNS, but the dispatcher places `verified` and `public` tenants on it only once the security
+suite ran against it with the `http_egress`, `dns_egress` and `metadata_token` probes
+blocked, and that result and a passing conformance run are recorded
+([the shared-tier gate](cloud-run.md#the-shared-tier-gate)).
 
 **Worker isolation in run containers.** A run container starts its supervisor as root, with
 every Linux capability dropped except the few the uid split needs, and with

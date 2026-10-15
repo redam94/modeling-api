@@ -17,6 +17,8 @@ two drift apart.
     still carries `tenant_id` and `project_id`, and every storage key starts with
     `t/{tenant}/`, so multi-tenancy in v0.3 adds row-level security without changing the
     schema. There is no authentication in M1. The API listens on `127.0.0.1` only.
+    The tenants, sign-in, tokens and quotas that v0.3 adds are described in
+    [Multi-tenant API](#multi-tenant-api).
 
 ## Conventions
 
@@ -131,6 +133,11 @@ persisted events.
 Between events the server writes a heartbeat comment (`: keepalive`) every 15 seconds. The
 first frame also carries `retry: 3000`.
 
+An open stream checks its caller's credential again every minute (`MAPI_SSE_REAUTH_S`). Once
+the token is revoked or expired, the session has ended, or the caller has lost access to the
+project, the server closes the stream without `end`. The reconnect then answers `401` or
+`403`, and clients should stop there rather than retry.
+
 Progress frames are coalesced to at most one every 2–5 seconds. Only state changes,
 warnings, diagnostics, checkpoints, metrics and terminal events are persisted and replayable.
 A reconnecting client gets the latest progress from the `snapshot` frame. Log lines are paged
@@ -226,7 +233,7 @@ How validation reports results:
 |---|---|---|---|---|---|
 | `POST /v1/runs` | Submit a run (200 on an idempotent replay). Accepts `Idempotency-Key`. | `RunCreate` | `Run` | 201 | `NOT_FOUND`, `IDEMPOTENCY_CONFLICT`, `QUOTA_EXCEEDED`, `MODE_NOT_SUPPORTED`, `LEAKAGE_RISK`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `RECURSIVE_UNSUPPORTED` |
 | `GET /v1/runs` | List runs (filters: `kind`, `state`, `spec_id`) | — | `Page[Run]` | 200 | — |
-| `GET /v1/runs/{run_id}` | Get a run (state, failure class and problem, attempt, progress snapshot, cost placeholders) | — | `Run` | 200 | `NOT_FOUND` |
+| `GET /v1/runs/{run_id}` | Get a run (state, failure class and problem, attempt, progress snapshot, cost: placeholders in v0.2, metered from v0.3) | — | `Run` | 200 | `NOT_FOUND` |
 | `GET /v1/runs/{run_id}/events` | SSE stream or JSON page of persisted events (see [Run events](#run-events-server-sent-events)). Accepts `Last-Event-ID`. | — | `Page[RunEventView]` | 200 | `NOT_FOUND` |
 | `GET /v1/runs/{run_id}/logs` | Captured log lines; filters `attempt`, `stream` | — | `Page[LogLine]` | 200 | `NOT_FOUND` |
 | `GET /v1/runs/{run_id}/plots` | Plots a succeeded run rendered (`plots.json`: forecast fans, counterfactual bands), passed through the plot sanitizer on every read; rejected plots are left out. Empty until the run succeeds. | — | `Page[PlotSpec]` | 200 | `NOT_FOUND`, `INTEGRITY_FAILURE` |
@@ -276,6 +283,216 @@ requests.
 | `GET /v1/models/{model_id}/versions/{version}/plots/{plot_id}` | A sanitized `PlotSpec`. Render it only inside the plot-sandbox iframe, which has its own origin. | — | `PlotSpec` | 200 | `NOT_FOUND` |
 | `POST /v1/plots:validate` | Run the server-side plot sanitizer on a user-authored spec | `PlotSpec` | `PlotValidateResponse` | 200 | `SCHEMA_INVALID` |
 
+## Multi-tenant API <span class="mapi-badge">v0.3</span> { #multi-tenant-api }
+
+v0.3 (milestone M2) adds tenants, projects, members, API tokens, quotas, cost and an operator
+console. The models are in `mapi_spec.api`, `mapi_spec.tenancy`, `mapi_spec.tokens`,
+`mapi_spec.quotas`, `mapi_spec.cost`, `mapi_spec.audit`, `mapi_spec.admin` and
+`mapi_spec.auth`. The endpoint table below matches `mapi_spec.api.M2_ENDPOINTS`, and
+`mapi_spec.api.ROUTE_ACCESS` gives every operation (v0.2 ones included) its scope and the
+permission it checks. Tests fail if the code, this page and the server drift apart. Roles,
+tokens and scopes are explained in [Tenancy and authentication](../concepts/tenancy-and-auth.md),
+limits and prices in [Quotas and cost](../concepts/quotas-and-cost.md).
+
+### Authentication
+
+| Caller | Credential | Notes |
+|---|---|---|
+| Browser (the web app) | Session cookie `__Host-mapi_session` (`HttpOnly; Secure; SameSite=Strict; Path=/`), set by `GET /auth/callback` | OpenID Connect Authorization Code flow with PKCE (S256) and a `nonce`, run by the API as a backend-for-frontend. The browser never holds an OAuth token. |
+| Programs, SDKs, CLI, Atlas | `Authorization: Bearer mapi_<prefix>_<secret><checksum>` | An API token. It acts as its owner, narrowed by its scopes, in the one project it is bound to. |
+| Google Pub/Sub | A Google-signed OIDC ID token on `POST /internal/events` | Audience, issuer and the push service account are checked. Nothing in the body authenticates. |
+
+Responses for authentication and authorization:
+
+| Situation | Response |
+|---|---|
+| No credential, or an expired session, on a non-public route | `401 UNAUTHENTICATED` |
+| A malformed token, or one whose checksum fails | `401 UNAUTHENTICATED`. The presented value is never echoed. |
+| A revoked or expired token | `401 UNAUTHENTICATED` |
+| A resource in a project or tenant the caller cannot see | `404 NOT_FOUND`, the same as a missing one, so ids cannot be probed |
+| A visible resource, but the role or the token's scopes do not allow the action | `403 FORBIDDEN` |
+| A token used outside the project it is bound to | `403 FORBIDDEN` |
+| The tenant is `suspended` | Reads work. Everything else returns `403 FORBIDDEN`. |
+
+### Selecting the project
+
+Every v0.2 resource (datasets, specs, runs, models, plots) belongs to a project. From v0.3 a
+request names its project in one of these ways, in this order of precedence:
+
+1. **Path parameters**, on routes under `/v1/tenants/{tenant_id}/projects/{project_id}`.
+2. **The `X-Mapi-Project` header**: `X-Mapi-Project: <tenant_id>/<project_id>`, for example
+   `X-Mapi-Project: acme/growth`. A bare `X-Mapi-Project: growth` is accepted when the tenant
+   is unambiguous: the caller belongs to one tenant, or uses a token.
+3. **The token's binding.** A token always acts in its own project, so token clients may omit
+   the header. A header that names another project returns `403 FORBIDDEN`.
+4. **The deployment default**, in the single-tenant local profile only (`default/default`, as
+   in v0.2).
+
+If none applies, or path and header disagree, the request fails with `422 SCHEMA_INVALID`.
+`mapi_spec.tenancy.resolve_project_scope` implements these rules.
+
+The scope of each v0.2 endpoint (by operation id) and the permission checked:
+
+| Scope | Operations | Permission |
+|---|---|---|
+| Public | `health`, `ready`, `get_schema` | None |
+| Authenticated | `list_projects`, `get_catalog`, `list_catalog_models`, `get_catalog_model`, `list_catalog_steps`, `list_catalog_plots` | Any signed-in caller. Lists are filtered to what the caller can see. |
+| Project | `get_project` | `read` `project` |
+| Project | `create_dataset` / `create_upload`, `create_dataset_version` | `create` / `update` `dataset` (editor) |
+| Project | `list_datasets`, `get_dataset`, `list_dataset_versions`, `get_dataset_version`, `get_dataset_artifact` | `read` `dataset` |
+| Project | `validate_spec`, `list_specs`, `get_spec`, `list_spec_revisions`, `get_spec_revision` | `read` `spec` |
+| Project | `create_spec` / `create_spec_revision` | `create` / `update` `spec` (editor) |
+| Project | `create_run`, `dry_run_spec`, `resume_run`, `retry_run` | `create` `run` (runner). Runs on a model version also need `run` `model`. |
+| Project | `cancel_run` | `cancel` `run` (runner) |
+| Project | `list_runs`, `get_run`, `run_events`, `run_logs`, `list_run_plots` | `read` `run` |
+| Project | `list_models`, `get_model`, `list_model_versions`, `get_model_version`, `get_model_artifact` | `read` `model` |
+| Project | `score_model` | `run` `model` (runner) |
+| Project | `list_plots`, `get_plot`, `validate_plot` | `read` `plot` |
+
+Storage keys and rows were already tenant- and project-qualified in v0.2 (`t/{tenant}/…`), so
+the switch needs no data migration. Postgres enforces the boundary with row-level security
+on `tenant_id` in every table.
+
+### Endpoints
+
+#### Identity, tenants and projects
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/me` | The caller (`Principal`), their tenants, projects and roles; for a token, the token too | — | `Me` | 200 | `UNAUTHENTICATED` |
+| `GET /v1/tenants` | Tenants the caller belongs to | — | `Page[Tenant]` | 200 | — |
+| `GET /v1/tenants/{tenant_id}` | Get a tenant | — | `Tenant` | 200 | `NOT_FOUND` |
+| `PATCH /v1/tenants/{tenant_id}` | Rename a tenant (tenant admin) | `TenantUpdate` | `Tenant` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/tenants/{tenant_id}/projects` | Projects of the tenant that the caller can see | — | `Page[Project]` | 200 | `NOT_FOUND` |
+| `POST /v1/tenants/{tenant_id}/projects` | Create a project (tenant admin) | `ProjectCreate` | `Project` | 201 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` (id taken) |
+| `PATCH /v1/tenants/{tenant_id}/projects/{project_id}` | Rename or describe a project (project admin) | `ProjectUpdate` | `Project` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `DELETE /v1/tenants/{tenant_id}/projects/{project_id}` | Delete an empty project (tenant admin) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` (it still holds data) |
+
+#### Members
+
+A membership grants one role. A tenant-wide membership grants it on the tenant and on every
+project in it; a project membership grants it on that project only. The effective role in a
+project is the higher of the two. Add a member by `principal_id`, or by `email` to invite
+someone who has not signed in yet (the invitation is claimed at first sign-in with that
+verified e-mail). Removing or demoting the last admin returns `409 CONFLICT`.
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/tenants/{tenant_id}/members` | Tenant-wide members | — | `Page[Membership]` | 200 | `NOT_FOUND` |
+| `POST /v1/tenants/{tenant_id}/members` | Grant a tenant-wide role (tenant admin) | `MembershipCreate` | `Membership` | 201 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `PATCH /v1/tenants/{tenant_id}/members/{principal_id}` | Change a tenant-wide role | `MembershipUpdate` | `Membership` | 200 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `DELETE /v1/tenants/{tenant_id}/members/{principal_id}` | Remove a tenant-wide role | — | — | 204 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `GET /v1/tenants/{tenant_id}/projects/{project_id}/members` | Project members, tenant-wide grants included | — | `Page[Membership]` | 200 | `NOT_FOUND` |
+| `POST /v1/tenants/{tenant_id}/projects/{project_id}/members` | Grant a project role (project admin) | `MembershipCreate` | `Membership` | 201 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `PATCH /v1/tenants/{tenant_id}/projects/{project_id}/members/{principal_id}` | Change a project role | `MembershipUpdate` | `Membership` | 200 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `DELETE /v1/tenants/{tenant_id}/projects/{project_id}/members/{principal_id}` | Remove a project role | — | — | 204 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+
+#### API tokens
+
+Tokens belong to the project selected by `X-Mapi-Project`. `POST /v1/tokens` returns the full
+token **once**, in `TokenCreated.secret`; it cannot be shown again. Listings show the redacted
+form `mapi_<prefix>_…`. Any member may mint, list and revoke their own tokens; listing
+everyone's tokens (`?all=true`) or revoking someone else's needs `manage` on `token` (project
+admin).
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/tokens` | The caller's tokens; filters `all`, `status` | — | `Page[ApiToken]` | 200 | — |
+| `POST /v1/tokens` | Mint a token with scopes, an expiry, and an optional rate limit and vCPU-second budget | `TokenCreate` | `TokenCreated` | 201 | `FORBIDDEN` |
+| `GET /v1/tokens/{token_id}` | Get a token (never its secret) | — | `ApiToken` | 200 | `NOT_FOUND` |
+| `DELETE /v1/tokens/{token_id}` | Revoke a token. Idempotent. | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
+
+#### Usage
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/usage` | Cost and quota of the selected project for a UTC `period` (`day` or `month`), optionally grouped (`group_by`: `resource_class`, `project`, `day`, `token`, `run`) | — | `UsageReport` | 200 | — |
+| `GET /v1/tenants/{tenant_id}/usage` | The same for the whole tenant (tenant admin) | — | `UsageReport` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/tenants/{tenant_id}/audit` | The tenant's audit log (tenant admin); filters `project_id`, `actor_id`, `action`, `outcome`, `since`, `until` | — | `Page[AuditEvent]` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+
+Every `Run` now carries a filled-in `cost` (`RunCost`): `estimated` is `true` until the run's
+first attempt has been metered, `amount_micros` is in `currency` (1 USD = 1,000,000 micros) and
+`price_version` names the price table used. The v0.2 fields `vcpu_seconds`, `gib_seconds` and
+`usd` keep their meaning.
+
+#### Operators
+
+Operator endpoints need a platform operator. Tenant admins get `403 FORBIDDEN`. Operators see
+tenant metadata, usage and audit logs, but no tenant content (datasets, specs, models, plots).
+Every change is written to the audit log.
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/admin/tenants` | All tenants; filters `status`, `trust_tier` | — | `Page[Tenant]` | 200 | `FORBIDDEN` |
+| `POST /v1/admin/tenants` | Create a tenant, optionally inviting its first admin | `TenantCreate` | `Tenant` | 201 | `FORBIDDEN`, `CONFLICT` |
+| `GET /v1/admin/tenants/{tenant_id}` | Get any tenant | — | `Tenant` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `PATCH /v1/admin/tenants/{tenant_id}` | Change trust tier, status (`suspended` and `deleting` need a reason) or data residency | `TenantAdminUpdate` | `Tenant` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/admin/quotas` | Quota policies; filters `scope`, `subject_id` | — | `Page[QuotaPolicy]` | 200 | `FORBIDDEN` |
+| `PUT /v1/admin/quotas` | Create or replace the policy for one `(scope, subject_id)` | `QuotaPolicyUpsert` | `QuotaPolicy` | 200 | `FORBIDDEN` |
+| `DELETE /v1/admin/quotas/{scope}/{subject_id}` | Remove a policy; the tier default applies again (`subject_id` is `*` for the global policy) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/admin/kill-switches` | The kill switches | — | `KillSwitches` | 200 | `FORBIDDEN` |
+| `PUT /v1/admin/kill-switches` | Change them; omitted fields keep their value, `reason` is required. `cancel_untrusted_runs` (with `untrusted_execution_enabled=false`) also cancels every unfinished run of uploaded code; without it in-flight runs continue | `KillSwitchUpdate` | `KillSwitches` | 200 | `FORBIDDEN` |
+| `GET /v1/admin/executors` | Every executor: caps, health, submit rate, 429s, conformance report | — | `Page[ExecutorHealth]` | 200 | `FORBIDDEN` |
+| `GET /v1/admin/executors/{name}` | One executor | — | `ExecutorHealth` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/admin/executors/{name}/evidence` | The conformance and security-suite reports recorded for an executor | — | `ExecutorEvidence` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `PUT /v1/admin/executors/{name}/evidence` | Record suite results (audited); shared tiers need both, passing, for the current caps | `ExecutorEvidenceUpdate` | `ExecutorEvidence` | 200 | `SCHEMA_INVALID`, `FORBIDDEN` |
+| `GET /v1/admin/usage` | Cost by tenant for a UTC `period` (`day` or `month`, `start` inside it), biggest spender first, and the current spend against the global spend cap (`spend_cap`: always the cap's current window, with `fraction` = spent / cap) | — | `AdminUsageReport` | 200 | `FORBIDDEN` |
+| `PUT /v1/admin/executors/{name}` | Enable or disable an executor (audited, `reason` required). Nothing new is leased onto a disabled one; orchestrator reports never re-enable it | `ExecutorUpdate` | `ExecutorHealth` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/admin/audit` | The platform audit log; filters `tenant_id`, `project_id`, `actor_id`, `action`, `outcome`, `since`, `until` | — | `Page[AuditEvent]` | 200 | `FORBIDDEN` |
+
+#### Browser session (backend-for-frontend)
+
+These routes are not versioned and live at the root, next to the web app.
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /auth/login` | Start sign-in. Redirects to the identity provider with `response_type=code`, a PKCE `code_challenge` (S256), `state` and `nonce`. `?return_to=` must be a same-origin path; anything else becomes `/`. | — | — | 302 | — |
+| `GET /auth/callback` | Check `state`, exchange the code with the PKCE verifier, verify the ID token (issuer, audience, `nonce`, expiry), set the session cookie and redirect to `return_to` | — | — | 302 | `UNAUTHENTICATED` |
+| `POST /auth/logout` | End the session and clear the cookies. Works without a valid session; with one it needs `X-CSRF-Token`. | — | — | 204 | — |
+| `GET /auth/session` | Whether the browser is signed in, as whom and until when. `authenticated: false` is a 200, not a 401. | — | `SessionInfo` | 200 | — |
+
+The login transaction (state, nonce, PKCE verifier) is held by the server for 10 minutes and
+referenced by a `__Host-mapi_login` cookie with `SameSite=Lax`, because the identity
+provider's redirect back is a cross-site navigation that would drop a `Strict` cookie. Sessions
+expire after 2 hours idle or 12 hours in total. Every state-changing API route takes JSON,
+which a cross-site form cannot send without a CORS preflight, and the session cookie is
+`SameSite=Strict`, so cross-site requests never carry it.
+
+On top of that, every **cookie-authenticated** `POST`, `PUT`, `PATCH` and `DELETE` (including
+`POST /auth/logout` when a session is live) must echo the session's CSRF token in an
+`X-CSRF-Token` header, and is refused (`403 FORBIDDEN`) when its `Origin` is neither the web
+app nor the API or it says `Sec-Fetch-Site: cross-site`. The web app reads the token from the
+`__Host-mapi_csrf` cookie (readable, `SameSite=Strict`) or from the `X-CSRF-Token` header of
+`GET /auth/session`. Requests with an API token need no CSRF token.
+
+#### Internal
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `POST /internal/events` | Pub/Sub push of run events from the Cloud Logging sink | `PubSubPushEnvelope` | Ingest result | 200 | `UNAUTHENTICATED`, `SCHEMA_INVALID` |
+
+The push envelope is `{message: {data, attributes, messageId, publishTime}, subscription,
+deliveryAttempt}`. `message.data` is a base64 Cloud Logging entry whose `jsonPayload.mapi_event`
+is one HMAC-signed run event (see [Run protocol](run-protocol.md)). The request must carry
+`Authorization: Bearer <Google-signed ID token>`; after verifying the signature, the server
+checks the claims with `mapi_spec.auth.check_push_claims`: issuer `https://accounts.google.com`,
+the configured audience, the push service account's verified e-mail, and expiry. Events that
+fail their HMAC are acknowledged with 200 (redelivery would not help) and audited as
+`event.rejected`.
+
+### Quotas and rate limits on every endpoint
+
+Requests and submissions are checked against three levels of quota: token, tenant and global
+(see [Quotas and cost](../concepts/quotas-and-cost.md)).
+
+- A request over a requests-per-minute limit returns **`429 RATE_LIMITED`** with a
+  `Retry-After` header. Retry after that many seconds.
+- A submission that would exceed a compute, concurrency, fan-out, resource-class, storage or
+  egress limit returns **`429 QUOTA_EXCEEDED`**. `Retry-After` is set when the limit resets with
+  a window (the UTC day or month). The problem's `detail` names the level and the limit.
+- The platform kill switches (uploaded code paused, global spend cap reached) also return
+  `QUOTA_EXCEEDED`, at the global level.
+
 ## DTO index
 
 All of these models live in `mapi_spec.api` unless noted. Each one has a schema in the
@@ -290,3 +507,8 @@ OpenAPI document and in `export_schemas()` as `api-<Name>.json`.
 | Runs | `RunCreate`, `RunRetry`, `Run`, `RunCost`, `ProgressSnapshot`, `RunEventView`, `LogLine`, `SseEventName` |
 | Models | `Model`, `ModelVersion`, `Scorecard`, `ScorecardItem`, `Lineage`, `ScoreCall`, `ScoreCallResult`, `BundleManifest` (`mapi_spec.run`) |
 | Plots and catalog | `PlotListItem`, `PlotSpec` (`mapi_spec`), `PlotValidateResponse`, `CatalogResponse`, `ModelCatalogEntry`, `StepCatalogEntry`, `PlotCatalogEntry` (`mapi_spec`) |
+| Identity (v0.3) | `Me`, `MeTenant`, `MeProject`, `Tenant`, `TenantCreate`, `TenantUpdate`, `TenantAdminUpdate`, `ProjectCreate`, `ProjectUpdate`, `Membership`, `MembershipCreate`, `MembershipUpdate`, `Principal` (`mapi_spec.tenancy`) |
+| Tokens (v0.3) | `TokenCreate`, `TokenCreated`, `ApiToken` (`mapi_spec.tokens`) |
+| Usage and cost (v0.3) | `UsageReport`, `CostTotals`, `RunCost`, `CostLedgerEntry`, `CostEstimate` (`mapi_spec.cost`), `QuotaLimitStatus` (`mapi_spec.quotas`) |
+| Operators (v0.3) | `QuotaPolicy`, `QuotaPolicyUpsert`, `QuotaDecision` (`mapi_spec.quotas`), `KillSwitches`, `KillSwitchUpdate`, `ExecutorHealth` (`mapi_spec.admin`), `AdminUsageReport`, `TenantCost`, `GlobalSpend`, `AuditEvent` (`mapi_spec.audit`), `ConformanceReport` (`mapi_spec.conformance_executor`) |
+| Session and internal (v0.3) | `SessionInfo`, `PubSubPushEnvelope` (`mapi_spec.auth`) |

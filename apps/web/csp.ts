@@ -6,6 +6,8 @@
 
 export interface AppCspOptions {
   apiBase: string;
+  /** Base of the `/auth` backend-for-frontend routes when it is not the API base. */
+  authBase?: string;
   plotsOrigin: string;
   /** Origins of signed storage URLs (GCS shim locally, storage.googleapis.com in the cloud). */
   storageOrigins: readonly string[];
@@ -18,7 +20,7 @@ export function originOf(url: string): string {
 }
 
 export function buildAppCsp(o: AppCspOptions): string {
-  const connect = ["'self'", originOf(o.apiBase), ...o.storageOrigins.map(originOf)];
+  const connect = ["'self'", originOf(o.apiBase), ...(o.authBase ? [originOf(o.authBase)] : []), ...o.storageOrigins.map(originOf)];
   const directives: [string, string[]][] = [
     ["default-src", ["'self'"]],
     ["script-src", ["'self'"]],

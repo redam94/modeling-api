@@ -1,10 +1,16 @@
-"""Bundle-manifest signing: a local ECDSA P-256 key emulating Cloud KMS (plan §8.6).
+"""Bundle-manifest signing (plan §8.6): the :class:`ManifestSigner` protocol and the local
+ECDSA P-256 signer that emulates Cloud KMS.
 
-The signature covers :func:`mapi_spec.run.bundle_manifest_signing_bytes` (domain-separated
-canonical JSON of the manifest without ``signature``) and uses the contract algorithm
-``KMS-EC-P256-SHA256``, so swapping in a real KMS key in M2 changes neither the bytes nor the
-verification code. The private key lives in a ``0600`` PEM file under the data directory.
-URLs for a bundle are minted only after :meth:`BundleSigner.verify` succeeds.
+Every signer covers :func:`mapi_spec.run.bundle_manifest_signing_bytes` (domain-separated
+canonical JSON of the manifest without ``signature``) and names its algorithm with the
+contract's ``ManifestSignature.alg`` (``KMS-EC-P256-SHA256``, ``KMS-RSA-PSS-SHA256``), so the
+local key and a real KMS key (:class:`mapi_server.services.kms.KmsSigner`) produce
+interchangeable signatures: swapping one for the other changes neither the bytes nor the
+verification code. URLs for a bundle are minted only after :meth:`ManifestSigner.verify`
+succeeds (:mod:`mapi_server.services.bundles`).
+
+:class:`LocalSigner` (alias :data:`BundleSigner`) keeps its private key in a ``0600`` PEM file
+under the data directory.
 """
 
 from __future__ import annotations
@@ -13,16 +19,81 @@ import base64
 import hashlib
 import os
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Protocol, runtime_checkable
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from mapi_spec.run import BundleManifest, ManifestSignature, bundle_manifest_signing_bytes
 
-__all__ = ["SIGNATURE_ALG", "BundleSigner"]
+__all__ = [
+    "RSA_PSS_ALG",
+    "SIGNATURE_ALG",
+    "BundleSigner",
+    "LocalSigner",
+    "ManifestSigner",
+    "decode_signature",
+    "encode_signature",
+    "load_trusted_keys",
+    "verify_signature_bytes",
+]
 
 SIGNATURE_ALG = "KMS-EC-P256-SHA256"
+RSA_PSS_ALG = "KMS-RSA-PSS-SHA256"
+
+PublicKey = ec.EllipticCurvePublicKey | rsa.RSAPublicKey
+
+
+@runtime_checkable
+class ManifestSigner(Protocol):
+    """Signs bundle manifests and verifies them before any URL is minted."""
+
+    @property
+    def key_id(self) -> str:
+        """The key (version) new signatures are made with."""
+        ...
+
+    async def sign_manifest(self, manifest: BundleManifest) -> BundleManifest:
+        """``manifest`` with a fresh ``signature`` (any previous one is replaced)."""
+        ...
+
+    def verify(self, manifest: BundleManifest) -> bool:
+        """``True`` only for a valid signature by a trusted key with the expected algorithm.
+
+        Synchronous and local: remote signers verify against public keys they loaded before
+        (the URL-minting path must not depend on a remote call)."""
+        ...
+
+
+def encode_signature(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def decode_signature(value: str) -> bytes:
+    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+
+def verify_signature_bytes(public: PublicKey, alg: str, signature: bytes, data: bytes) -> bool:
+    """Check ``signature`` over ``data`` for a contract algorithm (never raises)."""
+    try:
+        if alg == SIGNATURE_ALG and isinstance(public, ec.EllipticCurvePublicKey):
+            if not isinstance(public.curve, ec.SECP256R1):
+                return False
+            public.verify(signature, data, ec.ECDSA(hashes.SHA256()))
+            return True
+        if alg == RSA_PSS_ALG and isinstance(public, rsa.RSAPublicKey):
+            public.verify(
+                signature,
+                data,
+                padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=32),
+                hashes.SHA256(),
+            )
+            return True
+    except (InvalidSignature, ValueError):
+        return False
+    return False
 
 
 def _key_id(public: ec.EllipticCurvePublicKey) -> str:
@@ -32,8 +103,8 @@ def _key_id(public: ec.EllipticCurvePublicKey) -> str:
     return "local-p256-" + hashlib.sha256(der).hexdigest()[:16]
 
 
-class BundleSigner:
-    """Signs and verifies bundle manifests with one active key (plus trusted old keys)."""
+class LocalSigner:
+    """Signs and verifies bundle manifests with one active P-256 key (plus trusted old keys)."""
 
     def __init__(
         self,
@@ -49,12 +120,26 @@ class BundleSigner:
         self._trusted[self.key_id] = private_key.public_key()
 
     @classmethod
-    def generate(cls) -> BundleSigner:
+    def generate(cls) -> LocalSigner:
         return cls(ec.generate_private_key(ec.SECP256R1()))
 
     @classmethod
-    def from_file(cls, path: Path, *, create: bool = True) -> BundleSigner:
-        """Load the PEM key at ``path``; create it (mode 0600) if missing and ``create``."""
+    def from_file(
+        cls, path: Path, *, create: bool = True, trusted_paths: Sequence[Path] = ()
+    ) -> LocalSigner:
+        """Load the PEM key at ``path``; create it (mode 0600) if missing and ``create``.
+
+        ``trusted_paths``: retired keys (public or private PEM) whose signatures still
+        verify, so a rotation does not invalidate the bundles they signed.
+        """
+        trusted = load_trusted_keys(trusted_paths)
+        signer = cls._from_file(path, create=create)
+        if trusted:
+            signer._trusted = {**trusted, **signer._trusted}
+        return signer
+
+    @classmethod
+    def _from_file(cls, path: Path, *, create: bool) -> LocalSigner:
         if path.exists():
             key = serialization.load_pem_private_key(path.read_bytes(), password=None)
             if not isinstance(key, ec.EllipticCurvePrivateKey):
@@ -81,12 +166,12 @@ class BundleSigner:
             try:
                 os.link(tmp, path)
             except FileExistsError:
-                return cls.from_file(path, create=False)
+                return cls._from_file(path, create=False)
             except OSError:  # no hard links on this filesystem: exclusive create instead
                 try:
                     out = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
                 except FileExistsError:
-                    return cls.from_file(path, create=False)
+                    return cls._from_file(path, create=False)
                 with os.fdopen(out, "wb") as fh:
                     fh.write(pem)
         finally:
@@ -105,12 +190,11 @@ class BundleSigner:
     def sign(self, manifest: BundleManifest) -> BundleManifest:
         unsigned = manifest.model_copy(update={"signature": None})
         der = self._private.sign(bundle_manifest_signing_bytes(unsigned), ec.ECDSA(hashes.SHA256()))
-        sig = ManifestSignature(
-            alg=SIGNATURE_ALG,
-            key_id=self.key_id,
-            value=base64.urlsafe_b64encode(der).decode().rstrip("="),
-        )
+        sig = ManifestSignature(alg=SIGNATURE_ALG, key_id=self.key_id, value=encode_signature(der))
         return manifest.model_copy(update={"signature": sig})
+
+    async def sign_manifest(self, manifest: BundleManifest) -> BundleManifest:
+        return self.sign(manifest)
 
     def verify(self, manifest: BundleManifest) -> bool:
         """``True`` only for a valid signature by a trusted key with the expected algorithm."""
@@ -121,8 +205,35 @@ class BundleSigner:
         if public is None:
             return False
         try:
-            der = base64.urlsafe_b64decode(sig.value + "=" * (-len(sig.value) % 4))
-            public.verify(der, bundle_manifest_signing_bytes(manifest), ec.ECDSA(hashes.SHA256()))
-        except (InvalidSignature, ValueError):
+            raw = decode_signature(sig.value)
+        except ValueError:
             return False
-        return True
+        return verify_signature_bytes(public, sig.alg, raw, bundle_manifest_signing_bytes(manifest))
+
+
+def load_trusted_keys(paths: Sequence[Path]) -> dict[str, ec.EllipticCurvePublicKey]:
+    """``key_id -> public key`` of retired P-256 signing keys (public or private PEM)."""
+    out: dict[str, ec.EllipticCurvePublicKey] = {}
+    for path in paths:
+        try:
+            data = Path(path).read_bytes()
+        except OSError as exc:
+            raise ValueError(f"trusted bundle-signing key {path}: {exc.strerror}") from None
+        public: object
+        try:
+            public = serialization.load_pem_public_key(data)
+        except ValueError:
+            try:
+                public = serialization.load_pem_private_key(data, password=None).public_key()
+            except (ValueError, TypeError):
+                raise ValueError(f"trusted bundle-signing key {path} is not a PEM key") from None
+        if not isinstance(public, ec.EllipticCurvePublicKey) or not isinstance(
+            public.curve, ec.SECP256R1
+        ):
+            raise ValueError(f"trusted bundle-signing key {path} is not an EC P-256 key")
+        out[_key_id(public)] = public
+    return out
+
+
+BundleSigner = LocalSigner
+"""The M1 name of :class:`LocalSigner`."""

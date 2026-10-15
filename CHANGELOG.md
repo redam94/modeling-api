@@ -5,6 +5,373 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
+
+The platform is now multi-tenant and ready for Google Cloud. Many teams can share one
+deployment: each tenant has its own projects, members, API tokens, quotas, cost and audit
+trail, and PostgreSQL row-level security keeps their data apart. Runs can execute as Cloud Run
+Jobs, and Terraform describes every Google Cloud project. Nothing has been applied to real
+Google Cloud yet: cloud code is tested against fakes, and the Terraform is validated and tested
+against mocked providers. In summary:
+
+- **tenancy and auth**: tenants with trust tiers and data residency, projects with ordered
+  roles (viewer < editor < runner < admin), browser sign-in through a backend-for-frontend
+  OIDC flow (with a dev identity provider for local work), `mapi login` for the CLI, and
+  checksummed, scoped, project-bound API tokens.
+- **isolation**: forced row-level security on every tenant table. The API runs as roles
+  without the bypass (`mapi_app` for tenant data, `mapi_gateway` for sign-in and operator
+  lookups); only the orchestrator holds the platform role. The audit log and the cost ledger
+  are append-only.
+- **quotas and cost**: token, tenant and global quotas with weighted fair-share leasing and
+  429 back-off; an integer-micros cost ledger with per-run cost, usage reports and cost by
+  tenant for operators; a global spend cap.
+- **operations**: kill switches (pause or cancel uploaded code, the spend cap), executors that
+  operators can disable, a shared-tier gate that needs recorded conformance and security-suite
+  evidence, audit events for every change, Prometheus metrics, dashboards, alerts and
+  runbooks, plus a security probe suite and chaos tests.
+- **cloud**: a Cloud Run Jobs executor (orphan adoption, fan-out, 429 handling), Pub/Sub push
+  events, a Cloud KMS bundle signer, Terraform for the control, data and exec projects, and
+  deploy and rollback scripts.
+- **web, CLI and client**: tenant switcher, members, tokens, usage and an operator console
+  (tenants, quotas, cost, kill switches, executors, audit); `mapi admin`, `mapi tokens` and
+  `mapi usage`; client methods for every new endpoint.
+- **docs**: Administration and Authentication guides with tested walkthroughs, a security
+  model, deployment to Google Cloud with the [verify M0] checklist, and reference tables
+  generated from the code.
+
+Every workspace package and both web apps are versioned 0.3.0. Contract v0.1 gains only
+additive changes. Upgrading from 0.2 runs migrations 0003 to 0006, which adopt existing rows
+into a platform tenant.
+
+### Added
+- **spec**: the M2 contracts. They cover tenants, trust tiers and placement, ordered project
+  roles (viewer < editor < runner < admin) with one permission matrix, and `AuthContext` as
+  the single authorization decision. They also add checksummed API tokens stored as HMACs,
+  scopes, BFF OIDC helpers (PKCE, cookies, safe `return_to`) and Pub/Sub push claims;
+  token/tenant/global quotas with fair-share leasing and 429 back-off; integer-micros cost
+  pricing and the ledger (`RunCost` moves to `mapi_spec.cost`); audit events; kill switches
+  and executor health; and the 12-case executor conformance suite as data. `mapi_spec.api`
+  gains the 40 M2 endpoints and `ROUTE_ACCESS`, the scope and permission of every operation
+  (all 44 M1 ones included). Contract v0.1 gains only additive changes.
+- **server**: authentication on every route.
+  - Bearer API tokens, browser sessions through an OIDC backend-for-frontend (authorization
+    code + PKCE, HttpOnly SameSite=Strict cookie, CSRF token), and ID tokens of the `mapi`
+    CLI (`MAPI_OIDC_CLI_CLIENT_IDS`).
+  - A credential-less local administrator in the single-tenant profile, and a `dev` profile
+    with a built-in identity provider and seeded accounts.
+  - Tenants, projects, members and invitations.
+  - Row-level security: `FORCE ROW LEVEL SECURITY` on every tenant table, `set_config(…, true)`
+    per transaction, failing closed, with separate app and platform roles.
+  - Quotas and rate limits at admission and at dispatch.
+  - A cost ledger written whenever an attempt ends, for every executor.
+  - The audit log, the operator endpoints (tenants, quota policies, kill switches, executor
+    health, audit) and usage reports.
+- **server**: the `cloudrun-jobs` executor for a fixed inventory of 3 bases × S/M/L.
+  - Env-only overrides, orphan adoption by nonce, and a jobs.run token bucket with a shared
+    429 cool-down.
+  - Exit-code classification (OOM, timeout, partial) and `taskCount` fan-out plumbing.
+  - Tested against a deterministic `FakeCloudRun`.
+  - Pub/Sub push authentication: a Google-signed OIDC token, a JWKS cache, a subscription
+    allow-list and decoding of the log entry.
+  - A Cloud KMS manifest signer, alongside the local one.
+  - `MAPI_OBJECT_STORE=gcs`: Cloud Storage with keyless IAM `signBlob` URLs and integrity
+    checks on every write.
+- **server**: observability.
+  - structlog JSON logs carrying the trace and span ids.
+  - OpenTelemetry spans, with an optional OTLP exporter.
+  - The Prometheus metric set at `GET /metrics`, behind a bearer (`MAPI_METRICS_TOKEN`, which
+    the multi-tenant profile requires), plus the worker's own endpoint
+    (`MAPI_WORKER_METRICS_PORT`).
+  - Request ids on every response.
+- **tests**: the executor conformance suite, run against fake Cloud Run and local-process. It
+  also checks that every attempt that ran is in the cost ledger.
+  - A 100-fit load test on the fake backend (`make load-test`).
+  - Chaos tests (`make chaos`).
+  - A route-table test that every non-public route needs credentials and that no M1 or M2
+    route serves another tenant's project.
+  - End-to-end M2 suites against a running dev stack, run by `make e2e`. Two tenants are
+    created through the dev IdP. The suites cover sign-in, cross-tenant refusal at the API
+    and by row-level security in Postgres, token scopes, `QUOTA_EXCEEDED`, the spend-cap kill
+    switch held at dispatch, per-run cost and the audit trail
+    (`tests/e2e/test_m2_tenancy_stack.py`). They also include a browser flow: sign-in, tenant
+    switch, fit with metered cost, tokens, and the admin kill switch
+    (`apps/web/e2e/m2-flow.e2e.spec.ts`).
+  - An opt-in burst of concurrent real fits, against the dev stack or a deployment
+    (`MAPI_E2E_BURST_RUNS`).
+  - A nightly workflow: chaos, executor conformance, both load-test modes, and the security
+    suite on local-process and inside gVisor.
+- **infra**: Terraform modules control, exec, data, build, perimeter and stack, plus the dev,
+  staging and prod environments.
+  - The exec projects get zero egress, a restricted VIP, a DNS response policy and VPC-SC.
+  - Cloud SQL with three login roles, generated secrets written only through write-only
+    arguments, a Pub/Sub push to an internal-only events service, and KMS.
+  - Deploy scripts (`deploy/gcp`) and a manual Deploy workflow.
+  - `make tf-validate` runs fmt, validate and the mocked-provider module tests; nothing is
+    ever applied.
+- **ops** and **security**: Grafana and Cloud Monitoring dashboards, alert rules and runbooks
+  (`ops/`). A sandbox-escape probe suite with an expected-outcome matrix per isolation level,
+  and a deliberately malicious plugin that is never installed (`security/`, run with
+  `make security-suite`).
+- **web**: sign-in, a tenant and project switcher, and pages for API tokens, members, and usage
+  and cost. Per-run cost, and plain-language quota and permission errors with a Retry-After
+  countdown. An operator console for tenants, quota policies, kill switches, executor health
+  and the audit log.
+- **client** and **cli**:
+  - `mapi login` (browser or device code, refreshed and stored with mode 0600, or
+    `--with-token`), `logout`, `whoami` and `use`, plus `X-Mapi-Project` selection.
+  - Token, usage and admin commands and resources.
+  - 429 handling with `RateLimited`/`QuotaExceeded` and Retry-After.
+  - `--discovery-url` for providers whose discovery document lives elsewhere (the dev IdP).
+  - `mapi_client.oidc.dev_idp_login` for scripts.
+- **docs**: tenancy and auth, and quotas and cost concepts; the v0.3 HTTP API; the
+  authentication, Cloud Run, Google Cloud deployment, security hardening, observability and
+  security-suite operations pages; and every new variable in the configuration reference.
+  - The M2 verification record (`docs/operations/m2-verification.md`): what was proven
+    locally, the measured numbers, and the exact steps left for a real Google Cloud project.
+- **server**: `GET /v1/admin/usage` (operators) returns cost by tenant for a UTC day or
+  month, summed from the cost ledger with the biggest spender first. It also returns the
+  current spend against the global spend cap (`AdminUsageReport`, `TenantCost` and
+  `GlobalSpend` in `mapi_spec.api`). The Python client exposes it as `admin.usage()`.
+- **web**: the admin console has a **Cost** tab with cost by tenant per period and each
+  tenant's share of spend. The global spend-cap card shows current spend against the cap on a
+  meter that warns at 70% and 90%.
+- **docs**: the v0.3 site.
+  - New **Administration** and **Authentication** guides, each driven by a walkthrough that
+    `make e2e` runs against a dev stack (`docs/snippets/admin_tour.sh`, `auth_tour.sh`).
+  - Generated from the code at every build (`scripts/gen_docs_platform.py`): the roles,
+    token-scope and trust-tier matrices (`mapi_spec.tenancy.PERMISSIONS`), the metric set,
+    the alerts, dashboards and runbooks of `ops/`, and an index of every `MAPI_*` variable.
+    Pages embed generated tables with `<!-- generated: NAME -->`.
+  - The landing page tells the multi-tenant story, with screenshots of the new screens
+    (`make docs-screenshots-admin`); the security model shows what each executor enforces
+    and the threat model in plain terms; Deploying to Google Cloud starts with the
+    [verify M0] checklist and ends at the first tenant; the roadmap moves to M3.
+
+### Changed
+- **devops**: `make dev` and compose run the servers in the `dev` profile by default
+  (`MAPI_STACK_PROFILE`): sign in as `admin@dev.local` (tenant admin and operator) or one of the
+  other seeded accounts. `make seed`, `make e2e` and `mapi_conformance run --stack` sign in by
+  themselves. `MAPI_STACK_PROFILE=single-tenant` restores the credential-less API.
+- **server**: every v0.2 route is project-scoped. Callers name the project with
+  `X-Mapi-Project: <tenant>/<project>`, a token's binding, or the single-tenant default.
+- **web**: mutations send the session's CSRF token (`X-CSRF-Token`). `openapi.json` and the
+  TypeScript types are generated from the server alone.
+- **client**: QUOTA_EXCEEDED is no longer retried by default (`RetryPolicy.max_quota_wait`).
+  RATE_LIMITED has its own retry budget and is retried for every method.
+
+### Fixed
+- **server**: the start-up check that every route has an access rule now covers routes of
+  included routers (FastAPI 0.143 keeps them as branches).
+- **server**: two finalizations of the same model at once no longer deadlock, and a retried
+  finalization reuses its stored signed manifest.
+- **server**: `/auth/callback` sends the browser back to the web origin, and a single-tenant
+  server answers `/auth/session` as the local administrator.
+- **web**: costs below $0.0001 keep two significant digits instead of showing `$0.00`.
+  - Usage lists session runs as "Signed-in users" (the server's group key is `-`).
+  - Memory under an hour is shown in GiB-seconds.
+  - A finished run without output no longer says "yet".
+  - The project switcher no longer truncates names on wide screens.
+- **web**: a live log tail no longer trips the tenant's rate limit. Before, it sent up to 10
+  requests every 500 ms while catching up. It now fetches one page per poll, at least 2 s
+  apart (5 s once caught up), and waits out `Retry-After` on 429.
+- **security**: the docker and gVisor probe container gets the suite through a read-only
+  mount; before, every isolation probe ended in ERROR on a host with Docker.
+  - `--executor cloud` refuses to run outside a Cloud Run Jobs execution.
+
+### Fixed (M2 review: spec, server and auth)
+- **server**: an API token can no longer administer its tenant. Tokens are bound to one
+  project, so tenant members, project create and delete, the tenant audit log and tenant usage
+  now need a signed-in session (`403` for any token). A token may still read its own tenant
+  and list its own project (`mapi_spec.api.TOKEN_TENANT_ROUTES`).
+- **server**: signing in again no longer re-activates a disabled account. `/auth/callback`
+  refuses it with the generic `401` and audits `auth.login_failed`; only an invitation becomes
+  active at its first sign-in.
+- **server**: operator status is decided on every request from `MAPI_OPERATOR_EMAILS` (and
+  the dev profile's first account). Before, a demoted operator kept operator powers through
+  `mapi login` ID tokens indefinitely and through browser sessions until they expired.
+- **spec/server**: an API token can no longer mint tokens, whatever its scopes
+  (`mapi_spec.tokens.TOKEN_NEVER`). A child token dropped its parent's expiry, vCPU budget and
+  rate limit, and outlived its revocation. `POST /v1/tokens` needs a signed-in session.
+- **spec/server**: `score:<target>` tokens can score. They authorized nothing, because
+  `:score` checks `run` on the model and the scope covered only endpoints, so integrations
+  fell back to broader `runs:create` tokens. `score:<model id>` now covers `:score` on that
+  model and `score:*` on every model of the project (`RouteAccess.name_param`). The web
+  tokens page, the CLI help and the docs say so.
+- **server**: concurrent uploads can no longer overrun the storage quota. Storage admission
+  now locks the tenant row like run admission does, so six concurrent 800-byte intents against
+  a 1000-byte quota admit exactly one.
+- **server**: abandoned upload intents no longer hold storage quota forever. Usage counts a
+  pending intent only while its signed PUT is valid, and a new housekeeper loop in the worker
+  (`MAPI_HOUSEKEEPING_INTERVAL_S`, default 300 s) marks expired intents `expired` and deletes
+  whatever reached quarantine.
+- **server**: expired browser sessions are deleted. The delete in `load_session` was rolled
+  back with the request's 401, and nothing else removed `web_sessions` rows. The row is now
+  deleted in its own transaction after the 401, and the housekeeper sweeps expired sessions
+  and abandoned sign-ins.
+- **server**: a FINALIZING run no longer counts its vCPU estimate on top of its metered
+  attempt. Quota usage counts an active run's estimate only while its current attempt has no
+  `actual` ledger entry, so runs near a daily or monthly limit are not refused by mistake.
+- **server**: concurrent submissions from different tenants can no longer exceed a global
+  `concurrent_runs` or vCPU limit. Run admission takes a transaction-scoped advisory lock
+  after the tenant row when the global policy sets such a limit.
+- **server**: the global spend cap counts work in flight. The ledger only grows when runs
+  finish, so every queued run used to be admitted and dispatched against the same figure.
+  Admission now adds the estimates of admitted, unmetered runs, and the dispatcher adds the
+  estimates of started runs and of each run it leases in the same pass.
+- **server**: held runs can no longer fill the dispatcher's window of queued runs and stall
+  fair share for every tenant. Runs of suspended tenants, uploaded code paused by the kill
+  switch and non-internal work past the spend cap are left out in SQL, and each tenant takes
+  at most `MAPI_LEASE_CANDIDATES_PER_TENANT` (50) of the window.
+- **server**: a retry resumes from the newest checkpoints of *any* earlier attempt. Before, it
+  only looked at the attempt just before it, so an attempt that died before its first segment
+  threw away all earlier progress. Automatic infra retries are also capped by cost
+  (`MAPI_AUTO_RETRY_COST_FACTOR`, default 2× the estimate), as plan §8.3 asks, and no longer
+  by count alone.
+- **server**: an unknown token prefix and a wrong secret for a known prefix get the same
+  answer (`the API token is invalid`), so the API no longer tells which prefixes exist.
+  Unauthenticated failures that anyone can cause (`token.auth_failed`, `auth.login_failed`)
+  are audited at most five times per token prefix or client and minute, so they can no longer
+  flood a tenant's audit log. The housekeeper sweeps old rate counters.
+- **server/web**: run event streams re-check the caller's credential every
+  `MAPI_SSE_REAUTH_S` (60 s). A revoked token, an ended session or a lost membership no
+  longer keeps receiving a 24-hour run's progress and logs: the stream closes and the
+  reconnect is refused. The web client stops on 401 (and raises the session-expired prompt)
+  or 403, where it used to retry forever.
+- **server**: the audit log and the cost ledger are append-only (migration
+  `0004_append_only_records`). Both runtime roles lose `UPDATE` and `DELETE` on them, and a
+  trigger refuses any change to an existing row, so a request-path bug or injection can no
+  longer rewrite a tenant's audit trail or billing history.
+- **server/infra**: the default data residency follows the deployment. It used to be `us`
+  everywhere, so on the documented EU deployment every run of the platform tenant and of
+  tenants created with defaults failed as `INFRA_ERROR`. `MAPI_DEFAULT_RESIDENCY` defaults
+  to the multi-region of the Cloud Run region, and Terraform sets it from the dispatch pool's
+  region (`default_residency` overrides it). It applies to the platform tenant, to rows the
+  tenancy migration adopts and to `POST /v1/admin/tenants` without `data_residency`.
+  Submissions that no reporting executor can place are refused at admission with a clear
+  `403` instead of being queued, and the worker warns at start-up about such tenants.
+- **server/infra**: the API and events services no longer hold the RLS-bypassing database
+  role, which plan §9 reserves for the dispatcher, reconciler and finalizer. Their platform
+  lookups (sign-in, memberships, operator metadata, routing pushed events) now run as a new
+  `mapi_gateway` role (migration `0005_gateway_role`, `MAPI_DATABASE_GATEWAY_URL`,
+  `MAPI_DB_GATEWAY_ROLE`). It has no `BYPASSRLS`, gets explicit policies on identity tables
+  and column privileges on a few run and ledger metadata columns, and cannot read datasets,
+  specs, models, plots, attempts, events or logs. Every API request uses it automatically.
+  Pushed events are written through tenant sessions. Terraform adds the `mapi_gateway` login
+  and its `db-url-gateway` secret, and only the orchestrator can read `db-url-orchestrator`.
+### Fixed (M2 review: executors, cloud and infrastructure)
+- **infra**: the deployed stack can run work at all. Terraform creates a create-only
+  `url-uploader` account (`MAPI_URL_UPLOADER`), without which every run failed at dispatch;
+  the server refuses `MAPI_OBJECT_STORE=gcs` without a distinct uploader.
+- **infra**: checkpoint policies may overwrite their own checkpoints (conditional
+  `storage.objects.delete` under `.../checkpoints/` only), so PARTIAL bundles and resume see
+  every segment on real GCS.
+- **server**: verified and public tenants are placed only on an executor with passing,
+  unexpired conformance and security-suite reports for its current caps
+  (`PUT /v1/admin/executors/{name}/evidence`, `MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S`); the admin
+  console, CLI and web show the real state. Runs that no executor can place are refused at
+  submission (503) instead of failing at lease, and the docs say that verified tenants need
+  DNS enforcement verified first.
+- **server**: `docker-gvisor` can qualify for shared tiers on a network declared isolated
+  (`MAPI_DOCKER_NETWORK_ISOLATED`).
+- **server**: Cloud Run 429s requeue a run without using up an infrastructure retry, leases
+  are renewed while a batch is submitted (for at most ten lease lengths per submit), and
+  `Retry-After` is capped. The executor's per-process bookkeeping is bounded.
+- **sdk**: zip artifacts (skops) are no longer rejected as pickles depending on the second
+  they were written.
+- **infra**: user log and progress events are excluded from the exec projects' `_Default`
+  log bucket; the API identity only reads the quarantine bucket.
+- **deploy**: the deploy workflow is valid (no `runner` context in job env; CI runs
+  actionlint); `rollback.sh --previous` picks the release before the deployed one (records
+  are named after their images, rollbacks are marked); dry runs no longer claim what they did
+  not do.
+
+### Fixed (M2 review: CLI, operations and docs)
+- **server**: incident containment can now stop running tenant code. `PUT /v1/admin/executors/{name}`
+  (audited `executor.update`, reason required; `mapi admin executors disable|enable`, a
+  Disable button in Admin → Executors) disables an executor: orchestrators lease nothing onto
+  it and their periodic reports no longer reset `enabled` to true. The kill-switch update
+  takes `cancel_untrusted_runs` (with `untrusted_execution_enabled=false`; `mapi admin
+  kill-switches set --cancel-untrusted-runs`, "Cancel running uploaded code" in the web app),
+  which moves every unfinished run of uploaded code to `cancelling`. The sandbox-escape and
+  incident-response runbooks use both.
+- **ops**: the jobs.run 429 alarm (plan §8.3) watches Cloud Run's 429s. The orchestrator
+  exports `mapi_executor_submit_throttled_total{executor}` (every 429, retried ones
+  included), and `MapiJobsRun429` and the dashboard use it instead of the API's own 429s to
+  tenants on `POST /v1/runs`. The Cloud Monitoring policy uses
+  `serviceruntime.googleapis.com/api/request_count` (RunJob, `response_code=429`). Its old
+  filter named a metric that Cloud Run jobs do not export, and it counted every 4xx.
+- **ops**: the plan's alert on running executions at 70 % of Cloud Run's 1,000 (§8.8)
+  exists. The orchestrator's report exports `mapi_executor_running_executions{executor}` from
+  the run table; `MapiRunningExecutions70` and a Cloud Monitoring policy on
+  `run.googleapis.com/job/running_executions` fire above 700.
+- **infra**: on GCP the `mapi_*` series reach Cloud Monitoring.
+  - The orchestrator serves its own `/metrics` on `127.0.0.1:9464`. Before, the dispatch,
+    reconcile and finalize series had no endpoint in the cloud.
+  - api, events and the orchestrator run a collector sidecar (`metrics_collector_image`, an
+    OpenTelemetry Collector pinned by digest). It scrapes `/metrics` over loopback with the
+    metrics bearer and writes to Managed Service for Prometheus.
+  - Without an image Terraform warns that the alerts and dashboard stay empty.
+  - The nightly security jobs push `mapi_security_probe_unexpected` to the Pushgateway at
+    `MAPI_PUSHGATEWAY_URL`.
+  - `gcp-deployment.md` has a Metrics section.
+- **server**: rotating the local bundle-signing key no longer breaks every existing model.
+  `MAPI_SIGNING_TRUSTED_KEY_PATHS` lists retired keys (public or private PEM) that still
+  verify. Terraform gains `control.kms_trusted_key_versions` (`MAPI_KMS_TRUSTED_KEY_VERSIONS`
+  on every server workload). The key-rotation runbook now gives the real local and Cloud KMS
+  procedures and the compromise path. It no longer tells GCP operators to rotate a
+  Pub/Sub "internal token": pushes there are OIDC-authenticated.
+- **docs**: data residency is enforced only on executors that declare regions (Cloud Run
+  Jobs). The self-hosted executors are not checked, and the tenancy page now says so instead
+  of promising a region match everywhere.
+- **server**: `MAPI_DISPATCH_TIERS` restricts an orchestrator to some trust tiers. Two
+  orchestrators serving different exec pools can no longer lease each other's runs (leasing
+  was not pool-aware, so public-tier code could land in the paid pool).
+  `gcp-deployment.md` no longer suggests a second orchestrator without it, and says that one
+  environment deploys one pool until M5.
+- **ops**: three Prometheus rule fixes.
+  - `MapiQuota70` is now `MapiQuotaRejections`. It fires on rejections, not at 70 %, and it
+    aggregates `by (scope)`, so its summary names the scope.
+  - `MapiNoProgressIngested` also fires when no event was ever accepted (`or vector(0)`).
+  - Clearing the spend cap now resets `mapi_global_spend_micros` and
+    `mapi_global_spend_cap_micros` to 0, both at once and at every admission. The spend
+    ratio ignores a cap of 0, so `MapiGlobalSpendCap90` stops firing.
+- **cli**: `mapi logout --revoke` revokes the token in the project it is bound to (it was
+  refused with 403 when another project was selected) and forgets the local credentials even
+  when the revocation fails, then exits 1.
+- **security**: the report writers create their directory, so `make security-suite` (and both
+  nightly security jobs) no longer fail on a fresh checkout without `.local/`.
+
+### Fixed (integration)
+- **server**: two review branches each added a database role for the API without the
+  row-level-security bypass. One is kept (`0005_gateway_role`, column-level grants, used for
+  every API request); `MAPI_DB_PLATFORM` from the other is gone. The executor-disable
+  migration is renumbered `0006_executor_disable` and lets the gateway change an executor's
+  `enabled` and `disabled_reason`.
+- **server**: an executor's `enabled` flag belongs to operators. Missing shared-tier evidence
+  no longer turns it off; it shows in `shared_tiers_enabled` and the executor's message.
+- **server**: a submission that no executor can place gets one answer per cause. A residency
+  or resource class no executor serves is refused with `403`. A trust tier that no executor
+  can take yet (enforcement not verified, no suite evidence) gets `503`.
+- **server**: as the gateway role, the kill switch's `cancel_untrusted_runs` cancels each
+  tenant's runs in a session of that tenant. The operators' usage report can read the ledger
+  columns it sums.
+- **tests**: the end-to-end spend-cap drills use a self-hosted-trusted tenant, which the local
+  executor can still place.
+
+### Known gaps
+- Nothing has run against real Google Cloud. The Cloud Run, Pub/Sub, KMS and Cloud SQL code
+  paths, the IAM conditions, the logging exclusion, the metrics collector sidecar and the
+  Cloud Monitoring filters are checked with fakes and mocked providers only.
+- No job posts the nightly conformance and security-suite results to the evidence endpoint
+  yet. Until an operator records them (and the M0 DNS check passes), `verified` and `public`
+  tenants cannot run on any executor.
+- There is no endpoint to disable a user account. `disabled` is set in the database, and
+  sign-in keeps it.
+- The gateway role still reads some tables across tenants for the operator console, quota
+  counters and sign-in.
+- A live log tail polls the logs endpoint instead of using the run's event stream.
+- The API's built-in `/docs` and `/redoc` pages load assets from a public CDN.
+
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
 The platform now runs end to end on one machine. From the Expert web app (or the CLI, the Python

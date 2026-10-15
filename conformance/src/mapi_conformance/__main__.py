@@ -69,9 +69,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.stack:
         from mapi_client import Client
 
-        from mapi_conformance.stack import run_corpus_on_stack
+        from mapi_conformance.stack import run_corpus_on_stack, stack_auth
 
-        with Client(args.stack) as api:
+        auth = stack_auth(args.stack)
+        with Client(args.stack, token=auth.token, project=auth.project) as api:
             report = run_corpus_on_stack(
                 api,
                 args.fixture or FIXTURES,

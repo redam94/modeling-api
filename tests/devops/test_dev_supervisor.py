@@ -71,6 +71,20 @@ class TestConfig:
         assert env["MAPI_ENV"] == "dev1"
         assert "DATABASE_URL" not in _cfg(dev, tmp_path).service_env(None)
 
+    def test_the_stack_runs_the_dev_profile_with_an_internal_token(
+        self, dev: ModuleType, tmp_path: Path
+    ) -> None:
+        cfg = _cfg(dev, tmp_path)
+        env = cfg.service_env(None)
+        # the dev IdP + seeded accounts; a client MAPI_PROFILE never reaches the servers
+        assert env["MAPI_PROFILE"] == "dev"
+        token = env["MAPI_INTERNAL_TOKEN"]
+        assert len(token) >= 32 and cfg.service_env(None)["MAPI_INTERNAL_TOKEN"] == token
+        assert cfg.internal_token_file.stat().st_mode & 0o777 == 0o600
+        single = _cfg(dev, tmp_path, MAPI_STACK_PROFILE="single-tenant").service_env(None)
+        assert single["MAPI_PROFILE"] == "single-tenant" and "MAPI_INTERNAL_TOKEN" not in single
+        assert dev.main(["status"], {"MAPI_STACK_PROFILE": "nope"}) == 2
+
     def test_same_origin_web_and_plots_is_rejected(self, dev: ModuleType) -> None:
         rc = dev.main(
             ["status"],

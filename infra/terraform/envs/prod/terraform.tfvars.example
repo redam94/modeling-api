@@ -1,0 +1,34 @@
+# Copy to terraform.tfvars (git-ignored) and fill in. Never put secrets in this file: pass the
+# OAuth client secret as TF_VAR_oidc_client_secret.
+
+region          = "europe-west4"
+bucket_location = "EU" # multi-region; must satisfy every tenant's data residency
+
+projects = {
+  control = "acme-mapi-prod-control"
+  data    = "acme-mapi-prod-data"
+  build   = "acme-mapi-prod-build"
+}
+
+# Shared exec-paid and exec-public projects with per-run isolation (plan Q7). Public tenants
+# are placed only on the public pool, class S only (mapi_spec.quotas.DEFAULT_TIER_LIMITS).
+exec_pools = {
+  paid   = { project_id = "acme-mapi-prod-exec-paid" }
+  public = { project_id = "acme-mapi-prod-exec-public", public = true, classes = ["S"], subnet_cidr = "10.80.0.0/20" }
+}
+
+access_policy_id = "123456789012"
+
+# The plot sandbox must be a different SITE, not just a different host: use another
+# registrable domain (example.net vs example.com), so cookies and storage never overlap.
+domains = { web = "app.example.com", plots = "plots.example-usercontent.net" }
+
+oidc_client_id             = "1234567890-abc.apps.googleusercontent.com"
+oidc_client_secret_version = 1
+
+github_repository = "acme/modeling-api"
+state_bucket      = "acme-mapi-tfstate"
+
+# Metrics: the collector sidecar that ships /metrics to Managed Service for Prometheus
+# (docs/operations/gcp-deployment.md, Metrics). Mirror the Google-built collector and pin it.
+# metrics_collector_image = "europe-west4-docker.pkg.dev/acme-mapi-build/mirror/otelcol-google@sha256:<64 hex>"

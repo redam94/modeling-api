@@ -9,6 +9,7 @@ import { EmptyState, Mono, PageHeader, QueryView, StateBadge } from "@/component
 import { DataTable } from "@/components/data-table";
 import { NativeSelect } from "@/components/ui/primitives";
 import { elapsedSeconds, formatDuration, relativeTime, shortId } from "@/lib/format";
+import { runCostView } from "@/lib/cost";
 import { RUN_KINDS, RUN_STATES, runSubject, STATE_META } from "@/lib/run-state";
 
 const route = getRouteApi("/runs");
@@ -37,6 +38,21 @@ export const runColumns: ColumnDef<Run, unknown>[] = [
     header: "Duration",
     accessorFn: (r) => elapsedSeconds(r.started_at, r.finished_at) ?? -1,
     cell: ({ row }) => <span className="tabular">{formatDuration(elapsedSeconds(row.original.started_at, row.original.finished_at))}</span>,
+  },
+  {
+    id: "cost",
+    header: "Cost",
+    accessorFn: (r) => r.cost?.amount_micros ?? r.cost?.estimate_micros ?? -1,
+    cell: ({ row }) => {
+      const c = runCostView(row.original.cost);
+      return c ? (
+        <span className={c.estimated ? "text-muted-foreground tabular" : "tabular"} title={c.detail}>
+          {c.text}
+        </span>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      );
+    },
   },
   {
     accessorKey: "created_at",

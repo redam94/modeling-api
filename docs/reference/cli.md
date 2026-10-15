@@ -1,4 +1,4 @@
-# CLI and Python client <span class="mapi-badge">v0.2</span>
+# CLI and Python client <span class="mapi-badge">v0.3</span>
 
 Two Apache-2.0 packages talk to the `/v1` [HTTP API](http-api.md):
 
@@ -46,11 +46,21 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
 | `runs` | `create`, `fit`, `get`, `list`, `wait`, `stream_events`, `events`, `logs`, `plots`, `cancel`, `resume`, `retry` |
 | `models` | `list`, `get`, `versions`, `version`, `artifact`, `download`, `score` |
 | `plots` | `list`, `get`, `validate` |
+| `tenants` (v0.3) | `list`, `get`, `rename`, `projects`, `create_project`, `update_project`, `delete_project`, `members`, `add_member`, `set_role`, `remove_member`, `usage`, `audit` |
+| `tokens` (v0.3) | `list`, `create`, `get`, `revoke` |
+| `usage` (v0.3) | `get` (the project), `tenant` |
+| `admin` (v0.3, operators) | `tenants`, `tenant`, `create_tenant`, `update_tenant`, `quotas`, `set_quota`, `delete_quota`, `kill_switches`, `set_kill_switches`, `executors`, `executor`, `audit` |
 
 - `AsyncClient` has the same resources with `await` and `async for`.
 - List calls return lazy paginators that follow `next_cursor`.
 - Calls that accept an `Idempotency-Key` get a fresh UUID unless you pass one. Idempotent
-  calls are retried on 429, 502, 503, 504 and connection errors, honouring `Retry-After`.
+  calls are retried on 502, 503, 504 and connection errors, honouring `Retry-After`.
+- `429 RATE_LIMITED` is waited out (`Retry-After`, then exponential back-off) and resent for
+  every method, because the server refused it before acting; `RateLimited` is raised after
+  `RetryPolicy.rate_limit_retries` attempts. `429 QUOTA_EXCEEDED` raises `QuotaExceeded` at
+  once, and `retry_after_of(exc)` gives the seconds until the quota resets (v0.3).
+- `api.tokens.create` returns the token's secret once (`TokenCreated.secret`, kept out of
+  `repr`) and is never resent after a lost response, so it cannot mint two tokens.
 - `datasets.upload` accepts a path, bytes or an `xr.Dataset` (with the `xarray` extra). It
   creates the dataset if needed, PUTs the file to the signed URL, starts the ingest run and
   waits for the version to be ready. A dataset that carries its raw schema in the
@@ -63,10 +73,24 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
 - Signed storage URLs are fetched without the API's `Authorization` header, and every
   transfer is checked against the storage-computed CRC32C and size.
 
-**Configuration.** Arguments beat `MAPI_URL` (fallback `MAPI_API_URL`), `MAPI_TOKEN` and
-`MAPI_PROFILE`, which beat a profile in `~/.config/mapi/config.toml` (`$MAPI_CONFIG`,
-`$XDG_CONFIG_HOME`), which beats `http://127.0.0.1:8000`. A token is never sent over plain
-HTTP to a non-loopback host. M1 has no authentication; OIDC arrives in M2.
+**Configuration.** Arguments beat `MAPI_URL` (fallback `MAPI_API_URL`), `MAPI_TOKEN`,
+`MAPI_PROJECT` and `MAPI_PROFILE`, which beat a profile in `~/.config/mapi/config.toml`
+(`$MAPI_CONFIG`, `$XDG_CONFIG_HOME`), which beats `http://127.0.0.1:8000`. A token is never
+sent over plain HTTP to a non-loopback host. v0.2 has no authentication.
+
+**Credentials and project (v0.3).** The client authenticates with an API token (argument,
+`MAPI_TOKEN` or the profile's `token`) or, when none is set, with the OpenID Connect sign-in
+`mapi login` stored for the profile in `credentials.json` (mode `0600`, next to the config
+file, or `$MAPI_CREDENTIALS`). A stored sign-in is used only for the API URL it was made for;
+its ID token is renewed with the refresh token shortly before it expires and after a `401`.
+`project` (`Client(project=…)`, `MAPI_PROJECT`, the profile's `project`) is sent as
+`X-Mapi-Project: <tenant>/<project>` on project-scoped requests only: not on identity, tenant
+and operator routes, nor where the path already names the project.
+
+| File | Mode | Holds |
+|---|---|---|
+| `~/.config/mapi/config.toml` | `0600` when written by `mapi` | Profiles: `url`, `project`, `token`, `timeout`, `max_retries`, `verify`, `oidc_issuer`, `oidc_client_id`, `oidc_client_secret` |
+| `~/.config/mapi/credentials.json` | `0600` | Per profile: the API URL, issuer, client id, ID token, refresh token and expiry of a `mapi login` sign-in |
 
 ## Command line
 
@@ -86,8 +110,41 @@ mapi catalog [models|steps|plots] [--remote @]
 
 mapi plugin init acme-demand && mapi plugin test acme-demand   # scaffold + contract kit
 mapi spec upgrade spec.yaml --check
-mapi config show
+mapi config show | path | set KEY VALUE | unset KEY
 ```
+
+Multi-tenant commands (v0.3; walked through in [Authentication](../guides/authentication.md#the-command-line)
+and [Administration](../guides/administration.md), both run by the test suite):
+
+```bash
+mapi login [--device | --no-browser | --with-token] [--issuer URL --client-id ID]
+mapi whoami
+mapi use [TENANT/PROJECT | --unset]          # --project / MAPI_PROJECT for one command
+mapi logout [--revoke]
+mapi tokens ls [--all] | get TOKEN | create NAME -s SCOPE... [--save] | revoke TOKEN
+mapi usage [--period day|month] [--start DATE] [--group-by KEY] [--tenant TENANT]
+mapi admin tenants ls | get | create | update     # operators; changes ask first (--yes)
+mapi admin quotas ls | set SCOPE SUBJECT --LIMIT... | rm SCOPE SUBJECT
+mapi admin kill-switches get | set --reason TEXT [--untrusted-code on|off] [--spend-cap N]
+                                  [--cancel-untrusted-runs]  # with --untrusted-code off
+mapi admin executors ls | get NAME | disable NAME --reason TEXT | enable NAME --reason TEXT
+mapi admin audit [--tenant] [--action] [--since] ...
+```
+
+| Command | Notes |
+|---|---|
+| `login` | Browser sign-in: authorization code + PKCE (S256) with a loopback redirect to `127.0.0.1:<port>/callback`, `state` and `nonce` checked. `--device`: the device authorization grant. `--with-token`: an API token from stdin, checksum-checked and verified with `GET /v1/me`. `--url`, `--issuer` and `--client-id` are saved in the profile |
+| `whoami` | `GET /v1/me`: principal, how you signed in, operator flag, tenants and projects with roles |
+| `use` | Checks membership with `GET /v1/me` (a bare project id is qualified when one tenant has it) and saves `project` in the profile; a token only acts in its own project |
+| `logout` | Forgets the profile's sign-in (revoking its refresh token at the identity provider) and token; `--revoke` also revokes the token on the server |
+| `tokens create` | Prints the secret once, alone on stdout (or `--save` stores it in the profile); `--json` includes it, as requested |
+| `usage` | Exact cost (micro-units, price table named), vCPU- and GiB-seconds, groups, and each quota's use and reset time |
+| `runs get`, `runs ls` | Show the run's metered cost (`~` while estimated) |
+| `admin ...` | Every change prints a before/after table on stderr and asks for confirmation; `--yes` skips it. `quotas set` replaces the whole policy |
+
+Errors: `QUOTA_EXCEEDED` and `RATE_LIMITED` print when to retry (`retry after 1h 30m`); with
+`--json` the error document carries `retry_after_seconds`. No command prints a token: they
+appear as `mapi_<prefix>_…`.
 
 | Template (`mapi new`) | What it is | Conformance fixture |
 |---|---|---|

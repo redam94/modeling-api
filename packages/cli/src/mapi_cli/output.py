@@ -13,15 +13,18 @@ import re
 import sys
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
+from mapi_client.errors import retry_after_of
+from mapi_spec.cost import format_micros
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
 from pydantic import BaseModel
 from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-__all__ = ["Output", "safe", "strip_control", "to_jsonable"]
+__all__ = ["Output", "human_duration", "money", "safe", "strip_control", "to_jsonable"]
 
 _ANSI: Final = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[@-Z\\-_])")
 # C0/C1 controls (not TAB/LF) and the bidi embeddings, overrides and isolates (text spoofing)
@@ -37,6 +40,26 @@ def strip_control(text: str) -> str:
 def safe(value: object, style: str = "") -> Text:
     """Untrusted value as plain rich ``Text`` (no markup, no escapes)."""
     return Text(strip_control("" if value is None else str(value)), style=style)
+
+
+def human_duration(seconds: float) -> str:
+    """``5400`` → ``1h 30m``; ``42`` → ``42s``."""
+    total = max(0, round(seconds))
+    if total < 60:
+        return f"{total}s"
+    days, rest = divmod(total, 86400)
+    hours, rest = divmod(rest, 3600)
+    minutes, secs = divmod(rest, 60)
+    parts = [(days, "d"), (hours, "h"), (minutes, "m")]
+    text = " ".join(f"{n}{unit}" for n, unit in parts if n)
+    return text if days or hours or not secs else f"{text} {secs}s"
+
+
+def money(amount_micros: int | None, currency: str | None) -> str:
+    """An exact amount (``31200, "USD"`` → ``0.031200 USD``); ``-`` when unknown."""
+    if amount_micros is None:
+        return "-"
+    return format_micros(amount_micros, currency or "USD")
 
 
 def to_jsonable(value: Any) -> Any:
@@ -141,8 +164,12 @@ class Output:
 
     def error(self, exc: MapiError) -> None:
         """Report a platform error on stderr (and as JSON on stdout with --json)."""
+        retry_after = retry_after_of(exc)
         if self.json_mode:
-            self.emit_json({"error": exc.to_problem().model_dump(mode="json")})
+            doc: dict[str, Any] = {"error": exc.to_problem().model_dump(mode="json")}
+            if retry_after is not None:
+                doc["retry_after_seconds"] = retry_after
+            self.emit_json(doc)
             return
         head = Text("error ", style="bold red") + safe(exc.code.value, "bold")
         head += Text(": ") + safe(exc.detail)
@@ -151,6 +178,15 @@ class Output:
             Output(json_mode=False, out=self.err, err=self.err).issues(exc.issues)
         if exc.untrusted_text:
             self.err.print(safe(exc.untrusted_text, "dim"))
+        if retry_after is not None:
+            at = datetime.now(UTC) + timedelta(seconds=retry_after)
+            self.err.print(
+                Text(
+                    f"retry after {human_duration(retry_after)} "
+                    f"(at {at.strftime('%Y-%m-%d %H:%M')} UTC)",
+                    style="italic",
+                )
+            )
         hint = _HINTS.get(exc.code)
         if hint:
             self.err.print(Text(hint, style="italic"))
@@ -158,6 +194,17 @@ class Output:
 
 _HINTS: Final[dict[ErrorCode, str]] = {
     ErrorCode.RESOURCE_EXHAUSTED: "hint: retry at a larger resource class (mapi runs retry)",
-    ErrorCode.UNAUTHENTICATED: "hint: set MAPI_TOKEN or a token in your config profile",
+    ErrorCode.UNAUTHENTICATED: (
+        "hint: sign in with `mapi login` (or `mapi login --with-token`, or set MAPI_TOKEN)"
+    ),
+    ErrorCode.FORBIDDEN: (
+        "hint: check your role and project with `mapi whoami`; tokens only act in their "
+        "own project and within their scopes"
+    ),
+    ErrorCode.QUOTA_EXCEEDED: (
+        "hint: see `mapi usage` for your quotas; wait for the window to reset, finish "
+        "running work, or ask your tenant admin for more"
+    ),
+    ErrorCode.RATE_LIMITED: "hint: too many requests; slow down or retry later",
     ErrorCode.SCHEMA_DYNAMIC: "hint: the schema needs a dry-run to resolve (data-dependent)",
 }

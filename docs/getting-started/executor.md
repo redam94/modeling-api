@@ -72,7 +72,7 @@ untrusted code to an executor that is not strong enough.
 |---|---|---|---|
 | `InprocExecutor` | `NONE` | Notebooks, tests, your own trusted code | <span class="mapi-badge">available</span> |
 | Local process / Docker | `PROCESS` / `GVISOR` | Local platform, CI | <span class="mapi-badge">v0.2</span> |
-| Cloud Run Jobs (gen2) | `MICROVM` | Hosted runs, one fresh sandbox per run | <span class="mapi-badge mapi-badge--soon">v0.3</span> |
+| Cloud Run Jobs (gen2) | `MICROVM` | Hosted runs, one fresh sandbox per run | <span class="mapi-badge">v0.3</span> |
 
 !!! warning "Never run untrusted code in-process"
     The in-process executor runs plugins with your permissions in your interpreter. It is for

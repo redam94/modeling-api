@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { ApiError } from "./api/client";
 import { TooltipProvider } from "./components/ui/overlays";
+import { WorkspaceGate } from "./features/auth/gate";
 import { createAppRouter } from "./router";
 
 export function createQueryClient(): QueryClient {
@@ -25,7 +26,9 @@ export function App({ queryClient }: { queryClient: QueryClient }) {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delayDuration={300}>
-        <RouterProvider router={router} />
+        <WorkspaceGate>
+          <RouterProvider router={router} />
+        </WorkspaceGate>
       </TooltipProvider>
     </QueryClientProvider>
   );

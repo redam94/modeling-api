@@ -1,0 +1,185 @@
+# Google Cloud Monitoring alert policies for the modeling-api control plane (plan §8.8).
+#
+# These mirror ops/alerts/prometheus-rules.yml for a GCP deployment. Apply each policy with:
+#   gcloud alpha monitoring policies create --policy-from-file=<policy>.yaml
+# or manage the whole file with Terraform (google_monitoring_alert_policy) — this YAML is the
+# source of truth for the thresholds.
+#
+# Two metric sources are used:
+#   * prometheus.googleapis.com/mapi_*   — the /metrics series in Managed Service for
+#     Prometheus (GMP), written by the collector sidecar of the api, events and orchestrator
+#     workloads (Terraform var metrics_collector; docs/operations/gcp-deployment.md#metrics).
+#     Without that sidecar these policies have no data and never fire. The security-suite
+#     series arrives through the Pushgateway (ops/README.md). The names below use the PromQL
+#     dialect via a prometheusQueryLanguageCondition.
+#   * serviceruntime.googleapis.com/api/request_count (resource consumed_api) — the Cloud Run
+#     Admin API's own count of RunJob calls by response code, native to GCP, for the jobs.run
+#     429 alert. (Cloud Run *jobs* export no request_count; that metric is for services.)
+#
+# Replace ${PROJECT_ID} and the notification channel ids before applying.
+
+---
+# 429s on jobs.run: the Admin API's RunJob calls answered 429 (plan §8.3 — 429s raise an
+# alarm), from GCP's own API metrics and from the orchestrator's counter. 403/404 and the
+# API's 429s to tenants (their own quotas) are other signals and do not count.
+displayName: "mapi — jobs.run 429 throttling"
+documentation:
+  content: |
+    The Cloud Run Admin API is returning 429 to RunJob calls. The dispatcher token bucket
+    keeps us under 180/min/region; sustained 429s mean a region is saturated.
+    Runbook: ops/runbooks/stuck-runs.md
+  mimeType: text/markdown
+combiner: OR
+conditions:
+  - displayName: "Admin API answered 429 to RunJob, sustained 5m"
+    conditionThreshold:
+      filter: >
+        resource.type = "consumed_api" AND
+        metric.type = "serviceruntime.googleapis.com/api/request_count" AND
+        resource.labels.service = "run.googleapis.com" AND
+        resource.labels.method = monitoring.regex.full_match(".*RunJob") AND
+        metric.labels.response_code = 429
+      aggregations:
+        - alignmentPeriod: 300s
+          perSeriesAligner: ALIGN_RATE
+          crossSeriesReducer: REDUCE_SUM
+          groupByFields: ["resource.labels.project_id", "resource.labels.location"]
+      comparison: COMPARISON_GT
+      thresholdValue: 0
+      duration: 300s
+      trigger: { count: 1 }
+  - displayName: "orchestrator counted jobs.run 429s, sustained 5m"
+    conditionPrometheusQueryLanguage:
+      query: sum by (executor) (rate(mapi_executor_submit_throttled_total[5m])) > 0
+      duration: 300s
+      evaluationInterval: 60s
+severity: WARNING
+
+---
+# Running executions at 70 % of Cloud Run's 1,000 per project and region (plan §8.8).
+displayName: "mapi — Cloud Run running executions at 70% of quota"
+documentation:
+  content: |
+    The exec project's running Cloud Run job executions passed 700 of the 1,000 quota.
+    Tighten per-tenant concurrent_runs (or the global cap), or shard across exec projects
+    or regions. Runbook: ops/runbooks/stuck-runs.md
+  mimeType: text/markdown
+combiner: OR
+conditions:
+  - displayName: "running executions > 700 for 10m"
+    conditionThreshold:
+      filter: >
+        resource.type = "cloud_run_job" AND
+        metric.type = "run.googleapis.com/job/running_executions"
+      aggregations:
+        - alignmentPeriod: 60s
+          perSeriesAligner: ALIGN_MAX
+          crossSeriesReducer: REDUCE_SUM
+          groupByFields: ["resource.labels.project_id", "resource.labels.location"]
+      comparison: COMPARISON_GT
+      thresholdValue: 700
+      duration: 600s
+      trigger: { count: 1 }
+  - displayName: "orchestrator view: running executions > 700 for 10m"
+    conditionPrometheusQueryLanguage:
+      query: max by (executor) (mapi_executor_running_executions{executor=~"cloudrun.*"}) > 700
+      duration: 600s
+      evaluationInterval: 60s
+severity: WARNING
+
+---
+displayName: "mapi — integrity failure (security)"
+documentation:
+  content: |
+    A run's outputs failed verification at FINALIZING. Possible artifact tampering or
+    sandbox escape. Page platform-security. Runbook: ops/runbooks/sandbox-escape.md
+  mimeType: text/markdown
+combiner: OR
+conditions:
+  - displayName: "integrity failures in 10m"
+    conditionPrometheusQueryLanguage:
+      query: increase(mapi_integrity_failures_total[10m]) > 0
+      duration: 0s
+      evaluationInterval: 60s
+severity: CRITICAL
+
+---
+displayName: "mapi — security probe unexpected outcome"
+documentation:
+  content: |
+    The nightly security suite (python -m mapi_security run) found a probe whose outcome
+    disagrees with the expected matrix on an enforcing executor. On docker-gvisor/cloud all
+    probes must be BLOCKED. Runbook: ops/runbooks/sandbox-escape.md
+  mimeType: text/markdown
+combiner: OR
+conditions:
+  - displayName: "any unexpected probe outcome"
+    conditionPrometheusQueryLanguage:
+      query: max(mapi_security_probe_unexpected) > 0
+      duration: 0s
+      evaluationInterval: 300s
+severity: CRITICAL
+
+---
+displayName: "mapi — global spend cap 70%"
+documentation:
+  content: "Global spend at 70% of the cap. Review usage. Runbook: ops/runbooks/incident-response.md"
+  mimeType: text/markdown
+combiner: OR
+conditions:
+  - displayName: "spend ratio >= 0.70"
+    conditionPrometheusQueryLanguage:
+      query: >
+        (mapi_global_spend_micros / (mapi_global_spend_cap_micros > 0)) >= 0.70
+      duration: 300s
+      evaluationInterval: 60s
+severity: WARNING
+
+---
+displayName: "mapi — global spend cap 90%"
+documentation:
+  content: |
+    Global spend at 90% of the cap. At 100% the kill switch denies untrusted execution.
+    Decide whether to raise the cap. Runbook: ops/runbooks/incident-response.md
+  mimeType: text/markdown
+combiner: OR
+conditions:
+  - displayName: "spend ratio >= 0.90"
+    conditionPrometheusQueryLanguage:
+      query: >
+        (mapi_global_spend_micros / (mapi_global_spend_cap_micros > 0)) >= 0.90
+      duration: 60s
+      evaluationInterval: 60s
+severity: CRITICAL
+
+---
+displayName: "mapi — STALLED run rate high"
+documentation:
+  content: |
+    More than 20% of live runs are STALLED (event silence). The executor status API is the
+    source of truth; check the Logging->Pub/Sub->events path. Runbook: ops/runbooks/stuck-runs.md
+  mimeType: text/markdown
+combiner: OR
+conditions:
+  - displayName: "stalled fraction > 0.2 over 10m"
+    conditionPrometheusQueryLanguage:
+      query: >
+        sum(mapi_runs_active{state="stalled"})
+        / clamp_min(sum(mapi_runs_active{state=~"running|stalled"}), 1) > 0.2
+      duration: 600s
+      evaluationInterval: 60s
+severity: CRITICAL
+
+---
+displayName: "mapi — quota rejections sustained"
+documentation:
+  content: "Sustained quota rejections. Confirm expected usage vs abuse. Runbook: ops/runbooks/incident-response.md"
+  mimeType: text/markdown
+combiner: OR
+conditions:
+  - displayName: "QUOTA_EXCEEDED rejections sustained"
+    conditionPrometheusQueryLanguage:
+      query: sum by (scope) (rate(mapi_quota_rejections_total{code="QUOTA_EXCEEDED"}[15m])) > 0.05
+      duration: 900s
+      evaluationInterval: 60s
+severity: WARNING

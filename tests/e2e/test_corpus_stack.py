@@ -13,7 +13,7 @@ import pytest
 from mapi_client import Client
 from mapi_client.errors import TransportError
 from mapi_conformance.runner import CorpusReport
-from mapi_conformance.stack import STACK_STEPS, run_fixture_on_stack
+from mapi_conformance.stack import STACK_STEPS, StackAuth, run_fixture_on_stack
 from mapi_spec.localdev import LocalDev
 
 pytestmark = [pytest.mark.e2e, pytest.mark.integration, pytest.mark.slow]
@@ -23,9 +23,9 @@ TOKEN = uuid.uuid4().hex[:8]
 
 
 @pytest.fixture(scope="module")
-def api() -> Iterator[Client]:
+def api(stack_credentials: StackAuth) -> Iterator[Client]:
     url = LocalDev.from_environ(os.environ).api_url
-    with Client(url) as client:
+    with Client(url, token=stack_credentials.token, project=stack_credentials.project) as client:
         try:
             ready = client.ready()
         except TransportError as exc:

@@ -1,4 +1,4 @@
-"""REST DTOs for the M1 HTTP API (``/v1``; plan §8.2 subset).
+"""REST DTOs for the HTTP API (``/v1``; plan §8.2): M1 (v0.2) plus the M2 (v0.3) additions.
 
 Conventions shared by every endpoint (see ``docs/reference/http-api.md``):
 
@@ -11,43 +11,77 @@ Conventions shared by every endpoint (see ``docs/reference/http-api.md``):
   :class:`~mapi_spec.errors.Problem` documents with stable codes.
 * Timestamps are timezone-aware RFC 3339 strings in UTC.
 
-:data:`M1_ENDPOINTS` is the machine-readable endpoint table; the server's route table and
-the reference docs are tested against it.
+:data:`M1_ENDPOINTS` and :data:`M2_ENDPOINTS` (together :data:`ENDPOINTS`) are the
+machine-readable endpoint tables; the server's route table and the reference docs are tested
+against them. :data:`ROUTE_ACCESS` gives every operation its tenant/project scope and the
+permission it checks. From v0.3 every M1 resource is project-scoped: the project comes from
+the path or the ``X-Mapi-Project`` header (:func:`mapi_spec.tenancy.resolve_project_scope`).
 """
 
 from __future__ import annotations
 
 import json
 import re
-import secrets
-import time
 from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import StrEnum
-from typing import Annotated, Any, Final, Generic, Literal, TypeVar
+from typing import Any, Final, Generic, Literal, TypeVar
 
 from pydantic import (
     AwareDatetime,
     BaseModel,
-    ConfigDict,
     Field,
     JsonValue,
     field_validator,
     model_validator,
 )
 
-from mapi_spec._types import Duration, LabelKey, LabelValue, MetricName, Slug, StrictModel
+from mapi_spec._dto import Id as Id  # re-exported: clients annotate ids with it
+from mapi_spec._dto import RequestModel as _Request
+from mapi_spec._dto import ResponseModel as _Response
+from mapi_spec._dto import Sha256 as Sha256
+from mapi_spec._dto import TenantId as TenantId
+from mapi_spec._dto import dto_examples as _examples
+from mapi_spec._dto import new_id
+from mapi_spec._types import Duration, LabelKey, LabelValue, MetricName, Slug
+from mapi_spec.admin import (
+    ExecutorEvidence,
+    ExecutorEvidenceUpdate,
+    ExecutorHealth,
+    ExecutorUpdate,
+    KillSwitches,
+    KillSwitchUpdate,
+)
+from mapi_spec.audit import AuditEvent
+from mapi_spec.auth import PubSubPushEnvelope, SessionInfo
 from mapi_spec.capabilities import Capabilities, Diagnostic
 from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
 from mapi_spec.coords import DataSummary
+from mapi_spec.cost import CostTotals, RunCost
 from mapi_spec.errors import ErrorCode, Issue, Problem
 from mapi_spec.executor import RunEventType, RunKind
 from mapi_spec.plots import PlotSpec
+from mapi_spec.quotas import QuotaLimitStatus, QuotaPolicy, QuotaPolicyUpsert
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import BundleManifest, ChainProgress, FailureClass, RunnerPhase, RunState
 from mapi_spec.schema import DataSchema, DimSpec, Role
 from mapi_spec.spec import CONTRACT_VERSION, DocumentKind, ScoreRequest
-from mapi_spec.storage import SEGMENT_RE, Crc32c, SignedPut
+from mapi_spec.storage import Crc32c, SignedPut
+from mapi_spec.tenancy import (
+    DEFAULT_RESIDENCY,
+    PROJECT_HEADER,
+    Action,
+    Membership,
+    Principal,
+    Project,
+    ProjectRole,
+    ResidencyRegion,
+    ResourceKind,
+    Tenant,
+    TenantStatus,
+    TrustTier,
+)
+from mapi_spec.tokens import ApiToken, TokenCreate, TokenCreated
 from mapi_spec.validate import ResolvedSpec
 
 __all__ = [
@@ -55,22 +89,31 @@ __all__ = [
     "ARTIFACT_LINK_TTL",
     "DEFAULT_PROJECT_ID",
     "DEFAULT_TENANT_ID",
+    "ENDPOINTS",
     "IDEMPOTENCY_KEY_HEADER",
     "IDEMPOTENCY_KEY_RE",
     "IDEMPOTENCY_TTL_SECONDS",
     "LAST_EVENT_ID_HEADER",
     "M1_ENDPOINTS",
+    "M2_ENDPOINTS",
     "MAX_PREFER_WAIT_SECONDS",
     "PAGE_LIMIT_DEFAULT",
     "PAGE_LIMIT_MAX",
     "PREFERENCE_APPLIED_HEADER",
     "PREFER_HEADER",
+    "PROJECT_HEADER",
+    "ROUTE_ACCESS",
     "RUN_CREATE_KINDS",
     "SSE_HEARTBEAT",
     "SSE_HEARTBEAT_SECONDS",
     "SSE_RETRY_MS",
+    "TOKEN_TENANT_ROUTES",
+    "AdminUsageReport",
+    "ApiToken",
     "ArtifactLink",
+    "AuditEvent",
     "CatalogResponse",
+    "CostTotals",
     "Dataset",
     "DatasetCreate",
     "DatasetVersion",
@@ -78,11 +121,24 @@ __all__ = [
     "DatasetVersionStatus",
     "DimMapping",
     "EndpointDecl",
+    "ExecutorEvidence",
+    "ExecutorEvidenceUpdate",
+    "ExecutorHealth",
+    "ExecutorUpdate",
+    "GlobalSpend",
     "Health",
     "HealthCheck",
     "IngestMapping",
+    "KillSwitchUpdate",
+    "KillSwitches",
     "Lineage",
     "LogLine",
+    "Me",
+    "MeProject",
+    "MeTenant",
+    "Membership",
+    "MembershipCreate",
+    "MembershipUpdate",
     "Model",
     "ModelVersion",
     "ObjectRef",
@@ -92,6 +148,14 @@ __all__ = [
     "PlotValidateResponse",
     "ProgressSnapshot",
     "Project",
+    "ProjectCreate",
+    "ProjectUpdate",
+    "PubSubPushEnvelope",
+    "QuotaLimitStatus",
+    "QuotaPolicy",
+    "QuotaPolicyUpsert",
+    "RouteAccess",
+    "RouteScope",
     "Run",
     "RunCost",
     "RunCreate",
@@ -101,14 +165,23 @@ __all__ = [
     "ScoreCallResult",
     "Scorecard",
     "ScorecardItem",
+    "SessionInfo",
     "SpecCreate",
     "SpecDoc",
     "SpecRevision",
     "SpecRevisionCreate",
     "SseEventName",
     "StageSchema",
+    "Tenant",
+    "TenantAdminUpdate",
+    "TenantCost",
+    "TenantCreate",
+    "TenantUpdate",
+    "TokenCreate",
+    "TokenCreated",
     "UploadCreate",
     "UploadSession",
+    "UsageReport",
     "ValidateRequest",
     "ValidateResponse",
     "VarMapping",
@@ -118,6 +191,7 @@ __all__ = [
     "new_id",
     "parse_last_event_id",
     "parse_prefer_wait",
+    "route_access",
 ]
 
 API_PREFIX: Final = "/v1"
@@ -141,45 +215,8 @@ SSE_RETRY_MS: Final = 3000
 SSE_HEARTBEAT: Final = ": keepalive\n\n"
 """Comment frame sent every :data:`SSE_HEARTBEAT_SECONDS` when no event was sent."""
 
-Id = Annotated[str, Field(pattern=SEGMENT_RE, examples=["run_01jaf3q2x8m9v7k5h4g3f2e1d0"])]
-TenantId = Annotated[str, Field(pattern=r"^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$")]
-Sha256 = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
 
-_CROCKFORD = "0123456789abcdefghjkmnpqrstvwxyz"
-
-
-def new_id(prefix: str) -> str:
-    """A time-sortable id ``<prefix>_<26 Crockford base32 chars>`` (ULID layout, lowercase).
-
-    The first 10 characters encode the millisecond timestamp, so ids sort by creation time
-    (cursor pagination relies on it); the last 16 are 80 random bits.
-    """
-    if not re.match(r"^[a-z]{2,8}$", prefix):
-        raise ValueError("id prefixes are 2-8 lowercase letters")
-    value = (int(time.time() * 1000) << 80) | int.from_bytes(secrets.token_bytes(10), "big")
-    chars = []
-    for _ in range(26):
-        chars.append(_CROCKFORD[value & 31])
-        value >>= 5
-    return f"{prefix}_{''.join(reversed(chars))}"
-
-
-# ======================================================================================= bases
-
-
-class _Request(StrictModel):
-    """Request bodies: unknown fields are rejected."""
-
-
-class _Response(BaseModel):
-    """Response bodies: frozen; unknown fields are ignored by (older) clients."""
-
-    model_config = ConfigDict(extra="ignore", frozen=True, populate_by_name=True)
-
-
-def _examples(*items: dict[str, Any]) -> ConfigDict:
-    return ConfigDict(json_schema_extra={"examples": list(items)})
-
+# ===================================================================================== examples
 
 _TS = "2026-10-15T09:30:00Z"
 _RUN_ID = "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
@@ -282,28 +319,6 @@ class Health(_Response):
                 "postgres": {"status": "ok", "latency_ms": 1.2},
                 "object_store": {"status": "ok", "latency_ms": 3.4},
             },
-        }
-    )
-
-
-# ====================================================================================== projects
-
-
-class Project(_Response):
-    """A workspace inside a tenant (M1: only ``default``)."""
-
-    id: TenantId
-    tenant_id: TenantId
-    name: str = Field(..., max_length=200)
-    description: str | None = Field(None, max_length=4000)
-    created_at: AwareDatetime
-
-    model_config = _examples(
-        {
-            "id": "default",
-            "tenant_id": "default",
-            "name": "Default project",
-            "created_at": _TS,
         }
     )
 
@@ -779,19 +794,6 @@ class ProgressSnapshot(_Response):
             ],
             "updated_at": _TS,
         }
-    )
-
-
-class RunCost(_Response):
-    """Cost fields (placeholders in M1: always ``None``; populated by the M2 ledger)."""
-
-    vcpu_seconds: float | None = None
-    gib_seconds: float | None = None
-    usd: float | None = None
-    estimated: bool = True
-
-    model_config = _examples(
-        {"vcpu_seconds": None, "gib_seconds": None, "usd": None, "estimated": True}
     )
 
 
@@ -1318,9 +1320,12 @@ class CatalogResponse(_Response):
 
 @dataclass(frozen=True, slots=True)
 class EndpointDecl:
-    """One row of the M1 endpoint table (used to test the server routes and the docs)."""
+    """One row of an endpoint table (used to test the server routes and the docs).
 
-    method: Literal["GET", "POST", "PUT", "DELETE"]
+    ``response`` names a DTO (``Page[X]`` for lists); ``None`` means no JSON body
+    (``204``, ``302``) or a server-defined body (``/internal/events``)."""
+
+    method: Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
     path: str
     operation_id: str
     summary: str
@@ -1539,3 +1544,717 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     ),
 )  # fmt: skip
 """The M1 endpoint table. ``request``/``response`` name DTOs in this module."""
+
+
+# ================================================================================ M2: identity
+#
+# Multi-tenant additions (v0.3). Tenant-level resources live under /v1/tenants/{tenant_id};
+# project-scoped resources (every M1 resource, tokens, usage) act in the project selected by
+# the X-Mapi-Project header (see mapi_spec.tenancy.resolve_project_scope); operator
+# endpoints live under /v1/admin; the browser session (BFF) under /auth.
+
+_USR = "usr_01jaf3a9b8c7d6e5f4g3h2j1k0"
+_EMAIL_RE = r"^[^@\s]{1,64}@[^@\s]{1,255}$"
+
+
+class MeProject(_Response):
+    """A project the caller can act in, with the caller's effective role there."""
+
+    tenant_id: TenantId
+    project_id: TenantId
+    name: str
+    role: ProjectRole
+
+    model_config = _examples(
+        {"tenant_id": "acme", "project_id": "growth", "name": "Growth", "role": "runner"}
+    )
+
+
+class MeTenant(_Response):
+    """A tenant the caller belongs to; ``role`` is the tenant-wide role (``None`` when the
+    caller only has project memberships)."""
+
+    tenant: Tenant
+    role: ProjectRole | None = None
+    projects: list[MeProject] = Field(default_factory=list)
+
+    model_config = _examples(
+        {
+            "tenant": Tenant.model_json_schema()["examples"][0],
+            "role": None,
+            "projects": [MeProject.model_json_schema()["examples"][0]],
+        }
+    )
+
+
+class Me(_Response):
+    """``GET /v1/me``: who the caller is and where they may act.
+
+    For a token, ``tenants`` holds exactly the token's project and ``token`` the token
+    itself (its scopes narrow every role shown here).
+    """
+
+    principal: Principal
+    auth: Literal["session", "token", "service"]
+    operator: bool = False
+    tenants: list[MeTenant] = Field(default_factory=list)
+    token: ApiToken | None = None
+
+    model_config = _examples(
+        {
+            "principal": {
+                "kind": "user",
+                "id": _USR,
+                "issuer": "https://accounts.google.com",
+                "subject": "110169484474386276334",
+                "email": "ana@acme.example",
+                "email_verified": True,
+                "name": "Ana Analyst",
+            },
+            "auth": "session",
+            "operator": False,
+            "tenants": [MeTenant.model_json_schema()["examples"][0]],
+        }
+    )
+
+
+class TenantCreate(_Request):
+    """``POST /v1/admin/tenants`` (operators). ``initial_admin_email`` is invited as tenant
+    admin; the invitation is claimed at first login with that verified e-mail."""
+
+    id: TenantId
+    name: str = Field(..., min_length=1, max_length=200)
+    trust_tier: TrustTier = TrustTier.VERIFIED
+    data_residency: ResidencyRegion = DEFAULT_RESIDENCY
+    initial_admin_email: str | None = Field(None, max_length=320, pattern=_EMAIL_RE)
+
+    model_config = _examples(
+        {
+            "id": "acme",
+            "name": "Acme Retail",
+            "trust_tier": "verified",
+            "data_residency": "eu",
+            "initial_admin_email": "it@acme.example",
+        }
+    )
+
+
+class TenantUpdate(_Request):
+    """``PATCH /v1/tenants/{tenant_id}`` (tenant admins): the display name only."""
+
+    name: str = Field(..., min_length=1, max_length=200)
+
+    model_config = _examples({"name": "Acme Retail Group"})
+
+
+class TenantAdminUpdate(_Request):
+    """``PATCH /v1/admin/tenants/{tenant_id}`` (operators). Changing ``data_residency`` only
+    affects where *new* runs are placed; moving stored data is a separate procedure."""
+
+    name: str | None = Field(None, min_length=1, max_length=200)
+    trust_tier: TrustTier | None = None
+    status: TenantStatus | None = None
+    status_reason: str | None = Field(None, max_length=500)
+    data_residency: ResidencyRegion | None = None
+
+    model_config = _examples(
+        {"status": "suspended", "status_reason": "payment overdue"},
+        {"trust_tier": "internal"},
+    )
+
+    @model_validator(mode="after")
+    def _some(self) -> TenantAdminUpdate:
+        if not self.model_fields_set:
+            raise ValueError("give at least one field to change")
+        if (
+            self.status is not None
+            and self.status is not TenantStatus.ACTIVE
+            and not self.status_reason
+        ):
+            raise ValueError("suspending or deleting a tenant needs a status_reason")
+        return self
+
+
+class ProjectCreate(_Request):
+    """``POST /v1/tenants/{tenant_id}/projects`` (tenant admins)."""
+
+    id: TenantId
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str | None = Field(None, max_length=4000)
+
+    model_config = _examples(
+        {"id": "growth", "name": "Growth", "description": "EU media mix models"}
+    )
+
+
+class ProjectUpdate(_Request):
+    """``PATCH /v1/tenants/{tenant_id}/projects/{project_id}`` (project admins)."""
+
+    name: str | None = Field(None, min_length=1, max_length=200)
+    description: str | None = Field(None, max_length=4000)
+
+    model_config = _examples({"description": "EU and UK media mix models"})
+
+    @model_validator(mode="after")
+    def _some(self) -> ProjectUpdate:
+        if not self.model_fields_set:
+            raise ValueError("give at least one field to change")
+        return self
+
+
+class MembershipCreate(_Request):
+    """Add a member (tenant-wide or to one project, by path). Give a known ``principal_id``
+    or an ``email`` to invite (claimed at first login with that verified e-mail)."""
+
+    principal_id: Id | None = Field(None, pattern=r"^(?:usr|sa)_[0-9a-z]{26}$")
+    email: str | None = Field(None, max_length=320, pattern=_EMAIL_RE)
+    role: ProjectRole
+
+    model_config = _examples(
+        {"email": "ana@acme.example", "role": "runner"},
+        {"principal_id": _USR, "role": "viewer"},
+    )
+
+    @model_validator(mode="after")
+    def _one(self) -> MembershipCreate:
+        if (self.principal_id is None) == (self.email is None):
+            raise ValueError("give exactly one of 'principal_id' or 'email'")
+        return self
+
+
+class MembershipUpdate(_Request):
+    """Change a member's role (the last admin of a tenant or project cannot be demoted)."""
+
+    role: ProjectRole
+
+    model_config = _examples({"role": "editor"})
+
+
+# =================================================================================== M2: usage
+
+UsagePeriod = Literal["day", "month"]
+UsageGroupBy = Literal["resource_class", "project", "day", "token", "run"]
+
+
+class UsageReport(_Response):
+    """``GET /v1/usage`` (one project) and ``GET /v1/tenants/{tenant_id}/usage`` (whole
+    tenant): ledger totals for one UTC period and the quota limits in force now.
+
+    Query: ``period=day|month`` (default ``month``), ``start`` (an RFC 3339 instant inside
+    the period; default: now), ``group_by``.
+    """
+
+    tenant_id: TenantId
+    project_id: TenantId | None = None
+    period: UsagePeriod
+    start: AwareDatetime
+    end: AwareDatetime
+    totals: CostTotals
+    group_by: UsageGroupBy | None = None
+    groups: dict[str, CostTotals] = Field(default_factory=dict)
+    price_versions: list[str] = Field(default_factory=list)
+    quotas: list[QuotaLimitStatus] = Field(default_factory=list)
+
+    model_config = _examples(
+        {
+            "tenant_id": "acme",
+            "project_id": "growth",
+            "period": "month",
+            "start": "2026-10-01T00:00:00Z",
+            "end": "2026-11-01T00:00:00Z",
+            "totals": CostTotals.model_json_schema()["examples"][0],
+            "group_by": "resource_class",
+            "groups": {"M": CostTotals.model_json_schema()["examples"][0]},
+            "price_versions": ["cloudrun-list-2026-10"],
+            "quotas": [QuotaLimitStatus.model_json_schema()["examples"][0]],
+        }
+    )
+
+    @model_validator(mode="after")
+    def _window(self) -> UsageReport:
+        if self.end <= self.start:
+            raise ValueError("end must be after start")
+        return self
+
+
+class GlobalSpend(_Response):
+    """Platform spend in the current window of the global spend cap: what the kill switch
+    compares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in
+    ``spend_cap_currency``). ``fraction`` is ``spent / cap``; null without a cap."""
+
+    period: UsagePeriod
+    start: AwareDatetime
+    end: AwareDatetime
+    currency: str = Field(pattern=r"^[A-Z]{3}$")
+    spent_micros: int
+    cap_micros: int | None = Field(None, ge=0)
+    fraction: float | None = Field(None, ge=0)
+
+    model_config = _examples(
+        {
+            "period": "day",
+            "start": "2026-10-15T00:00:00Z",
+            "end": "2026-10-16T00:00:00Z",
+            "currency": "USD",
+            "spent_micros": 350_000_000,
+            "cap_micros": 500_000_000,
+            "fraction": 0.7,
+        }
+    )
+
+
+class TenantCost(_Response):
+    """One tenant's ledger totals for the period (one row per currency)."""
+
+    tenant_id: TenantId
+    name: str | None = None
+    trust_tier: TrustTier | None = None
+    totals: CostTotals
+
+    model_config = _examples(
+        {
+            "tenant_id": "acme",
+            "name": "Acme Corp",
+            "trust_tier": "verified",
+            "totals": CostTotals.model_json_schema()["examples"][0],
+        }
+    )
+
+
+class AdminUsageReport(_Response):
+    """``GET /v1/admin/usage`` (operators): cost by tenant for one UTC period, biggest spender
+    first, and the current spend against the global spend cap.
+
+    Query: ``period=day|month`` (default ``month``) and ``start`` (an instant inside the
+    period; default: now). Tenants without ledger entries in the period are not listed;
+    ``totals`` has one row per currency. ``spend_cap`` always covers the cap's current window.
+    """
+
+    period: UsagePeriod
+    start: AwareDatetime
+    end: AwareDatetime
+    totals: list[CostTotals] = Field(default_factory=list)
+    tenants: list[TenantCost] = Field(default_factory=list)
+    price_versions: list[str] = Field(default_factory=list)
+    spend_cap: GlobalSpend
+
+    model_config = _examples(
+        {
+            "period": "month",
+            "start": "2026-10-01T00:00:00Z",
+            "end": "2026-11-01T00:00:00Z",
+            "totals": [CostTotals.model_json_schema()["examples"][0]],
+            "tenants": [TenantCost.model_json_schema()["examples"][0]],
+            "price_versions": ["cloudrun-list-2026-10"],
+            "spend_cap": GlobalSpend.model_json_schema()["examples"][0],
+        }
+    )
+
+    @model_validator(mode="after")
+    def _window(self) -> AdminUsageReport:
+        if self.end <= self.start:
+            raise ValueError("end must be after start")
+        return self
+
+
+# ========================================================================== M2: route access
+
+
+class RouteScope(StrEnum):
+    """What a route needs before its permission check (see :data:`ROUTE_ACCESS`)."""
+
+    PUBLIC = "public"
+    """No credentials (health, schemas, the login flow)."""
+    AUTHENTICATED = "authenticated"
+    """Any principal; results are filtered to what the caller can see."""
+    TENANT = "tenant"
+    """``{tenant_id}`` from the path; tenant-level grants."""
+    PROJECT = "project"
+    """The project from the path or ``X-Mapi-Project`` (or the token's binding)."""
+    PLATFORM = "platform"
+    """Platform operators only."""
+    INTERNAL = "internal"
+    """Internal services only (Pub/Sub OIDC push, orchestrator)."""
+
+
+@dataclass(frozen=True, slots=True)
+class RouteAccess:
+    """How one operation is scoped and authorized.
+
+    ``resource``/``action`` name the :data:`~mapi_spec.tenancy.PERMISSIONS` entry checked
+    with :meth:`~mapi_spec.tenancy.AuthContext.allows`; ``None`` means membership in the
+    scope suffices (lists are filtered by visibility). Handlers add the secondary checks in
+    ``also`` when they apply (e.g. a ``score`` run also needs ``run`` on the model).
+    ``name_param`` is the path parameter that names the resource, passed as
+    ``resource_name`` so targeted scopes (``score:<model id>``) can match it.
+    """
+
+    scope: RouteScope
+    resource: ResourceKind | None = None
+    action: Action | None = None
+    also: tuple[tuple[ResourceKind, Action], ...] = ()
+    name_param: str | None = None
+
+    def __post_init__(self) -> None:
+        if (self.resource is None) != (self.action is None):
+            raise ValueError("resource and action go together")
+
+
+# ====================================================================================== M2 table
+
+_FB = (_E.FORBIDDEN,)
+_PH = (PROJECT_HEADER,)
+
+M2_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    # identity
+    EndpointDecl(
+        "GET", "/v1/me", "get_me", "The caller, their tenants, projects and roles", "Me", 200,
+        errors=(_E.UNAUTHENTICATED,),
+    ),
+    EndpointDecl(
+        "GET", "/v1/tenants", "list_tenants", "Tenants the caller belongs to", "Page[Tenant]",
+        200, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/tenants/{tenant_id}", "get_tenant", "Get a tenant", "Tenant", 200,
+        errors=_NF,
+    ),
+    EndpointDecl(
+        "PATCH", "/v1/tenants/{tenant_id}", "update_tenant", "Rename a tenant (tenant admin)",
+        "Tenant", 200, request="TenantUpdate", errors=(*_BODY, *_NF, *_FB),
+    ),
+    EndpointDecl(
+        "GET", "/v1/tenants/{tenant_id}/projects", "list_tenant_projects",
+        "Projects of a tenant visible to the caller", "Page[Project]", 200, errors=_NF,
+        paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "POST", "/v1/tenants/{tenant_id}/projects", "create_project",
+        "Create a project (tenant admin)", "Project", 201, request="ProjectCreate",
+        errors=(*_BODY, *_NF, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "PATCH", "/v1/tenants/{tenant_id}/projects/{project_id}", "update_project",
+        "Rename or describe a project (project admin)", "Project", 200,
+        request="ProjectUpdate", errors=(*_BODY, *_NF, *_FB),
+    ),
+    EndpointDecl(
+        "DELETE", "/v1/tenants/{tenant_id}/projects/{project_id}", "delete_project",
+        "Delete an empty project (tenant admin; 409 while it holds data)", None, 204,
+        errors=(*_NF, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "GET", "/v1/tenants/{tenant_id}/members", "list_tenant_members",
+        "Tenant-wide members", "Page[Membership]", 200, errors=_NF, paginated=True,
+        query=_PAGE,
+    ),
+    EndpointDecl(
+        "POST", "/v1/tenants/{tenant_id}/members", "add_tenant_member",
+        "Grant a tenant-wide role (tenant admin)", "Membership", 201,
+        request="MembershipCreate", errors=(*_BODY, *_NF, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "PATCH", "/v1/tenants/{tenant_id}/members/{principal_id}", "update_tenant_member",
+        "Change a tenant-wide role (tenant admin)", "Membership", 200,
+        request="MembershipUpdate", errors=(*_BODY, *_NF, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "DELETE", "/v1/tenants/{tenant_id}/members/{principal_id}", "remove_tenant_member",
+        "Remove a tenant-wide role (409 for the last admin)", None, 204,
+        errors=(*_NF, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "GET", "/v1/tenants/{tenant_id}/projects/{project_id}/members", "list_members",
+        "Project members (including tenant-wide grants)", "Page[Membership]", 200,
+        errors=_NF, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "POST", "/v1/tenants/{tenant_id}/projects/{project_id}/members", "add_member",
+        "Grant a project role (project admin)", "Membership", 201,
+        request="MembershipCreate", errors=(*_BODY, *_NF, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "PATCH", "/v1/tenants/{tenant_id}/projects/{project_id}/members/{principal_id}",
+        "update_member", "Change a project role (project admin)", "Membership", 200,
+        request="MembershipUpdate", errors=(*_BODY, *_NF, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "DELETE", "/v1/tenants/{tenant_id}/projects/{project_id}/members/{principal_id}",
+        "remove_member", "Remove a project role (409 for the last admin)", None, 204,
+        errors=(*_NF, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "GET", "/v1/tenants/{tenant_id}/usage", "get_tenant_usage",
+        "Cost and quota of the whole tenant for a period (tenant admin)", "UsageReport", 200,
+        errors=(*_NF, *_FB), query=("period", "start", "group_by"),
+    ),
+    EndpointDecl(
+        "GET", "/v1/tenants/{tenant_id}/audit", "list_tenant_audit",
+        "The tenant's audit log (tenant admin)", "Page[AuditEvent]", 200,
+        errors=(*_NF, *_FB), paginated=True,
+        query=(*_PAGE, "project_id", "actor_id", "action", "outcome", "since", "until"),
+    ),
+    # tokens (project-scoped)
+    EndpointDecl(
+        "GET", "/v1/tokens", "list_tokens",
+        "The caller's tokens in the project (all=true: everyone's, project admin)",
+        "Page[ApiToken]", 200, paginated=True, query=(*_PAGE, "all", "status"), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/tokens", "create_token", "Mint a token (the secret is shown once)",
+        "TokenCreated", 201, request="TokenCreate", errors=(*_BODY, *_FB), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", "/v1/tokens/{token_id}", "get_token", "Get a token (never its secret)",
+        "ApiToken", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", "/v1/tokens/{token_id}", "revoke_token", "Revoke a token (idempotent)",
+        None, 204, errors=(*_NF, *_FB), headers=_PH,
+    ),
+    # usage (project-scoped)
+    EndpointDecl(
+        "GET", "/v1/usage", "get_usage", "Cost and quota of the project for a period",
+        "UsageReport", 200, query=("period", "start", "group_by"), headers=_PH,
+    ),
+    # operators
+    EndpointDecl(
+        "GET", "/v1/admin/tenants", "admin_list_tenants", "All tenants (filters: status, tier)",
+        "Page[Tenant]", 200, errors=_FB, paginated=True,
+        query=(*_PAGE, "status", "trust_tier"),
+    ),
+    EndpointDecl(
+        "POST", "/v1/admin/tenants", "admin_create_tenant", "Create a tenant", "Tenant", 201,
+        request="TenantCreate", errors=(*_BODY, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "GET", "/v1/admin/tenants/{tenant_id}", "admin_get_tenant", "Get any tenant", "Tenant",
+        200, errors=(*_NF, *_FB),
+    ),
+    EndpointDecl(
+        "PATCH", "/v1/admin/tenants/{tenant_id}", "admin_update_tenant",
+        "Change a tenant's tier, status or residency", "Tenant", 200,
+        request="TenantAdminUpdate", errors=(*_BODY, *_NF, *_FB),
+    ),
+    EndpointDecl(
+        "GET", "/v1/admin/quotas", "admin_list_quotas", "Quota policies (filters: scope, subject)",
+        "Page[QuotaPolicy]", 200, errors=_FB, paginated=True,
+        query=(*_PAGE, "scope", "subject_id"),
+    ),
+    EndpointDecl(
+        "PUT", "/v1/admin/quotas", "admin_put_quota", "Create or replace one quota policy",
+        "QuotaPolicy", 200, request="QuotaPolicyUpsert", errors=(*_BODY, *_FB),
+    ),
+    EndpointDecl(
+        "DELETE", "/v1/admin/quotas/{scope}/{subject_id}", "admin_delete_quota",
+        "Remove a policy (the tier default applies again)", None, 204, errors=(*_NF, *_FB),
+    ),
+    EndpointDecl(
+        "GET", "/v1/admin/kill-switches", "admin_get_kill_switches", "Current kill switches",
+        "KillSwitches", 200, errors=_FB,
+    ),
+    EndpointDecl(
+        "PUT", "/v1/admin/kill-switches", "admin_put_kill_switches",
+        "Flip kill switches (audited; reason required)", "KillSwitches", 200,
+        request="KillSwitchUpdate", errors=(*_BODY, *_FB),
+    ),
+    EndpointDecl(
+        "GET", "/v1/admin/executors", "admin_list_executors",
+        "Executor health, caps and conformance", "Page[ExecutorHealth]", 200, errors=_FB,
+        paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/admin/executors/{name}", "admin_get_executor", "One executor",
+        "ExecutorHealth", 200, errors=(*_NF, *_FB),
+    ),
+    EndpointDecl(
+        "GET", "/v1/admin/executors/{name}/evidence", "admin_get_executor_evidence",
+        "The conformance and security-suite reports recorded for an executor",
+        "ExecutorEvidence", 200, errors=(*_NF, *_FB),
+    ),
+    EndpointDecl(
+        "PUT", "/v1/admin/executors/{name}/evidence", "admin_put_executor_evidence",
+        "Record suite results (audited); shared tiers need both, passing, for the current caps",
+        "ExecutorEvidence", 200, request="ExecutorEvidenceUpdate", errors=(*_BODY, *_FB),
+    ),
+    EndpointDecl(
+        "GET", "/v1/admin/usage", "admin_get_usage",
+        "Cost by tenant for a period and current spend against the global cap",
+        "AdminUsageReport", 200, errors=_FB, query=("period", "start"),
+    ),
+    EndpointDecl(
+        "PUT", "/v1/admin/executors/{name}", "admin_put_executor",
+        "Enable or disable an executor (audited; reason required)", "ExecutorHealth", 200,
+        request="ExecutorUpdate", errors=(*_BODY, *_NF, *_FB),
+    ),
+    EndpointDecl(
+        "GET", "/v1/admin/audit", "admin_list_audit", "The platform audit log",
+        "Page[AuditEvent]", 200, errors=_FB, paginated=True,
+        query=(*_PAGE, "tenant_id", "project_id", "actor_id", "action", "outcome", "since",
+               "until"),
+    ),
+    # browser session (BFF)
+    EndpointDecl(
+        "GET", "/auth/login", "auth_login",
+        "Start OIDC sign-in (302 to the identity provider; Authorization Code + PKCE)",
+        None, 302, query=("return_to",),
+    ),
+    EndpointDecl(
+        "GET", "/auth/callback", "auth_callback",
+        "Finish sign-in: verify state, exchange the code, set the session cookie, 302 back",
+        None, 302, errors=(_E.UNAUTHENTICATED,), query=("code", "state", "error"),
+    ),
+    EndpointDecl(
+        "POST", "/auth/logout", "auth_logout", "End the session and clear the cookie", None,
+        204,
+    ),
+    EndpointDecl(
+        "GET", "/auth/session", "auth_session", "Is the browser signed in, as whom",
+        "SessionInfo", 200,
+    ),
+    # internal
+    EndpointDecl(
+        "POST", "/internal/events", "ingest_event",
+        "Pub/Sub push of run events (OIDC-authenticated service account only)", None, 200,
+        request="PubSubPushEnvelope", errors=(_E.UNAUTHENTICATED, _E.SCHEMA_INVALID),
+    ),
+)  # fmt: skip
+"""The M2 endpoint table (additive to :data:`M1_ENDPOINTS`)."""
+
+ENDPOINTS: Final[tuple[EndpointDecl, ...]] = M1_ENDPOINTS + M2_ENDPOINTS
+"""Every endpoint of the v0.3 API."""
+
+_RK, _AC = ResourceKind, Action
+
+
+def _p(resource: ResourceKind, action: Action, *also: tuple[ResourceKind, Action]) -> RouteAccess:
+    return RouteAccess(RouteScope.PROJECT, resource, action, tuple(also))
+
+
+def _t(resource: ResourceKind | None = None, action: Action | None = None) -> RouteAccess:
+    return RouteAccess(RouteScope.TENANT, resource, action)
+
+
+def _op(resource: ResourceKind, action: Action) -> RouteAccess:
+    return RouteAccess(RouteScope.PLATFORM, resource, action)
+
+
+_PUBLIC = RouteAccess(RouteScope.PUBLIC)
+_AUTH = RouteAccess(RouteScope.AUTHENTICATED)
+
+ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
+    # M1 (project-scoped from v0.3)
+    "health": _PUBLIC,
+    "ready": _PUBLIC,
+    "get_schema": _PUBLIC,
+    "list_projects": _AUTH,
+    "get_project": _p(_RK.PROJECT, _AC.READ),
+    "get_catalog": _AUTH,
+    "list_catalog_models": _AUTH,
+    "get_catalog_model": _AUTH,
+    "list_catalog_steps": _AUTH,
+    "list_catalog_plots": _AUTH,
+    "create_dataset": _p(_RK.DATASET, _AC.CREATE),
+    "list_datasets": _p(_RK.DATASET, _AC.READ),
+    "get_dataset": _p(_RK.DATASET, _AC.READ),
+    "create_upload": _p(_RK.DATASET, _AC.UPDATE),
+    "create_dataset_version": _p(_RK.DATASET, _AC.UPDATE),
+    "list_dataset_versions": _p(_RK.DATASET, _AC.READ),
+    "get_dataset_version": _p(_RK.DATASET, _AC.READ),
+    "get_dataset_artifact": _p(_RK.DATASET, _AC.READ),
+    "validate_spec": _p(_RK.SPEC, _AC.READ),
+    "create_spec": _p(_RK.SPEC, _AC.CREATE),
+    "list_specs": _p(_RK.SPEC, _AC.READ),
+    "get_spec": _p(_RK.SPEC, _AC.READ),
+    "create_spec_revision": _p(_RK.SPEC, _AC.UPDATE),
+    "list_spec_revisions": _p(_RK.SPEC, _AC.READ),
+    "get_spec_revision": _p(_RK.SPEC, _AC.READ),
+    "dry_run_spec": _p(_RK.RUN, _AC.CREATE, (_RK.SPEC, _AC.READ)),
+    "create_run": _p(_RK.RUN, _AC.CREATE, (_RK.MODEL, _AC.RUN)),
+    "list_runs": _p(_RK.RUN, _AC.READ),
+    "get_run": _p(_RK.RUN, _AC.READ),
+    "run_events": _p(_RK.RUN, _AC.READ),
+    "run_logs": _p(_RK.RUN, _AC.READ),
+    "list_run_plots": _p(_RK.RUN, _AC.READ),
+    "cancel_run": _p(_RK.RUN, _AC.CANCEL),
+    "resume_run": _p(_RK.RUN, _AC.CREATE),
+    "retry_run": _p(_RK.RUN, _AC.CREATE),
+    "list_models": _p(_RK.MODEL, _AC.READ),
+    "get_model": _p(_RK.MODEL, _AC.READ),
+    "list_model_versions": _p(_RK.MODEL, _AC.READ),
+    "get_model_version": _p(_RK.MODEL, _AC.READ),
+    "get_model_artifact": _p(_RK.MODEL, _AC.READ),
+    "score_model": RouteAccess(RouteScope.PROJECT, _RK.MODEL, _AC.RUN, name_param="model_id"),
+    "list_plots": _p(_RK.PLOT, _AC.READ),
+    "get_plot": _p(_RK.PLOT, _AC.READ),
+    "validate_plot": _p(_RK.PLOT, _AC.READ),
+    # M2 identity
+    "get_me": _AUTH,
+    "list_tenants": _AUTH,
+    "get_tenant": _t(_RK.TENANT, _AC.READ),
+    "update_tenant": _t(_RK.TENANT, _AC.UPDATE),
+    "list_tenant_projects": _t(),
+    "create_project": _t(_RK.PROJECT, _AC.CREATE),
+    "update_project": _p(_RK.PROJECT, _AC.UPDATE),
+    "delete_project": _t(_RK.PROJECT, _AC.DELETE),
+    "list_tenant_members": _t(_RK.TENANT_MEMBER, _AC.READ),
+    "add_tenant_member": _t(_RK.TENANT_MEMBER, _AC.CREATE),
+    "update_tenant_member": _t(_RK.TENANT_MEMBER, _AC.UPDATE),
+    "remove_tenant_member": _t(_RK.TENANT_MEMBER, _AC.DELETE),
+    "list_members": _p(_RK.MEMBER, _AC.READ),
+    "add_member": _p(_RK.MEMBER, _AC.CREATE),
+    "update_member": _p(_RK.MEMBER, _AC.UPDATE),
+    "remove_member": _p(_RK.MEMBER, _AC.DELETE),
+    "get_tenant_usage": _t(_RK.BILLING, _AC.READ),
+    "list_tenant_audit": _t(_RK.AUDIT, _AC.READ),
+    "list_tokens": _p(_RK.TOKEN, _AC.READ),
+    "create_token": _p(_RK.TOKEN, _AC.CREATE),
+    "get_token": _p(_RK.TOKEN, _AC.READ),
+    "revoke_token": _p(_RK.TOKEN, _AC.DELETE),
+    "get_usage": _p(_RK.USAGE, _AC.READ),
+    # operators
+    "admin_list_tenants": _op(_RK.TENANT, _AC.READ),
+    "admin_create_tenant": _op(_RK.TENANT, _AC.CREATE),
+    "admin_get_tenant": _op(_RK.TENANT, _AC.READ),
+    "admin_update_tenant": _op(_RK.TENANT, _AC.MANAGE),
+    "admin_list_quotas": _op(_RK.QUOTA, _AC.READ),
+    "admin_put_quota": _op(_RK.QUOTA, _AC.UPDATE),
+    "admin_delete_quota": _op(_RK.QUOTA, _AC.DELETE),
+    "admin_get_kill_switches": _op(_RK.KILL_SWITCH, _AC.READ),
+    "admin_put_kill_switches": _op(_RK.KILL_SWITCH, _AC.UPDATE),
+    "admin_list_executors": _op(_RK.EXECUTOR, _AC.READ),
+    "admin_get_executor": _op(_RK.EXECUTOR, _AC.READ),
+    "admin_get_executor_evidence": _op(_RK.EXECUTOR, _AC.READ),
+    "admin_put_executor_evidence": _op(_RK.EXECUTOR, _AC.UPDATE),
+    "admin_put_executor": _op(_RK.EXECUTOR, _AC.UPDATE),
+    "admin_list_audit": _op(_RK.AUDIT, _AC.READ),
+    "admin_get_usage": _op(_RK.BILLING, _AC.READ),
+    # session and internal
+    "auth_login": _PUBLIC,
+    "auth_callback": _PUBLIC,
+    "auth_logout": _PUBLIC,
+    "auth_session": _PUBLIC,
+    "ingest_event": RouteAccess(RouteScope.INTERNAL, _RK.EVENT, _AC.CREATE),
+}
+"""Tenant/project scoping and the permission checked for every operation in
+:data:`ENDPOINTS` (keyed by ``operation_id``).
+
+Acting on *other principals'* tokens (``list_tokens?all=true``, revoking someone else's
+token) additionally needs ``manage`` on ``token``. A ``create_run`` for a model version
+(score, evaluate, derive, render) additionally needs ``run`` on ``model``.
+"""
+
+
+TOKEN_TENANT_ROUTES: Final[frozenset[str]] = frozenset({"get_tenant", "list_tenant_projects"})
+"""The tenant-scoped operations an API token may call: read-only views of the token's own
+tenant (projects narrowed to the token's project).
+
+A token is bound to one project of one tenant, so tenant administration (members, project
+create/delete, tenant audit and billing) needs a signed-in session, whatever the token's
+scopes and its owner's tenant role.
+"""
+
+
+def route_access(operation_id: str) -> RouteAccess:
+    """The :class:`RouteAccess` of an operation (``KeyError`` for unknown operations)."""
+    return ROUTE_ACCESS[operation_id]

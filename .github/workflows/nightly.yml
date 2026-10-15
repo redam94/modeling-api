@@ -1,0 +1,104 @@
+# Nightly M2 gates (plan §13, §14 M2): chaos, the 100-fit load test, executor conformance
+# and the security suite. Nothing here touches a cloud project: the Cloud Run code path runs
+# against the in-memory fake Admin API, Postgres is the embedded pgserver, objects go to the
+# GCS shim. The real-GCP nightly (Cloud Run conformance, probes inside a Job execution) is
+# listed in docs/operations/m2-verification.md.
+name: Nightly
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  control-plane:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --all-packages
+      - name: Chaos (worker death, event redelivery and reordering, Postgres restart)
+        run: make chaos
+      - name: Executor conformance (fake-cloudrun and local-process)
+        run: uv run pytest -q -rs packages/server/tests/test_executor_conformance.py
+      - name: 100 concurrent fits on fake Cloud Run (no loss, p95 time-to-RUNNING < 90 s)
+        run: make load-test
+      - name: The same 100 fits, all live at once
+        run: make load-test
+        env:
+          LOAD_TEST_FIT_MS: "40000-60000"
+
+  security-local-process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # optional: where MapiSecurityProbeFailure reads mapi_security_probe_unexpected from
+      MAPI_PUSHGATEWAY_URL: ${{ secrets.MAPI_PUSHGATEWAY_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --all-packages
+      - run: make security-suite EXECUTOR=local-process
+      - name: Push the probe metrics to the Pushgateway
+        if: always() && env.MAPI_PUSHGATEWAY_URL != ''
+        run: |
+          f=.local/security-local-process.prom
+          test -f "$f" || { echo "::warning::$f was not written"; exit 0; }
+          curl --fail --silent --show-error --data-binary @"$f" \
+            "$MAPI_PUSHGATEWAY_URL/metrics/job/mapi_security/executor/local-process"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-local-process
+          path: .local/security-local-process.prom
+          if-no-files-found: ignore
+
+  security-gvisor:
+    # The isolation probes inside a locked-down gVisor container (they must all be BLOCKED).
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      MAPI_PUSHGATEWAY_URL: ${{ secrets.MAPI_PUSHGATEWAY_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space for the scientific image
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - name: Install gVisor (runsc) as a Docker runtime
+        run: |
+          curl -fsSL https://gvisor.dev/archive.key | sudo gpg --dearmor -o /usr/share/keyrings/gvisor-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release main" \
+            | sudo tee /etc/apt/sources.list.d/gvisor.list
+          sudo apt-get update && sudo apt-get install -y runsc
+          sudo runsc install
+          sudo systemctl reload docker
+          docker info --format '{{json .Runtimes}}' | grep -q runsc
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --all-packages
+      - id: meta
+        run: echo "version=$(sed -n 's/^version = \"\(.*\)\"/\1/p' pyproject.toml | head -n 1)" >> "$GITHUB_OUTPUT"
+      - name: Build the worker image the probes run in
+        run: |
+          docker build -f images/base-bayes/Dockerfile --target worker \
+            --build-arg VERSION=${{ steps.meta.outputs.version }} --build-arg VCS_REF=${{ github.sha }} \
+            -t mapi/worker:latest .
+      - run: make security-suite EXECUTOR=docker-gvisor
+      - name: Push the probe metrics to the Pushgateway
+        if: always() && env.MAPI_PUSHGATEWAY_URL != ''
+        run: |
+          f=.local/security-docker-gvisor.prom
+          test -f "$f" || { echo "::warning::$f was not written"; exit 0; }
+          curl --fail --silent --show-error --data-binary @"$f" \
+            "$MAPI_PUSHGATEWAY_URL/metrics/job/mapi_security/executor/docker-gvisor"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-docker-gvisor
+          path: .local/security-docker-gvisor.prom
+          if-no-files-found: ignore

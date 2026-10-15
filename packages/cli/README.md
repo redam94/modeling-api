@@ -18,7 +18,20 @@ mapi catalog [models|steps|plots] [--remote @]
 mapi plugin init acme-demand && mapi plugin test acme-demand   # scaffold + contract kit
 mapi spec upgrade spec.yaml --check
 mapi serve                                     # delegates to `mapi-server dev` when installed
-mapi config show
+mapi config show | set KEY VALUE | unset KEY
+```
+
+Multi-tenant APIs (v0.3):
+
+```bash
+mapi login [--device | --with-token < token]  # browser OIDC (PKCE, loopback), device code, or token
+mapi whoami                                   # who you are, your projects and roles
+mapi use acme/growth                          # X-Mapi-Project for later commands (--project once)
+mapi tokens ls | create NAME -s SCOPE | revoke TOKEN
+mapi usage [--group-by resource_class] [--tenant acme]
+mapi runs get RUN                             # includes the metered cost
+mapi admin tenants|quotas|kill-switches|executors|audit ...   # operators; changes ask first
+mapi logout [--revoke]
 ```
 
 | Templates (`mapi new`) | Conformance fixture |
@@ -28,9 +41,12 @@ mapi config show
 | `tabular`: XGBoost demand with quantile uncertainty | xgb_store_demand |
 | `glm`: hierarchical GLM, long layout | E02 |
 
-**Configuration.** `--url`/`--token`/`--profile` beat `MAPI_URL`/`MAPI_TOKEN`/`MAPI_PROFILE`,
-which beat `~/.config/mapi/config.toml` (`$MAPI_CONFIG`, `$XDG_CONFIG_HOME`), which beats the
-local default `http://127.0.0.1:8000`. `--remote @` means "the configured API"; `--remote URL`
+**Configuration.** `--url`/`--token`/`--project`/`--profile` beat
+`MAPI_URL`/`MAPI_TOKEN`/`MAPI_PROJECT`/`MAPI_PROFILE`, which beat
+`~/.config/mapi/config.toml` (`$MAPI_CONFIG`, `$XDG_CONFIG_HOME`), which beats the local
+default `http://127.0.0.1:8000`. The config file and `credentials.json` (sign-ins) are
+written with mode `0600`; no command prints a token or secret (`mapi tokens create` prints
+the new secret once, alone on stdout, unless `--save`). `--remote @` means "the configured API"; `--remote URL`
 overrides it for one command.
 
 **Scripting.** `--json` prints one JSON document on stdout (`runs watch --json` prints one

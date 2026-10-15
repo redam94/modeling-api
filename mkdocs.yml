@@ -6,6 +6,7 @@ docs_dir: docs
 exclude_docs: |
   architecture-plan.md
   snippets/
+  reference/generated/fragments/
 
 theme:
   name: material
@@ -134,6 +135,8 @@ nav:
       - Bundles: concepts/bundles.md
       - Coord plans and typed errors: concepts/coord-plans.md
       - Capabilities and manifests: concepts/capabilities.md
+      - Tenancy and authentication: concepts/tenancy-and-auth.md
+      - Quotas and cost: concepts/quotas-and-cost.md
   - Guides:
       - Using the platform:
           - The Expert web app: guides/web-ui.md
@@ -141,6 +144,9 @@ nav:
           - The command line: guides/cli.md
           - The Python client: guides/python-client.md
           - The HTTP API: guides/http-api.md
+      - Running it for teams:
+          - Authentication: guides/authentication.md
+          - Administration: guides/administration.md
       - Modelling:
           - Port a model in 15 minutes: guides/port-a-model.md
           - Write a step or model plugin: guides/plugins.md
@@ -168,7 +174,9 @@ nav:
       - Runner: reference/runner.md
       - CLI and Python client: reference/cli.md
       - CLI reference: reference/generated/cli-reference.md
+      - Permissions: reference/generated/permissions.md
       - Server settings: reference/generated/server-settings.md
+      - Environment variables: reference/generated/environment-variables.md
       - Web app and plot sandbox: reference/web-app.md
       - API reference:
           - reference/api/index.md
@@ -184,6 +192,13 @@ nav:
       - Local, without Docker: operations/local-development.md
       - Docker Compose: operations/docker.md
       - Container images: operations/images.md
+      - Deploying to Google Cloud: operations/gcp-deployment.md
+      - Security hardening on Google Cloud: operations/security-hardening.md
+      - Authentication and isolation: operations/authentication.md
+      - Cloud Run Jobs executor: operations/cloud-run.md
+      - Observability: operations/observability.md
+      - Security suite: operations/security-suite.md
+      - M2 verification: operations/m2-verification.md
       - Configuration reference: operations/configuration.md
       - Troubleshooting: operations/troubleshooting.md
   - Roadmap:

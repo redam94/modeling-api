@@ -52,6 +52,7 @@ from mapi_spec.run import (
     CompletePayload,
     ErrorPayload,
     FailureClass,
+    ManifestSignature,
     OutputManifest,
     RunState,
     RunTrigger,
@@ -70,11 +71,14 @@ from mapi_spec.storage import (
 from mapi_spec.validate import ResolvedSpec, ScoreMetadata
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.jsonlimits import JsonTooDeep, loads_limited
+from mapi_server.observability import metrics as obs_metrics
+from mapi_server.observability.tracing import run_span
 from mapi_server.services.runs import append_event, apply_transition, now
 from mapi_server.services.runspec import EMPTY_CATALOG_DIGEST, MANIFEST_MAX_BYTES
 from mapi_server.storage import list_all
@@ -172,15 +176,24 @@ class Finalizer:
                         ErrorCode.INFRA_ERROR, "finalization kept failing; giving up"
                     ),
                 )
+                obs_metrics.record_finalize_outcome(run.kind, "infra")
                 return RunState.FAILED
             att = await session.get(m.RunAttempt, (run_id, attempt))
             assert att is not None
             session.expunge_all()
-        try:
-            verified = await self._verify(run, att)
-            return await self._dispatch(verified)
-        except IntegrityError as exc:
-            return await self._integrity_failure(run, exc)
+        with run_span("finalize", run_id=run_id, attempt=attempt, kind=run.kind):
+            try:
+                verified = await self._verify(run, att)
+                state = await self._dispatch(verified)
+            except IntegrityError as exc:
+                obs_metrics.record_integrity_failure(run.tenant_id)
+                obs_metrics.record_finalize_outcome(run.kind, "integrity")
+                return await self._integrity_failure(run, exc)
+            if state is RunState.SUCCEEDED:
+                obs_metrics.record_finalize_outcome(run.kind, "succeeded")
+            elif state is RunState.PARTIAL:
+                obs_metrics.record_finalize_outcome(run.kind, "partial")
+            return state
 
     async def _lock(self, session: AsyncSession, run_id: str) -> m.Run:
         return (
@@ -414,6 +427,21 @@ class Finalizer:
             if res:
                 return str(res["model_id"]), int(res["version"]), str(res["model_version_id"])
             name = str(row.payload.get("metadata", {}).get("name") or f"run-{row.id}")
+            # get-or-create without a race: concurrent first fits of one spec both try the
+            # insert, one wins, and both then lock the same row (versions 1, 2, ...)
+            await session.execute(
+                pg_insert(m.Model)
+                .values(
+                    id=new_id("mdl"),
+                    tenant_id=row.tenant_id,
+                    project_id=row.project_id,
+                    name=name,
+                    next_version=1,
+                )
+                .on_conflict_do_nothing(
+                    index_elements=[m.Model.tenant_id, m.Model.project_id, m.Model.name]
+                )
+            )
             model = (
                 await session.execute(
                     select(m.Model)
@@ -423,18 +451,9 @@ class Finalizer:
                         m.Model.name == name,
                     )
                     .with_for_update()
+                    .execution_options(populate_existing=True)
                 )
-            ).scalar_one_or_none()
-            if model is None:
-                model = m.Model(
-                    id=new_id("mdl"),
-                    tenant_id=row.tenant_id,
-                    project_id=row.project_id,
-                    name=name,
-                    next_version=1,
-                )
-                session.add(model)
-                await session.flush()
+            ).scalar_one()
             version = model.next_version
             model.next_version += 1
             mv_id = new_id("mv")
@@ -485,13 +504,7 @@ class Finalizer:
             source_manifest_crc32c=v.manifest_meta.crc32c,
             signed_at=now(),
         )
-        signed = self.ctx.signer.sign(manifest)
-        assert signed.signature is not None
-        unsigned_json = canonical_json(signed.model_copy(update={"signature": None}))
-        await self._put_once(bundles, dst_prefix + "manifest.json", unsigned_json.encode())
-        await self._put_once(
-            bundles, dst_prefix + "manifest.sig", signed.signature.model_dump_json().encode()
-        )
+        signed = await self._sign_once(bundles, dst_prefix, manifest)
 
         async def apply(session: AsyncSession, row: m.Run) -> None:
             await self._register_model_version(
@@ -509,6 +522,54 @@ class Finalizer:
             )
 
         return await self._commit(v, apply)
+
+    async def _stored_json(self, bucket: str, name: str) -> Any | None:
+        try:
+            meta = await self.ctx.store.stat(bucket, name)
+        except NotFound:
+            return None
+        return await self._read_json(bucket, meta, MANIFEST_MAX_BYTES)
+
+    async def _sign_once(
+        self, bucket: str, prefix: str, manifest: BundleManifest
+    ) -> BundleManifest:
+        """Sign ``manifest`` and store ``manifest.json`` + ``manifest.sig`` write-once.
+
+        Idempotent across retries: a finalization that stopped after storing them (a crash,
+        a lost database connection) finds them on the next attempt and reuses them — the
+        signature is randomized and ``signed_at`` is a timestamp, so re-signing would never
+        match the write-once objects. Whatever is reused must be the same manifest (apart
+        from ``signed_at``) and must verify.
+        """
+        stored = await self._stored_json(bucket, prefix + "manifest.json")
+        if stored is not None:
+            try:
+                previous = BundleManifest.model_validate(stored)
+            except ValidationError as exc:
+                raise IntegrityError("the stored bundle manifest is malformed") from exc
+            if previous.model_copy(update={"signed_at": manifest.signed_at}) != manifest:
+                raise IntegrityError(
+                    "a different manifest was already stored for this model version"
+                )
+            manifest = previous
+        sig_doc = await self._stored_json(bucket, prefix + "manifest.sig")
+        if sig_doc is not None and stored is not None:
+            try:
+                signature = ManifestSignature.model_validate(sig_doc)
+            except ValidationError as exc:
+                raise IntegrityError("the stored manifest signature is malformed") from exc
+            signed = manifest.model_copy(update={"signature": signature})
+            if not self.ctx.signer.verify(signed):
+                raise IntegrityError("the stored manifest signature does not verify")
+            return signed
+        signed = await self.ctx.signer.sign_manifest(manifest)
+        assert signed.signature is not None
+        unsigned_json = canonical_json(signed.model_copy(update={"signature": None}))
+        await self._put_once(bucket, prefix + "manifest.json", unsigned_json.encode())
+        await self._put_once(
+            bucket, prefix + "manifest.sig", signed.signature.model_dump_json().encode()
+        )
+        return signed
 
     async def _side_table_shas(self, session: AsyncSession, run: m.Run) -> dict[str, str]:
         """``{name: sha256}`` of the side-table versions the run read (lineage, plan §8.6)."""
@@ -554,6 +615,11 @@ class Finalizer:
         if existing is not None:
             run.output_model_version_id = existing.id
             return
+        # Lock the model first: inserting a version takes FOR KEY SHARE on the model row
+        # (the foreign key), and upgrading that to FOR UPDATE afterwards deadlocks against a
+        # concurrent finalization of another version of the same model.
+        model = await session.get(m.Model, model_id, with_for_update=True)
+        assert model is not None
         resolved: ResolvedSpec | None = None
         if run.spec_id is not None and run.spec_revision is not None:
             rev = await session.get(m.SpecRevision, (run.spec_id, run.spec_revision))
@@ -625,8 +691,6 @@ class Finalizer:
                     spec=plot.model_dump(mode="json", by_alias=True),
                 )
             )
-        model = await session.get(m.Model, model_id, with_for_update=True)
-        assert model is not None
         model.latest_version = max(model.latest_version or 0, version)
         model.updated_at = now()
         run.output_model_version_id = mv_id

@@ -4,6 +4,87 @@
  */
 
 export interface paths {
+    "/auth/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Auth Callback
+         * @description Finish sign-in: one-time transaction, state check, code exchange, ID-token checks.
+         */
+        get: operations["auth_callback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Auth Login
+         * @description Start sign-in: Authorization Code + PKCE (S256) + nonce, state kept server-side.
+         */
+        get: operations["auth_login"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Auth Logout
+         * @description End the session (idempotent) and clear the cookies. Cookie-authenticated, so it
+         *     needs the CSRF header like every other mutation.
+         */
+        post: operations["auth_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Auth Session
+         * @description Is this browser signed in? The CSRF token comes back in ``X-CSRF-Token``.
+         */
+        get: operations["auth_session"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -53,6 +134,215 @@ export interface paths {
          * @description Postgres and the object store are reachable (503 with the same body if not).
          */
         get: operations["ready"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin List Audit
+         * @description The platform audit log (every tenant and platform-level actions), newest first.
+         */
+        get: operations["admin_list_audit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/executors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin List Executors */
+        get: operations["admin_list_executors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/executors/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Get Executor */
+        get: operations["admin_get_executor"];
+        /**
+         * Admin Put Executor
+         * @description Enable or disable an executor. Orchestrators lease nothing onto a disabled one (their
+         *     reports never re-enable it); runs already placed on it are not cancelled here.
+         */
+        put: operations["admin_put_executor"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/executors/{name}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Get Executor Evidence */
+        get: operations["admin_get_executor_evidence"];
+        /**
+         * Admin Put Executor Evidence
+         * @description Record executor-conformance and/or security-suite results (plan §8.4). The dispatcher
+         *     places verified and public tenants on an executor only while both reports passed for the
+         *     caps it currently reports and neither has expired (``MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S``).
+         */
+        put: operations["admin_put_executor_evidence"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/kill-switches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Get Kill Switches */
+        get: operations["admin_get_kill_switches"];
+        /**
+         * Admin Put Kill Switches
+         * @description Flip kill switches. Enforced at run creation and by the dispatcher at lease time.
+         *
+         *     Pausing untrusted execution holds new work only. ``cancel_untrusted_runs`` also cancels
+         *     every unfinished run of tenant-uploaded code (the reconciler then stops their
+         *     executions): the containment step for a suspected sandbox escape.
+         */
+        put: operations["admin_put_kill_switches"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/quotas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin List Quotas
+         * @description Stored policies (tier defaults apply where none is stored).
+         */
+        get: operations["admin_list_quotas"];
+        /** Admin Put Quota */
+        put: operations["admin_put_quota"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/quotas/{scope}/{subject_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Admin Delete Quota */
+        delete: operations["admin_delete_quota"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin List Tenants */
+        get: operations["admin_list_tenants"];
+        put?: never;
+        /**
+         * Admin Create Tenant
+         * @description Create a tenant; ``initial_admin_email`` is invited as its tenant admin.
+         */
+        post: operations["admin_create_tenant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/tenants/{tenant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Get Tenant */
+        get: operations["admin_get_tenant"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Admin Update Tenant
+         * @description Change a tenant's name, tier, status or residency. Suspended tenants are read-only;
+         *     ``deleting`` tenants are inaccessible (their data is removed by a separate procedure).
+         */
+        patch: operations["admin_update_tenant"];
+        trace?: never;
+    };
+    "/v1/admin/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin Get Usage
+         * @description Cost by tenant for one UTC period (from the ledger) and the current spend against the
+         *     global spend cap. Summed in the database: the ledger is never loaded row by row here.
+         */
+        get: operations["admin_get_usage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -282,8 +572,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Me
-         * @description M1 has no authentication: every caller is the local default principal.
+         * Get Me
+         * @description Who is calling, and the tenants, projects and roles they can act in. For a token:
+         *     only its own project (its scopes narrow every role shown).
          */
         get: operations["get_me"];
         put?: never;
@@ -372,7 +663,7 @@ export interface paths {
         /**
          * Get Model Artifact
          * @description Signed URL for a bundle object or ``ui/…`` view, minted only after the signed bundle
-         *     manifest verifies (``INTEGRITY_FAILURE`` otherwise).
+         *     manifest verifies (``INTEGRITY_FAILURE`` otherwise). Audited.
          */
         get: operations["get_model_artifact"];
         put?: never;
@@ -507,7 +798,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Projects */
+        /**
+         * List Projects
+         * @description Every project the caller can act in, across its tenants (ordered by tenant, id).
+         */
         get: operations["list_projects"];
         put?: never;
         post?: never;
@@ -524,7 +818,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Project */
+        /**
+         * Get Project
+         * @description The selected project (its tenant comes from ``X-Mapi-Project``, the token, or the
+         *     caller's only tenant).
+         */
         get: operations["get_project"];
         put?: never;
         post?: never;
@@ -850,10 +1148,343 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tenants
+         * @description Tenants the caller belongs to (operators: use ``/v1/admin/tenants`` for all).
+         */
+        get: operations["list_tenants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Tenant */
+        get: operations["get_tenant"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Tenant */
+        patch: operations["update_tenant"];
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tenant Audit
+         * @description The tenant's audit log, newest first (tenant admins).
+         */
+        get: operations["list_tenant_audit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tenant Members */
+        get: operations["list_tenant_members"];
+        put?: never;
+        /** Add Tenant Member */
+        post: operations["add_tenant_member"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/members/{principal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Tenant Member */
+        delete: operations["remove_tenant_member"];
+        options?: never;
+        head?: never;
+        /** Update Tenant Member */
+        patch: operations["update_tenant_member"];
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tenant Projects */
+        get: operations["list_tenant_projects"];
+        put?: never;
+        /** Create Project */
+        post: operations["create_project"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/projects/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Project
+         * @description Delete an empty project (its memberships and tokens go with it). 409 while it holds
+         *     datasets, specs, runs or models, and for the platform's default project.
+         */
+        delete: operations["delete_project"];
+        options?: never;
+        head?: never;
+        /** Update Project */
+        patch: operations["update_project"];
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/projects/{project_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Members
+         * @description Project grants plus tenant-wide grants (which apply to every project).
+         */
+        get: operations["list_members"];
+        put?: never;
+        /** Add Project Member */
+        post: operations["add_member"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/projects/{project_id}/members/{principal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Project Member */
+        delete: operations["remove_member"];
+        options?: never;
+        head?: never;
+        /** Update Project Member */
+        patch: operations["update_member"];
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tenant Usage
+         * @description Cost of the whole tenant (tenant admins).
+         */
+        get: operations["get_tenant_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tokens
+         * @description The caller's tokens in the project, newest first (``all=true``: everyone's).
+         */
+        get: operations["list_tokens"];
+        put?: never;
+        /**
+         * Create Token
+         * @description Mint a token in the selected project; ``secret`` is returned now and never again.
+         */
+        post: operations["create_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tokens/{token_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Token */
+        get: operations["get_token"];
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Token
+         * @description Revoke a token (idempotent). The next request with it is ``401``.
+         */
+        delete: operations["revoke_token"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Usage
+         * @description Cost of the selected project for one UTC period, and the quotas in force now.
+         */
+        get: operations["get_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AdminUsageReport
+         * @description ``GET /v1/admin/usage`` (operators): cost by tenant for one UTC period, biggest spender
+         *     first, and the current spend against the global spend cap.
+         *
+         *     Query: ``period=day|month`` (default ``month``) and ``start`` (an instant inside the
+         *     period; default: now). Tenants without ledger entries in the period are not listed;
+         *     ``totals`` has one row per currency. ``spend_cap`` always covers the cap's current window.
+         * @example {
+         *       "end": "2026-11-01T00:00:00Z",
+         *       "period": "month",
+         *       "price_versions": [
+         *         "cloudrun-list-2026-10"
+         *       ],
+         *       "spend_cap": {
+         *         "cap_micros": 500000000,
+         *         "currency": "USD",
+         *         "end": "2026-10-16T00:00:00Z",
+         *         "fraction": 0.7,
+         *         "period": "day",
+         *         "spent_micros": 350000000,
+         *         "start": "2026-10-15T00:00:00Z"
+         *       },
+         *       "start": "2026-10-01T00:00:00Z",
+         *       "tenants": [
+         *         {
+         *           "name": "Acme Corp",
+         *           "tenant_id": "acme",
+         *           "totals": {
+         *             "amount_micros": 93600,
+         *             "attempts": 3,
+         *             "currency": "USD",
+         *             "gib_seconds": 14400,
+         *             "runs": 3,
+         *             "vcpu_seconds": 3600
+         *           },
+         *           "trust_tier": "verified"
+         *         }
+         *       ],
+         *       "totals": [
+         *         {
+         *           "amount_micros": 93600,
+         *           "attempts": 3,
+         *           "currency": "USD",
+         *           "gib_seconds": 14400,
+         *           "runs": 3,
+         *           "vcpu_seconds": 3600
+         *         }
+         *       ]
+         *     }
+         */
+        AdminUsageReport: {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "day" | "month";
+            /** Price Versions */
+            price_versions?: string[];
+            spend_cap: components["schemas"]["GlobalSpend"];
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Tenants */
+            tenants?: components["schemas"]["TenantCost"][];
+            /** Totals */
+            totals?: components["schemas"]["CostTotals"][];
+        };
         /**
          * Aggregation
          * @description Reduce outputs over dims before summarising (validity depends on representation).
@@ -867,6 +1498,82 @@ export interface components {
             how?: "sum" | "mean" | "min" | "max";
             /** Over */
             over: string[];
+        };
+        /**
+         * ApiToken
+         * @description A token as listed by the API. It never carries the secret or its hash.
+         * @example {
+         *       "budget_period": "month",
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "display": "mapi_7k2m9q4x_…",
+         *       "expires_at": "2026-11-14T09:30:00Z",
+         *       "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *       "last_used_at": "2026-10-16T08:00:00Z",
+         *       "name": "atlas-optimiser",
+         *       "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "prefix": "7k2m9q4x",
+         *       "project_id": "growth",
+         *       "rate_limit_per_minute": 120,
+         *       "scopes": [
+         *         "score:geo-mmm-prod",
+         *         "models:read"
+         *       ],
+         *       "status": "active",
+         *       "tenant_id": "acme",
+         *       "vcpu_seconds_budget": 36000
+         *     }
+         */
+        ApiToken: {
+            /** @default month */
+            budget_period?: components["schemas"]["BudgetPeriod"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Display
+             * @description Redacted form, mapi_<prefix>_…
+             */
+            display: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Last Used At */
+            last_used_at?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Owner Id
+             * @description Principal id of the user or service that minted it
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            owner_id: string;
+            /**
+             * Prefix
+             * @example 7k2m9q4x
+             */
+            prefix: string;
+            /** Project Id */
+            project_id: string;
+            /** Rate Limit Per Minute */
+            rate_limit_per_minute?: number | null;
+            /** Revoked At */
+            revoked_at?: string | null;
+            /** Scopes */
+            scopes: string[];
+            status: components["schemas"]["TokenStatus"];
+            /** Tenant Id */
+            tenant_id: string;
+            /** Vcpu Seconds Budget */
+            vcpu_seconds_budget?: number | null;
         };
         /**
          * ArtifactLink
@@ -911,6 +1618,107 @@ export interface components {
             url: string;
         };
         /**
+         * AuditAction
+         * @description Audited actions (``<resource>.<verb>``). New actions are additive.
+         * @enum {string}
+         */
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected";
+        /**
+         * AuditEvent
+         * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
+         * @example {
+         *       "action": "token.create",
+         *       "actor_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "actor_kind": "user",
+         *       "details": {
+         *         "expires_in_days": 30,
+         *         "scopes": [
+         *           "score:geo-mmm-prod"
+         *         ]
+         *       },
+         *       "id": "aud_01jaf3w1x2y3z4a5b6c7d8e9f0",
+         *       "ip_hash": "hmac-sha256:0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+         *       "outcome": "success",
+         *       "project_id": "growth",
+         *       "request_id": "req-7f3a",
+         *       "resource_id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *       "resource_kind": "token",
+         *       "tenant_id": "acme",
+         *       "ts": "2026-10-15T09:30:00Z",
+         *       "user_agent_hash": "hmac-sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90"
+         *     }
+         * @example {
+         *       "action": "quota.denied",
+         *       "actor_id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *       "actor_kind": "token",
+         *       "code": "QUOTA_EXCEEDED",
+         *       "details": {
+         *         "limit_name": "vcpu_seconds_per_day",
+         *         "scope": "tenant"
+         *       },
+         *       "id": "aud_01jaf3w9x8y7z6a5b4c3d2e1f0",
+         *       "outcome": "denied",
+         *       "project_id": "growth",
+         *       "resource_kind": "run",
+         *       "tenant_id": "acme",
+         *       "token_id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *       "ts": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        AuditEvent: {
+            action: components["schemas"]["AuditAction"];
+            /** Actor Id */
+            actor_id?: string | null;
+            /** @description None: unauthenticated caller */
+            actor_kind?: components["schemas"]["PrincipalKind"] | null;
+            /** @description Problem code of a denial or error */
+            code?: components["schemas"]["ErrorCode"] | null;
+            /** Details */
+            details?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Ip Hash */
+            ip_hash?: string | null;
+            /**
+             * Operator
+             * @description The actor acted as a platform operator
+             * @default false
+             */
+            operator?: boolean;
+            outcome: components["schemas"]["AuditOutcome"];
+            /** Project Id */
+            project_id?: string | null;
+            /** Request Id */
+            request_id?: string | null;
+            /** Resource Id */
+            resource_id?: string | null;
+            resource_kind: components["schemas"]["ResourceKind"];
+            /** Tenant Id */
+            tenant_id?: string | null;
+            /**
+             * Token Id
+             * @description Set when the actor used an API token
+             */
+            token_id?: string | null;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+            /** User Agent Hash */
+            user_agent_hash?: string | null;
+        };
+        /**
+         * AuditOutcome
+         * @enum {string}
+         */
+        AuditOutcome: "success" | "denied" | "error";
+        /**
          * Binding
          * @description Canonical name → dataset name, for dims and variables (``geo: market``).
          *
@@ -927,6 +1735,12 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /**
+         * BudgetPeriod
+         * @description Window of a per-token vCPU-second budget (UTC calendar day or month).
+         * @enum {string}
+         */
+        BudgetPeriod: "day" | "month";
         /**
          * BundleManifest
          * @description The platform-signed manifest of a bundle (``manifest.json`` + ``manifest.sig``).
@@ -1117,6 +1931,11 @@ export interface components {
             score_modes: unknown[];
         };
         /**
+         * CaseOutcome
+         * @enum {string}
+         */
+        CaseOutcome: "passed" | "failed" | "skipped" | "error";
+        /**
          * CatalogResponse
          * @description The static catalog the control plane validates against (no plugin code involved).
          * @example {
@@ -1226,6 +2045,93 @@ export interface components {
             total_bytes: number;
         };
         /**
+         * ConformanceCaseId
+         * @enum {string}
+         */
+        ConformanceCaseId: "submit" | "adopt_after_dispatcher_crash" | "duplicate_submit" | "cancel_mid_run" | "timeout" | "stalled_not_lost" | "confirmed_cancel_before_retry" | "checkpoint_resume" | "oom_classification" | "fanout_task_count" | "generation_verification" | "rate_limit_backoff";
+        /**
+         * ConformanceReport
+         * @description One run of the suite against one executor.
+         * @example {
+         *       "environment": "nightly",
+         *       "executor": "cloudrun-jobs",
+         *       "finished_at": "2026-10-15T02:24:00Z",
+         *       "results": [
+         *         {
+         *           "case_id": "submit",
+         *           "duration_seconds": 61,
+         *           "outcome": "passed"
+         *         },
+         *         {
+         *           "case_id": "rate_limit_backoff",
+         *           "duration_seconds": 33.5,
+         *           "outcome": "passed"
+         *         }
+         *       ],
+         *       "started_at": "2026-10-15T02:00:00Z",
+         *       "suite_version": "1"
+         *     }
+         */
+        ConformanceReport: {
+            /**
+             * Environment
+             * @default pr
+             * @enum {string}
+             */
+            environment?: "pr" | "nightly" | "manual";
+            /** Executor */
+            executor: string;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Results */
+            results?: components["schemas"]["ConformanceResult"][];
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Suite Version
+             * @default 1
+             */
+            suite_version?: string;
+        };
+        /**
+         * ConformanceResult
+         * @example {
+         *       "case_id": "stalled_not_lost",
+         *       "duration_seconds": 41.2,
+         *       "outcome": "passed"
+         *     }
+         */
+        ConformanceResult: {
+            case_id: components["schemas"]["ConformanceCaseId"];
+            /** Duration Seconds */
+            duration_seconds?: number | null;
+            outcome: components["schemas"]["CaseOutcome"];
+            /** Problems */
+            problems?: string[];
+        };
+        /**
+         * ConformanceTarget
+         * @description An executor under test: its declared caps plus facts the caps do not express.
+         */
+        ConformanceTarget: {
+            caps: components["schemas"]["ExecutorCaps"];
+            /**
+             * Enforces Memory Limit
+             * @default false
+             */
+            enforces_memory_limit?: boolean;
+            /** Executor */
+            executor: string;
+            /**
+             * Remote Control Api
+             * @default false
+             */
+            remote_control_api?: boolean;
+        };
+        /**
          * ContextNeed
          * @description Per-group tail a step needs at score time: ``n`` rows along ``along`` within groups.
          *
@@ -1273,6 +2179,49 @@ export interface components {
             step?: number | null;
             /** Values */
             values?: (string | number | boolean)[] | null;
+        };
+        /**
+         * CostTotals
+         * @description Sums over ledger entries (one currency).
+         * @example {
+         *       "amount_micros": 93600,
+         *       "attempts": 3,
+         *       "currency": "USD",
+         *       "gib_seconds": 14400,
+         *       "runs": 3,
+         *       "vcpu_seconds": 3600
+         *     }
+         */
+        CostTotals: {
+            /**
+             * Amount Micros
+             * @default 0
+             */
+            amount_micros?: number;
+            /**
+             * Attempts
+             * @description Distinct (run, attempt) pairs
+             * @default 0
+             */
+            attempts?: number;
+            /** Currency */
+            currency?: string | null;
+            /**
+             * Gib Seconds
+             * @default 0
+             */
+            gib_seconds?: number;
+            /**
+             * Runs
+             * @description Distinct runs
+             * @default 0
+             */
+            runs?: number;
+            /**
+             * Vcpu Seconds
+             * @default 0
+             */
+            vcpu_seconds?: number;
         };
         /**
          * DataRef
@@ -1737,11 +2686,491 @@ export interface components {
             };
         };
         /**
+         * ExecutorAttestation
+         * @description One recorded suite result, bound to the caps it was measured against.
+         * @example {
+         *       "caps": {
+         *         "checkpoint_storage": true,
+         *         "classes": [
+         *           "S",
+         *           "M",
+         *           "L"
+         *         ],
+         *         "dns_enforced": true,
+         *         "egress_enforced": true,
+         *         "isolation": 3,
+         *         "max_runtime": "1h",
+         *         "max_tasks": 10000,
+         *         "regions": [
+         *           "europe-west1"
+         *         ]
+         *       },
+         *       "expires_at": "2026-10-18T09:30:00Z",
+         *       "passed": true,
+         *       "recorded_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        ExecutorAttestation: {
+            caps: components["schemas"]["ExecutorCaps"];
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Passed */
+            passed: boolean;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Recorded By */
+            recorded_by?: string | null;
+        };
+        /**
+         * ExecutorCaps
+         * @description What an executor can do; placement rules are enforced against these.
+         */
+        ExecutorCaps: {
+            /**
+             * Checkpoint Storage
+             * @default false
+             */
+            checkpoint_storage?: boolean;
+            /** Classes */
+            classes?: components["schemas"]["ResourceClass"][];
+            /**
+             * Dns Enforced
+             * @default false
+             */
+            dns_enforced?: boolean;
+            /**
+             * Egress Enforced
+             * @default false
+             */
+            egress_enforced?: boolean;
+            /**
+             * Gpus
+             * @default []
+             */
+            gpus?: string[];
+            isolation: components["schemas"]["Isolation"];
+            /**
+             * Max Runtime
+             * @description Duration such as '45m', '1h30m' or '90s'.
+             * @example 45m
+             * @example 1h30m
+             */
+            max_runtime?: string;
+            /**
+             * Max Tasks
+             * @default 1
+             */
+            max_tasks?: number;
+            /**
+             * Regions
+             * @default []
+             */
+            regions?: string[];
+        };
+        /**
+         * ExecutorEvidence
+         * @description The conformance and security-suite evidence recorded for one executor.
+         * @example {
+         *       "conformance": {
+         *         "environment": "nightly",
+         *         "executor": "cloudrun-jobs",
+         *         "finished_at": "2026-10-15T02:24:00Z",
+         *         "results": [
+         *           {
+         *             "case_id": "submit",
+         *             "duration_seconds": 61,
+         *             "outcome": "passed"
+         *           },
+         *           {
+         *             "case_id": "rate_limit_backoff",
+         *             "duration_seconds": 33.5,
+         *             "outcome": "passed"
+         *           }
+         *         ],
+         *         "started_at": "2026-10-15T02:00:00Z",
+         *         "suite_version": "1"
+         *       },
+         *       "conformance_attestation": {
+         *         "caps": {
+         *           "checkpoint_storage": true,
+         *           "classes": [
+         *             "S",
+         *             "M",
+         *             "L"
+         *           ],
+         *           "dns_enforced": true,
+         *           "egress_enforced": true,
+         *           "isolation": 3,
+         *           "max_runtime": "1h",
+         *           "max_tasks": 10000,
+         *           "regions": [
+         *             "europe-west1"
+         *           ]
+         *         },
+         *         "expires_at": "2026-10-18T09:30:00Z",
+         *         "passed": true,
+         *         "recorded_at": "2026-10-15T09:30:00Z"
+         *       },
+         *       "executor": "cloudrun-jobs",
+         *       "security": {
+         *         "executor": "cloudrun-jobs",
+         *         "isolation": "microvm",
+         *         "ok": true,
+         *         "rows": [
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "http_egress"
+         *           },
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "dns_egress"
+         *           },
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "metadata_token"
+         *           }
+         *         ],
+         *         "started_at": "2026-10-15T02:30:00Z",
+         *         "unexpected": []
+         *       },
+         *       "security_attestation": {
+         *         "caps": {
+         *           "checkpoint_storage": true,
+         *           "classes": [
+         *             "S",
+         *             "M",
+         *             "L"
+         *           ],
+         *           "dns_enforced": true,
+         *           "egress_enforced": true,
+         *           "isolation": 3,
+         *           "max_runtime": "1h",
+         *           "max_tasks": 10000,
+         *           "regions": [
+         *             "europe-west1"
+         *           ]
+         *         },
+         *         "expires_at": "2026-10-18T09:30:00Z",
+         *         "passed": true,
+         *         "recorded_at": "2026-10-15T09:30:00Z"
+         *       }
+         *     }
+         */
+        ExecutorEvidence: {
+            conformance?: components["schemas"]["ConformanceReport"] | null;
+            conformance_attestation?: components["schemas"]["ExecutorAttestation"] | null;
+            /** Executor */
+            executor: string;
+            security?: components["schemas"]["SecuritySuiteReport"] | null;
+            security_attestation?: components["schemas"]["ExecutorAttestation"] | null;
+        };
+        /**
+         * ExecutorEvidenceUpdate
+         * @description Record suite results for an executor (``PUT /v1/admin/executors/{name}/evidence``).
+         *
+         *     ``target`` is what the suites ran against (the executor's caps plus the facts its caps do
+         *     not express); the evidence only counts while the executor still reports those caps.
+         *     Each report given replaces the stored one of its kind.
+         * @example {
+         *       "conformance": {
+         *         "environment": "nightly",
+         *         "executor": "cloudrun-jobs",
+         *         "finished_at": "2026-10-15T02:24:00Z",
+         *         "results": [
+         *           {
+         *             "case_id": "submit",
+         *             "duration_seconds": 61,
+         *             "outcome": "passed"
+         *           },
+         *           {
+         *             "case_id": "rate_limit_backoff",
+         *             "duration_seconds": 33.5,
+         *             "outcome": "passed"
+         *           }
+         *         ],
+         *         "started_at": "2026-10-15T02:00:00Z",
+         *         "suite_version": "1"
+         *       },
+         *       "security": {
+         *         "executor": "cloudrun-jobs",
+         *         "isolation": "microvm",
+         *         "ok": true,
+         *         "rows": [
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "http_egress"
+         *           },
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "dns_egress"
+         *           },
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "metadata_token"
+         *           }
+         *         ],
+         *         "started_at": "2026-10-15T02:30:00Z",
+         *         "unexpected": []
+         *       },
+         *       "target": {
+         *         "caps": {
+         *           "checkpoint_storage": true,
+         *           "classes": [
+         *             "S",
+         *             "M",
+         *             "L"
+         *           ],
+         *           "dns_enforced": true,
+         *           "egress_enforced": true,
+         *           "isolation": 3,
+         *           "max_runtime": "1h",
+         *           "max_tasks": 10000,
+         *           "regions": [
+         *             "europe-west1"
+         *           ]
+         *         },
+         *         "executor": "cloudrun-jobs"
+         *       }
+         *     }
+         */
+        ExecutorEvidenceUpdate: {
+            conformance?: components["schemas"]["ConformanceReport"] | null;
+            security?: components["schemas"]["SecuritySuiteReport"] | null;
+            target: components["schemas"]["ConformanceTarget"];
+        };
+        /**
+         * ExecutorHealth
+         * @description One executor as the admin console shows it.
+         * @example {
+         *       "allows_public_tenants": true,
+         *       "caps": {
+         *         "checkpoint_storage": true,
+         *         "classes": [
+         *           "S",
+         *           "M",
+         *           "L"
+         *         ],
+         *         "dns_enforced": true,
+         *         "egress_enforced": true,
+         *         "isolation": 3,
+         *         "max_runtime": "1h",
+         *         "max_tasks": 10000,
+         *         "regions": [
+         *           "europe-west1"
+         *         ]
+         *       },
+         *       "checked_at": "2026-10-15T09:30:00Z",
+         *       "conformance": {
+         *         "environment": "nightly",
+         *         "executor": "cloudrun-jobs",
+         *         "finished_at": "2026-10-15T02:24:00Z",
+         *         "results": [
+         *           {
+         *             "case_id": "submit",
+         *             "duration_seconds": 61,
+         *             "outcome": "passed"
+         *           },
+         *           {
+         *             "case_id": "rate_limit_backoff",
+         *             "duration_seconds": 33.5,
+         *             "outcome": "passed"
+         *           }
+         *         ],
+         *         "started_at": "2026-10-15T02:00:00Z",
+         *         "suite_version": "1"
+         *       },
+         *       "conformance_passed": true,
+         *       "enabled": true,
+         *       "failures_last_hour": 1,
+         *       "last_success_at": "2026-10-15T09:30:00Z",
+         *       "name": "cloudrun-jobs",
+         *       "queued_runs": 4,
+         *       "regions": [
+         *         "europe-west1"
+         *       ],
+         *       "running_executions": 37,
+         *       "security": {
+         *         "executor": "cloudrun-jobs",
+         *         "isolation": "microvm",
+         *         "ok": true,
+         *         "rows": [
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "http_egress"
+         *           },
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "dns_egress"
+         *           },
+         *           {
+         *             "category": "isolation",
+         *             "outcome": "blocked",
+         *             "probe_id": "metadata_token"
+         *           }
+         *         ],
+         *         "started_at": "2026-10-15T02:30:00Z",
+         *         "unexpected": []
+         *       },
+         *       "security_passed": true,
+         *       "shared_tiers_enabled": true,
+         *       "status": "ok",
+         *       "submit_rate_limit_per_minute": 180,
+         *       "submits_last_minute": 52,
+         *       "throttled_last_hour": 0
+         *     }
+         */
+        ExecutorHealth: {
+            /** Allows Public Tenants */
+            allows_public_tenants: boolean;
+            caps: components["schemas"]["ExecutorCaps"];
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            conformance?: components["schemas"]["ConformanceReport"] | null;
+            /**
+             * Conformance Passed
+             * @description A passing, unexpired conformance report for the current caps
+             * @default false
+             */
+            conformance_passed?: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Failures Last Hour
+             * @description Attempts failed as infra errors
+             * @default 0
+             */
+            failures_last_hour?: number;
+            /** Last Success At */
+            last_success_at?: string | null;
+            /** Message */
+            message?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Queued Runs
+             * @default 0
+             */
+            queued_runs?: number;
+            /** Regions */
+            regions?: string[];
+            /**
+             * Running Executions
+             * @default 0
+             */
+            running_executions?: number;
+            security?: components["schemas"]["SecuritySuiteReport"] | null;
+            /**
+             * Security Passed
+             * @description A passing, unexpired security-suite report for the current caps
+             * @default false
+             */
+            security_passed?: boolean;
+            /**
+             * Shared Tiers Enabled
+             * @description May take verified and public tenants: the caps allow it and both suites passed for these caps (plan §8.4)
+             * @default false
+             */
+            shared_tiers_enabled?: boolean;
+            status: components["schemas"]["ExecutorStatus"];
+            /** Submit Rate Limit Per Minute */
+            submit_rate_limit_per_minute?: number | null;
+            /**
+             * Submits Last Minute
+             * @default 0
+             */
+            submits_last_minute?: number;
+            /**
+             * Throttled Last Hour
+             * @description 429 answers from the backend
+             * @default 0
+             */
+            throttled_last_hour?: number;
+        };
+        /**
+         * ExecutorStatus
+         * @enum {string}
+         */
+        ExecutorStatus: "ok" | "degraded" | "down" | "disabled";
+        /**
+         * ExecutorUpdate
+         * @description ``PUT /v1/admin/executors/{name}``: enable or disable an executor (audited).
+         *
+         *     Orchestrators lease no new run onto a disabled executor. Runs already placed on it keep
+         *     running: cancel them with ``cancel_untrusted_runs`` on the kill switches, or one by one.
+         * @example {
+         *       "enabled": false,
+         *       "reason": "incident 2026-10-15: suspected sandbox escape"
+         *     }
+         */
+        ExecutorUpdate: {
+            /** Enabled */
+            enabled: boolean;
+            /** Reason */
+            reason: string;
+        };
+        /**
          * FailureClass
          * @description Why a run ended ``FAILED``; each maps to one stable :class:`ErrorCode`.
          * @enum {string}
          */
         FailureClass: "user" | "resource_exhausted" | "infra" | "integrity" | "timeout" | "sandbox";
+        /**
+         * GlobalSpend
+         * @description Platform spend in the current window of the global spend cap: what the kill switch
+         *     compares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in
+         *     ``spend_cap_currency``). ``fraction`` is ``spent / cap``; null without a cap.
+         * @example {
+         *       "cap_micros": 500000000,
+         *       "currency": "USD",
+         *       "end": "2026-10-16T00:00:00Z",
+         *       "fraction": 0.7,
+         *       "period": "day",
+         *       "spent_micros": 350000000,
+         *       "start": "2026-10-15T00:00:00Z"
+         *     }
+         */
+        GlobalSpend: {
+            /** Cap Micros */
+            cap_micros?: number | null;
+            /** Currency */
+            currency: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Fraction */
+            fraction?: number | null;
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "day" | "month";
+            /** Spent Micros */
+            spent_micros: number;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1900,6 +3329,11 @@ export interface components {
             rows?: number | null;
         };
         /**
+         * InternalService
+         * @enum {string}
+         */
+        InternalService: "api" | "dispatcher" | "reconciler" | "finalizer" | "events" | "pubsub-push";
+        /**
          * Intervention
          * @description Change ``var`` on the coords selected by ``sel``: exactly one of multiply/add/set.
          */
@@ -1917,6 +3351,12 @@ export interface components {
             /** Var */
             var: string;
         };
+        /**
+         * Isolation
+         * @description How strongly a backend isolates a run (ordered: higher is stronger).
+         * @enum {integer}
+         */
+        Isolation: 0 | 1 | 2 | 3 | 4;
         /**
          * Issue
          * @description One problem found while validating a document, located by a JSON pointer.
@@ -1949,6 +3389,95 @@ export interface components {
             untrusted_text?: string | null;
         };
         JsonValue: unknown;
+        /**
+         * KillSwitchUpdate
+         * @description ``PUT /v1/admin/kill-switches``: fields left out keep their value; ``reason`` is
+         *     required so the audit log says why.
+         * @example {
+         *       "reason": "incident 2026-10-15",
+         *       "untrusted_execution_enabled": false
+         *     }
+         * @example {
+         *       "cancel_untrusted_runs": true,
+         *       "reason": "incident 2026-10-15: confirmed sandbox escape",
+         *       "untrusted_execution_enabled": false
+         *     }
+         * @example {
+         *       "global_spend_cap_micros": 500000000,
+         *       "reason": "daily cap for the beta"
+         *     }
+         */
+        KillSwitchUpdate: {
+            /**
+             * Cancel Untrusted Runs
+             * @description Also cancel every unfinished run of tenant-uploaded code, queued or already placed on an executor. Requires untrusted_execution_enabled=false in the same update. Without it, pausing only holds new work and in-flight runs continue
+             * @default false
+             */
+            cancel_untrusted_runs?: boolean;
+            /**
+             * Clear Spend Cap
+             * @description Remove the spend cap
+             * @default false
+             */
+            clear_spend_cap?: boolean;
+            /** Global Spend Cap Micros */
+            global_spend_cap_micros?: number | null;
+            /** Reason */
+            reason: string;
+            /** Spend Cap Period */
+            spend_cap_period?: ("day" | "month") | null;
+            /** Untrusted Execution Enabled */
+            untrusted_execution_enabled?: boolean | null;
+        };
+        /**
+         * KillSwitches
+         * @description Platform-wide emergency controls (operators only; every change is audited).
+         * @example {
+         *       "global_spend_cap_micros": 500000000,
+         *       "reason": "incident 2026-10-15: suspected sandbox probe; code runs paused",
+         *       "spend_cap_currency": "USD",
+         *       "spend_cap_period": "day",
+         *       "untrusted_execution_enabled": false,
+         *       "updated_at": "2026-10-15T09:30:00Z",
+         *       "updated_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0"
+         *     }
+         */
+        KillSwitches: {
+            /**
+             * Global Spend Cap Micros
+             * @description Stop new compute once the platform spent this much
+             */
+            global_spend_cap_micros?: number | null;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Spend Cap Currency
+             * @default USD
+             */
+            spend_cap_currency?: string;
+            /**
+             * Spend Cap Period
+             * @default day
+             * @enum {string}
+             */
+            spend_cap_period?: "day" | "month";
+            /**
+             * Untrusted Execution Enabled
+             * @description Off: no run of tenant-uploaded plugin code is accepted or leased
+             * @default true
+             */
+            untrusted_execution_enabled?: boolean;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Updated By */
+            updated_by?: string | null;
+        };
+        /**
+         * LimitName
+         * @description Every limit a :class:`QuotaDecision` can name.
+         * @enum {string}
+         */
+        LimitName: "requests_per_minute" | "max_resource_class" | "max_fanout_tasks" | "concurrent_runs" | "vcpu_seconds_per_day" | "vcpu_seconds_per_month" | "storage_bytes" | "egress_bytes_per_month" | "untrusted_execution" | "global_spend";
         /**
          * Lineage
          * @description Everything a model version came from (plan §8.6).
@@ -2090,23 +3619,189 @@ export interface components {
         };
         /**
          * Me
-         * @description The calling identity (M1: the local, unauthenticated default principal).
+         * @description ``GET /v1/me``: who the caller is and where they may act.
+         *
+         *     For a token, ``tenants`` holds exactly the token's project and ``token`` the token
+         *     itself (its scopes narrow every role shown here).
+         * @example {
+         *       "auth": "session",
+         *       "operator": false,
+         *       "principal": {
+         *         "email": "ana@acme.example",
+         *         "email_verified": true,
+         *         "id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *         "issuer": "https://accounts.google.com",
+         *         "kind": "user",
+         *         "name": "Ana Analyst",
+         *         "subject": "110169484474386276334"
+         *       },
+         *       "tenants": [
+         *         {
+         *           "projects": [
+         *             {
+         *               "name": "Growth",
+         *               "project_id": "growth",
+         *               "role": "runner",
+         *               "tenant_id": "acme"
+         *             }
+         *           ],
+         *           "tenant": {
+         *             "created_at": "2026-10-15T09:30:00Z",
+         *             "data_residency": "eu",
+         *             "id": "acme",
+         *             "name": "Acme Retail",
+         *             "status": "active",
+         *             "trust_tier": "verified"
+         *           }
+         *         }
+         *       ]
+         *     }
          */
         Me: {
             /**
              * Auth
-             * @default none
              * @enum {string}
              */
-            auth?: "none" | "oidc" | "token";
-            /** Project Ids */
-            project_ids: string[];
-            /** Scopes */
-            scopes?: string[];
-            /** Subject */
-            subject: string;
+            auth: "session" | "token" | "service";
+            /**
+             * Operator
+             * @default false
+             */
+            operator?: boolean;
+            /** Principal */
+            principal: components["schemas"]["UserPrincipal"] | components["schemas"]["TokenPrincipal"] | components["schemas"]["ServicePrincipal"];
+            /** Tenants */
+            tenants?: components["schemas"]["MeTenant"][];
+            token?: components["schemas"]["ApiToken"] | null;
+        };
+        /**
+         * MeProject
+         * @description A project the caller can act in, with the caller's effective role there.
+         * @example {
+         *       "name": "Growth",
+         *       "project_id": "growth",
+         *       "role": "runner",
+         *       "tenant_id": "acme"
+         *     }
+         */
+        MeProject: {
+            /** Name */
+            name: string;
+            /** Project Id */
+            project_id: string;
+            role: components["schemas"]["ProjectRole"];
             /** Tenant Id */
             tenant_id: string;
+        };
+        /**
+         * MeTenant
+         * @description A tenant the caller belongs to; ``role`` is the tenant-wide role (``None`` when the
+         *     caller only has project memberships).
+         * @example {
+         *       "projects": [
+         *         {
+         *           "name": "Growth",
+         *           "project_id": "growth",
+         *           "role": "runner",
+         *           "tenant_id": "acme"
+         *         }
+         *       ],
+         *       "tenant": {
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "data_residency": "eu",
+         *         "id": "acme",
+         *         "name": "Acme Retail",
+         *         "status": "active",
+         *         "trust_tier": "verified"
+         *       }
+         *     }
+         */
+        MeTenant: {
+            /** Projects */
+            projects?: components["schemas"]["MeProject"][];
+            role?: components["schemas"]["ProjectRole"] | null;
+            tenant: components["schemas"]["Tenant"];
+        };
+        /**
+         * Membership
+         * @description A role grant. ``project_id=None`` grants the role on the tenant and every project.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "created_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0",
+         *       "display_name": "Ana Analyst",
+         *       "email": "ana@acme.example",
+         *       "principal_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "principal_kind": "user",
+         *       "project_id": "growth",
+         *       "role": "runner",
+         *       "tenant_id": "acme"
+         *     }
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "email": "it@acme.example",
+         *       "principal_id": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0",
+         *       "role": "admin",
+         *       "tenant_id": "acme"
+         *     }
+         */
+        Membership: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Display Name */
+            display_name?: string | null;
+            /** Email */
+            email?: string | null;
+            /**
+             * Principal Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            principal_id: string;
+            /**
+             * Principal Kind
+             * @default user
+             * @enum {string}
+             */
+            principal_kind?: "user" | "service_account";
+            /** Project Id */
+            project_id?: string | null;
+            role: components["schemas"]["ProjectRole"];
+            /** Tenant Id */
+            tenant_id: string;
+        };
+        /**
+         * MembershipCreate
+         * @description Add a member (tenant-wide or to one project, by path). Give a known ``principal_id``
+         *     or an ``email`` to invite (claimed at first login with that verified e-mail).
+         * @example {
+         *       "email": "ana@acme.example",
+         *       "role": "runner"
+         *     }
+         * @example {
+         *       "principal_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "role": "viewer"
+         *     }
+         */
+        MembershipCreate: {
+            /** Email */
+            email?: string | null;
+            /** Principal Id */
+            principal_id?: string | null;
+            role: components["schemas"]["ProjectRole"];
+        };
+        /**
+         * MembershipUpdate
+         * @description Change a member's role (the last admin of a tenant or project cannot be demoted).
+         * @example {
+         *       "role": "editor"
+         *     }
+         */
+        MembershipUpdate: {
+            role: components["schemas"]["ProjectRole"];
         };
         /**
          * MetricPayload
@@ -2476,6 +4171,32 @@ export interface components {
             vars?: string[];
         };
         /**
+         * Page[ApiToken]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_ApiToken_: {
+            /** Items */
+            items: components["schemas"]["ApiToken"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[AuditEvent]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_AuditEvent_: {
+            /** Items */
+            items: components["schemas"]["AuditEvent"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[DatasetVersion]
          * @example {
          *       "items": [],
@@ -2502,6 +4223,19 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[ExecutorHealth]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_ExecutorHealth_: {
+            /** Items */
+            items: components["schemas"]["ExecutorHealth"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[LogLine]
          * @example {
          *       "items": [],
@@ -2511,6 +4245,19 @@ export interface components {
         Page_LogLine_: {
             /** Items */
             items: components["schemas"]["LogLine"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[Membership]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_Membership_: {
+            /** Items */
+            items: components["schemas"]["Membership"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -2606,6 +4353,19 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[QuotaPolicy]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_QuotaPolicy_: {
+            /** Items */
+            items: components["schemas"]["QuotaPolicy"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[RunEventView]
          * @example {
          *       "items": [],
@@ -2667,6 +4427,19 @@ export interface components {
         Page_StepCatalogEntry_: {
             /** Items */
             items: components["schemas"]["StepCatalogEntry"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[Tenant]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_Tenant_: {
+            /** Items */
+            items: components["schemas"]["Tenant"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -2884,6 +4657,11 @@ export interface components {
             valid: boolean;
         };
         /**
+         * PrincipalKind
+         * @enum {string}
+         */
+        PrincipalKind: "user" | "service_account" | "token" | "service";
+        /**
          * Problem
          * @description RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).
          */
@@ -3003,6 +4781,157 @@ export interface components {
             tenant_id: string;
         };
         /**
+         * ProjectCreate
+         * @description ``POST /v1/tenants/{tenant_id}/projects`` (tenant admins).
+         * @example {
+         *       "description": "EU media mix models",
+         *       "id": "growth",
+         *       "name": "Growth"
+         *     }
+         */
+        ProjectCreate: {
+            /** Description */
+            description?: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /**
+         * ProjectRole
+         * @description Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last).
+         * @enum {string}
+         */
+        ProjectRole: "viewer" | "editor" | "runner" | "admin";
+        /**
+         * ProjectUpdate
+         * @description ``PATCH /v1/tenants/{tenant_id}/projects/{project_id}`` (project admins).
+         * @example {
+         *       "description": "EU and UK media mix models"
+         *     }
+         */
+        ProjectUpdate: {
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
+        };
+        /**
+         * QuotaLimitStatus
+         * @description One limit of one level as shown in ``/usage`` (``remaining`` is ``None`` if unlimited).
+         * @example {
+         *       "fraction_used": 0.5,
+         *       "limit": 86400,
+         *       "limit_name": "vcpu_seconds_per_day",
+         *       "remaining": 43200,
+         *       "resets_at": "2026-10-16T00:00:00Z",
+         *       "scope": "tenant",
+         *       "subject_id": "acme",
+         *       "used": 43200
+         *     }
+         */
+        QuotaLimitStatus: {
+            /** Fraction Used */
+            fraction_used?: number | null;
+            /** Limit */
+            limit?: number | null;
+            limit_name: components["schemas"]["LimitName"];
+            /** Remaining */
+            remaining?: number | null;
+            /** Resets At */
+            resets_at?: string | null;
+            scope: components["schemas"]["QuotaScope"];
+            /** Subject Id */
+            subject_id: string;
+            /** Used */
+            used: number;
+        };
+        /**
+         * QuotaLimits
+         * @description Limits at one level. ``None`` = no limit at this level (other levels still apply).
+         */
+        QuotaLimits: {
+            /** Concurrent Runs */
+            concurrent_runs?: number | null;
+            /** Egress Bytes Per Month */
+            egress_bytes_per_month?: number | null;
+            /** Max Fanout Tasks */
+            max_fanout_tasks?: number | null;
+            max_resource_class?: components["schemas"]["ResourceClass"] | null;
+            /** Requests Per Minute */
+            requests_per_minute?: number | null;
+            /** Storage Bytes */
+            storage_bytes?: number | null;
+            /** Vcpu Seconds Per Day */
+            vcpu_seconds_per_day?: number | null;
+            /** Vcpu Seconds Per Month */
+            vcpu_seconds_per_month?: number | null;
+        };
+        /**
+         * QuotaPolicy
+         * @description The limits in force for one subject at one level.
+         * @example {
+         *       "limits": {
+         *         "concurrent_runs": 40,
+         *         "max_fanout_tasks": 256,
+         *         "max_resource_class": "L",
+         *         "vcpu_seconds_per_day": 172800,
+         *         "vcpu_seconds_per_month": 1000000
+         *       },
+         *       "note": "beta customer, doubled daily compute",
+         *       "scope": "tenant",
+         *       "subject_id": "acme",
+         *       "updated_at": "2026-10-15T09:30:00Z",
+         *       "updated_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0"
+         *     }
+         * @example {
+         *       "limits": {
+         *         "concurrent_runs": 700
+         *       },
+         *       "scope": "global",
+         *       "subject_id": "*"
+         *     }
+         */
+        QuotaPolicy: {
+            limits: components["schemas"]["QuotaLimits"];
+            /** Note */
+            note?: string | null;
+            scope: components["schemas"]["QuotaScope"];
+            /** Subject Id */
+            subject_id: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Updated By */
+            updated_by?: string | null;
+        };
+        /**
+         * QuotaPolicyUpsert
+         * @description ``PUT /v1/admin/quotas``: create or replace the policy for ``(scope, subject_id)``.
+         * @example {
+         *       "limits": {
+         *         "concurrent_runs": 40,
+         *         "vcpu_seconds_per_day": 172800
+         *       },
+         *       "note": "beta customer, doubled daily compute",
+         *       "scope": "tenant",
+         *       "subject_id": "acme"
+         *     }
+         */
+        QuotaPolicyUpsert: {
+            limits: components["schemas"]["QuotaLimits"];
+            /** Note */
+            note?: string | null;
+            scope: components["schemas"]["QuotaScope"];
+            /** Subject Id */
+            subject_id: string;
+        };
+        /**
+         * QuotaScope
+         * @description Policy level, most specific first.
+         * @enum {string}
+         */
+        QuotaScope: "token" | "tenant" | "global";
+        /**
          * RaggedSpec
          * @description Ragged nesting (``hh → trip``): long form (obs + index vars) or padded + mask.
          */
@@ -3115,6 +5044,11 @@ export interface components {
             /** @default S */
             min_class?: components["schemas"]["ResourceClass"];
         };
+        /**
+         * ResourceKind
+         * @enum {string}
+         */
+        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event";
         /**
          * Role
          * @description What a variable means to a model.
@@ -3259,12 +5193,38 @@ export interface components {
         };
         /**
          * RunCost
-         * @description Cost fields (placeholders in M1: always ``None``; populated by the M2 ledger).
+         * @description Cost of a run (all attempts). ``estimated`` is true until an ``actual`` ledger entry
+         *     exists; ``usd`` is kept for v0.2 clients and is set only when the currency is USD.
          * @example {
          *       "estimated": true
          *     }
+         * @example {
+         *       "amount_micros": 31200,
+         *       "attempts_billed": 1,
+         *       "currency": "USD",
+         *       "estimate_micros": 30000,
+         *       "estimated": false,
+         *       "gib_seconds": 4800,
+         *       "price_version": "cloudrun-list-2026-10",
+         *       "usd": 0.0312,
+         *       "vcpu_seconds": 1200
+         *     }
          */
         RunCost: {
+            /** Amount Micros */
+            amount_micros?: number | null;
+            /**
+             * Attempts Billed
+             * @default 0
+             */
+            attempts_billed?: number;
+            /** Currency */
+            currency?: string | null;
+            /**
+             * Estimate Micros
+             * @description Pre-run estimate
+             */
+            estimate_micros?: number | null;
             /**
              * Estimated
              * @default true
@@ -3272,6 +5232,8 @@ export interface components {
             estimated?: boolean;
             /** Gib Seconds */
             gib_seconds?: number | null;
+            /** Price Version */
+            price_version?: string | null;
             /** Usd */
             usd?: number | null;
             /** Vcpu Seconds */
@@ -3618,6 +5580,135 @@ export interface components {
             title: string;
             /** Value */
             value?: number | null;
+        };
+        /**
+         * SecurityProbeRow
+         * @description One probe of a security-suite run (``mapi-security --json``).
+         * @example {
+         *       "category": "isolation",
+         *       "outcome": "blocked",
+         *       "probe_id": "dns_egress"
+         *     }
+         */
+        SecurityProbeRow: {
+            /** Acceptable */
+            acceptable?: string[];
+            /** Category */
+            category?: string | null;
+            /** Detail */
+            detail?: string | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "allowed" | "blocked" | "error" | "skipped";
+            /** Probe Id */
+            probe_id: string;
+            /**
+             * Unexpected
+             * @default false
+             */
+            unexpected?: boolean;
+        };
+        /**
+         * SecuritySuiteReport
+         * @description A security-suite run against one executor: the JSON ``mapi-security --json`` prints.
+         * @example {
+         *       "executor": "cloudrun-jobs",
+         *       "isolation": "microvm",
+         *       "ok": true,
+         *       "rows": [
+         *         {
+         *           "category": "isolation",
+         *           "outcome": "blocked",
+         *           "probe_id": "http_egress"
+         *         },
+         *         {
+         *           "category": "isolation",
+         *           "outcome": "blocked",
+         *           "probe_id": "dns_egress"
+         *         },
+         *         {
+         *           "category": "isolation",
+         *           "outcome": "blocked",
+         *           "probe_id": "metadata_token"
+         *         }
+         *       ],
+         *       "started_at": "2026-10-15T02:30:00Z",
+         *       "unexpected": []
+         *     }
+         */
+        SecuritySuiteReport: {
+            /** Executor */
+            executor: string;
+            /**
+             * Isolation
+             * @enum {string}
+             */
+            isolation: "none" | "process" | "gvisor" | "microvm" | "dedicated_vm";
+            /** Ok */
+            ok: boolean;
+            /** Rows */
+            rows?: components["schemas"]["SecurityProbeRow"][];
+            /** Started At */
+            started_at?: string | null;
+            /** Unexpected */
+            unexpected?: string[];
+        };
+        /**
+         * ServicePrincipal
+         * @description An internal platform component (bypasses RLS through its own database role).
+         */
+        ServicePrincipal: {
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "service";
+            service: components["schemas"]["InternalService"];
+        };
+        /**
+         * SessionInfo
+         * @description ``GET /auth/session``: is the browser signed in, as whom, until when.
+         * @example {
+         *       "authenticated": true,
+         *       "expires_at": "2026-10-15T21:30:00Z",
+         *       "login_url": "/auth/login",
+         *       "operator": false,
+         *       "principal": {
+         *         "email": "ana@acme.example",
+         *         "email_verified": true,
+         *         "id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *         "issuer": "https://accounts.google.com",
+         *         "kind": "user",
+         *         "name": "Ana Analyst",
+         *         "subject": "110169484474386276334"
+         *       }
+         *     }
+         * @example {
+         *       "authenticated": false,
+         *       "login_url": "/auth/login"
+         *     }
+         */
+        SessionInfo: {
+            /** Authenticated */
+            authenticated: boolean;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Login Url
+             * @description Where to send the browser to sign in
+             * @default /auth/login
+             */
+            login_url?: string;
+            /**
+             * Operator
+             * @default false
+             */
+            operator?: boolean;
+            principal?: components["schemas"]["UserPrincipal"] | null;
         };
         /**
          * Severity
@@ -3998,6 +6089,256 @@ export interface components {
             type: "string" | "integer" | "number" | "boolean" | "string_list" | "integer_list";
         };
         /**
+         * Tenant
+         * @description The billing, isolation and quota boundary.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "data_residency": "eu",
+         *       "id": "acme",
+         *       "name": "Acme Retail",
+         *       "status": "active",
+         *       "trust_tier": "verified"
+         *     }
+         */
+        Tenant: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Data Residency
+             * @description A multi-region (eu, us, asia) or one cloud region (europe-west1)
+             * @default us
+             * @example eu
+             * @example us
+             * @example europe-west1
+             */
+            data_residency?: string;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** @default active */
+            status?: components["schemas"]["TenantStatus"];
+            /** Status Reason */
+            status_reason?: string | null;
+            trust_tier: components["schemas"]["TrustTier"];
+            /** Updated At */
+            updated_at?: string | null;
+        };
+        /**
+         * TenantAdminUpdate
+         * @description ``PATCH /v1/admin/tenants/{tenant_id}`` (operators). Changing ``data_residency`` only
+         *     affects where *new* runs are placed; moving stored data is a separate procedure.
+         * @example {
+         *       "status": "suspended",
+         *       "status_reason": "payment overdue"
+         *     }
+         * @example {
+         *       "trust_tier": "internal"
+         *     }
+         */
+        TenantAdminUpdate: {
+            /** Data Residency */
+            data_residency?: string | null;
+            /** Name */
+            name?: string | null;
+            status?: components["schemas"]["TenantStatus"] | null;
+            /** Status Reason */
+            status_reason?: string | null;
+            trust_tier?: components["schemas"]["TrustTier"] | null;
+        };
+        /**
+         * TenantCost
+         * @description One tenant's ledger totals for the period (one row per currency).
+         * @example {
+         *       "name": "Acme Corp",
+         *       "tenant_id": "acme",
+         *       "totals": {
+         *         "amount_micros": 93600,
+         *         "attempts": 3,
+         *         "currency": "USD",
+         *         "gib_seconds": 14400,
+         *         "runs": 3,
+         *         "vcpu_seconds": 3600
+         *       },
+         *       "trust_tier": "verified"
+         *     }
+         */
+        TenantCost: {
+            /** Name */
+            name?: string | null;
+            /** Tenant Id */
+            tenant_id: string;
+            totals: components["schemas"]["CostTotals"];
+            trust_tier?: components["schemas"]["TrustTier"] | null;
+        };
+        /**
+         * TenantCreate
+         * @description ``POST /v1/admin/tenants`` (operators). ``initial_admin_email`` is invited as tenant
+         *     admin; the invitation is claimed at first login with that verified e-mail.
+         * @example {
+         *       "data_residency": "eu",
+         *       "id": "acme",
+         *       "initial_admin_email": "it@acme.example",
+         *       "name": "Acme Retail",
+         *       "trust_tier": "verified"
+         *     }
+         */
+        TenantCreate: {
+            /**
+             * Data Residency
+             * @description A multi-region (eu, us, asia) or one cloud region (europe-west1)
+             * @default us
+             * @example eu
+             * @example us
+             * @example europe-west1
+             */
+            data_residency?: string;
+            /** Id */
+            id: string;
+            /** Initial Admin Email */
+            initial_admin_email?: string | null;
+            /** Name */
+            name: string;
+            /** @default verified */
+            trust_tier?: components["schemas"]["TrustTier"];
+        };
+        /**
+         * TenantStatus
+         * @description ``suspended`` tenants are read-only; ``deleting`` tenants are inaccessible.
+         * @enum {string}
+         */
+        TenantStatus: "active" | "suspended" | "deleting";
+        /**
+         * TenantUpdate
+         * @description ``PATCH /v1/tenants/{tenant_id}`` (tenant admins): the display name only.
+         * @example {
+         *       "name": "Acme Retail Group"
+         *     }
+         */
+        TenantUpdate: {
+            /** Name */
+            name: string;
+        };
+        /**
+         * TokenCreate
+         * @description ``POST /v1/tokens``: mint a token for the caller in the selected project.
+         *
+         *     The token can never do more than its owner's role allows at the time of use. Limits are
+         *     optional: ``None`` means the tenant's defaults apply (they always apply in addition).
+         * @example {
+         *       "budget_period": "month",
+         *       "expires_in_days": 30,
+         *       "name": "atlas-optimiser",
+         *       "rate_limit_per_minute": 120,
+         *       "scopes": [
+         *         "score:geo-mmm-prod",
+         *         "models:read"
+         *       ],
+         *       "vcpu_seconds_budget": 36000
+         *     }
+         */
+        TokenCreate: {
+            /** @default month */
+            budget_period?: components["schemas"]["BudgetPeriod"];
+            /**
+             * Expires In Days
+             * @default 90
+             */
+            expires_in_days?: number;
+            /** Name */
+            name: string;
+            /** Rate Limit Per Minute */
+            rate_limit_per_minute?: number | null;
+            /** Scopes */
+            scopes: string[];
+            /** Vcpu Seconds Budget */
+            vcpu_seconds_budget?: number | null;
+        };
+        /**
+         * TokenCreated
+         * @description ``201`` body of ``POST /v1/tokens``: the only time ``secret`` is ever returned.
+         * @example {
+         *       "secret": "mapi_7k2m9q4x_0123456789abcdefghjkmnpqrstvwxyz072gj7d",
+         *       "token": {
+         *         "budget_period": "month",
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "display": "mapi_7k2m9q4x_…",
+         *         "expires_at": "2026-11-14T09:30:00Z",
+         *         "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *         "last_used_at": "2026-10-16T08:00:00Z",
+         *         "name": "atlas-optimiser",
+         *         "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *         "prefix": "7k2m9q4x",
+         *         "project_id": "growth",
+         *         "rate_limit_per_minute": 120,
+         *         "scopes": [
+         *           "score:geo-mmm-prod",
+         *           "models:read"
+         *         ],
+         *         "status": "active",
+         *         "tenant_id": "acme",
+         *         "vcpu_seconds_budget": 36000
+         *       }
+         *     }
+         */
+        TokenCreated: {
+            /**
+             * Secret
+             * @description The full token. Store it now; it is not shown again.
+             */
+            secret: string;
+            token: components["schemas"]["ApiToken"];
+        };
+        /**
+         * TokenPrincipal
+         * @description A request authenticated with an API token (acts as ``owner_id``, narrowed by scopes).
+         */
+        TokenPrincipal: {
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "token";
+            /**
+             * Owner Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            owner_id: string;
+            /**
+             * Owner Kind
+             * @default user
+             * @enum {string}
+             */
+            owner_kind?: "user" | "service_account";
+            /** Prefix */
+            prefix: string;
+            /** Project Id */
+            project_id: string;
+            /** Scopes */
+            scopes: string[];
+            /** Tenant Id */
+            tenant_id: string;
+        };
+        /**
+         * TokenStatus
+         * @enum {string}
+         */
+        TokenStatus: "active" | "expired" | "revoked";
+        /**
+         * TrustTier
+         * @description How much the platform trusts a tenant's code and data (plan §2, §7, §9).
+         * @enum {string}
+         */
+        TrustTier: "internal" | "verified" | "public" | "self-hosted-trusted";
+        /**
          * UploadCreate
          * @description Ask for a signed PUT URL into the quarantine bucket for one file.
          * @example {
@@ -4082,6 +6423,117 @@ export interface components {
             /** Tenant Id */
             tenant_id: string;
             upload: components["schemas"]["SignedPut"];
+        };
+        /**
+         * UsageReport
+         * @description ``GET /v1/usage`` (one project) and ``GET /v1/tenants/{tenant_id}/usage`` (whole
+         *     tenant): ledger totals for one UTC period and the quota limits in force now.
+         *
+         *     Query: ``period=day|month`` (default ``month``), ``start`` (an RFC 3339 instant inside
+         *     the period; default: now), ``group_by``.
+         * @example {
+         *       "end": "2026-11-01T00:00:00Z",
+         *       "group_by": "resource_class",
+         *       "groups": {
+         *         "M": {
+         *           "amount_micros": 93600,
+         *           "attempts": 3,
+         *           "currency": "USD",
+         *           "gib_seconds": 14400,
+         *           "runs": 3,
+         *           "vcpu_seconds": 3600
+         *         }
+         *       },
+         *       "period": "month",
+         *       "price_versions": [
+         *         "cloudrun-list-2026-10"
+         *       ],
+         *       "project_id": "growth",
+         *       "quotas": [
+         *         {
+         *           "fraction_used": 0.5,
+         *           "limit": 86400,
+         *           "limit_name": "vcpu_seconds_per_day",
+         *           "remaining": 43200,
+         *           "resets_at": "2026-10-16T00:00:00Z",
+         *           "scope": "tenant",
+         *           "subject_id": "acme",
+         *           "used": 43200
+         *         }
+         *       ],
+         *       "start": "2026-10-01T00:00:00Z",
+         *       "tenant_id": "acme",
+         *       "totals": {
+         *         "amount_micros": 93600,
+         *         "attempts": 3,
+         *         "currency": "USD",
+         *         "gib_seconds": 14400,
+         *         "runs": 3,
+         *         "vcpu_seconds": 3600
+         *       }
+         *     }
+         */
+        UsageReport: {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Group By */
+            group_by?: ("resource_class" | "project" | "day" | "token" | "run") | null;
+            /** Groups */
+            groups?: {
+                [key: string]: components["schemas"]["CostTotals"];
+            };
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "day" | "month";
+            /** Price Versions */
+            price_versions?: string[];
+            /** Project Id */
+            project_id?: string | null;
+            /** Quotas */
+            quotas?: components["schemas"]["QuotaLimitStatus"][];
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Tenant Id */
+            tenant_id: string;
+            totals: components["schemas"]["CostTotals"];
+        };
+        /**
+         * UserPrincipal
+         * @description A person authenticated by OIDC. ``(issuer, subject)`` is the stable identity; the
+         *     platform id ``usr_…`` is assigned at first login.
+         */
+        UserPrincipal: {
+            /** Email */
+            email?: string | null;
+            /**
+             * Email Verified
+             * @default false
+             */
+            email_verified?: boolean;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Issuer */
+            issuer: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "user";
+            /** Name */
+            name?: string | null;
+            /** Subject */
+            subject: string;
         };
         /**
          * ValidateRequest
@@ -4276,6 +6728,113 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    auth_callback: {
+        parameters: {
+            query?: {
+                code?: string | null;
+                state?: string | null;
+                error?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Signed in; redirect to the return path */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sign-in failed */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    auth_login: {
+        parameters: {
+            query?: {
+                return_to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to the identity provider */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    auth_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionInfo"];
+                };
+            };
+        };
+    };
     health: {
         parameters: {
             query?: never;
@@ -4358,6 +6917,524 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    admin_list_audit: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                tenant_id?: string | null;
+                project_id?: string | null;
+                actor_id?: string | null;
+                action?: components["schemas"]["AuditAction"] | null;
+                outcome?: components["schemas"]["AuditOutcome"] | null;
+                since?: string | null;
+                until?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AuditEvent_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_list_executors: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ExecutorHealth_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_get_executor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutorHealth"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_put_executor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutorUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutorHealth"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_get_executor_evidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutorEvidence"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_put_executor_evidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutorEvidenceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutorEvidence"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_get_kill_switches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KillSwitches"];
+                };
+            };
+        };
+    };
+    admin_put_kill_switches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KillSwitchUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KillSwitches"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_list_quotas: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                scope?: components["schemas"]["QuotaScope"] | null;
+                subject_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_QuotaPolicy_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_put_quota: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuotaPolicyUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotaPolicy"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_delete_quota: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope: components["schemas"]["QuotaScope"];
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_list_tenants: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                status?: components["schemas"]["TenantStatus"] | null;
+                trust_tier?: components["schemas"]["TrustTier"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Tenant_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_create_tenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_get_tenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_update_tenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantAdminUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_get_usage: {
+        parameters: {
+            query?: {
+                period?: "day" | "month";
+                start?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUsageReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5933,6 +9010,748 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tenants: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Tenant_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_tenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_tenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tenant_audit: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                project_id?: string | null;
+                actor_id?: string | null;
+                action?: components["schemas"]["AuditAction"] | null;
+                outcome?: components["schemas"]["AuditOutcome"] | null;
+                since?: string | null;
+                until?: string | null;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AuditEvent_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tenant_members: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Membership_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_tenant_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MembershipCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_tenant_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                principal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_tenant_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                principal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MembershipUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tenant_projects: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Project_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_project: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_project: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_project: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_members: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Membership_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MembershipCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                project_id: string;
+                principal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                project_id: string;
+                principal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MembershipUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_tenant_usage: {
+        parameters: {
+            query?: {
+                period?: "day" | "month";
+                start?: string | null;
+                group_by?: ("resource_class" | "project" | "day" | "token" | "run") | null;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tokens: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                all?: boolean;
+                status?: components["schemas"]["TokenStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ApiToken_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TokenCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiToken"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_usage: {
+        parameters: {
+            query?: {
+                period?: "day" | "month";
+                start?: string | null;
+                group_by?: ("resource_class" | "project" | "day" | "token" | "run") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageReport"];
                 };
             };
             /** @description Validation Error */

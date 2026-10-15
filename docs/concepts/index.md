@@ -73,6 +73,16 @@ together is in the [Architecture overview](architecture.md), and what keeps it s
     What a model declares about itself, statically: representation, score modes, outputs,
     derived quantities, which preprocessing it owns.
 
+-   **[Tenancy and authentication](tenancy-and-auth.md)** <span class="mapi-badge">v0.3</span>
+
+    Tenants, projects and roles; API tokens and their scopes; browser sign-in; how every
+    request is authorized.
+
+-   **[Quotas and cost](quotas-and-cost.md)** <span class="mapi-badge">v0.3</span>
+
+    vCPU-second quotas at token, tenant and global level; interactive and batch priority;
+    exact per-run cost from a versioned price table.
+
 </div>
 
 ## Vocabulary

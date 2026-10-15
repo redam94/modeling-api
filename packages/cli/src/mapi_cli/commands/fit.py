@@ -15,18 +15,20 @@ from typing import Annotated, Any
 import typer
 from mapi_client import Client, RunEnd, RunEventFrame, RunLiveFrame, RunSnapshot
 from mapi_spec.api import Run
+from mapi_spec.cost import RunCost
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
 from mapi_spec.loader import load_model_spec
 from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import ResourceClass
 from mapi_spec.spec import ModelSpec
+from rich.text import Text
 
-from mapi_cli.output import Output, safe
+from mapi_cli.output import Output, money, safe
 from mapi_cli.progress import EventRenderer
 from mapi_cli.state import EXIT_FAILURE, AppState, cli_errors, state
 
-__all__ = ["fit", "follow_run"]
+__all__ = ["cost_rows", "cost_text", "fit", "follow_run", "report_run"]
 
 
 def follow_run(api: Client, out: Output, run: Run, *, title: str) -> Run:
@@ -57,10 +59,41 @@ def report_run(out: Output, run: Run) -> None:
             ("attempt", run.attempt),
             ("model version", run.output_model_version_id),
             ("failure", run.failure_class.value if run.failure_class else None),
+            *cost_rows(run.cost),
         ]
     )
     if run.problem is not None:
         out.error(_problem_error(run))
+
+
+def cost_text(cost: RunCost) -> str:
+    """``0.031200 USD`` (``~`` prefix while estimated); ``-`` when not metered (v0.2)."""
+    if cost.amount_micros is not None:
+        text = money(cost.amount_micros, cost.currency)
+    elif cost.usd is not None:
+        text = f"{cost.usd:.6f} USD"
+    else:
+        return "-"
+    return f"~{text}" if cost.estimated else text
+
+
+def cost_rows(cost: RunCost) -> list[tuple[str, object]]:
+    """Key/value rows describing a run's cost (empty when the server does not meter it)."""
+    if cost.amount_micros is None and cost.usd is None:
+        return []
+    usage = None
+    if cost.vcpu_seconds is not None:
+        usage = f"{cost.vcpu_seconds:,.0f} vCPU-s"
+        if cost.gib_seconds is not None:
+            usage += f", {cost.gib_seconds:,.0f} GiB-s"
+    label = "cost (estimated)" if cost.estimated else "cost"
+    return [
+        (label, Text(cost_text(cost).lstrip("~"), style="bold")),
+        ("compute", usage),
+        ("estimate", money(cost.estimate_micros, cost.currency) if cost.estimate_micros else None),
+        ("attempts billed", cost.attempts_billed or None),
+        ("price table", cost.price_version),
+    ]
 
 
 def _problem_error(run: Run) -> MapiError:

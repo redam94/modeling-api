@@ -38,9 +38,44 @@ def test_bearer_auth_rejects_bad_tokens() -> None:
         _auth_header(BearerAuth(lambda: ""))
 
 
-def test_oidc_is_m2() -> None:
-    with pytest.raises(NotImplementedError, match="M2"):
-        OidcDeviceFlow("https://issuer", "client")
+def test_the_v02_device_flow_name_is_the_real_flow() -> None:
+    from mapi_client.oidc import DeviceLogin
+
+    assert OidcDeviceFlow is DeviceLogin
+
+
+def test_bearer_auth_refreshes_once_on_401() -> None:
+    class Provider:
+        def __init__(self) -> None:
+            self.value, self.refreshes = "old", 0
+
+        def __call__(self) -> str:
+            return self.value
+
+        def refresh(self) -> bool:
+            self.refreshes += 1
+            self.value = "new"
+            return True
+
+    provider = Provider()
+    flow = BearerAuth(provider).auth_flow(httpx.Request("GET", "http://x"))
+    first = next(flow)
+    assert first.headers["Authorization"] == "Bearer old"
+    second = flow.send(httpx.Response(401))
+    assert second.headers["Authorization"] == "Bearer new"
+    with pytest.raises(StopIteration):
+        flow.send(httpx.Response(401))  # no second refresh
+    assert provider.refreshes == 1
+
+
+def test_describe_token_never_reveals_secrets() -> None:
+    from mapi_client.auth import describe_token
+    from mapi_spec.tokens import generate_token
+
+    token = str(generate_token())
+    shown = describe_token(token)
+    assert shown.endswith("_…") and token[14:] not in shown
+    assert describe_token("eyJhbGciOi.payload.sig") == "<set>"
 
 
 @pytest.mark.parametrize(

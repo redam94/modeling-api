@@ -13,9 +13,10 @@ import shlex
 import sys
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 
+from mapi_spec.executor import RunKind
 from mapi_spec.localdev import (
     API_PORT,
     DEFAULT_ENV,
@@ -25,19 +26,32 @@ from mapi_spec.localdev import (
     WEB_PORT,
 )
 from mapi_spec.storage import Buckets
+from mapi_spec.tenancy import DEFAULT_RESIDENCY, TrustTier, residency_of_region
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from mapi_server import __version__
 
 __all__ = [
+    "DEFAULT_CLOUDRUN_BASES",
+    "DEFAULT_DEV_USERS",
     "DEFAULT_DOCKER_IMAGES",
+    "DEFAULT_ESTIMATE_WALL_S",
     "ExecutorName",
     "ObjectStoreKind",
     "Profile",
     "Settings",
+    "SignerKind",
     "local_image_digest",
 ]
+
+DEFAULT_CLOUDRUN_BASES: dict[str, str] = {
+    "mmm": "base-bayes",
+    "tabular": "base-bayes",
+    "sklearn": "base-ml",
+    "ts": "base-forecast",
+}
+"""Plugin namespace → the base whose Cloud Run Jobs ship it (mirrors the docker images)."""
 
 DEFAULT_DOCKER_IMAGES: dict[str, str] = {
     "mmm": f"mapi/base-bayes:{__version__}",
@@ -47,23 +61,60 @@ DEFAULT_DOCKER_IMAGES: dict[str, str] = {
 }
 """Plugin namespace → the runner image ``make docker-build`` tags that ships it."""
 
+DEFAULT_DEV_USERS: tuple[str, ...] = ("admin@dev.local", "analyst@dev.local", "viewer@dev.local")
+"""Accounts of the development identity provider: the first is a platform operator and the
+admin of the ``default`` tenant, the second a ``runner`` and the third a ``viewer`` of the
+``default`` project."""
+
+DEFAULT_ESTIMATE_WALL_S: dict[str, float] = {
+    RunKind.FIT.value: 300.0,
+    RunKind.SCORE.value: 30.0,
+    RunKind.INGEST.value: 60.0,
+    RunKind.DESCRIBE.value: 60.0,
+    RunKind.VALIDATE.value: 30.0,
+    RunKind.EVALUATE.value: 120.0,
+    RunKind.DERIVE.value: 60.0,
+    RunKind.RENDER.value: 30.0,
+    RunKind.OPTIMIZE.value: 300.0,
+}
+"""Wall-time estimate per run kind (seconds, capped at the run's timeout): what a run is
+charged against vCPU-second quotas until its attempts are metered into the cost ledger."""
+
 
 class Profile(StrEnum):
-    """Deployment profile. The ``local-process`` executor refuses ``multi-tenant``."""
+    """Deployment profile.
+
+    * ``single-tenant`` (default): one ``default`` tenant and project; requests without
+      credentials act as the local administrator (the API listens on loopback only);
+    * ``multi-tenant``: every non-public route needs a session or an API token, and the
+      ``local-process`` executor is refused;
+    * ``dev``: multi-tenant semantics with the built-in development identity provider
+      (:mod:`mapi_server.devidp`), so the whole stack, sign-in included, works offline.
+    """
 
     SINGLE_TENANT = "single-tenant"
     MULTI_TENANT = "multi-tenant"
+    DEV = "dev"
 
 
 class ExecutorName(StrEnum):
     LOCAL_PROCESS = "local-process"
     DOCKER = "docker"
     DOCKER_GVISOR = "docker-gvisor"
+    CLOUDRUN_JOBS = "cloudrun-jobs"
+
+
+class SignerKind(StrEnum):
+    """Who signs bundle manifests: a local P-256 key file, or a Cloud KMS key version."""
+
+    LOCAL = "local"
+    KMS = "kms"
 
 
 class ObjectStoreKind(StrEnum):
     SHIM = "shim"  # mapi_gcs_shim.ShimObjectStore against MAPI_GCS_ENDPOINT
     MEMORY = "memory"  # in-process store (tests; signed URLs only work through its ASGI app)
+    GCS = "gcs"  # real Cloud Storage (mapi_gcs_shim.GcsObjectStore; the `gcp` extra)
 
 
 def local_image_digest(lock_path: Path) -> str:
@@ -119,7 +170,32 @@ class Settings(BaseSettings):
         description="postgresql:// URL; unset = embedded pgserver under data_dir/pg",
     )
     db_pool_size: int = Field(10, ge=1, le=200)
+    db_system_pool_size: int = Field(5, ge=1, le=200)
+    db_gateway_pool_size: int = Field(5, ge=1, le=200)
     db_echo: bool = False
+    database_app_url: str | None = Field(
+        None,
+        repr=False,
+        description="Login of the request-path role (row-level security applies). Unset: "
+        "connect with DATABASE_URL and SET ROLE db_app_role on every connection",
+    )
+    database_system_url: str | None = Field(
+        None,
+        repr=False,
+        description="Login of the platform role: the orchestrator's dispatcher, reconciler, "
+        "finalizer and housekeeper (bypasses row-level security; the API never needs it). "
+        "Unset: DATABASE_URL with SET ROLE db_system_role",
+    )
+    database_gateway_url: str | None = Field(
+        None,
+        repr=False,
+        description="Login of the gateway role: what the API and events service look up "
+        "before a tenant is known (sign-in, memberships, operator metadata, pushed events; "
+        "row-level security applies). Unset: DATABASE_URL with SET ROLE db_gateway_role",
+    )
+    db_app_role: str = Field("mapi_app", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
+    db_system_role: str = Field("mapi_system", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
+    db_gateway_role: str = Field("mapi_gateway", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
 
     # ------------------------------------------------------------------------------- storage
     object_store: ObjectStoreKind = ObjectStoreKind.SHIM
@@ -128,6 +204,19 @@ class Settings(BaseSettings):
         None,
         description="Base URL put into signed URLs when executions/browsers reach the shim "
         "under another host name (default: gcs_endpoint)",
+    )
+    gcp_project: str | None = Field(
+        None, description="Google Cloud project of the Cloud Storage client (MAPI_OBJECT_STORE=gcs)"
+    )
+    url_signer: str | None = Field(
+        None,
+        description="Service account that signs Cloud Storage URLs through IAM signBlob "
+        "(keyless; required with MAPI_OBJECT_STORE=gcs)",
+    )
+    url_uploader: str | None = Field(
+        None,
+        description="Service account that signs create-only upload policies (objects.create, "
+        "never delete; required with MAPI_OBJECT_STORE=gcs and distinct from url_signer)",
     )
     gcs_root: Path | None = Field(
         None, description="The GCS shim's state directory (default: data_dir/gcs)"
@@ -164,9 +253,84 @@ class Settings(BaseSettings):
         "shim's namespace, so 127.0.0.1:4443 works) or an internal network holding only the "
         "shim. 'none' is refused while the bootstrap URL is HTTP (nothing would be reachable).",
     )
+    docker_network_isolated: bool = Field(
+        False,
+        description="Declare MAPI_DOCKER_NETWORK an internal network that holds only the GCS "
+        "shim (no route out, no DNS beyond it), so docker-gvisor reports enforced egress and "
+        "DNS. Shared tiers still need a passing security-suite run recorded for these caps",
+    )
     docker_runtime_gvisor: str = "runsc"
     executor_workdir: Path | None = None
     cancel_grace_s: float = Field(10.0, ge=0)
+
+    # ------------------------------------------------------------------------ Cloud Run Jobs
+    cloudrun_project: str | None = Field(
+        None, description="Exec project that holds the Cloud Run Job inventory (cloudrun-jobs)"
+    )
+    cloudrun_region: str = Field("europe-west1", description="Region of the Job inventory")
+    default_residency: str | None = Field(
+        None,
+        pattern=r"^(?:[a-z]{2,6}|[a-z]+-[a-z]+[0-9]{1,2})$",
+        description="Data residency of the platform tenant, of tenants adopted by the "
+        "migrations and of tenants created without one (default: the multi-region of "
+        "MAPI_CLOUDRUN_REGION for cloudrun-jobs, e.g. eu, else us)",
+    )
+    cloudrun_job_template: str = Field(
+        "mapi-{env}-{base}-{class}",
+        description="Job id convention; {env}, {base} (base-bayes|base-ml|base-forecast) and "
+        "{class} (s|m|l) are substituted. Must match the Jobs Terraform creates",
+    )
+    cloudrun_plugin_bases: dict[str, str] = Field(
+        default_factory=lambda: dict(DEFAULT_CLOUDRUN_BASES),
+        description="Plugin namespace → base image family (JSON in the environment)",
+    )
+    cloudrun_default_base: str = Field(
+        "base-bayes", description="Base for runs without a mapped plugin (ingest, describe)"
+    )
+    cloudrun_submits_per_minute: float = Field(
+        150.0,
+        gt=0,
+        le=180,
+        description="Token-bucket rate of jobs.run calls per orchestrator; the regional quota "
+        "is 180/min [verify M0], so split it between orchestrator replicas",
+    )
+    cloudrun_submit_burst: int = Field(10, ge=1)
+    cloudrun_max_429_retries: int = Field(6, ge=0, description="429 answers before giving up")
+    cloudrun_backoff_base_s: float = Field(1.0, gt=0)
+    cloudrun_backoff_cap_s: float = Field(64.0, gt=0)
+    cloudrun_timeout_margin_s: int = Field(
+        120, ge=0, description="Task timeout = run timeout + margin (the supervisor flushes)"
+    )
+    cloudrun_egress_enforced: bool = Field(
+        True, description="The exec network denies all egress except the restricted VIP"
+    )
+    cloudrun_dns_enforced: bool = Field(
+        False,
+        description="The DNS response policy is verified to apply to Jobs [verify M0]; "
+        "verified and public tenants are only placed when both egress and DNS are enforced "
+        "(and suite evidence is recorded)",
+    )
+    cloudrun_adopt_lookback_s: float = Field(
+        26 * 3600, gt=0, description="How far back orphan adoption lists executions"
+    )
+
+    # ------------------------------------------------------------------ Pub/Sub push events
+    pubsub_push_audience: str | None = Field(
+        None,
+        description="Expected audience of the Pub/Sub push OIDC token (usually the push "
+        "endpoint URL). When set, POST /internal/events requires a Google-signed token",
+    )
+    pubsub_push_service_account: str | None = Field(
+        None, description="Service account the push subscription signs its tokens as"
+    )
+    pubsub_push_subscriptions: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Accepted subscription names (comma-separated; empty = any)",
+    )
+    google_jwks_url: str = Field(
+        "https://www.googleapis.com/oauth2/v3/certs",
+        description="JWKS of Google's OIDC signing keys (push token verification)",
+    )
 
     # ------------------------------------------------------------- dispatcher / reconciler
     dispatch_rate_per_minute: float = Field(180.0, gt=0)
@@ -174,14 +338,29 @@ class Settings(BaseSettings):
     dispatch_batch: int = Field(10, ge=1, le=1000)
     dispatch_poll_s: float = Field(1.0, gt=0)
     dispatch_lease_s: float = Field(120.0, gt=0)
+    dispatch_tiers: Annotated[list[TrustTier], NoDecode] = Field(
+        default_factory=list,
+        description="Trust tiers whose runs this orchestrator leases (comma-separated); "
+        "empty: every tier. Give each orchestrator a disjoint list when several serve "
+        "different exec pools, so tenant tiers never share a pool",
+    )
     reconcile_interval_s: float = Field(10.0, gt=0)
     stall_intervals: int = Field(15, ge=2, description="K: silence > K x progress interval")
     complete_event_grace_s: float = Field(60.0, ge=0)
     lost_execution_grace_s: float = Field(60.0, ge=0)
     max_infra_retries: int = Field(2, ge=0)
     auto_retry_window_s: float = Field(1800.0, ge=0, description="No auto-retry beyond 30 min")
+    auto_retry_cost_factor: float = Field(
+        2.0,
+        ge=0,
+        description="No auto-retry once a run's metered cost reaches this multiple of its "
+        "estimate (plan §8.3: retries capped by cost)",
+    )
     finalize_max_attempts: int = Field(5, ge=1)
     deadline_grace_s: float = Field(60.0, ge=0)
+    housekeeping_interval_s: float = Field(
+        300.0, gt=0, description="Sweep of expired upload intents and other expiring rows"
+    )
 
     # ---------------------------------------------------------------------- catalog / signing
     catalog_path: Path | None = Field(
@@ -194,20 +373,163 @@ class Settings(BaseSettings):
         description="PEM of the bundle-signing key (default: data_dir/keys/"
         "bundle-signing-p256.pem); every process that signs or verifies bundles must share it",
     )
+    signing_trusted_key_paths: Annotated[list[Path], NoDecode] = Field(
+        default_factory=list,
+        description="PEM files (public or private) of retired bundle-signing keys whose "
+        "signatures still verify (comma-separated): key rotation without invalidating the "
+        "bundles the old key signed",
+    )
     signing_key_create: bool = Field(
         True,
         description="Create the signing key when it is missing; off where `mapi-server "
         "migrate` creates it on shared storage (compose api/worker)",
     )
 
+    signer: SignerKind = Field(
+        SignerKind.LOCAL, description="local = PEM key file; kms = Cloud KMS asymmetric key"
+    )
+    kms_key_version: str | None = Field(
+        None,
+        description="projects/…/cryptoKeys/…/cryptoKeyVersions/N that signs bundle manifests",
+    )
+    kms_trusted_key_versions: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Older key versions whose signatures still verify (comma-separated)",
+    )
+
     # ------------------------------------------------------------------------------ API misc
     internal_token: str | None = Field(
         None, repr=False, description="If set, POST /internal/events requires this bearer"
     )
+
+    # -------------------------------------------------------------- authentication (M2)
+    auth_required: bool | None = Field(
+        None,
+        description="Require a session or API token on every non-public route (default: "
+        "required in every profile except single-tenant)",
+    )
+    server_secret: str | None = Field(
+        None,
+        repr=False,
+        description="Root secret of the token pepper and audit fingerprints (default: read "
+        "or create server-secret next to the bundle-signing key). Changing it invalidates "
+        "every API token.",
+    )
+    server_secret_path: Path | None = None
+    cookie_secure: bool | None = Field(
+        None, description="Secure, __Host- prefixed cookies (default: on when api_url is https)"
+    )
+    oidc_issuer: str | None = Field(
+        None, description="OpenID Connect issuer (e.g. https://accounts.google.com)"
+    )
+    oidc_discovery_url: str | None = Field(
+        None, description="Default: <issuer>/.well-known/openid-configuration"
+    )
+    oidc_client_id: str | None = None
+    oidc_client_secret: str | None = Field(None, repr=False)
+    oidc_redirect_uri: str | None = Field(
+        None, description="Registered redirect URI (default: <api_url>/auth/callback)"
+    )
+    oidc_algorithms: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["RS256", "ES256"]
+    )
+    oidc_cli_client_ids: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["mapi-cli"],
+        description="Client ids of public OIDC clients (the mapi CLI) whose ID tokens of the "
+        "same issuer are accepted as bearers (comma-separated; empty: API tokens only)",
+    )
+    oidc_extra_params: dict[str, str] = Field(
+        default_factory=dict,
+        description='Extra authorization parameters, e.g. {"hd": "acme.com"} (JSON)',
+    )
+    operator_emails: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Verified e-mails that sign in as platform operators (comma-separated)",
+    )
+    default_tenant_admins: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="E-mails invited as admins of the default tenant at start-up "
+        "(comma-separated; the invitation is claimed at first sign-in)",
+    )
+    devidp_users: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: list(DEFAULT_DEV_USERS),
+        description="Accounts of the development identity provider (MAPI_PROFILE=dev only)",
+    )
+
+    # ---------------------------------------------------------------- quotas and cost (M2)
+    price_table_path: Path | None = Field(
+        None, description="JSON PriceTable (default: mapi_spec.cost.DEFAULT_PRICE_TABLE)"
+    )
+    estimate_wall_s: dict[str, float] = Field(default_factory=lambda: dict(DEFAULT_ESTIMATE_WALL_S))
+    rate_limits_enabled: bool = True
+    lease_candidates: int = Field(
+        500, ge=1, le=10_000, description="Queued runs the fair-share planner considers"
+    )
+    lease_candidates_per_tenant: int = Field(
+        50,
+        ge=1,
+        le=10_000,
+        description="At most this many of them per tenant (a tenant whose runs are held "
+        "cannot fill the window)",
+    )
+    executor_report_interval_s: float = Field(10.0, gt=0)
+    executor_evidence_max_age_s: float = Field(
+        3 * 86400.0,
+        gt=0,
+        description="How long a recorded conformance or security-suite report lets an "
+        "executor take verified and public tenants (the nightly suites renew it)",
+    )
     sse_heartbeat_s: float = Field(15.0, gt=0)
     sse_poll_s: float = Field(5.0, gt=0, description="Fallback poll when no NOTIFY arrives")
+    sse_reauth_s: float = Field(
+        60.0,
+        gt=0,
+        description="How often an open event stream re-checks its caller's credential "
+        "(a revoked token, an expired session or a lost membership closes the stream)",
+    )
     max_sidecar_bytes: int = Field(8 * 1024 * 1024, ge=1024)
     log_level: Literal["debug", "info", "warning", "error"] = "info"
+
+    # ------------------------------------------------------------------- observability
+    log_json: bool = Field(
+        True, description="Emit JSON logs (structlog); off gives a human console renderer"
+    )
+    metrics_enabled: bool = Field(True, description="Mount GET /metrics (Prometheus)")
+    worker_metrics_port: int | None = Field(
+        None,
+        ge=1,
+        le=65535,
+        description="Serve GET /metrics of the worker (dispatcher, reconciler, finalizer, "
+        "events) on this port; unset: the worker exposes no metrics",
+    )
+    worker_metrics_host: str = Field(
+        "127.0.0.1", description="Bind address of the worker's metrics endpoint"
+    )
+    metrics_token: str | None = Field(
+        None,
+        repr=False,
+        description="Bearer a scraper must present on GET /metrics; required in the "
+        "multi-tenant profile (the series carry tenant ids and spend)",
+    )
+    tracing_enabled: bool = Field(True, description="Install the OpenTelemetry tracer provider")
+    otlp_endpoint: str | None = Field(
+        None,
+        description="OTLP/HTTP collector base URL for span export (also read from "
+        "OTEL_EXPORTER_OTLP_ENDPOINT); unset means spans are created but not exported",
+    )
+
+    def obs_settings(self) -> Any:
+        """The :class:`~mapi_server.observability.ObsSettings` for this process."""
+        from mapi_server.observability import ObsSettings
+
+        return ObsSettings(
+            service_name="mapi-server",
+            service_version=__version__,
+            log_level=self.log_level,
+            log_json=self.log_json,
+            tracing_enabled=self.tracing_enabled,
+            otlp_endpoint=self.otlp_endpoint,
+        )
 
     @field_validator("runner_command", mode="before")
     @classmethod
@@ -219,7 +541,19 @@ class Settings(BaseSettings):
             return parts
         return v
 
-    @field_validator("allowed_hosts", mode="before")
+    @field_validator(
+        "allowed_hosts",
+        "oidc_algorithms",
+        "oidc_cli_client_ids",
+        "operator_emails",
+        "default_tenant_admins",
+        "devidp_users",
+        "pubsub_push_subscriptions",
+        "kms_trusted_key_versions",
+        "signing_trusted_key_paths",
+        "dispatch_tiers",
+        mode="before",
+    )
     @classmethod
     def _hosts(cls, v: object) -> object:
         if isinstance(v, str):
@@ -236,12 +570,93 @@ class Settings(BaseSettings):
     def _origins(self) -> Settings:
         if self.web_origin.rstrip("/") == self.plots_origin.rstrip("/"):
             raise ValueError("the plot sandbox must be served from a different origin")
+        if len({self.db_app_role, self.db_system_role, self.db_gateway_role}) != 3:
+            raise ValueError("db_app_role, db_system_role and db_gateway_role must differ")
+        if self.profile is not Profile.SINGLE_TENANT and self.auth_required is False:
+            raise ValueError("authentication cannot be turned off in a multi-tenant profile")
+        if (self.pubsub_push_audience is None) != (self.pubsub_push_service_account is None):
+            raise ValueError(
+                "set MAPI_PUBSUB_PUSH_AUDIENCE and MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT together"
+            )
+        if self.signer is SignerKind.KMS and not self.kms_key_version:
+            raise ValueError("MAPI_SIGNER=kms needs MAPI_KMS_KEY_VERSION")
+        if self.object_store is ObjectStoreKind.GCS and not self.url_signer:
+            raise ValueError("MAPI_OBJECT_STORE=gcs needs MAPI_URL_SIGNER (the signBlob account)")
+        if self.object_store is ObjectStoreKind.GCS and (
+            not self.url_uploader or self.url_uploader == self.url_signer
+        ):
+            # Every run's output policy is create_only; GCS POST forms carry no generation
+            # precondition, so only an account without storage.objects.delete can sign one.
+            raise ValueError(
+                "MAPI_OBJECT_STORE=gcs needs MAPI_URL_UPLOADER: a service account other than "
+                "MAPI_URL_SIGNER that may create objects but never delete them"
+            )
+        weak = [a for a in self.oidc_algorithms if a.upper().startswith("HS") or a == "none"]
+        if weak:
+            raise ValueError("oidc_algorithms must be asymmetric (RS*, ES*, PS* or EdDSA)")
         return self
 
     # ------------------------------------------------------------------------- derived
     @property
     def buckets(self) -> Buckets:
         return Buckets(self.env)
+
+    @property
+    def multi_tenant(self) -> bool:
+        """Every profile except ``single-tenant`` (sign-in and tenant isolation are live)."""
+        return self.profile is not Profile.SINGLE_TENANT
+
+    @property
+    def requires_auth(self) -> bool:
+        """Must every non-public request carry a session or an API token?"""
+        if self.auth_required is not None:
+            return self.auth_required
+        return self.multi_tenant
+
+    @property
+    def devidp_enabled(self) -> bool:
+        """The built-in development identity provider (``MAPI_PROFILE=dev`` only)."""
+        return self.profile is Profile.DEV
+
+    @property
+    def secure_cookies(self) -> bool:
+        if self.cookie_secure is not None:
+            return self.cookie_secure
+        return self.api_url.startswith("https://")
+
+    @property
+    def secret_path(self) -> Path:
+        """Next to the bundle-signing key by default: both live on durable, shared storage."""
+        return self.server_secret_path or (self.key_path.parent / "server-secret")
+
+    def effective_default_residency(self) -> str:
+        """``default_residency``, else what the Cloud Run inventory's region satisfies (the
+        executor must be able to place the tenants created by default), else ``us``."""
+        if self.default_residency:
+            return self.default_residency
+        if self.executor is ExecutorName.CLOUDRUN_JOBS:
+            return residency_of_region(self.cloudrun_region)
+        return DEFAULT_RESIDENCY
+
+    def effective_operator_emails(self) -> list[str]:
+        """``operator_emails`` plus, in the dev profile, the first development account."""
+        emails = [e.strip().lower() for e in self.operator_emails if e.strip()]
+        if self.devidp_enabled and self.devidp_users:
+            emails.append(self.devidp_users[0].strip().lower())
+        return emails
+
+    def redirect_uri(self) -> str:
+        """The OIDC redirect URI (``<api_url>/auth/callback`` unless configured)."""
+        return self.oidc_redirect_uri or f"{self.api_url.rstrip('/')}/auth/callback"
+
+    def allowed_origins(self) -> set[str]:
+        """Origins whose cookie-authenticated mutations pass the CSRF origin check."""
+        out: set[str] = set()
+        for url in (self.web_origin, self.api_url):
+            parts = urlsplit(url)
+            if parts.scheme and parts.netloc:
+                out.add(f"{parts.scheme}://{parts.netloc}")
+        return out
 
     @property
     def pg_dir(self) -> Path:

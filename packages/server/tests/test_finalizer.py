@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
+from typing import Any
 
 import httpx
 import pytest
@@ -356,3 +358,73 @@ def test_scorecard_and_dataset_sha() -> None:
         time_created=datetime.now(UTC),
     )
     assert len(dataset_sha(meta)) == 64 and dataset_sha(meta) == dataset_sha(meta)
+
+
+async def test_concurrent_finalization_of_one_model_does_not_deadlock(ctx: ServerContext) -> None:
+    """Fits of the same spec finalize at once: versions 1..n, no deadlock (the model row is
+    locked before a version row takes FOR KEY SHARE on it)."""
+    from mapi_server_testkit.builders import submit_fit, trend_spec
+
+    spec_id = await trend_spec(ctx)
+    pairs = []
+    for _ in range(4):
+        pairs.append(await _finalizing(ctx, await submit_fit(ctx, spec_id)))
+    for run, att in pairs:
+        await simulate_outputs(ctx, run, att)
+    finalizer = Finalizer(ctx)
+    states = await asyncio.gather(*(finalizer.finalize(r.id, a.attempt) for r, a in pairs))
+    assert states == [RunState.SUCCEEDED] * 4
+    async with ctx.db.session() as s:
+        versions = sorted((await s.execute(select(m.ModelVersion.version))).scalars())
+    assert versions == [1, 2, 3, 4]
+
+
+async def test_finalization_retry_reuses_the_stored_signed_manifest(
+    ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A finalization that stops after storing manifest.json/.sig is retried idempotently
+    (re-signing would produce a different signature and signed_at)."""
+    run, att = await _finalizing(ctx)
+    await simulate_outputs(ctx, run, att)
+    finalizer = Finalizer(ctx)
+    real_commit = finalizer._commit
+    calls = {"n": 0}
+
+    async def flaky_commit(*args: Any, **kwargs: Any) -> RunState | None:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise ConnectionError("lost the database connection")
+        return await real_commit(*args, **kwargs)
+
+    monkeypatch.setattr(finalizer, "_commit", flaky_commit)
+    with pytest.raises(ConnectionError):
+        await finalizer.finalize(run.id, att.attempt)
+    snapshot = ctx.store.snapshot()  # type: ignore[attr-defined]
+    sig_keys = [k for k in snapshot if k[1].endswith("/manifest.sig")]
+    assert len(sig_keys) == 1
+    assert await finalizer.finalize(run.id, att.attempt) is RunState.SUCCEEDED
+    done = await _reload(ctx, run.id)
+    async with ctx.db.session() as s:
+        mv = await s.get(m.ModelVersion, done.output_model_version_id)
+    assert mv is not None
+    manifest = BundleManifest.model_validate(mv.manifest)
+    assert ctx.signer.verify(manifest)
+    stored = await ctx.store.get(*sig_keys[0])
+    assert manifest.signature is not None
+    assert manifest.signature.value == json.loads(stored)["value"]
+
+
+async def test_a_different_stored_manifest_is_an_integrity_failure(ctx: ServerContext) -> None:
+    run, att = await _finalizing(ctx)
+    await simulate_outputs(ctx, run, att)
+    finalizer = Finalizer(ctx)
+    model_id, version, _ = await finalizer._reserve_model(run)
+    forged = {"schema_version": "mapi.bundle-manifest/v1", "tenant_id": "evil"}
+    await ctx.store.put(
+        ctx.buckets.bundles,
+        bundle_prefix(run.tenant_id, model_id, version) + "manifest.json",
+        json.dumps(forged).encode(),
+    )
+    assert await finalizer.finalize(run.id, att.attempt) is RunState.FAILED
+    done = await _reload(ctx, run.id)
+    assert done.failure_class == "integrity"

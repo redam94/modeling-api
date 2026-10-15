@@ -1,11 +1,15 @@
 /** Shared building blocks used across pages. */
 import type { UseQueryResult } from "@tanstack/react-query";
-import { AlertTriangle, Check, Copy, Loader2 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import { AlertTriangle, Check, Clock, Copy, Gauge, Loader2, Lock, LogIn, PauseCircle, RefreshCw } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { ApiError, errorMessage } from "@/api/client";
+import { signIn } from "@/api/session";
 import type { Issue, Problem, RunState } from "@/api/types";
+import { useWorkspace } from "@/features/auth/workspace";
 import { stripAnsi } from "@/lib/ansi";
+import { adviseProblem, type Advice, type AdviceKind } from "@/lib/problems";
 import { STATE_META, TONE_CLASSES } from "@/lib/run-state";
 import { cn } from "@/lib/utils";
 
@@ -105,7 +109,112 @@ export function UntrustedText({ text, className, maxHeight = "16rem" }: { text: 
   );
 }
 
-export function ProblemNotice({ problem, title }: { problem: Problem; title?: string }) {
+/** Seconds left of a countdown that starts at `seconds` (re-armed when it changes). */
+export function useCountdown(seconds: number | null): number {
+  const [left, setLeft] = useState(seconds ?? 0);
+  useEffect(() => {
+    setLeft(seconds ?? 0);
+    if (!seconds) return undefined;
+    const started = Date.now();
+    const t = setInterval(() => {
+      const rest = Math.max(0, Math.ceil(seconds - (Date.now() - started) / 1000));
+      setLeft(rest);
+      if (rest === 0) clearInterval(t);
+    }, 250);
+    return () => clearInterval(t);
+  }, [seconds]);
+  return left;
+}
+
+const ADVICE_ICON: Record<AdviceKind, ReactNode> = {
+  rate: <Clock className="mt-0.5 size-4 shrink-0 text-warning" />,
+  quota: <Gauge className="mt-0.5 size-4 shrink-0 text-warning" />,
+  paused: <PauseCircle className="mt-0.5 size-4 shrink-0 text-warning" />,
+  unauthenticated: <LogIn className="mt-0.5 size-4 shrink-0 text-info" />,
+  forbidden: <Lock className="mt-0.5 size-4 shrink-0 text-warning" />,
+  suspended: <Lock className="mt-0.5 size-4 shrink-0 text-warning" />,
+};
+
+function AdviceActions({ advice, onRetry }: { advice: Advice; onRetry?: (() => void) | undefined }) {
+  const left = useCountdown(advice.retryAfter != null && advice.actions.some((a) => a.kind === "retry") ? advice.retryAfter : null);
+  const actions = advice.actions.filter((a) => a.kind !== "retry" || onRetry);
+  if (!actions.length) return null;
+  return (
+    <div className="flex flex-wrap gap-2 pt-1">
+      {actions.map((a) =>
+        a.kind === "retry" ? (
+          <Button key="retry" size="sm" variant="outline" disabled={left > 0} onClick={onRetry}>
+            <RefreshCw /> {left > 0 ? `Try again in ${left} s` : a.label}
+          </Button>
+        ) : a.kind === "signin" ? (
+          <Button key="signin" size="sm" onClick={() => signIn()}>
+            <LogIn /> {a.label}
+          </Button>
+        ) : (
+          <Button key={a.label} size="sm" variant="outline" asChild>
+            <Link to={a.to ?? "/"} {...(a.search ? { search: a.search } : {})}>
+              {a.label}
+            </Link>
+          </Button>
+        ),
+      )}
+    </div>
+  );
+}
+
+/**
+ * A problem the user can act on (sign-in, permissions, rate limits, quotas): what happened in
+ * plain words, what to do next, and the server's code and detail one click away.
+ */
+export function AdviceNotice({ advice, problem, onRetry }: { advice: Advice; problem: Problem; onRetry?: (() => void) | undefined }) {
+  const tone = advice.kind === "unauthenticated" ? "border-info/35 bg-info/6" : "border-warning/40 bg-warning/8";
+  return (
+    <div role="alert" data-advice={advice.kind} className={cn("grid gap-2 rounded-lg border p-4", tone)}>
+      <div className="flex items-start gap-2">
+        {ADVICE_ICON[advice.kind]}
+        <div className="grid min-w-0 gap-1">
+          <p className="font-semibold">{advice.title}</p>
+          <p className="text-muted-foreground">{advice.message}</p>
+          {advice.steps.length ? (
+            <ul className="list-disc pl-5 text-[13px] text-muted-foreground">
+              {advice.steps.map((s) => (
+                <li key={s}>{s}</li>
+              ))}
+            </ul>
+          ) : null}
+          <AdviceActions advice={advice} onRetry={onRetry} />
+          <details className="pt-1">
+            <summary className="cursor-pointer text-xs text-muted-foreground">Details</summary>
+            <p className="mt-1 font-mono text-xs text-muted-foreground">
+              {problem.code}
+              {problem.detail ? ` · ${problem.detail}` : ""}
+            </p>
+          </details>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ProblemNotice({
+  problem,
+  title,
+  retryAfter = null,
+  onRetry,
+}: {
+  problem: Problem;
+  title?: string;
+  retryAfter?: number | null;
+  onRetry?: (() => void) | undefined;
+}) {
+  const ws = useWorkspace();
+  const advice = adviseProblem(problem, {
+    retryAfter,
+    role: ws.mode === "session" ? (ws.current?.role ?? null) : null,
+    projectKey: ws.current?.key ?? null,
+    tenantSuspended: ws.current?.tenant.status === "suspended",
+  });
+  if (advice) return <AdviceNotice advice={advice} problem={problem} onRetry={onRetry} />;
   return (
     <div role="alert" className="grid gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-4">
       <div className="flex items-start gap-2">
@@ -127,8 +236,10 @@ export function ProblemNotice({ problem, title }: { problem: Problem; title?: st
   );
 }
 
-export function ErrorNotice({ error, title }: { error: unknown; title?: string }) {
-  if (error instanceof ApiError && error.problem) return <ProblemNotice problem={error.problem} {...(title ? { title } : {})} />;
+export function ErrorNotice({ error, title, onRetry }: { error: unknown; title?: string; onRetry?: () => void }) {
+  if (error instanceof ApiError && error.problem) {
+    return <ProblemNotice problem={error.problem} retryAfter={error.retryAfter} onRetry={onRetry} {...(title ? { title } : {})} />;
+  }
   return (
     <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-4">
       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
@@ -215,7 +326,7 @@ export function Spinner({ className }: { className?: string }) {
 
 // ----------------------------------------------------------------------- small widgets
 
-export function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
+export function CopyButton({ value, label = "Copy", onCopied }: { value: string; label?: string; onCopied?: () => void }) {
   const [done, setDone] = useState(false);
   return (
     <Button
@@ -226,6 +337,7 @@ export function CopyButton({ value, label = "Copy" }: { value: string; label?: s
       onClick={() => {
         void navigator.clipboard?.writeText(value).then(() => {
           setDone(true);
+          onCopied?.();
           setTimeout(() => setDone(false), 1200);
         });
       }}

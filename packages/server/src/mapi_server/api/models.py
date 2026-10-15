@@ -25,12 +25,14 @@ from mapi_spec.api import (
     Scorecard,
     parse_prefer_wait,
 )
+from mapi_spec.audit import AuditAction
 from mapi_spec.capabilities import Capabilities, Diagnostic
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
 from mapi_spec.plots import PlotSpec
 from mapi_spec.refs import ModelVersionRef
 from mapi_spec.run import RunState
+from mapi_spec.tenancy import ResourceKind
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,6 +51,7 @@ from mapi_server.api.runs import render_run, run_view, wait_terminal
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
+from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import (
     artifact_link,
     verified_bundle_object,
@@ -193,13 +196,34 @@ async def get_model_version(
 
 
 async def _bundle_link(
-    ctx: ServerContext, session: AsyncSession, model_id: str, version: int, name: str
+    ctx: ServerContext,
+    session: AsyncSession,
+    model_id: str,
+    version: int,
+    name: str,
+    *,
+    audit: bool = False,
 ) -> ArtifactLink:
     _, mv = await _mv(ctx, session, model_id, version)
     obj = await verified_bundle_object(ctx.store, ctx.signer, mv, name)
-    return await artifact_link(
+    link = await artifact_link(
         ctx.store, name=name, bucket=obj.bucket, key=obj.key, generation=obj.generation
     )
+    if audit and ctx.request is not None:  # a signed URL to a bundle object left the API
+        await write_audit(
+            ctx.db,
+            [
+                ctx.request.audit(
+                    ctx,
+                    AuditAction.MODEL_ARTIFACT_LINK,
+                    ResourceKind.MODEL,
+                    resource_id=mv.id,
+                    details={"name": name[:200], "generation": obj.generation},
+                )
+            ],
+            session=session,
+        )
+    return link
 
 
 @router.get(
@@ -211,8 +235,8 @@ async def get_model_artifact(
     ctx: Ctx, session: Session, model_id: ModelId, version: VersionNo, name: str
 ) -> ArtifactLink:
     """Signed URL for a bundle object or ``ui/…`` view, minted only after the signed bundle
-    manifest verifies (``INTEGRITY_FAILURE`` otherwise)."""
-    return await _bundle_link(ctx, session, model_id, version, name)
+    manifest verifies (``INTEGRITY_FAILURE`` otherwise). Audited."""
+    return await _bundle_link(ctx, session, model_id, version, name, audit=True)
 
 
 @router.get(
@@ -231,7 +255,7 @@ async def redirect_model_ui(
 
 
 async def _score_result(ctx: ServerContext, run_id: str) -> ScoreCallResult:
-    async with ctx.db.session() as session:
+    async with ctx.data_session() as session:
         run = await load_run(session, ctx.scope, run_id)
         view = await run_view(session, run)
         outputs: list[ArtifactLink] = []
@@ -269,7 +293,7 @@ async def score_model(
     """Score with replayed preprocessing. ``Prefer: wait=N`` (≤ 60) waits up to N s:
     200 with output links if the run finished, else 202 with the run."""
     raw = await request.json()
-    async with ctx.db.session() as session:
+    async with ctx.data_session() as session:
         model, mv = await _mv(ctx, session, model_id, version)
         target = body.request.model
         expected = ModelVersionRef(model.project_id, model.name, f"v{mv.version}")

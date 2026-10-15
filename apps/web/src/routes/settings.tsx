@@ -1,9 +1,15 @@
+import { LogOut } from "lucide-react";
+
+import { ROLE_META } from "@/api/access";
 import { useReady } from "@/api/queries";
+import { Button } from "@/components/ui/button";
+import { useSignOut } from "@/features/auth/gate";
+import { useWorkspace } from "@/features/auth/workspace";
 import { KeyValues, Mono, PageHeader } from "@/components/common";
 import { SegmentedControl } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/primitives";
 import { env } from "@/env";
-import { formatNumber } from "@/lib/format";
+import { absoluteTime, formatNumber } from "@/lib/format";
 import { useUi, type Persona, type ThemePreference } from "@/stores/ui";
 
 export function SettingsPage() {
@@ -12,10 +18,46 @@ export function SettingsPage() {
   const persona = useUi((s) => s.persona);
   const setPersona = useUi((s) => s.setPersona);
   const ready = useReady();
+  const ws = useWorkspace();
+  const signOut = useSignOut();
   return (
     <>
       <PageHeader title="Settings" description="Preferences are stored in this browser." />
       <div className="grid max-w-3xl gap-5">
+        {ws.mode === "session" ? (
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Account</CardTitle>
+                <CardDescription>Signed in through your organisation; the session cookie is HTTP-only.</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => void signOut()}>
+                <LogOut /> Sign out
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <KeyValues
+                items={[
+                  ["Name", ws.user.name],
+                  ["E-mail", ws.user.email ?? "—"],
+                  ["User id", <Mono key="id">{ws.user.id}</Mono>],
+                  ["Platform operator", ws.operator ? "Yes" : "No"],
+                  ["Session ends", ws.expiresAt ? absoluteTime(ws.expiresAt) : "—"],
+                  [
+                    "Current project",
+                    ws.current ? (
+                      <span key="p">
+                        {ws.current.tenant.name} / {ws.current.project.name} <span className="text-muted-foreground">· {ROLE_META[ws.current.role].label}</span>
+                      </span>
+                    ) : (
+                      "—"
+                    ),
+                  ],
+                ]}
+              />
+            </CardContent>
+          </Card>
+        ) : null}
         <Card>
           <CardHeader>
             <div>

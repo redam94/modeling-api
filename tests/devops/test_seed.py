@@ -317,3 +317,28 @@ def test_unreachable_api_explains_how_to_start_it(seed: ModuleType) -> None:
         pytest.raises(seed.SeedError, match="make dev"),
     ):
         seed.Api(http).health()
+
+
+def test_signs_in_only_when_the_api_requires_it(seed: ModuleType) -> None:
+    def open_api(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={})
+
+    with httpx.Client(transport=httpx.MockTransport(open_api), base_url="http://api.test") as http:
+        assert seed.authenticate(http, {}) is None
+        assert "Authorization" not in http.headers
+
+    seen: list[httpx.Request] = []
+
+    def locked(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(401, json={})
+
+    with httpx.Client(transport=httpx.MockTransport(locked), base_url="http://api.test") as http:
+        how = seed.authenticate(http, {"MAPI_TOKEN": "mapi_x", "MAPI_PROJECT": "acme/growth"})
+        assert how == "MAPI_TOKEN"
+        assert http.headers["Authorization"] == "Bearer mapi_x"
+        assert http.headers["X-Mapi-Project"] == "acme/growth"
+        # no token and no development IdP (404 on discovery): a clear error
+        http.headers.pop("Authorization")
+        with pytest.raises(seed.SeedError, match="development IdP"):
+            seed.authenticate(http, {})

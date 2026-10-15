@@ -7,7 +7,8 @@ the database with the **executor's status API — the liveness source of truth**
   no execution exists, retry with a new attempt;
 * ``PROVISIONING``/``RUNNING``/``STALLED`` → exit 0/16 + ``complete`` event → ``FINALIZING``;
   any other exit is classified with :func:`~mapi_spec.run.failure_class_for_exit`; infra
-  failures retry (capped, and never after 30 min) once the old execution is confirmed gone;
+  failures retry (capped by count and by cost, and never after 30 min) once the old
+  execution is confirmed gone;
   event silence only raises ``STALLED`` (a warning, never a failure); deadlines are enforced
   by cancelling the execution, recorded on the attempt so the stop is classified as
   ``TIMEOUT`` (or finalized as ``PARTIAL`` when checkpoints were flushed), never as an
@@ -52,6 +53,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.observability import logging as obs_logging
+from mapi_server.observability import metrics as obs_metrics
+from mapi_server.services.cost import retry_within_cost
 from mapi_server.services.runs import append_event, apply_transition, now
 
 __all__ = ["Reconciler"]
@@ -84,6 +88,14 @@ def _handle(att: m.RunAttempt) -> Handle | None:
     return Handle.model_validate(att.handle) if att.handle else None
 
 
+def _for_attempt(handle: Handle | None, att: m.RunAttempt) -> Handle | None:
+    """An adopted handle carries the intent row's attempt (some backends, such as Cloud Run,
+    only know the nonce of an execution they find by listing)."""
+    if handle is None or handle.attempt == att.attempt:
+        return handle
+    return handle.model_copy(update={"attempt": att.attempt})
+
+
 class Reconciler:
     def __init__(self, ctx: ServerContext, executor: Executor) -> None:
         self.ctx = ctx
@@ -105,15 +117,18 @@ class Reconciler:
 
     async def reconcile_once(self) -> int:
         async with self.ctx.db.session() as session:
-            ids = list(
-                (
-                    await session.execute(
-                        select(m.Run.id)
-                        .where(m.Run.state.in_([s.value for s in _ACTIVE]))
-                        .order_by(m.Run.updated_at)
-                    )
-                ).scalars()
-            )
+            rows = (
+                await session.execute(
+                    select(m.Run.id, m.Run.state)
+                    .where(m.Run.state.in_([s.value for s in _ACTIVE]))
+                    .order_by(m.Run.updated_at)
+                )
+            ).all()
+        ids = [r[0] for r in rows]
+        counts: dict[str, int] = {}
+        for _rid, state in rows:
+            counts[state] = counts.get(state, 0) + 1
+        obs_metrics.set_active_runs(counts, states=[s.value for s in _ACTIVE])
         for run_id in ids:
             try:
                 await self.reconcile_run(run_id)
@@ -135,14 +150,15 @@ class Reconciler:
     async def reconcile_run(self, run_id: str) -> None:
         run, att = await self._load(run_id)
         state = RunState(run.state)
-        if state is RunState.CANCELLING:
-            await self._cancelling(run, att)
-        elif state is RunState.DISPATCHING:
-            await self._dispatching(run, att)
-        elif state in _LIVE and att is not None:
-            await self._live(run, att)
-        elif state is RunState.FINALIZING:
-            await self._finalizing(run)
+        with obs_logging.bound_context(run_id=run_id, tenant_id=run.tenant_id, attempt=run.attempt):
+            if state is RunState.CANCELLING:
+                await self._cancelling(run, att)
+            elif state is RunState.DISPATCHING:
+                await self._dispatching(run, att)
+            elif state in _LIVE and att is not None:
+                await self._live(run, att)
+            elif state is RunState.FINALIZING:
+                await self._finalizing(run)
 
     async def _locked(self, session: AsyncSession, run_id: str) -> m.Run:
         return (
@@ -154,8 +170,8 @@ class Reconciler:
         stored = _handle(att)
         key = (att.run_id, att.attempt)
         if key in self._attached:
-            return stored or await self.executor.adopt(att.nonce)
-        adopted = await self.executor.adopt(att.nonce)
+            return stored or _for_attempt(await self.executor.adopt(att.nonce), att)
+        adopted = _for_attempt(await self.executor.adopt(att.nonce), att)
         self._attached.add(key)
         return adopted or stored
 
@@ -230,7 +246,7 @@ class Reconciler:
         if att is None:  # leased without an intent row cannot happen; recover anyway
             await self._retry_or_fail(run, RunState.DISPATCHING, "the dispatch was interrupted")
             return
-        handle = _handle(att) or await self.executor.adopt(att.nonce)
+        handle = _handle(att) or _for_attempt(await self.executor.adopt(att.nonce), att)
         if handle is not None:
             log.info("adopted orphan execution of %s/%s by nonce", run.id, run.attempt)
             await self._transition(
@@ -300,7 +316,18 @@ class Reconciler:
         *,
         attempt_update: dict[str, object] | None = None,
     ) -> None:
-        if self._can_retry(run):
+        retry = self._can_retry(run)
+        if retry:
+            async with self.ctx.db.session() as session:
+                retry = await retry_within_cost(
+                    session, run, self.ctx.settings.auto_retry_cost_factor
+                )
+            if not retry:
+                detail = (
+                    f"{detail}; not retried automatically: the run has already cost "
+                    f"{self.ctx.settings.auto_retry_cost_factor:g}x its estimate"
+                )
+        if retry:
             await self._transition(
                 run,
                 RunTrigger.INFRA_RETRY,

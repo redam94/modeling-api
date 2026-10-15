@@ -6,26 +6,73 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
+from mapi_spec.tenancy import DEFAULT_RESIDENCY
 
 from mapi_server.db.engine import libpq_url
 
-__all__ = ["alembic_config", "downgrade", "upgrade"]
+__all__ = [
+    "DEFAULT_APP_ROLE",
+    "DEFAULT_GATEWAY_ROLE",
+    "DEFAULT_SYSTEM_ROLE",
+    "alembic_config",
+    "downgrade",
+    "upgrade",
+]
 
 MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
+DEFAULT_APP_ROLE = "mapi_app"
+DEFAULT_SYSTEM_ROLE = "mapi_system"
+DEFAULT_GATEWAY_ROLE = "mapi_gateway"
 
 
-def alembic_config(url: str) -> Config:
+def alembic_config(
+    url: str,
+    *,
+    app_role: str = DEFAULT_APP_ROLE,
+    system_role: str = DEFAULT_SYSTEM_ROLE,
+    gateway_role: str = DEFAULT_GATEWAY_ROLE,
+    default_residency: str = DEFAULT_RESIDENCY,
+) -> Config:
     cfg = Config()
     cfg.set_main_option("script_location", str(MIGRATIONS_DIR))
     # '%' must be escaped for ConfigParser interpolation
     cfg.set_main_option("sqlalchemy.url", libpq_url(url).replace("%", "%%"))
+    # the runtime database roles the tenancy migration creates and grants (see 0003)
+    cfg.set_main_option("mapi.app_role", app_role)
+    cfg.set_main_option("mapi.system_role", system_role)
+    cfg.set_main_option("mapi.gateway_role", gateway_role)
+    # the residency of tenants the tenancy migration creates for existing (v0.2) rows
+    cfg.set_main_option("mapi.default_residency", default_residency)
     return cfg
 
 
-def upgrade(url: str, revision: str = "head") -> None:
+def upgrade(
+    url: str,
+    revision: str = "head",
+    *,
+    app_role: str = DEFAULT_APP_ROLE,
+    system_role: str = DEFAULT_SYSTEM_ROLE,
+    gateway_role: str = DEFAULT_GATEWAY_ROLE,
+    default_residency: str = DEFAULT_RESIDENCY,
+) -> None:
     """Apply migrations up to ``revision`` (idempotent)."""
-    command.upgrade(alembic_config(url), revision)
+    cfg = alembic_config(
+        url,
+        app_role=app_role,
+        system_role=system_role,
+        gateway_role=gateway_role,
+        default_residency=default_residency,
+    )
+    command.upgrade(cfg, revision)
 
 
-def downgrade(url: str, revision: str) -> None:
-    command.downgrade(alembic_config(url), revision)
+def downgrade(
+    url: str,
+    revision: str,
+    *,
+    app_role: str = DEFAULT_APP_ROLE,
+    system_role: str = DEFAULT_SYSTEM_ROLE,
+    gateway_role: str = DEFAULT_GATEWAY_ROLE,
+) -> None:
+    cfg = alembic_config(url, app_role=app_role, system_role=system_role, gateway_role=gateway_role)
+    command.downgrade(cfg, revision)

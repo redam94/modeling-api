@@ -86,6 +86,14 @@ typecheck: ## mypy over every type-checked package, the dev scripts and the imag
 	$(UV) run mypy $(DEVOPS_PY)
 	$(UV) run mypy images/common
 
+# Downloaded Terraform providers are kept here between `make tf-validate` runs (git-ignored).
+TF_PLUGIN_CACHE ?= $(CURDIR)/.local/terraform-plugins
+
+.PHONY: tf-validate
+tf-validate: ## Terraform fmt + validate (every env) + mocked-provider module tests; never applies
+	@mkdir -p $(TF_PLUGIN_CACHE)
+	TF_PLUGIN_CACHE_DIR=$(TF_PLUGIN_CACHE) $(UV) run pytest -q tests/infra
+
 ## ---------------------------------------------------------------- tests
 .PHONY: test
 test: ## Run the default local test suite (no docker/cloud/e2e)
@@ -105,6 +113,14 @@ e2e: ## End-to-end tests against a running stack (`make dev` first): API suite, 
 		$(PNPM) --filter @mapi/web e2e; \
 	else echo "e2e: apps/web has no Playwright config; browser suite skipped"; fi
 
+.PHONY: chaos
+chaos: ## Chaos tests: worker killed mid-run, event redelivery/reordering, Postgres restart
+	$(UV) run pytest -q packages/server/tests/test_chaos.py
+
+.PHONY: load-test
+load-test: ## 100 concurrent fits through dispatcher/reconciler/finalizer on fake Cloud Run (LOAD_TEST_RUNS, LOAD_TEST_FIT_MS)
+	$(UV) run pytest -q -s packages/server/tests/test_load_cloudrun.py
+
 .PHONY: conformance
 conformance: ## Run the conformance corpus at tiny size (FIXTURE=<id> picks one; CORPUS_SIZE overrides)
 	$(UV) run python -m mapi_conformance run --size $(CORPUS_SIZE) $(if $(FIXTURE),--fixture $(FIXTURE))
@@ -112,6 +128,24 @@ conformance: ## Run the conformance corpus at tiny size (FIXTURE=<id> picks one;
 .PHONY: conformance-full
 conformance-full: ## Run the conformance corpus at full size (nightly-scale data and fits; slow)
 	$(UV) run python -m mapi_conformance run --size full $(if $(FIXTURE),--fixture $(FIXTURE))
+
+## ---------------------------------------------------------------- security
+# The security suite lives in security/ (NOT a uv workspace member, so never installed by
+# `uv sync`). It runs against the installed venv with security/src on PYTHONPATH. EXECUTOR
+# selects the isolation level (local-process|docker|docker-gvisor|cloud); docker executors
+# auto-skip their sandbox probes when no Docker daemon is present.
+SECURITY_PYTHONPATH := security/src:security/plugin/src
+EXECUTOR ?= local-process
+
+.PHONY: security-suite
+security-suite: ## Run the sandbox-escape probe suite (EXECUTOR=docker-gvisor for the gVisor run)
+	PYTHONPATH=$(SECURITY_PYTHONPATH) $(UV) run python -m mapi_security run --executor $(EXECUTOR) \
+		--metrics .local/security-$(EXECUTOR).prom
+	PYTHONPATH=$(SECURITY_PYTHONPATH) $(UV) run pytest -q security/tests -m sandbox
+
+.PHONY: security-list
+security-list: ## List the security probe corpus
+	PYTHONPATH=$(SECURITY_PYTHONPATH) $(UV) run python -m mapi_security list
 
 ## ---------------------------------------------------------------- web
 .PHONY: web-build
@@ -187,9 +221,10 @@ _env-check:
 
 ## ---------------------------------------------------------------- docs
 .PHONY: docs-catalog
-docs-catalog: ## Regenerate the generated reference pages (catalogs, errors, CLI, settings, OpenAPI)
+docs-catalog: ## Regenerate the generated reference pages (catalogs, errors, CLI, settings, OpenAPI, permissions, metrics)
 	$(UV) run python scripts/gen_docs_catalog.py
 	$(UV) run python scripts/gen_docs_reference.py
+	$(UV) run python scripts/gen_docs_platform.py
 
 .PHONY: docs-serve
 docs-serve: docs-catalog ## Serve the documentation site with live reload
@@ -207,6 +242,13 @@ docs-test: ## Run every documentation snippet and check every include
 docs-screenshots: ## Recapture docs/assets/screenshots from a running, seeded stack (see the script)
 	node scripts/docs_screenshots.mjs .local/screenshots
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots docs/assets/screenshots
+
+DOCS_ADMIN_SHOTS := signin,dev-idp,project-switcher,members,tokens,token-new,token-created,usage,admin-tenants,admin-quotas,admin-kill-switches,admin-executors,admin-audit
+
+.PHONY: docs-screenshots-admin
+docs-screenshots-admin: ## Recapture the multi-tenant screenshots (sign-in, members, tokens, usage, admin) from a dev stack
+	node scripts/docs_screenshots_admin.mjs .local/screenshots-admin
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-admin docs/assets/screenshots --only $(DOCS_ADMIN_SHOTS)
 
 ## ---------------------------------------------------------------- release
 .PHONY: release-check

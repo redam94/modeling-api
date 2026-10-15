@@ -99,15 +99,87 @@ url = "http://127.0.0.1:18000"
 timeout = 60
 ```
 
-`mapi config show` prints the resolved URL and profile and where each value came from (never
-the token); `mapi config path` prints the file's location. `--remote @` on `check`, `fit`,
+`mapi config show` prints the resolved URL, profile, project and credentials and where each
+value came from (never a token: an API token appears as `mapi_<prefix>_…`, a sign-in as who
+signed in and until when); `mapi config path` prints the file's location. `mapi config set
+KEY VALUE` and `mapi config unset KEY` change the selected profile (`--profile`, else
+`MAPI_PROFILE`, else the file's default). They rewrite the file with mode `0600` and do not
+keep comments. Secrets cannot be set this way: use `mapi login --with-token`. `--remote @` on `check`, `fit`,
 `score` and `catalog` means "the configured API"; `--remote URL` overrides it for one command.
 
 !!! info "Tokens"
     v0.2 is single-tenant and has no authentication: the API listens on `127.0.0.1` only.
-    The client already sends `MAPI_TOKEN` as a bearer token, and refuses to send it over plain
-    HTTP to anything but a loopback address. OIDC and scoped tokens arrive with multi-tenancy
-    in [v0.3](../roadmap/cloud.md).
+    The client sends `MAPI_TOKEN` as a bearer token when one is set, and refuses to send it
+    over plain HTTP to anything but a loopback address.
+
+### Sign in and choose a project <span class="mapi-badge">v0.3</span> { #sign-in-and-choose-a-project }
+
+A multi-tenant API (v0.3) needs credentials and a project
+([Tenancy and authentication](../concepts/tenancy-and-auth.md)).
+
+```bash
+--8<-- "cli_tenancy.sh:login"
+```
+
+- **`mapi login`** opens the identity provider in your browser (OpenID Connect,
+  authorization code with PKCE, redirected to a one-off listener on `127.0.0.1`).
+  `--device` signs in with a code typed on another device instead, and `--no-browser` only
+  prints the address. `--issuer`, `--client-id` and `--discovery-url` are saved in the
+  profile, so later logins need none of them. Against a local `MAPI_PROFILE=dev` stack, use
+  `mapi login --issuer https://dev-idp.mapi.localhost --discovery-url
+  http://127.0.0.1:8000/dev/idp` and pick an account on the page that opens. The sign-in is kept in `credentials.json` next to the config file
+  (mode `0600`) and renewed automatically with its refresh token. It is only ever sent to
+  the API it was made for.
+- **`mapi login --with-token`** reads an API token from stdin, checks its checksum (a typo
+  is caught before any request), verifies it with `GET /v1/me` and saves it in the profile
+  (the config file is rewritten with mode `0600`). An API token in the profile or in
+  `MAPI_TOKEN` takes precedence over a browser sign-in.
+- **`mapi whoami`** shows who you are, how you signed in, and every project you can act in
+  with your role there.
+- **`mapi logout`** forgets the sign-in (revoking its refresh token at the identity provider)
+  and the profile's token; `--revoke` also revokes that token on the server.
+
+Every v0.2 resource (datasets, specs, runs, models, plots) now lives in a project.
+`mapi use` checks that you are a member and saves the selection in the profile; the CLI sends
+it as `X-Mapi-Project` on project-scoped requests only. `--project` or `MAPI_PROJECT`
+override it for one command or one shell. An API token acts in its own project only.
+
+```bash
+--8<-- "cli_tenancy.sh:use"
+```
+
+### Tokens, usage and cost <span class="mapi-badge">v0.3</span> { #tokens-usage-and-cost }
+
+```bash
+--8<-- "cli_tenancy.sh:tokens"
+--8<-- "cli_tenancy.sh:usage"
+```
+
+`mapi tokens create` prints the new token's secret once, alone on stdout, so redirecting it
+to a file captures exactly the token; `--save` stores it in the profile instead. Nothing else
+ever prints a token: listings, `whoami` and `config show` use the redacted form
+`mapi_<prefix>_…`. `mapi usage` shows the exact cost of the period (integer micro-units of
+the currency, priced by a named price table), the vCPU- and GiB-seconds behind it, and how
+much of each quota is used and when it resets. `mapi runs get` and `mapi runs ls` show each
+run's cost (`~` while it is still an estimate).
+
+When the API answers `429`, the client handles it: `RATE_LIMITED` is waited out (the
+server's `Retry-After`, then exponential back-off) and retried; `QUOTA_EXCEEDED` stops at
+once with the reason, when the quota resets (`retry after 1h 30m`) and, with `--json`,
+`retry_after_seconds`.
+
+### Operators <span class="mapi-badge">v0.3</span> { #operators }
+
+Platform operators manage tenants, quotas, kill switches and executors with `mapi admin`.
+Each change shows a before-and-after table and asks for confirmation (`--yes` skips it, for
+runbooks); the server audits it. Kill-switch changes need `--reason`.
+
+```bash
+--8<-- "cli_tenancy.sh:admin"
+```
+
+`mapi admin quotas set` replaces the whole policy of a subject: limits you leave out are
+removed (the tier defaults and the other levels still apply).
 
 ### Upload data
 

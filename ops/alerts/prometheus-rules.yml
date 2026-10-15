@@ -1,0 +1,173 @@
+# Prometheus recording + alerting rules for the modeling-api control plane (plan §8.8, §14).
+#
+# Metric names are those exported at GET /metrics by mapi_server.observability.metrics.
+# Load with Prometheus (rule_files:) or convert to a PrometheusRule CRD for kube-prometheus.
+# Thresholds are starting points for the private beta; tune against the SLOs in §14 M2
+# (p95 time-to-RUNNING < 90 s, 100 concurrent fits without loss, security suite green).
+#
+# Severity convention: page = wake someone; ticket = handle next business hour.
+# Every alert links the runbook that resolves it (ops/runbooks/).
+
+groups:
+  - name: mapi.recording
+    interval: 30s
+    rules:
+      # Fraction of the global spend cap currently consumed (0..1). No value when no cap is
+      # set: the server publishes cap 0 then, and `> 0` drops that series.
+      - record: mapi:global_spend_ratio
+        expr: mapi_global_spend_micros / (mapi_global_spend_cap_micros > 0)
+      # Per-minute rates of the signals the alerts below page on.
+      - record: mapi:integrity_failures:rate5m
+        expr: sum(rate(mapi_integrity_failures_total[5m]))
+      - record: mapi:sandbox_violations:rate5m
+        expr: sum by (reason) (rate(mapi_sandbox_violations_total[5m]))
+      - record: mapi:quota_rejections:rate5m
+        expr: sum by (scope, code) (rate(mapi_quota_rejections_total[5m]))
+      # 429s from the executor backend (Cloud Run jobs.run), counted where they happen. Not
+      # the API's own 429s to tenants: submission is asynchronous, so a backend throttle
+      # never reaches POST /v1/runs (tenant quota rejections are mapi_quota_rejections_total).
+      - record: mapi:executor_submit_throttled:rate5m
+        expr: sum by (executor) (rate(mapi_executor_submit_throttled_total[5m]))
+      # Runs that have been STALLED across the fleet (a gauge sampled each reconcile pass).
+      - record: mapi:runs_stalled
+        expr: sum(mapi_runs_active{state="stalled"})
+      - record: mapi:runs_running
+        expr: sum(mapi_runs_active{state="running"})
+
+  - name: mapi.security
+    rules:
+      - alert: MapiIntegrityFailure
+        # Any output-integrity failure is a potential artifact swap / escape (§9).
+        expr: increase(mapi_integrity_failures_total[10m]) > 0
+        for: 0m
+        labels: { severity: page, team: platform-security }
+        annotations:
+          summary: "Integrity failure finalizing a run ({{ $value | printf \"%.0f\" }} in 10m)"
+          description: >
+            A run's outputs did not match the signed manifest / GCS generations at FINALIZING.
+            Treat as a possible sandbox escape or artifact tampering until proven otherwise.
+          runbook: ops/runbooks/sandbox-escape.md
+
+      - alert: MapiSecurityProbeFailure
+        # The nightly security suite reports blocked/allowed per probe to the Pushgateway as
+        # mapi_security_probe_unexpected{executor=...}. A non-zero value = a probe that should
+        # have been BLOCKED was ALLOWED (or vice-versa) on an enforcing executor.
+        expr: max(mapi_security_probe_unexpected) > 0
+        for: 0m
+        labels: { severity: page, team: platform-security }
+        annotations:
+          summary: "Security probe had an unexpected outcome on an enforcing executor"
+          description: >
+            `python -m mapi_security run` reported an outcome that disagrees with the
+            expected-outcome matrix. On docker-gvisor/cloud every probe must be BLOCKED.
+          runbook: ops/runbooks/sandbox-escape.md
+
+      - alert: MapiSandboxViolationSpike
+        expr: mapi:sandbox_violations:rate5m > 0.2
+        for: 10m
+        labels: { severity: ticket, team: platform-security }
+        annotations:
+          summary: "Sandbox violations ({{ $labels.reason }}) elevated"
+          description: "Forged events / HMAC failures above baseline; inspect the offending runs."
+          runbook: ops/runbooks/sandbox-escape.md
+
+  - name: mapi.cost
+    rules:
+      - alert: MapiGlobalSpendCap70
+        expr: mapi:global_spend_ratio >= 0.70 and mapi:global_spend_ratio < 0.90
+        for: 5m
+        labels: { severity: ticket, team: platform-ops }
+        annotations:
+          summary: "Global spend at {{ $value | humanizePercentage }} of the cap"
+          description: "Review usage; consider tightening public-tier quotas before the cap trips."
+          runbook: ops/runbooks/incident-response.md
+
+      - alert: MapiGlobalSpendCap90
+        expr: mapi:global_spend_ratio >= 0.90
+        for: 1m
+        labels: { severity: page, team: platform-ops }
+        annotations:
+          summary: "Global spend at {{ $value | humanizePercentage }} of the cap"
+          description: >
+            Approaching the global spend cap. At 100% the kill switch denies untrusted
+            execution with QUOTA_EXCEEDED. Decide: raise the cap or let it trip.
+          runbook: ops/runbooks/incident-response.md
+
+  - name: mapi.saturation
+    rules:
+      - alert: MapiJobsRun429
+        # Cloud Run answered 429 to jobs.run, sustained (plan §8.3: 429s raise an alarm).
+        # Every answer counts, also the ones the executor absorbed with its retries.
+        expr: mapi:executor_submit_throttled:rate5m > 0
+        for: 5m
+        labels: { severity: ticket, team: platform-ops }
+        annotations:
+          summary: "429s on jobs.run from {{ $labels.executor }} ({{ $value | printf \"%.3f\" }}/s)"
+          description: >
+            The run-submission path is being throttled. Check the per-region jobs.run rate
+            (180/min) and per-tenant fan-out; shard across exec projects at 70% (§8.8).
+          runbook: ops/runbooks/stuck-runs.md
+
+      - alert: MapiRunningExecutions70
+        # Plan §8.8: Cloud Run allows 1,000 running executions per project and region; alert
+        # at 70 %. Each orchestrator reports the same fleet-wide value (from the run table),
+        # hence max. One executor name per exec project and region.
+        expr: max by (executor) (mapi_executor_running_executions{executor=~"cloudrun.*"}) > 700
+        for: 10m
+        labels: { severity: ticket, team: platform-ops }
+        annotations:
+          summary: "{{ $labels.executor }}: {{ $value | printf \"%.0f\" }} running executions (70 % of the 1,000 quota)"
+          description: >
+            Sweeps or a tenant's fan-out are filling the project's running-execution quota.
+            Tighten per-tenant concurrent_runs or the global cap (700 by default), or shard
+            across exec projects/regions before submissions start failing (§8.8).
+          runbook: ops/runbooks/stuck-runs.md
+
+      - alert: MapiQuotaRejections
+        # Callers keep hitting a quota (a limit is reached: rejections are what the server
+        # exports; it does not export usage against each limit, so there is no 70 % signal).
+        expr: sum by (scope) (rate(mapi_quota_rejections_total{code="QUOTA_EXCEEDED"}[15m])) > 0.05
+        for: 15m
+        labels: { severity: ticket, team: platform-ops }
+        annotations:
+          summary: "Quota rejections sustained at the {{ $labels.scope }} level"
+          description: "A tenant/token is hitting its quota; confirm it is expected, not abuse."
+          runbook: ops/runbooks/incident-response.md
+
+      - alert: MapiStalledRateHigh
+        # STALLED is a warning, not a failure — but a high fraction means the event path lags.
+        expr: mapi:runs_stalled / clamp_min(mapi:runs_running + mapi:runs_stalled, 1) > 0.2
+        for: 10m
+        labels: { severity: page, team: platform-ops }
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of live runs are STALLED"
+          description: >
+            Many runs are silent beyond K x progress interval. The executor status API is the
+            source of truth — check the Logging->Pub/Sub->events path, not the runs themselves.
+          runbook: ops/runbooks/stuck-runs.md
+
+  - name: mapi.availability
+    rules:
+      - alert: MapiTimeToRunningSlow
+        expr: >
+          histogram_quantile(0.95, sum(rate(mapi_time_to_running_seconds_bucket[30m])) by (le))
+          > 90
+        for: 15m
+        labels: { severity: ticket, team: platform-ops }
+        annotations:
+          summary: "p95 time-to-RUNNING {{ $value | printf \"%.0f\" }}s (> 90s SLO)"
+          description: "Cold starts or dispatch backlog; see the dispatch-latency panel."
+          runbook: ops/runbooks/stuck-runs.md
+
+      - alert: MapiNoProgressIngested
+        # The events service upserts progress; a flatline means the ingest path is down.
+        # `or vector(0)`: the accepted counter has no series before the first accepted event,
+        # so an ingest path broken since deploy would otherwise read as "no data".
+        expr: (sum(rate(mapi_events_ingested_total{result="accepted"}[10m])) or vector(0)) == 0
+          and sum(mapi_runs_active{state=~"running|provisioning"}) > 0
+        for: 10m
+        labels: { severity: page, team: platform-ops }
+        annotations:
+          summary: "Runs are live but no events are being ingested"
+          description: "Pub/Sub push, the events service or Postgres may be down."
+          runbook: ops/runbooks/db-failover.md

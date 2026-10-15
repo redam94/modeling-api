@@ -17,6 +17,7 @@ coverage.xml
 htmlcov/
 dist/
 build/
+!infra/terraform/modules/build/
 
 # --- Node ---
 node_modules/
@@ -25,6 +26,7 @@ apps/*/dist/
 playwright-report/
 test-results/
 apps/web/e2e/screenshots/
+apps/web/e2e/.auth/
 
 # --- Local state ---
 .local/

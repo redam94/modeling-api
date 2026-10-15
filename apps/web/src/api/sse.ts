@@ -5,6 +5,7 @@
  * `Last-Event-ID` on every (re)connect, can abort, and can stop for good on `end`.
  */
 import { env } from "@/env";
+import { useAuth } from "@/stores/auth";
 
 import type { Run, RunEventView } from "./types";
 
@@ -107,6 +108,8 @@ export interface RunStreamOptions {
   /** Resume after this persisted event id (normally the last one seen). */
   lastEventId?: number | null;
   fetchImpl?: typeof fetch;
+  /** Extra request headers (the project selection, `X-Mapi-Project`). */
+  headers?: Record<string, string>;
   /** Upper bound for the reconnect backoff in ms. */
   maxBackoffMs?: number;
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
@@ -178,7 +181,8 @@ export function parseRunStreamEvent(v: unknown): RunStreamEvent | null {
 
 /**
  * Follow a run's event stream until the server sends `end` or `signal` aborts.
- * Reconnects with `Last-Event-ID` (server `retry:` hint, exponential backoff on errors).
+ * Reconnects with `Last-Event-ID` (server `retry:` hint, exponential backoff on errors);
+ * stops for good on 404, 401 (raising the session-expired flag) and 403.
  */
 export async function followRunEvents(
   runId: string,
@@ -197,11 +201,23 @@ export async function followRunEvents(
     handlers.onStatus?.(failures || lastId !== null ? "reconnecting" : "connecting");
     let ended = false;
     try {
-      const headers: Record<string, string> = { Accept: "text/event-stream" };
+      const headers: Record<string, string> = { ...opts.headers, Accept: "text/event-stream" };
       if (lastId !== null) headers["Last-Event-ID"] = String(lastId);
-      const res = await fetchImpl(url, { headers, signal: opts.signal, credentials: "omit", cache: "no-store" });
+      const res = await fetchImpl(url, { headers, signal: opts.signal, credentials: "include", cache: "no-store" });
       if (res.status === 404) {
         handlers.onStatus?.("error", "run not found");
+        return;
+      }
+      // The server closes a stream whose credential stopped granting access; the reconnect
+      // then answers 401/403. Retrying cannot fix either: stop, and let the shell ask for a
+      // new sign-in on 401 (like every other API call does).
+      if (res.status === 401) {
+        useAuth.getState().markExpired();
+        handlers.onStatus?.("error", "your session has expired; sign in again");
+        return;
+      }
+      if (res.status === 403) {
+        handlers.onStatus?.("error", "you no longer have access to this run");
         return;
       }
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);

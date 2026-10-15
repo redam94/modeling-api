@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { useModelVersionById, useRun } from "@/api/queries";
-import type { RunEventView } from "@/api/types";
+import type { Run, RunEventView } from "@/api/types";
 import {
   CopyButton,
   ErrorNotice,
@@ -32,10 +32,22 @@ import { phaseLabel, ProgressPanel } from "@/features/runs/progress-panel";
 import { RunActions } from "@/features/runs/run-actions";
 import { useRunEvents } from "@/hooks/use-run-events";
 import { absoluteTime, elapsedSeconds, formatBytes, formatDuration, formatNumber, relativeTime, shortId } from "@/lib/format";
+import { runCostView } from "@/lib/cost";
 import { isTerminal, STATE_META } from "@/lib/run-state";
 import { cn } from "@/lib/utils";
 
 const route = getRouteApi("/runs/$runId");
+
+function RunCostValue({ run }: { run: Run }) {
+  const c = runCostView(run.cost);
+  if (!c) return <span className="text-muted-foreground">Not metered</span>;
+  return (
+    <span className="grid">
+      <span className={cn("font-medium tabular", c.estimated && "text-muted-foreground")}>{c.text}</span>
+      <span className="text-xs text-muted-foreground">{c.detail}</span>
+    </span>
+  );
+}
 
 function str(v: unknown): string | null {
   return typeof v === "string" ? v : null;
@@ -156,6 +168,7 @@ export function RunDetailPage() {
             <span>class {r.resource_class}</span>
             <span>timeout {r.timeout}</span>
             {r.executor ? <span>{r.executor}</span> : null}
+            {runCostView(r.cost) ? <span title={runCostView(r.cost)?.detail}>cost {runCostView(r.cost)?.text}</span> : null}
             <StreamStatus status={stream.status} terminal={terminal} />
           </>
         }
@@ -237,7 +250,7 @@ export function RunDetailPage() {
                   ["Dataset", r.dataset_id ? <Link key="d" to="/datasets/$datasetId" params={{ datasetId: r.dataset_id }} className="hover:underline"><Mono>{shortId(r.dataset_id)}</Mono></Link> : "—"],
                   ["Retry of", r.retry_of ? <Link key="r" to="/runs/$runId" params={{ runId: r.retry_of }} className="hover:underline"><Mono>{shortId(r.retry_of)}</Mono></Link> : "—"],
                   ["Spec hash", r.spec_hash ? <Mono key="h" title={r.spec_hash}>{shortId(r.spec_hash)}</Mono> : "—"],
-                  ["Cost", r.cost?.usd != null ? `$${r.cost.usd.toFixed(3)}` : "Not metered locally"],
+                  ["Cost", <RunCostValue key="cost" run={r} />],
                 ]}
               />
             </CardContent>

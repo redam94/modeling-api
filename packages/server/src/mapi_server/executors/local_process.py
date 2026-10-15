@@ -52,6 +52,21 @@ __all__ = ["DEFAULT_ENV_PASSTHROUGH", "ExecutorRefused", "LocalProcessExecutor"]
 
 log = logging.getLogger(__name__)
 
+
+def _current_traceparent() -> str | None:
+    """A W3C ``traceparent`` for the active span, so the execution continues the trace."""
+    try:
+        from opentelemetry import trace
+
+        ctx = trace.get_current_span().get_span_context()
+        if not ctx.is_valid:
+            return None
+        flags = "01" if ctx.trace_flags.sampled else "00"
+        return f"00-{ctx.trace_id:032x}-{ctx.span_id:016x}-{flags}"
+    except Exception:  # pragma: no cover - otel optional/defensive
+        return None
+
+
 DEFAULT_ENV_PASSTHROUGH = frozenset(
     {
         "PATH",
@@ -177,6 +192,9 @@ class LocalProcessExecutor:
             run_id=rs.run_id, nonce=nonce, bootstrap_url=self._template, exec_token=self._token
         )
         env.update(runner_env.to_environ())
+        traceparent = _current_traceparent()
+        if traceparent is not None:
+            env["MAPI_TRACEPARENT"] = traceparent
         return env
 
     def _pidfile(self, nonce: str) -> Path:

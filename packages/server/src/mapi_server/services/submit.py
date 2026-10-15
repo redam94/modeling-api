@@ -9,10 +9,12 @@ RunSpec built later signs exactly what was validated.
 from __future__ import annotations
 
 import copy
+from datetime import timedelta
 from typing import Any
 
 from mapi_spec._types import Duration
 from mapi_spec.api import RunCreate, RunRetry
+from mapi_spec.audit import AuditAction, AuditOutcome
 from mapi_spec.capabilities import Capabilities
 from mapi_spec.errors import ErrorCode, Issue, MapiError, ValidationFailed
 from mapi_spec.executor import RunKind
@@ -35,18 +37,27 @@ from mapi_spec.jobs import (
     side_table_input,
 )
 from mapi_spec.loader import spec_hash
+from mapi_spec.quotas import QuotaDemand, default_priority
 from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.spec import DEFAULT_FIT_SEED, ModelSpec, ScoreRequest
+from mapi_spec.tenancy import ResourceKind, TrustTier
+from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
-from mapi_server.errors import Conflict, NotFoundError
+from mapi_server.errors import Conflict, NotFoundError, ProblemWithHeaders
+from mapi_server.executors import PlacementRefused, placement_refusal, reported_caps
+from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import verified_bundle_object, verify_bundle_inputs
-from mapi_server.services.runs import Scope, apply_transition, create_run
+from mapi_server.services.catalog import CatalogSnapshot
+from mapi_server.services.cost import run_estimate
+from mapi_server.services.evidence import placement_problem
+from mapi_server.services.quotas import admit_run
+from mapi_server.services.runs import Scope, apply_transition, create_run, now
 from mapi_server.services.runspec import StoredRef
 from mapi_server.services.specs import (
     Validation,
@@ -60,6 +71,7 @@ from mapi_server.services.specs import (
 
 __all__ = [
     "DEFAULT_TIMEOUT_S",
+    "admit",
     "data_ref",
     "submit_describe",
     "submit_ingest",
@@ -82,9 +94,151 @@ def data_ref(dv: m.DatasetVersion, name: str = INGEST_DATA) -> dict[str, Any]:
     return StoredRef(obj["bucket"], obj["name"], int(obj["generation"]))
 
 
-async def _accept(session: AsyncSession, run: m.Run) -> m.Run:
+async def _accept(
+    session: AsyncSession, ctx: ServerContext, run: m.Run, *, untrusted: bool = False
+) -> m.Run:
+    """Admit (priority, estimate, kill switches, quotas) and queue a ``CREATED`` run."""
+    await admit(session, ctx, run, untrusted=untrusted)
     await apply_transition(session, run, RunTrigger.ACCEPT, Actor.API)
     return run
+
+
+async def admit(
+    session: AsyncSession,
+    ctx: ServerContext,
+    run: m.Run,
+    *,
+    untrusted: bool = False,
+    audit_action: AuditAction | None = AuditAction.RUN_CREATE,
+) -> None:
+    """Stamp scheduling and accounting fields, then check kill switches and quotas.
+
+    Runs created by a request are checked against placement (an executor that reported
+    recently must be able to take the tenant's tier: ``INFRA_ERROR``/503 otherwise), the kill
+    switches and the token, tenant and global quotas (``QUOTA_EXCEEDED``/429, audited; no run
+    is created). Platform runs (``describe``) are only stamped.
+    """
+    settings = ctx.settings
+    kind = RunKind(run.kind)
+    rc = ResourceClass(run.resource_class)
+    run.priority = default_priority(kind).value
+    run.untrusted_code = untrusted
+    wall = min(settings.estimate_wall_s.get(kind.value, 300.0), float(run.timeout_s))
+    estimate = run_estimate(ctx.price_table, rc, wall, max(1, run.task_count or 1))
+    run.estimate = estimate.model_dump(mode="json") if estimate is not None else None
+    auth = ctx.request
+    if auth is None:
+        return
+    run.token_id = auth.token.id if auth.token is not None else None
+    run.created_by = auth.user_id
+    await _check_placement(session, ctx, run, rc)
+    demand = QuotaDemand(
+        new_runs=1,
+        vcpu_seconds=estimate.vcpu_seconds if estimate is not None else 0.0,
+        fanout_tasks=max(1, run.task_count or 1),
+        resource_class=rc,
+    )
+    tenant = await session.get(m.Tenant, run.tenant_id)
+    async with ctx.db.session() as system:
+        if tenant is not None:
+            # refuse up front what no executor can place (trust tier, class, residency,
+            # shared-tier evidence) instead of failing the run at lease
+            problem = await placement_problem(
+                system,
+                tier=tenant.trust_tier,
+                resource_class=rc,
+                residency=tenant.data_residency,
+                now=now(),
+            )
+            if problem is not None:
+                detail = f"no executor can run {tenant.trust_tier}-tier work now ({problem})"
+                raise MapiError(detail[:2000], code=ErrorCode.INFRA_ERROR)
+        decision = await admit_run(
+            session,
+            system,
+            tenant_id=run.tenant_id,
+            token=auth.token,
+            demand=demand,
+            untrusted_code=untrusted,
+            now=now(),
+        )
+    if not decision.allowed:
+        assert decision.code is not None
+        details: dict[str, JsonValue] = {
+            "kind": kind.value,
+            "resource_class": rc.value,
+            "scope": decision.scope.value if decision.scope else None,
+            "limit_name": decision.limit_name.value if decision.limit_name else None,
+        }
+        await write_audit(
+            ctx.db,
+            [
+                auth.audit(
+                    ctx,
+                    AuditAction.QUOTA_DENIED,
+                    ResourceKind.RUN,
+                    AuditOutcome.DENIED,
+                    code=decision.code,
+                    details=details,
+                )
+            ],
+        )
+        raise ProblemWithHeaders(
+            decision.message or "quota exceeded", code=decision.code, headers=decision.headers()
+        )
+    if audit_action is None:
+        return
+    await write_audit(
+        ctx.db,
+        [
+            auth.audit(
+                ctx,
+                audit_action,
+                ResourceKind.RUN,
+                resource_id=run.id,
+                details={"kind": kind.value, "resource_class": rc.value},
+            )
+        ],
+        session=session,
+    )
+
+
+async def _check_placement(
+    session: AsyncSession, ctx: ServerContext, run: m.Run, rc: ResourceClass
+) -> None:
+    """Refuse at admission (403) what no running executor could place for good: the
+    resource class or the tenant's residency. Executors are known from their dispatchers'
+    recent reports; without any, the dispatcher decides. A trust tier no executor can take
+    *now* (isolation, egress and DNS enforcement, shared-tier evidence) is a platform state,
+    not the tenant's: :func:`mapi_server.services.evidence.placement_problem` refuses it with
+    503."""
+    tenant = await session.get(m.Tenant, run.tenant_id)
+    if tenant is None:
+        return
+    max_age = timedelta(seconds=6 * ctx.settings.executor_report_interval_s)
+    async with ctx.db.session() as system:
+        offered = await reported_caps(system, max_age=max_age)
+    why = placement_refusal(
+        offered,
+        trust_tier=TrustTier.INTERNAL.value,  # no isolation requirement: class and residency
+        resource_class=rc,
+        residency=tenant.data_residency,
+    )
+    if why is not None:
+        raise PlacementRefused(
+            f"no executor of this platform can run this tenant's work ({why}); "
+            "an operator must change the tenant's residency"
+        )
+
+
+def _overlay(snapshot: CatalogSnapshot | None, model_ref: str | None) -> bool:
+    """Does the resolved model plugin ship tenant code (an overlay tarball)?"""
+    if snapshot is None or not model_ref:
+        return False
+    for entry in snapshot.catalog.models:
+        if entry.ref == model_ref:
+            return entry.overlay_hash is not None
+    return False
 
 
 async def load_revision(
@@ -159,7 +313,9 @@ async def submit_spec_run(
         catalog_digest=v.catalog.digest if v.catalog else None,
         checkpointable=checkpointable,
     )
-    return await _accept(session, run)
+    return await _accept(
+        session, ctx, run, untrusted=_overlay(v.catalog, v.resolved.model.resolved)
+    )
 
 
 async def _ready_model_version(session: AsyncSession, scope: Scope, mv_id: str) -> m.ModelVersion:
@@ -314,7 +470,7 @@ async def submit_model_run(
         model_version_id=mv.id,
         catalog_digest=mv.manifest.get("catalog_digest"),
     )
-    return await _accept(session, run)
+    return await _accept(session, ctx, run, untrusted=bool((mv.lineage or {}).get("overlay_hash")))
 
 
 async def submit_run(session: AsyncSession, ctx: ServerContext, body: RunCreate) -> m.Run:
@@ -384,7 +540,7 @@ async def submit_retry(
         catalog_digest=old.catalog_digest,
         checkpointable=old.checkpointable,
     )
-    return await _accept(session, run)
+    return await _accept(session, ctx, run, untrusted=old.untrusted_code)
 
 
 async def submit_ingest(
@@ -424,7 +580,7 @@ async def submit_ingest(
         dataset_version=version,
         catalog_digest=snapshot.digest if snapshot else None,
     )
-    return await _accept(session, run)
+    return await _accept(session, ctx, run)
 
 
 async def submit_describe(session: AsyncSession, ctx: ServerContext) -> m.Run | None:
@@ -453,4 +609,4 @@ async def submit_describe(session: AsyncSession, ctx: ServerContext) -> m.Run | 
         payload=payload,
         spec_hash=spec_hash(payload),
     )
-    return await _accept(session, run)
+    return await _accept(session, ctx, run)

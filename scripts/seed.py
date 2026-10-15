@@ -327,6 +327,42 @@ def seed_spec(api: Api, refs: Mapping[str, str]) -> dto.SpecRevision:
     return ensure_spec(api, spec_yaml(refs))
 
 
+def authenticate(http: httpx.Client, environ: Mapping[str, str]) -> str | None:
+    """Sign the seed in when the API wants a caller (any profile but single-tenant).
+
+    ``MAPI_TOKEN`` (an API token or ID token) wins; otherwise a ``dev`` stack's built-in
+    identity provider signs in ``MAPI_DEV_ACCOUNT`` (default ``admin@dev.local``, the seeded
+    tenant admin). Requests then act in ``MAPI_PROJECT`` (default ``default/default``).
+    Returns how it signed in (``None``: the API needs no credentials).
+    """
+    from mapi_client.oidc import dev_idp_login
+    from mapi_spec.tenancy import PROJECT_HEADER
+
+    try:
+        if http.get("/v1/me").status_code != 401:
+            return None
+    except httpx.TransportError as exc:
+        raise SeedError(
+            f"the API is not reachable at {http.base_url} ({exc}); start the stack with "
+            "`make dev` (or `make compose-up`) first"
+        ) from exc
+    token = environ.get("MAPI_TOKEN", "").strip()
+    how = "MAPI_TOKEN"
+    if not token:
+        account = environ.get("MAPI_DEV_ACCOUNT", "").strip() or "admin@dev.local"
+        try:
+            token = dev_idp_login(str(http.base_url), account, http=http)
+        except Exception as exc:
+            raise SeedError(
+                f"the API requires sign-in and its development IdP did not sign in {account} "
+                f"({exc}); set MAPI_TOKEN to an API token instead"
+            ) from exc
+        how = f"the development IdP as {account}"
+    http.headers["Authorization"] = f"Bearer {token}"
+    http.headers[PROJECT_HEADER] = environ.get("MAPI_PROJECT", "").strip() or "default/default"
+    return how
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Load the E33 demo data and spec into the API.")
     parser.add_argument("--api-url", default=None, help=f"default: ${ENV_API_URL} or 127.0.0.1")
@@ -346,6 +382,9 @@ def main(argv: list[str] | None = None) -> int:
     base = args.api_url or LocalDev.from_environ(os.environ).api_url
     with httpx.Client(base_url=base, timeout=60.0) as http:
         try:
+            how = authenticate(http, os.environ)
+            if how is not None:
+                print(f"signed in with {how} (project {http.headers['X-Mapi-Project']})")
             revision = seed(Api(http), fixture_tables(args.size), timeout=args.timeout)
         except SeedError as exc:
             print(f"seed failed: {exc}", file=sys.stderr)
