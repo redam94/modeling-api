@@ -5,6 +5,25 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Added
+- **spec**: the M1 shared contracts, so the API, runner, executors, GCS shim, web app and plot
+  sandbox can be built in parallel against one source of truth:
+  - `mapi_spec.run`: the run state machine (`RunState`, `RunTrigger`, a pure `transition()` with
+    owners, failure classes and attempt bumps), the `RunSpec` bootstrap object, typed event payloads,
+    canonical HMAC-SHA256 event signing, the `{"mapi_event": …}` stdout format, `OutputManifest`
+    with metadata-only verification, the signed `BundleManifest`, `RunnerEnv` and exit codes.
+  - `mapi_spec.storage`: `ObjectMeta`, the async `ObjectStore` protocol, signed GET/PUT and POST
+    policy shapes, GCS-style CRC32C/MD5 helpers, storage errors and the bucket/key naming scheme.
+  - `mapi_spec.api`: REST DTOs for the v1 surface (each with examples), SSE/`Prefer`/idempotency
+    helpers and `M1_ENDPOINTS`, the machine-readable endpoint table.
+  - `mapi_spec.localdev`: local ports, origins and environment variable names.
+- **spec** (additive, contract v0.1): `RunKind` gains the fan-out parents (`sweep`, `backtest`,
+  `sbc`, `campaign`); `RunEventType` gains `checkpoint` and `metric`; `RunEvent.ts` must be
+  timezone-aware and is normalised to UTC; `PlotSpec` carries a schema example. The new schemas
+  join `export_schemas()` and the contract snapshot.
+- **docs**: the "HTTP API (v1)" and "Run protocol" reference pages
+  (`docs/reference/http-api.md`, `docs/reference/run-protocol.md`).
+
 ## [0.1.0] — M0: contract layer — 2026-10-15
 
 First milestone release: the typed contract layer and the in-process xarray runtime, with no
