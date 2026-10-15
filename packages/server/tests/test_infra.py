@@ -60,12 +60,15 @@ def test_migrations_round_trip_and_match_the_models(scratch_db: str) -> None:
     assert "runs" in _tables(scratch_db)
 
 
-def test_every_table_carries_tenant_and_project() -> None:
+def test_every_table_is_classified_for_row_level_security() -> None:
+    """A new table is either a tenant table (with ``tenant_id``; RLS in a migration) or a
+    declared platform table: nothing is left unclassified."""
+    names = {t.name for t in m.Base.metadata.sorted_tables}
+    assert names == set(m.TENANT_TABLES) | set(m.GLOBAL_TABLES) | {"tenants"}
+    assert not set(m.TENANT_TABLES) & set(m.GLOBAL_TABLES)
     for table in m.Base.metadata.sorted_tables:
-        cols = set(table.columns.keys())
-        if table.name == "tenants":
-            continue
-        assert {"tenant_id", "project_id"} <= cols, table.name
+        if table.name in m.TENANT_TABLES:
+            assert "tenant_id" in table.columns, table.name
 
 
 def test_cli_migrate(scratch_db: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
