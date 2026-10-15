@@ -56,6 +56,17 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   - Chaos tests (`make chaos`).
   - A route-table test that every non-public route needs credentials and that no M1 or M2
     route serves another tenant's project.
+  - End-to-end M2 suites against a running dev stack, run by `make e2e`. Two tenants are
+    created through the dev IdP. The suites cover sign-in, cross-tenant refusal at the API
+    and by row-level security in Postgres, token scopes, `QUOTA_EXCEEDED`, the spend-cap kill
+    switch held at dispatch, per-run cost and the audit trail
+    (`tests/e2e/test_m2_tenancy_stack.py`). They also include a browser flow: sign-in, tenant
+    switch, fit with metered cost, tokens, and the admin kill switch
+    (`apps/web/e2e/m2-flow.e2e.spec.ts`).
+  - An opt-in burst of concurrent real fits, against the dev stack or a deployment
+    (`MAPI_E2E_BURST_RUNS`).
+  - A nightly workflow: chaos, executor conformance, both load-test modes, and the security
+    suite on local-process and inside gVisor.
 - **infra**: Terraform modules control, exec, data, build, perimeter and stack, plus the dev,
   staging and prod environments.
   - The exec projects get zero egress, a restricted VIP, a DNS response policy and VPC-SC.
@@ -82,6 +93,8 @@ is tested against fakes, and the Terraform is validated and tested against mocke
 - **docs**: tenancy and auth, and quotas and cost concepts; the v0.3 HTTP API; the
   authentication, Cloud Run, Google Cloud deployment, security hardening, observability and
   security-suite operations pages; and every new variable in the configuration reference.
+  - The M2 verification record (`docs/operations/m2-verification.md`): what was proven
+    locally, the measured numbers, and the exact steps left for a real Google Cloud project.
 
 ### Changed
 - **devops**: `make dev` and compose run the servers in the `dev` profile by default
@@ -102,6 +115,14 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   finalization reuses its stored signed manifest.
 - **server**: `/auth/callback` sends the browser back to the web origin, and a single-tenant
   server answers `/auth/session` as the local administrator.
+- **web**: costs below $0.0001 keep two significant digits instead of showing `$0.00`.
+  - Usage lists session runs as "Signed-in users" (the server's group key is `-`).
+  - Memory under an hour is shown in GiB-seconds.
+  - A finished run without output no longer says "yet".
+  - The project switcher no longer truncates names on wide screens.
+- **security**: the docker and gVisor probe container gets the suite through a read-only
+  mount; before, every isolation probe ended in ERROR on a host with Docker.
+  - `--executor cloud` refuses to run outside a Cloud Run Jobs execution.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
