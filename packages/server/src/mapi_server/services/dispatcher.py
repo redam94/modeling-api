@@ -37,6 +37,8 @@ from sqlalchemy import select
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.executors import check_placement
+from mapi_server.observability import metrics as obs_metrics
+from mapi_server.observability.tracing import run_span
 from mapi_server.services.bundles import BundleIntegrityError, verify_bundle_inputs
 from mapi_server.services.runs import apply_transition, now
 from mapi_server.services.runspec import build_runspec
@@ -179,6 +181,15 @@ class Dispatcher:
             session.expunge_all()
         if run.state != RunState.DISPATCHING.value or run.attempt != attempt_no:
             return
+        with run_span(
+            "dispatch.submit", run_id=run_id, attempt=attempt_no, kind=run.kind
+        ):
+            await self._submit_locked(run, att, run_id, attempt_no)
+
+    async def _submit_locked(
+        self, run: m.Run, att: m.RunAttempt, run_id: str, attempt_no: int
+    ) -> None:
+        ctx = self.ctx
         handle: Handle | None = None
         error: Exception | None = None
         try:
@@ -273,6 +284,10 @@ class Dispatcher:
                     await apply_transition(session, run, RunTrigger.SUBMITTED, Actor.DISPATCHER)
                     run.lease_owner = None
                     run.lease_expires_at = None
+                    if run.queued_at is not None:
+                        obs_metrics.record_dispatch_latency(
+                            (att.submitted_at - run.queued_at).total_seconds()
+                        )
                 # CANCELLING: the reconciler sees the handle and cancels the execution
                 return
             att.status = "abandoned"

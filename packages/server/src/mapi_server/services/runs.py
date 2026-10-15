@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
+from mapi_server.observability import metrics as obs_metrics
 from mapi_server.services.notify import notify_run
 
 __all__ = [
@@ -209,6 +210,11 @@ async def apply_transition(
         run.queued_at = ts
     if rule.target is RunState.RUNNING and run.started_at is None:
         run.started_at = ts
+        if run.queued_at is not None:
+            obs_metrics.record_time_to_running((ts - run.queued_at).total_seconds())
+    obs_metrics.record_run_transition(rule.target.value)
+    if rule.target.terminal:
+        obs_metrics.record_run_terminal(run.kind, rule.target.value)
     if rule.failure_class is not None:
         run.failure_class = rule.failure_class.value
         run.problem = (

@@ -91,6 +91,7 @@ from mapi_runner.channel import (
     send_frame,
 )
 from mapi_runner.events import EventEmitter, LogFlood, LogGate, ProgressCoalescer
+from mapi_runner.obslog import StderrLog, trace_id_from_env
 from mapi_runner.outputs import OutputViolation, collect_outputs, open_regular
 from mapi_runner.sandbox import WORKER_GID, WORKER_UID, IsolationPlan, plan_isolation
 from mapi_runner.transfer import TransferError, Transfers, new_client
@@ -227,6 +228,7 @@ class Supervisor:
         self._wake_r = -1
         self._wake_w = -1
         self._signals: list[int] = []
+        self.diag = StderrLog(trace_id=trace_id_from_env(self.environ))
 
     # ================================================================ entry point
     def run(self) -> int:
@@ -248,6 +250,7 @@ class Supervisor:
         self._install_signals()  # first: a SIGTERM during bootstrap is handled, not fatal
         rs = self._bootstrap()
         self.rs = rs
+        self.diag.bind(run_id=rs.run_id, attempt=rs.attempt)
         self.emitter = EventEmitter(
             self.event_fd,
             run_id=rs.run_id,
@@ -861,9 +864,8 @@ class Supervisor:
         text = None if message is None else clean_text(message)[:500]
         self._emit(StatePayload(phase=phase, message=text))
 
-    def _stderr(self, message: str) -> None:
-        with contextlib.suppress(OSError):
-            os.write(2, f"mapi-runner: {message}\n".encode("utf-8", errors="replace"))
+    def _stderr(self, message: str, *, level: str = "info", **fields: object) -> None:
+        self.diag.log(message, level=level, **fields)
 
     def _cleanup(self) -> None:
         if self.proc is not None and self.proc.poll() is None:

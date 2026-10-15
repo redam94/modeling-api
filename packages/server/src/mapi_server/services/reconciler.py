@@ -52,6 +52,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.observability import logging as obs_logging
+from mapi_server.observability import metrics as obs_metrics
 from mapi_server.services.runs import append_event, apply_transition, now
 
 __all__ = ["Reconciler"]
@@ -105,15 +107,18 @@ class Reconciler:
 
     async def reconcile_once(self) -> int:
         async with self.ctx.db.session() as session:
-            ids = list(
-                (
-                    await session.execute(
-                        select(m.Run.id)
-                        .where(m.Run.state.in_([s.value for s in _ACTIVE]))
-                        .order_by(m.Run.updated_at)
-                    )
-                ).scalars()
-            )
+            rows = (
+                await session.execute(
+                    select(m.Run.id, m.Run.state)
+                    .where(m.Run.state.in_([s.value for s in _ACTIVE]))
+                    .order_by(m.Run.updated_at)
+                )
+            ).all()
+        ids = [r[0] for r in rows]
+        counts: dict[str, int] = {}
+        for _rid, state in rows:
+            counts[state] = counts.get(state, 0) + 1
+        obs_metrics.set_active_runs(counts, states=[s.value for s in _ACTIVE])
         for run_id in ids:
             try:
                 await self.reconcile_run(run_id)
@@ -135,14 +140,15 @@ class Reconciler:
     async def reconcile_run(self, run_id: str) -> None:
         run, att = await self._load(run_id)
         state = RunState(run.state)
-        if state is RunState.CANCELLING:
-            await self._cancelling(run, att)
-        elif state is RunState.DISPATCHING:
-            await self._dispatching(run, att)
-        elif state in _LIVE and att is not None:
-            await self._live(run, att)
-        elif state is RunState.FINALIZING:
-            await self._finalizing(run)
+        with obs_logging.bound_context(run_id=run_id, tenant_id=run.tenant_id, attempt=run.attempt):
+            if state is RunState.CANCELLING:
+                await self._cancelling(run, att)
+            elif state is RunState.DISPATCHING:
+                await self._dispatching(run, att)
+            elif state in _LIVE and att is not None:
+                await self._live(run, att)
+            elif state is RunState.FINALIZING:
+                await self._finalizing(run)
 
     async def _locked(self, session: AsyncSession, run_id: str) -> m.Run:
         return (

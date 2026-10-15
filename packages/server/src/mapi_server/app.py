@@ -103,6 +103,10 @@ def build_context(
     signer = signer or load_signer(settings)
     url = database_url or resolve_database_url(settings)
     db = Database(url, pool_size=settings.db_pool_size, echo=settings.db_echo)
+    if settings.tracing_enabled:
+        from mapi_server.observability.tracing import instrument_engine
+
+        instrument_engine(db.engine)
     owned_store = store is None
     ctx = ServerContext(
         settings=settings,
@@ -143,6 +147,9 @@ async def ensure_scope(ctx: ServerContext) -> None:
 
 
 async def startup(ctx: ServerContext, *, listen: bool = True) -> None:
+    from mapi_server.observability import metrics as obs_metrics
+
+    obs_metrics.METRICS.bind_sse_gauge(ctx.hub.subscriber_count)
     await ensure_scope(ctx)
     async with ctx.db.session() as s:
         await ctx.catalogs.load_file(
@@ -218,6 +225,7 @@ def create_app(
 
     app.openapi = openapi  # type: ignore[method-assign]
     install_error_handlers(app, debug=settings.debug)
+    _install_observability(app, settings, ctx)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.web_origin.rstrip("/")],
@@ -246,6 +254,31 @@ def create_app(
     ):
         app.include_router(router)
     return app
+
+
+def _install_observability(
+    app: FastAPI, settings: Settings, ctx: ServerContext | None
+) -> None:
+    """Metrics endpoint, request middleware, OTel instrumentation and the SSE-client gauge.
+
+    Logging and the tracer provider are configured once per process at the entry point
+    (``mapi-server api``/``worker``); here we only attach per-app pieces so that tests which
+    build apps directly still get ``/metrics`` and request metrics.
+    """
+    from mapi_server.observability import metrics as obs_metrics
+    from mapi_server.observability.middleware import (
+        ObservabilityMiddleware,
+        add_metrics_endpoint,
+    )
+    from mapi_server.observability.tracing import instrument_app
+
+    if settings.metrics_enabled:
+        add_metrics_endpoint(app)
+    app.add_middleware(ObservabilityMiddleware, fastapi_app=app)
+    if settings.tracing_enabled:
+        instrument_app(app)
+    if ctx is not None:
+        obs_metrics.METRICS.bind_sse_gauge(ctx.hub.subscriber_count)
 
 
 def openapi_document(settings: Settings | None = None) -> dict[str, Any]:

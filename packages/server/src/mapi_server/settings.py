@@ -13,7 +13,7 @@ import shlex
 import sys
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 
 from mapi_spec.localdev import (
@@ -208,6 +208,31 @@ class Settings(BaseSettings):
     sse_poll_s: float = Field(5.0, gt=0, description="Fallback poll when no NOTIFY arrives")
     max_sidecar_bytes: int = Field(8 * 1024 * 1024, ge=1024)
     log_level: Literal["debug", "info", "warning", "error"] = "info"
+
+    # ------------------------------------------------------------------- observability
+    log_json: bool = Field(
+        True, description="Emit JSON logs (structlog); off gives a human console renderer"
+    )
+    metrics_enabled: bool = Field(True, description="Mount GET /metrics (Prometheus)")
+    tracing_enabled: bool = Field(True, description="Install the OpenTelemetry tracer provider")
+    otlp_endpoint: str | None = Field(
+        None,
+        description="OTLP/HTTP collector base URL for span export (also read from "
+        "OTEL_EXPORTER_OTLP_ENDPOINT); unset means spans are created but not exported",
+    )
+
+    def obs_settings(self) -> Any:
+        """The :class:`~mapi_server.observability.ObsSettings` for this process."""
+        from mapi_server.observability import ObsSettings
+
+        return ObsSettings(
+            service_name="mapi-server",
+            service_version=__version__,
+            log_level=self.log_level,
+            log_json=self.log_json,
+            tracing_enabled=self.tracing_enabled,
+            otlp_endpoint=self.otlp_endpoint,
+        )
 
     @field_validator("runner_command", mode="before")
     @classmethod

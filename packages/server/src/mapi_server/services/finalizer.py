@@ -75,6 +75,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.jsonlimits import JsonTooDeep, loads_limited
+from mapi_server.observability import metrics as obs_metrics
+from mapi_server.observability.tracing import run_span
 from mapi_server.services.runs import append_event, apply_transition, now
 from mapi_server.services.runspec import EMPTY_CATALOG_DIGEST, MANIFEST_MAX_BYTES
 from mapi_server.storage import list_all
@@ -172,15 +174,24 @@ class Finalizer:
                         ErrorCode.INFRA_ERROR, "finalization kept failing; giving up"
                     ),
                 )
+                obs_metrics.record_finalize_outcome(run.kind, "infra")
                 return RunState.FAILED
             att = await session.get(m.RunAttempt, (run_id, attempt))
             assert att is not None
             session.expunge_all()
-        try:
-            verified = await self._verify(run, att)
-            return await self._dispatch(verified)
-        except IntegrityError as exc:
-            return await self._integrity_failure(run, exc)
+        with run_span("finalize", run_id=run_id, attempt=attempt, kind=run.kind):
+            try:
+                verified = await self._verify(run, att)
+                state = await self._dispatch(verified)
+            except IntegrityError as exc:
+                obs_metrics.record_integrity_failure(run.tenant_id)
+                obs_metrics.record_finalize_outcome(run.kind, "integrity")
+                return await self._integrity_failure(run, exc)
+            if state is RunState.SUCCEEDED:
+                obs_metrics.record_finalize_outcome(run.kind, "succeeded")
+            elif state is RunState.PARTIAL:
+                obs_metrics.record_finalize_outcome(run.kind, "partial")
+            return state
 
     async def _lock(self, session: AsyncSession, run_id: str) -> m.Run:
         return (
