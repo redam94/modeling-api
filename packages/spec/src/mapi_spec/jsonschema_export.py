@@ -12,12 +12,15 @@ from typing import Any
 
 from pydantic import BaseModel, TypeAdapter
 
+from mapi_spec import api
 from mapi_spec.capabilities import Diagnostic, ModelManifest, OutputSelector
 from mapi_spec.catalog import Catalog, ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
 from mapi_spec.coords import DataSummary
 from mapi_spec.effects import SchemaEffect
 from mapi_spec.errors import Problem
+from mapi_spec.executor import RunEvent
 from mapi_spec.plots import PlotSpec
+from mapi_spec.run import BundleManifest, OutputManifest, RunSpec
 from mapi_spec.schema import DataSchema, DataSchemaTemplate
 from mapi_spec.spec import (
     CONTRACT_VERSION,
@@ -29,8 +32,9 @@ from mapi_spec.spec import (
     ScoreRequest,
     Sweep,
 )
+from mapi_spec.storage import ObjectMeta, PostPolicy, SignedGet, SignedPut
 
-__all__ = ["SCHEMA_BASE_URI", "SCHEMA_MODELS", "export_schemas"]
+__all__ = ["API_SCHEMA_MODELS", "SCHEMA_BASE_URI", "SCHEMA_MODELS", "export_schemas"]
 
 SCHEMA_BASE_URI = "https://schemas.mapi.dev/v1/"
 JSON_SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
@@ -55,7 +59,29 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "catalog-step.json": StepCatalogEntry,
     "catalog-model.json": ModelCatalogEntry,
     "catalog-plot.json": PlotCatalogEntry,
+    # run protocol (M1)
+    "runspec.json": RunSpec,
+    "runevent.json": RunEvent,
+    "outputmanifest.json": OutputManifest,
+    "bundlemanifest.json": BundleManifest,
+    "objectmeta.json": ObjectMeta,
+    "signedget.json": SignedGet,
+    "signedput.json": SignedPut,
+    "postpolicy.json": PostPolicy,
 }
+
+API_SCHEMA_MODELS: dict[str, type[BaseModel]] = {
+    f"api-{name}.json": model
+    for name, model in sorted(
+        (n, getattr(api, n))
+        for n in api.__all__
+        if isinstance(getattr(api, n), type)
+        and issubclass(getattr(api, n), BaseModel)
+        and getattr(api, n) is not api.Page
+        and getattr(api, n) is not PlotSpec
+    )
+}
+"""REST DTOs of :mod:`mapi_spec.api` (``api-<Name>.json``); ``Page[T]`` is per-endpoint."""
 
 
 def _finish(name: str, schema: dict[str, Any]) -> dict[str, Any]:
@@ -70,7 +96,7 @@ def _finish(name: str, schema: dict[str, Any]) -> dict[str, Any]:
 def export_schemas(out_dir: str | Path | None = None) -> dict[str, dict[str, Any]]:
     """Return ``{filename: JSON Schema}``; also write the files if ``out_dir`` is given."""
     schemas: dict[str, dict[str, Any]] = {}
-    for name, model in SCHEMA_MODELS.items():
+    for name, model in (SCHEMA_MODELS | API_SCHEMA_MODELS).items():
         schemas[name] = _finish(name, model.model_json_schema(by_alias=True, mode="validation"))
     schemas["document.json"] = _finish(
         "document.json", TypeAdapter(AnyDocument).json_schema(by_alias=True, mode="validation")
