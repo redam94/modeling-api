@@ -134,6 +134,8 @@ nav:
       - Bundles: concepts/bundles.md
       - Coord plans and typed errors: concepts/coord-plans.md
       - Capabilities and manifests: concepts/capabilities.md
+      - Tenancy and authentication: concepts/tenancy-and-auth.md
+      - Quotas and cost: concepts/quotas-and-cost.md
   - Guides:
       - Using the platform:
           - The Expert web app: guides/web-ui.md

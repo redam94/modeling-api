@@ -50,6 +50,10 @@ flowchart TB
 - Scoped API tokens with their own budgets; per-tenant quotas in vCPU-seconds; interactive and
   batch priority classes so one big sweep cannot starve everyone's scoring.
 - A per-run cost ledger shown in the UI.
+- The contracts for all of this are already published: see
+  [Tenancy and authentication](../concepts/tenancy-and-auth.md),
+  [Quotas and cost](../concepts/quotas-and-cost.md) and the
+  [multi-tenant HTTP API](../reference/http-api.md#multi-tenant-api).
 - Other backends plug in through the same `Executor` protocol, each gated by an executor
   conformance suite.
 
