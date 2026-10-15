@@ -460,6 +460,32 @@ def test_decomposition_point_estimates_and_vars() -> None:
     )
 
 
+def _legend_title(plot: PlotSpec) -> str:
+    area = plot.spec["vconcat"][0]
+    return str(area["encoding"]["color"]["title"])
+
+
+def test_decomposition_legend_is_not_titled_channel_when_baseline_and_controls_join() -> None:
+    weeks = pd.date_range("2024-01-07", periods=4, freq="W")
+    ds = xr.Dataset(
+        {
+            "channel_contribution": (("week", "channel"), np.ones((4, 2))),
+            "baseline": ("week", np.full(4, 5.0)),
+            "holiday": ("week", np.zeros(4)),
+        },
+        coords={"week": weeks, "channel": ["tv", "search"]},
+    )
+    for rid in ("mmm.decomposition", "core.decomposition"):
+        plot = get_recipe(rid).render({"contributions": ds})
+        assert set(frame(plot, "totals")["component"]) == {"tv", "search", "baseline", "holiday"}
+        assert _legend_title(plot) == "component", rid
+    assert get_recipe("mmm.decomposition").title == "Contribution by component"
+    only = get_recipe("mmm.decomposition").render(
+        {"contributions": ds}, vars=["channel_contribution"]
+    )
+    assert _legend_title(only) == "channel"  # every component is a channel
+
+
 # --------------------------------------------------------------------------- comparison
 
 

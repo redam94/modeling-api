@@ -477,7 +477,8 @@ DECOMP_GROUPS = ("contributions", "decomposition", "components")
 
 def _components(
     ds: xr.Dataset, s: DecompositionSettings, default_component: str | None
-) -> tuple[list[tuple[str, xr.DataArray]], str | None]:
+) -> tuple[list[tuple[str, xr.DataArray]], str | None, bool]:
+    """``(components, component dim, whether every component is a label of that dim)``."""
     names = s.vars or [str(v) for v in ds.data_vars if np.issubdtype(ds[v].dtype, np.number)]
     if not names:
         raise RecipeDataError("the contributions group has no numeric variables")
@@ -491,6 +492,7 @@ def _components(
                 comp = cand
                 break
     out: list[tuple[str, xr.DataArray]] = []
+    pure = comp is not None
     for n in names:
         da = ds[n]
         if comp is not None and comp in da.dims:
@@ -498,14 +500,15 @@ def _components(
                 out.append((str(label), da.sel({comp: label}, drop=True)))
         else:
             out.append((n, da))
-    return out[: s.max_components], comp
+            pure = False  # a whole variable (baseline, a control) is not one of the comp labels
+    return out[: s.max_components], comp, pure
 
 
 def _decomposition(
     inp: RecipeInput, s: DecompositionSettings, default_component: str | None
 ) -> Figure:
     ds = inp.require(*DECOMP_GROUPS)
-    parts, comp = _components(ds, s, default_component)
+    parts, comp, pure = _components(ds, s, default_component)
     t = time_dim(parts[0][1], s.along)
     if t is None:
         raise RecipeDataError("contributions need a time-like dim; pass along=<dim>")
@@ -545,7 +548,7 @@ def _decomposition(
         .encode(
             x=alt.X("x", type=xtype, title=t),
             y=alt.Y("value:Q", stack="zero", title="contribution"),
-            color=alt.Color("component:N", title=comp or "component"),
+            color=alt.Color("component:N", title=comp if pure and comp else "component"),
             tooltip=[
                 alt.Tooltip("x", type=xtype),
                 "component:N",

@@ -418,7 +418,7 @@ class MMMDecompositionSettings(DecompositionSettings):
 
 @recipe(
     "mmm.decomposition",
-    title="Contribution by channel",
+    title="Contribution by component",
     settings=MMMDecompositionSettings,
     persona="both",
     requires_groups=["contributions"],

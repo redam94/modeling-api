@@ -172,7 +172,7 @@ test.describe("@e2e M1: fit, inspect and score an E33 geo MMM from the UI", () =
     const plots = page.getByRole("navigation", { name: "Plots" });
     for (const [title, file] of [
       ["Fit and forecast", "06-plot-ppc"],
-      ["Contribution by channel", "07-plot-decomposition"],
+      ["Contribution by component", "07-plot-decomposition"],
       ["Sampler convergence", "08-plot-convergence"],
     ] as const) {
       await plots.getByRole("button", { name: new RegExp(title) }).click();
