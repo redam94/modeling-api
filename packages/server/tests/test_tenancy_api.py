@@ -195,6 +195,7 @@ async def test_operator_endpoints_refuse_everyone_else(
         ("PUT", "/v1/admin/quotas", {"scope": "tenant", "subject_id": "acme",
                                      "limits": {"concurrent_runs": 1000}}),
         ("GET", "/v1/admin/audit", None),
+        ("PUT", "/v1/admin/executors/fake", {"enabled": False, "reason": "nope"}),
     ):  # fmt: skip
         r = await ana.request(method, path, json=body)
         assert r.status_code == 403, (path, r.status_code)
@@ -204,7 +205,7 @@ async def test_operator_endpoints_refuse_everyone_else(
             for e in (await s.execute(select(m.AuditEvent))).scalars()
             if e.outcome == "denied"
         ]
-    assert {"tenant.create", "kill_switch.update", "quota.update"} <= set(denied)
+    assert {"tenant.create", "kill_switch.update", "quota.update", "executor.update"} <= set(denied)
 
 
 async def test_operators_read_metadata_but_never_tenant_content(

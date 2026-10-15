@@ -29,6 +29,7 @@ import type {
   AuditOutcome,
   DatasetCreate,
   DatasetVersionCreate,
+  ExecutorUpdate,
   KillSwitchUpdate,
   Me,
   MembershipCreate,
@@ -1022,5 +1023,15 @@ export function useExecutors() {
     queryKey: qk.executors,
     queryFn: ({ signal }) => unwrap(api.GET("/v1/admin/executors", { params: { query: { limit: 200 } }, signal })),
     refetchInterval: 15_000,
+  });
+}
+
+/** Enable or disable an executor (operators; audited). A disabled one gets no new runs. */
+export function usePutExecutor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, body }: { name: string; body: ExecutorUpdate }) =>
+      unwrap(api.PUT("/v1/admin/executors/{name}", { params: { path: { name } }, body })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.executors }),
   });
 }

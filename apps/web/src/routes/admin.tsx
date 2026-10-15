@@ -32,6 +32,7 @@ import {
   useDeleteQuota,
   useExecutors,
   useKillSwitches,
+  usePutExecutor,
   usePutKillSwitches,
   usePutQuota,
   useQuotaPolicies,
@@ -732,7 +733,7 @@ function KillSwitchesTab() {
                           ? { title: "Resume uploaded code?", description: "Queued runs of uploaded plugins become eligible again.", body: { untrusted_execution_enabled: true }, danger: false }
                           : {
                               title: "Pause all uploaded code?",
-                              description: "No new run of tenant-uploaded plugin code is accepted or leased, on every tenant. Runs already executing continue; cancel them separately if needed.",
+                              description: "No new run of tenant-uploaded plugin code is accepted or leased, on every tenant. Runs already executing continue: use “Cancel running uploaded code” to stop them too.",
                               body: { untrusted_execution_enabled: false },
                               danger: true,
                               confirmWord: "PAUSE",
@@ -741,6 +742,24 @@ function KillSwitchesTab() {
                     }
                   />
                 </CardHeader>
+                <CardContent>
+                  <Button
+                    variant="outline"
+                    className="text-destructive"
+                    onClick={() =>
+                      setPending({
+                        title: "Cancel all running uploaded code?",
+                        description:
+                          "Pauses uploaded code and cancels every unfinished run of it on every tenant, including runs already executing. Use it to contain a suspected sandbox escape.",
+                        body: { untrusted_execution_enabled: false, cancel_untrusted_runs: true },
+                        danger: true,
+                        confirmWord: "CANCEL",
+                      })
+                    }
+                  >
+                    <ShieldOff /> Cancel running uploaded code
+                  </Button>
+                </CardContent>
               </Card>
               <Card>
                 <CardHeader>
@@ -856,6 +875,7 @@ const EXEC_STATUS: Record<ExecutorHealth["status"], { variant: "success" | "warn
 
 function ExecutorCard({ e }: { e: ExecutorHealth }) {
   const st = EXEC_STATUS[e.status];
+  const [toggling, setToggling] = useState(false);
   const rate = e.submit_rate_limit_per_minute ? (e.submits_last_minute ?? 0) / e.submit_rate_limit_per_minute : null;
   const failed = (e.conformance?.results ?? []).filter((r) => r.outcome === "failed" || r.outcome === "error");
   return (
@@ -872,7 +892,13 @@ function ExecutorCard({ e }: { e: ExecutorHealth }) {
             {(e.regions ?? e.caps.regions ?? []).length ? ` · ${(e.regions ?? e.caps.regions ?? []).join(", ")}` : ""}
           </CardDescription>
         </div>
-        <Badge variant={e.enabled ? "secondary" : "outline"}>{e.enabled ? "enabled" : "disabled"}</Badge>
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge variant={e.enabled ? "secondary" : "outline"}>{e.enabled ? "enabled" : "disabled"}</Badge>
+          <Button size="sm" variant={e.enabled ? "outline" : "default"} onClick={() => setToggling(true)}>
+            <Power /> {e.enabled ? "Disable" : "Enable"}
+          </Button>
+        </div>
+        {toggling ? <ExecutorToggleConfirm e={e} onClose={() => setToggling(false)} /> : null}
       </CardHeader>
       <CardContent className="grid gap-3">
         <div className="flex flex-wrap gap-1.5">
@@ -927,6 +953,60 @@ function ExecutorCard({ e }: { e: ExecutorHealth }) {
   );
 }
 
+function ExecutorToggleConfirm({ e, onClose }: { e: ExecutorHealth; onClose: () => void }) {
+  const put = usePutExecutor();
+  const [reason, setReason] = useState("");
+  const [word, setWord] = useState("");
+  const disabling = e.enabled;
+  const blocked = reason.trim().length < 3 || (disabling && word !== "DISABLE");
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogTitle>{disabling ? `Disable ${e.name}?` : `Enable ${e.name}?`}</DialogTitle>
+        <DialogDescription>
+          {disabling
+            ? "No new run is placed on this executor. Runs already on it keep running: cancel them from the kill switches if needed."
+            : "The dispatcher places runs on this executor again."}
+        </DialogDescription>
+        <form
+          className="grid gap-4"
+          onSubmit={(ev) => {
+            ev.preventDefault();
+            if (blocked) return;
+            put.mutate(
+              { name: e.name, body: { enabled: !disabling, reason: reason.trim() } },
+              {
+                onSuccess: () => {
+                  toast.success(disabling ? `${e.name} disabled` : `${e.name} enabled`);
+                  onClose();
+                },
+                onError: (err) => toast.error("The change was not applied", errorMessage(err)),
+              },
+            );
+          }}
+        >
+          <Field label="Reason (recorded in the audit log)" htmlFor="ex-reason" hint="At least 3 characters, e.g. an incident id.">
+            <Textarea id="ex-reason" autoFocus maxLength={500} value={reason} onChange={(ev) => setReason(ev.target.value)} />
+          </Field>
+          {disabling ? (
+            <Field label="Type DISABLE to confirm" htmlFor="ex-word">
+              <Input id="ex-word" className="font-mono" autoComplete="off" value={word} onChange={(ev) => setWord(ev.target.value)} />
+            </Field>
+          ) : null}
+          <DialogFooter>
+            <Button variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" variant={disabling ? "destructive" : "default"} disabled={blocked || put.isPending}>
+              Confirm
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ExecutorsTab() {
   const executors = useExecutors();
   return (
@@ -970,6 +1050,7 @@ const AUDIT_ACTIONS: AuditAction[] = [
   "quota.delete",
   "quota.denied",
   "kill_switch.update",
+  "executor.update",
   "run.create",
   "run.cancel",
   "run.integrity_failure",

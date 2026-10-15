@@ -437,12 +437,22 @@ def switches_set(
         bool, typer.Option("--clear-spend-cap", help="Remove the spend cap")
     ] = False,
     period: Annotated[str | None, typer.Option("--spend-cap-period", help="day or month")] = None,
+    cancel_untrusted_runs: Annotated[
+        bool,
+        typer.Option(
+            "--cancel-untrusted-runs",
+            help="With --untrusted-code off: also cancel every unfinished run of uploaded code "
+            "(in-flight ones included); without it they keep running",
+        ),
+    ] = False,
     yes: Yes = False,
 ) -> None:
     """Flip kill switches (confirmation shows the change; the server audits it)."""
     st = state(ctx)
     if period is not None and period not in ("day", "month"):
         raise ValueError("--spend-cap-period must be day or month")
+    if cancel_untrusted_runs and untrusted_code is not OnOff.OFF:
+        raise ValueError("--cancel-untrusted-runs needs --untrusted-code off")
     update = KillSwitchUpdate.model_validate(
         {
             k: v
@@ -454,6 +464,7 @@ def switches_set(
                 ("global_spend_cap_micros", parse_amount(spend_cap) if spend_cap else None),
                 ("clear_spend_cap", clear_spend_cap or None),
                 ("spend_cap_period", period),
+                ("cancel_untrusted_runs", cancel_untrusted_runs or None),
                 ("reason", reason),
             )
             if v is not None
@@ -471,17 +482,21 @@ def switches_set(
             )
             if getattr(current, key) != getattr(after, key)
         ]
-        if not changes:
+        if not changes and not cancel_untrusted_runs:
             raise ValueError("nothing to change (give --untrusted-code, --spend-cap, ...)")
-        _show_changes(st.output, "the kill switches", changes)
+        if changes:
+            _show_changes(st.output, "the kill switches", changes)
         pausing = untrusted_code is OnOff.OFF and current.untrusted_execution_enabled
-        confirm(
-            st,
-            "Pause ALL runs of uploaded code platform-wide?"
-            if pausing
-            else "Apply these kill-switch changes?",
-            yes=yes,
-        )
+        if cancel_untrusted_runs:
+            question = (
+                "Cancel EVERY unfinished run of uploaded code, on every tenant "
+                "(running ones included)?"
+            )
+        elif pausing:
+            question = "Pause ALL runs of uploaded code platform-wide?"
+        else:
+            question = "Apply these kill-switch changes?"
+        confirm(st, question, yes=yes)
         ks = api.admin.set_kill_switches(update)
     if st.output.json_mode:
         st.output.emit_json(ks)
@@ -547,6 +562,48 @@ def executors_get(ctx: typer.Context, name: Annotated[str, typer.Argument()]) ->
             ("checked", _when(e.checked_at)),
         ]
     )
+
+
+def _set_executor(ctx: typer.Context, name: str, *, enabled: bool, reason: str, yes: bool) -> None:
+    st = state(ctx)
+    if not enabled:
+        confirm(
+            st,
+            f"Stop placing runs on {name}? (runs already on it keep running: cancel them "
+            "with `mapi admin kill-switches set --untrusted-code off --cancel-untrusted-runs`)",
+            yes=yes,
+        )
+    with st.client() as api:
+        e = api.admin.set_executor(name, enabled=enabled, reason=reason)
+    if st.output.json_mode:
+        st.output.emit_json(e)
+    else:
+        st.output.success(f"{e.name} is {'enabled' if e.enabled else 'disabled'}")
+        st.output.kv([("status", e.status.value), ("message", e.message)])
+
+
+@executors_app.command("disable")
+@cli_errors
+def executors_disable(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Argument()],
+    reason: Annotated[str, typer.Option("--reason", help="Why (audited); required")],
+    yes: Yes = False,
+) -> None:
+    """Disable an executor: no new run is placed on it (incident containment)."""
+    _set_executor(ctx, name, enabled=False, reason=reason, yes=yes)
+
+
+@executors_app.command("enable")
+@cli_errors
+def executors_enable(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Argument()],
+    reason: Annotated[str, typer.Option("--reason", help="Why (audited); required")],
+    yes: Yes = False,
+) -> None:
+    """Enable an executor again."""
+    _set_executor(ctx, name, enabled=True, reason=reason, yes=yes)
 
 
 # ==================================================================================== audit

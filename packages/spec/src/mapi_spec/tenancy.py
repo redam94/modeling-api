@@ -385,6 +385,7 @@ PERMISSIONS: Final[dict[tuple[ResourceKind, Action], Rule]] = {
     (_RK.KILL_SWITCH, _AC.READ): _OP,
     (_RK.KILL_SWITCH, _AC.UPDATE): _OP,
     (_RK.EXECUTOR, _AC.READ): _OP,
+    (_RK.EXECUTOR, _AC.UPDATE): _OP,
     (_RK.EVENT, _AC.CREATE): Rule(None, Level.INTERNAL),
 }
 """The complete matrix. A pair that is not listed is denied to everyone."""

@@ -12,12 +12,18 @@ from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, Response, status
-from mapi_spec.admin import ExecutorHealth, ExecutorStatus, KillSwitches, KillSwitchUpdate
+from mapi_spec.admin import (
+    ExecutorHealth,
+    ExecutorStatus,
+    ExecutorUpdate,
+    KillSwitches,
+    KillSwitchUpdate,
+)
 from mapi_spec.api import Page, TenantAdminUpdate, TenantCreate
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome, AuditQuery
 from mapi_spec.executor import ExecutorCaps
 from mapi_spec.quotas import QuotaPolicy, QuotaPolicyUpsert, QuotaScope
-from mapi_spec.run import FailureClass, RunState
+from mapi_spec.run import Actor, FailureClass, RunState, RunTrigger
 from mapi_spec.tenancy import ProjectRole, ResourceKind, Tenant, TenantStatus, TrustTier
 from pydantic import AwareDatetime, JsonValue
 from sqlalchemy import func, select
@@ -44,7 +50,7 @@ from mapi_server.services.quotas import (
     kill_switches,
     policy_dto,
 )
-from mapi_server.services.runs import now
+from mapi_server.services.runs import apply_transition, now
 from mapi_server.services.tenancy import grant
 
 __all__ = ["executor_health", "router"]
@@ -323,7 +329,12 @@ async def admin_get_kill_switches(system: SystemSession) -> KillSwitches:
 async def admin_put_kill_switches(
     ctx: Ctx, auth: Auth, system: SystemSession, body: KillSwitchUpdate
 ) -> KillSwitches:
-    """Flip kill switches. Enforced at run creation and by the dispatcher at lease time."""
+    """Flip kill switches. Enforced at run creation and by the dispatcher at lease time.
+
+    Pausing untrusted execution holds new work only. ``cancel_untrusted_runs`` also cancels
+    every unfinished run of tenant-uploaded code (the reconciler then stops their
+    executions): the containment step for a suspected sandbox escape.
+    """
     await system.execute(
         select(m.PlatformSetting)
         .where(m.PlatformSetting.key == KILL_SWITCHES_KEY)
@@ -338,6 +349,7 @@ async def admin_put_kill_switches(
         .values(key=KILL_SWITCHES_KEY, value=value, updated_at=ts)
         .on_conflict_do_update(index_elements=["key"], set_={"value": value, "updated_at": ts})
     )
+    cancelled = await _cancel_untrusted_runs(system) if body.cancel_untrusted_runs else None
     await write_audit(
         ctx.db,
         [
@@ -351,12 +363,38 @@ async def admin_put_kill_switches(
                     "global_spend_cap_micros": updated.global_spend_cap_micros,
                     "spend_cap_period": updated.spend_cap_period,
                     "reason": body.reason,
+                    **({} if cancelled is None else {"cancelled_runs": len(cancelled)}),
                 },
             )
         ],
         session=system,
     )
     return updated
+
+
+async def _cancel_untrusted_runs(system: AsyncSession) -> list[str]:
+    """Move every unfinished run of tenant-uploaded code to ``cancelling`` (all tenants).
+
+    ``finalizing`` runs are left alone: their execution is already over. The reconciler
+    cancels the executions and confirms ``cancelled``.
+    """
+    skip = {s.value for s in RunState if s.terminal} | {
+        RunState.FINALIZING.value,
+        RunState.CANCELLING.value,
+    }
+    runs = list(
+        (
+            await system.execute(
+                select(m.Run)
+                .where(m.Run.untrusted_code.is_(True), m.Run.state.not_in(skip))
+                .order_by(m.Run.id)
+                .with_for_update()
+            )
+        ).scalars()
+    )
+    for run in runs:
+        await apply_transition(system, run, RunTrigger.CANCEL, Actor.API)
+    return [r.id for r in runs]
 
 
 # ================================================================================ executors
@@ -410,8 +448,15 @@ async def executor_health(system: AsyncSession, row: m.ExecutorReport) -> Execut
         failures_last_hour=int(failures),
         last_success_at=row.last_success_at,
         checked_at=row.checked_at,
-        message=row.message or "no executor conformance report has been recorded",
+        message=_health_message(row),
     )
+
+
+def _health_message(row: m.ExecutorReport) -> str:
+    if not row.enabled:
+        why = row.disabled_reason or "no reason recorded"
+        return f"disabled by an operator: {why}"[:500]
+    return row.message or "no executor conformance report has been recorded"
 
 
 @router.get("/executors", response_model=Page[ExecutorHealth], operation_id="admin_list_executors")
@@ -440,6 +485,38 @@ async def admin_get_executor(
     row = await system.get(m.ExecutorReport, name)
     if row is None:
         raise NotFoundError("executor", name)
+    return await executor_health(system, row)
+
+
+@router.put("/executors/{name}", response_model=ExecutorHealth, operation_id="admin_put_executor")
+async def admin_put_executor(
+    ctx: Ctx,
+    auth: Auth,
+    system: SystemSession,
+    name: Annotated[str, Path(pattern=r"^[a-z][a-z0-9-]{0,63}$")],
+    body: ExecutorUpdate,
+) -> ExecutorHealth:
+    """Enable or disable an executor. Orchestrators lease nothing onto a disabled one (their
+    reports never re-enable it); runs already placed on it are not cancelled here."""
+    row = await system.get(m.ExecutorReport, name, with_for_update=True)
+    if row is None:
+        raise NotFoundError("executor", name)
+    row.enabled = body.enabled
+    row.disabled_reason = None if body.enabled else body.reason
+    await system.flush()
+    await write_audit(
+        ctx.db,
+        [
+            auth.audit(
+                ctx,
+                AuditAction.EXECUTOR_UPDATE,
+                ResourceKind.EXECUTOR,
+                resource_id=name,
+                details={"enabled": body.enabled, "reason": body.reason},
+            )
+        ],
+        session=system,
+    )
     return await executor_health(system, row)
 
 

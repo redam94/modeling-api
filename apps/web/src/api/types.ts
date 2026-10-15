@@ -84,6 +84,7 @@ export type CostTotals = S["CostTotals"];
 export type ExecutorCaps = S["ExecutorCaps"];
 export type ExecutorHealth = S["ExecutorHealth"];
 export type ExecutorStatus = S["ExecutorStatus"];
+export type ExecutorUpdate = S["ExecutorUpdate"];
 export type KillSwitchUpdate = S["KillSwitchUpdate"];
 export type KillSwitches = S["KillSwitches"];
 export type LimitName = S["LimitName"];

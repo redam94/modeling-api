@@ -238,6 +238,7 @@ def test_admin(scoped: Client, api: respx.MockRouter, example: Ex) -> None:
     assert json.loads(ks.calls.last.request.content) == {
         "untrusted_execution_enabled": False,
         "clear_spend_cap": False,
+        "cancel_untrusted_runs": False,
         "reason": "incident",
     }
     with pytest.raises(ValueError):
@@ -247,6 +248,10 @@ def test_admin(scoped: Client, api: respx.MockRouter, example: Ex) -> None:
     assert next(iter(scoped.admin.executors())).name == "cloudrun-jobs"
     api.get(f"{V1}/admin/executors/cloudrun-jobs").respond(200, json=example(ExecutorHealth))
     assert scoped.admin.executor("cloudrun-jobs").enabled
+    ex = api.put(f"{V1}/admin/executors/cloudrun-jobs").respond(200, json=example(ExecutorHealth))
+    scoped.admin.set_executor("cloudrun-jobs", enabled=False, reason="incident 42")
+    assert json.loads(ex.calls.last.request.content) == {"enabled": False, "reason": "incident 42"}
+    assert "X-Mapi-Project" not in ex.calls.last.request.headers
     audit = api.get(f"{V1}/admin/audit").respond(200, json=page([example(AuditEvent)]))
     list(scoped.admin.audit(tenant_id="acme", since=datetime(2026, 10, 1, tzinfo=UTC)))
     assert audit.calls.last.request.url.params["tenant_id"] == "acme"

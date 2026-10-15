@@ -64,7 +64,7 @@ EXPECTED: dict[str, dict[str, str]] = {
     "audit": {"read": "A/T"},
     "quota": {"read": "op", "update": "op", "delete": "op"},
     "kill_switch": {"read": "op", "update": "op"},
-    "executor": {"read": "op"},
+    "executor": {"read": "op", "update": "op"},
     "event": {"create": "int"},
 }  # fmt: skip
 LETTER = {"V": V, "E": E, "R": R, "A": A}

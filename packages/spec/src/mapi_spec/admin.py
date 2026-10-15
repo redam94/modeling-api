@@ -34,6 +34,7 @@ __all__ = [
     "DEFAULT_KILL_SWITCHES",
     "ExecutorHealth",
     "ExecutorStatus",
+    "ExecutorUpdate",
     "KillSwitchUpdate",
     "KillSwitches",
     "kill_switch_decision",
@@ -79,10 +80,23 @@ class KillSwitchUpdate(RequestModel):
     global_spend_cap_micros: int | None = Field(None, ge=0)
     clear_spend_cap: bool = Field(False, description="Remove the spend cap")
     spend_cap_period: Literal["day", "month"] | None = None
+    cancel_untrusted_runs: bool = Field(
+        False,
+        description=(
+            "Also cancel every unfinished run of tenant-uploaded code, queued or already "
+            "placed on an executor. Requires untrusted_execution_enabled=false in the same "
+            "update. Without it, pausing only holds new work and in-flight runs continue"
+        ),
+    )
     reason: str = Field(..., min_length=3, max_length=500)
 
     model_config = dto_examples(
         {"untrusted_execution_enabled": False, "reason": "incident 2026-10-15"},
+        {
+            "untrusted_execution_enabled": False,
+            "cancel_untrusted_runs": True,
+            "reason": "incident 2026-10-15: confirmed sandbox escape",
+        },
         {"global_spend_cap_micros": 500_000_000, "reason": "daily cap for the beta"},
     )
 
@@ -90,6 +104,8 @@ class KillSwitchUpdate(RequestModel):
     def _cap(self) -> KillSwitchUpdate:
         if self.clear_spend_cap and self.global_spend_cap_micros is not None:
             raise ValueError("give either global_spend_cap_micros or clear_spend_cap")
+        if self.cancel_untrusted_runs and self.untrusted_execution_enabled is not False:
+            raise ValueError("cancel_untrusted_runs requires untrusted_execution_enabled=false")
         return self
 
     def apply(self, current: KillSwitches, *, now: datetime, by: str | None) -> KillSwitches:
@@ -155,7 +171,22 @@ class ExecutorStatus(StrEnum):
     DEGRADED = "degraded"
     DOWN = "down"
     DISABLED = "disabled"
-    """Configured but not enabled (for example: conformance not passed)."""
+    """Disabled by an operator (``PUT /v1/admin/executors/{name}``): nothing is leased."""
+
+
+class ExecutorUpdate(RequestModel):
+    """``PUT /v1/admin/executors/{name}``: enable or disable an executor (audited).
+
+    Orchestrators lease no new run onto a disabled executor. Runs already placed on it keep
+    running: cancel them with ``cancel_untrusted_runs`` on the kill switches, or one by one.
+    """
+
+    enabled: bool
+    reason: str = Field(..., min_length=3, max_length=500)
+
+    model_config = dto_examples(
+        {"enabled": False, "reason": "incident 2026-10-15: suspected sandbox escape"},
+    )
 
 
 class ExecutorHealth(ResponseModel):

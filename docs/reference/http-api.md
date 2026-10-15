@@ -426,9 +426,10 @@ Every change is written to the audit log.
 | `PUT /v1/admin/quotas` | Create or replace the policy for one `(scope, subject_id)` | `QuotaPolicyUpsert` | `QuotaPolicy` | 200 | `FORBIDDEN` |
 | `DELETE /v1/admin/quotas/{scope}/{subject_id}` | Remove a policy; the tier default applies again (`subject_id` is `*` for the global policy) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
 | `GET /v1/admin/kill-switches` | The kill switches | — | `KillSwitches` | 200 | `FORBIDDEN` |
-| `PUT /v1/admin/kill-switches` | Change them; omitted fields keep their value, `reason` is required | `KillSwitchUpdate` | `KillSwitches` | 200 | `FORBIDDEN` |
+| `PUT /v1/admin/kill-switches` | Change them; omitted fields keep their value, `reason` is required. `cancel_untrusted_runs` (with `untrusted_execution_enabled=false`) also cancels every unfinished run of uploaded code; without it in-flight runs continue | `KillSwitchUpdate` | `KillSwitches` | 200 | `FORBIDDEN` |
 | `GET /v1/admin/executors` | Every executor: caps, health, submit rate, 429s, conformance report | — | `Page[ExecutorHealth]` | 200 | `FORBIDDEN` |
 | `GET /v1/admin/executors/{name}` | One executor | — | `ExecutorHealth` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `PUT /v1/admin/executors/{name}` | Enable or disable an executor (audited, `reason` required). Nothing new is leased onto a disabled one; orchestrator reports never re-enable it | `ExecutorUpdate` | `ExecutorHealth` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN` |
 | `GET /v1/admin/audit` | The platform audit log; filters `tenant_id`, `project_id`, `actor_id`, `action`, `outcome`, `since`, `until` | — | `Page[AuditEvent]` | 200 | `FORBIDDEN` |
 
 #### Browser session (backend-for-frontend)

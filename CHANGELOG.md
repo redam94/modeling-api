@@ -124,6 +124,21 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   mount; before, every isolation probe ended in ERROR on a host with Docker.
   - `--executor cloud` refuses to run outside a Cloud Run Jobs execution.
 
+### Fixed (M2 review: CLI, operations and docs)
+- **server**: incident containment can now stop running tenant code. `PUT /v1/admin/executors/{name}`
+  (audited `executor.update`, reason required; `mapi admin executors disable|enable`, a
+  Disable button in Admin → Executors) disables an executor: orchestrators lease nothing onto
+  it and their periodic reports no longer reset `enabled` to true. The kill-switch update
+  takes `cancel_untrusted_runs` (with `untrusted_execution_enabled=false`; `mapi admin
+  kill-switches set --cancel-untrusted-runs`, "Cancel running uploaded code" in the web app),
+  which moves every unfinished run of uploaded code to `cancelling`. The sandbox-escape and
+  incident-response runbooks use both.
+- **cli**: `mapi logout --revoke` revokes the token in the project it is bound to (it was
+  refused with 403 when another project was selected) and forgets the local credentials even
+  when the revocation fails, then exits 1.
+- **security**: the report writers create their directory, so `make security-suite` (and both
+  nightly security jobs) no longer fail on a fresh checkout without `.local/`.
+
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
 The platform now runs end to end on one machine. From the Expert web app (or the CLI, the Python

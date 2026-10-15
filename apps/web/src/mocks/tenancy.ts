@@ -133,6 +133,7 @@ interface TenancyState {
   tokens: ApiToken[];
   quotas: QuotaPolicy[];
   killSwitches: KillSwitches;
+  executors: ExecutorHealth[];
   audit: AuditEvent[];
 }
 
@@ -229,6 +230,7 @@ export function createTenancyState(): TenancyState {
       { scope: "tenant", subject_id: "acme", limits: { vcpu_seconds_per_day: 72_000, concurrent_runs: 20, max_resource_class: "M", storage_bytes: 200 * 1024 ** 3 }, note: "beta customer", updated_at: T0, updated_by: ana.id },
     ],
     killSwitches: { untrusted_execution_enabled: true, global_spend_cap_micros: 500_000_000, spend_cap_currency: "USD", spend_cap_period: "day", reason: "beta launch cap", updated_at: "2026-10-14T10:00:00Z", updated_by: ana.id },
+    executors: EXECUTORS.map((e) => ({ ...e })),
     audit: actions.concat(Array.from({ length: 140 }, () => ["run.create", {}] as [AuditEvent["action"], Partial<AuditEvent>])).map(([action, patch], i) => audit(i, { action, ...patch })),
   };
 }
@@ -680,7 +682,21 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
       };
       return HttpResponse.json(state.killSwitches);
     }),
-    http.get(`${API}/v1/admin/executors`, () => needOperator() ?? page(EXECUTORS)),
+    http.get(`${API}/v1/admin/executors`, () => needOperator() ?? page(state.executors)),
+    http.put(`${API}/v1/admin/executors/:name`, async ({ request, params }) => {
+      const denied = needOperator();
+      if (denied) return denied;
+      const body = (await request.json()) as { enabled: boolean; reason: string };
+      if (!body.reason || body.reason.length < 3) return problem(422, "SCHEMA_INVALID", "Invalid request", "reason is required");
+      const i = state.executors.findIndex((e) => e.name === params.name);
+      if (i < 0) return problem(404, "NOT_FOUND", "Not found");
+      const prev = state.executors[i]!;
+      const next: ExecutorHealth = body.enabled
+        ? { ...prev, enabled: true, status: "ok", message: null }
+        : { ...prev, enabled: false, status: "disabled", message: `disabled by an operator: ${body.reason}` };
+      state.executors[i] = next;
+      return HttpResponse.json(next);
+    }),
     http.get(`${API}/v1/admin/audit`, ({ request }) => {
       const denied = needOperator();
       if (denied) return denied;

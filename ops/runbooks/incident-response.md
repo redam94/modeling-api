@@ -50,8 +50,15 @@ Two global switches deny with `QUOTA_EXCEEDED` at the global scope (no new error
 - `global_spend_cap_micros` — denies new spend once exceeded.
 
 Set them through the admin API (`PUT /v1/admin/kill-switches`, operator scope; a reason is
-required and is audited). The switch takes effect at the next quota check — in-flight runs
-continue; new runs that need untrusted execution are denied.
+required and is audited). The switch takes effect at the next quota check: new runs that need
+untrusted execution are denied and queued ones are held, but **in-flight runs continue**
+unless the same update sets `cancel_untrusted_runs=true`, which also cancels every unfinished
+run of uploaded code (use it for a suspected escape, not for spend).
+
+To stop placing runs on one executor (any trust level), disable it:
+`PUT /v1/admin/executors/{name}` with `{"enabled": false, "reason": ...}`
+(`mapi admin executors disable <name>`). Orchestrator reports never re-enable it; enable it
+again the same way.
 
 ## 4. Communicate
 

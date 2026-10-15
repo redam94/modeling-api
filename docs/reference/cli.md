@@ -125,7 +125,8 @@ mapi usage [--period day|month] [--start DATE] [--group-by KEY] [--tenant TENANT
 mapi admin tenants ls | get | create | update     # operators; changes ask first (--yes)
 mapi admin quotas ls | set SCOPE SUBJECT --LIMIT... | rm SCOPE SUBJECT
 mapi admin kill-switches get | set --reason TEXT [--untrusted-code on|off] [--spend-cap N]
-mapi admin executors ls | get NAME
+                                  [--cancel-untrusted-runs]  # with --untrusted-code off
+mapi admin executors ls | get NAME | disable NAME --reason TEXT | enable NAME --reason TEXT
 mapi admin audit [--tenant] [--action] [--since] ...
 ```
 

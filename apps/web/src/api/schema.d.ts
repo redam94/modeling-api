@@ -188,7 +188,12 @@ export interface paths {
         };
         /** Admin Get Executor */
         get: operations["admin_get_executor"];
-        put?: never;
+        /**
+         * Admin Put Executor
+         * @description Enable or disable an executor. Orchestrators lease nothing onto a disabled one (their
+         *     reports never re-enable it); runs already placed on it are not cancelled here.
+         */
+        put: operations["admin_put_executor"];
         post?: never;
         delete?: never;
         options?: never;
@@ -208,6 +213,10 @@ export interface paths {
         /**
          * Admin Put Kill Switches
          * @description Flip kill switches. Enforced at run creation and by the dispatcher at lease time.
+         *
+         *     Pausing untrusted execution holds new work only. ``cancel_untrusted_runs`` also cancels
+         *     every unfinished run of tenant-uploaded code (the reconciler then stops their
+         *     executions): the containment step for a suspected sandbox escape.
          */
         put: operations["admin_put_kill_switches"];
         post?: never;
@@ -1494,7 +1503,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -2703,6 +2712,23 @@ export interface components {
          */
         ExecutorStatus: "ok" | "degraded" | "down" | "disabled";
         /**
+         * ExecutorUpdate
+         * @description ``PUT /v1/admin/executors/{name}``: enable or disable an executor (audited).
+         *
+         *     Orchestrators lease no new run onto a disabled executor. Runs already placed on it keep
+         *     running: cancel them with ``cancel_untrusted_runs`` on the kill switches, or one by one.
+         * @example {
+         *       "enabled": false,
+         *       "reason": "incident 2026-10-15: suspected sandbox escape"
+         *     }
+         */
+        ExecutorUpdate: {
+            /** Enabled */
+            enabled: boolean;
+            /** Reason */
+            reason: string;
+        };
+        /**
          * FailureClass
          * @description Why a run ended ``FAILED``; each maps to one stable :class:`ErrorCode`.
          * @enum {string}
@@ -2935,11 +2961,22 @@ export interface components {
          *       "untrusted_execution_enabled": false
          *     }
          * @example {
+         *       "cancel_untrusted_runs": true,
+         *       "reason": "incident 2026-10-15: confirmed sandbox escape",
+         *       "untrusted_execution_enabled": false
+         *     }
+         * @example {
          *       "global_spend_cap_micros": 500000000,
          *       "reason": "daily cap for the beta"
          *     }
          */
         KillSwitchUpdate: {
+            /**
+             * Cancel Untrusted Runs
+             * @description Also cancel every unfinished run of tenant-uploaded code, queued or already placed on an executor. Requires untrusted_execution_enabled=false in the same update. Without it, pausing only holds new work and in-flight runs continue
+             * @default false
+             */
+            cancel_untrusted_runs?: boolean;
             /**
              * Clear Spend Cap
              * @description Remove the spend cap
@@ -6429,6 +6466,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutorHealth"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_put_executor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutorUpdate"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

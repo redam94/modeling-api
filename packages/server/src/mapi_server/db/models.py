@@ -789,3 +789,5 @@ class ExecutorReport(Base):
     reported_by: Mapped[str | None] = mapped_column(String(128))
     checked_at: Mapped[datetime] = mapped_column()
     message: Mapped[str | None] = mapped_column(String(500))
+    disabled_reason: Mapped[str | None] = mapped_column(String(500))
+    """Why an operator disabled it (``enabled`` is the operator's, never the report's)."""

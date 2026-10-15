@@ -153,7 +153,9 @@ class Dispatcher:
             values["throttled_last_hour"] = max(len(self._throttles), h.throttled_last_hour)
             values["last_success_at"] = self._last_success or h.last_success_at
             values["message"] = h.message
-        update = {k: v for k, v in values.items() if k != "name"}
+        # ``enabled`` belongs to the operators (PUT /v1/admin/executors/{name}): a report
+        # creates the row enabled but never re-enables an executor someone disabled
+        update = {k: v for k, v in values.items() if k not in ("name", "enabled")}
         if values["last_success_at"] is None:
             update.pop("last_success_at")
         async with self.ctx.db.session() as session:
@@ -194,6 +196,10 @@ class Dispatcher:
         s = self.ctx.settings
         leased: list[tuple[str, int]] = []
         async with self.ctx.db.session() as session:
+            report = await session.get(m.ExecutorReport, self.executor.name)
+            if report is not None and not report.enabled:
+                log.debug("executor %s is disabled by an operator: not leasing", report.name)
+                return leased
             rows = list(
                 (
                     await session.execute(

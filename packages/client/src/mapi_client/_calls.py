@@ -26,6 +26,7 @@ from mapi_spec.api import (
     DatasetVersion,
     DatasetVersionCreate,
     ExecutorHealth,
+    ExecutorUpdate,
     Health,
     KillSwitches,
     KillSwitchUpdate,
@@ -813,6 +814,11 @@ def admin_list_executors(limit: int | None, cursor: str | None) -> Call[Page[Exe
 def admin_get_executor(name: str) -> Call[ExecutorHealth]:
     path = f"{_ADMIN}/executors/{segment(name)}"
     return Call("GET", path, parse_model(ExecutorHealth), scoped=False)
+
+
+def admin_put_executor(name: str, body: ExecutorUpdate) -> Call[ExecutorHealth]:
+    path = f"{_ADMIN}/executors/{segment(name)}"
+    return Call("PUT", path, parse_model(ExecutorHealth), json=dump(body), scoped=False)
 
 
 def admin_list_audit(

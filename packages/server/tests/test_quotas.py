@@ -327,6 +327,92 @@ async def test_executor_health_is_reported(ctx: ServerContext, client: httpx.Asy
     assert (await client.get("/v1/admin/executors/nope")).status_code == 404
 
 
+async def test_operators_disable_an_executor_and_the_dispatcher_stops_leasing(
+    ctx: ServerContext, client: httpx.AsyncClient, tenants: None
+) -> None:
+    """Containment step of the sandbox-escape runbook: an operator disables the executor,
+    the next orchestrator report keeps it disabled, and nothing is leased onto it."""
+    dispatcher = Dispatcher(ctx, FakeExecutor())
+    await dispatcher.report()
+    queued = await _queue(ctx, "big")
+    r = await client.put(
+        "/v1/admin/executors/fake", json={"enabled": False, "reason": "incident 42: escape"}
+    )
+    assert r.status_code == 200, r.text
+    health = r.json()
+    assert health["enabled"] is False and health["status"] == "disabled"
+    assert "incident 42" in health["message"]
+    await dispatcher.report()  # the orchestrator's periodic report must not re-enable it
+    health = (await client.get("/v1/admin/executors/fake")).json()
+    assert health["enabled"] is False and health["status"] == "disabled"
+    assert await _leased(ctx, dispatcher) == []
+    async with ctx.db.session() as s:
+        assert (await load_run(s, None, queued)).state == RunState.QUEUED.value
+        audit = [
+            e for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "executor.update"
+        ]  # fmt: skip
+    assert len(audit) == 1 and audit[0].resource_id == "fake"
+    assert audit[0].details == {"enabled": False, "reason": "incident 42: escape"}
+    r = await client.put("/v1/admin/executors/fake", json={"enabled": True, "reason": "fixed"})
+    assert r.status_code == 200 and r.json()["status"] == "ok"
+    assert await _leased(ctx, dispatcher) == [queued]
+    r = await client.put("/v1/admin/executors/nope", json={"enabled": False, "reason": "x y"})
+    assert r.status_code == 404
+
+
+async def test_kill_switch_can_cancel_in_flight_untrusted_runs(
+    ctx: ServerContext, client: httpx.AsyncClient, tenants: None
+) -> None:
+    """Pausing untrusted execution holds new work; ``cancel_untrusted_runs`` also stops the
+    tenant-code runs already placed (a confirmed escape must not run to its timeout)."""
+    running = await _queue(ctx, "big", state="running", untrusted=True)
+    provisioning = await _queue(ctx, "big", state="provisioning", untrusted=True)
+    queued = await _queue(ctx, "small", untrusted=True)
+    finalizing = await _queue(ctx, "big", state="finalizing", untrusted=True)
+    trusted = await _queue(ctx, "small", state="running")
+    done = await _queue(ctx, "big", state="succeeded", untrusted=True)
+    # it only makes sense together with pausing untrusted execution
+    r = await client.put(
+        "/v1/admin/kill-switches", json={"cancel_untrusted_runs": True, "reason": "drill"}
+    )
+    assert r.status_code == 422
+    r = await client.put(
+        "/v1/admin/kill-switches", json={"untrusted_execution_enabled": False, "reason": "drill"}
+    )
+    assert r.status_code == 200
+    async with ctx.db.session() as s:  # pausing alone leaves in-flight runs alone
+        assert (await load_run(s, None, running)).state == RunState.RUNNING.value
+    r = await client.put(
+        "/v1/admin/kill-switches",
+        json={
+            "untrusted_execution_enabled": False,
+            "cancel_untrusted_runs": True,
+            "reason": "incident 42: escape",
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["untrusted_execution_enabled"] is False
+    async with ctx.db.session() as s:
+        states = {
+            run_id: (await load_run(s, None, run_id)).state
+            for run_id in (running, provisioning, queued, finalizing, trusted, done)
+        }
+        audit = [
+            e for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "kill_switch.update"
+        ]  # fmt: skip
+    assert states == {
+        running: RunState.CANCELLING.value,
+        provisioning: RunState.CANCELLING.value,
+        queued: RunState.CANCELLING.value,
+        finalizing: RunState.FINALIZING.value,  # the execution is already over
+        trusted: RunState.RUNNING.value,
+        done: RunState.SUCCEEDED.value,
+    }
+    assert audit[-1].details["cancelled_runs"] == 3
+
+
 async def test_cloud_run_throttling_reaches_the_admin_console(
     ctx: ServerContext, client: httpx.AsyncClient
 ) -> None:
