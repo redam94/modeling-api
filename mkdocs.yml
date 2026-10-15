@@ -14,5 +14,8 @@ theme:
 markdown_extensions: [admonition, tables, attr_list, md_in_html, pymdownx.details, pymdownx.superfences, pymdownx.tabbed]
 nav:
   - Home: index.md
+  - Guides:
+      - Write a step or model plugin: guides/plugins.md
   - Reference:
       - Spec format: reference/spec-format.md
+      - Python SDK: reference/sdk.md
