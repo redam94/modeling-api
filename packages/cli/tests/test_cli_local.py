@@ -339,3 +339,57 @@ def test_untrusted_text_is_sanitised() -> None:
     assert strip_control(evil) == "okredlink [bold]x[/bold]"
     assert safe(evil).plain == "okredlink [bold]x[/bold]"  # markup is not interpreted
     assert json.dumps(strip_control("a\tb\nc")) == '"a\\tb\\nc"'
+
+
+def _terminal() -> tuple[Any, Any]:
+    import io
+
+    from rich.console import Console
+
+    buf = io.StringIO()
+    return buf, Console(file=buf, force_terminal=True, width=300, color_system="truecolor")
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "[link=https://evil.example/]Click to view results[/link]",
+        "[/]",
+        "[bold red]fake error[/bold red] [/nope]",
+    ],
+)
+@pytest.mark.parametrize("kind", ["progress", "state"])
+def test_progress_line_never_interprets_untrusted_markup(message: str, kind: str) -> None:
+    """Run progress/state messages come from the untrusted worker: shown verbatim, never
+    as rich markup (no OSC 8 hyperlink, no MarkupError aborting ``mapi fit``)."""
+    from types import SimpleNamespace
+
+    from mapi_cli.output import Output
+    from mapi_cli.progress import EventRenderer
+    from mapi_spec.executor import RunEventType
+
+    buf, err = _terminal()
+    if kind == "progress":
+        event = SimpleNamespace(
+            type=RunEventType.PROGRESS, payload={"fraction": 0.5, "message": message}
+        )
+    else:
+        event = SimpleNamespace(
+            type=RunEventType.STATE, payload={"state": "RUNNING", "message": message}
+        )
+    with EventRenderer(Output(err=err), "fit") as renderer:
+        renderer.handle(event)
+        renderer._progress.refresh()
+    rendered = buf.getvalue()
+    assert "\x1b]8;" not in rendered  # no terminal hyperlink
+    assert message in strip_control(rendered)
+
+
+def test_info_lines_do_not_interpret_markup() -> None:
+    from mapi_cli.output import Output
+
+    buf, err = _terminal()
+    Output(err=err).info("submitted run [link=https://evil.example/]r1[/link] [/]")
+    rendered = buf.getvalue()
+    assert "\x1b]8;" not in rendered
+    assert "[link=https://evil.example/]r1[/link] [/]" in strip_control(rendered)

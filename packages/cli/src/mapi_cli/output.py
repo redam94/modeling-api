@@ -69,8 +69,15 @@ class Output:
         sys.stdout.flush()
 
     def info(self, message: str | Text) -> None:
-        """Progress/diagnostic line on stderr (keeps stdout clean for --json)."""
-        self.err.print(message)
+        """Progress/diagnostic line on stderr (keeps stdout clean for --json).
+
+        A ``str`` is printed verbatim (it often embeds server-supplied names and ids), never
+        as rich markup; pass a :class:`~rich.text.Text` for styling.
+        """
+        if isinstance(message, Text):
+            self.err.print(message)
+        else:
+            self.err.print(message, markup=False, highlight=False)
 
     def success(self, message: str) -> None:
         if not self.json_mode:
