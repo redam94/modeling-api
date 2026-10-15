@@ -157,6 +157,9 @@ is tested against fakes, and the Terraform is validated and tested against mocke
 - **server**: a FINALIZING run no longer counts its vCPU estimate on top of its metered
   attempt. Quota usage counts an active run's estimate only while its current attempt has no
   `actual` ledger entry, so runs near a daily or monthly limit are not refused by mistake.
+- **server**: concurrent submissions from different tenants can no longer exceed a global
+  `concurrent_runs` or vCPU limit. Run admission takes a transaction-scoped advisory lock
+  after the tenant row when the global policy sets such a limit.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 

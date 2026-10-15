@@ -46,6 +46,7 @@ from mapi_server.observability import metrics as obs_metrics
 __all__ = [
     "ACTIVE_STATES",
     "DISPATCHED_STATES",
+    "GLOBAL_ADMISSION_LOCK",
     "KILL_SWITCHES_KEY",
     "admit_run",
     "admit_storage",
@@ -63,6 +64,8 @@ __all__ = [
 ]
 
 KILL_SWITCHES_KEY: Final = "kill_switches"
+GLOBAL_ADMISSION_LOCK: Final = 0x6D617069_61646D74
+"""``pg_advisory_xact_lock`` key serializing run admission against global limits."""
 ACTIVE_STATES: Final = tuple(
     s.value for s in RunState if not s.terminal and s not in (RunState.CREATED,)
 )
@@ -278,7 +281,11 @@ async def admit_run(
 
     ``session`` is the request's tenant session: the tenant row is locked (``FOR UPDATE``) so
     concurrent submissions of one tenant are admitted one at a time against fresh counters.
-    ``system`` (platform role) reads the policies, kill switches and global counters.
+    When the global policy limits concurrency or vCPU-seconds, a transaction-scoped advisory
+    lock (:data:`GLOBAL_ADMISSION_LOCK`, taken after the tenant row, always in that order)
+    serializes admissions across tenants too; both locks are held until ``session`` commits
+    the new run. ``system`` (platform role) reads the policies, kill switches and global
+    counters.
     """
     tenant = (
         await session.execute(select(m.Tenant).where(m.Tenant.id == tenant_id).with_for_update())
@@ -302,12 +309,15 @@ async def admit_run(
             await quota_usage(session, QuotaScope.TENANT, tenant_id, now=now),
         )
     )
-    levels.append(
-        (
-            await global_policy(system),
-            await quota_usage(system, QuotaScope.GLOBAL, GLOBAL_SUBJECT, now=now),
-        )
-    )
+    platform = await global_policy(system)
+    limits = platform.limits
+    if (
+        limits.concurrent_runs is not None
+        or limits.vcpu_seconds_per_day is not None
+        or limits.vcpu_seconds_per_month is not None
+    ):
+        await session.execute(select(func.pg_advisory_xact_lock(GLOBAL_ADMISSION_LOCK)))
+    levels.append((platform, await quota_usage(system, QuotaScope.GLOBAL, GLOBAL_SUBJECT, now=now)))
     return _observed(evaluate_quota(levels, demand, now=now))
 
 

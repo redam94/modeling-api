@@ -329,6 +329,43 @@ async def test_a_finalizing_run_is_not_counted_twice(ctx: ServerContext, tenants
     assert usage.vcpu_seconds_today == 230.0
 
 
+async def test_concurrent_submissions_respect_the_global_concurrency_cap(
+    ctx: ServerContext, tenants: None
+) -> None:
+    """Admission against the global level is serialized across tenants (each tenant's row
+    lock only serializes that tenant), so two tenants cannot both take the last slot."""
+    from mapi_server.services.quotas import admit_run
+    from mapi_spec.quotas import QuotaDemand
+
+    await _policy(ctx, "global", "*", concurrent_runs=1)
+
+    async def submit(tenant: str) -> bool:
+        async with ctx.db.tenant_session(tenant) as sess:
+            async with ctx.db.session() as system:
+                decision = await admit_run(
+                    sess, system, tenant_id=tenant, token=None,
+                    demand=QuotaDemand(new_runs=1), untrusted_code=False, now=now(),
+                )  # fmt: skip
+            if decision.allowed:
+                ts = now()
+                sess.add(
+                    m.Run(
+                        id=new_id("run"), tenant_id=tenant, project_id="main", kind="fit",
+                        state="queued", attempt=1, resource_class="S", timeout_s=600,
+                        labels={}, payload={}, inputs={}, checkpointable=False,
+                        infra_retries=0, finalize_attempts=0, finalize={}, last_event_id=0,
+                        created_at=ts, updated_at=ts, queued_at=ts, priority="batch",
+                        task_count=1, untrusted_code=False,
+                    )
+                )  # fmt: skip
+                await asyncio.sleep(0.2)  # the rest of a real submission
+            return decision.allowed
+
+    allowed = await asyncio.gather(submit("big"), submit("small"))
+    assert sorted(allowed) == [False, True]
+    assert len(await _runs(ctx)) == 1
+
+
 async def _leased(ctx: ServerContext, dispatcher: Dispatcher) -> list[str]:
     return [run_id for run_id, _ in await dispatcher.lease()]
 
