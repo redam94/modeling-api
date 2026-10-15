@@ -1,5 +1,5 @@
 """Operator endpoints (``/v1/admin``): tenants, quota policies, kill switches, executor
-health and the platform audit log.
+health, cost by tenant and the platform audit log.
 
 Only platform operators pass the route checks (``MAPI_OPERATOR_EMAILS``, signed in with a
 browser session; API tokens never carry operator powers). These routes read across tenants,
@@ -13,14 +13,22 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, Response, status
 from mapi_spec.admin import ExecutorHealth, ExecutorStatus, KillSwitches, KillSwitchUpdate
-from mapi_spec.api import Page, TenantAdminUpdate, TenantCreate
+from mapi_spec.api import (
+    AdminUsageReport,
+    GlobalSpend,
+    Page,
+    TenantAdminUpdate,
+    TenantCost,
+    TenantCreate,
+)
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome, AuditQuery
+from mapi_spec.cost import CostTotals
 from mapi_spec.executor import ExecutorCaps
 from mapi_spec.quotas import QuotaPolicy, QuotaPolicyUpsert, QuotaScope
 from mapi_spec.run import FailureClass, RunState
 from mapi_spec.tenancy import ProjectRole, ResourceKind, Tenant, TenantStatus, TrustTier
 from pydantic import AwareDatetime, JsonValue
-from sqlalchemy import func, select
+from sqlalchemy import distinct, func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,6 +42,7 @@ from mapi_server.api.common import (
     encode_cursor,
 )
 from mapi_server.api.tenancy import audit_page, tenant_dto
+from mapi_server.api.usage import Period, period_bounds
 from mapi_server.auth.identity import invite_user
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
@@ -41,6 +50,7 @@ from mapi_server.services.audit import write_audit
 from mapi_server.services.quotas import (
     DISPATCHED_STATES,
     KILL_SWITCHES_KEY,
+    global_spend,
     kill_switches,
     policy_dto,
 )
@@ -441,6 +451,104 @@ async def admin_get_executor(
     if row is None:
         raise NotFoundError("executor", name)
     return await executor_health(system, row)
+
+
+# ==================================================================================== usage
+
+
+@router.get("/usage", response_model=AdminUsageReport, operation_id="admin_get_usage")
+async def admin_get_usage(
+    system: SystemSession,
+    period: Period = "month",
+    start: Annotated[AwareDatetime | None, Query()] = None,
+) -> AdminUsageReport:
+    """Cost by tenant for one UTC period (from the ledger) and the current spend against the
+    global spend cap. Summed in the database: the ledger is never loaded row by row here."""
+    lo, hi = period_bounds(period, start)
+    led = m.CostLedgerEntry
+    rows = (
+        await system.execute(
+            select(
+                led.tenant_id,
+                led.currency,
+                func.sum(led.vcpu_seconds),
+                func.sum(led.gib_seconds),
+                func.sum(led.amount_micros),
+                func.count(distinct(led.run_id)),
+                func.count(distinct(tuple_(led.run_id, led.attempt))),
+            )
+            .where(led.recorded_at >= lo, led.recorded_at < hi)
+            .group_by(led.tenant_id, led.currency)
+        )
+    ).all()
+    ids = {r[0] for r in rows}
+    tenants = (
+        {
+            t.id: t
+            for t in (await system.execute(select(m.Tenant).where(m.Tenant.id.in_(ids)))).scalars()
+        }
+        if ids
+        else {}
+    )
+    by_tenant: list[TenantCost] = []
+    totals: dict[str, CostTotals] = {}
+    for tenant_id, currency, vcpu, gib, amount, runs, attempts in rows:
+        t = CostTotals(
+            vcpu_seconds=round(float(vcpu or 0), 6),
+            gib_seconds=round(float(gib or 0), 6),
+            amount_micros=int(amount or 0),
+            currency=currency,
+            runs=int(runs),
+            attempts=int(attempts),
+        )
+        row = tenants.get(tenant_id)
+        by_tenant.append(
+            TenantCost(
+                tenant_id=tenant_id,
+                name=row.name if row is not None else None,
+                trust_tier=TrustTier(row.trust_tier) if row is not None else None,
+                totals=t,
+            )
+        )
+        # a run belongs to one tenant, so distinct counts add up across tenants
+        acc = totals.get(currency, CostTotals(currency=currency))
+        totals[currency] = acc.model_copy(
+            update={
+                "vcpu_seconds": round(acc.vcpu_seconds + t.vcpu_seconds, 6),
+                "gib_seconds": round(acc.gib_seconds + t.gib_seconds, 6),
+                "amount_micros": acc.amount_micros + t.amount_micros,
+                "runs": acc.runs + t.runs,
+                "attempts": acc.attempts + t.attempts,
+            }
+        )
+    by_tenant.sort(key=lambda c: (-c.totals.amount_micros, c.tenant_id, c.totals.currency or ""))
+    versions = (
+        await system.execute(
+            select(distinct(led.price_version)).where(led.recorded_at >= lo, led.recorded_at < hi)
+        )
+    ).scalars()
+    ts = now()
+    switches = await kill_switches(system)
+    cap_lo, cap_hi = period_bounds(switches.spend_cap_period, ts)
+    spent = await global_spend(system, switches, now=ts)
+    cap = switches.global_spend_cap_micros
+    return AdminUsageReport(
+        period=period,
+        start=lo,
+        end=hi,
+        totals=[totals[c] for c in sorted(totals)],
+        tenants=by_tenant,
+        price_versions=sorted(versions),
+        spend_cap=GlobalSpend(
+            period=switches.spend_cap_period,
+            start=cap_lo,
+            end=cap_hi,
+            currency=switches.spend_cap_currency,
+            spent_micros=spent,
+            cap_micros=cap,
+            fraction=(max(spent, 0) / cap) if cap else None,
+        ),
+    )
 
 
 # ==================================================================================== audit

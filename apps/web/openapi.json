@@ -1,6 +1,105 @@
 {
   "components": {
     "schemas": {
+      "AdminUsageReport": {
+        "description": "``GET /v1/admin/usage`` (operators): cost by tenant for one UTC period, biggest spender\nfirst, and the current spend against the global spend cap.\n\nQuery: ``period=day|month`` (default ``month``) and ``start`` (an instant inside the\nperiod; default: now). Tenants without ledger entries in the period are not listed;\n``totals`` has one row per currency. ``spend_cap`` always covers the cap's current window.",
+        "examples": [
+          {
+            "end": "2026-11-01T00:00:00Z",
+            "period": "month",
+            "price_versions": [
+              "cloudrun-list-2026-10"
+            ],
+            "spend_cap": {
+              "cap_micros": 500000000,
+              "currency": "USD",
+              "end": "2026-10-16T00:00:00Z",
+              "fraction": 0.7,
+              "period": "day",
+              "spent_micros": 350000000,
+              "start": "2026-10-15T00:00:00Z"
+            },
+            "start": "2026-10-01T00:00:00Z",
+            "tenants": [
+              {
+                "name": "Acme Corp",
+                "tenant_id": "acme",
+                "totals": {
+                  "amount_micros": 93600,
+                  "attempts": 3,
+                  "currency": "USD",
+                  "gib_seconds": 14400,
+                  "runs": 3,
+                  "vcpu_seconds": 3600
+                },
+                "trust_tier": "verified"
+              }
+            ],
+            "totals": [
+              {
+                "amount_micros": 93600,
+                "attempts": 3,
+                "currency": "USD",
+                "gib_seconds": 14400,
+                "runs": 3,
+                "vcpu_seconds": 3600
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "period": {
+            "enum": [
+              "day",
+              "month"
+            ],
+            "title": "Period",
+            "type": "string"
+          },
+          "price_versions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Price Versions",
+            "type": "array"
+          },
+          "spend_cap": {
+            "$ref": "#/components/schemas/GlobalSpend"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "tenants": {
+            "items": {
+              "$ref": "#/components/schemas/TenantCost"
+            },
+            "title": "Tenants",
+            "type": "array"
+          },
+          "totals": {
+            "items": {
+              "$ref": "#/components/schemas/CostTotals"
+            },
+            "title": "Totals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "period",
+          "start",
+          "end",
+          "spend_cap"
+        ],
+        "title": "AdminUsageReport",
+        "type": "object"
+      },
       "Aggregation": {
         "additionalProperties": false,
         "description": "Reduce outputs over dims before summarising (validity depends on representation).",
@@ -2793,6 +2892,82 @@
         ],
         "title": "FailureClass",
         "type": "string"
+      },
+      "GlobalSpend": {
+        "description": "Platform spend in the current window of the global spend cap: what the kill switch\ncompares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in\n``spend_cap_currency``). ``fraction`` is ``spent / cap``; null without a cap.",
+        "examples": [
+          {
+            "cap_micros": 500000000,
+            "currency": "USD",
+            "end": "2026-10-16T00:00:00Z",
+            "fraction": 0.7,
+            "period": "day",
+            "spent_micros": 350000000,
+            "start": "2026-10-15T00:00:00Z"
+          }
+        ],
+        "properties": {
+          "cap_micros": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cap Micros"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "fraction": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fraction"
+          },
+          "period": {
+            "enum": [
+              "day",
+              "month"
+            ],
+            "title": "Period",
+            "type": "string"
+          },
+          "spent_micros": {
+            "title": "Spent Micros",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "start",
+          "end",
+          "currency",
+          "spent_micros"
+        ],
+        "title": "GlobalSpend",
+        "type": "object"
       },
       "HTTPValidationError": {
         "properties": {
@@ -9347,6 +9522,61 @@
         "title": "TenantAdminUpdate",
         "type": "object"
       },
+      "TenantCost": {
+        "description": "One tenant's ledger totals for the period (one row per currency).",
+        "examples": [
+          {
+            "name": "Acme Corp",
+            "tenant_id": "acme",
+            "totals": {
+              "amount_micros": 93600,
+              "attempts": 3,
+              "currency": "USD",
+              "gib_seconds": 14400,
+              "runs": 3,
+              "vcpu_seconds": 3600
+            },
+            "trust_tier": "verified"
+          }
+        ],
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "tenant_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/CostTotals"
+          },
+          "trust_tier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrustTier"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "tenant_id",
+          "totals"
+        ],
+        "title": "TenantCost",
+        "type": "object"
+      },
       "TenantCreate": {
         "additionalProperties": false,
         "description": "``POST /v1/admin/tenants`` (operators). ``initial_admin_email`` is invited as tenant\nadmin; the invitation is claimed at first login with that verified e-mail.",
@@ -11496,6 +11726,71 @@
           }
         },
         "summary": "Admin Update Tenant",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/usage": {
+      "get": {
+        "description": "Cost by tenant for one UTC period (from the ledger) and the current spend against the\nglobal spend cap. Summed in the database: the ledger is never loaded row by row here.",
+        "operationId": "admin_get_usage",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "month",
+              "enum": [
+                "day",
+                "month"
+              ],
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUsageReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Get Usage",
         "tags": [
           "admin"
         ]

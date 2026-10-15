@@ -127,6 +127,7 @@ export const qk = {
   adminTenants: (f: AdminTenantFilters) => ["admin", "tenants", f] as const,
   adminQuotas: (f: QuotaFilters) => ["admin", "quotas", f] as const,
   killSwitches: ["admin", "kill-switches"] as const,
+  adminUsage: (q: AdminUsageQuery) => ["admin", "usage", q] as const,
   executors: ["admin", "executors"] as const,
   adminAudit: (f: AuditFilters) => ["admin", "audit", f] as const,
 };
@@ -1008,6 +1009,24 @@ export function useDeleteQuota() {
   });
 }
 
+export interface AdminUsageQuery {
+  period: "day" | "month";
+  /** An instant inside the period (default: now). */
+  start?: string | undefined;
+}
+
+/** `GET /v1/admin/usage`: cost by tenant for one UTC period and spend against the global cap. */
+export function useAdminUsage(query: AdminUsageQuery, enabled = true) {
+  return useQuery({
+    queryKey: qk.adminUsage(query),
+    queryFn: ({ signal }) =>
+      unwrap(api.GET("/v1/admin/usage", { params: { query: { period: query.period, ...defined({ start: query.start }) } }, signal })),
+    enabled,
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
+  });
+}
+
 export function useKillSwitches() {
   return useQuery({
     queryKey: qk.killSwitches,
@@ -1020,7 +1039,10 @@ export function usePutKillSwitches() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: KillSwitchUpdate) => unwrap(api.PUT("/v1/admin/kill-switches", { body })),
-    onSuccess: (next) => qc.setQueryData(qk.killSwitches, next),
+    onSuccess: (next) => {
+      qc.setQueryData(qk.killSwitches, next);
+      void qc.invalidateQueries({ queryKey: ["admin", "usage"] }); // the cap shown next to spend
+    },
   });
 }
 

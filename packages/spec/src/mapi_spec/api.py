@@ -100,6 +100,7 @@ __all__ = [
     "SSE_HEARTBEAT",
     "SSE_HEARTBEAT_SECONDS",
     "SSE_RETRY_MS",
+    "AdminUsageReport",
     "ApiToken",
     "ArtifactLink",
     "AuditEvent",
@@ -113,6 +114,7 @@ __all__ = [
     "DimMapping",
     "EndpointDecl",
     "ExecutorHealth",
+    "GlobalSpend",
     "Health",
     "HealthCheck",
     "IngestMapping",
@@ -161,6 +163,7 @@ __all__ = [
     "StageSchema",
     "Tenant",
     "TenantAdminUpdate",
+    "TenantCost",
     "TenantCreate",
     "TenantUpdate",
     "TokenCreate",
@@ -1763,6 +1766,86 @@ class UsageReport(_Response):
         return self
 
 
+class GlobalSpend(_Response):
+    """Platform spend in the current window of the global spend cap: what the kill switch
+    compares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in
+    ``spend_cap_currency``). ``fraction`` is ``spent / cap``; null without a cap."""
+
+    period: UsagePeriod
+    start: AwareDatetime
+    end: AwareDatetime
+    currency: str = Field(pattern=r"^[A-Z]{3}$")
+    spent_micros: int
+    cap_micros: int | None = Field(None, ge=0)
+    fraction: float | None = Field(None, ge=0)
+
+    model_config = _examples(
+        {
+            "period": "day",
+            "start": "2026-10-15T00:00:00Z",
+            "end": "2026-10-16T00:00:00Z",
+            "currency": "USD",
+            "spent_micros": 350_000_000,
+            "cap_micros": 500_000_000,
+            "fraction": 0.7,
+        }
+    )
+
+
+class TenantCost(_Response):
+    """One tenant's ledger totals for the period (one row per currency)."""
+
+    tenant_id: TenantId
+    name: str | None = None
+    trust_tier: TrustTier | None = None
+    totals: CostTotals
+
+    model_config = _examples(
+        {
+            "tenant_id": "acme",
+            "name": "Acme Corp",
+            "trust_tier": "verified",
+            "totals": CostTotals.model_json_schema()["examples"][0],
+        }
+    )
+
+
+class AdminUsageReport(_Response):
+    """``GET /v1/admin/usage`` (operators): cost by tenant for one UTC period, biggest spender
+    first, and the current spend against the global spend cap.
+
+    Query: ``period=day|month`` (default ``month``) and ``start`` (an instant inside the
+    period; default: now). Tenants without ledger entries in the period are not listed;
+    ``totals`` has one row per currency. ``spend_cap`` always covers the cap's current window.
+    """
+
+    period: UsagePeriod
+    start: AwareDatetime
+    end: AwareDatetime
+    totals: list[CostTotals] = Field(default_factory=list)
+    tenants: list[TenantCost] = Field(default_factory=list)
+    price_versions: list[str] = Field(default_factory=list)
+    spend_cap: GlobalSpend
+
+    model_config = _examples(
+        {
+            "period": "month",
+            "start": "2026-10-01T00:00:00Z",
+            "end": "2026-11-01T00:00:00Z",
+            "totals": [CostTotals.model_json_schema()["examples"][0]],
+            "tenants": [TenantCost.model_json_schema()["examples"][0]],
+            "price_versions": ["cloudrun-list-2026-10"],
+            "spend_cap": GlobalSpend.model_json_schema()["examples"][0],
+        }
+    )
+
+    @model_validator(mode="after")
+    def _window(self) -> AdminUsageReport:
+        if self.end <= self.start:
+            raise ValueError("end must be after start")
+        return self
+
+
 # ========================================================================== M2: route access
 
 
@@ -1971,6 +2054,11 @@ M2_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "ExecutorHealth", 200, errors=(*_NF, *_FB),
     ),
     EndpointDecl(
+        "GET", "/v1/admin/usage", "admin_get_usage",
+        "Cost by tenant for a period and current spend against the global cap",
+        "AdminUsageReport", 200, errors=_FB, query=("period", "start"),
+    ),
+    EndpointDecl(
         "GET", "/v1/admin/audit", "admin_list_audit", "The platform audit log",
         "Page[AuditEvent]", 200, errors=_FB, paginated=True,
         query=(*_PAGE, "tenant_id", "project_id", "actor_id", "action", "outcome", "since",
@@ -2108,6 +2196,7 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "admin_list_executors": _op(_RK.EXECUTOR, _AC.READ),
     "admin_get_executor": _op(_RK.EXECUTOR, _AC.READ),
     "admin_list_audit": _op(_RK.AUDIT, _AC.READ),
+    "admin_get_usage": _op(_RK.BILLING, _AC.READ),
     # session and internal
     "auth_login": _PUBLIC,
     "auth_callback": _PUBLIC,

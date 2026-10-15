@@ -1,6 +1,6 @@
 /**
- * Operator console (`/v1/admin/*`): tenants and trust tiers, quota policies, kill switches,
- * executor health and the audit log. Operators see metadata only, never tenant content, and
+ * Operator console (`/v1/admin/*`): tenants and trust tiers, quota policies, kill switches
+ * (with spend against the global cap), cost by tenant, executor health and the audit log. Operators see metadata only, never tenant content, and
  * every change is audited server-side. Destructive switches need a typed confirmation.
  */
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
@@ -9,12 +9,15 @@ import {
   Activity,
   Building2,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   CircleSlash,
   Gauge,
   ListChecks,
   Pencil,
   Plus,
   Power,
+  Receipt,
   ScrollText,
   ShieldCheck,
   ShieldOff,
@@ -27,6 +30,7 @@ import { errorMessage } from "@/api/client";
 import {
   useAdminCreateTenant,
   useAdminTenants,
+  useAdminUsage,
   useAdminUpdateTenant,
   useAudit,
   useDeleteQuota,
@@ -42,6 +46,7 @@ import type {
   AuditEvent,
   AuditOutcome,
   ExecutorHealth,
+  GlobalSpend,
   KillSwitchUpdate,
   QuotaLimits,
   QuotaPolicy,
@@ -49,10 +54,11 @@ import type {
   ResourceClass,
   Tenant,
   TenantAdminUpdate,
+  TenantCost,
   TenantStatus,
   TrustTier,
 } from "@/api/types";
-import { Meter } from "@/components/charts";
+import { BarList, Meter, meterTone } from "@/components/charts";
 import { EmptyState, ErrorNotice, JsonBlock, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -62,6 +68,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogTitle,
+  SegmentedControl,
   Switch,
   Tabs,
   TabsContent,
@@ -70,8 +77,9 @@ import {
 } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, NativeSelect, Textarea } from "@/components/ui/primitives";
 import { useWorkspace } from "@/features/auth/workspace";
-import { formatMicros, MICROS_PER_UNIT } from "@/lib/cost";
+import { formatMicros, formatVcpuSeconds, MICROS_PER_UNIT } from "@/lib/cost";
 import { absoluteTime, formatBytes, relativeTime } from "@/lib/format";
+import { periodKey, periodLabel, periodStart, shiftPeriod } from "@/lib/period";
 import { cn } from "@/lib/utils";
 import { ADMIN_TABS, type AdminTab } from "@/router";
 import { toast } from "@/stores/toast";
@@ -95,6 +103,7 @@ const TAB_META: Record<AdminTab, { label: string; icon: ReactNode }> = {
   tenants: { label: "Tenants", icon: <Building2 /> },
   quotas: { label: "Quotas", icon: <Gauge /> },
   "kill-switches": { label: "Kill switches", icon: <Power /> },
+  cost: { label: "Cost", icon: <Receipt /> },
   executors: { label: "Executors", icon: <Activity /> },
   audit: { label: "Audit log", icon: <ScrollText /> },
   promotions: { label: "Promotions", icon: <ListChecks /> },
@@ -141,6 +150,9 @@ export function AdminPage() {
         </TabsContent>
         <TabsContent value="kill-switches">
           <KillSwitchesTab />
+        </TabsContent>
+        <TabsContent value="cost">
+          <CostTab />
         </TabsContent>
         <TabsContent value="executors">
           <ExecutorsTab />
@@ -753,6 +765,7 @@ function KillSwitchesTab() {
                   </div>
                 </CardHeader>
                 <CardContent className="grid gap-3">
+                  <SpendAgainstCap period={ks.spend_cap_period ?? "day"} />
                   <div className="flex flex-wrap items-end gap-2">
                     <Field label={`New cap (${currency})`} htmlFor="ks-cap" className="w-40">
                       <Input id="ks-cap" inputMode="decimal" placeholder="500" value={cap} onChange={(e) => setCap(e.target.value)} />
@@ -792,6 +805,53 @@ function KillSwitchesTab() {
         );
       }}
     </QueryView>
+  );
+}
+
+const WINDOW_WORD: Record<"day" | "month", string> = { day: "today", month: "this month" };
+
+/** Current platform spend in the cap's window next to the cap, with the 70 %/90 % warnings. */
+function SpendAgainstCap({ period }: { period: "day" | "month" }) {
+  const usage = useAdminUsage({ period });
+  if (usage.isPending) return <LoadingRows rows={1} />;
+  if (usage.isError) return <ErrorNotice error={usage.error} title="Current spend could not be loaded" />;
+  return <SpendMeter spend={usage.data.spend_cap} />;
+}
+
+function SpendMeter({ spend }: { spend: GlobalSpend }) {
+  const when = WINDOW_WORD[spend.period];
+  const spent = formatMicros(spend.spent_micros, spend.currency);
+  if (spend.cap_micros == null) {
+    return (
+      <p className="text-[13px] text-muted-foreground">
+        Spent {when}: <span className="font-medium text-foreground tabular">{spent}</span>. No cap is set.
+      </p>
+    );
+  }
+  const cap = formatMicros(spend.cap_micros, spend.currency);
+  const fraction = spend.fraction ?? (spend.cap_micros > 0 ? spend.spent_micros / spend.cap_micros : 1);
+  const tone = meterTone(fraction);
+  const pct = Math.round(fraction * 100);
+  return (
+    <div className="grid gap-1.5">
+      <div className="flex items-baseline justify-between gap-3 text-[13px]">
+        <span>
+          <span className="font-medium tabular">{spent}</span> of {cap} spent {when}
+        </span>
+        <span className="text-muted-foreground tabular">{pct}%</span>
+      </div>
+      <Meter label="Global spend against the cap" fraction={fraction} valueText={`${spent} of ${cap}, ${pct} percent`} />
+      {tone !== "ok" ? (
+        <p className={cn("text-xs", tone === "critical" ? "text-destructive" : "text-warning")}>
+          {fraction >= 1
+            ? "The cap is reached: non-internal tenants cannot start runs until the window resets."
+            : tone === "critical"
+              ? "Over 90% of the cap is used: non-internal tenants will soon be unable to start runs."
+              : "Over 70% of the cap is used."}{" "}
+          The window resets {relativeTime(spend.end)}.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -841,6 +901,121 @@ function KillSwitchConfirm({ pending, onClose }: { pending: PendingSwitch; onClo
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ============================================================================= cost
+
+function CostTab() {
+  const [period, setPeriod] = useState<"day" | "month">("month");
+  const [key, setKey] = useState(() => periodKey("month", new Date()));
+  const isCurrent = key === periodKey(period, new Date());
+  const usage = useAdminUsage({ period, start: isCurrent ? undefined : periodStart(period, key) });
+  const columns = useMemo<ColumnDef<TenantCost, unknown>[]>(
+    () => [
+      {
+        id: "tenant",
+        accessorFn: (r) => r.name ?? r.tenant_id,
+        header: "Tenant",
+        cell: ({ row }) => (
+          <div className="grid">
+            <span className="font-medium">{row.original.name ?? row.original.tenant_id}</span>
+            <Mono className="text-muted-foreground">{row.original.tenant_id}</Mono>
+          </div>
+        ),
+      },
+      {
+        id: "tier",
+        accessorFn: (r) => r.trust_tier ?? "",
+        header: "Tier",
+        cell: ({ row }) =>
+          row.original.trust_tier ? <Badge variant="outline">{TIER_META[row.original.trust_tier].label}</Badge> : <span className="text-muted-foreground">—</span>,
+      },
+      {
+        id: "cost",
+        accessorFn: (r) => r.totals.amount_micros ?? 0,
+        header: "Cost",
+        cell: ({ row }) => <span className="font-medium tabular">{formatMicros(row.original.totals.amount_micros ?? 0, row.original.totals.currency ?? "USD")}</span>,
+      },
+      { id: "runs", accessorFn: (r) => r.totals.runs ?? 0, header: "Runs", cell: ({ getValue }) => <span className="tabular">{Number(getValue()).toLocaleString("en")}</span> },
+      { id: "compute", accessorFn: (r) => r.totals.vcpu_seconds ?? 0, header: "Compute", cell: ({ getValue }) => <span className="tabular">{formatVcpuSeconds(Number(getValue()))}</span> },
+    ],
+    [],
+  );
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <SegmentedControl<"day" | "month">
+          label="Cost period"
+          value={period}
+          onValueChange={(p) => {
+            setPeriod(p);
+            setKey(periodKey(p, new Date()));
+          }}
+          options={[
+            { value: "day", label: "Today" },
+            { value: "month", label: "This month" },
+          ]}
+        />
+        <div className="flex items-center gap-1" role="group" aria-label="Choose the period">
+          <Button variant="outline" size="icon-sm" aria-label="Previous period" onClick={() => setKey(shiftPeriod(period, key, -1))}>
+            <ChevronLeft />
+          </Button>
+          <span className="min-w-28 text-center text-[13px] font-medium tabular" aria-live="polite">
+            {periodLabel(period, key)}
+          </span>
+          <Button variant="outline" size="icon-sm" aria-label="Next period" disabled={isCurrent} onClick={() => setKey(shiftPeriod(period, key, 1))}>
+            <ChevronRight />
+          </Button>
+        </div>
+      </div>
+      <QueryView query={usage}>
+        {(report) => {
+          const totals = report.totals ?? [];
+          const currency = totals[0]?.currency ?? report.spend_cap.currency;
+          return (
+            <div className="grid items-start gap-5 lg:grid-cols-[1fr_20rem]">
+              <div className="grid min-w-0 gap-3">
+                <p className="text-[13px] text-muted-foreground">
+                  {totals.length
+                    ? totals
+                        .map((t) => `${formatMicros(t.amount_micros ?? 0, t.currency ?? currency)} over ${(t.runs ?? 0).toLocaleString("en")} run${t.runs === 1 ? "" : "s"}`)
+                        .join(" · ")
+                    : "No spend recorded in this period."}{" "}
+                  Tenants without spend in the period are not listed.
+                </p>
+                <DataTable
+                  label="Cost by tenant"
+                  data={report.tenants ?? []}
+                  columns={columns}
+                  getRowId={(r) => `${r.tenant_id}/${r.totals.currency ?? ""}`}
+                  initialSorting={[{ id: "cost", desc: true }]}
+                  filterPlaceholder="Filter tenants"
+                  empty="No tenant spent anything in this period."
+                />
+              </div>
+              <Card>
+                <CardHeader>
+                  <div>
+                    <CardTitle>Share of spend</CardTitle>
+                    <CardDescription>Where the period's cost went, by tenant.</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <BarList
+                    label="Share of platform spend"
+                    format={(v) => formatMicros(v, currency)}
+                    items={(report.tenants ?? [])
+                      .filter((t) => (t.totals.currency ?? currency) === currency)
+                      .map((t) => ({ key: t.tenant_id, label: t.name ?? t.tenant_id, value: t.totals.amount_micros ?? 0 }))}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          );
+        }}
+      </QueryView>
+    </div>
   );
 }
 

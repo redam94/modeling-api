@@ -95,6 +95,13 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   security-suite operations pages; and every new variable in the configuration reference.
   - The M2 verification record (`docs/operations/m2-verification.md`): what was proven
     locally, the measured numbers, and the exact steps left for a real Google Cloud project.
+- **server**: `GET /v1/admin/usage` (operators) returns cost by tenant for a UTC day or
+  month, summed from the cost ledger with the biggest spender first. It also returns the
+  current spend against the global spend cap (`AdminUsageReport`, `TenantCost` and
+  `GlobalSpend` in `mapi_spec.api`).
+- **web**: the admin console has a **Cost** tab with cost by tenant per period and each
+  tenant's share of spend. The global spend-cap card shows current spend against the cap on a
+  meter that warns at 70% and 90%.
 
 ### Changed
 - **devops**: `make dev` and compose run the servers in the `dev` profile by default

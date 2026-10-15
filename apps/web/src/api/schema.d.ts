@@ -298,6 +298,27 @@ export interface paths {
         patch: operations["admin_update_tenant"];
         trace?: never;
     };
+    "/v1/admin/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin Get Usage
+         * @description Cost by tenant for one UTC period (from the ledger) and the current spend against the
+         *     global spend cap. Summed in the database: the ledger is never loaded row by row here.
+         */
+        get: operations["admin_get_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/catalog": {
         parameters: {
             query?: never;
@@ -1357,6 +1378,81 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AdminUsageReport
+         * @description ``GET /v1/admin/usage`` (operators): cost by tenant for one UTC period, biggest spender
+         *     first, and the current spend against the global spend cap.
+         *
+         *     Query: ``period=day|month`` (default ``month``) and ``start`` (an instant inside the
+         *     period; default: now). Tenants without ledger entries in the period are not listed;
+         *     ``totals`` has one row per currency. ``spend_cap`` always covers the cap's current window.
+         * @example {
+         *       "end": "2026-11-01T00:00:00Z",
+         *       "period": "month",
+         *       "price_versions": [
+         *         "cloudrun-list-2026-10"
+         *       ],
+         *       "spend_cap": {
+         *         "cap_micros": 500000000,
+         *         "currency": "USD",
+         *         "end": "2026-10-16T00:00:00Z",
+         *         "fraction": 0.7,
+         *         "period": "day",
+         *         "spent_micros": 350000000,
+         *         "start": "2026-10-15T00:00:00Z"
+         *       },
+         *       "start": "2026-10-01T00:00:00Z",
+         *       "tenants": [
+         *         {
+         *           "name": "Acme Corp",
+         *           "tenant_id": "acme",
+         *           "totals": {
+         *             "amount_micros": 93600,
+         *             "attempts": 3,
+         *             "currency": "USD",
+         *             "gib_seconds": 14400,
+         *             "runs": 3,
+         *             "vcpu_seconds": 3600
+         *           },
+         *           "trust_tier": "verified"
+         *         }
+         *       ],
+         *       "totals": [
+         *         {
+         *           "amount_micros": 93600,
+         *           "attempts": 3,
+         *           "currency": "USD",
+         *           "gib_seconds": 14400,
+         *           "runs": 3,
+         *           "vcpu_seconds": 3600
+         *         }
+         *       ]
+         *     }
+         */
+        AdminUsageReport: {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "day" | "month";
+            /** Price Versions */
+            price_versions?: string[];
+            spend_cap: components["schemas"]["GlobalSpend"];
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Tenants */
+            tenants?: components["schemas"]["TenantCost"][];
+            /** Totals */
+            totals?: components["schemas"]["CostTotals"][];
+        };
         /**
          * Aggregation
          * @description Reduce outputs over dims before summarising (validity depends on representation).
@@ -2708,6 +2804,46 @@ export interface components {
          * @enum {string}
          */
         FailureClass: "user" | "resource_exhausted" | "infra" | "integrity" | "timeout" | "sandbox";
+        /**
+         * GlobalSpend
+         * @description Platform spend in the current window of the global spend cap: what the kill switch
+         *     compares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in
+         *     ``spend_cap_currency``). ``fraction`` is ``spent / cap``; null without a cap.
+         * @example {
+         *       "cap_micros": 500000000,
+         *       "currency": "USD",
+         *       "end": "2026-10-16T00:00:00Z",
+         *       "fraction": 0.7,
+         *       "period": "day",
+         *       "spent_micros": 350000000,
+         *       "start": "2026-10-15T00:00:00Z"
+         *     }
+         */
+        GlobalSpend: {
+            /** Cap Micros */
+            cap_micros?: number | null;
+            /** Currency */
+            currency: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Fraction */
+            fraction?: number | null;
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "day" | "month";
+            /** Spent Micros */
+            spent_micros: number;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -5602,6 +5738,31 @@ export interface components {
             trust_tier?: components["schemas"]["TrustTier"] | null;
         };
         /**
+         * TenantCost
+         * @description One tenant's ledger totals for the period (one row per currency).
+         * @example {
+         *       "name": "Acme Corp",
+         *       "tenant_id": "acme",
+         *       "totals": {
+         *         "amount_micros": 93600,
+         *         "attempts": 3,
+         *         "currency": "USD",
+         *         "gib_seconds": 14400,
+         *         "runs": 3,
+         *         "vcpu_seconds": 3600
+         *       },
+         *       "trust_tier": "verified"
+         *     }
+         */
+        TenantCost: {
+            /** Name */
+            name?: string | null;
+            /** Tenant Id */
+            tenant_id: string;
+            totals: components["schemas"]["CostTotals"];
+            trust_tier?: components["schemas"]["TrustTier"] | null;
+        };
+        /**
          * TenantCreate
          * @description ``POST /v1/admin/tenants`` (operators). ``initial_admin_email`` is invited as tenant
          *     admin; the invitation is claimed at first login with that verified e-mail.
@@ -6720,6 +6881,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tenant"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_get_usage: {
+        parameters: {
+            query?: {
+                period?: "day" | "month";
+                start?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUsageReport"];
                 };
             };
             /** @description Validation Error */

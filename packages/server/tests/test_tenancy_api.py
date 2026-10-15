@@ -3,11 +3,14 @@ status, invitations, and the audit log."""
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 import httpx
 import pytest
 from mapi_server.auth.identity import VerifiedIdentity, claim_or_create_user
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.services.runs import now
 from mapi_server.settings import Profile, Settings
 from mapi_server_testkit.identity import (
     Caller,
@@ -16,7 +19,7 @@ from mapi_server_testkit.identity import (
     make_user,
     session_caller,
 )
-from mapi_spec.api import Me, Page
+from mapi_spec.api import AdminUsageReport, Me, Page, new_id
 from mapi_spec.audit import AuditEvent
 from mapi_spec.tenancy import Membership, Project, Tenant
 from sqlalchemy import select
@@ -222,3 +225,63 @@ async def test_operators_read_metadata_but_never_tenant_content(
     assert (await acme.post("/v1/datasets", json={"name": "x"})).status_code == 404
     assert (await ops.get("/v1/tenants/acme/members")).status_code == 200
     assert (await ops.patch("/v1/tenants/acme", json={"name": "x"})).status_code == 403
+
+
+async def _bill(
+    ctx: ServerContext, tenant_id: str, amount: int, *, run_id: str, at: datetime | None = None
+) -> None:
+    async with ctx.db.session() as s:
+        s.add(
+            m.CostLedgerEntry(
+                id=new_id("cle"), tenant_id=tenant_id, project_id="main", run_id=run_id,
+                attempt=1, kind="actual", resource_class="S", task_count=1, wall_seconds=60,
+                vcpu_seconds=120, gib_seconds=480, price_version="v1", amount_micros=amount,
+                currency="USD", recorded_at=at or now(),
+            )
+        )  # fmt: skip
+
+
+async def test_operators_see_cost_by_tenant_and_spend_against_the_global_cap(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    ops = await _operator(ctx, client)
+    await make_tenant(ctx, "acme")
+    await make_tenant(ctx, "beta", tier="public")
+    await _bill(ctx, "acme", 3_000, run_id="run_a1")
+    await _bill(ctx, "acme", 2_000, run_id="run_a2")
+    await _bill(ctx, "beta", 9_000, run_id="run_b1")
+    await _bill(ctx, "beta", 1_000_000, run_id="run_old", at=now() - timedelta(days=400))
+    r = await ops.put(
+        "/v1/admin/kill-switches",
+        json={"global_spend_cap_micros": 20_000, "spend_cap_period": "month", "reason": "cap"},
+    )
+    assert r.status_code == 200, r.text
+
+    r = await ops.get("/v1/admin/usage", params={"period": "month"})
+    assert r.status_code == 200, r.text
+    report = AdminUsageReport.model_validate(r.json())
+    # the biggest spender first; the 400-day-old entry is outside the period
+    assert [(t.tenant_id, t.totals.amount_micros, t.totals.runs) for t in report.tenants] == [
+        ("beta", 9_000, 1),
+        ("acme", 5_000, 2),
+    ]
+    beta = report.tenants[0]
+    assert beta.name and beta.trust_tier == "public"
+    [total] = report.totals
+    assert total.amount_micros == 14_000 and total.runs == 3 and total.currency == "USD"
+    assert report.price_versions == ["v1"]
+    cap = report.spend_cap
+    assert cap.cap_micros == 20_000 and cap.spent_micros == 14_000 and cap.period == "month"
+    assert cap.fraction == pytest.approx(0.7) and cap.currency == "USD"
+
+    then = (now() - timedelta(days=400)).isoformat()
+    r = await ops.get("/v1/admin/usage", params={"period": "day", "start": then})
+    old = AdminUsageReport.model_validate(r.json())
+    assert [t.tenant_id for t in old.tenants] == ["beta"]
+    assert old.spend_cap.spent_micros == 14_000  # the cap window is always the current one
+
+    # tenant admins read their own usage, never the platform's
+    u = await make_user(ctx, "ana@acme.test")
+    await grant_role(ctx, u, "acme", None, "admin")
+    ana = await session_caller(ctx, client, u)
+    assert (await ana.get("/v1/admin/usage")).status_code == 403
