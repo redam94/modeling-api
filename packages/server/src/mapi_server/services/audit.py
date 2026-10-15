@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mapi_server.db import Database
 from mapi_server.db import models as m
 
-__all__ = ["audit_dto", "audit_query", "write_audit"]
+__all__ = ["add_audit", "audit_dto", "audit_query", "write_audit"]
 
 log = logging.getLogger(__name__)
 
@@ -71,6 +71,13 @@ def audit_dto(row: m.AuditEvent) -> AuditEvent:
     )
 
 
+async def add_audit(session: AsyncSession, events: Sequence[AuditEvent]) -> None:
+    """Add ``events`` to ``session``'s transaction (they commit or roll back with it)."""
+    for ev in events:
+        session.add(_row(ev))
+    await session.flush()
+
+
 async def write_audit(
     db: Database, events: Sequence[AuditEvent], *, session: AsyncSession | None = None
 ) -> None:
@@ -82,9 +89,7 @@ async def write_audit(
     if not events:
         return
     if session is not None:
-        for ev in events:
-            session.add(_row(ev))
-        await session.flush()
+        await add_audit(session, events)
         return
     try:
         async with db.session() as s:

@@ -101,7 +101,12 @@ async def _accept(
 
 
 async def admit(
-    session: AsyncSession, ctx: ServerContext, run: m.Run, *, untrusted: bool = False
+    session: AsyncSession,
+    ctx: ServerContext,
+    run: m.Run,
+    *,
+    untrusted: bool = False,
+    audit_action: AuditAction | None = AuditAction.RUN_CREATE,
 ) -> None:
     """Stamp scheduling and accounting fields, then check kill switches and quotas.
 
@@ -162,12 +167,14 @@ async def admit(
         raise ProblemWithHeaders(
             decision.message or "quota exceeded", code=decision.code, headers=decision.headers()
         )
+    if audit_action is None:
+        return
     await write_audit(
         ctx.db,
         [
             auth.audit(
                 ctx,
-                AuditAction.RUN_CREATE,
+                audit_action,
                 ResourceKind.RUN,
                 resource_id=run.id,
                 details={"kind": kind.value, "resource_class": rc.value},

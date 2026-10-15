@@ -210,6 +210,9 @@ sequenceDiagram
   (cross-site requests never carry it) and host-only (`__Host-` prefix: no `Domain`,
   `Path=/`).
 - Sessions end after 2 hours idle or 12 hours in total. `POST /auth/logout` ends one at once.
+- State-changing requests made with the session cookie also carry the session's CSRF token
+  in `X-CSRF-Token` (from the readable `__Host-mapi_csrf` cookie or `GET /auth/session`);
+  without it, or from another origin, they are refused.
 - `return_to` only accepts a path on the same origin, so the login flow cannot be used as an
   open redirect.
 - `GET /auth/session` tells the web app whether it is signed in (`authenticated: false` is a

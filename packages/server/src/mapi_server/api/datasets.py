@@ -25,11 +25,13 @@ from mapi_spec.api import (
     UploadSession,
     new_id,
 )
+from mapi_spec.audit import AuditAction
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.schema import DataSchema
 from mapi_spec.storage import DATASET_OBJECTS, NotFound, SignedPut, quarantine_key
+from mapi_spec.tenancy import ResourceKind
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError as DBIntegrityError
 
@@ -45,6 +47,7 @@ from mapi_server.api.common import (
 )
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError, ProblemWithHeaders
+from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import artifact_link
 from mapi_server.services.quotas import admit_storage
 from mapi_server.services.runs import now
@@ -355,19 +358,34 @@ async def get_dataset_version(
 
 
 async def _artifact(
-    ctx: Ctx, session: Session, dataset_id: str, version: int, name: str
+    ctx: Ctx, session: Session, dataset_id: str, version: int, name: str, *, audit: bool = False
 ) -> ArtifactLink:
     _, dv = await _version(ctx, session, dataset_id, version)
     obj = dv.objects.get(name) if name in ARTIFACT_NAMES else None
     if obj is None:
         raise NotFoundError("artifact", name)
-    return await artifact_link(
+    link = await artifact_link(
         ctx.store,
         name=name,
         bucket=obj["bucket"],
         key=obj["name"],
         generation=int(obj["generation"]),
     )
+    if audit and ctx.request is not None:  # a signed download URL left the API
+        await write_audit(
+            ctx.db,
+            [
+                ctx.request.audit(
+                    ctx,
+                    AuditAction.DATASET_DOWNLOAD,
+                    ResourceKind.DATASET,
+                    resource_id=f"{dataset_id}@v{version}",
+                    details={"name": name},
+                )
+            ],
+            session=session,
+        )
+    return link
 
 
 @router.get(
@@ -384,7 +402,7 @@ async def get_dataset_artifact(
 ) -> ArtifactLink:
     """Signed, generation-pinned URL for ``data.zarr.zip``/``schema.json``/``profile.json``/
     ``preview.json`` (15 min, HTTP Range works)."""
-    return await _artifact(ctx, session, dataset_id, version, name)
+    return await _artifact(ctx, session, dataset_id, version, name, audit=True)
 
 
 @router.get(

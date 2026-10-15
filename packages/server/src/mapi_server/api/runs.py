@@ -52,7 +52,7 @@ from mapi_server.jsonlimits import loads_limited
 from mapi_server.services.audit import write_audit
 from mapi_server.services.cost import run_costs
 from mapi_server.services.runs import apply_transition, load_run, run_dto
-from mapi_server.services.submit import submit_retry, submit_run
+from mapi_server.services.submit import admit, submit_retry, submit_run
 
 __all__ = ["RUN_PLOTS_OUTPUT", "render_run", "router", "run_view", "sse_stream"]
 
@@ -515,6 +515,8 @@ async def resume_run(ctx: Ctx, session: Session, run_id: RunId) -> Run:
         raise Conflict(f"only partial runs can be resumed (run is {run.state})")
     run.finalize = {}
     run.finalize_attempts = 0
+    # resuming spends compute again: the same kill switches and quotas as a new run
+    await admit(session, ctx, run, untrusted=run.untrusted_code, audit_action=None)
     await apply_transition(session, run, RunTrigger.RESUME, Actor.API)
     return await run_view(session, run)
 

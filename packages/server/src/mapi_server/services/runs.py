@@ -16,6 +16,7 @@ from typing import Any
 from mapi_spec._types import Duration
 from mapi_spec.api import ProgressSnapshot, RunCost, new_id
 from mapi_spec.api import Run as RunDTO
+from mapi_spec.audit import AuditAction, AuditOutcome, make_audit_event
 from mapi_spec.errors import ErrorCode, Problem
 from mapi_spec.executor import RunEventType, RunKind
 from mapi_spec.resources import ResourceClass
@@ -27,11 +28,13 @@ from mapi_spec.run import (
     TransitionRule,
     transition,
 )
+from mapi_spec.tenancy import PrincipalKind, ResourceKind
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
+from mapi_server.services.audit import add_audit
 from mapi_server.services.cost import bill_attempts, fold_cost
 from mapi_server.services.notify import notify_run
 
@@ -216,6 +219,27 @@ async def apply_transition(
         run.queued_at = ts
     if rule.target is RunState.RUNNING and run.started_at is None:
         run.started_at = ts
+    if rule.failure_class is FailureClass.INTEGRITY:
+        # outputs did not match what the platform recorded: a security signal
+        await add_audit(
+            session,
+            [
+                make_audit_event(
+                    action=AuditAction.RUN_INTEGRITY_FAILURE,
+                    resource_kind=ResourceKind.RUN,
+                    outcome=AuditOutcome.ERROR,
+                    ts=ts,
+                    fingerprint_key=b"",  # no client data to fingerprint
+                    tenant_id=run.tenant_id,
+                    project_id=run.project_id,
+                    actor_kind=PrincipalKind.SERVICE,
+                    actor_id=f"svc_{actor.value}",
+                    resource_id=run.id,
+                    code=ErrorCode.INTEGRITY_FAILURE,
+                    details={"attempt": run.attempt},
+                )
+            ],
+        )
     if rule.failure_class is not None:
         run.failure_class = rule.failure_class.value
         run.problem = (
