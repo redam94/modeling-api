@@ -23,6 +23,7 @@ __all__ = [
     "counterfactual_tree",
     "decision_dataset",
     "example_inputs",
+    "feature_importance_tree",
     "panel_data",
     "plans_dataset",
     "response_curves",
@@ -227,6 +228,28 @@ def plans_dataset() -> xr.Dataset:
     )
 
 
+def feature_importance_tree() -> xr.DataTree:
+    """A tabular bundle shaped like ``mapi_sklearn``'s: tree importances and coefficients."""
+    feats = ["price", "promo_lagged[1]", "promo_lagged[2]", "calendar[week_of_year]", "store"]
+    imp = np.array([0.42, 0.18, 0.07, 0.21, 0.12])
+    coef = np.array([[-1.8, 0.6, 0.2, 0.05, 0.3], [-1.2, 0.5, 0.1, 0.04, 0.2]])
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-tabular"}),
+            "model/feature_importance": xr.Dataset(
+                {"importance": (("feature",), imp)}, coords={"feature": feats}
+            ),
+            "model/coefficients": xr.Dataset(
+                {
+                    "coefficient": (("model", "feature"), coef),
+                    "intercept": (("model",), np.array([3.1, 3.4])),
+                },
+                coords={"feature": feats, "model": [0, 1]},
+            ),
+        }
+    )
+
+
 def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
     """``{recipe id: (input data, render options)}`` for every bundled recipe."""
     bundle = bundle_tree()
@@ -248,4 +271,5 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
         "mmm.marginal_cost": (bundle, {}),
         "mmm.budget_plans": ({"plans": plans_dataset()}, {}),
         "mmm.decomposition": (bundle, {}),
+        "ml.feature_importance": (feature_importance_tree(), {}),
     }

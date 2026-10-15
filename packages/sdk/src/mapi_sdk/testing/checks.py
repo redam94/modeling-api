@@ -212,6 +212,24 @@ def check_step(
             raise AssertionError(
                 f"settings do not validate against the exported schema: {errors[0].message}"
             )
+        raw_props = entry.settings_schema.get("properties")
+        props: dict[str, Any] = raw_props if isinstance(raw_props, dict) else {}
+
+        def exported(name: str) -> bool:
+            prop = props.get(name)
+            return isinstance(prop, dict) and "default" in prop
+
+        hidden = sorted(
+            name
+            for name, f in type(s).model_fields.items()
+            if f.default_factory is not None and not exported(f.alias or name)
+        )
+        if hidden:
+            raise AssertionError(
+                f"the defaults of {hidden} are missing from the exported settings schema "
+                "(default_factory); use plain defaults such as Field(default=[]) so the control "
+                "plane can apply them before rendering the effect template"
+            )
         return f"exported {entry.ref}"
 
     def fit_deterministic() -> None:
@@ -712,10 +730,14 @@ def check_model(
                 if sch is not None and decl.units_of in sch.vars
                 else None
             )
-            got = tree["predictions"][var].attrs.get("units")
+            # outputs are reverse-bound: 'y' bound to 'revenue_local' comes back as the latter
+            preds = tree["predictions"]
+            name = binding_dim(var)
+            out = preds[name] if name in preds.data_vars else preds[var]
+            got = out.attrs.get("units")
             if want != got:
                 raise AssertionError(f"{var}: units {got!r} but stage {stage!r} says {want!r}")
-            if tree["predictions"][var].attrs.get("output_space") != stage:
+            if out.attrs.get("output_space") != stage:
                 raise AssertionError(f"{var}: missing output_space attribute")
             notes.append(f"{var} in {stage} ({want})")
         if not notes:

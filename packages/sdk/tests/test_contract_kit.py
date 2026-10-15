@@ -21,7 +21,7 @@ from mapi_sdk.testing import (
 )
 from mapi_spec import DataSchema, ModelSpec, StepKind
 from mapi_spec.spec import FitConfig, ScoreRequest
-from pydantic import JsonValue
+from pydantic import Field, JsonValue
 
 BIND = {
     "dims": {"geo": "market", "time": "date"},
@@ -122,6 +122,17 @@ class _NeedsTarget(toy.Log1pStep):
         return ds.assign({v: np.log1p(ds[v]) for v in s.vars})
 
 
+class _HiddenDefaultSettings(toy.VarsSettings):
+    extra_dims: list[str] = Field(default_factory=list)
+
+
+class _HiddenDefault(toy.Log1pStep):
+    """Its default is invisible in the exported JSON Schema (default_factory)."""
+
+    id = "test.hiddendefault"
+    Settings = _HiddenDefaultSettings
+
+
 def test_broken_steps_fail_specific_checks(
     weekly: xr.Dataset, raw_target_schema: Callable[[xr.Dataset], DataSchema]
 ) -> None:
@@ -132,6 +143,7 @@ def test_broken_steps_fail_specific_checks(
         (_Mutator, {"vars": ["y"]}, "transform_pure_and_deterministic"),
         (_BadInverse, {"vars": ["y"]}, "inverse_roundtrip"),
         (_NeedsTarget, {"vars": ["y"]}, "absent_target_tolerated"),
+        (_HiddenDefault, {"vars": ["y"]}, "catalog_entry"),
     ]
     for step, settings, failing in cases:
         report = check_step(
@@ -256,3 +268,35 @@ def test_pytest_plugin_fixtures(
     data, fx = mapi_panel
     assert {"revenue_local", "spend_local"} <= set(data.data_vars) and "rate" in fx
     assert StepKind.VALUE.value == "value"
+
+
+class _SameName(toy.LinearModel):
+    """Names its output after the bound target ('y' comes back as 'revenue_local')."""
+
+    id = "test.samename"
+    outputs: ClassVar[dict[str, Any]] = {"y": {"dims": ["geo", "time"], "units_of": "y"}}
+
+    def score(
+        self, fitted: Fitted, ds: xr.Dataset, req: ScoreRequest, ctx: ScoreContext
+    ) -> xr.DataTree:
+        pred = super().score(fitted, ds, req, ctx)["predictions"].to_dataset()
+        return xr.DataTree.from_dict({"predictions": pred.rename(y_hat="y")})
+
+
+def test_output_units_follow_the_reverse_binding(
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    raw_schema: DataSchema,
+    registry: Registry,
+) -> None:
+    data, fx = panel
+    fixture = ModelFixture(
+        spec=e33_spec(model="test.samename@^1", metrics="rmse"),
+        data=data,
+        side_tables={"fx": fx},
+        raw_schema=raw_schema,
+        registry=registry,
+    )
+    report = check_model(_SameName, fixture, checks=["manifest", "fit", "output_space_and_units"])
+    result = report.get("output_space_and_units")
+    assert result.passed and not result.skipped, report.summary()

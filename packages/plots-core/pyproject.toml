@@ -26,6 +26,7 @@ recipes = [
 [project.entry-points."mapi.plots"]
 core = "mapi_plots.recipes:standard_recipes"
 mmm = "mapi_plots.packs.mmm:mmm_recipes"
+ml = "mapi_plots.packs.ml:ml_recipes"
 
 [build-system]
 requires = ["hatchling>=1.25"]

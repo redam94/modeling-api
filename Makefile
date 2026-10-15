@@ -27,8 +27,9 @@ fmt: ## Auto-format Python code
 	$(UV) run ruff format $(PY_DIRS)
 
 .PHONY: typecheck
-typecheck: ## mypy over the strictly-typed packages
-	$(UV) run mypy packages/spec/src packages/sdk/src packages/steps-core/src packages/sdk-pymc/src packages/plots-core/src
+typecheck: ## mypy over every type-checked package (spec, sdk, steps, pymc, sklearn, plots)
+	$(UV) run mypy packages/spec/src packages/sdk/src packages/steps-core/src packages/sdk-pymc/src \
+		packages/sdk-sklearn/src packages/plots-core/src
 
 ## ---------------------------------------------------------------- tests
 .PHONY: test

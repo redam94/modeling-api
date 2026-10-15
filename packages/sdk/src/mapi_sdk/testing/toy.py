@@ -164,7 +164,7 @@ class ResampleStep(Step[ResampleSettings, StepState]):
 
 class ScaleSettings(StepSettings):
     vars: list[str]
-    over: list[str] = Field(default_factory=list)
+    over: list[str] = Field(default=[])
     unseen_levels: UnseenPolicy = "error"
     fill: float = 1.0
 
@@ -248,8 +248,8 @@ class Log1pStep(Step[VarsSettings, StepState]):
 class LagSettings(StepSettings):
     vars: list[str]
     along: str = "time"
-    within: list[str] = Field(default_factory=list)
-    lags: list[int] = Field(default_factory=lambda: [1], min_length=1)
+    within: list[str] = Field(default=[])
+    lags: list[int] = Field(default=[1], min_length=1)
     fill: float | None = None
 
 
@@ -383,7 +383,7 @@ class PanelSettings(ModelSettings):
     features: list[str] | None = None
     ridge: float = Field(1e-6, ge=0)
     retransform: Literal["median", "smearing"] = "median"
-    quantiles: list[float] = Field(default_factory=lambda: [0.05, 0.1, 0.5, 0.9, 0.95])
+    quantiles: list[float] = Field(default=[0.05, 0.1, 0.5, 0.9, 0.95])
 
 
 _PANEL_TEMPLATE: dict[str, Any] = {

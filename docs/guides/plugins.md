@@ -17,8 +17,8 @@ from mapi_spec import StepKind
 
 class ScaleSettings(StepSettings):
     vars: list[str]
-    over: list[str] = Field(default_factory=list)
-    unseen_levels: str = "error"            # error | pooled | fill
+    over: list[str] = Field(default=[])     # plain defaults (not default_factory): the
+    unseen_levels: str = "error"            # exported JSON Schema must carry them
 
 
 class ScaleStep(Step[ScaleSettings, StepState]):

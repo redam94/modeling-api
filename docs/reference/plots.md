@@ -158,6 +158,7 @@ template_issues(plot, schema, *, optional=()) -> list[Issue]
 get_recipe(id) -> Recipe                 # bundled recipes (core + packs)
 standard_recipes() -> list[Recipe]       # entry point  mapi.plots: core
 mapi_plots.packs.mmm.mmm_recipes()       # entry point  mapi.plots: mmm
+mapi_plots.packs.ml.ml_recipes()         # entry point  mapi.plots: ml
 Recipe.render(data, **settings) -> PlotSpec       # also Recipe(data, **settings)
 Recipe.catalog_entry() -> PlotCatalogEntry        # id, version, persona, required groups/representation
 
@@ -212,6 +213,7 @@ def weekly_total(inp, s: Settings) -> Figure:
 | `mmm.response_curves` | `var`, `channel`, `grid`, `spend_var` (spend), `current_var` (current_spend), `hdi_prob`, `facet` |
 | `mmm.marginal_cost` | as response curves + `metric` (cost \| roi), `clip_quantile` (0.98) |
 | `mmm.budget_plans` | `spend_var`, `outcome_var`, `plan`, `channel`, `reference`, `hdi_prob` |
+| `ml.feature_importance` | `top` (20), `feature_dim` (feature), `source` (auto \| importance \| coefficients) |
 
 Convergence diagnostics are rank-normalised split R-hat and bulk/tail ESS (Vehtari et al. 2021),
 implemented in numpy and tested to match ArviZ exactly.

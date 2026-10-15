@@ -80,6 +80,9 @@ Every plot carries:
 
 The **marketing-mix pack** (`mmm.*`) adds response curves with current spend marked, marginal
 cost (or marginal ROI) per channel, a budget-plan comparison and a channel decomposition.
+The **tabular pack** (`ml.*`) adds `ml.feature_importance`: ranked tree importances, or signed
+coefficients for linear estimators, read from the groups the scikit-learn and xgboost plugins
+store in their bundles.
 
 <div class="grid" markdown>
 
@@ -95,7 +98,9 @@ cost (or marginal ROI) per channel, a budget-plan comparison and a channel decom
 
 Recipes respect each output's **representation**: they sum joint draws when a dim has to go,
 but never add up quantiles or intervals — a summary with an extra dim asks you to request an
-aggregated output instead (summed means are shown without a band).
+aggregated output instead (summed means are shown without a band). Predicted-vs-actual and
+residual plots never need a total, so they compare such summaries cell by cell (one dot or line
+per `store × sku`, coloured by the facet dim).
 
 ## Bring your own chart
 
