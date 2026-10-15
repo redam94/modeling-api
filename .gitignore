@@ -36,6 +36,7 @@ test-results/
 .claude/worktrees/
 .DS_Store
 site/
+docs/reference/generated/
 
 # --- Terraform ---
 .terraform/

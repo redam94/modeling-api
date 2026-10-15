@@ -12,35 +12,7 @@ This is the classic radon model (varying intercepts by county) in long layout. `
 carry a `county_idx` that points into the `county` coordinate.
 
 ```python
-from typing import Any, ClassVar
-import pymc as pm
-from mapi_pymc import PyMCModel, BuildContext, FrozenPredictorSpec
-from mapi_sdk import ModelSettings
-
-
-class RadonSettings(ModelSettings):
-    beta_sigma: float = 1.0
-
-
-class Radon(PyMCModel[RadonSettings]):
-    id = "acme.radon"
-    version = "1.0.0"
-    Settings = RadonSettings
-    schema_template = {...}                       # the data contract (see the SDK reference)
-    outputs: ClassVar[dict[str, Any]] = {"y": {"dims": ["obs"], "units_of": "y"}}
-    expected: ClassVar[dict[str, str]] = {"y": "mu"}   # output -> Deterministic for E[y]
-    pad_extend = False                            # long layout: no positional time axis
-
-    def build(self, ds, s: RadonSettings, ctx: BuildContext) -> pm.Model:
-        with pm.Model(coords=ctx.coords()) as model:
-            floor = ctx.data("floor")
-            county = ctx.data("county_idx")
-            a = ctx.hier_effect("a", "county")     # partially pooled intercepts
-            b = pm.Normal("b", 0.0, s.beta_sigma)
-            mu = pm.Deterministic("mu", a[county] + b * floor, dims="obs")
-            pm.Normal("y", mu, pm.HalfNormal("sigma", 1.0),
-                      observed=ctx.observed("y"), dims="obs")
-        return model
+--8<-- "plugin_pymc.py:model"
 ```
 
 A runnable version, with synthetic data, ships as `mapi_pymc.examples.RadonModel`.
@@ -149,13 +121,7 @@ evaluates your responses for many inputs and scenarios at once. Use it for respo
 and what-if grids:
 
 ```python
-class Radon(PyMCModel[RadonSettings]):
-    ...
-    fast_score_spec = FrozenPredictorSpec(response_exprs={"y": "mu"}, input_vars=["floor"])
-
-predictor = Radon().frozen_predictor(fitted, ds, num_samples=200, seed=1)
-grid = predictor(floor=np.outer([0.0, 0.5, 1.0], np.ones(ds.sizes["obs"])))
-grid["y"].shape   # (sample, scenario, obs)
+--8<-- "pymc_fast.py:fast"
 ```
 
 The contract check `mapi_pymc.testing.check_fast_score(plugin, fitted, ds)` confirms that the
@@ -166,10 +132,7 @@ fast path agrees with exact scoring within Monte Carlo error.
 Use the SDK contract kit:
 
 ```python
-from mapi_sdk.testing import ModelFixture, check_model
-
-report = check_model(Radon, ModelFixture(spec=SPEC_YAML, data=data, raw_schema=SCHEMA))
-assert report.ok, report.summary()
+--8<-- "plugin_pymc.py:check"
 ```
 
 Keep test fits tiny (`tune: 100, draws: 100, chains: 2`, `engine: pymc`) so they are fast and

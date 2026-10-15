@@ -11,33 +11,23 @@ uv add mapi-sdk          # or: pip install mapi-sdk
 
 ## Fit and score in a notebook
 
+The [first-model walkthrough](../getting-started/first-model.md) builds this step by step. In
+short, with `spec`, `data` and `schema` from there:
+
 ```python
-from mapi_sdk import fit_spec, score_bundle, Bundle
-from mapi_sdk.testing import toy                    # small reference steps and models
-from mapi_spec import load_model_spec, load_score_request
-
-registry = toy.toy_registry()                       # or mapi_sdk.default_registry()
-data, fx = toy.panel_dataset()                      # daily markets × channels × days
-
-spec = load_model_spec(open("geo.yaml").read())
-bundle = fit_spec(spec, data, {"fx": fx}, registry)
-print(bundle.metrics.values)                        # holdout metrics, via the score path
-
-bundle.write("bundles/geo-v1")                      # bundle.zarr.zip + JSON sidecars
-bundle = Bundle.read("bundles/geo-v1", registry)    # hashes are verified on read
-
-request = load_score_request("""
-apiVersion: mapi/v1
-kind: ScoreRequest
-model: endpoint://growth/geo
-mode: forecast
-horizon: {dim: time, periods: 4}
-output: {summary: [mean, hdi_90], draws: 50}
-""")
-result = score_bundle(bundle, request, future_spend, registry=registry)
-result["summary"]          # one variable per output, with a leading `stat` dim
-result["draws"]            # 50 joint draws from the bundle-wide thinning index
+--8<-- "quickstart.py:fit"
 ```
+
+```python
+--8<-- "quickstart.py:forecast"
+```
+
+```python
+--8<-- "quickstart.py:bundle"
+```
+
+For a model whose representation is `draws`, add `draws: 50` to `output` and the tree also has
+a `draws` group: 50 joint draws taken from the bundle-wide thinning index.
 
 `score_bundle` returns an `xr.DataTree`. Its root attributes record the representation, the
 output kind (`expected` or `predictive`), the **output space** of every variable (for example
@@ -103,12 +93,11 @@ Pickle is never used, anywhere.
 ## Data checks in plain language
 
 ```python
-from mapi_sdk import validate_dataset, infer_schema
+--8<-- "concepts_data.py:infer"
+```
 
-schema = infer_schema(data, targets=["revenue"])
-for issue in validate_dataset(schema, data):
-    print(issue.severity, issue.message)
-# error 3 markets are missing 2 weeks of revenue in March 2024
+```python
+--8<-- "concepts_data.py:validate"
 ```
 
 ## Bundles
@@ -125,14 +114,14 @@ every file; `Bundle.read` verifies them.
 notebooks and tests, never for untrusted code:
 
 ```python
-from mapi_sdk import InprocExecutor
-from mapi_spec.executor import RunKind, RunSubmit
-
-ex = InprocExecutor(registry=registry, resolver={"dataset://growth/eu@latest": data})
-handle = await ex.submit(RunSubmit(run_id="fit-1", kind=RunKind.FIT, payload={"spec": spec_dict}), nonce="n-0000001")
-status = await ex.wait(handle)
-bundle = ex.result(handle)
+--8<-- "executor.py:setup"
 ```
+
+```python
+--8<-- "executor.py:runs"
+```
+
+See [Runs and executors](../getting-started/executor.md).
 
 ## Error codes you may see
 

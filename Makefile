@@ -51,13 +51,21 @@ conformance-full: ## Run the conformance corpus at full size (nightly-scale data
 	$(UV) run python -m mapi_conformance run --size full $(if $(FIXTURE),--fixture $(FIXTURE))
 
 ## ---------------------------------------------------------------- docs
+.PHONY: docs-catalog
+docs-catalog: ## Regenerate the catalog reference pages (steps, models, plots, spec schema, errors)
+	$(UV) run python scripts/gen_docs_catalog.py
+
 .PHONY: docs-serve
-docs-serve: ## Serve the documentation site with live reload
+docs-serve: docs-catalog ## Serve the documentation site with live reload
 	$(UV) run --group docs mkdocs serve
 
 .PHONY: docs-build
-docs-build: ## Build the documentation site into ./site (strict)
+docs-build: docs-catalog ## Build the documentation site into ./site (strict)
 	$(UV) run --group docs mkdocs build --strict
+
+.PHONY: docs-test
+docs-test: ## Run every documentation snippet and check every include
+	$(UV) run pytest -q conformance/tests/test_docs_snippets.py
 
 ## ---------------------------------------------------------------- housekeeping
 .PHONY: clean
