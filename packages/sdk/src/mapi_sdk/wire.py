@@ -19,6 +19,7 @@ from __future__ import annotations
 import io
 import json
 import math
+import re
 import stat
 import zipfile
 from collections.abc import Hashable, Mapping, Sequence
@@ -330,6 +331,11 @@ def _infer_dtype(leaves: Sequence[Any], name: str) -> str:
     raise WireFormatError(f"{name}: values have mixed or unsupported types; give an explicit dtype")
 
 
+_ISO_DATE = re.compile(
+    r"^[0-9]{4}-[0-9]{2}(-[0-9]{2}([T ][0-9]{2}(:[0-9]{2}(:[0-9]{2}(\.[0-9]{1,9})?)?)?)?)?$"
+)
+
+
 def _decoded_size(entry: _Entry) -> int:
     """Bytes the decoded array takes (``<U{longest}`` for strings: 4 bytes per char)."""
     n = len(entry.leaves)
@@ -347,7 +353,10 @@ def _decode_values(leaves: list[Any], shape: list[int], dtype: str, name: str) -
                     raise WireFormatError(f"{name}: dtype str needs string values (no nulls)")
                 arr = np.array(leaves, dtype=str) if leaves else np.array([], dtype="<U1")
             case "datetime64[ns]":
-                if not all(v is None or isinstance(v, str) for v in leaves):
+                if not all(
+                    v is None or (isinstance(v, str) and _ISO_DATE.match(v)) for v in leaves
+                ):
+                    # numpy also parses 'now'/'today': payloads must not depend on the clock
                     raise WireFormatError(f"{name}: datetimes must be ISO-8601 strings or null")
                 arr = np.array(
                     [np.datetime64("NaT") if v is None else np.datetime64(v, "ns") for v in leaves],
@@ -455,6 +464,10 @@ def from_xrjson(obj: Mapping[str, Any], *, limits: WireLimits = DEFAULT_LIMITS) 
         for d, n in declared.items():
             if not isinstance(n, int) or isinstance(n, bool) or n < 0:
                 raise WireFormatError(f"dim {str(d)[:64]!r} has an invalid declared size")
+            if n > limits.max_elements:
+                raise PayloadLimitError(
+                    f"dim {str(d)[:64]!r} declares {n} entries; at most {limits.max_elements}"
+                )
             if d in sizes and sizes[d] != n:
                 raise WireFormatError(f"dim {d!r} declared with size {n} but data has {sizes[d]}")
             sizes.setdefault(str(d), n)
