@@ -1,0 +1,69 @@
+:root {
+  color-scheme: light;
+  --text: #1b2333;
+  --muted: #5b6577;
+  --tip-bg: #ffffff;
+  --tip-border: #dde1e8;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --text: #dce1ea;
+  --muted: #9aa3b2;
+  --tip-bg: #1d2330;
+  --tip-border: #2f3747;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  font: 13px/1.4 ui-sans-serif, system-ui, sans-serif;
+}
+
+#plot {
+  width: 100%;
+  min-height: 40px;
+}
+
+#plot > .vega-embed {
+  width: 100%;
+}
+
+body[data-standalone="true"] #plot::before {
+  content: "This page only renders plots embedded by the modeling-api app.";
+  display: block;
+  padding: 24px;
+  color: var(--muted);
+}
+
+.mapi-tooltip {
+  position: fixed;
+  z-index: 10;
+  max-width: 320px;
+  padding: 6px 8px;
+  border: 1px solid var(--tip-border);
+  border-radius: 6px;
+  background: var(--tip-bg);
+  color: var(--text);
+  font-size: 12px;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgb(15 23 42 / 0.14);
+}
+
+.mapi-tooltip-row {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.mapi-tooltip-key {
+  color: var(--muted);
+}
+
+.mapi-tooltip-value {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}

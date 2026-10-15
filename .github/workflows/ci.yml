@@ -12,3 +12,21 @@ jobs:
       - run: make lint
       - run: make typecheck
       - run: uv run pytest -q -m "not docker and not cloud and not e2e" --cov --cov-report=xml
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: pnpm}
+      - run: uv sync --package mapi-spec
+      - run: uv run python apps/web/scripts/gen_openapi.py --check
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @mapi/web openapi:check
+      - run: pnpm --filter @mapi/web exec playwright install --with-deps chromium
+      - run: pnpm -r lint
+      - run: pnpm -r typecheck
+      - run: pnpm -r test
+        env: {CI: "1"}
+      - run: pnpm -r build

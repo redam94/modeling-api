@@ -68,6 +68,19 @@ docs-build: docs-catalog ## Build the documentation site into ./site (strict)
 docs-test: ## Run every documentation snippet and check every include
 	$(UV) run pytest -q conformance/tests/test_docs_snippets.py
 
+## ---------------------------------------------------------------- web
+.PHONY: web-dev
+web-dev: ## Run the web app (5173) and the plot sandbox (5174) against VITE_API_BASE
+	$(PNPM) -r --parallel dev
+
+.PHONY: web-check
+web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*
+	$(UV) run python apps/web/scripts/gen_openapi.py --check
+	$(PNPM) -r lint
+	$(PNPM) -r typecheck
+	$(PNPM) -r test
+	$(PNPM) -r build
+
 ## ---------------------------------------------------------------- housekeeping
 .PHONY: clean
 clean: ## Remove caches and build output (keeps .venv and .local)

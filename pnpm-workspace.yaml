@@ -1,0 +1,13 @@
+# pnpm workspace for the frontend apps (the Python workspace is managed by uv).
+packages:
+  - apps/*
+
+# Supply chain (plan §9): dependency lifecycle scripts never run. esbuild ships its binary
+# as a platform optionalDependency (the postinstall only re-verifies it) and msw's
+# postinstall only copies its service worker, which the web app commits itself.
+allowBuilds:
+  esbuild: false
+  msw: false
+
+# A release must be at least 14 days old before it can be resolved.
+minimumReleaseAge: 20160

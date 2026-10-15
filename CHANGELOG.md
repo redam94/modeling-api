@@ -49,6 +49,12 @@ milestone releases are tagged on `main`.
   `POST /internal/events`; SSE with `Last-Event-ID` resume over one LISTEN connection per
   process; `local-process` and `docker`/`docker-gvisor` executors; OpenAPI 3.1 export
   (`python -m mapi_server.openapi`).
+- **web**: `apps/web`, the Expert-mode web app (React 19, TanStack Router/Query/Table, Tailwind +
+  shadcn/ui, Monaco + monaco-yaml with live `:validate` diagnostics, SSE run progress per chain,
+  dataset upload via signed URLs, model inspection, scoring) and the Guided-mode shell; a pnpm
+  workspace at the repo root.
+- **plot-sandbox**: `apps/plot-sandbox`, the separate-origin Vega-Lite/Plotly renderer with a
+  strict CSP and a validated `postMessage` protocol.
 
 ## [0.1.0] — M0: contract layer — 2026-10-15
 

@@ -1,0 +1,18 @@
+{
+  "name": "modeling-api-frontend",
+  "private": true,
+  "description": "pnpm workspace root for apps/web and apps/plot-sandbox",
+  "license": "AGPL-3.0-only OR LicenseRef-mapi-commercial",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "dev": "pnpm -r --parallel dev",
+    "e2e": "pnpm --filter @mapi/web e2e"
+  }
+}
