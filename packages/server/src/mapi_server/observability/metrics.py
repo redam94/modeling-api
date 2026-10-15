@@ -49,6 +49,7 @@ __all__ = [
     "record_time_to_running",
     "render",
     "set_active_runs",
+    "set_global_spend",
     "set_metrics",
 ]
 
@@ -139,6 +140,16 @@ class Metrics:
             "mapi_cost_micros_total",
             "Billed compute cost in currency micros, by tenant (cost ledger).",
             ["tenant_id"],
+            registry=r,
+        )
+        self.global_spend_micros = Gauge(
+            "mapi_global_spend_micros",
+            "Current spend against the global cap, in currency micros (0 until set).",
+            registry=r,
+        )
+        self.global_spend_cap_micros = Gauge(
+            "mapi_global_spend_cap_micros",
+            "The configured global spend cap, in currency micros (0 = no cap set).",
             registry=r,
         )
         self.sse_clients = Gauge(
@@ -245,6 +256,12 @@ def record_quota_rejection(scope: str, code: str) -> None:
 def record_cost_micros(tenant_id: str, micros: float) -> None:
     if micros > 0:
         METRICS.cost_micros_total.labels(tenant_id=tenant_id).inc(micros)
+
+
+def set_global_spend(spent_micros: float, cap_micros: float) -> None:
+    """Publish the global spend and its cap (the admin kill-switch component sets these)."""
+    METRICS.global_spend_micros.set(max(0.0, spent_micros))
+    METRICS.global_spend_cap_micros.set(max(0.0, cap_micros))
 
 
 def record_http_request(method: str, route: str, status: int, seconds: float) -> None:

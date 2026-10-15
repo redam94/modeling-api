@@ -1,0 +1,347 @@
+{
+  "displayName": "modeling-api \u2014 control plane",
+  "dashboardFilters": [],
+  "mosaicLayout": {
+    "columns": 12,
+    "tiles": [
+      {
+        "width": 3,
+        "height": 4,
+        "xPos": 0,
+        "yPos": 0,
+        "widget": {
+          "title": "Running",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "sum(mapi_runs_active{state=\"running\"})"
+            },
+            "sparkChartView": {
+              "sparkChartType": "SPARK_LINE"
+            }
+          }
+        }
+      },
+      {
+        "width": 3,
+        "height": 4,
+        "xPos": 3,
+        "yPos": 0,
+        "widget": {
+          "title": "Stalled",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "sum(mapi_runs_active{state=\"stalled\"})"
+            },
+            "sparkChartView": {
+              "sparkChartType": "SPARK_LINE"
+            },
+            "thresholds": [
+              {
+                "value": 1,
+                "color": "RED",
+                "direction": "ABOVE"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "width": 3,
+        "height": 4,
+        "xPos": 6,
+        "yPos": 0,
+        "widget": {
+          "title": "SSE clients",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "sum(mapi_sse_clients)"
+            },
+            "sparkChartView": {
+              "sparkChartType": "SPARK_LINE"
+            }
+          }
+        }
+      },
+      {
+        "width": 3,
+        "height": 4,
+        "xPos": 9,
+        "yPos": 0,
+        "widget": {
+          "title": "Integrity failures (1h)",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "sum(increase(mapi_integrity_failures_total[1h]))"
+            },
+            "sparkChartView": {
+              "sparkChartType": "SPARK_LINE"
+            },
+            "thresholds": [
+              {
+                "value": 1,
+                "color": "RED",
+                "direction": "ABOVE"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "width": 6,
+        "height": 4,
+        "xPos": 0,
+        "yPos": 4,
+        "widget": {
+          "title": "Active runs by state",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (state) (mapi_runs_active)"
+                },
+                "targetAxis": "Y1"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "width": 6,
+        "height": 4,
+        "xPos": 6,
+        "yPos": 4,
+        "widget": {
+          "title": "Terminal outcomes (rate)",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (state) (rate(mapi_runs_total[5m]))"
+                },
+                "targetAxis": "Y1"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "width": 6,
+        "height": 4,
+        "xPos": 0,
+        "yPos": 8,
+        "widget": {
+          "title": "Dispatch latency p95",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "histogram_quantile(0.95, sum(rate(mapi_dispatch_latency_seconds_bucket[5m])) by (le))"
+                },
+                "targetAxis": "Y1"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "width": 6,
+        "height": 4,
+        "xPos": 6,
+        "yPos": 8,
+        "widget": {
+          "title": "Time to RUNNING p95 (SLO 90s)",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "histogram_quantile(0.95, sum(rate(mapi_time_to_running_seconds_bucket[30m])) by (le))"
+                },
+                "targetAxis": "Y1"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "width": 4,
+        "height": 4,
+        "xPos": 0,
+        "yPos": 12,
+        "widget": {
+          "title": "Event ingestion lag p95",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "histogram_quantile(0.95, sum(rate(mapi_event_ingestion_lag_seconds_bucket[5m])) by (le))"
+                },
+                "targetAxis": "Y1"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "width": 4,
+        "height": 4,
+        "xPos": 4,
+        "yPos": 12,
+        "widget": {
+          "title": "Finalize outcomes (rate)",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (outcome) (rate(mapi_finalize_outcomes_total[15m]))"
+                },
+                "targetAxis": "Y1"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "width": 4,
+        "height": 4,
+        "xPos": 8,
+        "yPos": 12,
+        "widget": {
+          "title": "Sandbox violations (rate)",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (reason) (rate(mapi_sandbox_violations_total[5m]))"
+                },
+                "targetAxis": "Y1"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "width": 6,
+        "height": 4,
+        "xPos": 0,
+        "yPos": 16,
+        "widget": {
+          "title": "Quota rejections (rate)",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (code) (rate(mapi_quota_rejections_total[5m]))"
+                },
+                "targetAxis": "Y1"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "width": 6,
+        "height": 4,
+        "xPos": 6,
+        "yPos": 16,
+        "widget": {
+          "title": "Cost per tenant (micros/s)",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (tenant_id) (rate(mapi_cost_micros_total[1h]))"
+                },
+                "targetAxis": "Y1"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "width": 6,
+        "height": 4,
+        "xPos": 0,
+        "yPos": 20,
+        "widget": {
+          "title": "HTTP requests by status",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "plotType": "STACKED_AREA",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (status) (rate(mapi_http_requests_total[5m]))"
+                },
+                "targetAxis": "Y1"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "width": 6,
+        "height": 4,
+        "xPos": 6,
+        "yPos": 20,
+        "widget": {
+          "title": "jobs.run 429 (Cloud Run)",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum(rate(mapi_http_requests_total{route=\"/v1/runs\",status=\"429\"}[5m]))"
+                },
+                "targetAxis": "Y1"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "labels": {
+    "mapi": ""
+  }
+}
