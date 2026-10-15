@@ -539,7 +539,13 @@ def _var_sources(fitted: Fitted, schema: DataSchema | None) -> dict[str, str]:
 
 
 def _residuals(env: _FitEnv, bundle: Bundle, model_ds: xr.Dataset) -> dict[str, xr.DataArray]:
-    """Model-space in-sample residuals for Duan's smearing retransformation."""
+    """Model-space in-sample residuals for Duan's smearing retransformation.
+
+    Only *target-shaped* outputs (same dims as their source variable) give residuals, and
+    the first such output per source wins: a decomposition such as
+    ``contributions(component, ...)`` also inherits the target's units but its cells are
+    not predictions of the target.
+    """
     rs = env.resolved
     req = _internal_request(env.spec, "predict", rs.model_stage, OutputSelector(units="model"))
     canon, plan = canonicalise_coords(
@@ -553,7 +559,9 @@ def _residuals(env: _FitEnv, bundle: Bundle, model_ds: xr.Dataset) -> dict[str, 
     pred = plan.restore(_predictions(tree))
     out: dict[str, xr.DataArray] = {}
     for var, src in _var_sources(bundle.model, rs.model.input_schema).items():
-        if var not in pred or src not in model_ds:
+        if var not in pred or src not in model_ds or src in out:
+            continue
+        if set(pred[var].dims) != set(model_ds[src].dims):
             continue
         r = (model_ds[src] - pred[var]).values.reshape(-1)
         r = r[np.isfinite(r)]
