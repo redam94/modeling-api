@@ -1,0 +1,4 @@
+# Copy to backend.hcl (not committed), or let deploy/gcp/bootstrap.sh write it.
+# Then: terraform init -backend-config=backend.hcl
+bucket = "acme-mapi-tfstate"
+prefix = "mapi/prod"

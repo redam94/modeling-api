@@ -186,6 +186,8 @@ nav:
       - Local, without Docker: operations/local-development.md
       - Docker Compose: operations/docker.md
       - Container images: operations/images.md
+      - Google Cloud: operations/gcp-deployment.md
+      - Security hardening on Google Cloud: operations/security-hardening.md
       - Authentication and isolation: operations/authentication.md
       - Cloud Run Jobs executor: operations/cloud-run.md
       - Configuration reference: operations/configuration.md

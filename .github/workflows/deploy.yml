@@ -1,0 +1,184 @@
+# Manual deploys to GCP (docs/operations/gcp-deployment.md#continuous-deployment).
+#
+#   build  (environment <env>-build, no approval)  build + push images, record their digests
+#   plan   (environment <env>-plan,  no approval)  terraform plan, shown in the job summary
+#   apply  (environment <env>,  REQUIRED REVIEWERS) migrations + apply of exactly that plan
+#
+# Authentication is Workload Identity Federation (no service-account keys). Each job's GitHub
+# environment decides which Google identity it can assume (infra/terraform/modules/build/wif.tf).
+# Per-environment configuration lives in the GitHub environments:
+#   vars.GCP_WIF_PROVIDER, vars.GCP_CI_PUSH_SA (build), vars.GCP_PLANNER_SA (plan),
+#   vars.GCP_DEPLOYER_SA (apply), vars.GCP_IMAGE_REPOSITORY, vars.TF_STATE_BUCKET,
+#   vars.TERRAFORM_TFVARS (the env's terraform.tfvars), secrets.OIDC_CLIENT_SECRET (optional).
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, staging, prod]
+        required: true
+      foundation:
+        description: Foundation only (no images; the first apply of a new environment)
+        type: boolean
+        default: false
+      skip_migrate:
+        description: Skip database migrations (e.g. redeploying an older release)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  TF_VERSION: "1.14.4"
+  TF_IN_AUTOMATION: "1"
+  TF_INPUT: "0"
+  MAPI_ENV: ${{ inputs.environment }}
+
+jobs:
+  build:
+    if: ${{ !inputs.foundation }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}-build
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MAPI_DEPLOY_OUT: ${{ runner.temp }}/mapi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_PUSH_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: docker/setup-buildx-action@v3
+      - name: Free disk space for the scientific images
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - name: Build and push (by digest)
+        run: deploy/gcp/build-push.sh --env "$MAPI_ENV" --repository "$REPOSITORY" --yes
+        env:
+          REPOSITORY: ${{ vars.GCP_IMAGE_REPOSITORY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: images-${{ inputs.environment }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/mapi/${{ inputs.environment }}/images.tfvars.json
+          if-no-files-found: error
+          retention-days: 90
+
+  plan:
+    needs: build
+    if: ${{ always() && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}-plan
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MAPI_DEPLOY_OUT: ${{ runner.temp }}/mapi
+      TF_VAR_oidc_client_secret: ${{ secrets.OIDC_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_PLANNER_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - uses: actions/download-artifact@v4
+        if: ${{ !inputs.foundation }}
+        with:
+          name: images-${{ inputs.environment }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/mapi/${{ inputs.environment }}
+      - name: Environment configuration
+        run: |
+          dir="infra/terraform/envs/$MAPI_ENV"
+          printf '%s\n' "$TFVARS" > "$dir/terraform.tfvars"
+          printf 'bucket = "%s"\nprefix = "mapi/%s"\n' "$STATE_BUCKET" "$MAPI_ENV" > "$dir/backend.hcl"
+        env:
+          TFVARS: ${{ vars.TERRAFORM_TFVARS }}
+          STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      - name: Plan
+        run: |
+          args=(--env "$MAPI_ENV" --plan-only --plan-file "$MAPI_DEPLOY_OUT/$MAPI_ENV/tfplan")
+          if [[ "$FOUNDATION" == "true" ]]; then args+=(--foundation); fi
+          deploy/gcp/deploy.sh "${args[@]}"
+          {
+            echo "## Terraform plan: $MAPI_ENV"
+            echo '```'
+            terraform -chdir="infra/terraform/envs/$MAPI_ENV" show -no-color "$MAPI_DEPLOY_OUT/$MAPI_ENV/tfplan" | tail -c 60000
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          FOUNDATION: ${{ inputs.foundation }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plan-${{ inputs.environment }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/mapi/${{ inputs.environment }}/tfplan
+          if-no-files-found: error
+          retention-days: 1
+
+  apply:
+    needs: plan
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    # Configure required reviewers on this environment (Settings -> Environments).
+    environment:
+      name: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MAPI_DEPLOY_OUT: ${{ runner.temp }}/mapi
+      TF_VAR_oidc_client_secret: ${{ secrets.OIDC_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: plan-${{ inputs.environment }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/mapi/${{ inputs.environment }}
+      - uses: actions/download-artifact@v4
+        if: ${{ !inputs.foundation }}
+        with:
+          name: images-${{ inputs.environment }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/mapi/${{ inputs.environment }}
+      - name: Environment configuration
+        run: |
+          dir="infra/terraform/envs/$MAPI_ENV"
+          printf '%s\n' "$TFVARS" > "$dir/terraform.tfvars"
+          printf 'bucket = "%s"\nprefix = "mapi/%s"\n' "$STATE_BUCKET" "$MAPI_ENV" > "$dir/backend.hcl"
+        env:
+          TFVARS: ${{ vars.TERRAFORM_TFVARS }}
+          STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      - name: Migrate and apply the reviewed plan
+        run: |
+          args=(--env "$MAPI_ENV" --apply-plan "$MAPI_DEPLOY_OUT/$MAPI_ENV/tfplan" --yes)
+          if [[ "$FOUNDATION" == "true" ]]; then
+            args+=(--foundation)
+          else
+            args+=(--images-file "$MAPI_DEPLOY_OUT/$MAPI_ENV/images.tfvars.json")
+          fi
+          if [[ "$SKIP_MIGRATE" == "true" ]]; then args+=(--skip-migrate); fi
+          deploy/gcp/deploy.sh "${args[@]}"
+        env:
+          FOUNDATION: ${{ inputs.foundation }}
+          SKIP_MIGRATE: ${{ inputs.skip_migrate }}

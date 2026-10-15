@@ -56,6 +56,10 @@ flowchart TB
   [multi-tenant HTTP API](../reference/http-api.md#multi-tenant-api).
 - Other backends plug in through the same `Executor` protocol, each gated by an executor
   conformance suite.
+- The infrastructure is code: Terraform for the control, exec, data and build projects and the
+  VPC Service Controls perimeter, with deploy scripts and a GitHub Actions workflow. See
+  [Deploy to Google Cloud](../operations/gcp-deployment.md) and
+  [Security hardening on Google Cloud](../operations/security-hardening.md).
 
 The Cloud Run executor, the authenticated Pub/Sub event path, KMS manifest signing and the
 hardened Cloud Storage driver are described in [Cloud Run Jobs executor](../operations/cloud-run.md)

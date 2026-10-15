@@ -1,0 +1,98 @@
+# Bucket-level IAM only: no principal gets a storage role on the data project itself.
+#
+#                 quarantine          bootstrap           runs                bundles             data
+#   orchestrator  objectUser          objectUser          objectUser          creator + viewer    creator + viewer
+#   api           objectUser          -                   objectViewer        objectViewer        objectViewer
+#   url_signer    reader + writer     -                   reader + writer     reader              reader
+#   exec SAs      -                   get + delete        -                   -                   -
+#
+# objectUser = get, list, create, update, delete. Nothing above can delete a bundle (and the
+# retention policy would refuse anyway). The exec service accounts cannot list the bootstrap
+# bucket, so knowing one nonce never reveals another.
+
+locals {
+  role_suffix = replace(var.env, "-", "_")
+}
+
+resource "google_project_iam_custom_role" "bootstrap_consumer" {
+  project     = var.project_id
+  role_id     = "mapi_${local.role_suffix}_bootstrap_consumer"
+  title       = "mapi ${var.env} bootstrap consumer"
+  description = "Read and delete one bootstrap object by name. No list: a nonce is the only way in."
+  permissions = ["storage.objects.get", "storage.objects.delete"]
+}
+
+resource "google_project_iam_custom_role" "object_reader" {
+  project     = var.project_id
+  role_id     = "mapi_${local.role_suffix}_object_reader"
+  title       = "mapi ${var.env} object reader"
+  description = "Read objects by name (signed GET URLs). No list."
+  permissions = ["storage.objects.get"]
+}
+
+resource "google_project_iam_custom_role" "object_writer" {
+  project     = var.project_id
+  role_id     = "mapi_${local.role_suffix}_object_writer"
+  title       = "mapi ${var.env} object writer"
+  description = "Create objects (signed PUT URLs, V4 POST policies, resumable uploads). No list, no delete."
+  permissions = [
+    "storage.objects.create",
+    "storage.multipartUploads.create",
+    "storage.multipartUploads.abort",
+    "storage.multipartUploads.listParts",
+  ]
+}
+
+locals {
+  # Keys are static names (known at plan time); e-mails and custom-role ids are only values.
+  roles = {
+    objectUser         = "roles/storage.objectUser"
+    objectViewer       = "roles/storage.objectViewer"
+    objectCreator      = "roles/storage.objectCreator"
+    reader             = google_project_iam_custom_role.object_reader.id
+    writer             = google_project_iam_custom_role.object_writer.id
+    bootstrap_consumer = google_project_iam_custom_role.bootstrap_consumer.id
+  }
+
+  principals = merge(
+    {
+      orchestrator = var.access.orchestrator
+      api          = var.access.api
+      url_signer   = var.access.url_signer
+    },
+    { for pool, email in var.access.exec : "exec-${pool}" => email },
+  )
+
+  grants = concat(
+    [
+      ["quarantine", "objectUser", "orchestrator"],
+      ["bootstrap", "objectUser", "orchestrator"],
+      ["runs", "objectUser", "orchestrator"],
+      ["bundles", "objectCreator", "orchestrator"],
+      ["bundles", "objectViewer", "orchestrator"],
+      ["data", "objectCreator", "orchestrator"],
+      ["data", "objectViewer", "orchestrator"],
+
+      ["quarantine", "objectUser", "api"],
+      ["runs", "objectViewer", "api"],
+      ["bundles", "objectViewer", "api"],
+      ["data", "objectViewer", "api"],
+
+      ["quarantine", "reader", "url_signer"],
+      ["quarantine", "writer", "url_signer"],
+      ["runs", "reader", "url_signer"],
+      ["runs", "writer", "url_signer"],
+      ["bundles", "reader", "url_signer"],
+      ["data", "reader", "url_signer"],
+    ],
+    [for pool in keys(var.access.exec) : ["bootstrap", "bootstrap_consumer", "exec-${pool}"]],
+  )
+}
+
+resource "google_storage_bucket_iam_member" "this" {
+  for_each = { for g in local.grants : join("|", g) => { bucket = g[0], role = g[1], who = g[2] } }
+
+  bucket = google_storage_bucket.this[each.value.bucket].name
+  role   = local.roles[each.value.role]
+  member = "serviceAccount:${local.principals[each.value.who]}"
+}

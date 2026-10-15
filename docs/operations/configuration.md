@@ -287,6 +287,18 @@ are substituted).
 | `MAPI_IMAGE_NAME`, `MAPI_DESCRIPTION` | OCI labels, and the name the catalog export records |
 | `PYTHON_IMAGE` (and the other base images) | Base images, pinned by tag *and* digest (`make docker-pin`) |
 
+## Deploying to Google Cloud
+
+The deploy scripts under `deploy/gcp/` take their settings as flags (`--help` on each). One
+variable changes where they keep local files:
+
+| Variable | Meaning |
+|---|---|
+| `MAPI_DEPLOY_OUT` | Local scratch of `deploy/gcp/*.sh`: images files, saved plans, Terraform outputs (default `deploy/gcp/.out`, one directory per environment; never committed) |
+
+The variables Terraform sets on the Cloud Run services (the deployment contract with
+`mapi-server`) are listed in [Deploy to Google Cloud](gcp-deployment.md#environment-of-the-cloud-run-workloads).
+
 ## Tests
 
 | Variable | Meaning |
