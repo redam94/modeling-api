@@ -44,9 +44,7 @@ class DataRef(StrictModel):
 
     @field_validator("path")
     @classmethod
-    def _no_scheme(cls, v: str) -> str:
-        if "://" in v or v.startswith("//"):
-            raise ValueError("dataset paths are bundle-relative; URLs are not allowed")
+    def _relative_path(cls, v: str) -> str:
         if any(part in ("", ".", "..") for part in v.split("/")):
             raise ValueError("dataset paths may not contain empty, '.' or '..' segments")
         return v

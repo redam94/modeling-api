@@ -297,8 +297,8 @@ class ModelManifest(StrictModel):
     @field_validator("id")
     @classmethod
     def _id(cls, v: str) -> str:
-        ref = UseRef.parse(v)
-        if str(ref) != v:
+        UseRef.parse(v)
+        if "@" in v:
             raise ValueError("manifest id must not carry a version range")
         return v
 

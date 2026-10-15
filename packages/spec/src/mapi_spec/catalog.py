@@ -32,8 +32,8 @@ __all__ = [
 
 
 def _check_id(v: str) -> str:
-    ref = UseRef.parse(v)
-    if str(ref) != v:
+    UseRef.parse(v)
+    if "@" in v:
         raise ValueError("catalog ids must not carry a version range")
     return v
 
