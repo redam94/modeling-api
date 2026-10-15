@@ -24,10 +24,9 @@ from mapi_server.db.migrate import upgrade
 from mapi_server.services.signing import BundleSigner
 from mapi_server.settings import ObjectStoreKind, Settings
 from mapi_server.storage import MemoryObjectStore
-from mapi_server_testkit.builders import CATALOG
+from mapi_server_testkit.builders import CATALOG, EXEC_TOKEN
 
 IMAGE_DIGEST = "sha256:" + "ab" * 32
-EXEC_TOKEN = "exec-token-for-tests"
 
 APP_TABLES = (
     "plots",

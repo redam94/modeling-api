@@ -34,6 +34,7 @@ from mapi_spec.storage import (
 
 from .fake_runner import outputs_for
 
+EXEC_TOKEN = "exec-token-for-tests"
 CATALOG = Path(__file__).resolve().parent.parent / "fixtures" / "catalog.json"
 
 TREND_SCHEMA: dict[str, Any] = {
