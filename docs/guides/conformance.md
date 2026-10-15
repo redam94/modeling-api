@@ -37,8 +37,8 @@ e02               tabular.hierarchical_glm@1.0.0  ok        ok   ok 6/6  ok     
 c08               ts.hsgp_trend@1.0.0             ok        ok   ok 6/6  ok        ok 13/13  ok 3/3  ok                 PASS
 e24               ts.gaussian_hmm@1.0.0           ok        ok   ok 5/5  ok        ok 15/15  ok 2/2  ok                 PASS
 xgb_store_demand  tabular.regressor@1.0.0         ok        ok   ok 6/6  ok        ok 16/16  ok 3/3  ok                 PASS
-e33               mmm.hierarchical_geo@1.3.0      ok        ok   ok 4/4  ok        ok 16/16  ok 4/4  ok                 PASS
-pymc_marketing    mmm.pymc_marketing@1.0.0        ok        ok   ok 4/4  ok        ok 15/15  ok 2/2  ok                 PASS
+e33               mmm.hierarchical_geo@1.3.0      ok        ok   ok 5/5  ok        ok 16/16  ok 4/4  ok                 PASS
+pymc_marketing    mmm.pymc_marketing@1.0.0        ok        ok   ok 4/4  ok        ok 16/16  ok 2/2  ok                 PASS
 ```
 
 `--size tiny` (the default, used by `pytest -m conformance`) keeps data small and MCMC
@@ -52,7 +52,7 @@ short; `--size full` uses the spec's own fit settings and larger data.
 | `c08` | `ts.hsgp_trend` | sentinel codes, `max_extension` from anticipated coords, `HORIZON_EXCEEDS_FIT`, contiguity |
 | `e24` | `ts.gaussian_hmm` | padded + mask, terminal state, forecast and filter, relabelling, invalid LOO |
 | `xgb_store_demand` | `tabular.regressor` | pooled new stores, quantile aggregation refused, future-required covariates |
-| `e33` | `mmm.hierarchical_geo` | FX (`supplied`) and holiday (`pinned`) side tables, split after `resample`, per-market lag context, new market from the hyperprior, weekly EUR plan via `inputs_stage`, CRN counterfactual, derived quantities in EUR |
+| `e33` | `mmm.hierarchical_geo` | FX (`supplied`) and holiday (`pinned`) side tables, split after `resample`, per-market lag context, new market from the hyperprior, weekly EUR plan via `inputs_stage`, CRN counterfactual (intervention and baseline-vs-scenario), derived quantities in EUR |
 | `pymc_marketing` | `mmm.pymc_marketing` | a model that `owns` scaling, carry-over and units; a scoring window equals the same weeks of the full series |
 
 ## Porting time
