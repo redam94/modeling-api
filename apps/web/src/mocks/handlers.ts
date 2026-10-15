@@ -5,7 +5,7 @@
  */
 import { delay, http, HttpResponse, type HttpHandler } from "msw";
 
-import type { Problem, Run, RunEventView, SpecRevision } from "@/api/types";
+import type { DatasetVersion, Problem, Run, RunEventView, SpecRevision, UploadSession } from "@/api/types";
 import { env } from "@/env";
 
 import * as fx from "./fixtures";
@@ -27,6 +27,8 @@ interface MockState {
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
+  versions: DatasetVersion[];
+  uploads: Map<string, number>;
 }
 
 export function createState(): MockState {
@@ -34,6 +36,8 @@ export function createState(): MockState {
   return {
     runs: new Map(fx.runs.map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
+    versions: [structuredClone(fx.datasetVersion)],
+    uploads: new Map(),
     artifacts: new Map([
       ["ui/plotdata/ppc_fan.arrow", { bytes: fx.fanArrow(), type: "application/vnd.apache.arrow.stream" }],
       ["ui/tree_index.json", { bytes: json(fx.treeIndexView), type: "application/json" }],
@@ -123,8 +127,61 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     // datasets
     http.get(`${API}/v1/datasets`, () => page([fx.dataset])),
     http.get(`${API}/v1/datasets/:id`, ({ params }) => (params.id === fx.DS_ID ? HttpResponse.json(fx.dataset) : problem(404, "NOT_FOUND", "Not found", "no such dataset"))),
-    http.get(`${API}/v1/datasets/:id/versions`, () => page([fx.datasetVersion])),
-    http.get(`${API}/v1/datasets/:id/versions/:v`, ({ params }) => (params.v === "1" ? HttpResponse.json(fx.datasetVersion) : problem(404, "NOT_FOUND", "Not found"))),
+    http.post(`${API}/v1/datasets`, async ({ request }) => {
+      const body = (await request.json()) as { name: string; description?: string };
+      if (body.name === fx.dataset.name) return problem(409, "CONFLICT", "Conflict", "the name is taken");
+      return HttpResponse.json({ ...fx.dataset, id: "ds_01jaf3a1b2c3d4e5f6g7h8j9z9", name: body.name, ref: `dataset://default/${body.name}`, description: body.description ?? null, latest_version: null }, { status: 201 });
+    }),
+    http.get(`${API}/v1/datasets/:id/versions`, () => page([...state.versions].reverse())),
+    http.get(`${API}/v1/datasets/:id/versions/:v`, ({ params }) => {
+      const v = state.versions.find((x) => x.version === Number(params.v));
+      return v ? HttpResponse.json(v) : problem(404, "NOT_FOUND", "Not found");
+    }),
+    http.post(`${API}/v1/datasets/:id/uploads`, async ({ request, params }) => {
+      const body = (await request.json()) as { filename: string; content_type: string; size_bytes: number };
+      const id = "upl_01jaf3d1e2f3g4h5j6k7m8n9p0";
+      const session: UploadSession = {
+        ...fx.dataset,
+        id,
+        dataset_id: String(params.id),
+        filename: body.filename,
+        content_type: body.content_type,
+        size_bytes: body.size_bytes,
+        status: "pending",
+        upload: {
+          method: "PUT",
+          url: `http://127.0.0.1:4443/mock-upload/${id}?X-Goog-Signature=mock`,
+          name: `t/default/uploads/${id}`,
+          expires_at: "2099-01-01T00:00:00Z",
+          headers: { "content-type": body.content_type, "x-goog-if-generation-match": "0" },
+          max_bytes: body.size_bytes,
+        },
+        expires_at: "2099-01-01T00:00:00Z",
+        created_at: fx.T0,
+      };
+      return HttpResponse.json(session, { status: 201 });
+    }),
+    http.put("http://127.0.0.1:4443/mock-upload/:id", async ({ request, params }) => {
+      if (request.headers.get("x-goog-if-generation-match") !== "0") return new HttpResponse(null, { status: 412 });
+      state.uploads.set(String(params.id), (await request.arrayBuffer()).byteLength);
+      return HttpResponse.json({ generation: "1" });
+    }),
+    http.post(`${API}/v1/datasets/:id/versions`, async ({ request }) => {
+      const body = (await request.json()) as { upload_id: string; message?: string };
+      if (!state.uploads.has(body.upload_id)) return problem(409, "CONFLICT", "Conflict", "the upload is not finished");
+      const version = state.versions.length + 1;
+      const v: DatasetVersion = {
+        ...fx.datasetVersion,
+        version,
+        ref: `dataset://default/eu_media_daily@v${version}`,
+        status: "ingesting",
+        ingest_run_id: fx.RUN_RUNNING,
+        message: body.message ?? null,
+        ready_at: null,
+      };
+      state.versions.push(v);
+      return HttpResponse.json(v, { status: 202 });
+    }),
     http.get(`${API}/v1/datasets/:id/versions/:v/artifacts/:name`, ({ params }) => {
       const l = link(String(params.name));
       return l ? HttpResponse.json(l) : problem(404, "NOT_FOUND", "Not found");

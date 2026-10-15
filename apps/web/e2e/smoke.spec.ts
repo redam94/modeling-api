@@ -71,6 +71,30 @@ test("spec editor validates live and shows the pipeline with its split", async (
   await expect(pipeline.getByText("Keeps a 6-step tail along time", { exact: false })).toBeVisible();
 });
 
+test("a CSV is previewed locally, mapped, uploaded to the signed URL and ingested", async ({ page }) => {
+  await page.goto("/datasets/ds_01jaf3a1b2c3d4e5f6g7h8j9k0?upload=true");
+  const csv = "date,market,revenue,spend\n2026-01-01,de,10.5,3\n2026-01-02,de,11,4\n";
+  await page.locator('input[type="file"]').setInputFiles({ name: "eu.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  await expect(page.getByText("Local preview: first 2 rows")).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Use date as" })).toHaveValue("dim");
+  await expect(page.getByRole("combobox", { name: "Use revenue as" })).toHaveValue("var");
+  await page.getByRole("button", { name: "Upload and ingest" }).click();
+  await expect(page.getByText("Ingesting v2")).toBeVisible();
+  await expect(page).toHaveURL(/version=2/);
+  await expect(page.getByText("ingesting").first()).toBeVisible();
+});
+
+test("scoring returns outputs that open as a table and a sandboxed chart", async ({ page }) => {
+  await page.goto(`/score?model=${MODEL}&version=1`);
+  await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("textbox", { name: "Selection" }).fill("channel=tv");
+  await page.getByRole("button", { name: "Score", exact: true }).click();
+  await expect(page.getByText("ui/plotdata/ppc_fan.arrow")).toBeVisible();
+  await expect(page.getByRole("table", { name: "ui/plotdata/ppc_fan.arrow" })).toContainText("week");
+  const frame = page.locator('iframe[data-testid="plot-frame"]');
+  await expect(frame.contentFrame().locator("svg.marks")).toBeVisible({ timeout: 20_000 });
+});
+
 test("theme can be switched to dark", async ({ page }) => {
   await page.goto("/settings");
   await page.getByRole("radio", { name: "Dark" }).click();

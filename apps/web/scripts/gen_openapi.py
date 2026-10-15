@@ -27,7 +27,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel
 from pydantic.json_schema import JsonSchemaMode, models_json_schema
@@ -72,7 +72,8 @@ _PAGE_RE = re.compile(r"^Page\[(\w+)\]$")
 def _model(name: str) -> type[BaseModel]:
     page = _PAGE_RE.match(name)
     if page:
-        return api.Page[_model(page.group(1))]  # type: ignore[index,no-any-return]
+        page_cls: Any = api.Page
+        return cast("type[BaseModel]", page_cls[_model(page.group(1))])
     if name in _NAMED:
         return _NAMED[name]
     model = getattr(api, name, None)
