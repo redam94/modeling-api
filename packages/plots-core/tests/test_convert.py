@@ -244,6 +244,51 @@ def test_from_altair_names_inline_and_explicit_datasets() -> None:
     assert arrow_to_frame(p2.datasets["values_0"])["data"].tolist() == [1, 2, 3]
 
 
+def test_altair_feature_corpus_passes_the_sanitizer() -> None:
+    rng = np.random.default_rng(0)
+    df = pd.DataFrame(
+        {
+            "x": rng.normal(size=30),
+            "y": rng.normal(size=30),
+            "g": rng.choice(list("abc"), 30),
+            "t": pd.date_range("2024", periods=30, freq="D"),
+        }
+    )
+    base = alt.Chart(df)
+    brush = alt.selection_interval(encodings=["x"])
+    click = alt.selection_point(fields=["g"], bind="legend")
+    cutoff = alt.param(value=1.0, bind=alt.binding_range(min=0, max=3, step=0.1))
+    charts = [
+        base.mark_point().encode(x="x", y="y").interactive(),
+        base.mark_point()
+        .encode(x="x", y="y", color=alt.condition(brush, "g:N", alt.value("gray")))
+        .add_params(brush),
+        base.mark_point()
+        .encode(x="x", opacity=alt.condition(click, alt.value(1), alt.value(0.2)))
+        .add_params(click),
+        base.mark_point()
+        .encode(x="x", color=alt.condition(alt.datum.y > cutoff, alt.value("red"), alt.value("b")))
+        .add_params(cutoff),
+        base.transform_calculate(z="datum.x * 2 + abs(datum.y)")
+        .transform_filter(alt.datum.z > 0)
+        .transform_window(r="rank()", sort=[alt.SortField("z")])
+        .mark_bar()
+        .encode(x="g:N", y="mean(z):Q"),
+        base.transform_regression("x", "y").mark_line().encode(x="x", y="y"),
+        base.transform_density("x", as_=["x", "density"])
+        .mark_area()
+        .encode(x="x:Q", y="density:Q"),
+        base.mark_point().encode(x=alt.X("x", axis=alt.Axis(labelExpr="datum.value + ' u'"))),
+        alt.Chart(df)
+        .mark_point()
+        .encode(alt.X(alt.repeat("column"), type="quantitative"))
+        .repeat(column=["x", "y"]),
+        base.mark_errorband(extent="ci").encode(x="t:T", y="y:Q"),
+    ]
+    for i, chart in enumerate(charts):
+        assert from_altair(chart, id=f"c{i}").kind == "vega-lite"
+
+
 def test_from_altair_rejects_url_data_and_duplicate_names() -> None:
     url_chart = alt.Chart("https://evil.example/data.csv").mark_point().encode(x="a:Q")
     with pytest.raises(SanitizeError):
