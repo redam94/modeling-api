@@ -38,7 +38,7 @@ from mapi_spec.loader import spec_hash
 from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
-from mapi_spec.spec import ModelSpec, ScoreRequest
+from mapi_spec.spec import DEFAULT_FIT_SEED, ModelSpec, ScoreRequest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -129,6 +129,12 @@ async def submit_spec_run(
     spec = v.typed
     caps: Capabilities = v.resolved.model.capabilities
     payload = pin_document(rev.document, v)
+    if isinstance(payload.get("model"), dict):
+        # pin the effective seed like `use:` ranges, so lineage and replays record what the
+        # runner used (it falls back to DEFAULT_FIT_SEED when the spec omits one)
+        fit = payload["model"].setdefault("fit", {})
+        if isinstance(fit, dict) and fit.get("seed") is None:
+            fit["seed"] = DEFAULT_FIT_SEED
     if kind is RunKind.FIT and spec.model.fit.checkpoint is not None:
         checkpointable = caps.checkpointable
     else:
