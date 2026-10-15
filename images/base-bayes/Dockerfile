@@ -116,6 +116,9 @@ LABEL org.opencontainers.image.title="mapi/worker" \
       io.mapi.image.role="worker" \
       io.mapi.image.user="10001"
 COPY --from=worker-builder /opt/mapi/venv /opt/mapi/venv
+# The image digest `mapi-server worker` keys the catalog by: sha256 of this uv.lock, the same
+# value the mapi/server image (api) computes (Settings.resolve_image_digest).
+COPY --chmod=0644 uv.lock /opt/mapi/uv.lock
 RUN python -I /opt/mapi/bin/assert_dists.py \
       --present mapi-server mapi-runner mapi-pymc mapi-plugin-mmm mapi-plugin-ts \
                 mapi-plugin-tabular mapi-sklearn docker \
@@ -126,7 +129,8 @@ RUN python -I /opt/mapi/bin/assert_dists.py \
  && rm -rf /tmp/build-home \
  && chmod -R a+rX,go-w /opt/mapi
 USER 10001:10001
-ENV MAPI_EXECUTOR=local-process
+ENV MAPI_EXECUTOR=local-process \
+    MAPI_UV_LOCK_PATH=/opt/mapi/uv.lock
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD ["python", "-I", "/opt/mapi/bin/healthcheck.py", "env-tcp", "DATABASE_URL", "MAPI_GCS_ENDPOINT"]
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/mapi-entrypoint"]

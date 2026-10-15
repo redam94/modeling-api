@@ -90,10 +90,15 @@ RUN apt-get update \
  && groupadd --system --gid 10001 mapi \
  && useradd --system --uid 10001 --gid mapi --home-dir /home/mapi --create-home \
       --shell /usr/sbin/nologin mapi
+# MAPI_UV_LOCK_PATH: the image digest `api` and `worker` key the catalog by is the sha256 of
+# the uv.lock the image was built from (Settings.resolve_image_digest), exactly as under
+# `make dev`; without it neither command can start (no uv.lock above the WORKDIR).
 ENV PATH=/opt/mapi/venv/bin:${PATH} \
-    HOME=/tmp/mapi-home
+    HOME=/tmp/mapi-home \
+    MAPI_UV_LOCK_PATH=/opt/mapi/uv.lock
 COPY --from=builder /opt/mapi/venv /opt/mapi/venv
 COPY --chmod=0644 images/common/healthcheck.py images/common/assert_dists.py /opt/mapi/bin/
+COPY --chmod=0644 uv.lock /opt/mapi/uv.lock
 # Referencing the contracts stage makes BuildKit run it; the marker itself is informational.
 COPY --from=contracts /tmp/import-contracts.ok /opt/mapi/import-contracts.ok
 RUN python -I /opt/mapi/bin/assert_dists.py \

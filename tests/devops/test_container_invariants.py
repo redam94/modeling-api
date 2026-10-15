@@ -8,6 +8,7 @@ time against the real environment (images/common/assert_dists.py).
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from functools import cache
@@ -399,6 +400,55 @@ def test_control_plane_image_has_no_science_dependencies() -> None:
     contracts = stage("server", "contracts")
     assert any("lint-imports" in i.args for i in contracts)
     assert any(i.keyword == "COPY" and "--from=contracts" in i.args for i in stage("server"))
+
+
+#: The images that run ``mapi-server api|worker`` (compose, and the docker-executor override).
+CONTROL_PLANE_STAGES = (("server", None), ("base-bayes", "worker"))
+
+
+def _copies(instrs: list[Instr]) -> list[tuple[list[str], str]]:
+    """``(sources, dest)`` of every ``COPY`` from the build context (not ``--from``)."""
+    out = []
+    for i in instrs:
+        if i.keyword != "COPY" or "--from=" in i.args:
+            continue
+        parts = [p for p in i.args.split() if not p.startswith("--")]
+        out.append((parts[:-1], parts[-1]))
+    return out
+
+
+@pytest.mark.parametrize(("name", "stage_name"), CONTROL_PLANE_STAGES)
+def test_control_plane_images_resolve_the_image_digest(
+    name: str, stage_name: str | None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``mapi-server api`` and ``worker`` key the catalog by the image digest at start-up
+    (``Settings.resolve_image_digest``). The runtime images hold no ``uv.lock`` above their
+    WORKDIR, so the lock is baked in and ``MAPI_UV_LOCK_PATH`` points at it; api and worker
+    then agree on the digest (the same ``sha256(uv.lock)`` ``make dev`` uses)."""
+    from mapi_server.settings import Settings, local_image_digest
+
+    instrs = stage(name, stage_name)
+    env = env_vars(instrs)
+    assert "MAPI_IMAGE_DIGEST" not in env  # a literal digest would go stale with the lock
+    lock_dest = env.get("MAPI_UV_LOCK_PATH")
+    assert lock_dest, f"{name}:{stage_name or 'runtime'} does not set MAPI_UV_LOCK_PATH"
+    assert any(srcs == ["uv.lock"] and dest == lock_dest for srcs, dest in _copies(instrs))
+    # emulate the container: the lock at its baked path, a WORKDIR without one above it
+    baked = tmp_path / "opt" / "uv.lock"
+    baked.parent.mkdir()
+    baked.write_bytes((ROOT / "uv.lock").read_bytes())
+    workdir = tmp_path / "home" / "mapi"
+    workdir.mkdir(parents=True)
+    monkeypatch.chdir(workdir)
+    for key in [k for k in os.environ if k.startswith("MAPI_")]:
+        monkeypatch.delenv(key)
+    with pytest.raises(RuntimeError, match="image digest"):
+        Settings().resolve_image_digest()  # what the images did before
+    monkeypatch.setenv("MAPI_UV_LOCK_PATH", str(baked))
+    assert Settings().resolve_image_digest() == local_image_digest(ROOT / "uv.lock")
+    for svc in ("api", "worker", "migrate"):
+        spec_env = compose()["services"][svc].get("environment") or {}
+        assert "MAPI_IMAGE_DIGEST" not in spec_env and "MAPI_UV_LOCK_PATH" not in spec_env
 
 
 def test_base_ml_has_no_pymc() -> None:

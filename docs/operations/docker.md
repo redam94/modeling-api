@@ -45,6 +45,10 @@ Every Python image uses the same multi-stage pattern:
    non-editable. Every version comes from `uv.lock`.
 3. **`runtime`** starts again from the same `python:3.12-slim` base, adds `tini` (and `g++` for
    the PyMC images), creates user `10001`, and copies in only the virtual environment.
+   The images that run `mapi-server` (`mapi/server` and `mapi/worker`) also copy `uv.lock` to
+   `/opt/mapi/uv.lock` and set `MAPI_UV_LOCK_PATH` to it. Its SHA-256 is the *image digest*
+   that the API and the orchestrator cache the step and model catalog under, the same value
+   `make dev` computes. Both images are built from one lock, so `api` and `worker` agree.
 
 The package set is the `MAPI_PACKAGES` build argument. `images/common/install_packages.py` turns
 it into `uv sync` calls. The xgboost dependency `nvidia-nccl-cu13`, a 300 MB wheel used only for
@@ -193,7 +197,12 @@ in CI and by `make release-check`) fails if anything is unpinned.
 
 `.github/workflows/ci.yml` builds every image, plus the `worker` target, on each push and pull
 request, using the GitHub Actions layer cache. Images are never pushed. A separate job checks the
-digest pins and validates both compose files with `docker compose config`. The web image is
+digest pins and validates both compose files with `docker compose config`.
+
+With the images built and a Docker daemon running, `uv run pytest tests/devops/test_compose_smoke.py -m docker`
+boots `postgres`, `gcs-shim`, `migrate`, `api` and `worker` under a throw-away project name.
+It publishes no host ports. It then checks that `api` and `worker` started and that they agree
+on the values bundle verification depends on. The web image is
 skipped, with a notice, until the pnpm workspace is in the tree.
 
 ## Troubleshooting
