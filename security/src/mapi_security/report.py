@@ -95,9 +95,11 @@ class Report:
             "# TYPE mapi_security_probe_total gauge\n"
             f'mapi_security_probe_total{{executor="{self.executor}"}} {len(self.rows)}\n'
         )
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
 
     def write_json(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(self.to_json(), indent=2) + "\n")
 
 
