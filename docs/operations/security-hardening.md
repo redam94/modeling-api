@@ -81,6 +81,10 @@ and `gcloud storage buckets get-iam-policy gs://mapi-<env>-<bucket>`.
 - The Logging sink of each exec project routes only `jsonPayload.mapi_event:*` lines of this
   environment's Jobs, and writes as its own identity, which may only publish to the events
   topic.
+- User output is excluded at the exec project's `_Default` sink (plan §8.7,
+  `modules/exec/logging.tf`): `log` and `progress` events of the runner Jobs still reach the
+  events service through the routing sink, but are not ingested (and billed) in the exec
+  project. State changes, warnings, errors, completions and Cloud Run's system logs stay.
 - The events service is **internal-only** and IAM-protected: only the push identity may invoke
   it, and Cloud Run checks the push token's signature and audience before the request reaches
   the container. The server additionally checks the claims (`mapi_spec.auth.check_push_claims`)

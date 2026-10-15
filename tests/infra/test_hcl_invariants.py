@@ -570,3 +570,20 @@ def test_the_api_identity_only_reads_objects() -> None:
     assert grants, "the api has bucket grants"
     assert all(role in {"reader", "objectViewer"} for _, role in grants), grants
     assert ("quarantine", "reader") in grants, "stat of an upload by name, no list"
+
+
+def test_user_output_is_excluded_at_the_exec_projects_default_sink() -> None:
+    """Plan §8.7: user stdout above the platform's needs is excluded at the sink. The
+    supervisor turns user output into ``log`` events (and coalesced ``progress`` events);
+    those still reach the events service through the routing sink, but the exec project's
+    ``_Default`` bucket (hostile tenants' volume, billed per GiB) does not ingest them."""
+    blocks = _module_blocks("exec")
+    exclusion = _one(blocks, "google_logging_project_exclusion", "user_output")
+    assert "var.project_id" in exclusion.body
+    flt = exclusion.body
+    assert 'resource.type=\\"cloud_run_job\\"' in flt
+    assert "^mapi-${var.env}-" in flt
+    for event_type in ("log", "progress"):
+        assert f'jsonPayload.mapi_event.type=\\"{event_type}\\"' in flt, event_type
+    for kept in ("state", "error", "complete", "warning"):
+        assert f'\\"{kept}\\"' not in flt, f"{kept} events stay in the project's logs"
