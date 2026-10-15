@@ -32,6 +32,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
   const csp: AppCspOptions = {
     apiBase: env.VITE_API_BASE || "http://127.0.0.1:8000",
+    ...(env.VITE_AUTH_BASE ? { authBase: env.VITE_AUTH_BASE } : {}),
     plotsOrigin: env.VITE_PLOTS_ORIGIN || "http://127.0.0.1:5174",
     storageOrigins: (env.VITE_STORAGE_ORIGINS || "http://127.0.0.1:4443").split(",").map((s) => s.trim()).filter(Boolean),
   };

@@ -240,8 +240,11 @@ function run(id: string, patch: Partial<Run>): Run {
   };
 }
 
+export const PRICE_VERSION = "cloudrun-list-2026-10";
+
 export const runRunning = run(RUN_RUNNING, {
   state: "running",
+  cost: { estimated: true, estimate_micros: 31_200, currency: "USD", price_version: PRICE_VERSION },
   queued_at: T0,
   started_at: "2026-10-15T09:30:05Z",
   progress: {
@@ -263,11 +266,13 @@ export const runDone = run(RUN_DONE, {
   started_at: "2026-10-15T09:00:05Z",
   finished_at: "2026-10-15T09:12:40Z",
   output_model_version_id: MV_ID,
+  cost: { estimated: false, amount_micros: 78_624, estimate_micros: 31_200, currency: "USD", price_version: PRICE_VERSION, vcpu_seconds: 3020, gib_seconds: 12_080, usd: 0.078624, attempts_billed: 1 },
 });
 
 export const runFailed = run(RUN_FAILED, {
   state: "failed",
   failure_class: "resource_exhausted",
+  cost: { estimated: false, amount_micros: 124_800, currency: "USD", price_version: PRICE_VERSION, vcpu_seconds: 4780, gib_seconds: 19_120, usd: 0.1248, attempts_billed: 1 },
   started_at: "2026-10-15T08:00:05Z",
   finished_at: "2026-10-15T08:20:00Z",
   problem: {

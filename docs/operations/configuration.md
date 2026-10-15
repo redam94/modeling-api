@@ -242,6 +242,11 @@ production build.
 | `VITE_PLOTS_ORIGIN` | `http://127.0.0.1:5174` | The plot sandbox; must differ from the app origin |
 | `VITE_STORAGE_ORIGINS` | `http://127.0.0.1:4443` | Origins of signed storage URLs, allowed by the app's CSP `connect-src` |
 | `VITE_APP_ORIGINS` (sandbox) | `http://127.0.0.1:5173,http://localhost:5173` | Origins allowed to frame the sandbox and talk to it |
+| `VITE_AUTH_BASE` | `VITE_API_BASE` | Where the sign-in routes (`/auth/*`) live, when they are not on the API base |
+
+The web app's Playwright smoke suite serves the app on 5173 and the sandbox on 5174. When those
+ports are taken, set `MAPI_SMOKE_WEB_PORT` and `MAPI_SMOKE_PLOTS_PORT`; the suite then builds the
+app for that sandbox origin and exports it to the specs as `MAPI_SMOKE_PLOTS_ORIGIN`.
 
 The sandbox's `index.html` carries a `%MAPI_CSP%` placeholder that its Vite build replaces
 with the Content-Security-Policy; it is not a variable you set.

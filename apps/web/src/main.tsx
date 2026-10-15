@@ -16,6 +16,16 @@ async function start(): Promise<void> {
   }
   const root = document.getElementById("root");
   if (!root) throw new Error("missing #root");
+  if (env.mock && window.location.pathname === "/auth/login") {
+    // The mock build's stand-in for the identity provider (a real server redirects to one).
+    const { DevIdpPage } = await import("./mocks/dev-idp");
+    createRoot(root).render(
+      <StrictMode>
+        <DevIdpPage />
+      </StrictMode>,
+    );
+    return;
+  }
   createRoot(root).render(
     <StrictMode>
       <App queryClient={createQueryClient()} />

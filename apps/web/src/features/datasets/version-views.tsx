@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Grid3x3, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { datasetArtifactLink } from "@/api/queries";
+import { datasetArtifactLink, qk, useProjectScope } from "@/api/queries";
 import type { CoordSummary, DataSchema, DatasetVersion } from "@/api/types";
 import { EmptyState, ErrorNotice, LoadingRows, Mono } from "@/components/common";
 import { Badge, Input, TBody, TD, TH, THead, TR, Table } from "@/components/ui/primitives";
@@ -127,8 +127,9 @@ export function CoordBrowser({ version }: { version: DatasetVersion }) {
 }
 
 function useDatasetView<T>(version: DatasetVersion, name: "profile.json" | "preview.json", parse: (raw: unknown) => T, available: boolean) {
+  const scope = useProjectScope();
   return useQuery({
-    queryKey: ["datasets", version.dataset_id, "versions", version.version, "view", name],
+    queryKey: [...qk.datasetVersion(scope.key, version.dataset_id, version.version), "view", name],
     enabled: available && version.status === "ready",
     staleTime: Infinity,
     queryFn: async ({ signal }) => {

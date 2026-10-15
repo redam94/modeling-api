@@ -7,7 +7,10 @@ import { Kbd } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
 import { useUi } from "@/stores/ui";
 
-import { EXPERT_NAV, SETTINGS_NAV } from "./nav";
+import { useWorkspace } from "@/features/auth/workspace";
+
+import { ADMIN_NAV, EXPERT_NAV, PROJECT_NAV, SETTINGS_NAV } from "./nav";
+import { useSwitchProject } from "./project-switcher";
 
 interface Command {
   id: string;
@@ -45,12 +48,15 @@ export function CommandPalette() {
   const setOpen = useUi((s) => s.setPaletteOpen);
   const setTheme = useUi((s) => s.setTheme);
   const navigate = useNavigate();
+  const ws = useWorkspace();
+  const switchProject = useSwitchProject();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
 
   const commands = useMemo<Command[]>(() => {
     const go = (to: string) => () => void navigate({ to });
-    const list: Command[] = [...EXPERT_NAV, SETTINGS_NAV].map((n) => ({
+    const navItems = [...EXPERT_NAV, ...(ws.mode === "session" ? PROJECT_NAV : []), ...(ws.operator ? [ADMIN_NAV] : []), SETTINGS_NAV];
+    const list: Command[] = navItems.map((n) => ({
       id: `nav:${n.to}`,
       label: n.label,
       hint: n.description,
@@ -62,6 +68,16 @@ export function CommandPalette() {
       { id: "theme-dark", label: "Use dark theme", hint: "Theme", icon: <Moon className="size-4" />, run: () => setTheme("dark") },
       { id: "theme-light", label: "Use light theme", hint: "Theme", icon: <Sun className="size-4" />, run: () => setTheme("light") },
     );
+    for (const c of ws.mode === "session" ? ws.choices : []) {
+      if (c.key === ws.current?.key) continue;
+      list.push({
+        id: `project:${c.key}`,
+        label: `Switch to ${c.tenant.name} / ${c.project.name}`,
+        hint: `Project · ${c.role}`,
+        icon: <ArrowRight className="size-4" />,
+        run: () => switchProject(c),
+      });
+    }
     const q = query.trim();
     for (const [re, to, label] of ID_PATTERNS) {
       if (re.test(q)) list.unshift({ id: `id:${q}`, label: `${label} ${q}`, hint: "By id", icon: <Hash className="size-4" />, run: go(to(q)) });
@@ -71,7 +87,7 @@ export function CommandPalette() {
       .filter((x) => x.s > 0)
       .sort((a, b) => b.s - a.s)
       .map((x) => x.c);
-  }, [query, navigate, setTheme]);
+  }, [query, navigate, setTheme, ws, switchProject]);
 
   const close = () => {
     setOpen(false);

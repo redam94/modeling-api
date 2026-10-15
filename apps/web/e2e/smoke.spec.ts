@@ -8,6 +8,7 @@ const RUNNING = "run_01jaf3q2x8m9v7k5h4g3f2e1d0";
 const FAILED = "run_01jaf3q2x8m9v7k5h4g3f2e1b2";
 const MODEL = "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0";
 const SPEC = "spc_01jaf3b1c2d3e4f5g6h7j8k9m0";
+const PLOTS_ORIGIN = process.env.MAPI_SMOKE_PLOTS_ORIGIN ?? "http://127.0.0.1:5174";
 
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (err) => {
@@ -30,7 +31,7 @@ test("the app is served with a CSP that enforces Trusted Types", async ({ page }
   const res = await page.goto("/");
   expect(res?.headers()["content-security-policy"]).toContain("require-trusted-types-for 'script'");
   const meta = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute("content");
-  expect(meta).toContain("frame-src http://127.0.0.1:5174");
+  expect(meta).toContain(`frame-src ${PLOTS_ORIGIN}`);
   expect(await page.evaluate(() => typeof (window as unknown as { trustedTypes?: unknown }).trustedTypes)).toBe("object");
   const blocked = await page.evaluate(() => {
     try {
@@ -87,7 +88,7 @@ test("model plots render inside the isolated sandbox origin", async ({ page }) =
   await page.goto(`/models/${MODEL}/versions/1?tab=plots`);
   const frame = page.locator('iframe[data-testid="plot-frame"]');
   await expect(frame).toHaveAttribute("sandbox", "allow-scripts");
-  await expect(frame).toHaveAttribute("src", "http://127.0.0.1:5174/");
+  await expect(frame).toHaveAttribute("src", `${PLOTS_ORIGIN}/`);
   await expect(frame.contentFrame().locator("svg.marks")).toBeVisible({ timeout: 20_000 });
   await expect(frame.contentFrame().locator("path").first()).toBeAttached();
 });
@@ -123,7 +124,8 @@ test("spec editor keeps unsaved edits when a newer revision appears", async ({ p
   const status = await page.evaluate(async (spec) => {
     const res = await fetch(`http://127.0.0.1:8000/v1/specs/${spec}/revisions`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      // What any v0.3 client sends: the project and the CSRF header.
+      headers: { "content-type": "application/json", "X-Mapi-Project": "acme/growth", "X-Requested-With": "mapi-web" },
       body: JSON.stringify({ yaml: "apiVersion: mapi/v1\nkind: ModelSpec\n", parent_revision: 2 }),
     });
     return res.status;

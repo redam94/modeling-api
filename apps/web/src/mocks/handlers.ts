@@ -9,6 +9,7 @@ import type { DatasetVersion, Problem, Run, RunEventView, SpecRevision, UploadSe
 import { env } from "@/env";
 
 import * as fx from "./fixtures";
+import { createTenancyHandlers, createTenancyState } from "./tenancy";
 
 const API = env.apiBase;
 const API_RE = API.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -24,6 +25,7 @@ function problem(status: number, code: Problem["code"], title: string, detail?: 
 const page = <T,>(items: T[]) => HttpResponse.json({ items, next_cursor: null });
 
 interface MockState {
+  tenancy: ReturnType<typeof createTenancyState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -34,6 +36,7 @@ interface MockState {
 export function createState(): MockState {
   const json = (v: unknown) => enc.encode(JSON.stringify(v));
   return {
+    tenancy: createTenancyState(),
     runs: new Map(fx.runs.map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
@@ -114,6 +117,8 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     return a ? fx.artifactLink(name, a.bytes, a.type) : null;
   };
   return [
+    // v0.3: session, tenancy and the per-request checks (first, so they guard every /v1 route).
+    ...createTenancyHandlers(state.tenancy),
     http.get(`${API}/readyz`, () =>
       HttpResponse.json({ status: "ok", version: "0.2.0-mock", contract_version: "0.1", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
     ),
@@ -255,8 +260,13 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
       state.runs.set(id, next);
       return HttpResponse.json(next, { status: 202 });
     }),
-    http.post(new RegExp(`^${API_RE}/v1/runs/[^/]+:retry$`), () => {
-      const r: Run = { ...fx.runRunning, id: "run_01jaf3q2x8m9v7k5h4g3f2e1d4", state: "queued", resource_class: "L", retry_of: fx.RUN_FAILED, progress: null };
+    http.post(new RegExp(`^${API_RE}/v1/runs/[^/]+:retry$`), async ({ request }) => {
+      const body = (await request.json()) as { resource_class?: string };
+      if (body.resource_class === "L" || body.resource_class === "XL") {
+        // The mock tenant's quota policy caps the resource class at M.
+        return problem(429, "QUOTA_EXCEEDED", "Quota exceeded", `tenant acme does not allow max_resource_class ${body.resource_class} (maximum M)`);
+      }
+      const r: Run = { ...fx.runRunning, id: "run_01jaf3q2x8m9v7k5h4g3f2e1d4", state: "queued", resource_class: (body.resource_class ?? "M") as Run["resource_class"], retry_of: fx.RUN_FAILED, progress: null };
       state.runs.set(r.id, r);
       return HttpResponse.json(r, { status: 201 });
     }),

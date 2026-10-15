@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useReducer } from "react";
 
-import { qk } from "@/api/queries";
+import { qk, useProjectScope } from "@/api/queries";
 import { followRunEvents, type RunStreamEvent, type RunStreamStatus } from "@/api/sse";
 import type { ProgressPayload, ProgressSnapshot, Run, RunEventView } from "@/api/types";
 import { isTerminal } from "@/lib/run-state";
@@ -63,6 +63,7 @@ export function progressFromEvent(e: RunStreamEvent): ProgressSnapshot | null {
  */
 export function useRunEvents(run: Run | undefined): RunStreamState {
   const qc = useQueryClient();
+  const scope = useProjectScope();
   const [state, dispatch] = useReducer(runStreamReducer, initial);
   const runId = run?.id;
   const terminal = run ? isTerminal(run.state) : false;
@@ -75,7 +76,7 @@ export function useRunEvents(run: Run | undefined): RunStreamState {
     if (!runId) return;
     const ctrl = new AbortController();
     const setRun = (r: Run) => {
-      qc.setQueryData(qk.run(r.id), r);
+      qc.setQueryData(qk.run(scope.key, r.id), r);
       if (r.progress) dispatch({ type: "progress", progress: r.progress });
     };
     void followRunEvents(
@@ -84,7 +85,7 @@ export function useRunEvents(run: Run | undefined): RunStreamState {
         onSnapshot: setRun,
         onEnd: (r) => {
           setRun(r);
-          void qc.invalidateQueries({ queryKey: ["runs", "list"] });
+          void qc.invalidateQueries({ queryKey: qk.runLists(scope.key) });
         },
         onEvent: (e) => {
           const progress = progressFromEvent(e);
@@ -96,16 +97,16 @@ export function useRunEvents(run: Run | undefined): RunStreamState {
           if (e.id === null) return; // only persisted events are kept (and deduped by id)
           dispatch({ type: "event", event: { ...e, id: e.id } });
           if (e.type === "state" || e.type === "complete" || e.type === "error") {
-            void qc.invalidateQueries({ queryKey: qk.run(runId) });
+            void qc.invalidateQueries({ queryKey: qk.run(scope.key, runId) });
           }
         },
         onStatus: (status, detail) => dispatch({ type: "status", status, detail }),
       },
-      { signal: ctrl.signal },
+      { signal: ctrl.signal, headers: scope.headers },
     );
     return () => ctrl.abort();
     // `terminal` restarts nothing: a terminal run's stream replays its events then ends.
-  }, [runId, qc]);
+  }, [runId, qc, scope]);
 
   return { ...state, status: terminal && state.status === "open" ? "ended" : state.status };
 }
