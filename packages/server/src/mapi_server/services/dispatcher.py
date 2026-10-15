@@ -23,7 +23,6 @@ import logging
 import os
 import re
 import socket
-import time
 from datetime import timedelta
 
 from mapi_spec._types import Duration
@@ -37,6 +36,7 @@ from sqlalchemy import select
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.executors import check_placement
+from mapi_server.ratelimit import TokenBucket
 from mapi_server.services.bundles import BundleIntegrityError, verify_bundle_inputs
 from mapi_server.services.runs import apply_transition, now
 from mapi_server.services.runspec import build_runspec
@@ -47,36 +47,6 @@ _RESERVED_LABEL_PREFIX = "mapi.dev/"
 _NAMESPACE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 
 log = logging.getLogger(__name__)
-
-
-class TokenBucket:
-    """Classic token bucket: ``rate`` tokens per second, at most ``burst`` saved up."""
-
-    def __init__(self, rate_per_s: float, burst: int) -> None:
-        if rate_per_s <= 0 or burst < 1:
-            raise ValueError("rate must be > 0 and burst >= 1")
-        self.rate = rate_per_s
-        self.burst = float(burst)
-        self._tokens = float(burst)
-        self._stamp = time.monotonic()
-        self._lock = asyncio.Lock()
-
-    def _refill(self) -> None:
-        t = time.monotonic()
-        self._tokens = min(self.burst, self._tokens + (t - self._stamp) * self.rate)
-        self._stamp = t
-
-    def try_acquire(self) -> bool:
-        self._refill()
-        if self._tokens >= 1:
-            self._tokens -= 1
-            return True
-        return False
-
-    async def acquire(self) -> None:
-        async with self._lock:
-            while not self.try_acquire():
-                await asyncio.sleep((1 - self._tokens) / self.rate)
 
 
 class Dispatcher:
@@ -210,6 +180,8 @@ class Dispatcher:
             log.warning("submit of %s/%s failed: %r", run_id, attempt_no, exc)
             with contextlib.suppress(Exception):
                 handle = await self.executor.adopt(att.nonce)
+            if handle is not None and handle.attempt != attempt_no:
+                handle = handle.model_copy(update={"attempt": attempt_no})
         await self._record(run_id, attempt_no, att.nonce, handle, error)
 
     async def _labels(self, run: m.Run) -> dict[str, str]:

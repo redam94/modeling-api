@@ -84,6 +84,14 @@ def _handle(att: m.RunAttempt) -> Handle | None:
     return Handle.model_validate(att.handle) if att.handle else None
 
 
+def _for_attempt(handle: Handle | None, att: m.RunAttempt) -> Handle | None:
+    """An adopted handle carries the intent row's attempt (some backends, such as Cloud Run,
+    only know the nonce of an execution they find by listing)."""
+    if handle is None or handle.attempt == att.attempt:
+        return handle
+    return handle.model_copy(update={"attempt": att.attempt})
+
+
 class Reconciler:
     def __init__(self, ctx: ServerContext, executor: Executor) -> None:
         self.ctx = ctx
@@ -154,8 +162,8 @@ class Reconciler:
         stored = _handle(att)
         key = (att.run_id, att.attempt)
         if key in self._attached:
-            return stored or await self.executor.adopt(att.nonce)
-        adopted = await self.executor.adopt(att.nonce)
+            return stored or _for_attempt(await self.executor.adopt(att.nonce), att)
+        adopted = _for_attempt(await self.executor.adopt(att.nonce), att)
         self._attached.add(key)
         return adopted or stored
 
@@ -230,7 +238,7 @@ class Reconciler:
         if att is None:  # leased without an intent row cannot happen; recover anyway
             await self._retry_or_fail(run, RunState.DISPATCHING, "the dispatch was interrupted")
             return
-        handle = _handle(att) or await self.executor.adopt(att.nonce)
+        handle = _handle(att) or _for_attempt(await self.executor.adopt(att.nonce), att)
         if handle is not None:
             log.info("adopted orphan execution of %s/%s by nonce", run.id, run.attempt)
             await self._transition(
