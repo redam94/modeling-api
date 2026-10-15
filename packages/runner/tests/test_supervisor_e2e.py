@@ -157,8 +157,9 @@ def test_log_lines_are_capped(gcs: FakeGcs) -> None:
     # the flood registry also overflows 20 MB; every line event stays within the line cap
     for e in result.of(RunEventType.LOG):
         p = LogPayload.model_validate(e.payload)
-        if p.stream != "system":
-            assert len(p.line.encode()) <= 256 and p.truncated
+        assert len(p.line.encode()) <= 256
+        if p.stream == "stderr" and p.line.startswith("xxxx"):
+            assert p.truncated and len(p.line) == 256
 
 
 def test_symlinked_output_is_a_sandbox_violation(gcs: FakeGcs) -> None:

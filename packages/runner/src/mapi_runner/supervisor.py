@@ -454,8 +454,8 @@ class Supervisor:
                     if not data:
                         sel.unregister(fd)
                         del streams[fd]
-                        if name != "channel" and self.logs is not None:
-                            self.logs.close(name)
+                        if name != "channel" and self.logs is not None and self.failure is None:
+                            self.logs.close(name)  # the last, unterminated line
                         continue
                     if self.failure is not None:
                         continue  # the worker is being killed: drain, do not process
