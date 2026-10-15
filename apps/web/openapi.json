@@ -12517,7 +12517,7 @@
     },
     "/v1/models/{model_id}/versions/{version}/artifacts/{name}": {
       "get": {
-        "description": "Signed URL for a bundle object or ``ui/…`` view, minted only after the signed bundle\nmanifest verifies (``INTEGRITY_FAILURE`` otherwise).",
+        "description": "Signed URL for a bundle object or ``ui/…`` view, minted only after the signed bundle\nmanifest verifies (``INTEGRITY_FAILURE`` otherwise). Audited.",
         "operationId": "get_model_artifact",
         "parameters": [
           {

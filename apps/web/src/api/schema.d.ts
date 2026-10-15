@@ -610,7 +610,7 @@ export interface paths {
         /**
          * Get Model Artifact
          * @description Signed URL for a bundle object or ``ui/…`` view, minted only after the signed bundle
-         *     manifest verifies (``INTEGRITY_FAILURE`` otherwise).
+         *     manifest verifies (``INTEGRITY_FAILURE`` otherwise). Audited.
          */
         get: operations["get_model_artifact"];
         put?: never;
