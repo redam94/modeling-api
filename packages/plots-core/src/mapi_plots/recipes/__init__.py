@@ -34,6 +34,7 @@ from mapi_plots.recipes._base import (
     RecipeInput,
     RecipeSettings,
     as_tree,
+    named,
     recipe,
 )
 from mapi_plots.recipes.comparison import model_comparison
@@ -60,6 +61,7 @@ __all__ = [
     "builtin_templates",
     "get_recipe",
     "infer_schema",
+    "named",
     "recipe",
     "render_template",
     "standard_recipes",

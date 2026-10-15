@@ -588,6 +588,34 @@ def test_budget_plans() -> None:
         render({"plans": ds.rename(plan="option")})
 
 
+# ------------------------------------------------------------------------ custom recipes
+
+
+def test_custom_recipe_as_documented() -> None:
+    import altair as alt
+    from mapi_plots.recipes import Figure, RecipeSettings, named, recipe
+
+    class Settings(RecipeSettings):
+        var: str = "revenue"
+
+    @recipe("acme.weekly_total", title="Weekly total", settings=Settings, persona="guided")
+    def weekly_total(inp: RecipeInput, s: Settings) -> Figure:
+        """Total of the mean forecast per week."""
+        ds = inp.require("summary")
+        frame = ds[s.var].sel(stat="mean").sum("geo").to_dataframe().reset_index()
+        chart = alt.Chart(named("weekly")).mark_line().encode(x="week:T", y=f"{s.var}:Q")
+        return Figure(chart, {"weekly": frame}, caption=f"Total {s.var} per week.")
+
+    plot = weekly_total.render(ex.score_tree())
+    assert plot.persona == "guided" and plot.provenance.recipe == "acme.weekly_total@1.0.0"
+    assert len(frame(plot, "weekly")) == 28
+    assert weekly_total.summary == "Total of the mean forecast per week."
+    registry_mod = pytest.importorskip("mapi_sdk.registry")
+    reg = registry_mod.Registry()
+    reg.register(weekly_total)
+    assert reg.plot("acme.weekly_total") is weekly_total
+
+
 # ------------------------------------------------------------------------- registration
 
 
