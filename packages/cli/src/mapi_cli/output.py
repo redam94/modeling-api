@@ -123,6 +123,13 @@ class Output:
             )
         self.out.print(table)
 
+    def fail(self, code: str, label: str, message: str) -> None:
+        """A CLI-side failure (bad file, config, input): JSON on stdout with --json."""
+        if self.json_mode:
+            self.emit_json({"error": {"code": code, "detail": strip_control(message)}})
+            return
+        self.err.print(Text(label, style="bold red") + Text(": ") + safe(message))
+
     def error(self, exc: MapiError) -> None:
         """Report a platform error on stderr (and as JSON on stdout with --json)."""
         if self.json_mode:

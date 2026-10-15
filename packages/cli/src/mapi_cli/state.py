@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Final, ParamSpec, TypeVar
+from typing import Final, TypeGuard
 
 import typer
 from mapi_client import Client, ClientConfig, ConfigError, load_config
@@ -18,9 +18,6 @@ __all__ = ["CONFIGURED", "EXIT_FAILURE", "AppState", "cli_errors", "state"]
 EXIT_FAILURE: Final = 1
 CONFIGURED: Final = "@"
 """``--remote @`` means "the configured API" (``--url``/``MAPI_URL``/profile/default)."""
-
-P = ParamSpec("P")
-R = TypeVar("R")
 
 
 @dataclass(slots=True)
@@ -40,6 +37,11 @@ class AppState:
         return Client(config=self.config(url))
 
 
+def _is_context(value: object) -> TypeGuard[typer.Context]:
+    # typer vendors click, so its Context is not ``click.Context``: duck-type it
+    return callable(getattr(value, "find_root", None)) and hasattr(value, "obj")
+
+
 def state(ctx: typer.Context) -> AppState:
     obj = ctx.find_root().obj
     if not isinstance(obj, AppState):  # a sub-app invoked directly (tests)
@@ -53,32 +55,22 @@ def cli_errors[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
 
     @functools.wraps(fn)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        ctx = next((a for a in [*args, *kwargs.values()] if isinstance(a, typer.Context)), None)
+        ctx = next((a for a in [*args, *kwargs.values()] if _is_context(a)), None)
         out = state(ctx).output if ctx is not None else Output()
         try:
             return fn(*args, **kwargs)
         except MapiError as exc:
             out.error(exc)
         except ConfigError as exc:
-            out.err.print(f"[bold red]configuration error[/]: {exc}", markup=True)
-        except (FileNotFoundError, IsADirectoryError, PermissionError) as exc:
-            out.err.print(f"[bold red]error[/]: {_escape(str(exc))}", markup=True)
+            out.fail("CONFIG_ERROR", "configuration error", str(exc))
+        except (FileNotFoundError, FileExistsError, IsADirectoryError, PermissionError) as exc:
+            out.fail("FILE_ERROR", "error", str(exc))
         except TimeoutError as exc:
-            out.err.print(f"[bold red]timed out[/]: {_escape(str(exc))}", markup=True)
+            out.fail("TIMEOUT", "timed out", str(exc))
         except ImportError as exc:
-            out.err.print(f"[bold red]missing dependency[/]: {_escape(str(exc))}", markup=True)
+            out.fail("MISSING_DEPENDENCY", "missing dependency", str(exc))
+        except ValueError as exc:  # argument/document validation (incl. pydantic errors)
+            out.fail("INVALID_INPUT", "invalid input", str(exc))
         raise typer.Exit(EXIT_FAILURE)
 
     return wrapper
-
-
-def _escape(text: str) -> str:
-    from rich.markup import escape
-
-    from mapi_cli.output import strip_control
-
-    return escape(strip_control(text))
-
-
-def kv_pairs(**values: Any) -> list[tuple[str, Any]]:
-    return list(values.items())
