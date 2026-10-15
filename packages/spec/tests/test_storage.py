@@ -353,13 +353,21 @@ class _MemoryStore:
         )
 
     async def post_policy(
-        self, bucket: str, prefix: str, *, expires_in: timedelta, max_bytes: int, min_bytes: int = 0
+        self,
+        bucket: str,
+        prefix: str,
+        *,
+        expires_in: timedelta,
+        max_bytes: int,
+        min_bytes: int = 0,
+        create_only: bool = False,
     ) -> PostPolicy:
         return PostPolicy(
             url=f"mem://{bucket}",
             prefix=prefix,
             content_length_range=(min_bytes, max_bytes),
             expires_at=TS + check_ttl(expires_in),
+            create_only=create_only,
         )
 
 

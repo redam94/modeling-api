@@ -2,7 +2,9 @@
 
 The RunSpec is the *only* channel through which an execution receives URLs and its HMAC
 key. Inputs are generation-pinned signed GETs, the manifest is a write-once signed PUT and
-every other output goes through a V4 POST policy on the attempt prefix. All keys are built
+every other output goes through a *create-only* V4 POST policy on the attempt prefix (it
+cannot replace the manifest or an output once written; only the checkpoint policy may
+overwrite, since each segment rewrites the same checkpoint names). All keys are built
 server-side from validated ids (:mod:`mapi_spec.storage` helpers).
 """
 
@@ -91,7 +93,11 @@ async def build_runspec(
             if_generation_match=0,
         ),
         OUTPUT_ARTIFACTS: await store.post_policy(
-            runs_bucket, prefix, expires_in=ttl, max_bytes=limits.max_output_bytes
+            runs_bucket,
+            prefix,
+            expires_in=ttl,
+            max_bytes=limits.max_output_bytes,
+            create_only=True,
         ),
     }
     checkpoint_prefix: str | None = None

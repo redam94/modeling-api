@@ -165,7 +165,8 @@ signature over the document. The conditions are:
 - `["starts-with", "$key", prefix]`;
 - `["starts-with", "$content-type", ""]`;
 - `["content-length-range", min, max]`;
-- the `x-goog-*` credential fields.
+- the `x-goog-*` credential fields;
+- with `create_only=True`, `{"x-goog-if-generation-match": "0"}` (also sent as a form field).
 
 When the policy is used, the shim enforces:
 
@@ -173,7 +174,13 @@ When the policy is used, the shim enforces:
 - every condition;
 - that every form field is covered by a condition, except `x-goog-signature`, `policy`,
   `file` and `x-ignore-*`;
-- the size range. A body that is too large is rejected while it streams.
+- the size range. A body that is too large is rejected while it streams;
+- an `x-goog-if-generation-match` form field as a precondition, so a create-only policy
+  returns `412` for a key that already exists, whatever the signer may delete.
+
+Real GCS takes no generation precondition in a POST form. `GcsObjectStore` signs create-only
+policies with `uploader_credentials` instead: a principal without `storage.objects.delete`,
+which GCS requires to overwrite.
 
 `success_action_status` (`200`, `201` with an XML `PostResponse`, or `204` by default) and
 `${filename}` in `key` behave as in GCS.

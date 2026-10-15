@@ -1025,7 +1025,13 @@ class ShimApp:
         validate_name(key)
         lo, hi = decision.content_length_range or (0, self.config.max_object_bytes)
         hi = min(hi, self.config.max_object_bytes)
-        await self._early_checks(bucket, key, Preconditions(), allow_overwrite)
+        # every form field is covered by a signed condition, so this one cannot be dropped
+        pre = Preconditions(
+            if_generation_match=_int(
+                fields.get("x-goog-if-generation-match"), "x-goog-if-generation-match"
+            )
+        )
+        await self._early_checks(bucket, key, pre, allow_overwrite)
         staged = await self._stage(reader.iter_data(), hi)
         if staged.size < lo:
             staged.discard()
@@ -1036,7 +1042,7 @@ class ShimApp:
             name=key,
             content_type=fields.get("content-type"),
             metadata=_custom_metadata(fields),
-            preconditions=Preconditions(),
+            preconditions=pre,
             allow_overwrite=allow_overwrite,
         )
 

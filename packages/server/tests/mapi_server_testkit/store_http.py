@@ -100,7 +100,13 @@ def store_app(store: MemoryObjectStore, *, exec_token: str, bootstrap_bucket: st
         if not policy.min_bytes <= len(file_data) <= policy.max_bytes:
             return Response(status_code=400)
         try:
-            await store.put(bucket, key, file_data, content_type=file_type, if_generation_match=0)
+            await store.put(
+                bucket,
+                key,
+                file_data,
+                content_type=file_type,
+                if_generation_match=0 if policy.create_only else None,
+            )
         except PreconditionFailed:
             return Response(status_code=412)
         return Response(status_code=204)

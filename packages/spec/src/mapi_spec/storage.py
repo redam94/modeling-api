@@ -392,6 +392,10 @@ class PostPolicy(StrictModel):
     The uploader posts ``multipart/form-data`` to ``url`` with every entry of ``fields``,
     then ``key`` (which must start with ``prefix``), then the ``file`` part last. The storage
     service rejects bodies outside ``content_length_range`` and keys outside the prefix.
+
+    A ``create_only`` policy cannot replace an existing object (its signed conditions carry
+    ``x-goog-if-generation-match: 0``), so the holder can neither overwrite the write-once
+    manifest nor swap an output after it was written.
     """
 
     method: Literal["POST"] = "POST"
@@ -400,6 +404,7 @@ class PostPolicy(StrictModel):
     fields: dict[str, str] = Field(default_factory=dict, max_length=32)
     content_length_range: tuple[int, int]
     expires_at: AwareDatetime
+    create_only: bool = False
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -598,8 +603,12 @@ class ObjectStore(Protocol):
         expires_in: timedelta,
         max_bytes: int,
         min_bytes: int = 0,
+        create_only: bool = False,
     ) -> PostPolicy:
-        """V4 POST policy allowing uploads of any key under ``prefix`` within the size range."""
+        """V4 POST policy allowing uploads of any key under ``prefix`` within the size range.
+
+        ``create_only`` uploads may not replace an existing object (whatever the signer's
+        own permissions)."""
         ...
 
 

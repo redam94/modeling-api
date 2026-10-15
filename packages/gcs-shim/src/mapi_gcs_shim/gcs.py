@@ -117,6 +117,11 @@ class GcsObjectStore:
             URLs and POST policies (default: the client's credentials).
         service_account_email / access_token: IAM ``signBlob`` signing for signed URLs when
             the credentials hold no private key (e.g. Cloud Run metadata credentials).
+        uploader_credentials: signing credentials of a principal with
+            ``storage.objects.create`` but **not** ``storage.objects.delete`` on the runs
+            bucket, used for ``create_only`` POST policies. GCS POST forms have no generation
+            precondition; an upload by a principal that cannot delete cannot overwrite.
+            [verify M2: provisioned by Terraform]
         api_endpoint: base URL for POST policies.
         clock: ``now()`` for POST-policy timestamps (tests).
     """
@@ -129,6 +134,7 @@ class GcsObjectStore:
         signing_credentials: Any | None = None,
         service_account_email: str | None = None,
         access_token: str | None = None,
+        uploader_credentials: Any | None = None,
         api_endpoint: str = GCS_API_ENDPOINT,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
@@ -138,6 +144,7 @@ class GcsObjectStore:
         self._signing_credentials = signing_credentials
         self._sa_email = service_account_email
         self._access_token = access_token
+        self._uploader_credentials = uploader_credentials
         self._api_endpoint = api_endpoint.rstrip("/")
         self._clock = clock or (lambda: datetime.now(UTC))
 
@@ -393,14 +400,27 @@ class GcsObjectStore:
         expires_in: timedelta,
         max_bytes: int,
         min_bytes: int = 0,
+        create_only: bool = False,
     ) -> PostPolicy:
         check_ttl(expires_in)
         check_object_name(prefix)
         if not prefix.endswith("/"):
             raise ValueError("a POST policy prefix must end with '/'")
-        creds = self._signing_credentials or getattr(self._client, "_credentials", None)
+        if create_only and self._uploader_credentials is None:
+            raise NotImplementedError(
+                "a create_only POST policy on GCS needs uploader_credentials: a signer without "
+                "storage.objects.delete on the bucket (GCS POST forms take no generation "
+                "precondition)"
+            )
+        creds = (
+            self._uploader_credentials
+            if create_only
+            else self._signing_credentials or getattr(self._client, "_credentials", None)
+        )
         sign_bytes = getattr(creds, "sign_bytes", None)
-        signer_email = getattr(creds, "signer_email", None) or self._sa_email
+        signer_email = getattr(creds, "signer_email", None) or (
+            None if create_only else self._sa_email
+        )
         if sign_bytes is None or not signer_email:
             raise NotImplementedError(
                 "GcsObjectStore.post_policy needs signing credentials with sign_bytes() and a "
@@ -433,4 +453,5 @@ class GcsObjectStore:
             fields=fields,
             content_length_range=(min_bytes, max_bytes),
             expires_at=expires_at,
+            create_only=create_only,
         )

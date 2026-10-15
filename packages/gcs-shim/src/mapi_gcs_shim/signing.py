@@ -369,6 +369,7 @@ F_CREDENTIAL: Final = "x-goog-credential"
 F_DATE: Final = "x-goog-date"
 F_SIGNATURE: Final = "x-goog-signature"
 F_KEY: Final = "key"
+F_IF_GENERATION_MATCH: Final = "x-goog-if-generation-match"
 _UNCOVERED_FIELDS: Final = frozenset({F_SIGNATURE, F_POLICY, "file"})
 
 
@@ -384,8 +385,12 @@ def build_post_policy(
     algorithm: str = ALGORITHM,
     now: datetime | None = None,
     extra_conditions: Sequence[Any] = (),
+    if_generation_match: int | None = None,
 ) -> tuple[dict[str, str], datetime]:
     """V4 POST policy form fields restricting uploads to ``prefix`` and a size range.
+
+    ``if_generation_match`` (``0`` = create only) becomes a signed exact-match condition
+    and a form field, so the uploader can neither drop nor change it.
 
     ``sign(policy_b64, date8)`` returns the hex signature (HMAC for the shim, RSA for real
     GCS). Returns ``(fields, expires_at)``; the uploader adds ``key`` and ``file``.
@@ -409,6 +414,10 @@ def build_post_policy(
         {F_DATE: timestamp},
         *extra_conditions,
     ]
+    if if_generation_match is not None:
+        if if_generation_match < 0:
+            raise ValueError("if_generation_match must be >= 0")
+        conditions.append({F_IF_GENERATION_MATCH: str(if_generation_match)})
     document = {
         "conditions": conditions,
         "expiration": expires_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -423,6 +432,8 @@ def build_post_policy(
         F_DATE: timestamp,
         F_SIGNATURE: sign(policy, timestamp[:8]),
     }
+    if if_generation_match is not None:
+        fields[F_IF_GENERATION_MATCH] = str(if_generation_match)
     return fields, expires_at
 
 

@@ -68,7 +68,9 @@ async def _prepare(
             "manifest": await store.sign_put(
                 b.runs, prefix + "manifest.json", expires_in=TTL, max_bytes=1 << 20
             ),
-            "artifacts": await store.post_policy(b.runs, prefix, expires_in=TTL, max_bytes=1 << 30),
+            "artifacts": await store.post_policy(
+                b.runs, prefix, expires_in=TTL, max_bytes=1 << 30, create_only=True
+            ),
         }
         signed = {
             name: await store.sign_get(bucket, obj, expires_in=TTL)

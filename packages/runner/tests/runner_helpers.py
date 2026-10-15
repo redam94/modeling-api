@@ -89,7 +89,7 @@ def make_run(
     prefix = run_prefix(TENANT, run_id, attempt)
     outputs: dict[str, Any] = {
         "manifest": gcs.sign_put(runs, prefix + "manifest.json"),
-        "artifacts": gcs.post_policy(runs, prefix),
+        "artifacts": gcs.post_policy(runs, prefix, create_only=True),  # as the server
     }
     ckpt_prefix = None
     if checkpoints:

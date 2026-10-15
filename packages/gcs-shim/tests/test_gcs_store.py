@@ -354,6 +354,31 @@ async def test_post_policy_prefix_conditions(store: GcsObjectStore) -> None:
         )
 
 
+class UploaderCredentials(FakeCredentials):
+    signer_email = "uploader@mapi-prod.iam.gserviceaccount.com"
+
+
+async def test_create_only_post_policy_is_signed_by_the_uploader(client: FakeClient) -> None:
+    """Real GCS has no POST-form generation precondition: a create-only policy is signed by
+    a principal without ``storage.objects.delete`` (which GCS needs to overwrite)."""
+    plain = GcsObjectStore(client)
+    with pytest.raises(NotImplementedError, match="uploader_credentials"):
+        await plain.post_policy(
+            "mapi-prod-runs", "t/x/", expires_in=timedelta(hours=1), max_bytes=1, create_only=True
+        )
+    store = GcsObjectStore(client, uploader_credentials=UploaderCredentials())
+    policy = await store.post_policy(
+        "mapi-prod-runs", "t/x/", expires_in=timedelta(hours=1), max_bytes=1, create_only=True
+    )
+    assert policy.create_only
+    assert policy.fields["x-goog-credential"].startswith("uploader@")
+    assert "x-goog-if-generation-match" not in policy.fields
+    other = await store.post_policy(
+        "mapi-prod-runs", "t/x/", expires_in=timedelta(hours=1), max_bytes=1
+    )
+    assert other.fields["x-goog-credential"].startswith("control@") and not other.create_only
+
+
 async def test_post_policy_without_signer_is_not_implemented(client: FakeClient) -> None:
     client._credentials = object()  # type: ignore[assignment]
     store = GcsObjectStore(client)

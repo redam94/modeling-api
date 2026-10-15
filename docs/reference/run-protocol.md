@@ -126,7 +126,7 @@ per-execution values are `MAPI_RUN_ID` and `MAPI_NONCE`.
 | `tenant_id`, `project_id` | Always present (`default` in M1) |
 | `spec`, `spec_hash`, `catalog_digest` | The *resolved* spec JSON (`use:` ranges pinned), its canonical hash, and the catalog snapshot it was resolved against |
 | `inputs` | `name → SignedGet{url, expires_at, generation, size, crc32c, md5_hash?}`. Well-known names are `dataset` and `bundle`. URLs are pinned to a generation and support HTTP `Range`. The runner checks size and CRC32C after download and exits `13 INTEGRITY_ERROR` on a mismatch. |
-| `outputs` | `name → SignedPut \| PostPolicy`. `manifest` is a required write-once **signed PUT** for `{prefix}manifest.json`. `artifacts` is a **V4 POST policy** on the attempt prefix with a `content_length_range`. `checkpoints` is a POST policy on `checkpoint_prefix`, present only for checkpointable runs. |
+| `outputs` | `name → SignedPut \| PostPolicy`. `manifest` is a required write-once **signed PUT** for `{prefix}manifest.json`. `artifacts` is a **create-only V4 POST policy** on the attempt prefix with a `content_length_range`: it cannot replace an existing object, so it can't overwrite the manifest or swap an output after it was written. `checkpoints` is a POST policy on `checkpoint_prefix`, present only for checkpointable runs. |
 | `resume` | Checkpoint objects from the previous attempt, as `SignedGet`s |
 | `checkpoint_prefix` | `{attempt prefix}checkpoints/`, or `null` |
 | `hmac_key` | Base64 encoding of at least 32 random bytes; the per-run event HMAC key (`new_hmac_key()`). Never logged: `RunSpec.redacted()` blanks it, together with every URL. |

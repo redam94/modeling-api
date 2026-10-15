@@ -54,6 +54,7 @@ class PolicyDoc:
     min_bytes: int
     max_bytes: int
     expires: int
+    create_only: bool = False
 
 
 @dataclass(slots=True)
@@ -336,19 +337,24 @@ class MemoryObjectStore:
         expires_in: timedelta,
         max_bytes: int,
         min_bytes: int = 0,
+        create_only: bool = False,
     ) -> PostPolicy:
         check_ttl(expires_in)
         self._bucket(bucket)
         expires = int(time.time() + expires_in.total_seconds())
-        doc = {"bucket": bucket, "prefix": prefix, "min": min_bytes, "max": max_bytes}
-        doc["expires"] = expires
+        doc: dict[str, Any] = {"bucket": bucket, "prefix": prefix, "min": min_bytes}
+        doc.update(max=max_bytes, expires=expires, create_only=create_only)
         policy = base64.b64encode(json.dumps(doc, sort_keys=True).encode()).decode()
+        fields = {"policy": policy, "x-goog-signature": self._sign("POST", policy)}
+        if create_only:
+            fields["x-goog-if-generation-match"] = "0"
         return PostPolicy(
             url=f"{self.base_url}/{bucket}",
             prefix=prefix,
-            fields={"policy": policy, "x-goog-signature": self._sign("POST", policy)},
+            fields=fields,
             content_length_range=(min_bytes, max_bytes),
             expires_at=datetime.fromtimestamp(expires, UTC),
+            create_only=create_only,
         )
 
     # -------------------------------------------------------- signature checks (HTTP fronts)
@@ -379,7 +385,14 @@ class MemoryObjectStore:
         doc: dict[str, Any] = json.loads(base64.b64decode(policy_b64))
         if doc["expires"] < time.time():
             return None
-        return PolicyDoc(doc["bucket"], doc["prefix"], doc["min"], doc["max"], doc["expires"])
+        return PolicyDoc(
+            doc["bucket"],
+            doc["prefix"],
+            doc["min"],
+            doc["max"],
+            doc["expires"],
+            bool(doc.get("create_only", False)),
+        )
 
     def snapshot(self) -> dict[tuple[str, str], ObjectMeta]:
         """Live objects (for assertions)."""
