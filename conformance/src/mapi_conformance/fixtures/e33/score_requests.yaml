@@ -1,0 +1,45 @@
+# E33 score requests. `payload` names the data built by e33/data.py:payload().
+forecast_8w:
+  payload: future            # daily local-currency spend for the 8 weeks after the fit
+  request:
+    apiVersion: mapi/v1
+    kind: ScoreRequest
+    model: endpoint://growth/eu-geo-mmm-prod
+    mode: forecast
+    horizon: {dim: time, periods: 8}
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    output: {kind: expected, summary: [mean, hdi_90], draws: 50, units: original}
+
+new_market:
+  payload: future_new_market  # the same weeks plus FR, a market unseen at fit
+  request:
+    apiVersion: mapi/v1
+    kind: ScoreRequest
+    model: endpoint://growth/eu-geo-mmm-prod
+    mode: forecast
+    horizon: {dim: time, periods: 8}
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    output: {kind: expected, summary: [mean, hdi_90], draws: 50}
+
+weekly_eur_plan:
+  payload: weekly_plan        # a planner's weekly EUR budget, entering after resampling
+  side_tables: false
+  request:
+    apiVersion: mapi/v1
+    kind: ScoreRequest
+    model: endpoint://growth/eu-geo-mmm-prod
+    mode: forecast
+    horizon: {dim: time, periods: 8}
+    inputs_stage: weekly
+    output: {kind: expected, summary: [mean, hdi_90], draws: 50}
+
+counterfactual_tv:
+  payload: window             # the last 4 weeks of the fit data
+  request:
+    apiVersion: mapi/v1
+    kind: ScoreRequest
+    model: endpoint://growth/eu-geo-mmm-prod
+    mode: counterfactual
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    interventions: [{var: spend_local, sel: {channel: tv}, multiply: 1.2}]
+    output: {kind: predictive, summary: [mean, hdi_90], draws: 50}

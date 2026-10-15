@@ -244,7 +244,7 @@ class PyMCMarketingMMM(CustomModel[PyMCMarketingSettings]):
             "they sum to y_hat",
         },
     }
-    plots: ClassVar[list[str]] = ["core.ppc_fan", "core.convergence", "mmm.decomposition"]
+    plots: ClassVar[list[str]] = ["core.ppc_fan", "core.convergence", "core.counterfactual"]
     resources = ResourceHint(
         min_class=ResourceClass.S, default_class=ResourceClass.M, est_fit_seconds=900
     )
