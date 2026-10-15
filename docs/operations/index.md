@@ -34,8 +34,10 @@ flowchart LR
 
 Whichever you choose:
 
-- **It is single-tenant and has no authentication.** The API listens on `127.0.0.1`, and
-  compose publishes every port on `127.0.0.1` only. Do not expose a v0.2 stack to untrusted
+- **Sign-in is for development only.** Both run the servers in the `dev` profile: anyone who
+  can reach the API can sign in as one of the seeded accounts through the built-in identity
+  provider (`MAPI_STACK_PROFILE=single-tenant` turns sign-in off). The API listens on
+  `127.0.0.1`, and compose publishes every port on `127.0.0.1` only. Do not expose a v0.2 stack to untrusted
   networks; see the [security model](../concepts/security.md#local-development-vs-production).
 - **State is the database plus the object store.** Back up both (`.local/pg` and
   `.local/gcs` locally; the `pgdata` and `gcsdata` volumes under compose), and the bundle

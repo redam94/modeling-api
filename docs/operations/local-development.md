@@ -15,6 +15,26 @@ The [quickstart](../getting-started/quickstart.md) walks through fitting, inspec
 scoring the demo model from the browser. This page explains what `make dev` runs, how to
 work on one component, and where local state lives.
 
+## Signing in <span class="mapi-badge">v0.3</span> { #signing-in }
+
+`make dev` runs the servers in the `dev` profile: multi-tenant, with a development identity
+provider built into the API. The browser shows a sign-in screen. Choose one of the seeded
+accounts on the provider's page:
+
+| Account | Role |
+|---|---|
+| `admin@dev.local` | Admin of the `default` tenant and a platform operator (the admin console) |
+| `analyst@dev.local` | `runner` in the `default` project |
+| `viewer@dev.local` | `viewer` in the `default` project |
+
+`make seed` and `make e2e` sign in by themselves as `admin@dev.local` (change it with
+`MAPI_DEV_ACCOUNT`). The CLI signs in with
+`mapi login --issuer https://dev-idp.mapi.localhost --discovery-url http://127.0.0.1:8000/dev/idp`.
+Anyone who can reach the API can sign in as any of these accounts, which is why the profile
+exists only for local development. `MAPI_STACK_PROFILE=single-tenant make dev` gives back the
+credential-less v0.2 API. See [Authentication and isolation](authentication.md) for the
+details.
+
 ## What `make dev` starts
 
 `scripts/dev.py` is a small process supervisor. It starts each service in dependency order and

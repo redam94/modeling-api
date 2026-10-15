@@ -35,7 +35,7 @@ import tempfile
 import time
 import traceback
 import uuid
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -64,15 +64,85 @@ from mapi_conformance.runner import (
 
 __all__ = [
     "STACK_STEPS",
+    "StackAuth",
     "StackRefs",
     "dataset_name",
     "run_corpus_on_stack",
     "run_fixture_on_stack",
+    "stack_auth",
     "stack_request",
     "stack_spec_yaml",
 ]
 
 STACK_STEPS = ("ingest", "validate", "fit", "score", "evaluate", "plots", "expectations")
+DEFAULT_DEV_ACCOUNT = "admin@dev.local"
+DEFAULT_PROJECT = "default/default"
+
+
+@dataclass(frozen=True, slots=True)
+class StackAuth:
+    """How to call a running stack. All ``None`` for a single-tenant stack (no credentials).
+
+    ``make dev`` runs the servers in the ``dev`` profile, where every request needs a caller:
+    ``token`` is ``MAPI_TOKEN`` or an ID token from the stack's development IdP, ``project``
+    the ``X-Mapi-Project`` to act in, and ``internal_token`` the bearer of
+    ``POST /internal/events`` (``MAPI_INTERNAL_TOKEN``, or the stack's
+    ``$MAPI_DATA_DIR/dev/internal-token``).
+    """
+
+    token: str | None = None
+    project: str | None = None
+    internal_token: str | None = None
+
+    def headers(self) -> dict[str, str]:
+        """Headers for raw HTTP calls to the stack's project-scoped ``/v1`` routes."""
+        from mapi_spec.tenancy import PROJECT_HEADER
+
+        out: dict[str, str] = {}
+        if self.token:
+            out["Authorization"] = f"Bearer {self.token}"
+        if self.project:
+            out[PROJECT_HEADER] = self.project
+        return out
+
+    def internal_headers(self) -> dict[str, str]:
+        """Headers for ``POST /internal/events``."""
+        return {"Authorization": f"Bearer {self.internal_token}"} if self.internal_token else {}
+
+
+def stack_auth(
+    api_url: str, *, data_dir: Path | None = None, environ: Mapping[str, str] | None = None
+) -> StackAuth:
+    """Work out how to call the stack at ``api_url`` (see :class:`StackAuth`).
+
+    Environment: ``MAPI_TOKEN`` (wins), ``MAPI_DEV_ACCOUNT`` (default ``admin@dev.local``),
+    ``MAPI_PROJECT`` (default ``default/default``), ``MAPI_INTERNAL_TOKEN``.
+    """
+    import os
+
+    import httpx
+    from mapi_client.oidc import dev_idp_login
+
+    env = os.environ if environ is None else environ
+    url = api_url.rstrip("/")
+    internal = env.get("MAPI_INTERNAL_TOKEN", "").strip() or None
+    if internal is None and data_dir is not None:
+        token_file = data_dir / "dev" / "internal-token"
+        if token_file.exists():
+            internal = token_file.read_text(encoding="utf-8").strip() or None
+    try:
+        status = httpx.get(f"{url}/v1/me", timeout=10).status_code
+    except httpx.TransportError:
+        return StackAuth(internal_token=internal)  # callers report the unreachable API
+    if status != 401:
+        return StackAuth(internal_token=internal)
+    token = env.get("MAPI_TOKEN", "").strip() or dev_idp_login(
+        url, env.get("MAPI_DEV_ACCOUNT", "").strip() or DEFAULT_DEV_ACCOUNT
+    )
+    project = env.get("MAPI_PROJECT", "").strip() or DEFAULT_PROJECT
+    return StackAuth(token=token, project=project, internal_token=internal)
+
+
 _UNSAFE = re.compile(r"[^a-z0-9]+")
 
 

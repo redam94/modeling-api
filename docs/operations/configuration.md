@@ -241,11 +241,18 @@ rewrite the config file atomically with mode `0600`.
 
 | Variable | Meaning |
 |---|---|
+| `MAPI_STACK_PROFILE` | The servers' `MAPI_PROFILE`: `dev` (the default: sign-in through the built-in development IdP, the `default` tenant and project, the seeded accounts of `MAPI_DEVIDP_USERS` with `admin@dev.local` as tenant admin and platform operator), `single-tenant` (the credential-less M1 API) or `multi-tenant`. A separate name so that a CLI `MAPI_PROFILE` in your shell never reaches the servers |
+| `MAPI_INTERNAL_TOKEN` | Outside the single-tenant profile, a random bearer for `POST /internal/events` is created in `$MAPI_DATA_DIR/dev/internal-token` and given to the servers (the end-to-end suite reads it there) |
 | `MAPI_DEV_<NAME>_CMD` | Replace one service's command (shell-quoted). `<NAME>` is `GCS_SHIM`, `MIGRATE`, `API`, `WORKER`, `WEB` or `PLOTS`, e.g. `MAPI_DEV_API_CMD="uvicorn mapi_server.app:app --reload --port 8000"` |
 | `NO_COLOR`, `FORCE_COLOR` | Disable or force coloured service prefixes |
 
 `make dev ONLY=api` and `make dev WITHOUT=web,plots` choose services; `make seed SIZE=full`
 loads the large demo. These are `make` arguments, not environment variables.
+
+`make seed`, `make e2e` and `python -m mapi_conformance run --stack` sign in to a stack that
+requires it: with `MAPI_TOKEN` when set, otherwise through the development IdP as
+`MAPI_DEV_ACCOUNT` (default `admin@dev.local`), acting in `MAPI_PROJECT` (default
+`default/default`).
 
 ## The web app and the plot sandbox
 
@@ -276,6 +283,7 @@ Compose reads `.env` in the repository root (copy `.env.example`).
 | `POSTGRES_PASSWORD` | **required** | The database password; compose refuses to start without it |
 | `MAPI_VERSION` | the workspace version | The `mapi/*` image tag (`make compose-up` sets it) |
 | `MAPI_ENV` | `local` | As above |
+| `MAPI_STACK_PROFILE` | `dev` | The servers' `MAPI_PROFILE`, as for `make dev` |
 | `MAPI_EXECUTOR` | `local-process` | The worker's executor |
 | `MAPI_WORKER_TMPFS`, `MAPI_WORKER_MEMORY`, `MAPI_WORKER_CPUS` | `4g`, `12g`, `4` | The worker's `/tmp` (the scratch of every local-process run), memory limit and CPUs |
 | `DOCKER_GID` | `0` | With the docker executor override: the group that owns the Docker socket |
@@ -325,6 +333,7 @@ The variables Terraform sets on the Cloud Run services (the deployment contract 
 | Variable | Meaning |
 |---|---|
 | `MAPI_E2E` | Set by `pnpm --filter @mapi/web e2e`: run the Playwright `@e2e` suite against a running stack |
+| `MAPI_DEV_ACCOUNT` | The development-IdP account `make seed` and the end-to-end suites sign in as (default `admin@dev.local`) |
 | `MAPI_UPDATE_SNAPSHOTS` | `1` regenerates the contract snapshot of `mapi_spec` |
 | `MAPI_HYPOTHESIS_EXAMPLES` | Examples per property in the wire-format round-trip tests (default 60) |
 

@@ -1,7 +1,8 @@
 # Docker Compose <span class="mapi-badge">v0.2</span>
 
-`docker-compose.yml` runs the platform's [container images](images.md) as a single-tenant
-stack on one machine: the same services as `make dev`, on the same ports, but from the
+`docker-compose.yml` runs the platform's [container images](images.md) as a local stack on
+one machine, in the `dev` profile like `make dev` (sign in as `admin@dev.local`; see
+[signing in](local-development.md#signing-in)): the same services as `make dev`, on the same ports, but from the
 exact images that production uses. You do not need Docker for development (see
 [Local, without Docker](local-development.md)); use compose to check the images end to end or
 to run a self-contained demo. What is inside each image, how it is built and the build-time
