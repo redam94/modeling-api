@@ -16,6 +16,7 @@ nav:
   - Home: index.md
   - Guides:
       - Write a step or model plugin: guides/plugins.md
+      - Tabular models (scikit-learn, xgboost): guides/sklearn.md
   - Reference:
       - Spec format: reference/spec-format.md
       - Python SDK: reference/sdk.md
