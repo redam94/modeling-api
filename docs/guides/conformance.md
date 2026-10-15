@@ -23,6 +23,9 @@ python -m mapi_conformance list
 python -m mapi_conformance run                         # every fixture at size tiny
 python -m mapi_conformance run --fixture e24 --fixture c08
 python -m mapi_conformance run --size full --json corpus.json
+make conformance                                       # the same as `run` at size tiny
+make conformance FIXTURE=e33                           # one fixture
+make conformance-full                                  # every fixture at size full
 ```
 
 The runner prints one row per fixture and exits non-zero if any step failed:
@@ -34,6 +37,8 @@ e02               tabular.hierarchical_glm@1.0.0  ok        ok   ok 6/6  ok     
 c08               ts.hsgp_trend@1.0.0             ok        ok   ok 6/6  ok        ok 10/10  ok 3/3  ok                 PASS
 e24               ts.gaussian_hmm@1.0.0           ok        ok   ok 5/5  ok        ok 12/12  ok 2/2  ok                 PASS
 xgb_store_demand  tabular.regressor@1.0.0         ok        ok   ok 6/6  ok        ok 12/12  ok 3/3  ok                 PASS
+e33               mmm.hierarchical_geo@1.3.0      ok        ok   ok 4/4  ok        ok 12/12  ok 4/4  ok                 PASS
+pymc_marketing    mmm.pymc_marketing@1.0.0        ok        ok   ok 4/4  ok        ok 12/12  ok 2/2  ok                 PASS
 ```
 
 `--size tiny` (the default, used by `pytest -m conformance`) keeps data small and MCMC
@@ -47,6 +52,8 @@ short; `--size full` uses the spec's own fit settings and larger data.
 | `c08` | `ts.hsgp_trend` | sentinel codes, `max_extension` from anticipated coords, `HORIZON_EXCEEDS_FIT`, contiguity |
 | `e24` | `ts.gaussian_hmm` | padded + mask, terminal state, forecast and filter, relabelling, invalid LOO |
 | `xgb_store_demand` | `tabular.regressor` | pooled new stores, quantile aggregation refused, future-required covariates |
+| `e33` | `mmm.hierarchical_geo` | FX (`supplied`) and holiday (`pinned`) side tables, split after `resample`, per-market lag context, new market from the hyperprior, weekly EUR plan via `inputs_stage`, CRN counterfactual, derived quantities in EUR |
+| `pymc_marketing` | `mmm.pymc_marketing` | a model that `owns` scaling, carry-over and units; a scoring window equals the same weeks of the full series |
 
 ## Add a fixture
 
@@ -76,6 +83,7 @@ filled in for you:
   request: {mode: forecast, horizon: {dim: time, periods: 4}}
   payload: new_store          # none | fit_data | "tail:<n>" | a payload_<name> builder
   drop_targets: true          # remove target variables from the payload (default)
+  side_tables: true           # pass the fixture's side tables to the run (default)
   expect: {vars: [y_hat], sizes: {week: 4}, issues: [UNSEEN_LEVELS], groups: [summary]}
 - name: quantiles_are_not_summed
   request: {mode: forecast, horizon: {dim: time, periods: 4}, output: {aggregate: {over: [store_id]}}}
@@ -95,6 +103,20 @@ def check_fit(bundle, data): ...
 def check_score(name, tree, bundle, data): ...
 def check_evaluate(tree, bundle, data): ...
 ```
+
+A hook that declares a keyword `ctx` parameter also receives a `FixtureContext`: the seed,
+size, registry, side tables and `results`, the trees of the score requests that succeeded
+before this one. Use it to compare requests, as E33 does when it checks that a weekly EUR
+plan forecasts exactly what the raw daily path forecasts:
+
+```python
+def check_score(name, tree, bundle, data, *, ctx):
+    if name == "weekly_eur_plan" and "forecast_8w" in ctx.results:
+        ...
+```
+
+A side table with `score_policy: supplied` must be named in each score request that
+replays its step (`request.side_tables`); the runner supplies the data under that name.
 
 From Python, `mapi_conformance.run_fixture("e24")` returns a `FixtureReport` and
 `run_corpus()` a `CorpusReport` with `.table()` and `.to_json()`.

@@ -4,17 +4,16 @@ contributions, counterfactual locality and plots."""
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
 
 import numpy as np
 import xarray as xr
 from mapi_plots.recipes import render_plots
 from mapi_sdk.bundle import Bundle
-from mapi_sdk.registry import Registry
 
 from mapi_conformance.fixtures.pymc_marketing.data import HORIZON_WEEKS
+from mapi_conformance.runner import FixtureContext
 
-__all__ = ["check_bundle", "check_score"]
+__all__ = ["check_fit", "check_score"]
 
 
 def _group(tree: xr.DataTree, name: str) -> xr.Dataset:
@@ -23,23 +22,21 @@ def _group(tree: xr.DataTree, name: str) -> xr.Dataset:
     return node.to_dataset()
 
 
-def check_bundle(bundle: Bundle, registry: Registry) -> None:
+def check_fit(bundle: Bundle, data: xr.Dataset, *, ctx: FixtureContext) -> None:
+    """Owned preprocessing: no platform inverse, pymc-marketing's fit data in the bundle."""
     caps = bundle.model.manifest.capabilities
     assert set(caps.owns) == {"scaling", "carryover", "inverse_units"}
     assert bundle.metrics.output_space == "model-owned"
     assert "fit_data" in bundle.model.groups
-    report = render_plots(bundle.to_tree(), ["core.convergence"], registry=registry)
+    report = render_plots(bundle.to_tree(), ["core.convergence"], registry=ctx.registry)
     assert [p.id for p in report.plots] == ["core.convergence"], report.issues
 
 
 def check_score(
-    name: str,
-    tree: xr.DataTree,
-    *,
-    bundle: Bundle,
-    registry: Registry,
-    results: Mapping[str, xr.DataTree],
+    name: str, tree: xr.DataTree, bundle: Bundle, data: xr.Dataset, *, ctx: FixtureContext
 ) -> None:
+    """Per-request expectations; ``ctx.results`` holds the requests scored so far."""
+    registry, results = ctx.registry, ctx.results
     summary = _group(tree, "summary")
     space = json.loads(tree.attrs["output_space"])
     assert set(space.values()) == {"model-owned"}

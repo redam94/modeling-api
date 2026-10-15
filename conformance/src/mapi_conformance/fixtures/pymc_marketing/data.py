@@ -9,7 +9,7 @@ import xarray as xr
 from mapi_plugin_mmm.examples import e33_dataset, e33_side_tables, future_daily
 from mapi_spec import DataSchema
 
-__all__ = ["HORIZON_WEEKS", "SIZES", "generate", "payload", "raw_schema"]
+__all__ = ["HORIZON_WEEKS", "SIZES", "generate", "payload_future", "payload_window", "schema"]
 
 Size = Literal["tiny", "full"]
 SIZES = {
@@ -28,7 +28,7 @@ def generate(seed: int = 0, size: Size = "tiny") -> tuple[xr.Dataset, dict[str, 
     return data, e33_side_tables()
 
 
-def raw_schema(data: xr.Dataset) -> DataSchema:
+def schema() -> DataSchema:
     """Markets are fixed: pymc-marketing cannot score panel levels unseen at fit."""
     return DataSchema.model_validate(
         {
@@ -50,13 +50,11 @@ def raw_schema(data: xr.Dataset) -> DataSchema:
     )
 
 
-def payload(kind: str, *, seed: int = 0, size: Size = "tiny") -> xr.Dataset:
-    cfg = SIZES[size]
-    if kind == "future":
-        return future_daily(future_weeks=HORIZON_WEEKS, seed=seed, **cfg)  # type: ignore[arg-type]
-    data, _ = generate(seed, size)
-    if kind == "window":
-        return data.isel(date=slice(-28, None))
-    if kind == "full":
-        return data
-    raise ValueError(f"unknown pymc_marketing payload {kind!r}")
+def payload_future(data: xr.Dataset, seed: int, size: Size) -> xr.Dataset:
+    """Daily local-currency spend for the horizon after the fit window (no revenue)."""
+    return future_daily(future_weeks=HORIZON_WEEKS, seed=seed, **SIZES[size])  # type: ignore[arg-type]
+
+
+def payload_window(data: xr.Dataset, seed: int, size: Size) -> xr.Dataset:
+    """The last four weeks of the fit data."""
+    return data.isel(date=slice(-28, None))

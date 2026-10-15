@@ -43,8 +43,12 @@ test-fast: ## Unit tests only, skipping slow MCMC tests
 	$(UV) run pytest -q -m "not slow and not docker and not cloud and not e2e"
 
 .PHONY: conformance
-conformance: ## Run the conformance corpus (CORPUS_SIZE=tiny|full, FIXTURE=<id> to pick one)
+conformance: ## Run the conformance corpus at tiny size (FIXTURE=<id> picks one; CORPUS_SIZE overrides)
 	$(UV) run python -m mapi_conformance run --size $(CORPUS_SIZE) $(if $(FIXTURE),--fixture $(FIXTURE))
+
+.PHONY: conformance-full
+conformance-full: ## Run the conformance corpus at full size (nightly-scale data and fits; slow)
+	$(UV) run python -m mapi_conformance run --size full $(if $(FIXTURE),--fixture $(FIXTURE))
 
 ## ---------------------------------------------------------------- docs
 .PHONY: docs-serve

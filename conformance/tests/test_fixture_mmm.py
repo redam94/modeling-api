@@ -1,89 +1,69 @@
-"""Conformance corpus: the E33 and pymc-marketing MMM fixtures, tiny size.
+"""The E33 and pymc-marketing MMM fixtures: corpus layout and request semantics.
 
-Each fixture runs spec → static validation → fit (through ``default_registry()``, i.e.
-the installed entry points for steps, models and plots) → every named score request in
-``score_requests.yaml`` → the fixture's expectations. Fits use tiny draws (PR runs); the
-nightly corpus runs ``size="full"``.
+Both fixtures run end to end (fit, every score request with the fixture's expectations,
+evaluate, contract kit and plots) in ``test_corpus.py``; these fast tests pin what each
+fixture asks of the platform.
 """
 
 from __future__ import annotations
 
-from types import ModuleType
-from typing import Any
+import inspect
 
 import pytest
-import xarray as xr
 from mapi_conformance.fixtures import FIXTURES
-from mapi_conformance.fixtures import e33 as e33_fixture
-from mapi_conformance.fixtures import pymc_marketing as pmm_fixture
-from mapi_conformance.fixtures.e33 import expectations as e33_expect
-from mapi_conformance.fixtures.pymc_marketing import expectations as pmm_expect
-from mapi_sdk.bundle import Bundle
-from mapi_sdk.harness import fit_spec, score_bundle
-from mapi_sdk.registry import Registry, default_registry
-from mapi_spec import validate_spec
+from mapi_conformance.runner import load_fixture
 
-pytestmark = [pytest.mark.conformance, pytest.mark.integration]
-
-slow = pytest.mark.slow  # each fixture fits twice (evaluate_then_refit), ~15 s
-
-SEED = 0
-
-
-@pytest.fixture(scope="module")
-def registry() -> Registry:
-    return default_registry(reload=True)
-
-
-def _fit(fixture: ModuleType, registry: Registry) -> tuple[Bundle, dict[str, xr.Dataset]]:
-    data, tables = fixture.generate(SEED, "tiny")
-    spec = fixture.spec()
-    schema = fixture.raw_schema(data)
-    res = validate_spec(spec, registry.catalog(), schema)
-    assert res.ok, [(i.pointer, i.message) for i in res.errors]
-    return fit_spec(spec, data, tables, registry, raw_schema=schema), tables
-
-
-def _score_all(
-    fixture: ModuleType,
-    expect: Any,
-    bundle: Bundle,
-    tables: dict[str, xr.Dataset],
-    registry: Registry,
-) -> dict[str, xr.DataTree]:
-    results: dict[str, xr.DataTree] = {}
-    for named in fixture.score_requests():
-        payload = fixture.payload(named.payload, seed=SEED, size="tiny")
-        tree = score_bundle(
-            bundle,
-            named.request,
-            payload,
-            side_tables=tables if named.side_tables else None,
-            registry=registry,
-        )
-        results[named.name] = tree
-        expect.check_score(named.name, tree, bundle=bundle, registry=registry, results=results)
-    return results
+pytestmark = [pytest.mark.conformance]
 
 
 def test_fixtures_are_registered() -> None:
     assert {"e33", "pymc_marketing"} <= set(FIXTURES)
-    names = [r.name for r in e33_fixture.score_requests()]
-    assert names == ["forecast_8w", "new_market", "weekly_eur_plan", "counterfactual_tv"]
-    assert {r.request.inputs_stage for r in e33_fixture.score_requests()} == {"raw", "weekly"}
 
 
-@slow
-def test_e33_fixture(registry: Registry) -> None:
-    bundle, tables = _fit(e33_fixture, registry)
-    e33_expect.check_bundle(bundle, registry, e33_fixture.truth(SEED, "tiny"))
-    results = _score_all(e33_fixture, e33_expect, bundle, tables, registry)
-    assert set(results) == {"forecast_8w", "new_market", "weekly_eur_plan", "counterfactual_tv"}
+def test_e33_requests_cover_horizon_new_market_plan_and_counterfactual() -> None:
+    fx = load_fixture("e33")
+    cases = {c.name: c for c in fx.cases}
+    assert list(cases) == ["forecast_8w", "new_market", "weekly_eur_plan", "counterfactual_tv"]
+    stages = {c.score_request().inputs_stage for c in fx.cases}
+    assert stages == {"raw", "weekly"}
+    # a planner's weekly EUR budget needs no FX table: it enters after the conversion
+    assert not cases["weekly_eur_plan"].side_tables
+    assert all(c.side_tables for n, c in cases.items() if n != "weekly_eur_plan")
+    assert cases["new_market"].expect["issues"] == ["UNSEEN_LEVELS"]
+    assert cases["counterfactual_tv"].score_request().mode == "counterfactual"
 
 
-@slow
-def test_pymc_marketing_fixture(registry: Registry) -> None:
-    bundle, tables = _fit(pmm_fixture, registry)
-    pmm_expect.check_bundle(bundle, registry)
-    results = _score_all(pmm_fixture, pmm_expect, bundle, tables, registry)
-    assert set(results) == {"forecast_4w", "recent_window", "full_series", "counterfactual_search"}
+def test_e33_payloads() -> None:
+    fx = load_fixture("e33")
+    data, tables = fx.generate(0, "tiny")
+    assert set(tables) == {"fx", "holidays"}
+    spec, schema = fx.spec("tiny"), fx.raw_schema(data)
+    assert schema.dims["market"].policy == "new_levels"
+    cases = {c.name: c for c in fx.cases}
+    future = fx.payload(cases["forecast_8w"], data, spec, schema, 0, "tiny")
+    assert future is not None and "revenue_local" not in future
+    assert future["date"].values.min() > data["date"].values.max()
+    new = fx.payload(cases["new_market"], data, spec, schema, 0, "tiny")
+    assert new is not None and "FR" in new["market"].values
+    plan = fx.payload(cases["weekly_eur_plan"], data, spec, schema, 0, "tiny")
+    assert plan is not None and plan["spend_local"].attrs["units"] == "EUR"
+    assert plan.sizes["date"] == 8
+
+
+def test_pymc_marketing_requests() -> None:
+    fx = load_fixture("pymc_marketing")
+    names = [c.name for c in fx.cases]
+    assert names == ["forecast_4w", "recent_window", "full_series", "counterfactual_search"]
+    data, _ = fx.generate(0, "tiny")
+    schema = fx.raw_schema(data)
+    # pymc-marketing cannot score panel levels unseen at fit
+    assert schema.dims["market"].policy == "fixed"
+
+
+@pytest.mark.parametrize("fixture_id", ["e33", "pymc_marketing"])
+def test_expectation_hooks_take_the_runner_context(fixture_id: str) -> None:
+    fx = load_fixture(fixture_id)
+    for name in ("check_fit", "check_score"):
+        hook = fx.hook(name)
+        assert callable(hook)
+        assert "ctx" in inspect.signature(hook).parameters

@@ -25,14 +25,21 @@ Each step is independent where possible (a failed score request does not hide th
       request: {mode: forecast, horizon: {dim: t, periods: 12}}
       payload: none                        # none | fit_data | tail:<n> | <builder name>
       drop_targets: true                   # drop target variables from the payload
+      side_tables: true                    # pass the fixture's side tables (default)
       expect: {groups: [summary], vars: [y_hat], sizes: {date: 12}}
       expect_error: HORIZON_EXCEEDS_FIT    # the run must fail with this code instead
+
+The ``expectations.py`` hooks are called as ``check_fit(bundle, data)``,
+``check_score(name, tree, bundle, data)`` and ``check_evaluate(tree, bundle, data)``. A hook
+that declares a ``ctx`` parameter also receives a :class:`FixtureContext` (seed, size,
+registry, side tables and the score results so far), e.g. to compare two requests.
 """
 
 from __future__ import annotations
 
 import asyncio
 import importlib
+import inspect
 import json
 import time
 import traceback
@@ -55,13 +62,14 @@ from mapi_spec.capabilities import REPRESENTATION_RULES
 from mapi_spec.errors import ErrorCode, Severity
 from mapi_spec.executor import ExecState, RunKind, RunSubmit
 from mapi_spec.loader import parse_yaml
-from mapi_spec.spec import AsOfSplit, ScoreRequest, TimeHoldoutSplit
+from mapi_spec.spec import AsOfSplit, ScorePolicy, ScoreRequest, TimeHoldoutSplit
 
 from mapi_conformance.fixtures import FIXTURES
 
 __all__ = [
     "CorpusReport",
     "Fixture",
+    "FixtureContext",
     "FixtureReport",
     "ScoreCase",
     "Size",
@@ -89,6 +97,7 @@ class ScoreCase:
     drop_targets: bool = True
     expect: dict[str, Any] = field(default_factory=dict)
     expect_error: str | None = None
+    side_tables: bool = True
 
     @classmethod
     def parse(cls, raw: Mapping[str, Any], fixture_id: str) -> ScoreCase:
@@ -99,6 +108,7 @@ class ScoreCase:
             "drop_targets",
             "expect",
             "expect_error",
+            "side_tables",
         }
         if unknown:
             raise ValueError(f"score request entry has unknown keys {sorted(unknown)}")
@@ -120,6 +130,7 @@ class ScoreCase:
             drop_targets=bool(raw.get("drop_targets", True)),
             expect=dict(raw.get("expect") or {}),
             expect_error=err,
+            side_tables=bool(raw.get("side_tables", True)),
         )
 
     def score_request(self) -> ScoreRequest:
@@ -127,6 +138,31 @@ class ScoreCase:
         if not isinstance(doc, ScoreRequest):
             raise ValueError(f"{self.name}: request is not a ScoreRequest")
         return doc
+
+
+@dataclass(slots=True)
+class FixtureContext:
+    """What a ``ctx``-accepting expectation hook sees besides the bundle and the data."""
+
+    fixture_id: str
+    seed: int
+    size: Size
+    registry: Registry
+    side_tables: dict[str, xr.Dataset]
+    results: dict[str, xr.DataTree] = field(default_factory=dict)
+    """Trees of the score requests that succeeded so far, by request name (file order)."""
+
+
+def _call_hook(hook: Callable[..., Any], *args: Any, ctx: FixtureContext) -> Any:
+    """Call an expectation hook, passing ``ctx`` only when the hook declares it."""
+    params: Mapping[str, inspect.Parameter]
+    try:
+        params = inspect.signature(hook).parameters
+    except (TypeError, ValueError):  # pragma: no cover - builtins without signatures
+        params = {}
+    if "ctx" in params:
+        return hook(*args, ctx=ctx)
+    return hook(*args)
 
 
 @dataclass(slots=True)
@@ -481,6 +517,17 @@ def _problem_text(status: Any) -> str:
     return f"{p.code.value}: {p.detail}{extra}"
 
 
+def _supplied_side_tables(spec: ModelSpec, tables: Iterable[str]) -> dict[str, str]:
+    """Refs of the spec's ``score_policy: supplied`` side tables the fixture provides; a
+    score request must name these to replay the steps that use them."""
+    have = set(tables)
+    return {
+        name: str(st.ref)
+        for name, st in spec.data.side_tables.items()
+        if st.score_policy is ScorePolicy.SUPPLIED and name in have
+    }
+
+
 def _has_group(tree: xr.DataTree, path: str) -> bool:
     node: xr.DataTree = tree
     for part in path.strip("/").split("/"):
@@ -563,6 +610,7 @@ def _run(
     fx, data, tables, spec, schema, reg = (
         state["fx"], state["data"], state["tables"], state["spec"], state["schema"], state["reg"]
     )  # fmt: skip
+    ctx = FixtureContext(fixture_id, seed, size, reg, dict(tables))
     say(f"[{fixture_id}] loaded {report.model}")
 
     with _Step(report, "validate") as st:
@@ -596,8 +644,8 @@ def _run(
     key = f"{fixture_id}/production"
     runner.executor.put_bundle(key, bundle)
 
-    _score_cases(report, fx, runner, spec, schema, data, bundle, key, seed, size, sorted(tables))
-    eval_tree = _evaluate(report, fx, runner, spec, data, bundle, sorted(tables))
+    _score_cases(report, fx, runner, spec, schema, data, bundle, key, ctx)
+    eval_tree = _evaluate(report, fx, runner, spec, data, bundle, sorted(tables), ctx)
 
     if contract:
         with _Step(report, "contract") as st:
@@ -626,7 +674,7 @@ def _run(
         hook = fx.hook("check_fit")
         ran_checks = []
         if callable(hook):
-            hook(bundle, data)
+            _call_hook(hook, bundle, data, ctx=ctx)
             ran_checks.append("check_fit")
         st.detail = ", ".join(ran_checks) or "no fixture-level fit checks"
 
@@ -640,10 +688,9 @@ def _score_cases(
     data: xr.Dataset,
     bundle: Bundle,
     key: str,
-    seed: int,
-    size: Size,
-    tables: Sequence[str],
+    ctx: FixtureContext,
 ) -> None:
+    all_tables = sorted(ctx.side_tables)
     if not fx.cases:
         _skip(report, "score", "no score_requests.yaml")
         return
@@ -652,7 +699,7 @@ def _score_cases(
         passed = 0
         for case in fx.cases:
             try:
-                payload = fx.payload(case, data, spec, schema, seed, size)
+                payload = fx.payload(case, data, spec, schema, ctx.seed, ctx.size)
                 ref = None
                 if payload is not None:
                     ref = f"fixture://{fx.id}/payload/{case.name}"
@@ -664,7 +711,7 @@ def _score_cases(
                     key,
                     ref,
                     f"{fx.id}-{case.name}",
-                    tables,
+                    all_tables if case.side_tables else [],
                     fx.id,
                 )
                 problems: list[str] = []
@@ -682,7 +729,8 @@ def _score_cases(
                     problems += _check_expect(case, tree)
                     hook = fx.hook("check_score")
                     if callable(hook) and not problems:
-                        hook(case.name, tree, bundle, data)
+                        _call_hook(hook, case.name, tree, bundle, data, ctx=ctx)
+                    ctx.results[case.name] = tree
                 if problems:
                     failures.append(f"{case.name}: {'; '.join(problems)}")
                 else:
@@ -719,6 +767,7 @@ def _evaluate(
     data: xr.Dataset,
     bundle: Bundle,
     tables: Sequence[str],
+    ctx: FixtureContext,
 ) -> xr.DataTree | None:
     tree: xr.DataTree | None = None
     with _Step(report, "evaluate") as st:
@@ -749,6 +798,9 @@ def _evaluate(
             },
             "seed": spec.model.fit.seed or 0,
         }
+        supplied = _supplied_side_tables(spec, tables)
+        if supplied:
+            request["side_tables"] = supplied
         status, tree = runner.score(
             RunKind.EVALUATE, request, key, ref, f"{fx.id}-evaluate", tables, fx.id, names
         )
@@ -765,7 +817,7 @@ def _evaluate(
                     raise AssertionError(f"{k}: fit-time {want} != evaluate run {v}")
         hook = fx.hook("check_evaluate")
         if callable(hook):
-            hook(tree, bundle, data)
+            _call_hook(hook, tree, bundle, data, ctx=ctx)
         st.detail = f"{where}: " + ", ".join(
             f"{k}={v:.4g}" for k, v in sorted(values.items()) if isinstance(v, int | float)
         )
