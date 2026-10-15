@@ -645,6 +645,10 @@ export interface paths {
         /**
          * Cancel Run
          * @description Idempotent: ``cancelling``, or the terminal state if the run already finished.
+         *
+         *     A ``finalizing`` run is left alone (the response shows it still finalizing): its
+         *     execution is over, and cancelling would only throw away a complete result after the
+         *     finalizer reserved a version number and copied write-once bundle objects.
          */
         post: operations["cancel_run"];
         delete?: never;
