@@ -66,6 +66,9 @@ export function YamlEditor({
   const theme = useResolvedTheme();
   const callbacks = useRef({ onChange, onSave, onValidate, onReady });
   callbacks.current = { onChange, onSave, onValidate, onReady };
+  // Monaco loads asynchronously: create the model from the latest value, not the first one.
+  const valueRef = useRef(value);
+  valueRef.current = value;
 
   useEffect(() => {
     let disposed = false;
@@ -75,8 +78,9 @@ export function YamlEditor({
         if (disposed || !host.current) return;
         monacoRef.current = monaco;
         const uri = monaco.Uri.parse(`file:///${path}`);
-        model = monaco.editor.getModel(uri) ?? monaco.editor.createModel(value, "yaml", uri);
-        if (model.getValue() !== value) model.setValue(value);
+        const initial = valueRef.current;
+        model = monaco.editor.getModel(uri) ?? monaco.editor.createModel(initial, "yaml", uri);
+        if (model.getValue() !== initial) model.setValue(initial);
         const editor = monaco.editor.create(host.current, {
           model,
           readOnly,

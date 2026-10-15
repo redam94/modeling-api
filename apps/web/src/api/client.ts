@@ -11,6 +11,8 @@ export const api = createClient<paths>({
   // M1 has no auth; M2 adds a BFF session cookie (credentials: "include" then).
   credentials: "omit",
   headers: { Accept: "application/json" },
+  // Resolve fetch at call time (not import time) so interceptors installed later apply.
+  fetch: (request: Request) => globalThis.fetch(request),
 });
 
 /** An HTTP error from the API, carrying the RFC 7807 problem when the server sent one. */

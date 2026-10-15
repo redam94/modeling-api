@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowDownToLine } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { useRunLogs } from "@/api/queries";
 import type { LogLine } from "@/api/types";
@@ -36,6 +36,38 @@ export function cleanLogLines(lines: LogLine[]): CleanLine[] {
     }));
 }
 
+const FALLBACK_ROWS = 500;
+
+function LogRow({
+  line: l,
+  index,
+  measure,
+  style,
+}: {
+  line: CleanLine;
+  index?: number;
+  measure?: (el: Element | null) => void;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      data-index={index}
+      ref={measure}
+      className="grid w-full grid-cols-[5.5rem_3.5rem_1fr] gap-2 px-3"
+      style={style}
+    >
+      <span className="text-muted-foreground/70 tabular">{l.ts.slice(11, 19)}</span>
+      <span className={cn(l.stream === "stderr" ? "text-warning" : l.stream === "system" ? "text-info" : "text-muted-foreground")}>
+        {l.stream}
+      </span>
+      <span className="break-all whitespace-pre-wrap">
+        {l.text}
+        {l.truncated ? <span className="text-muted-foreground"> [truncated]</span> : null}
+      </span>
+    </div>
+  );
+}
+
 /**
  * Captured run output. Lines are untrusted: rendered as plain text nodes only (no markup,
  * no links), ANSI sequences removed. Virtualised so long logs stay fast.
@@ -58,6 +90,8 @@ export function LogsViewer({ runId, live }: { runId: string; live: boolean }) {
     estimateSize: () => 20,
     overscan: 30,
   });
+
+  const virtualItems = virtualizer.getVirtualItems();
 
   useEffect(() => {
     if (follow && lines.length) virtualizer.scrollToIndex(lines.length - 1, { align: "end" });
@@ -107,28 +141,26 @@ export function LogsViewer({ runId, live }: { runId: string; live: boolean }) {
           <p className="p-4 font-sans text-[13px] text-muted-foreground">
             {logs.isPending ? "Loading logs…" : needle ? "No lines match the filter." : "No output captured yet."}
           </p>
+        ) : virtualItems.length === 0 ? (
+          // Before the first layout pass (and in non-layout environments) render a plain slice.
+          <div>
+            {lines.slice(-FALLBACK_ROWS).map((l) => (
+              <LogRow key={l.key} line={l} />
+            ))}
+          </div>
         ) : (
           <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
-            {virtualizer.getVirtualItems().map((v) => {
+            {virtualItems.map((v) => {
               const l = lines[v.index];
               if (!l) return null;
               return (
-                <div
+                <LogRow
                   key={l.key}
-                  data-index={v.index}
-                  ref={virtualizer.measureElement}
-                  className="absolute left-0 grid w-full grid-cols-[5.5rem_3.5rem_1fr] gap-2 px-3"
-                  style={{ transform: `translateY(${v.start}px)` }}
-                >
-                  <span className="text-muted-foreground/70 tabular">{l.ts.slice(11, 19)}</span>
-                  <span className={cn(l.stream === "stderr" ? "text-warning" : l.stream === "system" ? "text-info" : "text-muted-foreground")}>
-                    {l.stream}
-                  </span>
-                  <span className="break-all whitespace-pre-wrap">
-                    {l.text}
-                    {l.truncated ? <span className="text-muted-foreground"> [truncated]</span> : null}
-                  </span>
-                </div>
+                  line={l}
+                  index={v.index}
+                  measure={virtualizer.measureElement}
+                  style={{ position: "absolute", left: 0, transform: `translateY(${v.start}px)` }}
+                />
               );
             })}
           </div>

@@ -61,7 +61,7 @@ export function stateArrayPlot(array: StateArray): BuiltPlot {
       spec: {
         data: { name: "state" },
         mark: { type: "rect" },
-        height: { step: 22 },
+        height: { step: 28 },
         encoding: {
           x: { field: colDim, type: "nominal", axis: { labelAngle: 0 } },
           y: { field: rowDim, type: "nominal" },

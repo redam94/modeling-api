@@ -116,8 +116,8 @@ function StepCardView({ card, onIssue }: { card: StepCard; onIssue?: ((i: Issue)
         {r?.context ? (
           <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             <History className="size-3.5" />
-            Keeps the last {r.context.n} {r.context.along}
-            {r.context.within?.length ? ` per ${r.context.within.join(", ")}` : ""} as context for scoring.
+            Keeps a {r.context.n}-step tail along {r.context.along}
+            {r.context.within?.length ? `, per ${r.context.within.join(", ")},` : ""} as scoring context.
           </p>
         ) : null}
         {card.delta &&

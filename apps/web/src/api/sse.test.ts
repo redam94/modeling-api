@@ -28,7 +28,7 @@ describe("SseParser", () => {
 });
 
 const run = (state: Run["state"]): Run =>
-  ({ id: "run_1", state, kind: "fit", attempt: 1, resource_class: "S", timeout: "1m", tenant_id: "default", project_id: "default", created_at: "", updated_at: "" }) as Run;
+  ({ id: "run_1", state, kind: "fit", attempt: 1, resource_class: "S", timeout: "1m", tenant_id: "default", project_id: "default", created_at: "", updated_at: "" });
 
 const event = (id: number): RunEventView => ({ id, run_id: "run_1", attempt: 1, seq: id, ts: "2026-10-15T09:30:00Z", type: "state", payload: { phase: "fit" } });
 
@@ -55,7 +55,7 @@ describe("followRunEvents", () => {
     await followRunEvents(
       "run_1",
       { onSnapshot, onEvent, onEnd },
-      { signal: new AbortController().signal, fetchImpl: fetchImpl as typeof fetch, sleep: async () => undefined },
+      { signal: new AbortController().signal, fetchImpl: fetchImpl, sleep: async () => undefined },
     );
     expect(calls).toEqual([null, "2"]);
     expect(onEvent.mock.calls.map((c) => (c[0] as RunEventView).id)).toEqual([1, 2, 3]);
@@ -75,7 +75,7 @@ describe("followRunEvents", () => {
     });
     await followRunEvents("run_1", { onSnapshot: vi.fn(), onEvent: vi.fn(), onEnd: vi.fn() }, {
       signal: new AbortController().signal,
-      fetchImpl: fetchImpl as typeof fetch,
+      fetchImpl: fetchImpl,
       sleep: async () => undefined,
     });
     expect(calls).toEqual([null, "5"]);
@@ -87,7 +87,7 @@ describe("followRunEvents", () => {
     const onStatus = vi.fn();
     await followRunEvents("run_1", { onSnapshot: vi.fn(), onEvent: vi.fn(), onEnd: vi.fn(), onStatus }, {
       signal: new AbortController().signal,
-      fetchImpl: (async () => responses.shift()!) as typeof fetch,
+      fetchImpl: (async () => responses.shift()!),
       sleep: async (ms) => {
         delays.push(ms);
       },
@@ -103,7 +103,7 @@ describe("followRunEvents", () => {
     });
     await followRunEvents("run_1", { onSnapshot: vi.fn(), onEvent: vi.fn(), onEnd: vi.fn(), onStatus }, {
       signal: ctrl.signal,
-      fetchImpl: (async () => new Response("{}", { headers: { "content-type": "application/json" } })) as typeof fetch,
+      fetchImpl: (async () => new Response("{}", { headers: { "content-type": "application/json" } })),
       sleep: async () => undefined,
     });
     expect(onStatus).toHaveBeenCalledWith("reconnecting", "the server did not return an event stream");

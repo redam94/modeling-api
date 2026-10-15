@@ -8,4 +8,4 @@ import "monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution.js";
 
 import * as api from "monaco-editor/esm/vs/editor/editor.api.js";
 
-export default api as unknown as typeof import("monaco-editor");
+export default api;
