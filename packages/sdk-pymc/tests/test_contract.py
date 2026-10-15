@@ -104,6 +104,9 @@ def test_radon_model_passes_the_contract_kit() -> None:
         "seed_determinism",
     }
     assert "long layout" in report.get("subset_scoring").detail
+    # the radon example declares fast_score: the kit compares it with exact scoring
+    fast = report.get("fast_score_matches_exact")
+    assert fast.passed and not fast.skipped and "MCSE" in fast.detail, fast.detail
 
 
 @pytest.mark.mapi_contract

@@ -8,6 +8,7 @@ failure never hides the others.
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import json
 import math
@@ -36,9 +37,10 @@ from mapi_spec.loader import load_model_spec
 from mapi_spec.schema import DataSchema, DimPolicy, DimSpec
 from mapi_spec.spec import AsOfSplit, ModelSpec, ScorePolicy, ScoreRequest, TimeHoldoutSplit
 
-from mapi_sdk._util import dtype_family
+from mapi_sdk._util import dtype_family, normalise_dataset
 from mapi_sdk.bundle import BUNDLE_FILE, Bundle, assert_no_pickle
 from mapi_sdk.context import drop_context, extract_context, prepend_context
+from mapi_sdk.coords import canonicalise_coords
 from mapi_sdk.harness import _var_sources, fit_spec, score_bundle
 from mapi_sdk.metrics import point_estimate
 from mapi_sdk.pipeline import Pipeline
@@ -521,7 +523,8 @@ def check_model(
     integer extend dims; horizons past ``max_extension``; forecasts missing a future-required
     covariate; horizons longer than a target lag), unsupported modes, context-window
     equivalence, evaluate path == score path, output space, aggregation legality, additive
-    contributions, no pickle and seed determinism."""
+    contributions, no pickle, seed determinism, fast scoring == exact scoring within MCSE
+    (via the plugin's ``check_fast_score`` hook) and that the manifest's plots sanitize."""
     reg = (fixture.registry or default_registry()).copy()
     reg.register_model(plugin, replace=True)
     spec = fixture.model_spec()
@@ -1020,6 +1023,70 @@ def check_model(
         xr.testing.assert_allclose(total, pred[target].transpose(*total.dims), rtol=1e-6)
         return f"contributions sum to {target!r}"
 
+    def model_stage_data() -> xr.Dataset:
+        """The fixture data run through the fitted pipeline, canonicalised to fit coords."""
+        b = fit_once()
+        raw = b.binding.apply(normalise_dataset(data), missing="ignore")
+        trace = b.pipeline(reg).transform(raw, b.states, side_tables=tables, replay=False)
+        rs = b.resolved
+        canon, _ = canonicalise_coords(
+            trace.data, b.fit_coords[rs.model_stage], rs.model.input_schema, pad_extend=False
+        )
+        return canon
+
+    def c_fast_score() -> str:
+        if not caps.fast_score:
+            raise _Skip("the model does not declare fast_score")
+        hook = getattr(plugin(), "check_fast_score", None)
+        if not callable(hook):
+            raise AssertionError(
+                "the manifest declares fast_score but the plugin has no "
+                "check_fast_score(fitted, ds, *, seed) hook comparing it with exact scoring"
+            )
+        detail = hook(fit_once().model, model_stage_data(), seed=spec.model.fit.seed or 0)
+        return str(detail or "fast scoring matches exact scoring within MCSE")
+
+    def c_plots() -> str:
+        refs = [str(r) for r in manifest.plots]
+        if not refs:
+            raise _Skip("the manifest lists no plots")
+        try:
+            from mapi_plots.recipes import render_plots
+        except ImportError:
+            raise _Skip("mapi-plots[recipes] is not installed") from None
+        b = fit_once()
+        trees = [b.to_tree()]
+        names = [m for m in b.metrics.values if not m.startswith("elpd_")] or None
+        with contextlib.suppress(MapiError):  # predictions + observed feed fit/PPC recipes
+            trees.append(score_on(b, _request(), window(), return_full=True, metrics=names))
+
+        def registry_for(ref: str) -> Registry | None:
+            try:
+                reg.plot(ref)
+            except MapiError:
+                return None  # fall back to the bundled recipes
+            return reg
+
+        rendered: list[str] = []
+        unsafe: list[str] = []
+        skipped: dict[str, str] = {}
+        for ref in refs:
+            for tree in trees:
+                out = render_plots(tree, [ref], registry=registry_for(ref))
+                bad = [i for i in out.issues if i.code is ErrorCode.PLOT_UNSAFE]
+                if bad:
+                    unsafe.append(f"{ref}: {bad[0].untrusted_text or bad[0].message}"[:500])
+                    break
+                if out.plots:
+                    rendered.append(ref)
+                    skipped.pop(ref, None)
+                    break
+                skipped[ref] = out.issues[0].message if out.issues else "nothing rendered"
+        if unsafe:
+            raise AssertionError("plots rejected by the sanitizer: " + "; ".join(unsafe))
+        note = f"rendered and sanitized {rendered}"
+        return note + (f"; not applicable here: {sorted(skipped)}" if skipped else "")
+
     def c_seed() -> str:
         if not caps.deterministic_given_seed:
             raise _Skip("the model does not claim seed determinism")
@@ -1055,6 +1122,8 @@ def check_model(
         ("representation_aggregation", c_aggregation),
         ("additive_contributions", c_additive),
         ("seed_determinism", c_seed),
+        ("fast_score_matches_exact", c_fast_score),
+        ("plots_sanitize", c_plots),
     ]
     for name, fn in all_checks:
         if checks is not None and name not in checks:

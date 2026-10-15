@@ -553,3 +553,113 @@ def test_horizon_longer_than_a_target_lag_is_a_typed_error(
     result = report.get("recursive_unsupported")
     assert result.passed and not result.skipped, report.summary()
     assert "horizon of 5 (minimum target lag 4)" in result.detail
+
+
+# ------------------------------------------------------------- fast scoring and plots
+
+_FAST_CAPS = toy.LinearModel.capabilities.model_copy(update={"fast_score": True})
+FAST_SEEN: dict[str, Any] = {}
+
+
+class _FastNoHook(toy.LinearModel):
+    """Claims fast scoring but gives the kit no way to compare it with exact scoring."""
+
+    id = "test.fastnohook"
+    capabilities = _FAST_CAPS
+
+
+class _FastHook(_FastNoHook):
+    id = "test.fasthook"
+
+    def check_fast_score(self, fitted: Fitted, ds: xr.Dataset, *, seed: int = 0) -> str:
+        FAST_SEEN.update(ds=ds, seed=seed)
+        if FAST_SEEN.get("fail"):
+            raise AssertionError("fast scoring disagrees with exact scoring beyond 4 MCSE")
+        return "fast == exact"
+
+
+def test_fast_score_claims_are_checked_against_exact_scoring(
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    raw_schema: DataSchema,
+    registry: Registry,
+) -> None:
+    checks = ["manifest", "fit", "fast_score_matches_exact"]
+    results = {}
+    for plugin, fail in ((_FastNoHook, False), (_FastHook, False), (_FastHook, True)):
+        FAST_SEEN.clear()
+        FAST_SEEN["fail"] = fail
+        spec = e33_spec(model=f"{plugin.id}@^1", mode="train_only", metrics="rmse")
+        report = check_model(
+            plugin,
+            _toy_fixture(spec, panel, raw_schema, registry),
+            checks=checks,
+            raise_on_failure=False,
+        )
+        results[(plugin.id, fail)] = report.get("fast_score_matches_exact")
+    assert not results[("test.fastnohook", False)].passed
+    assert "check_fast_score" in results[("test.fastnohook", False)].detail
+    ok = results[("test.fasthook", False)]
+    assert ok.passed and not ok.skipped and ok.detail == "fast == exact"
+    assert not results[("test.fasthook", True)].passed
+    # the hook sees model-stage data (weekly, scaled, lagged) and the fit seed
+    assert "spend_lag" in FAST_SEEN["ds"] and FAST_SEEN["seed"] == 7
+    plain = check_model(
+        toy.LinearModel,
+        _toy_fixture(e33_spec(model="toy.linear@^1", metrics="rmse"), panel, raw_schema, registry),
+        checks=checks,
+    )
+    assert plain.get("fast_score_matches_exact").skipped
+
+
+def _leaky_recipe() -> Any:
+    from mapi_plots.recipes import Figure, RecipeSettings, recipe
+
+    @recipe("test.leaky", title="Leaky", settings=RecipeSettings)
+    def leaky(inp: Any, s: RecipeSettings) -> Figure:
+        spec = {"data": {"url": "https://evil.example/x.csv"}, "mark": "point"}
+        return Figure(chart=spec, datasets={}, caption="fetches data from a remote server")
+
+    return leaky
+
+
+class _SafePlots(toy.BayesLinearModel):
+    id = "test.safeplots"
+    plots: ClassVar[tuple[str, ...]] = ("core.posterior_forest", "core.ppc_fan")
+
+
+class _UnsafePlots(toy.BayesLinearModel):
+    id = "test.unsafeplots"
+    plots: ClassVar[tuple[str, ...]] = ("core.posterior_forest", "test.leaky")
+
+
+def test_manifest_plots_must_sanitize(
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    raw_schema: DataSchema,
+    registry: Registry,
+) -> None:
+    pytest.importorskip("altair")
+    reg = registry.copy()
+    reg.register_plot(_leaky_recipe())
+    checks = ["manifest", "fit", "plots_sanitize"]
+    reports = {}
+    for plugin in (_SafePlots, _UnsafePlots):
+        spec = e33_spec(model=f"{plugin.id}@^1", mode="train_only", metrics="rmse")
+        reports[plugin.id] = check_model(
+            plugin,
+            _toy_fixture(spec, panel, raw_schema, reg),
+            checks=checks,
+            raise_on_failure=False,
+        )
+    safe = reports["test.safeplots"].get("plots_sanitize")
+    assert safe.passed and not safe.skipped, reports["test.safeplots"].summary()
+    assert "core.posterior_forest" in safe.detail and "core.ppc_fan" in safe.detail
+    unsafe = reports["test.unsafeplots"].get("plots_sanitize")
+    assert not unsafe.passed and "test.leaky" in unsafe.detail, unsafe.detail
+    plain = check_model(
+        toy.LinearModel,
+        _toy_fixture(e33_spec(model="toy.linear@^1", metrics="rmse"), panel, raw_schema, reg),
+        checks=checks,
+    )
+    assert plain.get("plots_sanitize").skipped
