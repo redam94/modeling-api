@@ -431,6 +431,7 @@ def test_server_workloads_get_only_real_settings() -> None:
         "MAPI_URL_SIGNER", "MAPI_SERVER_SECRET", "MAPI_METRICS_TOKEN",
         "MAPI_PUBSUB_PUSH_AUDIENCE", "MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT",
         "MAPI_DATABASE_APP_URL", "MAPI_DATABASE_SYSTEM_URL", "MAPI_DB_SYSTEM_ROLE",
+        "MAPI_DATABASE_GATEWAY_URL", "MAPI_DB_GATEWAY_ROLE",
         "MAPI_CLOUDRUN_PROJECT", "MAPI_EXECUTOR",
     ):  # fmt: skip
         assert required in names, required

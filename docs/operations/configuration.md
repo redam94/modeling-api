@@ -72,11 +72,13 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | Variable | Default | Meaning |
 |---|---|---|
 | `MAPI_DB_POOL_SIZE` | `10` | Request-path connections per process (plus as many overflow connections) |
-| `MAPI_DB_SYSTEM_POOL_SIZE` | `5` | Platform-role connections per process |
+| `MAPI_DB_SYSTEM_POOL_SIZE` | `5` | Platform-role connections per process (the orchestrator) |
+| `MAPI_DB_GATEWAY_POOL_SIZE` | `5` | Gateway-role connections per process (the API and events service) |
 | `MAPI_DB_ECHO` | `false` | Log every SQL statement |
 | `MAPI_DATABASE_APP_URL` | unset | Dedicated login of the request-path role (row-level security applies). Unset: `DATABASE_URL` with the start-up option `role=$MAPI_DB_APP_ROLE` |
-| `MAPI_DATABASE_SYSTEM_URL` | unset | Dedicated login of the platform role (dispatcher, reconciler, finalizer, events, authentication lookups, operator endpoints). Unset: `DATABASE_URL` with `role=$MAPI_DB_SYSTEM_ROLE` |
-| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE` | `mapi_app`, `mapi_system` | The two runtime roles `mapi-server migrate` creates and grants (see [Authentication](authentication.md#row-level-security)) |
+| `MAPI_DATABASE_SYSTEM_URL` | unset | Dedicated login of the platform role, the only one that bypasses row-level security: the orchestrator's dispatcher, reconciler, finalizer and housekeeper. The API never needs it. Unset: `DATABASE_URL` with `role=$MAPI_DB_SYSTEM_ROLE` |
+| `MAPI_DATABASE_GATEWAY_URL` | unset | Dedicated login of the gateway role: what the API and events service look up before a tenant is known (sign-in, memberships, operator metadata, pushed events), with row-level security applying. Unset: `DATABASE_URL` with `role=$MAPI_DB_GATEWAY_ROLE` |
+| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE`, `MAPI_DB_GATEWAY_ROLE` | `mapi_app`, `mapi_system`, `mapi_gateway` | The three runtime roles `mapi-server migrate` creates and grants (see [Authentication](authentication.md#row-level-security)) |
 
 **Authentication (v0.3)**
 

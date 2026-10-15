@@ -78,6 +78,7 @@ locals {
     MAPI_URL_SIGNER      = google_service_account.sa["url-signer"].email
     MAPI_DB_APP_ROLE     = "mapi_app"
     MAPI_DB_SYSTEM_ROLE  = "mapi_orchestrator"
+    MAPI_DB_GATEWAY_ROLE = "mapi_gateway"
     # every service (and the migration's adoption of v0.2 rows) agrees on the default
     MAPI_DEFAULT_RESIDENCY = local.default_residency
   }
@@ -114,14 +115,15 @@ locals {
     }, lookup(var.extra_env, "web", {}))
   }
 
-  # api and events run the same app: tenant sessions on mapi_app (pooled), sign-in lookups and
-  # pushed events on the platform role, LISTEN on a direct connection
+  # api and events run the same app: tenant sessions on mapi_app (pooled), sign-in lookups,
+  # operator routes and pushed events on the gateway role (no RLS bypass: plan §9 keeps that
+  # for the orchestrator alone), LISTEN on a direct connection
   secret_env_api = {
-    MAPI_DATABASE_URL        = "db-url-app-direct"
-    MAPI_DATABASE_APP_URL    = "db-url-app"
-    MAPI_DATABASE_SYSTEM_URL = "db-url-orchestrator"
-    MAPI_SERVER_SECRET       = "server-secret"
-    MAPI_METRICS_TOKEN       = "metrics-token"
+    MAPI_DATABASE_URL         = "db-url-app-direct"
+    MAPI_DATABASE_APP_URL     = "db-url-app"
+    MAPI_DATABASE_GATEWAY_URL = "db-url-gateway"
+    MAPI_SERVER_SECRET        = "server-secret"
+    MAPI_METRICS_TOKEN        = "metrics-token"
   }
 
   # name of the env var => secret id (resolved to "latest" version at revision start)

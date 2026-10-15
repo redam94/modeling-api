@@ -171,6 +171,7 @@ class Settings(BaseSettings):
     )
     db_pool_size: int = Field(10, ge=1, le=200)
     db_system_pool_size: int = Field(5, ge=1, le=200)
+    db_gateway_pool_size: int = Field(5, ge=1, le=200)
     db_echo: bool = False
     database_app_url: str | None = Field(
         None,
@@ -181,12 +182,20 @@ class Settings(BaseSettings):
     database_system_url: str | None = Field(
         None,
         repr=False,
-        description="Login of the platform role (dispatcher, reconciler, finalizer, events, "
-        "authentication lookups; bypasses row-level security). Unset: DATABASE_URL with "
-        "SET ROLE db_system_role",
+        description="Login of the platform role: the orchestrator's dispatcher, reconciler, "
+        "finalizer and housekeeper (bypasses row-level security; the API never needs it). "
+        "Unset: DATABASE_URL with SET ROLE db_system_role",
+    )
+    database_gateway_url: str | None = Field(
+        None,
+        repr=False,
+        description="Login of the gateway role: what the API and events service look up "
+        "before a tenant is known (sign-in, memberships, operator metadata, pushed events; "
+        "row-level security applies). Unset: DATABASE_URL with SET ROLE db_gateway_role",
     )
     db_app_role: str = Field("mapi_app", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
     db_system_role: str = Field("mapi_system", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
+    db_gateway_role: str = Field("mapi_gateway", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
 
     # ------------------------------------------------------------------------------- storage
     object_store: ObjectStoreKind = ObjectStoreKind.SHIM
@@ -534,8 +543,8 @@ class Settings(BaseSettings):
     def _origins(self) -> Settings:
         if self.web_origin.rstrip("/") == self.plots_origin.rstrip("/"):
             raise ValueError("the plot sandbox must be served from a different origin")
-        if self.db_app_role == self.db_system_role:
-            raise ValueError("db_app_role and db_system_role must be different roles")
+        if len({self.db_app_role, self.db_system_role, self.db_gateway_role}) != 3:
+            raise ValueError("db_app_role, db_system_role and db_gateway_role must differ")
         if self.profile is not Profile.SINGLE_TENANT and self.auth_required is False:
             raise ValueError("authentication cannot be turned off in a multi-tenant profile")
         if (self.pubsub_push_audience is None) != (self.pubsub_push_service_account is None):

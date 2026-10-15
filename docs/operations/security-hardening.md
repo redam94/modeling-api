@@ -70,9 +70,11 @@ and `gcloud storage buckets get-iam-policy gs://mapi-<env>-<bucket>`.
 - **Bundle manifests are signed by KMS** (EC P-256 / SHA-256, HSM in prod); only the
   orchestrator may sign, and the API verifies with the public key before minting any URL for a
   bundle (plan §8.6). Key versions are destroyed only after a 30-day schedule.
-- **Database**: private IP only, TLS required, password policy enforced. Three roles: the
-  migrations own the schema; `mapi_app` (API, events) is not the table owner, so `FORCE ROW
-  LEVEL SECURITY` binds it; `mapi_orchestrator` gets `BYPASSRLS` from the migrations. The
+- **Database**: private IP only, TLS required, password policy enforced. Four roles: the
+  migrations own the schema; `mapi_app` and `mapi_gateway` (API, events) are not the table
+  owner, so `FORCE ROW LEVEL SECURITY` binds them (the gateway sees identity tables and a few
+  metadata columns only); `mapi_orchestrator` alone gets `BYPASSRLS` from the migrations,
+  and only the orchestrator can read its URL. The
   managed pooler runs in transaction mode, which is safe because the tenant is set with
   `SET LOCAL` per transaction.
 

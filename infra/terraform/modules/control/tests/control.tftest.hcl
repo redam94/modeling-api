@@ -113,8 +113,28 @@ run "database" {
   }
 
   assert {
-    condition     = toset([for u in google_sql_user.role : u.name]) == toset(["mapi_app", "mapi_orchestrator", "mapi_migrate"])
-    error_message = "Three roles: app (RLS-bound), orchestrator (BYPASSRLS), migrate (owner)."
+    condition     = toset([for u in google_sql_user.role : u.name]) == toset(["mapi_app", "mapi_gateway", "mapi_orchestrator", "mapi_migrate"])
+    error_message = "Four roles: app (RLS-bound), gateway (RLS-bound lookups), orchestrator (BYPASSRLS), migrate (owner)."
+  }
+
+  assert {
+    condition = alltrue([
+      for k, g in google_secret_manager_secret_iam_member.access :
+      g.member == "serviceAccount:${google_service_account.sa["orchestrator"].email}"
+      if startswith(k, "db-url-orchestrator|")
+    ])
+    error_message = "Only the orchestrator can read the URL of the RLS-bypassing role (plan §9)."
+  }
+
+  assert {
+    condition = alltrue([
+      for svc in [google_cloud_run_v2_service.api[0], google_cloud_run_v2_service.events[0]] :
+      length([
+        for e in svc.template[0].containers[0].env : e
+        if e.name == "MAPI_DATABASE_SYSTEM_URL" || try(e.value_source[0].secret_key_ref[0].secret, "") == google_secret_manager_secret.this["db-url-orchestrator"].secret_id
+      ]) == 0
+    ])
+    error_message = "The API and events services connect without the RLS bypass (gateway role)."
   }
 
   assert {

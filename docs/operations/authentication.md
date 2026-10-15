@@ -159,14 +159,20 @@ every refused attempt at an operator endpoint is audited.
 
 ## Row-level security
 
-`mapi-server migrate` creates two cluster-wide roles and turns on `FORCE ROW LEVEL SECURITY`
-for every table that holds tenant data, with a fail-closed policy on
+`mapi-server migrate` creates three cluster-wide roles and turns on `FORCE ROW LEVEL
+SECURITY` for every table that holds tenant data, with a fail-closed policy on
 `current_setting('app.tenant_id', false)`:
 
 | Role | Used by | Row-level security |
 |---|---|---|
 | `mapi_app` | Request handlers (one transaction per request, pinned with `set_config('app.tenant_id', <tenant>, true)`) | Applies: it sees and writes only that tenant's rows. Owns no table |
-| `mapi_system` | Dispatcher, reconciler, finalizer, events, authentication lookups (which token is this, which tenants does this user belong to) and operator endpoints | `BYPASSRLS` where the migrating login is a superuser, plus an explicit policy, so it also works on managed Postgres and for logins that are members of it |
+| `mapi_gateway` | What the API and the events service look up before a tenant is known: authentication (which token is this, which tenants does this user belong to), tenant and member administration, operator endpoints, and routing a pushed event to its run's tenant | Applies, with explicit policies: tenants, projects, memberships, API tokens (read, and touch `last_used_at`) and audit events (read, append), plus a few metadata columns of `runs` and `cost_ledger` (state, estimate, attempt, executor, amounts) for global quotas, the spend cap and executor health. No access at all to datasets, uploads, specs, models, plots, attempts, events or logs |
+| `mapi_system` | The orchestrator only: dispatcher, reconciler, finalizer, housekeeper (plan §9) | `BYPASSRLS` where the migrating login is a superuser, plus an explicit policy, so it also works on managed Postgres and for logins that are members of it |
+
+Every API request runs its platform sessions as `mapi_gateway`, whatever the handler does,
+and in a cloud deployment the API and events services cannot even read the URL of the
+orchestrator's login. An authorization slip in a handler that runs before the tenant is
+known is therefore still contained by row-level security.
 
 A transaction that forgot to pin a tenant fails closed: on a fresh connection every query
 errors, on a pooled connection the setting is empty and matches no row. The test suite runs
@@ -184,10 +190,12 @@ in as the migrating user and select their role with the start-up option `role=..
 
 ```sql
 CREATE ROLE mapi_api LOGIN PASSWORD '...' IN ROLE mapi_app;
+CREATE ROLE mapi_api_gateway LOGIN PASSWORD '...' IN ROLE mapi_gateway;
 CREATE ROLE mapi_orchestrator LOGIN PASSWORD '...' IN ROLE mapi_system;
 ```
 
-and set `MAPI_DATABASE_APP_URL` (API) and `MAPI_DATABASE_SYSTEM_URL` (API and worker).
+and set `MAPI_DATABASE_APP_URL` (API and worker), `MAPI_DATABASE_GATEWAY_URL` (API) and
+`MAPI_DATABASE_SYSTEM_URL` (worker only).
 `DATABASE_URL` (the owner) is then needed by `mapi-server migrate` and procrastinate only.
 
 ## Pub/Sub push

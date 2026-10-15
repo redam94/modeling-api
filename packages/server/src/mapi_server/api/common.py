@@ -67,8 +67,10 @@ async def _session(ctx: Ctx) -> AsyncIterator[AsyncSession]:
 
 
 async def _system_session(ctx: Ctx) -> AsyncIterator[AsyncSession]:
-    """A platform-role session (bypasses row-level security): identity and operator routes
-    only, always with explicit filters."""
+    """A platform session for identity and operator routes, always with explicit filters.
+    Inside a request it runs as the gateway role (:func:`~mapi_server.db.acting_as_gateway`):
+    identity tables and a few metadata columns, never tenant content and never the
+    row-level-security bypass."""
     async with ctx.db.session() as session:
         yield session
 

@@ -195,6 +195,15 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   tenancy migration adopts and to `POST /v1/admin/tenants` without `data_residency`.
   Submissions that no reporting executor can place are refused at admission with a clear
   `403` instead of being queued, and the worker warns at start-up about such tenants.
+- **server/infra**: the API and events services no longer hold the RLS-bypassing database
+  role, which plan §9 reserves for the dispatcher, reconciler and finalizer. Their platform
+  lookups (sign-in, memberships, operator metadata, routing pushed events) now run as a new
+  `mapi_gateway` role (migration `0005_gateway_role`, `MAPI_DATABASE_GATEWAY_URL`,
+  `MAPI_DB_GATEWAY_ROLE`). It has no `BYPASSRLS`, gets explicit policies on identity tables
+  and column privileges on a few run and ledger metadata columns, and cannot read datasets,
+  specs, models, plots, attempts, events or logs. Every API request uses it automatically.
+  Pushed events are written through tenant sessions. Terraform adds the `mapi_gateway` login
+  and its `db-url-gateway` secret, and only the orchestrator can read `db-url-orchestrator`.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 

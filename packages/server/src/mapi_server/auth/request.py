@@ -16,8 +16,9 @@
    (plus unconditional secondary checks), then the request-rate limits at token, tenant and
    global level (``RATE_LIMITED`` with ``Retry-After``).
 
-These lookups run on the platform role (the tenant is not known yet); the handler then gets
-a tenant session pinned to the resolved tenant (row-level security).
+These lookups run on the gateway role (the tenant is not known yet; no row-level-security
+bypass: identity tables only); the handler then gets a tenant session pinned to the
+resolved tenant (row-level security).
 """
 
 from __future__ import annotations

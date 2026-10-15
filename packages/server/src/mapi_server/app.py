@@ -30,6 +30,7 @@ from mapi_spec.storage import ObjectStore
 from mapi_spec.tenancy import PROJECT_HEADER
 from pydantic import BaseModel
 from pydantic.json_schema import models_json_schema
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 import mapi_server
 from mapi_server.api import (
@@ -48,7 +49,7 @@ from mapi_server.api import auth as auth_routes
 from mapi_server.auth.oidc import HttpOidcProvider, OidcClient
 from mapi_server.auth.request import CSRF_HEADER, access_for, authenticate
 from mapi_server.context import FinalizeQueue, ServerContext
-from mapi_server.db import Database, resolve_database_url
+from mapi_server.db import Database, acting_as_gateway, resolve_database_url
 from mapi_server.devidp import DevIdP, mount_devidp
 from mapi_server.errors import install_error_handlers
 from mapi_server.services.catalog import CatalogService
@@ -176,6 +177,7 @@ def build_context(
         from mapi_server.observability.tracing import instrument_engine
 
         instrument_engine(db.system_engine)
+        instrument_engine(db.gateway_engine)
         instrument_engine(db.app_engine)
     owned_store = store is None
     devidp = (
@@ -272,8 +274,9 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         context = ctx or build_context(settings)
         app.state.ctx = context
-        if owns:
-            await startup(context)
+        if owns:  # the API process: its platform lookups are the gateway role's
+            with acting_as_gateway():
+                await startup(context)
         try:
             yield
         finally:
@@ -347,6 +350,9 @@ def create_app(
     # Outermost: DNS rebinding makes a hostile page same-origin with 127.0.0.1, so CORS never
     # applies; the Host header is the only tell (plan §9). 400 for any unexpected host.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts())
+    # Every request's platform sessions run as the gateway role, never the bypass role
+    # (plan §9): what a handler reads before (or besides) its tenant stays under RLS.
+    app.add_middleware(GatewayRoleMiddleware)
     for router in (
         meta.router,
         auth_routes.router,
@@ -366,6 +372,21 @@ def create_app(
         mount_devidp(app, settings)
     check_route_access(app)
     return app
+
+
+class GatewayRoleMiddleware:
+    """Runs each request in :func:`~mapi_server.db.acting_as_gateway` (pure ASGI, so the
+    context covers the whole response, streamed bodies included)."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+        with acting_as_gateway():
+            await self.app(scope, receive, send)
 
 
 def iter_api_routes(app: FastAPI) -> Iterator[tuple[APIRoute, str]]:

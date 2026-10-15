@@ -1,8 +1,9 @@
 """Users, browser sessions, login transactions, API tokens and memberships.
 
 These lookups happen *before* the tenant of a request is known (which token is this, which
-tenants does this user belong to), so they run on the platform role. Every function here
-filters explicitly by the identifier it was given; none returns another principal's rows.
+tenants does this user belong to), so they run on a platform session: the gateway role in
+the API (identity tables only, no row-level-security bypass). Every function here filters
+explicitly by the identifier it was given; none returns another principal's rows.
 """
 
 from __future__ import annotations

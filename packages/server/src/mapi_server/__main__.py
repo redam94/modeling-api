@@ -57,6 +57,7 @@ def cmd_migrate(settings: Settings) -> int:
         url,
         app_role=settings.db_app_role,
         system_role=settings.db_system_role,
+        gateway_role=settings.db_gateway_role,
         default_residency=settings.effective_default_residency(),
     )
     log.info("database is at the latest migration")
