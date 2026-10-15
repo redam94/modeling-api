@@ -9787,7 +9787,7 @@
     },
     "/v1/runs/{run_id}:cancel": {
       "post": {
-        "description": "Idempotent: ``cancelling``, or the terminal state if the run already finished.",
+        "description": "Idempotent: ``cancelling``, or the terminal state if the run already finished.\n\nA ``finalizing`` run is left alone (the response shows it still finalizing): its\nexecution is over, and cancelling would only throw away a complete result after the\nfinalizer reserved a version number and copied write-once bundle objects.",
         "operationId": "cancel_run",
         "parameters": [
           {
