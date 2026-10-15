@@ -320,6 +320,12 @@ class Settings(BaseSettings):
     lost_execution_grace_s: float = Field(60.0, ge=0)
     max_infra_retries: int = Field(2, ge=0)
     auto_retry_window_s: float = Field(1800.0, ge=0, description="No auto-retry beyond 30 min")
+    auto_retry_cost_factor: float = Field(
+        2.0,
+        ge=0,
+        description="No auto-retry once a run's metered cost reaches this multiple of its "
+        "estimate (plan §8.3: retries capped by cost)",
+    )
     finalize_max_attempts: int = Field(5, ge=1)
     deadline_grace_s: float = Field(60.0, ge=0)
     housekeeping_interval_s: float = Field(

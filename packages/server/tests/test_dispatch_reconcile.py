@@ -242,6 +242,70 @@ async def test_infra_exit_retries_until_the_cap(
     assert run.state == RunState.FAILED.value and run.failure_class == "infra"
 
 
+async def test_no_auto_retry_once_the_run_cost_its_retry_budget(
+    ctx: ServerContext, executor: FakeExecutor, wired: tuple[Dispatcher, Reconciler]
+) -> None:
+    """Plan §8.3: automatic retries are capped by cost, not only by count. Once the run's
+    metered cost reaches ``auto_retry_cost_factor`` x its estimate, an infra failure fails
+    the run instead of starting another attempt."""
+    dispatcher, reconciler = wired
+    ctx.settings.max_infra_retries = 5
+    ctx.settings.auto_retry_cost_factor = 1.0
+    run_id, att = await _provisioned(ctx, dispatcher)
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, run_id)
+        assert run is not None and run.estimate is not None
+        estimate = int(run.estimate["amount_micros"])
+        # the attempt ran long: it alone already cost more than the whole estimate
+        row = await s.get(m.RunAttempt, (run_id, 1))
+        assert row is not None and row.submitted_at is not None
+        row.submitted_at = now() - timedelta(hours=2)
+        await s.execute(
+            update(m.Run).where(m.Run.id == run_id).values(started_at=now() - timedelta(minutes=1))
+        )
+    assert estimate > 0
+    executor.finish(att.nonce, 12)
+    await reconciler.reconcile_run(run_id)
+    run = await _state(ctx, run_id)
+    assert run.state == RunState.FAILED.value and run.attempt == 1, run.state
+    assert run.problem is not None and "cost" in run.problem["detail"]
+    # (cheap failures still retry: test_infra_exit_retries_until_the_cap)
+
+
+async def test_resume_uses_the_newest_attempt_that_checkpointed(ctx: ServerContext) -> None:
+    """Attempt 1 checkpoints and dies; attempt 2 dies before its first checkpoint; attempt 3
+    must resume from attempt 1's checkpoints, not start from zero."""
+    from mapi_server.services.runspec import build_runspec
+    from mapi_spec.run import new_hmac_key, new_nonce
+    from mapi_spec.storage import run_checkpoint_prefix
+
+    run_id = await _queued_fit(ctx)
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, run_id)
+        assert run is not None
+        run.checkpointable = True
+        run.attempt = 3
+    runs = ctx.buckets.runs
+    first = run_checkpoint_prefix(run.tenant_id, run.id, 1)
+    for name in ("seg-0001.zarr.zip", "seg-0002.zarr.zip"):
+        await ctx.store.put(runs, first + name, b"checkpoint")
+
+    async def resume_of(attempt: int) -> list[str]:
+        att = m.RunAttempt(
+            run_id=run_id, attempt=attempt, tenant_id=run.tenant_id, project_id=run.project_id,
+            nonce=new_nonce(), hmac_key=new_hmac_key(), executor="fake", status="intent",
+            outputs={}, violations=0, last_seq=-1, log_bytes=0,
+            deadline=now() + timedelta(hours=1),
+        )  # fmt: skip
+        spec = await build_runspec(ctx.store, run=run, attempt=att, runs_bucket=runs)
+        return sorted(spec.resume)
+
+    assert await resume_of(3) == ["seg-0001.zarr.zip", "seg-0002.zarr.zip"]
+    second = run_checkpoint_prefix(run.tenant_id, run.id, 2)
+    await ctx.store.put(runs, second + "seg-0003.zarr.zip", b"newer")
+    assert await resume_of(3) == ["seg-0003.zarr.zip"]  # the newest set wins
+
+
 async def test_no_auto_retry_after_the_window(
     ctx: ServerContext, executor: FakeExecutor, wired: tuple[Dispatcher, Reconciler]
 ) -> None:

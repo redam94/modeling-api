@@ -57,6 +57,7 @@ from mapi_server.observability import metrics as obs_metrics
 from mapi_server.observability.tracing import run_span
 from mapi_server.ratelimit import TokenBucket
 from mapi_server.services.bundles import BundleIntegrityError, verify_bundle_inputs
+from mapi_server.services.cost import retry_within_cost
 from mapi_server.services.quotas import (
     DISPATCHED_STATES,
     estimate_micros,
@@ -578,7 +579,11 @@ class Dispatcher:
                 detail = f"{detail}: {type(error).__name__}"
             # an input object is gone, or the bundle does not verify: no retry
             permanent = isinstance(error, NotFound | BundleIntegrityError)
-            if not permanent and run.infra_retries < ctx.settings.max_infra_retries:
+            if (
+                not permanent
+                and run.infra_retries < ctx.settings.max_infra_retries
+                and await retry_within_cost(session, run, ctx.settings.auto_retry_cost_factor)
+            ):
                 run.infra_retries += 1
                 await apply_transition(session, run, RunTrigger.INFRA_RETRY, Actor.DISPATCHER)
             else:

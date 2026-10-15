@@ -148,6 +148,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_MAX_INFRA_RETRIES` | `2` | Automatic retries after infrastructure failures |
 | `MAPI_HOUSEKEEPING_INTERVAL_S` | `300` | Sweep of expired upload intents (their quarantine objects are deleted), expired browser sessions and abandoned sign-ins |
 | `MAPI_AUTO_RETRY_WINDOW_S` | `1800` | No automatic retry of a run that has been going for longer than this |
+| `MAPI_AUTO_RETRY_COST_FACTOR` | `2` | No automatic retry once a run has cost this multiple of its estimate |
 | `MAPI_FINALIZE_MAX_ATTEMPTS` | `5` | Attempts of the finalizer job before a run fails |
 
 **Catalog and signing**

@@ -168,6 +168,11 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   fair share for every tenant. Runs of suspended tenants, uploaded code paused by the kill
   switch and non-internal work past the spend cap are left out in SQL, and each tenant takes
   at most `MAPI_LEASE_CANDIDATES_PER_TENANT` (50) of the window.
+- **server**: a retry resumes from the newest checkpoints of *any* earlier attempt. Before, it
+  only looked at the attempt just before it, so an attempt that died before its first segment
+  threw away all earlier progress. Automatic infra retries are also capped by cost
+  (`MAPI_AUTO_RETRY_COST_FACTOR`, default 2× the estimate), as plan §8.3 asks, and no longer
+  by count alone.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 

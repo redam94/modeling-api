@@ -41,8 +41,10 @@ __all__ = [
     "fold_cost",
     "ledger_dto",
     "load_price_table",
+    "retry_within_cost",
     "run_costs",
     "run_estimate",
+    "run_spend_micros",
 ]
 
 log = logging.getLogger(__name__)
@@ -71,6 +73,65 @@ def run_estimate(
         return estimate_cost(resource_class, wall_seconds, task_count=task_count, table=table)
     except ValueError:
         return None
+
+
+async def run_spend_micros(
+    session: AsyncSession, run: m.Run, *, at: datetime | None = None
+) -> tuple[int, str]:
+    """What the run has cost so far: its ledger entries plus, when its current attempt ran
+    and is not metered yet, that attempt priced up to its end (or ``at``). Returns
+    ``(micros, currency)`` in the price table's currency."""
+    table = _table(session)
+    rows = (
+        await session.execute(
+            select(
+                m.CostLedgerEntry.attempt, m.CostLedgerEntry.kind, m.CostLedgerEntry.amount_micros
+            ).where(
+                m.CostLedgerEntry.run_id == run.id,
+                m.CostLedgerEntry.currency == table.currency,
+            )
+        )
+    ).all()
+    total = sum(int(amount) for _, _, amount in rows)
+    metered = {a for a, kind, _ in rows if kind == CostEntryKind.ACTUAL.value}
+    att = await session.get(m.RunAttempt, (run.id, run.attempt))
+    if att is not None and att.submitted_at is not None and att.attempt not in metered:
+        end = att.finished_at or at or datetime.now(att.submitted_at.tzinfo)
+        try:
+            entry = ledger_entry(
+                tenant_id=run.tenant_id,
+                project_id=run.project_id,
+                run_id=run.id,
+                attempt=att.attempt,
+                resource_class=ResourceClass(run.resource_class),
+                wall_seconds=max(0.0, (end - att.submitted_at).total_seconds()),
+                recorded_at=end,
+                task_count=max(1, run.task_count or 1),
+                table=table,
+            )
+        except ValueError:
+            pass  # a class the table cannot price
+        else:
+            total += entry.amount_micros
+    return total, table.currency
+
+
+async def retry_within_cost(session: AsyncSession, run: m.Run, factor: float) -> bool:
+    """May an infra failure of ``run`` be retried automatically, cost-wise? (Plan §8.3:
+    retries are capped by cost.) ``False`` once what the run has cost reaches ``factor``
+    times its estimate; runs without an estimate in the table's currency are capped by the
+    retry count only."""
+    est = run.estimate or {}
+    try:
+        estimate = int(est.get("amount_micros") or 0)
+    except (TypeError, ValueError):
+        estimate = 0
+    if estimate <= 0:
+        return True
+    spent, currency = await run_spend_micros(session, run)
+    if est.get("currency") != currency:
+        return True
+    return spent < factor * estimate
 
 
 def ledger_dto(row: m.CostLedgerEntry) -> CostLedgerEntry:

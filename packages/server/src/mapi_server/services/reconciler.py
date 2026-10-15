@@ -7,7 +7,8 @@ the database with the **executor's status API — the liveness source of truth**
   no execution exists, retry with a new attempt;
 * ``PROVISIONING``/``RUNNING``/``STALLED`` → exit 0/16 + ``complete`` event → ``FINALIZING``;
   any other exit is classified with :func:`~mapi_spec.run.failure_class_for_exit`; infra
-  failures retry (capped, and never after 30 min) once the old execution is confirmed gone;
+  failures retry (capped by count and by cost, and never after 30 min) once the old
+  execution is confirmed gone;
   event silence only raises ``STALLED`` (a warning, never a failure); deadlines are enforced
   by cancelling the execution, recorded on the attempt so the stop is classified as
   ``TIMEOUT`` (or finalized as ``PARTIAL`` when checkpoints were flushed), never as an
@@ -54,6 +55,7 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.observability import logging as obs_logging
 from mapi_server.observability import metrics as obs_metrics
+from mapi_server.services.cost import retry_within_cost
 from mapi_server.services.runs import append_event, apply_transition, now
 
 __all__ = ["Reconciler"]
@@ -314,7 +316,18 @@ class Reconciler:
         *,
         attempt_update: dict[str, object] | None = None,
     ) -> None:
-        if self._can_retry(run):
+        retry = self._can_retry(run)
+        if retry:
+            async with self.ctx.db.session() as session:
+                retry = await retry_within_cost(
+                    session, run, self.ctx.settings.auto_retry_cost_factor
+                )
+            if not retry:
+                detail = (
+                    f"{detail}; not retried automatically: the run has already cost "
+                    f"{self.ctx.settings.auto_retry_cost_factor:g}x its estimate"
+                )
+        if retry:
             await self._transition(
                 run,
                 RunTrigger.INFRA_RETRY,

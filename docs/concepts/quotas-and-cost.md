@@ -118,8 +118,11 @@ failure). A run's `cost` field folds its entries together:
 class, day, token or run) and where it stands against each quota. Tenant admins see the
 whole tenant at `GET /v1/tenants/{tenant_id}/usage`.
 
-Retries are capped by cost, not by count: an infrastructure retry resumes from the last
-checkpoint, and a run that has already used more than 30 minutes is only retried with the
+Retries are capped by cost as well as by count: an infrastructure failure is retried
+automatically only while what the run has cost (its metered attempts plus the attempt that
+just failed) stays below `MAPI_AUTO_RETRY_COST_FACTOR` (default 2) times its estimate, at most
+`MAPI_MAX_INFRA_RETRIES` times. A retry resumes from the newest checkpoints any earlier
+attempt wrote, and a run that has already used more than 30 minutes is only retried with the
 user's consent.
 
 ## Kill switches
