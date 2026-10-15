@@ -50,9 +50,10 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    env:
-      MAPI_DEPLOY_OUT: ${{ runner.temp }}/mapi
     steps:
+      # runner.temp exists only once the job runs (not in job-level env)
+      - name: Output directory
+        run: echo "MAPI_DEPLOY_OUT=$RUNNER_TEMP/mapi" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - uses: google-github-actions/auth@v2
         with:
@@ -82,9 +83,11 @@ jobs:
       contents: read
       id-token: write
     env:
-      MAPI_DEPLOY_OUT: ${{ runner.temp }}/mapi
       TF_VAR_oidc_client_secret: ${{ secrets.OIDC_CLIENT_SECRET }}
     steps:
+      # runner.temp exists only once the job runs (not in job-level env)
+      - name: Output directory
+        run: echo "MAPI_DEPLOY_OUT=$RUNNER_TEMP/mapi" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - uses: google-github-actions/auth@v2
         with:
@@ -139,9 +142,11 @@ jobs:
       contents: read
       id-token: write
     env:
-      MAPI_DEPLOY_OUT: ${{ runner.temp }}/mapi
       TF_VAR_oidc_client_secret: ${{ secrets.OIDC_CLIENT_SECRET }}
     steps:
+      # runner.temp exists only once the job runs (not in job-level env)
+      - name: Output directory
+        run: echo "MAPI_DEPLOY_OUT=$RUNNER_TEMP/mapi" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - uses: google-github-actions/auth@v2
         with:

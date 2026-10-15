@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import pytest
@@ -81,3 +82,35 @@ def test_terraform_version_matches_the_constraint(wf: dict[str, Any]) -> None:
     version = wf["env"]["TF_VERSION"]
     major, minor, _ = (int(x) for x in version.split("."))
     assert (major, minor) >= (1, 11), "write-only arguments and ephemeral resources need 1.11+"
+
+
+# Contexts GitHub allows in workflow- and job-level ``env`` (no ``runner``, ``env``, ``steps``):
+# a workflow that uses another one there is rejected before any job starts.
+_WORKFLOW_ENV_CONTEXTS = {"github", "inputs", "secrets", "vars"}
+_JOB_ENV_CONTEXTS = _WORKFLOW_ENV_CONTEXTS | {"matrix", "needs", "strategy"}
+
+
+def _contexts(value: object) -> set[str]:
+    found: set[str] = set()
+    for expr in re.findall(r"\$\{\{(.*?)\}\}", str(value)):
+        found |= set(re.findall(r"(?<![\w.'\"])([a-z_]+)\.", expr))
+    return found
+
+
+@pytest.mark.parametrize(
+    "path", sorted((ROOT / ".github" / "workflows").glob("*.yml")), ids=lambda p: p.name
+)
+def test_env_blocks_use_only_contexts_github_allows_there(path: Any) -> None:
+    data = yaml.safe_load(path.read_text())
+    bad = [
+        f"env.{k}: {sorted(c - _WORKFLOW_ENV_CONTEXTS)}"
+        for k, v in (data.get("env") or {}).items()
+        if (c := _contexts(v)) - _WORKFLOW_ENV_CONTEXTS
+    ]
+    for name, job in data["jobs"].items():
+        bad += [
+            f"jobs.{name}.env.{k}: {sorted(c - _JOB_ENV_CONTEXTS)}"
+            for k, v in (job.get("env") or {}).items()
+            if (c := _contexts(v)) - _JOB_ENV_CONTEXTS
+        ]
+    assert not bad, f"{path.name}: contexts not available in env blocks: {bad}"
