@@ -11,7 +11,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
+from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity, from_plugin_error
 from mapi_spec.plots import PlotSpec
 from mapi_spec.refs import UseRef
 
@@ -78,14 +78,15 @@ def render_plots(
                     untrusted_text=exc.detail[:2000],
                 )
             )
-        except MapiError as exc:
+        except MapiError as exc:  # recipe text is plugin-controlled: untrusted_text only
+            err = from_plugin_error(exc, f"plot {ref!r} was skipped")
             report.issues.append(
                 Issue(
-                    code=exc.code,
+                    code=err.code,
                     severity=Severity.WARNING,
                     pointer=pointer,
-                    message=f"plot {ref!r} was skipped: {exc.detail}"[:2000],
-                    untrusted_text=exc.untrusted_text,
+                    message=err.detail[:2000],
+                    untrusted_text=err.untrusted_text,
                 )
             )
         except Exception as exc:  # plugin recipe code failed; report, keep the run going
