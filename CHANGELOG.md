@@ -51,6 +51,10 @@ milestone releases are tagged on `main`.
   - Expectation hooks that declare `ctx` receive a `FixtureContext` (seed, size, registry, side tables and earlier score results).
 - Docs: spec format, SDK, built-in steps and plots references; guides for plugins, PyMC, tabular models and plots.
 - Docs: built-in models reference, marketing-mix models guide, forecasting and sequential models guide, conformance corpus guide.
+- Docs: the MkDocs Material site.
+  - A landing page, getting started (install, first model, runs and executors), concepts (labelled data, pipelines and stages, representations, bundles, coord plans, capabilities), the "port a model in 15 minutes" guide, licensing, contributing and roadmap pages for v0.2–v0.4.
+  - Generated reference pages: steps, models and plot-recipe catalogs, the ModelSpec/ScoreRequest schema and error codes (`scripts/gen_docs_catalog.py`, run by an MkDocs hook and `make docs-catalog`); API reference via mkdocstrings.
+  - Every Python example lives in `docs/snippets/` and is executed by `conformance/tests/test_docs_snippets.py` (`make docs-test`).
 
 ### Changed
 - The workspace runs numpy 2.4 (pymc-marketing 1.2 requires numpy < 2.5).
