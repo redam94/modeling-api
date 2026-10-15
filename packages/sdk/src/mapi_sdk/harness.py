@@ -585,6 +585,11 @@ def _var_sources(fitted: Fitted, schema: DataSchema | None) -> dict[str, str]:
     return out
 
 
+def _decompositions(fitted: Fitted) -> list[str]:
+    """Outputs that decompose a prediction along a ``component`` dim (contributions)."""
+    return [n for n, d in fitted.manifest.outputs.items() if "component" in d.dims]
+
+
 def _residuals(env: _FitEnv, bundle: Bundle, model_ds: xr.Dataset) -> dict[str, xr.DataArray]:
     """Model-space in-sample residuals for Duan's smearing retransformation.
 
@@ -966,6 +971,8 @@ def score_bundle(
         main.observed = observe(obs_trace, obs_plan)
     baseline = run(data) if counterfactual else None
 
+    kept_reported: set[str] = set()
+
     def finish(pred: xr.Dataset) -> tuple[xr.Dataset, dict[str, str], dict[str, str]]:
         if req.select:
             sel = {binding.to_canonical(k): v for k, v in req.select.items()}
@@ -987,8 +994,23 @@ def score_bundle(
                 else "median",
                 residuals=bundle.residuals,
                 side_tables=tables,
+                decompositions=_decompositions(bundle.model),
             )
             pred, space, retrans = inv.data, inv.space, inv.retransform
+            for var, steps in inv.kept.items():
+                if var in kept_reported:
+                    continue
+                kept_reported.add(var)
+                issues.append(
+                    Issue(
+                        code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                        severity=Severity.WARNING,
+                        pointer="/output/units",
+                        message=f"{var!r} is an additive decomposition; it stays in the space "
+                        f"of stage {space.get(var)!r} because inverting {steps} per component "
+                        "would no longer sum to the prediction",
+                    )
+                )
         elif "inverse_units" in caps.owns:
             space = {str(v): "model-owned" for v in pred.data_vars}
         else:

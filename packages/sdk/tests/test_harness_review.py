@@ -358,3 +358,48 @@ def test_predict_past_the_fit_runs_the_recursion_check(registry: Registry) -> No
     one = full.isel(time=[30]).assign(y=lambda d: d["y"] * np.nan)
     out = score_bundle(bundle, req("mode: predict\n"), one, registry=registry)
     assert out["summary"].to_dataset()["y_hat"].sizes["time"] == 1
+
+
+# ------------------------------------------------- statistics-2 (additive decompositions)
+
+
+def test_contributions_are_not_inverted_through_a_non_additive_chain(
+    registry: Registry, panel: tuple[xr.Dataset, xr.Dataset]
+) -> None:
+    """expm1 per component would not sum to expm1(y_hat): keep them in model units."""
+    data = panel[0][["revenue_local"]]
+    b = fit_spec(load_model_spec(LOG_SPEC.replace("__RT__", "median")), data, None, registry)
+    window = data.isel(date=slice(-28, None))
+    out = score_bundle(
+        b, req("output: {names: canonical}\n"), window, registry=registry, return_full=True
+    )
+    p = out["predictions"].to_dataset()
+    space = json.loads(out.attrs["output_space"])
+    assert space["y_hat"] == "weekly" and space["contributions"] == "logy"
+    model_units = score_bundle(
+        b,
+        req("output: {names: canonical, units: model}\n"),
+        window,
+        registry=registry,
+        return_full=True,
+    )["predictions"].to_dataset()
+    xr.testing.assert_allclose(p["contributions"], model_units["contributions"])
+    xr.testing.assert_allclose(p["contributions"].sum("component"), model_units["y_hat"])
+    assert p["contributions"].attrs["output_space"] == "logy"
+    issues = json.loads(out.attrs["issues"])
+    assert any(
+        i["code"] == "CAPABILITY_UNSUPPORTED" and "contributions" in i["message"] for i in issues
+    )
+
+
+def test_contributions_invert_through_a_multiplicative_chain(
+    registry: Registry, e33_spec: Any, panel: tuple[xr.Dataset, xr.Dataset]
+) -> None:
+    data, fx = panel
+    lin = fit_spec(e33_spec(model="toy.linear@^1", metrics="rmse"), data, {"fx": fx}, registry)
+    window = data.isel(date=slice(-28, None))
+    p = score_bundle(lin, req(), window, registry=registry, return_full=True)[
+        "predictions"
+    ].to_dataset()
+    assert p["contributions"].attrs["output_space"] == "weekly"
+    xr.testing.assert_allclose(p["contributions"].sum("component"), p["y_hat"])

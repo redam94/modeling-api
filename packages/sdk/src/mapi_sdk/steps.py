@@ -241,6 +241,10 @@ class Step[SettingsT: StepSettings, StateT: StepState]:
     invertible: ClassVar[bool] = False
     linear: ClassVar[bool] = True
     """Whether the inverse is affine (point retransformation is exact for means)."""
+    additive: ClassVar[bool] = False
+    """Whether the inverse is linear *without an offset* (``inv(a + b) = inv(a) + inv(b)``,
+    e.g. multiplying by a scale or a rate). Only then do additive decompositions
+    (``contributions(component, ...)``) invert component by component."""
     depends_on_target: ClassVar[bool] = False
     target_vars_param: ClassVar[str | None] = None
     var_params: ClassVar[tuple[str, ...]] = ()

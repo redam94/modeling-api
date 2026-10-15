@@ -10,7 +10,7 @@ invertible VALUE steps up to the last RESHAPE step and labels the output space.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -99,6 +99,8 @@ class InverseResult:
     data: xr.Dataset
     space: dict[str, str] = field(default_factory=dict)
     retransform: dict[str, str] = field(default_factory=dict)
+    kept: dict[str, list[str]] = field(default_factory=dict)
+    """Decompositions left in model space -> the non-additive steps that blocked them."""
 
 
 class Pipeline:
@@ -370,6 +372,7 @@ class Pipeline:
         retransform: Retransform = "median",
         residuals: Mapping[str, xr.DataArray] | None = None,
         side_tables: Mapping[str, xr.Dataset] | None = None,
+        decompositions: Collection[str] = (),
     ) -> InverseResult:
         """Map output variables back to their output space.
 
@@ -379,6 +382,12 @@ class Pipeline:
         Point outputs through a non-linear inverse are labelled ``median`` (plain inverse)
         or use Duan's smearing over stored model-space ``residuals``; moments use the
         delta method for ``sd``.
+
+        ``decompositions`` name additive decompositions (``contributions(component, ...)``).
+        They are inverted component by component only through *additive* steps
+        (``Step.additive``); through any other inverse (``expm1``, ``x * sd + mean``) the
+        components would no longer sum to the inverted prediction, so inversion stops right
+        after that step and :attr:`InverseResult.kept` says why.
         """
         target_stage = self.last_reshape_stage if to_stage is None else to_stage
         out = ds.copy()
@@ -401,6 +410,14 @@ class Pipeline:
             da = ds[out_var]
             nonlinear = any(not ps.step.linear for ps in chain)
             label = "exact"
+            if out_var in decompositions:
+                # invert through the newest additive steps only; stop right after the
+                # first step whose inverse would break the sum of the components
+                k = next((j for j, ps in enumerate(chain) if not ps.step.additive), None)
+                if k is not None:
+                    result.kept[out_var] = [ps.id for ps in chain[k:] if not ps.step.additive]
+                    reached = chain[k].id
+                    chain = chain[:k]
             if not chain:
                 inv = da
                 label = "none"
