@@ -44,6 +44,7 @@ class ErrorCode(StrEnum):
     DIM_POLICY_LOOSENED = "DIM_POLICY_LOOSENED"
     SCHEMA_DYNAMIC = "SCHEMA_DYNAMIC"
     SIDE_TABLE_COVERAGE = "SIDE_TABLE_COVERAGE"
+    PLOT_UNSAFE = "PLOT_UNSAFE"
     # --- CoordPlan (score-time coordinate checks) -------------------------------------------
     UNSEEN_LEVELS = "UNSEEN_LEVELS"
     COORD_NOT_ALLOWED = "COORD_NOT_ALLOWED"
@@ -100,6 +101,7 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ErrorCode.DIM_POLICY_LOOSENED: ErrorInfo(422, "A dim policy may only be tightened", "spec"),
     ErrorCode.SCHEMA_DYNAMIC: ErrorInfo(422, "Schema needs a dry-run to resolve", "spec"),
     ErrorCode.SIDE_TABLE_COVERAGE: ErrorInfo(422, "A side table is not available", "spec"),
+    ErrorCode.PLOT_UNSAFE: ErrorInfo(422, "The plot spec violates the plot safety policy", "spec"),
     ErrorCode.UNSEEN_LEVELS: ErrorInfo(422, "Unseen levels on a dim that forbids them", "coords"),
     ErrorCode.COORD_NOT_ALLOWED: ErrorInfo(422, "Coordinates not allowed by dim policy", "coords"),
     ErrorCode.HORIZON_EXCEEDS_FIT: ErrorInfo(409, "Horizon exceeds the fitted range", "coords"),
@@ -320,6 +322,12 @@ class ValidationFailed(SpecError):
         )
 
 
+class PlotUnsafe(SpecError):
+    """A plot spec was rejected by the plot sanitizer (URL data, scripts, tile maps ...)."""
+
+    default_code = ErrorCode.PLOT_UNSAFE
+
+
 class CoordPlanError(MapiError):
     """A score request's coordinates violate the model's dim policies."""
 
@@ -374,6 +382,7 @@ _CLASS_FOR_CODE: dict[ErrorCode, type[MapiError]] = {
     ErrorCode.PAYLOAD_TOO_LARGE: PayloadTooLarge,
     ErrorCode.UNSUPPORTED_API_VERSION: UnsupportedApiVersion,
     ErrorCode.REF_UNRESOLVED: RefUnresolved,
+    ErrorCode.PLOT_UNSAFE: PlotUnsafe,
     ErrorCode.UNSEEN_LEVELS: CoordPlanError,
     ErrorCode.COORD_NOT_ALLOWED: CoordPlanError,
     ErrorCode.HORIZON_EXCEEDS_FIT: CoordPlanError,
