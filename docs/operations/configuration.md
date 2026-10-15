@@ -329,6 +329,7 @@ variable changes where they keep local files:
 | Variable | Meaning |
 |---|---|
 | `MAPI_DEPLOY_OUT` | Local scratch of `deploy/gcp/*.sh`: images files, saved plans, Terraform outputs (default `deploy/gcp/.out`, one directory per environment; never committed) |
+| `MAPI_PUSHGATEWAY_URL` | Repository secret of the nightly workflow: the Pushgateway the security jobs push `mapi_security_probe_unexpected` to (unset: no push; `ops/README.md`) |
 
 The variables Terraform sets on the Cloud Run services (the deployment contract with
 `mapi-server`) are listed in [Deploy to Google Cloud](gcp-deployment.md#environment-of-the-cloud-run-workloads).
