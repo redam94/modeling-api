@@ -127,6 +127,7 @@ nav:
       - Coord plans and typed errors: concepts/coord-plans.md
       - Capabilities and manifests: concepts/capabilities.md
   - Guides:
+      - Your first model in the web app: guides/first-model-in-the-ui.md
       - Port a model in 15 minutes: guides/port-a-model.md
       - Write a step or model plugin: guides/plugins.md
       - Bring a PyMC model: guides/pymc.md
