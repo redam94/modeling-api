@@ -2,14 +2,25 @@
 description: Every environment variable the platform reads - the shared topology, mapi-server, the runner, the GCS shim, the CLI and Python client, make dev, the web app, Docker Compose, the images and the tests.
 ---
 
-# Configuration reference <span class="mapi-badge">v0.2</span>
+# Configuration reference <span class="mapi-badge">v0.3</span>
 
 Every component is configured through **environment variables**; no component reads a config
 file except the CLI and the Python client (`~/.config/mapi/config.toml`) and Docker Compose
 (`.env`). This page lists every `MAPI_*` variable in the code base, grouped by who reads it.
 A test (`conformance/tests/test_docs_platform.py`) scans the source tree and fails when a
-variable is missing here, and the full [server settings table](../reference/generated/server-settings.md)
-is generated from the code.
+variable is missing here. Two tables are generated from the code at every docs build: the
+[server settings](../reference/generated/server-settings.md) (every `mapi-server` field with
+its type and default) and the [index of environment variables](../reference/generated/environment-variables.md)
+(every `MAPI_*` name in the code, the images, the Terraform and the deploy scripts, with who
+mentions it and the section below that explains it).
+
+!!! info "New in v0.3"
+    Sign-in and tenancy (`MAPI_PROFILE`, `MAPI_OIDC_*`, `MAPI_OPERATOR_EMAILS`,
+    `MAPI_SERVER_SECRET`, the two database roles), quotas and cost (`MAPI_PRICE_TABLE_PATH`,
+    `MAPI_RATE_LIMITS_ENABLED`), the Cloud Run Jobs executor (`MAPI_CLOUDRUN_*`), Cloud Storage
+    and KMS (`MAPI_OBJECT_STORE=gcs`, `MAPI_SIGNER=kms`), Pub/Sub push authentication and
+    observability (`MAPI_METRICS_TOKEN`, `MAPI_OTLP_ENDPOINT`). On Google Cloud, Terraform sets
+    them ([the deployment contract](gcp-deployment.md#environment-of-the-cloud-run-workloads)).
 
 !!! tip "The short version"
     For a local stack you only ever need the four addresses, and only when a port is taken:
@@ -348,3 +359,4 @@ The variables Terraform sets on the Cloud Run services (the deployment contract 
 | Variable | Meaning |
 |---|---|
 | `MAPI_DOCS_SPEC` | The spec `scripts/docs_screenshots.mjs` (`make docs-screenshots`) opens and fits, default `eu-geo-mmm`. The script also reads `MAPI_WEB_ORIGIN` |
+| `MAPI_DOCS_PROJECT` | The project `scripts/docs_screenshots_admin.mjs` (`make docs-screenshots-admin`) selects after capturing the project switcher, default `Default project`. The script also reads `MAPI_WEB_ORIGIN`, `MAPI_API_URL` and `MAPI_DEV_ACCOUNT` |

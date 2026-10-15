@@ -2,7 +2,7 @@
 description: How the multi-tenant platform limits compute, schedules interactive and batch work fairly, and prices every run.
 ---
 
-# Quotas and cost <span class="mapi-badge mapi-badge--soon">v0.3</span>
+# Quotas and cost <span class="mapi-badge">v0.3</span>
 
 A public modelling platform's real cost risk is compute: an accidental 500-task sweep, a
 leaked token, or someone mining on free fits. From v0.3 every run is estimated before it

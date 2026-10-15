@@ -2,7 +2,7 @@
 description: What each Google Cloud security control of modeling-api does, where it is defined in Terraform and how to check it - plus the M0 verification checklist for the cloud behaviours the design relies on.
 ---
 
-# Security hardening on Google Cloud <span class="mapi-badge mapi-badge--soon">v0.3</span>
+# Security hardening on Google Cloud <span class="mapi-badge">v0.3</span>
 
 Tenants can submit specs (and, from M4, code) that run on the platform's infrastructure, so the
 cloud deployment assumes **every execution is hostile**. This page lists each control of the
