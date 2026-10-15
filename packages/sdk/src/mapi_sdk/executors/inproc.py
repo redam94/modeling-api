@@ -292,7 +292,8 @@ class InprocExecutor:
             payload: xr.Dataset | None = self.resolver(str(ref)) if ref is not None else None
             tables = {k: self.resolver(str(v)) for k, v in _mapping(p.get("side_tables")).items()}
             for name, dref in req.side_tables.items():
-                tables.setdefault(name, self.resolver(str(dref)))
+                if name not in tables:  # tables in the run payload win over request refs
+                    tables[name] = self.resolver(str(dref))
             metrics = p.get("metrics")
             return score_bundle(
                 bundle,
