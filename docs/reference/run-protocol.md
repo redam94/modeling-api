@@ -43,7 +43,7 @@ sequenceDiagram
 | State | Meaning |
 |---|---|
 | `CREATED` | Accepted by the API; static validation and quota not yet decided |
-| `REJECTED` | Static validation or quota refused the run (terminal) |
+| `REJECTED` | Reserved for submissions refused by static validation or quota (terminal). The current server does not create such runs: see the note below the transition table. |
 | `QUEUED` | Waiting for the dispatcher |
 | `DISPATCHING` | Leased; intent row written; executor call in progress |
 | `PROVISIONING` | The executor accepted the execution; no event seen yet |
@@ -88,6 +88,13 @@ the code exhaustively, all 13 × 19 state and trigger pairs.
 | `CANCELLING` | `cancel_confirmed` | `CANCELLED` | reconciler | | |
 | `CANCELLING` | `complete` | `FINALIZING` | reconciler | | |
 | `PARTIAL` | `resume` | `QUEUED` | api | | yes |
+
+**Invalid submissions create no run.** `POST /v1/runs` and the model `:score` action run
+static validation *before* a run row exists. When it finds an error, the
+request is refused with a 4xx problem whose `code` is the first error's and whose `errors`
+list every issue with its JSON pointer, and nothing is stored, so there is no `REJECTED` run
+and no run history for it. `CREATED → reject → REJECTED` stays in the table for a later
+server that records refused submissions.
 
 Rules that every component follows:
 
