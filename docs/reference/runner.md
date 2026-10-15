@@ -111,7 +111,7 @@ from them.
 | `2` | Bad environment, missing or invalid bootstrap, or unusable `outputs` (no events when the RunSpec could not be read) |
 | `10` | The worker reported a user, spec or data error, crashed, or exited without a result |
 | `11` | Out of memory (`MemoryError`, or the worker was killed by SIGKILL) or the scratch budget was exceeded |
-| `12` | Uploads failed after retries, or the worker reported an infrastructure error |
+| `12` | The supervisor's own uploads or downloads failed after retries |
 | `13` | An input did not match its size, CRC32C or MD5, or a bundle did not match its manifest |
 | `14` | The deadline was reached without a checkpoint |
 | `15` | Sandbox violation: log flood, malformed messages, unsafe outputs, oversized events or output caps |
@@ -121,9 +121,11 @@ from them.
 A failure is always reported in an `error` event whose `message` is written by the
 supervisor. Text that comes from the worker or a plugin goes in `untrusted_text`. Typed
 issues reported by the worker, such as `MISSING_FUTURE_COVARIATE`, are also emitted as
-`diagnostic` events. The supervisor accepts only four failure classes from the worker:
-`resource_exhausted`, `integrity`, `infra` and `sandbox`. Any other failure the worker
-reports becomes `user`.
+`diagnostic` events. The supervisor accepts only three failure classes from the worker:
+`resource_exhausted`, `integrity` and `sandbox`. A worker that reports `INFRA_ERROR` (for
+example a failed input download) fails the run as `user`: the `infra` exit makes the
+platform retry the whole run automatically, so only failures the supervisor observes itself
+may use it. Any other failure the worker reports becomes `user`.
 
 ## What `RunSpec.spec` holds, per kind
 

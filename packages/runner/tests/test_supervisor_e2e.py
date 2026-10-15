@@ -186,6 +186,18 @@ def test_worker_crash_without_a_result_is_a_user_failure(gcs: ShimGcs) -> None:
     assert "status 7" in _error(result).message
 
 
+def test_worker_claimed_infra_error_is_not_a_retryable_infra_exit(gcs: ShimGcs) -> None:
+    """Only failures the supervisor itself observes may trigger the platform's infra
+    auto-retry; an untrusted worker reporting INFRA_ERROR fails the run as a user error."""
+    run = make_run(gcs, RunKind.DESCRIBE, {})
+    result = run_supervisor(run, registry=f"{TESTING}:infra_claiming_registry")
+    assert result.code == RunnerExit.USER_ERROR, result.stderr
+    assert failure_class_for_exit(result.code) is FailureClass.USER
+    err = _error(result)
+    assert err.failure_class is FailureClass.USER
+    assert "INFRA_ERROR" in err.message and "reported by the worker" in err.message
+
+
 def test_invalid_job_spec_fails_as_user_error(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.FIT, {"apiVersion": "mapi/v1", "kind": "ModelSpec"})
     result = run_supervisor(run, registry=f"{TESTING}:empty_registry")

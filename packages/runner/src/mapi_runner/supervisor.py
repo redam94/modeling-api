@@ -103,11 +103,12 @@ EXIT_FOR_CLASS: Final[Mapping[FailureClass, RunnerExit]] = {
     FailureClass.TIMEOUT: RunnerExit.TIMEOUT,
     FailureClass.SANDBOX: RunnerExit.SANDBOX_VIOLATION,
 }
-# what an (untrusted) worker may claim about its own failure; anything else is "user"
+# what an (untrusted) worker may claim about its own failure; anything else is "user".
+# INFRA is deliberately absent: the infra exit makes the platform retry the whole run, so
+# only failures the supervisor observes itself (bootstrap, its own transfers) may use it.
 _WORKER_CLASSES: Final[Mapping[ErrorCode, FailureClass]] = {
     ErrorCode.RESOURCE_EXHAUSTED: FailureClass.RESOURCE_EXHAUSTED,
     ErrorCode.INTEGRITY_FAILURE: FailureClass.INTEGRITY,
-    ErrorCode.INFRA_ERROR: FailureClass.INFRA,
     ErrorCode.SANDBOX_VIOLATION: FailureClass.SANDBOX,
 }
 _LIB_DISTS: Final = (

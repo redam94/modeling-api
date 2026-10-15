@@ -223,7 +223,7 @@ for example `1` from a crashed supervisor, is `infra`.
 | 2 | `CONFIG_ERROR` | infra: bad environment, bootstrap missing or invalid |
 | 10 | `USER_ERROR` | user: plugin or user code raised, or produced invalid output |
 | 11 | `RESOURCE_EXHAUSTED` | resource_exhausted: `MemoryError` or scratch budget exceeded |
-| 12 | `INFRA_ERROR` | infra: uploads or downloads failed after retries |
+| 12 | `INFRA_ERROR` | infra: the supervisor's uploads or downloads failed after retries (a worker-reported `INFRA_ERROR` exits `10`) |
 | 13 | `INTEGRITY_ERROR` | integrity: an input did not match its size or CRC32C |
 | 14 | `TIMEOUT` | timeout: deadline reached with no checkpoint to flush |
 | 15 | `SANDBOX_VIOLATION` | sandbox: log flood, output caps exceeded, forged or oversized events |

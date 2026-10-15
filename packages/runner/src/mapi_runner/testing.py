@@ -26,6 +26,7 @@ __all__ = [
     "flooding_registry",
     "forging_registry",
     "garbage_channel_registry",
+    "infra_claiming_registry",
     "sleeping_registry",
     "symlink_output_registry",
 ]
@@ -100,6 +101,13 @@ def garbage_channel_registry() -> Any:
 def crashing_registry() -> Any:
     """Dies without reporting anything."""
     os._exit(7)
+
+
+def infra_claiming_registry() -> Any:
+    """Fails claiming a platform fault (``INFRA_ERROR``), hoping to be retried for free."""
+    from mapi_spec.errors import InfraError
+
+    raise InfraError("the cloud is down, please run me again")
 
 
 def sleeping_registry() -> Any:
