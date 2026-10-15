@@ -10,7 +10,7 @@ backend at a time:
   supervisor, whose stdout reaches ``/internal/events`` as OIDC-authenticated Pub/Sub pushes;
 * ``local-process`` — :class:`~mapi_server.executors.LocalProcessExecutor` running the
   synthetic supervisor as a subprocess (stdout pipe);
-* ``docker`` — needs a daemon *and* ``MAPI_CONFORMANCE_DOCKER_IMAGE`` (an image with the
+* ``docker`` — needs a daemon *and* ``CONFORMANCE_DOCKER_IMAGE`` (an image with the
   synthetic supervisor); skipped otherwise.
 
 Every state change of every run is captured by a Postgres trigger (nothing is sampled), so
@@ -465,9 +465,9 @@ async def docker_harness(ctx: ServerContext, tmp: Path) -> AsyncIterator[Harness
     import pytest
     from mapi_server.executors import DockerExecutor, docker_available
 
-    image = os.environ.get("MAPI_CONFORMANCE_DOCKER_IMAGE")
+    image = os.environ.get("CONFORMANCE_DOCKER_IMAGE")
     if not docker_available() or not image:
-        pytest.skip("docker conformance needs a daemon and MAPI_CONFORMANCE_DOCKER_IMAGE")
+        pytest.skip("docker conformance needs a daemon and CONFORMANCE_DOCKER_IMAGE")
     _tune(ctx)
     store = ctx.store
     assert isinstance(store, MemoryObjectStore)

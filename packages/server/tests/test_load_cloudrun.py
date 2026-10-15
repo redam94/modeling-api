@@ -14,8 +14,8 @@ executor's (``DEFAULT_SUBMITS_PER_MINUTE``, below the 180/min ``jobs.run`` quota
 measured time-to-RUNNING is dominated by them, not by the fake's (small) provisioning
 latency: real Cloud Run cold starts come on top [verify M0].
 
-Knobs: ``MAPI_LOAD_RUNS`` (100), ``MAPI_LOAD_SUBMITS_PER_MINUTE`` (the executor default) and
-``MAPI_LOAD_FIT_MS`` (``200-3000``; e.g. ``40000-60000`` keeps all 100 executions live at once).
+Knobs: ``LOAD_TEST_RUNS`` (100), ``LOAD_TEST_SUBMITS_PER_MINUTE`` (the executor default) and
+``LOAD_TEST_FIT_MS`` (``200-3000``; e.g. ``40000-60000`` keeps all 100 executions live at once).
 
 Asserts: every run SUCCEEDED (no lost runs), exactly one execution and one attempt per run
 (no double dispatch), and p95 time-to-RUNNING (``started_at - queued_at``) under 90 s.
@@ -53,11 +53,11 @@ from sqlalchemy import select
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
-RUNS = int(os.environ.get("MAPI_LOAD_RUNS", "100"))
+RUNS = int(os.environ.get("LOAD_TEST_RUNS", "100"))
 SUBMITS_PER_MINUTE = float(
-    os.environ.get("MAPI_LOAD_SUBMITS_PER_MINUTE", str(DEFAULT_SUBMITS_PER_MINUTE))
+    os.environ.get("LOAD_TEST_SUBMITS_PER_MINUTE", str(DEFAULT_SUBMITS_PER_MINUTE))
 )
-FIT_MS = tuple(int(x) for x in os.environ.get("MAPI_LOAD_FIT_MS", "200-3000").split("-"))
+FIT_MS = tuple(int(x) for x in os.environ.get("LOAD_TEST_FIT_MS", "200-3000").split("-"))
 """Synthetic fit duration range; longer fits raise the number of executions live at once."""
 P95_BUDGET_S = 90.0
 

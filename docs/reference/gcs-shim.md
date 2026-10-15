@@ -228,8 +228,25 @@ Errors map to `NotFound`, `PreconditionFailed`, `AccessDenied`, `InvalidRange` a
 
 They speak plain GCS XML semantics, so they also work against real GCS.
 
+## Real Cloud Storage
+
 `GcsObjectStore` (install `mapi-gcs-shim[gcp]`) implements the same protocol with
 `google-cloud-storage`. It has been tested only with a fake client, never against live GCP.
+
+- **Signing.** With a `BlobSigner` (`blob_signer=`), signed GET/PUT URLs and POST policies
+  are built by `mapi_gcs_shim.gcs_signing` (`GOOG4-RSA-SHA256`, byte-identical to the
+  library's V4 signer) and only the string to sign goes to the signer.
+  `IamSignBlobSigner` signs with the IAM Credentials `signBlob` API and a token provider that
+  refreshes (`google_token_provider()`), retrying `429`/5xx. `GcsObjectStore.for_cloud_run(
+  service_account_email=..., uploader_service_account_email=...)` wires both: the control
+  account for URLs, the uploader account (create but no delete) for create-only POST policies.
+- **Integrity.** A write whose server-computed CRC32C, MD5 or size differs from the bytes
+  sent is deleted (that generation only) and raises `INTEGRITY_FAILURE`. A copy pins the
+  source generation (`ifSourceGenerationMatch`) and compares the destination's size and
+  CRC32C with the source.
+- **Preconditions.** Signed GETs are pinned to a generation; signed PUTs carry a signed
+  `x-goog-if-generation-match` (`0`, write-once, by default); `put`, `copy` and `delete` pass
+  `if_generation_match` through.
 
 ## pytest fixtures
 
@@ -251,7 +268,8 @@ async def test_something(gcs_shim):            # a fresh shim per test, on a fre
 - Resumable uploads (`uploadType=resumable`) are not implemented. Use `media` or `multipart`
   uploads, or a signed PUT.
 - Signing uses HMAC keys (`GOOG4-HMAC-SHA256`) instead of service-account RSA keys
-  (`GOOG4-RSA-SHA256`). `GcsObjectStore` uses the library's RSA or IAM signing.
+  (`GOOG4-RSA-SHA256`). `GcsObjectStore` signs RSA URLs itself through a `BlobSigner`
+  (IAM `signBlob` on Cloud Run), or falls back to the library's signing.
 - There are no ACLs, CMEK, storage classes, notifications or bucket `PATCH`. Bucket policies
   are set when the bucket is created or in `config.json`.
 - A signed URL is valid only for the method it was signed for. A `HEAD` request needs its own

@@ -64,7 +64,7 @@ def check_placement(caps: ExecutorCaps, *, trust_tier: str, resource_class: Reso
 
 
 def cloudrun_inventory(settings: Settings) -> JobInventory:
-    """The Job inventory the ``MAPI_CLOUDRUN_*`` settings describe."""
+    """The Job inventory the Cloud Run settings describe."""
     if not settings.cloudrun_project:
         raise ExecutorRefused("MAPI_EXECUTOR=cloudrun-jobs needs MAPI_CLOUDRUN_PROJECT")
     return JobInventory(
