@@ -5,6 +5,104 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+M2, cloud and multi-tenant core (to be released as 0.3.0). The platform becomes multi-tenant,
+and it has a Cloud Run Jobs backend, Terraform for every Google Cloud project, a cost ledger,
+quotas and an observability stack. Nothing has been applied to real Google Cloud: cloud code
+is tested against fakes, and the Terraform is validated and tested against mocked providers.
+
+### Added
+- **spec**: the M2 contracts. They cover tenants, trust tiers and placement, ordered project
+  roles (viewer < editor < runner < admin) with one permission matrix, and `AuthContext` as
+  the single authorization decision. They also add checksummed API tokens stored as HMACs,
+  scopes, BFF OIDC helpers (PKCE, cookies, safe `return_to`) and Pub/Sub push claims;
+  token/tenant/global quotas with fair-share leasing and 429 back-off; integer-micros cost
+  pricing and the ledger (`RunCost` moves to `mapi_spec.cost`); audit events; kill switches
+  and executor health; and the 12-case executor conformance suite as data. `mapi_spec.api`
+  gains the 40 M2 endpoints and `ROUTE_ACCESS`, the scope and permission of every operation
+  (all 44 M1 ones included). Contract v0.1 gains only additive changes.
+- **server**: authentication on every route.
+  - Bearer API tokens, browser sessions through an OIDC backend-for-frontend (authorization
+    code + PKCE, HttpOnly SameSite=Strict cookie, CSRF token), and ID tokens of the `mapi`
+    CLI (`MAPI_OIDC_CLI_CLIENT_IDS`).
+  - A credential-less local administrator in the single-tenant profile, and a `dev` profile
+    with a built-in identity provider and seeded accounts.
+  - Tenants, projects, members and invitations.
+  - Row-level security: `FORCE ROW LEVEL SECURITY` on every tenant table, `set_config(…, true)`
+    per transaction, failing closed, with separate app and platform roles.
+  - Quotas and rate limits at admission and at dispatch.
+  - A cost ledger written whenever an attempt ends, for every executor.
+  - The audit log, the operator endpoints (tenants, quota policies, kill switches, executor
+    health, audit) and usage reports.
+- **server**: the `cloudrun-jobs` executor for a fixed inventory of 3 bases × S/M/L.
+  - Env-only overrides, orphan adoption by nonce, and a jobs.run token bucket with a shared
+    429 cool-down.
+  - Exit-code classification (OOM, timeout, partial) and `taskCount` fan-out plumbing.
+  - Tested against a deterministic `FakeCloudRun`.
+  - Pub/Sub push authentication: a Google-signed OIDC token, a JWKS cache, a subscription
+    allow-list and decoding of the log entry.
+  - A Cloud KMS manifest signer, alongside the local one.
+  - `MAPI_OBJECT_STORE=gcs`: Cloud Storage with keyless IAM `signBlob` URLs and integrity
+    checks on every write.
+- **server**: observability.
+  - structlog JSON logs carrying the trace and span ids.
+  - OpenTelemetry spans, with an optional OTLP exporter.
+  - The Prometheus metric set at `GET /metrics`, behind a bearer (`MAPI_METRICS_TOKEN`, which
+    the multi-tenant profile requires), plus the worker's own endpoint
+    (`MAPI_WORKER_METRICS_PORT`).
+  - Request ids on every response.
+- **tests**: the executor conformance suite, run against fake Cloud Run and local-process. It
+  also checks that every attempt that ran is in the cost ledger.
+  - A 100-fit load test on the fake backend (`make load-test`).
+  - Chaos tests (`make chaos`).
+  - A route-table test that every non-public route needs credentials and that no M1 or M2
+    route serves another tenant's project.
+- **infra**: Terraform modules control, exec, data, build, perimeter and stack, plus the dev,
+  staging and prod environments.
+  - The exec projects get zero egress, a restricted VIP, a DNS response policy and VPC-SC.
+  - Cloud SQL with three login roles, generated secrets written only through write-only
+    arguments, a Pub/Sub push to an internal-only events service, and KMS.
+  - Deploy scripts (`deploy/gcp`) and a manual Deploy workflow.
+  - `make tf-validate` runs fmt, validate and the mocked-provider module tests; nothing is
+    ever applied.
+- **ops** and **security**: Grafana and Cloud Monitoring dashboards, alert rules and runbooks
+  (`ops/`). A sandbox-escape probe suite with an expected-outcome matrix per isolation level,
+  and a deliberately malicious plugin that is never installed (`security/`, run with
+  `make security-suite`).
+- **web**: sign-in, a tenant and project switcher, and pages for API tokens, members, and usage
+  and cost. Per-run cost, and plain-language quota and permission errors with a Retry-After
+  countdown. An operator console for tenants, quota policies, kill switches, executor health
+  and the audit log.
+- **client** and **cli**:
+  - `mapi login` (browser or device code, refreshed and stored with mode 0600, or
+    `--with-token`), `logout`, `whoami` and `use`, plus `X-Mapi-Project` selection.
+  - Token, usage and admin commands and resources.
+  - 429 handling with `RateLimited`/`QuotaExceeded` and Retry-After.
+  - `--discovery-url` for providers whose discovery document lives elsewhere (the dev IdP).
+  - `mapi_client.oidc.dev_idp_login` for scripts.
+- **docs**: tenancy and auth, and quotas and cost concepts; the v0.3 HTTP API; the
+  authentication, Cloud Run, Google Cloud deployment, security hardening, observability and
+  security-suite operations pages; and every new variable in the configuration reference.
+
+### Changed
+- **devops**: `make dev` and compose run the servers in the `dev` profile by default
+  (`MAPI_STACK_PROFILE`): sign in as `admin@dev.local` (tenant admin and operator) or one of the
+  other seeded accounts. `make seed`, `make e2e` and `mapi_conformance run --stack` sign in by
+  themselves. `MAPI_STACK_PROFILE=single-tenant` restores the credential-less API.
+- **server**: every v0.2 route is project-scoped. Callers name the project with
+  `X-Mapi-Project: <tenant>/<project>`, a token's binding, or the single-tenant default.
+- **web**: mutations send the session's CSRF token (`X-CSRF-Token`). `openapi.json` and the
+  TypeScript types are generated from the server alone.
+- **client**: QUOTA_EXCEEDED is no longer retried by default (`RetryPolicy.max_quota_wait`).
+  RATE_LIMITED has its own retry budget and is retried for every method.
+
+### Fixed
+- **server**: the start-up check that every route has an access rule now covers routes of
+  included routers (FastAPI 0.143 keeps them as branches).
+- **server**: two finalizations of the same model at once no longer deadlock, and a retried
+  finalization reuses its stored signed manifest.
+- **server**: `/auth/callback` sends the browser back to the web origin, and a single-tenant
+  server answers `/auth/session` as the local administrator.
+
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
 The platform now runs end to end on one machine. From the Expert web app (or the CLI, the Python
