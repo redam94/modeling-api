@@ -23,6 +23,16 @@ milestone releases are tagged on `main`.
   join `export_schemas()` and the contract snapshot.
 - **docs**: the "HTTP API (v1)" and "Run protocol" reference pages
   (`docs/reference/http-api.md`, `docs/reference/run-protocol.md`).
+- **server**: the M1 control plane (`mapi-server api|worker|migrate|dev`): FastAPI `/v1` API
+  covering every `M1_ENDPOINTS` row plus `/v1/me`, spec diff, `ui/` redirects and `:evaluate`;
+  SQLAlchemy 2 + Alembic schema (every row carries `tenant_id`/`project_id`) with procrastinate
+  on the same Postgres; dispatcher (token bucket, intent row before submit), level-triggered
+  reconciler (executor status is the liveness source of truth, STALLED is a warning, orphan
+  adoption by nonce), metadata-only finalizer with server-side copy and EC P-256 signed bundle
+  manifests verified at URL minting; HMAC-verified event ingestion from the executor pipe and
+  `POST /internal/events`; SSE with `Last-Event-ID` resume over one LISTEN connection per
+  process; `local-process` and `docker`/`docker-gvisor` executors; OpenAPI 3.1 export
+  (`python -m mapi_server.openapi`).
 
 ## [0.1.0] — M0: contract layer — 2026-10-15
 

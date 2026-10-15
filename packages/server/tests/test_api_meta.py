@@ -13,6 +13,24 @@ from mapi_spec.api import M1_ENDPOINTS, Health, Page, Project
 from mapi_spec.errors import PROBLEM_CONTENT_TYPE, Problem
 
 
+async def test_plot_validate_runs_the_sanitizer(client: httpx.AsyncClient) -> None:
+    from mapi_server_testkit.fake_runner import SAFE_PLOT, UNSAFE_PLOT
+
+    r = await client.post("/v1/plots:validate", json=SAFE_PLOT)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["valid"] is True and body["sanitized"]["id"] == "core.ppc_fan"
+    r = await client.post("/v1/plots:validate", json=UNSAFE_PLOT)
+    body = r.json()
+    assert r.status_code == 200 and body["valid"] is False and body["sanitized"] is None
+    assert {i["pointer"] for i in body["issues"]} >= {"/spec/mark", "/spec/encoding/url"}
+    assert all(i["code"] == "PLOT_UNSAFE" for i in body["issues"] if i["severity"] == "error")
+    r = await client.post("/v1/plots:validate", json={"id": "x"})
+    assert r.json()["valid"] is False
+    r = await client.post("/v1/plots:validate", json=[1, 2])
+    assert r.status_code == 422
+
+
 async def test_healthz_and_readyz(client: httpx.AsyncClient) -> None:
     r = await client.get("/healthz")
     assert r.status_code == 200

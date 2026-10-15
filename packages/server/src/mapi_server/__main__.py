@@ -65,7 +65,8 @@ async def _worker(settings: Settings) -> None:
 
 
 def cmd_worker(settings: Settings) -> int:
-    asyncio.run(_worker(settings))
+    with contextlib.suppress(KeyboardInterrupt):
+        asyncio.run(_worker(settings))
     return 0
 
 
@@ -114,7 +115,8 @@ async def _dev(settings: Settings, host: str, port: int) -> None:
 
 def cmd_dev(settings: Settings, *, host: str | None, port: int | None) -> int:
     cmd_migrate(settings)
-    asyncio.run(_dev(settings, host or settings.api_host, port or settings.api_port))
+    with contextlib.suppress(KeyboardInterrupt):  # uvicorn re-raises the SIGINT it captured
+        asyncio.run(_dev(settings, host or settings.api_host, port or settings.api_port))
     return 0
 
 
