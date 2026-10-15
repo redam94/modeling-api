@@ -910,6 +910,7 @@ def score_bundle(
             seed=seed,
             cancel=hooks.cancel,
             log=hooks.log,
+            fit_coords=bundle.fit_coords,
         )
         canon, plan = canonicalise_coords(
             trace.data,

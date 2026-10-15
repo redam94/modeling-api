@@ -530,3 +530,21 @@ def test_moments_inverse_uses_the_delta_method_derivative() -> None:
     np.testing.assert_allclose(got.sel(moment="mean").values, np.expm1([2.0, 0.0]))
     np.testing.assert_allclose(got.sel(moment="sd").values, [np.e**2, 0.1], rtol=1e-6)
     assert out.retransform["y_hat"] == "delta_method"
+
+
+# ------------------------------------------------- statistics-11 (in-sample window history)
+
+
+def test_in_sample_window_without_look_back_history_warns(registry: Registry) -> None:
+    """A window starting before the stored context has truncated look-back features: the
+    result says so at WARNING level (not just INFO), naming the step."""
+    full = _lag_panel(weeks=30, extra=0)
+    bundle = fit_spec(load_model_spec(LAG_SPEC), full, None, registry)
+    window = full.isel(time=slice(10, 20)).drop_vars("y")
+    out = score_bundle(bundle, req(), window, registry=registry)
+    issues = json.loads(out.attrs["issues"])
+    hits = [i for i in issues if "look-back" in i["message"]]
+    assert hits and hits[0]["severity"] == "warning" and "'lags'" in hits[0]["message"]
+    # a window that continues the fit needs no warning
+    tail = score_bundle(bundle, req(), full.isel(time=slice(28, 30)), registry=registry)
+    assert not [i for i in json.loads(tail.attrs["issues"]) if "look-back" in i["message"]]

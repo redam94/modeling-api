@@ -80,7 +80,11 @@ def test_prepend_dense_contiguity(weekly_panel: Callable[..., xr.Dataset]) -> No
     assert mark2 is not None and len(mark2.labels) == 1
     early = ds.isel(time=slice(0, 3))
     _, mark3, issues3 = prepend_context(early, ctx, NEED, freq="W-SUN")
-    assert mark3 is None and issues3[0].severity is Severity.INFO
+    assert mark3 is None and issues3[0].severity is Severity.WARNING
+    # a window that starts with the fitted series loses nothing (no history at fit either)
+    first = ds["time"].values[0]
+    _, _, issues4 = prepend_context(early, ctx, NEED, freq="W-SUN", fit_start=first)
+    assert issues4 == []
     # new and missing groups: context reindexed to the score groups (NaN for new ones)
     regroup = future.isel(geo=[0]).assign_coords(geo=["zz"])
     regroup = xr.concat([future.isel(geo=[1]), regroup], dim="geo")

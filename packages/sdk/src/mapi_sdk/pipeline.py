@@ -296,11 +296,14 @@ class Pipeline:
         cancel: CancelToken | None = None,
         log: Callable[[str], None] | None = None,
         keep_stages: bool = False,
+        fit_coords: Mapping[str, xr.Dataset] | None = None,
     ) -> ReplayTrace:
         """Replay stored states from ``start`` to ``end``; never learns.
 
         With ``replay=True`` each step's stored context is prepended (per group, checked
         for contiguity) before it runs; the returned marks say which rows to drop later.
+        ``fit_coords`` (per-stage fitted coordinates) let a replay tell an in-sample window
+        that starts with the fitted series from one that loses look-back history.
         """
         marks: list[ContextMark] = []
         issues: list[Issue] = []
@@ -320,7 +323,13 @@ class Pipeline:
                     else None
                 )
                 ds, mark, found = prepend_context(
-                    ds, state.context, need, freq=freq, step_id=ps.id, replayed=replayed
+                    ds,
+                    state.context,
+                    need,
+                    freq=freq,
+                    step_id=ps.id,
+                    replayed=replayed,
+                    fit_start=self._fit_start(ps, need, fit_coords),
                 )
                 issues += found
                 if mark is not None:
@@ -333,6 +342,22 @@ class Pipeline:
             if keep_stages:
                 stages[ps.id] = ds
         return ReplayTrace(ds, marks, issues, stages)
+
+    def _fit_start(
+        self,
+        ps: PipelineStep,
+        need: ContextNeed | None,
+        fit_coords: Mapping[str, xr.Dataset] | None,
+    ) -> Any:
+        if need is None or fit_coords is None:
+            return None
+        coords = fit_coords.get(self.input_stage(ps.id))
+        if coords is None or need.along not in coords.coords:
+            return None
+        values = np.asarray(coords[need.along].values)
+        if values.size == 0 or values.dtype.kind not in "Miuf":
+            return None
+        return values.min()
 
     def _freq(self, ps: PipelineStep, need: ContextNeed | None, context: xr.Dataset) -> str | None:
         if need is None:

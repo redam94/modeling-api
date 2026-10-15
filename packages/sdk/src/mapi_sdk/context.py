@@ -110,6 +110,7 @@ def prepend_context(
     freq: str | None = None,
     step_id: str = "",
     replayed: np.ndarray | None = None,
+    fit_start: Any = None,
 ) -> tuple[xr.Dataset, ContextMark | None, list[Issue]]:
     """Prepend stored context rows to score data (contiguity-checked).
 
@@ -117,6 +118,10 @@ def prepend_context(
     own context. Those rows were transformed without *their* look-back history, so where
     this step's stored context has the fit-time values for them, the stored values win
     (chained look-back steps such as adstock followed by a lag replay exactly).
+
+    ``fit_start`` (the first fitted label along ``need.along``) tells a window that starts
+    with the fitted series - whose first rows had no history at fit either - from one
+    that starts inside it, which gets a WARNING because its first rows lose history.
 
     Returns the combined dataset, a :class:`ContextMark` of the prepended labels (or
     ``None``) and informational issues. Raises ``NON_CONTIGUOUS_EXTENSION`` when the score
@@ -126,7 +131,7 @@ def prepend_context(
         return ds, None, []
     if context_layout(ds, need) == "long":
         return _prepend_long(ds, context, need, step_id)
-    return _prepend_dense(ds, context, need, freq, step_id, replayed)
+    return _prepend_dense(ds, context, need, freq, step_id, replayed, fit_start)
 
 
 def _overwrite_replayed(
@@ -156,6 +161,7 @@ def _prepend_dense(
     freq: str | None,
     step_id: str,
     replayed: np.ndarray | None = None,
+    fit_start: Any = None,
 ) -> tuple[xr.Dataset, ContextMark | None, list[Issue]]:
     along = need.along
     issues: list[Issue] = []
@@ -186,13 +192,17 @@ def _prepend_dense(
                     code=ErrorCode.NON_CONTIGUOUS_EXTENSION,
                     untrusted_text=f"expected {_fmt(expected)}",
                 )
-        elif start < ctx_labels.min():
+        elif start < ctx_labels.min() and (fit_start is None or start > fit_start):
+            # the step only stores its last ``n`` rows: the window's first ``n`` rows are
+            # computed as if the series started there (biased lags/carry-over)
             issues.append(
                 Issue(
                     code=ErrorCode.NON_CONTIGUOUS_EXTENSION,
-                    severity=Severity.INFO,
+                    severity=Severity.WARNING,
                     message=f"step {step_id!r}: score data starts inside the fitted range "
-                    f"before the stored context; the first rows have no look-back history",
+                    f"before the stored context; its first {need.n} row(s) per group have "
+                    "no look-back history and are biased (score from the start of the fit "
+                    "or a window that continues it)",
                 )
             )
     else:
