@@ -155,6 +155,9 @@ nav:
           - mapi_sklearn: reference/api/sklearn.md
           - mapi_steps: reference/api/steps.md
           - mapi_plots: reference/api/plots.md
+  - Operations:
+      - Local development: operations/local-development.md
+      - Containers and docker compose: operations/docker.md
   - Roadmap:
       - roadmap/index.md
       - Platform API (v0.2): roadmap/platform-api.md
