@@ -149,3 +149,27 @@ run "env_must_match_bucket_naming" {
 
   expect_failures = [var.env]
 }
+
+run "checkpoints_are_the_only_overwritable_run_objects" {
+  command = apply
+
+  assert {
+    condition     = google_project_iam_custom_role.checkpoint_overwriter.permissions == toset(["storage.objects.delete"])
+    error_message = "Checkpoint overwrites need storage.objects.delete, and the role holds nothing else."
+  }
+
+  assert {
+    condition     = google_storage_bucket_iam_member.checkpoint_overwrite.bucket == "mapi-test-runs" && google_storage_bucket_iam_member.checkpoint_overwrite.member == "serviceAccount:mapi-test-signer@acme-test-control.iam.gserviceaccount.com"
+    error_message = "Only url_signer (the checkpoint policy signer) may delete, and only in the runs bucket."
+  }
+
+  assert {
+    condition     = strcontains(google_storage_bucket_iam_member.checkpoint_overwrite.condition[0].expression, "/checkpoints/")
+    error_message = "The delete grant is limited to checkpoint objects by an IAM condition."
+  }
+
+  assert {
+    condition     = length([for k, m in google_storage_bucket_iam_member.this : m if strcontains(m.member, "mapi-test-uploader@") && !contains(["mapi-test-runs", "mapi-test-quarantine"], m.bucket)]) == 0
+    error_message = "The create-only uploader writes runs and quarantine only."
+  }
+}

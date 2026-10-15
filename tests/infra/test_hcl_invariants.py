@@ -467,3 +467,68 @@ def test_create_only_uploads_have_their_own_identity() -> None:
     assert re.search(
         r'url-uploader\s*=\s*module\.control\.service_accounts\["url-uploader"\]', stack
     )
+
+
+def _cel(expression: str, name: str) -> bool:
+    """Evaluate the small IAM-condition subset the checkpoint grant uses on ``resource.name``:
+    ``&&`` of ``resource.name.startsWith("...")`` and ``resource.name.extract("a{x}b") != ""``
+    (extract: the text between the first ``a`` and the next ``b`` after it; empty if absent)."""
+    for term in (t.strip() for t in expression.split("&&")):
+        if m := re.fullmatch(r'resource\.name\.startsWith\("([^"]*)"\)', term):
+            ok = name.startswith(m.group(1))
+        elif m := re.fullmatch(r'resource\.name\.extract\("([^"{]*)\{\w+\}([^"]*)"\) != ""', term):
+            before, after = m.group(1), m.group(2)
+            i = name.find(before)
+            rest = name[i + len(before) :] if i >= 0 else ""
+            j = rest.find(after) if after else len(rest)
+            ok = i >= 0 and j > 0
+        else:
+            raise AssertionError(f"unsupported condition term: {term!r}")
+        if not ok:
+            return False
+    return True
+
+
+def test_checkpoints_can_be_overwritten_and_nothing_else() -> None:
+    """Segmented sampling rewrites the same checkpoint names every segment through a POST
+    policy signed as url_signer. GCS needs storage.objects.delete to overwrite, so url_signer
+    holds delete on the runs bucket, but only under ``.../checkpoints/``: manifests and
+    outputs stay write-once."""
+    from mapi_runner.worker.checkpoints import checkpoint_files
+    from mapi_spec.run import MANIFEST_OBJECT_NAME
+    from mapi_spec.storage import run_checkpoint_prefix, run_prefix
+
+    blocks = _module_blocks("data")
+    role = _one(blocks, "google_project_iam_custom_role", "checkpoint_overwriter")
+    assert set(re.findall(r'"(storage\.[\w.]+)"', role.body)) == {"storage.objects.delete"}
+    grant = _one(blocks, "google_storage_bucket_iam_member", "checkpoint_overwrite")
+    assert 'google_storage_bucket.this["runs"].name' in grant.body
+    assert "google_project_iam_custom_role.checkpoint_overwriter.id" in grant.body
+    assert "var.access.url_signer" in grant.body
+    raw = grant.attr("expression")
+    assert raw and raw.startswith('"') and raw.endswith('"'), "the delete grant is conditional"
+    expression = raw[1:-1].replace('\\"', '"')
+    bucket = "mapi-prod-runs"
+    expression = expression.replace('${google_storage_bucket.this["runs"].name}', bucket)
+
+    def obj(name: str) -> str:
+        return f"projects/_/buckets/{bucket}/objects/{name}"
+
+    for prefix in (
+        run_checkpoint_prefix("t1", "r1", 1),
+        run_checkpoint_prefix("t1", "r1", 3, task_index=7),
+    ):
+        for f in checkpoint_files("fit-0"):
+            assert _cel(expression, obj(prefix + f)), prefix + f
+    for name in (
+        run_prefix("t1", "r1", 1) + MANIFEST_OBJECT_NAME,
+        run_prefix("t1", "r1", 1) + "bundle.zarr.zip",
+        run_prefix("t1", "r1", 1, task_index=2) + "out/checkpoints.json",
+        "checkpoints/t/x",
+    ):
+        assert not _cel(expression, obj(name)), name
+    assert not _cel(expression, "projects/_/buckets/mapi-prod-bundles/objects/t/a/checkpoints/x")
+    # the plain grants never include delete for the signer
+    data_iam = strip_comments((TF_ROOT / "modules" / "data" / "iam.tf").read_text())
+    signer = re.findall(r'\["(\w+)", "(\w+)", "url_signer"\]', data_iam)
+    assert all(r in {"reader", "writer"} for _, r in signer), signer
