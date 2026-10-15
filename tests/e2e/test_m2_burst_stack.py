@@ -1,18 +1,26 @@
-"""A burst of concurrent *real* fits through the running stack (opt-in).
+"""A burst of concurrent *real* fits through a running stack (opt-in).
 
 ``make load-test`` proves "100 concurrent fits without loss" and the p95 time-to-RUNNING
 budget on the Cloud Run code path with a fake Admin API and synthetic executions. This suite
-complements it on the local stack: real runner processes (supervisor + worker, the
+complements it with real executions: real runner processes (supervisor + worker, the
 store-demand scikit-learn fit), the real dispatcher, reconciler, finalizer and cost ledger,
 all submitted at once by one tenant.
 
-Opt-in because it loads the machine: ``MAPI_E2E_BURST_RUNS=16 make e2e`` (or
-``uv run pytest -m e2e tests/e2e/test_m2_burst_stack.py``). Each fit is a separate pair of
-processes on this host, so size the burst to the machine (about 0.5 GB of RAM per fit).
+Opt-in because it loads the executor: set ``MAPI_E2E_BURST_RUNS``.
 
-Asserts: every run SUCCEEDED, exactly one attempt and one ledger entry per run, one model
-version per run (no lost or duplicated finalization), and p95 time-to-RUNNING
-(``started_at - queued_at``) under 90 s. The measured percentiles are printed.
+* **Local dev stack** (``make dev``): ``MAPI_E2E_BURST_RUNS=16 uv run pytest -m e2e
+  tests/e2e/test_m2_burst_stack.py``. The operator (dev IdP) creates a fresh ``internal``
+  tenant for the burst. Each fit is a pair of processes on this host (about 0.5 GB of RAM).
+  The ledger, attempt and model-version rows are also counted straight in Postgres.
+* **A deployment** (for example Cloud Run Jobs in ``dev``): ``MAPI_API_URL=https://…
+  MAPI_TOKEN=<API token> MAPI_PROJECT=<tenant>/<project> MAPI_E2E_BURST_RUNS=100
+  uv run pytest -m e2e -s tests/e2e/test_m2_burst_stack.py``. The token needs the ``admin``
+  scope (the burst uploads a dataset and saves a spec, which ``runs:create`` and
+  ``datasets:write`` together do not cover). Everything is checked through the API.
+
+Asserts: every run SUCCEEDED, exactly one attempt and one metered ledger entry per run, one
+distinct model version per run (no lost or duplicated finalization), and p95
+time-to-RUNNING (``started_at - queued_at``) under 90 s. The percentiles are printed.
 """
 
 from __future__ import annotations
@@ -21,7 +29,9 @@ import json
 import os
 import statistics
 import uuid
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Final
 
@@ -48,13 +58,17 @@ def _pct(values: list[float], q: float) -> float:
     return ordered[max(0, min(len(ordered) - 1, round(q * (len(ordered) - 1))))]
 
 
-@pytest.mark.skipif(RUNS <= 0, reason="opt-in: set MAPI_E2E_BURST_RUNS (e.g. 16)")
-def test_concurrent_real_fits_without_loss(record_property: object) -> None:
-    local = LocalDev.from_environ(os.environ)
-    api = local.api_url.rstrip("/")
-    data_dir = Path(local.data_dir) if Path(local.data_dir).is_absolute() else ROOT / local.data_dir
-    db_url = local.database_url or f"postgresql://postgres:@/mapi?host={data_dir / 'pg'}"
-    token = uuid.uuid4().hex[:6]
+@contextmanager
+def _caller(api: str, token: str) -> Iterator[Client]:
+    """``MAPI_TOKEN``/``MAPI_PROJECT`` against a deployment, else a fresh dev-stack tenant."""
+    deployed = os.environ.get("MAPI_TOKEN", "").strip()
+    if deployed:
+        project = os.environ.get("MAPI_PROJECT", "").strip()
+        if not project:
+            pytest.fail("MAPI_TOKEN needs MAPI_PROJECT (<tenant>/<project>) for the burst")
+        with Client(api, token=deployed, project=project) as client:
+            yield client
+        return
     tenant = f"burst-{token}"
     account = os.environ.get("MAPI_E2E_UI_ACCOUNT", "analyst@dev.local")
     with Client(api, token=dev_idp_login(api, OPERATOR)) as op:
@@ -62,9 +76,30 @@ def test_concurrent_real_fits_without_loss(record_property: object) -> None:
             {"id": tenant, "name": f"Burst {token}", "trust_tier": "internal",
              "initial_admin_email": account}
         )  # fmt: skip
-    with Client(api, token=dev_idp_login(api, account)) as user:
-        user.tenants.create_project(tenant, "growth", "Burst")
-        user.use(f"{tenant}/growth")
+    with Client(api, token=dev_idp_login(api, account)) as client:
+        client.tenants.create_project(tenant, "growth", "Burst")
+        client.use(f"{tenant}/growth")
+        yield client
+
+
+def _local_database(local: LocalDev) -> str | None:
+    """The dev stack's database URL (``None`` against a deployment)."""
+    if os.environ.get("MAPI_TOKEN", "").strip():
+        return None
+    data_dir = Path(local.data_dir)
+    if not data_dir.is_absolute():
+        data_dir = ROOT / data_dir
+    return local.database_url or f"postgresql://postgres:@/mapi?host={data_dir / 'pg'}"
+
+
+@pytest.mark.skipif(RUNS <= 0, reason="opt-in: set MAPI_E2E_BURST_RUNS (e.g. 16)")
+def test_concurrent_real_fits_without_loss() -> None:
+    local = LocalDev.from_environ(os.environ)
+    api = local.api_url.rstrip("/")
+    token = uuid.uuid4().hex[:6]
+    with _caller(api, token) as user:
+        assert user.project, "no project selected"
+        project = user.project.split("/", 1)[1]
         fx = load_fixture("sklearn_store_demand")
         data, _ = fx.generate(0, "tiny")
         version = user.datasets.upload(
@@ -76,7 +111,7 @@ def test_concurrent_real_fits_without_loss(record_property: object) -> None:
         doc = json.loads(
             stack_spec_yaml(fx, "tiny", StackRefs(data=version.ref), name=f"burst-{token}")
         )
-        doc["metadata"]["project"] = "growth"
+        doc["metadata"]["project"] = project
         spec = user.specs.create(json.dumps(doc), message="burst")
 
         def submit(i: int) -> Run:
@@ -87,26 +122,26 @@ def test_concurrent_real_fits_without_loss(record_property: object) -> None:
             submitted = list(pool.map(submit, range(RUNS)))
         assert len({r.id for r in submitted}) == RUNS
         finals = [user.runs.wait(r.id, timeout=3600, max_poll_interval=5) for r in submitted]
+
     bad = [(r.id, r.state.value, r.problem) for r in finals if r.state.value != "succeeded"]
     assert not bad, bad
-    assert all(r.attempt == 1 for r in finals)
+    # no retries, every attempt metered exactly once, one model version per fit
+    assert [r.attempt for r in finals] == [1] * RUNS
+    unbilled = [(r.id, r.cost) for r in finals if r.cost.estimated or r.cost.attempts_billed != 1]
+    assert not unbilled, unbilled
+    outputs = [r.output_model_version_id for r in finals]
+    assert None not in outputs and len(set(outputs)) == RUNS, outputs
     ids = [r.id for r in finals]
-    with psycopg.connect(db_url) as conn:
-        ledger = conn.execute(
-            "SELECT run_id, count(*) FROM cost_ledger WHERE run_id = ANY(%s) GROUP BY run_id",
-            (ids,),
-        ).fetchall()
-        versions = conn.execute(
-            "SELECT run_id, count(*) FROM model_versions WHERE run_id = ANY(%s) GROUP BY run_id",
-            (ids,),
-        ).fetchall()
-        attempts = conn.execute(
-            "SELECT run_id, count(*) FROM run_attempts WHERE run_id = ANY(%s) GROUP BY run_id",
-            (ids,),
-        ).fetchall()
-    assert dict(ledger) == dict.fromkeys(ids, 1), ledger
-    assert dict(versions) == dict.fromkeys(ids, 1), versions
-    assert dict(attempts) == dict.fromkeys(ids, 1), attempts
+    db = _local_database(local)
+    if db is not None:
+        with psycopg.connect(db) as conn:
+            for table in ("cost_ledger", "model_versions", "run_attempts"):
+                rows = conn.execute(
+                    f"SELECT run_id, count(*) FROM {table} WHERE run_id = ANY(%s) GROUP BY run_id",
+                    (ids,),
+                ).fetchall()
+                assert dict(rows) == dict.fromkeys(ids, 1), (table, rows)
+
     waits = [
         (r.started_at - r.queued_at).total_seconds()
         for r in finals
@@ -124,6 +159,7 @@ def test_concurrent_real_fits_without_loss(record_property: object) -> None:
         "time_to_running_p95_s": round(_pct(waits, 0.95), 2),
         "time_to_running_max_s": round(max(waits), 2),
         "wall_p95_s": round(_pct(walls, 0.95), 2),
+        "cost_micros_total": sum(r.cost.amount_micros or 0 for r in finals),
     }
     print(f"\nburst metrics: {json.dumps(metrics)}")
     assert metrics["time_to_running_p95_s"] < P95_BUDGET_S, metrics
