@@ -14,3 +14,5 @@ theme:
 markdown_extensions: [admonition, tables, attr_list, md_in_html, pymdownx.details, pymdownx.superfences, pymdownx.tabbed]
 nav:
   - Home: index.md
+  - Reference:
+      - Spec format: reference/spec-format.md
