@@ -13,16 +13,20 @@ import { HomePage } from "@/routes/home";
  * intent, never on first paint. `bundle-budget.ts` fails the build if that regresses.
  */
 const page = {
+  admin: () => import("@/routes/admin"),
   build: () => import("@/routes/build"),
   catalog: () => import("@/routes/catalog"),
   datasets: () => import("@/routes/datasets"),
   guided: () => import("@/routes/guided"),
+  members: () => import("@/routes/members"),
   models: () => import("@/routes/models"),
   runDetail: () => import("@/routes/run-detail"),
   runs: () => import("@/routes/runs"),
   score: () => import("@/routes/score"),
   settings: () => import("@/routes/settings"),
   specEditor: () => import("@/routes/spec-editor"),
+  tokens: () => import("@/routes/tokens"),
+  usage: () => import("@/routes/usage"),
 };
 
 export interface RouterContext {
@@ -137,6 +141,46 @@ const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/set
 
 const guidedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guided", component: lazyRouteComponent(page.guided, "GuidedPage") });
 
+const tokensRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/tokens",
+  component: lazyRouteComponent(page.tokens, "TokensPage"),
+  validateSearch: (s: Record<string, unknown>): { all?: boolean | undefined; status?: "active" | "expired" | "revoked" | undefined } => ({
+    all: s.all === true || s.all === "true" ? true : undefined,
+    status: oneOf(s.status, ["active", "expired", "revoked"] as const),
+  }),
+});
+
+const membersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/members",
+  component: lazyRouteComponent(page.members, "MembersPage"),
+  validateSearch: (s: Record<string, unknown>): { scope?: "tenant" | undefined } => ({ scope: oneOf(s.scope, ["tenant"] as const) }),
+});
+
+const usageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/usage",
+  component: lazyRouteComponent(page.usage, "UsagePage"),
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { period?: "day" | "month" | undefined; start?: string | undefined; scope?: "tenant" | undefined } => ({
+    period: oneOf(s.period, ["day", "month"] as const),
+    start: typeof s.start === "string" && /^\d{4}-\d{2}(?:-\d{2})?$/.test(s.start) ? s.start : undefined,
+    scope: oneOf(s.scope, ["tenant"] as const),
+  }),
+});
+
+export const ADMIN_TABS = ["tenants", "quotas", "kill-switches", "executors", "audit", "promotions"] as const;
+export type AdminTab = (typeof ADMIN_TABS)[number];
+
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  component: lazyRouteComponent(page.admin, "AdminPage"),
+  validateSearch: (s: Record<string, unknown>): { tab?: AdminTab | undefined } => ({ tab: oneOf(s.tab, ADMIN_TABS) }),
+});
+
 export const routeTree = rootRoute.addChildren([
   homeRoute,
   datasetsRoute,
@@ -153,6 +197,10 @@ export const routeTree = rootRoute.addChildren([
   catalogRoute,
   settingsRoute,
   guidedRoute,
+  tokensRoute,
+  membersRoute,
+  usageRoute,
+  adminRoute,
 ]);
 
 export function createAppRouter(queryClient: QueryClient) {

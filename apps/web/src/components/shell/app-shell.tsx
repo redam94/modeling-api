@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Monitor, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
+import { AlertTriangle, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { useReady } from "@/api/queries";
@@ -15,14 +15,19 @@ import {
   Tooltip,
 } from "@/components/ui/overlays";
 import { Kbd } from "@/components/ui/primitives";
+import { Logo, NoProjectScreen } from "@/features/auth/gate";
+import { useWorkspace } from "@/features/auth/workspace";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { useApplyTheme } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
 import { useUi, type Persona, type ThemePreference } from "@/stores/ui";
+import { useScope } from "@/stores/scope";
 
 import { CommandPalette, ShortcutsDialog } from "./command-palette";
-import { EXPERT_NAV, GUIDED_NAV, SETTINGS_NAV, type NavItem } from "./nav";
+import { ADMIN_NAV, EXPERT_NAV, GUIDED_NAV, PROJECT_NAV, SETTINGS_NAV, type NavItem } from "./nav";
+import { ProjectSwitcher } from "./project-switcher";
 import { Toaster } from "./toaster";
+import { UserMenu } from "./user-menu";
 
 function useIsActive(item: NavItem): boolean {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -138,8 +143,32 @@ export function PersonaToggle() {
   );
 }
 
+/** Routes that work without a selected project (operators may belong to none). */
+const PROJECTLESS = ["/admin", "/settings"];
+
+function TenantStatusBanner() {
+  const ws = useWorkspace();
+  const t = ws.current?.tenant;
+  if (!t || !t.status || t.status === "active") return null;
+  return (
+    <div role="status" className="flex items-start gap-2 border-b border-warning/35 bg-warning/10 px-4 py-2 text-[13px] md:px-6">
+      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+      <p>
+        <span className="font-medium">{t.name} is {t.status === "suspended" ? "suspended" : "being deleted"}.</span>{" "}
+        <span className="text-muted-foreground">
+          {t.status === "suspended" ? "Everything is read-only: nothing can be changed or run." : "Nothing can be changed."}
+          {t.status_reason ? ` Reason: ${t.status_reason}` : ""}
+        </span>
+      </p>
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children?: ReactNode }) {
   useApplyTheme();
+  const ws = useWorkspace();
+  const active = useScope((s) => s.active);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const collapsed = useUi((s) => s.sidebarCollapsed);
   const toggleSidebar = useUi((s) => s.toggleSidebar);
   const persona = useUi((s) => s.persona);
@@ -148,8 +177,10 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const navigate = useNavigate();
 
   const nav = persona === "guided" ? [GUIDED_NAV, ...EXPERT_NAV.slice(1)] : EXPERT_NAV;
+  const projectNav = ws.mode === "session" ? PROJECT_NAV : [];
+  const adminNav = ws.operator ? [ADMIN_NAV] : [];
   const chords = Object.fromEntries(
-    [...EXPERT_NAV, SETTINGS_NAV].map((item) => [`g ${item.chord}`, () => void navigate({ to: item.to })]),
+    [...EXPERT_NAV, ...projectNav, ...adminNav, SETTINGS_NAV].map((item) => [`g ${item.chord}`, () => void navigate({ to: item.to })]),
   );
   useHotkeys({
     "mod+k": () => setPaletteOpen(true),
@@ -158,6 +189,10 @@ export function AppShell({ children }: { children?: ReactNode }) {
     "mod+b": () => toggleSidebar(),
     ...chords,
   });
+
+  if (ws.mode === "session" && !ws.current && !ws.operator) return <NoProjectScreen email={ws.user.email} />;
+  const needsProject = !PROJECTLESS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  const scopeKey = active ? `${active.tenantId}/${active.projectId}` : "-";
 
   return (
     <div className="flex min-h-svh">
@@ -185,6 +220,22 @@ export function AppShell({ children }: { children?: ReactNode }) {
           {nav.map((item) => (
             <NavLink key={item.to} item={item} collapsed={collapsed} />
           ))}
+          {projectNav.length ? (
+            <>
+              <p className={cn("px-2.5 pt-4 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase", collapsed && "sr-only")}>Project</p>
+              {projectNav.map((item) => (
+                <NavLink key={item.to} item={item} collapsed={collapsed} />
+              ))}
+            </>
+          ) : null}
+          {adminNav.length ? (
+            <>
+              <p className={cn("px-2.5 pt-4 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase", collapsed && "sr-only")}>Platform</p>
+              {adminNav.map((item) => (
+                <NavLink key={item.to} item={item} collapsed={collapsed} />
+              ))}
+            </>
+          ) : null}
         </nav>
         <div className="mt-auto grid gap-0.5">
           <NavLink item={SETTINGS_NAV} collapsed={collapsed} />
@@ -203,13 +254,14 @@ export function AppShell({ children }: { children?: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
           <div className="flex h-12 items-center gap-3 px-4 md:px-6">
+            <ProjectSwitcher />
             <Button variant="ghost" size="icon-sm" onClick={() => setPaletteOpen(true)} aria-label="Jump to…" className="md:hidden">
               <Search />
             </Button>
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="hidden h-8 w-72 items-center gap-2 rounded-md border bg-card px-2.5 text-[13px] text-muted-foreground hover:text-foreground md:flex"
+              className="hidden h-8 w-56 items-center gap-2 rounded-md border bg-card px-2.5 text-[13px] text-muted-foreground hover:text-foreground md:flex xl:w-72"
             >
               <Search className="size-4" />
               Jump to…
@@ -222,16 +274,18 @@ export function AppShell({ children }: { children?: ReactNode }) {
               <HealthDot />
               <PersonaToggle />
               <ThemeMenu />
+              <UserMenu />
             </div>
           </div>
           <nav aria-label="Primary (compact)" className="flex flex-wrap gap-1 border-t px-3 py-1.5 md:hidden">
-            {[...nav, SETTINGS_NAV].map((item) => (
+            {[...nav, ...projectNav, ...adminNav, SETTINGS_NAV].map((item) => (
               <CompactNavLink key={item.to} item={item} />
             ))}
           </nav>
+          <TenantStatusBanner />
         </header>
         <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
-          {children ?? <Outlet />}
+          {children ?? (needsProject && !ws.current ? <NoProjectNotice /> : <Outlet key={scopeKey} />)}
         </main>
       </div>
       <CommandPalette />
@@ -241,13 +295,17 @@ export function AppShell({ children }: { children?: ReactNode }) {
   );
 }
 
-/** Mark: three stacked bands narrowing to a point estimate (a posterior fan, abstracted). */
-function Logo() {
+/** An operator without a project on a project page. */
+function NoProjectNotice() {
   return (
-    <svg viewBox="0 0 24 24" className="size-6 shrink-0" aria-hidden>
-      <rect x="2" y="4" width="20" height="4" rx="2" className="fill-primary/25" />
-      <rect x="5" y="10" width="14" height="4" rx="2" className="fill-primary/55" />
-      <rect x="9" y="16" width="6" height="4" rx="2" className="fill-primary" />
-    </svg>
+    <div className="grid max-w-xl gap-2 rounded-lg border border-dashed p-8">
+      <h1 className="font-semibold">No project selected</h1>
+      <p className="text-muted-foreground">
+        You are not a member of any project, so there is no project data to show. The admin console works without one.
+      </p>
+      <Link to="/admin" className="text-primary hover:underline">
+        Open the admin console
+      </Link>
+    </div>
   );
 }

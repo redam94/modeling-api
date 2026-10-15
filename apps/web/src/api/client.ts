@@ -1,6 +1,7 @@
 import createClient, { type Middleware } from "openapi-fetch";
 
 import { env } from "@/env";
+import { adviseProblem } from "@/lib/problems";
 import { useAuth } from "@/stores/auth";
 import { activeScopeKey } from "@/stores/scope";
 
@@ -156,10 +157,12 @@ export function newIdempotencyKey(): string {
   return crypto.randomUUID();
 }
 
-/** Human-readable message for any thrown value. */
+/** Human-readable message for any thrown value (plain-language for quota and access problems). */
 export function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     const p = err.problem;
+    const advice = p ? adviseProblem(p, { retryAfter: err.retryAfter }) : null;
+    if (advice) return `${advice.title}. ${advice.message}`;
     if (p) return p.detail ? `${p.title}: ${p.detail}` : p.title;
     return err.message;
   }

@@ -887,9 +887,10 @@ export function useRevokeToken() {
 
 // ------------------------------------------------------------------------- usage
 
-export function useUsage(query: UsageQuery) {
+export function useUsage(query: UsageQuery, enabled = true) {
   const s = useProjectScope();
   return useQuery({
+    enabled,
     queryKey: qk.usage(s.key, query),
     queryFn: ({ signal }) =>
       unwrap(
