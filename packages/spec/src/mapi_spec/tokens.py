@@ -52,6 +52,7 @@ __all__ = [
     "TOKEN_ALPHABET",
     "TOKEN_CHECKSUM_LEN",
     "TOKEN_ID_PREFIX",
+    "TOKEN_NEVER",
     "TOKEN_PREFIX_LEN",
     "TOKEN_RE",
     "TOKEN_SECRET_LEN",
@@ -278,7 +279,13 @@ def scope_allows(
     ``datasets:write``   ``read``/``create``/``update`` dataset
     ``plugins:publish``  ``read``/``create``/``delete`` plugin
     ===================  =========================================================
+
+    No scope covers :data:`TOKEN_NEVER` (minting tokens): a child token would escape its
+    parent's expiry, budget, rate limit and revocation, so minting needs a signed-in
+    session.
     """
+    if (resource, action) in TOKEN_NEVER:
+        return False
     for raw in scopes:
         try:
             name, target = parse_scope(raw)
@@ -298,6 +305,9 @@ def scope_allows(
             return True
     return False
 
+
+TOKEN_NEVER: Final[frozenset[tuple[str, str]]] = frozenset({("token", "create")})
+"""``(resource, action)`` pairs no token may do, whatever its scopes (even ``admin``)."""
 
 _READABLE = ("catalog", "dataset", "spec", "run", "model", "endpoint", "plot", "usage", "project")
 _READ = frozenset((r, "read") for r in _READABLE)

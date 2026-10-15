@@ -135,6 +135,9 @@ is tested against fakes, and the Terraform is validated and tested against mocke
 - **server**: operator status is decided on every request from `MAPI_OPERATOR_EMAILS` (and
   the dev profile's first account). Before, a demoted operator kept operator powers through
   `mapi login` ID tokens indefinitely and through browser sessions until they expired.
+- **spec/server**: an API token can no longer mint tokens, whatever its scopes
+  (`mapi_spec.tokens.TOKEN_NEVER`). A child token dropped its parent's expiry, vCPU budget and
+  rate limit, and outlived its revocation. `POST /v1/tokens` needs a signed-in session.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 

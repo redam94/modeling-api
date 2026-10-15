@@ -1,7 +1,9 @@
 """API tokens (project-scoped): mint (the secret is shown once), list, get, revoke.
 
-A token is minted *for the caller* (its owner; a token-authenticated caller mints for the
-token's owner) in the selected project. It acts as its owner narrowed by its scopes and can
+A token is minted *for the caller* (its owner) in the selected project, by a signed-in
+person only: no token may mint tokens (:data:`mapi_spec.tokens.TOKEN_NEVER`), because a
+child would escape its parent's expiry, budget, rate limit and revocation. It acts as its
+owner narrowed by its scopes and can
 never do more than the owner's role at the time of use. Only ``HMAC(pepper, token)`` is
 stored. Acting on other members' tokens (``all=true``, revoking theirs) needs ``manage`` on
 ``token`` (project admins).

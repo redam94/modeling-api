@@ -182,7 +182,10 @@ token with `models:read` can only read.
 | `score:{endpoint}` | Read and score one endpoint alias, for example `score:geo-mmm-prod`; `score:*` covers every endpoint in the project |
 | `datasets:write` | Create datasets and add versions |
 | `plugins:publish` | Publish and yank plugins (from v0.5) |
-| `admin` | Everything the owner's role allows |
+| `admin` | Everything the owner's role allows, except minting tokens |
+
+No scope lets a token mint tokens: a child token would escape its parent's expiry, budget,
+rate limit and revocation. Mint tokens from a signed-in session (`mapi login` or the browser).
 
 Each token also has an expiry (default 90 days, at most 365), and may have its own
 requests-per-minute limit and a vCPU-second budget per day or month. These apply in addition

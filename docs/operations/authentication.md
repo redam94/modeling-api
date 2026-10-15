@@ -136,6 +136,9 @@ narrowed by its scopes, and is bound to that project:
 - a disabled account stays disabled: signing in again is refused (a generic `401`, audited
   as `auth.login_failed`), and only an invitation becomes active at its first sign-in;
 - a token never carries operator powers, even if its owner is an operator;
+- a token cannot mint tokens, whatever its scopes (`admin` included): a child would escape
+  its parent's expiry, budget, rate limit and revocation, so `POST /v1/tokens` needs a
+  signed-in session (`mapi login` or the browser);
 - per-token `rate_limit_per_minute` (`RATE_LIMITED`, `Retry-After`) and a vCPU-second
   budget per UTC day or month apply in addition to the tenant's quotas.
 

@@ -166,6 +166,32 @@ async def test_token_rate_limit(ctx: ServerContext, client: httpx.AsyncClient) -
     assert (await web.get("/v1/datasets")).status_code == 200
 
 
+async def test_tokens_cannot_mint_tokens(ctx: ServerContext, client: httpx.AsyncClient) -> None:
+    """A child token would drop its parent's budget, rate limit and expiry and outlive its
+    revocation: even an ``admin`` token cannot mint one."""
+    ana = await _acme(ctx)
+    secret = await make_token(ctx, ana, "acme", "growth", ["admin"],
+                              rate_limit_per_minute=5, vcpu_seconds_budget=10.0,
+                              expires_in=timedelta(hours=1))  # fmt: skip
+    tok = token_caller(client, secret)
+    r = await tok.post(
+        "/v1/tokens", json={"name": "child", "scopes": ["admin"], "expires_in_days": 365}
+    )
+    assert r.status_code == 403, r.text
+    async with ctx.db.session() as s:
+        assert len(list((await s.execute(select(m.ApiToken))).scalars())) == 1
+        denied = [
+            e for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "token.create"
+        ]  # fmt: skip
+    assert [e.outcome for e in denied] == ["denied"]
+    # the token may still list and revoke tokens; a session still mints
+    assert (await tok.get("/v1/tokens")).status_code == 200
+    web = await session_caller(ctx, client, ana, tenant_id="acme", project_id="growth")
+    r = await web.post("/v1/tokens", json={"name": "ci", "scopes": ["models:read"]})
+    assert r.status_code == 201, r.text
+
+
 async def test_project_bound_token_cannot_administer_the_tenant(
     ctx: ServerContext, client: httpx.AsyncClient
 ) -> None:

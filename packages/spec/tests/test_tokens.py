@@ -223,6 +223,14 @@ def test_score_scope_targets_one_endpoint_and_admin_covers_all() -> None:
     assert not scope_allows(["bogus"], "read", "model")
 
 
+def test_no_scope_lets_a_token_mint_tokens() -> None:
+    """A child token would escape its parent's expiry, budget, rate limit and revocation,
+    so minting needs a signed-in session whatever the token's scopes."""
+    for scope in [*SCOPE_EXPECTED, "admin", "score:*"]:
+        assert not scope_allows([scope], "create", "token"), scope
+    assert scope_allows(["admin"], "delete", "token")  # revoking stays possible
+
+
 # -------------------------------------------------------------------------------------- DTOs
 
 NOW = datetime(2026, 10, 15, 9, 30, tzinfo=UTC)
