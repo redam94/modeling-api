@@ -322,6 +322,9 @@ class Settings(BaseSettings):
     auto_retry_window_s: float = Field(1800.0, ge=0, description="No auto-retry beyond 30 min")
     finalize_max_attempts: int = Field(5, ge=1)
     deadline_grace_s: float = Field(60.0, ge=0)
+    housekeeping_interval_s: float = Field(
+        300.0, gt=0, description="Sweep of expired upload intents and other expiring rows"
+    )
 
     # ---------------------------------------------------------------------- catalog / signing
     catalog_path: Path | None = Field(

@@ -232,6 +232,39 @@ async def test_concurrent_uploads_cannot_overrun_the_storage_quota(
         assert total == 800, total  # exactly one intent fits
 
 
+async def test_abandoned_upload_intents_stop_counting_once_expired(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """An upload intent reserves its declared size only until its signed PUT expires; the
+    housekeeper then marks it expired and deletes whatever reached quarantine."""
+    from mapi_server.services.housekeeping import Housekeeper
+    from mapi_spec.storage import NotFound
+
+    ds = (await client.post("/v1/datasets", json={"name": "abandoned"})).json()
+    await _policy(ctx, "tenant", "default", storage_bytes=1000)
+    body = {"filename": "a.csv", "content_type": "text/csv", "size_bytes": 800}
+    url = f"/v1/datasets/{ds['id']}/uploads"
+    first = await client.post(url, json=body)
+    assert first.status_code == 201
+    assert (await client.post(url, json=body)).status_code == 429  # 800 + 800 > 1000
+    async with ctx.db.session() as s:
+        row = await s.get(m.Upload, first.json()["id"])
+        assert row is not None
+        row.expires_at = now() - timedelta(minutes=1)  # the browser was closed
+        bucket, name = row.bucket, row.object_name
+    await ctx.store.put(bucket, name, b"half a file")
+    second = await client.post(url, json=body)
+    assert second.status_code == 201, second.text  # the expired intent no longer counts
+    assert await Housekeeper(ctx).sweep_once() >= 1
+    async with ctx.db.session() as s:
+        statuses = {
+            u.id: u.status for u in (await s.execute(select(m.Upload))).scalars()
+        }  # fmt: skip
+    assert statuses == {first.json()["id"]: "expired", second.json()["id"]: "pending"}
+    with pytest.raises(NotFound):
+        await ctx.store.stat(bucket, name)
+
+
 # ============================================================================ fair share
 
 

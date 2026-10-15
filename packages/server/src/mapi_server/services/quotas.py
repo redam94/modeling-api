@@ -7,7 +7,8 @@ it. The pure decision is always :func:`mapi_spec.quotas.evaluate_quota`.
 
 vCPU-second usage = metered ledger entries in the window + the estimates of runs that are
 active and not yet metered, so a burst of submissions cannot overrun a budget before the
-first run finishes.
+first run finishes. Storage usage = dataset versions + upload intents still able to
+complete (uploaded, or pending with an unexpired signed PUT).
 """
 
 from __future__ import annotations
@@ -185,7 +186,8 @@ async def quota_usage(
                 await s.execute(
                     select(func.coalesce(func.sum(m.Upload.size_bytes), 0)).where(
                         m.Upload.tenant_id == subject_id,
-                        m.Upload.status.in_(("pending", "uploaded")),
+                        (m.Upload.status == "uploaded")
+                        | ((m.Upload.status == "pending") & (m.Upload.expires_at > now)),
                     )
                 )
             ).scalar_one()

@@ -1,5 +1,5 @@
 """The orchestrator process (``mapi-server worker``): dispatcher + reconciler + event pump +
-procrastinate worker, all on one event loop."""
+housekeeper + procrastinate worker, all on one event loop."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from mapi_server.context import ServerContext
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.events import EventIngestor
 from mapi_server.services.finalizer import Finalizer
+from mapi_server.services.housekeeping import Housekeeper
 from mapi_server.services.queue import InlineFinalizeQueue, ProcrastinateQueue
 from mapi_server.services.reconciler import Reconciler
 from mapi_server.services.submit import submit_describe
@@ -41,6 +42,7 @@ class Orchestrator:
         self.dispatcher = Dispatcher(ctx, executor)
         self.reconciler = Reconciler(ctx, executor)
         self.ingestor = EventIngestor(ctx)
+        self.housekeeper = Housekeeper(ctx)
         self.stop = asyncio.Event()
 
     async def ensure_catalog(self) -> None:
@@ -61,6 +63,7 @@ class Orchestrator:
             asyncio.create_task(self.dispatcher.run_forever(self.stop), name="dispatcher"),
             asyncio.create_task(self.reconciler.run_forever(self.stop), name="reconciler"),
             asyncio.create_task(self.ingestor.pump(self.executor.event_source()), name="events"),
+            asyncio.create_task(self.housekeeper.run_forever(self.stop), name="housekeeping"),
         ]
         if self.procrastinate is not None:
             tasks.append(

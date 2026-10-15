@@ -146,6 +146,10 @@ is tested against fakes, and the Terraform is validated and tested against mocke
 - **server**: concurrent uploads can no longer overrun the storage quota. Storage admission
   now locks the tenant row like run admission does, so six concurrent 800-byte intents against
   a 1000-byte quota admit exactly one.
+- **server**: abandoned upload intents no longer hold storage quota forever. Usage counts a
+  pending intent only while its signed PUT is valid, and a new housekeeper loop in the worker
+  (`MAPI_HOUSEKEEPING_INTERVAL_S`, default 300 s) marks expired intents `expired` and deletes
+  whatever reached quarantine.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
