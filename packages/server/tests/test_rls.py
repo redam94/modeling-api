@@ -357,9 +357,7 @@ async def test_the_gateway_role_never_writes_tenant_data(ctx: ServerContext) -> 
         runs = (await s.execute(select(func.count()).select_from(m.Run))).scalar_one()
         assert tenants >= 2 and runs >= 2  # cross-tenant reads: sign-in, operators, quotas
         role = (
-            await s.execute(
-                text("SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user")
-            )
+            await s.execute(text("SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user"))
         ).scalar_one()
         assert role is False
     forbidden = [

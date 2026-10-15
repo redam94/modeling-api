@@ -53,6 +53,7 @@ from mapi_server.api.common import (
 from mapi_server.api.tenancy import audit_page, tenant_dto
 from mapi_server.api.usage import Period, period_bounds
 from mapi_server.auth.identity import invite_user
+from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
 from mapi_server.observability import metrics as obs_metrics
@@ -370,7 +371,7 @@ async def admin_put_kill_switches(
         .values(key=KILL_SWITCHES_KEY, value=value, updated_at=ts)
         .on_conflict_do_update(index_elements=["key"], set_={"value": value, "updated_at": ts})
     )
-    cancelled = await _cancel_untrusted_runs(system) if body.cancel_untrusted_runs else None
+    cancelled = await _cancel_untrusted_runs(ctx, system) if body.cancel_untrusted_runs else None
     # publish the cap now, not at the next admission: a cleared cap must stop the alerts
     cap = updated.global_spend_cap_micros
     spent = 0 if cap is None else await global_spend(system, updated, now=ts)
@@ -397,29 +398,41 @@ async def admin_put_kill_switches(
     return updated
 
 
-async def _cancel_untrusted_runs(system: AsyncSession) -> list[str]:
+async def _cancel_untrusted_runs(ctx: ServerContext, system: AsyncSession) -> list[str]:
     """Move every unfinished run of tenant-uploaded code to ``cancelling`` (all tenants).
 
     ``finalizing`` runs are left alone: their execution is already over. The reconciler
-    cancels the executions and confirms ``cancelled``.
+    cancels the executions and confirms ``cancelled``. The API's platform session (the
+    gateway role) only sees which tenants have unfinished runs; each tenant's runs are
+    cancelled in a session of that tenant, under row-level security.
     """
     skip = {s.value for s in RunState if s.terminal} | {
         RunState.FINALIZING.value,
         RunState.CANCELLING.value,
     }
-    runs = list(
-        (
-            await system.execute(
-                select(m.Run)
-                .where(m.Run.untrusted_code.is_(True), m.Run.state.not_in(skip))
-                .order_by(m.Run.id)
-                .with_for_update()
-            )
-        ).scalars()
-    )
-    for run in runs:
-        await apply_transition(system, run, RunTrigger.CANCEL, Actor.API)
-    return [r.id for r in runs]
+    tenant_ids = (
+        await system.execute(
+            select(m.Run.tenant_id)
+            .where(m.Run.state.not_in(skip))
+            .distinct()
+            .order_by(m.Run.tenant_id)
+        )
+    ).scalars()
+    cancelled: list[str] = []
+    for tenant_id in list(tenant_ids):
+        async with ctx.db.tenant_session(tenant_id) as session:
+            runs = (
+                await session.execute(
+                    select(m.Run)
+                    .where(m.Run.untrusted_code.is_(True), m.Run.state.not_in(skip))
+                    .order_by(m.Run.id)
+                    .with_for_update()
+                )
+            ).scalars()
+            for run in list(runs):
+                await apply_transition(session, run, RunTrigger.CANCEL, Actor.API)
+                cancelled.append(run.id)
+    return cancelled
 
 
 # ================================================================================ executors
@@ -685,7 +698,7 @@ async def admin_get_usage(
     by_tenant.sort(key=lambda c: (-c.totals.amount_micros, c.tenant_id, c.totals.currency or ""))
     versions = (
         await system.execute(
-            select(distinct(led.price_version)).where(led.recorded_at >= lo, led.recorded_at < hi)
+            select(led.price_version).where(led.recorded_at >= lo, led.recorded_at < hi).distinct()
         )
     ).scalars()
     ts = now()

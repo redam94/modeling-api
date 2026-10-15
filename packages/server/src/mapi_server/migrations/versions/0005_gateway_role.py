@@ -62,7 +62,7 @@ RLS_GRANTS: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
     "cost_ledger": (
         "SELECT (id, tenant_id, project_id, run_id, attempt, kind, token_id, vcpu_seconds, "
-        "amount_micros, currency, recorded_at)",
+        "gib_seconds, amount_micros, currency, price_version, recorded_at)",
         ("SELECT",),
     ),
 }
