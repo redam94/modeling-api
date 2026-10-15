@@ -79,11 +79,8 @@ class CoordPlan:
         return ScoreMetadata(resolved=self.resolved, fit_coords=summaries)
 
     def check(self, inputs: xr.Dataset | None = None) -> list[Issue]:
-        """Run the checks (``inputs`` is the payload at ``inputs_stage``, dataset names ok)."""
-        stage = self.request.inputs_stage
-        schema = self.resolved.stages.get(stage)
-        if schema is not None and stage == "raw" and inputs is not None:
-            schema = None  # dataset names at the raw stage; summaries infer frequencies
+        """Run the checks; ``inputs`` is the payload at ``inputs_stage`` (canonical names)."""
+        schema = self.resolved.stages.get(self.request.inputs_stage)
         summary = data_summary(inputs, schema) if inputs is not None else None
         issues = validate_score_request(
             self.request, self.metadata(), summary, max_draws=self.max_draws
