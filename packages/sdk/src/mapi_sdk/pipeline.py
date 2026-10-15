@@ -314,7 +314,14 @@ class Pipeline:
             if replay and state.context is not None:
                 need = state.context_need or ps.need
                 freq = self._freq(ps, need, state.context)
-                ds, mark, found = prepend_context(ds, state.context, need, freq=freq, step_id=ps.id)
+                replayed = (
+                    np.concatenate([m.labels for m in marks if m.dim == need.along])
+                    if need is not None and any(m.dim == need.along for m in marks)
+                    else None
+                )
+                ds, mark, found = prepend_context(
+                    ds, state.context, need, freq=freq, step_id=ps.id, replayed=replayed
+                )
                 issues += found
                 if mark is not None:
                     marks.append(mark)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import pytest
@@ -11,8 +11,11 @@ import xarray as xr
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.harness import fit_spec, score_bundle
 from mapi_sdk.registry import Registry
+from mapi_sdk.steps import Step, StepContext, StepSettings, StepState
 from mapi_spec import load_model_spec, load_score_request
+from mapi_spec.effects import StepKind
 from mapi_spec.errors import ErrorCode, MapiError
+from pydantic import JsonValue
 
 REQ = "apiVersion: mapi/v1\nkind: ScoreRequest\nmodel: endpoint://growth/toy\n"
 
@@ -403,3 +406,58 @@ def test_contributions_invert_through_a_multiplicative_chain(
     ].to_dataset()
     assert p["contributions"].attrs["output_space"] == "weekly"
     xr.testing.assert_allclose(p["contributions"].sum("component"), p["y_hat"])
+
+
+# --------------------------------------------------- statistics-4 (chained look-back steps)
+
+
+class _ShiftSettings(StepSettings):
+    var: str
+    out: str
+    k: int = 1
+
+
+class _ShiftStep(Step[_ShiftSettings, StepState]):
+    """``out = var`` shifted by ``k`` along ``time`` (a minimal look-back step)."""
+
+    id = "test.shift"
+    version = "1.0.0"
+    kind = StepKind.FEATURE
+    Settings = _ShiftSettings
+    context_template: ClassVar[dict[str, JsonValue]] = {"along": "time", "n": "{k}"}
+
+    def transform(
+        self, ds: xr.Dataset, s: _ShiftSettings, st: StepState, ctx: StepContext
+    ) -> xr.Dataset:
+        return ds.assign({s.out: ds[s.var].shift(time=s.k)})
+
+
+def _series(n: int, start: int = 0) -> xr.Dataset:
+    t = np.arange(start, start + n)
+    return xr.Dataset(
+        {"x": (("geo", "time"), np.vstack([t, 10 * t]).astype(float))},
+        coords={"geo": ["a", "b"], "time": t},
+    )
+
+
+def test_chained_look_back_steps_replay_the_fit_time_history() -> None:
+    """A later step's stored context wins over rows an earlier step replayed without
+    their own look-back history."""
+    from mapi_sdk.context import drop_context
+    from mapi_sdk.pipeline import Pipeline
+
+    pipe = Pipeline.build(
+        [
+            ("s1", _ShiftStep, {"var": "x", "out": "x1", "k": 1}),
+            ("s2", _ShiftStep, {"var": "x1", "out": "x12", "k": 2}),
+        ]
+    )
+    full = _series(22)
+    trace = pipe.fit(full.isel(time=slice(0, 20)))
+    rp = pipe.transform(full.isel(time=slice(20, None)), trace.states)
+    out = drop_context(rp.data, rp.marks)
+    ref = pipe.transform(full, trace.states, replay=False).data
+    # x12[t] = x[t - 3]: 17 and 18 for the first geo
+    xr.testing.assert_allclose(out["x12"], ref["x12"].sel(time=[20, 21]))
+    assert out["x12"].sel(geo="a").values.tolist() == [17.0, 18.0]
+    assert not rp.issues

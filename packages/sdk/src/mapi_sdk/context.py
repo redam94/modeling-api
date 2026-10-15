@@ -109,8 +109,14 @@ def prepend_context(
     *,
     freq: str | None = None,
     step_id: str = "",
+    replayed: np.ndarray | None = None,
 ) -> tuple[xr.Dataset, ContextMark | None, list[Issue]]:
     """Prepend stored context rows to score data (contiguity-checked).
+
+    ``replayed`` lists labels along ``need.along`` that earlier steps prepended as their
+    own context. Those rows were transformed without *their* look-back history, so where
+    this step's stored context has the fit-time values for them, the stored values win
+    (chained look-back steps such as adstock followed by a lag replay exactly).
 
     Returns the combined dataset, a :class:`ContextMark` of the prepended labels (or
     ``None``) and informational issues. Raises ``NON_CONTIGUOUS_EXTENSION`` when the score
@@ -120,11 +126,36 @@ def prepend_context(
         return ds, None, []
     if context_layout(ds, need) == "long":
         return _prepend_long(ds, context, need, step_id)
-    return _prepend_dense(ds, context, need, freq, step_id)
+    return _prepend_dense(ds, context, need, freq, step_id, replayed)
+
+
+def _overwrite_replayed(
+    ds: xr.Dataset, context: xr.Dataset, along: str, labels: np.ndarray
+) -> xr.Dataset:
+    """Replace ``ds`` rows at ``labels`` (earlier steps' context rows) by stored values."""
+    ctx = context.sel({along: labels})
+    updates: dict[Hashable, xr.DataArray] = {}
+    for v in _along_vars(ds, along):
+        if v not in ctx or set(ctx[v].dims) != set(ds[v].dims):
+            continue
+        stored = ctx[v].reindex({along: ds[along].values})
+        for d in stored.dims:
+            if d != along and d in ds.coords and d in stored.coords:
+                stored = stored.reindex({d: ds[d].values})
+        hit = xr.DataArray(np.isin(ds[along].values, labels), dims=[along])
+        merged = xr.where(hit, stored, ds[v]).transpose(*ds[v].dims)
+        merged.attrs = ds[v].attrs
+        updates[v] = merged.astype(ds[v].dtype) if ds[v].dtype.kind == "f" else merged
+    return ds.assign(updates) if updates else ds
 
 
 def _prepend_dense(
-    ds: xr.Dataset, context: xr.Dataset, need: ContextNeed, freq: str | None, step_id: str
+    ds: xr.Dataset,
+    context: xr.Dataset,
+    need: ContextNeed,
+    freq: str | None,
+    step_id: str,
+    replayed: np.ndarray | None = None,
 ) -> tuple[xr.Dataset, ContextMark | None, list[Issue]]:
     along = need.along
     issues: list[Issue] = []
@@ -137,6 +168,10 @@ def _prepend_dense(
             f"step {step_id!r}: context along {along!r} needs labelled coordinates",
             code=ErrorCode.COORD_NOT_ALLOWED,
         )
+    if replayed is not None and replayed.size:
+        overlap = ctx_labels[np.isin(ctx_labels, replayed) & np.isin(ctx_labels, score)]
+        if overlap.size:
+            ds = _overwrite_replayed(ds, context, along, overlap)
     start = score.min() if _ordered(score) else score[0]
     if _ordered(score) and _ordered(ctx_labels):
         before = ctx_labels < start
