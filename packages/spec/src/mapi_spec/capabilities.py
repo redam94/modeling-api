@@ -20,7 +20,7 @@ from pydantic import Field, JsonValue, field_validator, model_validator
 from mapi_spec._types import MetricName, Name, SortedFrozenSet, StrictModel
 from mapi_spec.refs import UseRef, Version
 from mapi_spec.resources import ResourceClass
-from mapi_spec.schema import DataSchemaTemplate
+from mapi_spec.schema import DataSchema, DataSchemaTemplate
 
 __all__ = [
     "REPRESENTATION_RULES",
@@ -240,9 +240,21 @@ class OutputDecl(StrictModel):
     """An output variable the model writes (e.g. ``y_hat``)."""
 
     dims: list[Name]
+    dims_of: Name | None = Field(
+        None,
+        description="The output also carries every dim of this input variable (e.g. 'y' for "
+        "models whose data dims come from settings, such as the sklearn row dims)",
+    )
     units_of: Name | None = Field(None, description="Take units from this input variable")
     units: str | None = Field(None, max_length=64)
     description: str | None = Field(None, max_length=2000)
+
+    def full_dims(self, schema: DataSchema | None) -> list[str]:
+        """``dims`` plus the dims of ``dims_of`` in the model's resolved input ``schema``."""
+        out = list(self.dims)
+        if self.dims_of is not None and schema is not None and self.dims_of in schema.vars:
+            out += [d for d in schema.vars[self.dims_of].dims if d not in out]
+        return out
 
 
 class DerivedDecl(StrictModel):

@@ -663,3 +663,59 @@ def test_manifest_plots_must_sanitize(
         checks=checks,
     )
     assert plain.get("plots_sanitize").skipped
+
+
+# ------------------------------------------------------------- outputs vs the manifest
+
+
+class _Undeclared(toy.QuantileModel):
+    """Returns a variable the manifest does not declare."""
+
+    id = "test.undeclared"
+
+    def score(
+        self, fitted: Fitted, ds: xr.Dataset, req: ScoreRequest, ctx: ScoreContext
+    ) -> xr.DataTree:
+        pred = super().score(fitted, ds, req, ctx)["predictions"].to_dataset()
+        return xr.DataTree.from_dict({"predictions": pred.assign(extra=pred["y_hat"])})
+
+
+class _ShortDims(toy.QuantileModel):
+    """Declares y_hat over the quantile dim only (like the sklearn row models used to)."""
+
+    id = "test.shortdims"
+    outputs: ClassVar[dict[str, Any]] = {"y_hat": {"dims": ["quantile"], "units_of": "y"}}
+
+
+class _DimsOf(_ShortDims):
+    """The same, with the data dims taken from the target: matches what score returns."""
+
+    id = "test.dimsof"
+    outputs: ClassVar[dict[str, Any]] = {
+        "y_hat": {"dims": ["quantile"], "dims_of": "y", "units_of": "y"}
+    }
+
+
+def test_returned_predictions_must_match_the_declared_outputs(
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    raw_schema: DataSchema,
+    registry: Registry,
+) -> None:
+    checks = ["manifest", "fit", "outputs_match_manifest"]
+    results = {}
+    for plugin in (toy.QuantileModel, _Undeclared, _ShortDims, _DimsOf):
+        spec = e33_spec(model=f"{plugin.id}@^1", mode="train_only", metrics="rmse")
+        report = check_model(
+            plugin,
+            _toy_fixture(spec, panel, raw_schema, registry),
+            checks=checks,
+            raise_on_failure=False,
+        )
+        results[plugin.id] = report.get("outputs_match_manifest")
+    assert results["toy.quantile"].passed and not results["toy.quantile"].skipped
+    assert not results["test.undeclared"].passed
+    assert "['extra']" in results["test.undeclared"].detail
+    short = results["test.shortdims"]
+    assert not short.passed and "declared dims []" in short.detail, short.detail
+    assert results["test.dimsof"].passed, results["test.dimsof"].detail

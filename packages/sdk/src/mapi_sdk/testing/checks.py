@@ -47,6 +47,7 @@ from mapi_sdk.pipeline import Pipeline
 from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.schema import infer_schema
 from mapi_sdk.steps import Step, StepContext, StepSettings, StepState, states_equal
+from mapi_sdk.summarise import REP_DIMS
 from mapi_sdk.wire import read_datatree_zip, write_datatree_zip, write_zarr_zip, zip_entries
 
 __all__ = [
@@ -992,6 +993,33 @@ def check_model(
             raise _Skip("no outputs inherit the units of an input variable")
         return "; ".join(notes)
 
+    def c_outputs() -> str:
+        tree = score(_request(names="canonical"), window(), return_full=True)
+        node = tree["predictions"]
+        assert isinstance(node, xr.DataTree)
+        pred = node.to_dataset()
+        undeclared = sorted(str(v) for v in pred.data_vars if v not in manifest.outputs)
+        if undeclared:
+            raise AssertionError(
+                f"score returned {undeclared}, which the manifest's outputs do not declare "
+                f"(declared: {sorted(manifest.outputs)})"
+            )
+        rep_dims = set(REP_DIMS[rep])
+        schema = fit_once().resolved.model.input_schema
+        problems = []
+        for v in pred.data_vars:
+            decl = manifest.outputs[str(v)]
+            want = set(decl.full_dims(schema)) - rep_dims
+            got = {str(d) for d in pred[v].dims} - rep_dims
+            if want != got:
+                problems.append(f"{v}: declared dims {sorted(want)}, returned {sorted(got)}")
+        if problems:
+            raise AssertionError(
+                "returned predictions do not match the manifest (dims beyond the "
+                f"{rep.value} dims {sorted(rep_dims)}): " + "; ".join(problems)
+            )
+        return f"{sorted(str(v) for v in pred.data_vars)} declared with matching dims"
+
     def c_aggregation() -> str:
         b = fit_once()
         dims = [
@@ -1119,6 +1147,7 @@ def check_model(
         ("context_window_equivalence", c_context_window),
         ("evaluate_path_equals_score_path", c_evaluate_path),
         ("output_space_and_units", c_output_space),
+        ("outputs_match_manifest", c_outputs),
         ("representation_aggregation", c_aggregation),
         ("additive_contributions", c_additive),
         ("seed_determinism", c_seed),

@@ -237,12 +237,14 @@ class PyMCMarketingMMM(CustomModel[PyMCMarketingSettings]):
         # the panel dims (settings ``dims``) come in front of ``time``
         "y_hat": {
             "dims": [TIME],
+            "dims_of": TARGET,
             "units_of": TARGET,
             "description": "Expected (or predictive) target in original units, over the "
             "panel dims and time",
         },
         "contributions": {
             "dims": ["component", TIME],
+            "dims_of": TARGET,
             "units_of": TARGET,
             "description": "Channels, baseline, controls and seasonality in original units; "
             "they sum to y_hat",
