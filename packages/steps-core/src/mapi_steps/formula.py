@@ -298,7 +298,7 @@ def evaluate(compiled: Compiled, ds: xr.Dataset) -> xr.DataArray | float:
         if name == "clip":
             return _da(ev(args[0])).clip(ev(args[1]), ev(args[2]))
         if name == "where":
-            return xr.where(_as_bool(ev(args[0])), ev(args[1]), ev(args[2]))  # type: ignore[no-untyped-call]
+            return _WHERE(_as_bool(ev(args[0])), ev(args[1]), ev(args[2]))
         x = _da(ev(args[0]))
         dims = [a[1] for a in args[1:]]
         missing = [d for d in dims if d not in x.dims]
@@ -311,6 +311,9 @@ def evaluate(compiled: Compiled, ds: xr.Dataset) -> xr.DataArray | float:
     if isinstance(result, xr.DataArray):
         return result
     return float(result)
+
+
+_WHERE: Callable[..., Any] = xr.where  # typed alias (xr.where is untyped)
 
 
 def _da(x: Any) -> xr.DataArray:

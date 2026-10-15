@@ -118,6 +118,7 @@ class ResampleStep(Step[ResampleSettings, StepState]):
         if s.full_periods_only:
             agg = agg.isel({s.dim: self._full(ds, s, ctx, agg)})
         for v in users:
+            agg[v] = agg[v].transpose(*ds[v].dims)  # keep each variable's dim order
             agg[v].attrs = dict(ds[v].attrs)
         out = xr.merge([agg, static], combine_attrs="override")
         out.attrs = dict(ds.attrs)
