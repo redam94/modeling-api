@@ -293,6 +293,42 @@ async def _queue(
     return run_id
 
 
+async def test_a_finalizing_run_is_not_counted_twice(ctx: ServerContext, tenants: None) -> None:
+    """Entering FINALIZING meters the attempt into the ledger: from then on the run's
+    estimate no longer counts, so it is not counted as estimate + actual."""
+    from mapi_server.services.quotas import quota_usage
+    from mapi_spec.quotas import QuotaScope
+
+    run_id = await _queue(ctx, "big", state="finalizing")
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, run_id)
+        assert run is not None
+        run.estimate = {"vcpu_seconds": 100.0}
+        s.add(
+            m.CostLedgerEntry(
+                id=new_id("cst"), tenant_id="big", project_id="main", run_id=run_id,
+                attempt=1, kind="actual", resource_class="S", task_count=1,
+                wall_seconds=50.0, vcpu_seconds=100.0, gib_seconds=400.0,
+                price_version="test", amount_micros=1, currency="USD", recorded_at=now(),
+            )
+        )  # fmt: skip
+        await _queue(ctx, "big", state="running")  # an unmetered run still counts its estimate
+    async with ctx.db.session() as s:
+        for other in (await s.execute(select(m.Run).where(m.Run.id != run_id))).scalars():
+            other.estimate = {"vcpu_seconds": 30.0}
+    async with ctx.db.tenant_session("big") as s:
+        usage = await quota_usage(s, QuotaScope.TENANT, "big", now=now())
+    assert usage.vcpu_seconds_today == 130.0 and usage.concurrent_runs == 2
+    # a retried run (attempt 2 queued after a metered attempt 1) counts its new estimate
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, run_id)
+        assert run is not None
+        run.state, run.attempt = "queued", 2
+    async with ctx.db.tenant_session("big") as s:
+        usage = await quota_usage(s, QuotaScope.TENANT, "big", now=now())
+    assert usage.vcpu_seconds_today == 230.0
+
+
 async def _leased(ctx: ServerContext, dispatcher: Dispatcher) -> list[str]:
     return [run_id for run_id, _ in await dispatcher.lease()]
 

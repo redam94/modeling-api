@@ -6,8 +6,9 @@ a token's policy is its own rate limit and vCPU budget tightened by any operator
 it. The pure decision is always :func:`mapi_spec.quotas.evaluate_quota`.
 
 vCPU-second usage = metered ledger entries in the window + the estimates of runs that are
-active and not yet metered, so a burst of submissions cannot overrun a budget before the
-first run finishes. Storage usage = dataset versions + upload intents still able to
+active and whose current attempt is not yet metered (a FINALIZING run is metered on entry),
+so a burst of submissions cannot overrun a budget before the first run finishes and no run
+counts twice. Storage usage = dataset versions + upload intents still able to
 complete (uploaded, or pending with an unexpired signed PUT).
 """
 
@@ -159,9 +160,20 @@ async def quota_usage(
         ),
         func.coalesce(func.sum(m.CostLedgerEntry.vcpu_seconds), 0.0),
     ).where(m.CostLedgerEntry.recorded_at >= month)
-    active = select(func.count(), func.coalesce(func.sum(_estimate_vcpu()), 0.0)).where(
-        m.Run.state.in_(ACTIVE_STATES)
+    # an attempt is metered when it ends (FINALIZING included): from then on its actual
+    # vCPU-seconds are in the ledger, so the run's estimate must stop counting
+    metered = (
+        select(m.CostLedgerEntry.id)
+        .where(
+            m.CostLedgerEntry.run_id == m.Run.id,
+            m.CostLedgerEntry.attempt == m.Run.attempt,
+            m.CostLedgerEntry.kind == CostEntryKind.ACTUAL.value,
+        )
+        .exists()
     )
+    active = select(
+        func.count(), func.coalesce(func.sum(_estimate_vcpu()).filter(~metered), 0.0)
+    ).where(m.Run.state.in_(ACTIVE_STATES))
     if scope is QuotaScope.TOKEN:
         ledger = ledger.where(m.CostLedgerEntry.token_id == subject_id)
         active = active.where(m.Run.token_id == subject_id)

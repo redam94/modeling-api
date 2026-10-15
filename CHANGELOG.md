@@ -154,6 +154,9 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   back with the request's 401, and nothing else removed `web_sessions` rows. The row is now
   deleted in its own transaction after the 401, and the housekeeper sweeps expired sessions
   and abandoned sign-ins.
+- **server**: a FINALIZING run no longer counts its vCPU estimate on top of its metered
+  attempt. Quota usage counts an active run's estimate only while its current attempt has no
+  `actual` ledger entry, so runs near a daily or monthly limit are not refused by mistake.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
