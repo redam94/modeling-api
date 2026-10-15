@@ -142,6 +142,36 @@ async def test_failures_are_problems(
     assert (await executor.wait(h5, timeout=10)).problem is not None
 
 
+async def test_payload_side_tables_win_over_request_refs(
+    executor: InprocExecutor, e33_spec: Callable[..., ModelSpec]
+) -> None:
+    """A score run whose payload supplies a side table never resolves the request's ref
+    for it (the request may name a dataset only the control plane knows)."""
+    h = await executor.submit(_fit_submit(e33_spec(metrics="rmse")), nonce="nonce-fit-tbl01")
+    assert (await executor.wait(h, timeout=60)).state is ExecState.SUCCEEDED
+    executor.put_bundle("tbl", executor.result(h))
+    request = {**SCORE, "side_tables": {"fx": "dataset://growth/fx_unknown@v9"}}
+    run = RunSubmit(
+        run_id="score-tbl",
+        kind=RunKind.SCORE,
+        payload={
+            "request": request,
+            "bundle": "tbl",
+            "side_tables": {"fx": "dataset://growth/fx_daily@latest"},
+        },
+    )
+    sh = await executor.submit(run, nonce="nonce-score-tbl1")
+    status = await executor.wait(sh, timeout=60)
+    assert status.state is ExecState.SUCCEEDED, status.problem
+    # without a payload table the request's ref is resolved (and here it is unknown)
+    alone = RunSubmit(
+        run_id="score-tbl-2", kind=RunKind.SCORE, payload={"request": request, "bundle": "tbl"}
+    )
+    ah = await executor.submit(alone, nonce="nonce-score-tbl2")
+    problem = (await executor.wait(ah, timeout=60)).problem
+    assert problem is not None and problem.code is ErrorCode.REF_UNRESOLVED
+
+
 async def test_cancel_before_and_during(
     executor: InprocExecutor, e33_spec: Callable[..., ModelSpec]
 ) -> None:

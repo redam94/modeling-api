@@ -11,6 +11,7 @@ from mapi_conformance.__main__ import main
 from mapi_conformance.fixtures import FIXTURES
 from mapi_conformance.runner import (
     CorpusReport,
+    FixtureContext,
     FixtureReport,
     ScoreCase,
     StepResult,
@@ -61,6 +62,9 @@ def test_score_case_parsing() -> None:
         ScoreCase.parse({"request": {}}, "x")
     with pytest.raises(ValueError):
         ScoreCase.parse({"name": "f", "request": {}, "expect_error": "NOT_A_CODE"}, "x")
+    assert case.side_tables
+    plan = ScoreCase.parse({"name": "p", "request": {}, "side_tables": False}, "x")
+    assert not plan.side_tables
 
 
 def test_unknown_payload_builder_is_reported() -> None:
@@ -107,6 +111,32 @@ def test_failing_expectation_fails_the_fixture(monkeypatch: pytest.MonkeyPatch) 
     assert step is not None and not step.ok and "deliberately broken" in step.detail
     assert not report.ok
     assert report.step("contract") is not None and report.step("contract").skipped  # type: ignore[union-attr]
+
+
+def test_hooks_that_declare_ctx_receive_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    fx = load_fixture("xgb_store_demand")
+    assert fx.expectations is not None
+    seen: dict[str, object] = {}
+
+    def check_fit(bundle: object, data: object, *, ctx: FixtureContext) -> None:
+        seen["fit"] = (ctx.fixture_id, ctx.seed, ctx.size, sorted(ctx.results))
+
+    def check_score(
+        name: str, tree: xr.DataTree, bundle: object, data: object, *, ctx: FixtureContext
+    ) -> None:
+        assert name not in ctx.results  # a request sees only the ones scored before it
+        seen.setdefault("score", []).append((name, sorted(ctx.results)))  # type: ignore[union-attr]
+
+    monkeypatch.setattr(fx.expectations, "check_fit", check_fit)
+    monkeypatch.setattr(fx.expectations, "check_score", check_score)
+    report = run_fixture("xgb_store_demand", contract=False, seed=3)
+    assert report.ok, CorpusReport([report]).failure_details()
+    calls = seen["score"]
+    assert isinstance(calls, list) and calls and calls[0][1] == []
+    succeeded = [c.name for c in fx.cases if c.expect_error is None]
+    assert [name for name, _ in calls] == succeeded
+    assert calls[-1][1] == sorted(succeeded[:-1])
+    assert seen["fit"] == ("xgb_store_demand", 3, "tiny", sorted(succeeded))
 
 
 def test_cli_list_and_run(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

@@ -34,7 +34,7 @@ from mapi_spec.effects import StepKind, apply_effect
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.loader import load_model_spec
 from mapi_spec.schema import DataSchema, DimPolicy
-from mapi_spec.spec import AsOfSplit, ModelSpec, ScoreRequest, TimeHoldoutSplit
+from mapi_spec.spec import AsOfSplit, ModelSpec, ScorePolicy, ScoreRequest, TimeHoldoutSplit
 
 from mapi_sdk._util import dtype_family
 from mapi_sdk.bundle import BUNDLE_FILE, Bundle, assert_no_pickle
@@ -533,8 +533,22 @@ def check_model(
                 out.append((name, ds_name, pol, strat))
         return out
 
+    # a 'supplied' side table must be named by every score request that replays its step
+    supplied = {
+        name: st.ref
+        for name, st in spec.data.side_tables.items()
+        if st.score_policy is ScorePolicy.SUPPLIED and name in tables
+    }
+
+    def score_on(
+        bundle: Bundle, req: ScoreRequest, ds: xr.Dataset | None, **kw: Any
+    ) -> xr.DataTree:
+        if supplied:
+            req = req.model_copy(update={"side_tables": {**supplied, **req.side_tables}})
+        return score_bundle(bundle, req, ds, side_tables=tables, registry=reg, **kw)
+
     def score(req: ScoreRequest, ds: xr.Dataset | None, **kw: Any) -> xr.DataTree:
-        return score_bundle(fit_once(), req, ds, side_tables=tables, registry=reg, **kw)
+        return score_on(fit_once(), req, ds, **kw)
 
     def c_manifest() -> str:
         reg.catalog()
@@ -555,8 +569,8 @@ def check_model(
                 raise AssertionError(f"bundle contains pickle-like entries {bad}")
             assert_no_pickle(back.model.native)
         w = window()
-        a = score_bundle(b, _request(), w, side_tables=tables, registry=reg)
-        c = score_bundle(back, _request(), w, side_tables=tables, registry=reg)
+        a = score_on(b, _request(), w)
+        c = score_on(back, _request(), w)
         xr.testing.assert_allclose(_summary(a), _summary(c))
         return "scores match after write/read"
 
@@ -748,20 +762,16 @@ def check_model(
         ev, hold = holdout_raw()
         targets = [binding_dim(t) for t in (ev.model_schema.targets if ev.model_schema else [])]
         req = _request(names="canonical")
-        a = score_bundle(
+        a = score_on(
             ev,
             req,
             hold.drop_vars(targets, errors="ignore"),
-            side_tables=tables,
-            registry=reg,
             return_full=True,
         )
-        full = score_bundle(
+        full = score_on(
             ev,
             req,
             data.drop_vars(targets, errors="ignore"),
-            side_tables=tables,
-            registry=reg,
             return_full=True,
         )
         pa = a["predictions"].to_dataset()
@@ -795,7 +805,7 @@ def check_model(
                 "seed": spec.model.fit.seed or 0,
             }
         )
-        tree = score_bundle(ev, req, hold, side_tables=tables, registry=reg, metrics=names)
+        tree = score_on(ev, req, hold, metrics=names)
         got = json.loads(tree.attrs["metrics"])["values"]
         for n in names:
             want = b.metrics.values[n]
@@ -877,12 +887,8 @@ def check_model(
         for name, grp in a.model.groups.items():
             xr.testing.assert_identical(grp, b.model.groups[name])
         kind = "predictive" if REPRESENTATION_RULES[rep].predictive else "expected"
-        s1 = _summary(
-            score_bundle(a, _request(kind=kind), window(), side_tables=tables, registry=reg)
-        )
-        s2 = _summary(
-            score_bundle(b, _request(kind=kind), window(), side_tables=tables, registry=reg)
-        )
+        s1 = _summary(score_on(a, _request(kind=kind), window()))
+        s2 = _summary(score_on(b, _request(kind=kind), window()))
         xr.testing.assert_identical(s1, s2)
         return "same seed, same fit and scores"
 

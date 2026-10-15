@@ -4,18 +4,16 @@ semantics of each score request (horizon, new market, weekly EUR plan, counterfa
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
 
 import numpy as np
 import xarray as xr
 from mapi_plots.recipes import render_plots
-from mapi_plugin_mmm.examples import E33Truth
 from mapi_sdk.bundle import Bundle
-from mapi_sdk.registry import Registry
 
-from mapi_conformance.fixtures.e33.data import HORIZON_WEEKS, NEW_MARKET
+from mapi_conformance.fixtures.e33.data import HORIZON_WEEKS, NEW_MARKET, truth
+from mapi_conformance.runner import FixtureContext
 
-__all__ = ["check_bundle", "check_score"]
+__all__ = ["check_fit", "check_score"]
 
 CHANNEL_CONTRIB_RTOL = 0.5  # tiny fits; the plugin's recovery test is much tighter
 
@@ -26,8 +24,9 @@ def _group(tree: xr.DataTree, name: str) -> xr.Dataset:
     return node.to_dataset()
 
 
-def check_bundle(bundle: Bundle, registry: Registry, truth: E33Truth) -> None:
+def check_fit(bundle: Bundle, data: xr.Dataset, *, ctx: FixtureContext) -> None:
     """Production bundle: evaluation lineage, derived quantities in EUR, plots."""
+    sim = truth(ctx.seed, ctx.size)
     assert bundle.evaluation is not None, "evaluate_then_refit keeps the evaluation bundle"
     assert bundle.metrics.output_space == "weekly"
     assert {"coverage_90", "mape", "elpd_loo"} <= set(bundle.metrics.values)
@@ -37,7 +36,7 @@ def check_bundle(bundle: Bundle, registry: Registry, truth: E33Truth) -> None:
     assert contrib.attrs["units"] == "EUR" and contrib.attrs["output_space"] == "weekly"
     # the fitted EUR contributions are in the right range of the simulated ones
     weeks = contrib.sizes["time"]
-    want = truth.weekly["contribution_eur"].isel(week=slice(0, weeks)).sum(["market", "week"])
+    want = sim.weekly["contribution_eur"].isel(week=slice(0, weeks)).sum(["market", "week"])
     got = contrib.sum(["geo", "time"]).mean("sample")
     channels = [str(c) for c in got["channel"].values]
     np.testing.assert_allclose(
@@ -50,19 +49,15 @@ def check_bundle(bundle: Bundle, registry: Registry, truth: E33Truth) -> None:
     assert bool((rc["contribution"].diff("multiplier") >= -1e-9).all())
     tree = bundle.to_tree()
     plots = [str(p) for p in bundle.spec.outputs.plots if str(p) != "core.ppc_fan"]
-    report = render_plots(tree, plots, registry=registry)
+    report = render_plots(tree, plots, registry=ctx.registry)
     assert sorted(p.id for p in report.plots) == sorted(plots), report.issues
 
 
 def check_score(
-    name: str,
-    tree: xr.DataTree,
-    *,
-    bundle: Bundle,
-    registry: Registry,
-    results: Mapping[str, xr.DataTree],
+    name: str, tree: xr.DataTree, bundle: Bundle, data: xr.Dataset, *, ctx: FixtureContext
 ) -> None:
-    """Per-request expectations; ``results`` holds the requests scored so far."""
+    """Per-request expectations; ``ctx.results`` holds the requests scored so far."""
+    registry, results = ctx.registry, ctx.results
     summary = _group(tree, "summary")["y_hat"]
     attrs = tree.attrs
     issues = json.loads(attrs["issues"])

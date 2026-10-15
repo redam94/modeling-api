@@ -197,6 +197,28 @@ def test_toy_models_pass(
         assert "raised CAPABILITY_UNSUPPORTED" in report.get("representation_aggregation").detail
 
 
+def test_supplied_side_tables_are_named_by_kit_requests(
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    raw_schema: DataSchema,
+    registry: Registry,
+) -> None:
+    """With ``score_policy: supplied`` every score request must name the table; the kit's
+    own requests do so for the tables the fixture provides."""
+    data, fx = panel
+    doc = e33_spec(model="toy.linear@^1", metrics="rmse, mape").model_dump(
+        mode="json", by_alias=True, exclude_unset=True
+    )
+    doc["data"]["side_tables"]["fx"]["score_policy"] = "supplied"
+    spec = ModelSpec.model_validate(doc)
+    fixture = ModelFixture(
+        spec=spec, data=data, side_tables={"fx": fx}, raw_schema=raw_schema, registry=registry
+    )
+    report = check_model(registry.model("toy.linear@^1"), fixture, raise_on_failure=False)
+    assert report.ok, report.summary()
+    assert not report.get("shuffled_scoring").skipped
+
+
 class _Leaky(toy.LinearModel):
     """Ignores its fit and the new-level strategy; non-deterministic predictions."""
 
