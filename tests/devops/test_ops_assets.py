@@ -65,7 +65,8 @@ def _promql_exprs() -> list[str]:
         for rule in group["rules"]:
             exprs.append(str(rule.get("expr", "")))
     cm_alerts = [
-        p for p in yaml.safe_load_all((OPS / "alerts" / "cloud-monitoring-alerts.yaml").read_text())
+        p
+        for p in yaml.safe_load_all((OPS / "alerts" / "cloud-monitoring-alerts.yaml").read_text())
         if p
     ]
     for policy in cm_alerts:
@@ -144,8 +145,13 @@ def test_cloud_monitoring_alerts_parse_as_yaml() -> None:
 def test_runbook_links_resolve() -> None:
     runbooks = OPS / "runbooks"
     files = {p.name for p in runbooks.glob("*.md")}
-    assert {"incident-response.md", "sandbox-escape.md", "stuck-runs.md",
-            "db-failover.md", "rotating-keys.md"} <= files
+    assert {
+        "incident-response.md",
+        "sandbox-escape.md",
+        "stuck-runs.md",
+        "db-failover.md",
+        "rotating-keys.md",
+    } <= files
     # every ops/runbooks/<x>.md reference in the alert files points to a file that exists
     for blob in (OPS / "alerts").glob("*"):
         for ref in re.findall(r"ops/runbooks/([a-z-]+\.md)", blob.read_text()):

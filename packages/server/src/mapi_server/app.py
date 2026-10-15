@@ -256,9 +256,7 @@ def create_app(
     return app
 
 
-def _install_observability(
-    app: FastAPI, settings: Settings, ctx: ServerContext | None
-) -> None:
+def _install_observability(app: FastAPI, settings: Settings, ctx: ServerContext | None) -> None:
     """Metrics endpoint, request middleware, OTel instrumentation and the SSE-client gauge.
 
     Logging and the tracer provider are configured once per process at the entry point

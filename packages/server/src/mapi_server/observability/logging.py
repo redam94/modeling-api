@@ -85,9 +85,7 @@ def configure_logging(*, level: str = "info", json: bool = True) -> None:
     numeric = getattr(logging, level.upper(), logging.INFO)
     shared = _shared_processors()
     renderer: structlog.types.Processor = (
-        structlog.processors.JSONRenderer()
-        if json
-        else structlog.dev.ConsoleRenderer(colors=False)
+        structlog.processors.JSONRenderer() if json else structlog.dev.ConsoleRenderer(colors=False)
     )
 
     structlog.configure(

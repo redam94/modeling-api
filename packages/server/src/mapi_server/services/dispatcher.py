@@ -181,9 +181,7 @@ class Dispatcher:
             session.expunge_all()
         if run.state != RunState.DISPATCHING.value or run.attempt != attempt_no:
             return
-        with run_span(
-            "dispatch.submit", run_id=run_id, attempt=attempt_no, kind=run.kind
-        ):
+        with run_span("dispatch.submit", run_id=run_id, attempt=attempt_no, kind=run.kind):
             await self._submit_locked(run, att, run_id, attempt_no)
 
     async def _submit_locked(

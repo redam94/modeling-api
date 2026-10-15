@@ -122,8 +122,10 @@ async def _one_execution(ctx: ServerContext, run_id: str) -> None:
     async with ctx.db.session() as s:
         run = await load_run(s, None, run_id)
         attempts = (
-            await s.execute(select(m.RunAttempt).where(m.RunAttempt.run_id == run_id))
-        ).scalars().all()
+            (await s.execute(select(m.RunAttempt).where(m.RunAttempt.run_id == run_id)))
+            .scalars()
+            .all()
+        )
         external_ids = [a.external_id for a in attempts if a.external_id is not None]
         # each attempt leased exactly one nonce; no two attempts share an external id
         assert len(external_ids) == len(set(external_ids)), external_ids
@@ -219,12 +221,16 @@ async def test_event_redelivery_and_reordering(ctx: ServerContext) -> None:
         progress = await s.get(m.RunProgress, run_id)
         # exactly one persisted runner event per seq (no duplicates)
         rows = (
-            await s.execute(
-                select(m.RunEvent.seq).where(
-                    m.RunEvent.run_id == run_id, m.RunEvent.source == "runner"
+            (
+                await s.execute(
+                    select(m.RunEvent.seq).where(
+                        m.RunEvent.run_id == run_id, m.RunEvent.source == "runner"
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     assert run.state == RunState.RUNNING.value
     assert progress is not None and progress.seq == 2 and progress.fraction == pytest.approx(0.7)
     # only state events are appended to run_events (progress upserts a single row)
@@ -238,9 +244,15 @@ async def test_event_redelivery_and_reordering(ctx: ServerContext) -> None:
 
     # the complete event arrives (possibly redelivered) → recorded exactly once
     complete = signed_event(
-        att, 3,
-        CompletePayload(status="complete", manifest_name="manifest.json",
-                        manifest_crc32c="AAAAAA==", objects=1, total_bytes=10),
+        att,
+        3,
+        CompletePayload(
+            status="complete",
+            manifest_name="manifest.json",
+            manifest_crc32c="AAAAAA==",
+            objects=1,
+            total_bytes=10,
+        ),
     )
     assert (await ingestor.ingest(complete)).value == "accepted"
     assert (await ingestor.ingest(complete)).value == "duplicate"
@@ -344,9 +356,15 @@ async def test_postgres_restart_mid_run_converges(tmp_path: Path) -> None:
         # the execution finished while the DB was down; the reconciler converges after restart
         executor.finish(att.nonce, exit_code=0)
         complete = signed_event(
-            att, 1,
-            CompletePayload(status="complete", manifest_name="manifest.json",
-                            manifest_crc32c="AAAAAA==", objects=0, total_bytes=0),
+            att,
+            1,
+            CompletePayload(
+                status="complete",
+                manifest_name="manifest.json",
+                manifest_crc32c="AAAAAA==",
+                objects=0,
+                total_bytes=0,
+            ),
         )
         assert (await EventIngestor(ctx).ingest(complete)).value == "accepted"
         reconciler = Reconciler(ctx, executor)
