@@ -78,7 +78,12 @@ python -m mapi_spec export-schemas ./schemas    # modelspec.json, scorerequest.j
 | `coords` | `CoordSummary`, `DataSummary`, pandas-compatible frequency arithmetic |
 | `template` | the tiny placeholder language used by schema templates and effects |
 | `sweep` | `expand_sweep` (grid → child specs), `set_pointer` |
-| `jsonschema_export` | `export_schemas()` (JSON Schema 2020-12 for every document) |
+| `executor` | the `Executor` protocol, `RunSubmit`, `Handle`, `ExecStatus`, `ExecutorCaps`, `Isolation`, `RunKind`, `RunEvent` |
+| `run` | run protocol (M1): `RunState` + `transition()`, `RunSpec` bootstrap, event payloads and HMAC signing, stdout wire format, `OutputManifest`/`BundleManifest`, `RunnerEnv`, `RunnerExit` |
+| `storage` | `ObjectMeta`, the async `ObjectStore` protocol, signed URL shapes, CRC32C/MD5 helpers, bucket and key naming |
+| `api` | REST DTOs for `/v1` (`Page[T]`, `Run`, `RunCreate`, `ModelVersion`, ...), SSE/`Prefer`/idempotency helpers, `M1_ENDPOINTS` |
+| `localdev` | local ports, origins and environment variable names (`LocalDev`) |
+| `jsonschema_export` | `export_schemas()` (JSON Schema 2020-12 for every document, run-protocol model and REST DTO) |
 | `examples` | the plan's example documents (E33 geo MMM, xgboost store demand, score request) |
 
 ## Rules worth knowing

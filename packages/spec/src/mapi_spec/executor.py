@@ -9,11 +9,11 @@ These are pure Pydantic shapes: no numpy, xarray or plugin code.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import IntEnum, StrEnum
 from typing import Protocol, runtime_checkable
 
-from pydantic import Field, JsonValue
+from pydantic import Field, JsonValue, field_validator
 
 from mapi_spec._types import Duration, LabelKey, LabelValue, StrictModel
 from mapi_spec.errors import Problem
@@ -64,6 +64,12 @@ class ExecutorCaps(StrictModel):
 
 
 class RunKind(StrEnum):
+    """What a run does. ``validate`` is the explicit sandboxed dry-run of a spec.
+
+    ``sweep``, ``backtest``, ``sbc`` and ``campaign`` are fan-out *parents* (plan §6.2,
+    M4): they own child runs and never execute on an executor themselves.
+    """
+
     INGEST = "ingest"
     DESCRIBE = "describe"
     VALIDATE = "validate"
@@ -73,6 +79,18 @@ class RunKind(StrEnum):
     DERIVE = "derive"
     RENDER = "render"
     OPTIMIZE = "optimize"
+    SWEEP = "sweep"
+    BACKTEST = "backtest"
+    SBC = "sbc"
+    CAMPAIGN = "campaign"
+
+    @property
+    def is_parent(self) -> bool:
+        """True for fan-out parents, which only aggregate their children."""
+        return self in _PARENT_KINDS
+
+
+_PARENT_KINDS = frozenset({RunKind.SWEEP, RunKind.BACKTEST, RunKind.SBC, RunKind.CAMPAIGN})
 
 
 class RunSubmit(StrictModel):
@@ -123,11 +141,15 @@ class ExecStatus(StrictModel):
 
 
 class RunEventType(StrEnum):
+    """Event types written by the supervisor (see :mod:`mapi_spec.run` for payloads)."""
+
     STATE = "state"
     PROGRESS = "progress"
     LOG = "log"
     DIAGNOSTIC = "diagnostic"
     WARNING = "warning"
+    CHECKPOINT = "checkpoint"
+    METRIC = "metric"
     COMPLETE = "complete"
     ERROR = "error"
 
@@ -142,6 +164,13 @@ class RunEvent(StrictModel):
     ts: datetime
     payload: dict[str, JsonValue] = Field(default_factory=dict)
     hmac: str | None = Field(None, max_length=128)
+
+    @field_validator("ts")
+    @classmethod
+    def _utc(cls, v: datetime) -> datetime:
+        if v.tzinfo is None or v.utcoffset() is None:
+            raise ValueError("ts must be timezone-aware")
+        return v.astimezone(UTC)
 
 
 @runtime_checkable

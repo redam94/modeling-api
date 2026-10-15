@@ -1,0 +1,1535 @@
+"""REST DTOs for the M1 HTTP API (``/v1``; plan §8.2 subset).
+
+Conventions shared by every endpoint (see ``docs/reference/http-api.md``):
+
+* **Requests** reject unknown fields (``extra="forbid"``); **responses** ignore unknown
+  fields when parsed by a client, so older clients keep working when the server adds fields.
+* Every resource carries ``tenant_id`` and ``project_id``. M1 is single-tenant: both are
+  :data:`DEFAULT_TENANT_ID` / :data:`DEFAULT_PROJECT_ID`, but the identity is in every row
+  and key so M2 can add row-level security without migrations churn.
+* Lists return :class:`Page` (``items`` + opaque ``next_cursor``); errors are RFC 7807
+  :class:`~mapi_spec.errors.Problem` documents with stable codes.
+* Timestamps are timezone-aware RFC 3339 strings in UTC.
+
+:data:`M1_ENDPOINTS` is the machine-readable endpoint table; the server's route table and
+the reference docs are tested against it.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import secrets
+import time
+from dataclasses import dataclass, field
+from datetime import timedelta
+from enum import StrEnum
+from typing import Annotated, Any, Final, Generic, Literal, TypeVar
+
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    field_validator,
+    model_validator,
+)
+
+from mapi_spec._types import Duration, LabelKey, LabelValue, MetricName, Slug, StrictModel
+from mapi_spec.capabilities import Capabilities, Diagnostic
+from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
+from mapi_spec.coords import DataSummary
+from mapi_spec.errors import ErrorCode, Issue, Problem
+from mapi_spec.executor import RunEventType, RunKind
+from mapi_spec.plots import PlotSpec
+from mapi_spec.resources import ResourceClass
+from mapi_spec.run import BundleManifest, ChainProgress, FailureClass, RunnerPhase, RunState
+from mapi_spec.schema import DataSchema, DimSpec, Role
+from mapi_spec.spec import CONTRACT_VERSION, DocumentKind, ScoreRequest
+from mapi_spec.storage import SEGMENT_RE, Crc32c, SignedPut
+from mapi_spec.validate import ResolvedSpec
+
+__all__ = [
+    "API_PREFIX",
+    "ARTIFACT_LINK_TTL",
+    "DEFAULT_PROJECT_ID",
+    "DEFAULT_TENANT_ID",
+    "IDEMPOTENCY_KEY_HEADER",
+    "IDEMPOTENCY_KEY_RE",
+    "IDEMPOTENCY_TTL_SECONDS",
+    "LAST_EVENT_ID_HEADER",
+    "M1_ENDPOINTS",
+    "MAX_PREFER_WAIT_SECONDS",
+    "PAGE_LIMIT_DEFAULT",
+    "PAGE_LIMIT_MAX",
+    "PREFERENCE_APPLIED_HEADER",
+    "PREFER_HEADER",
+    "RUN_CREATE_KINDS",
+    "SSE_HEARTBEAT",
+    "SSE_HEARTBEAT_SECONDS",
+    "SSE_RETRY_MS",
+    "ArtifactLink",
+    "CatalogResponse",
+    "Dataset",
+    "DatasetCreate",
+    "DatasetVersion",
+    "DatasetVersionCreate",
+    "DatasetVersionStatus",
+    "DimMapping",
+    "EndpointDecl",
+    "Health",
+    "HealthCheck",
+    "IngestMapping",
+    "Lineage",
+    "LogLine",
+    "Model",
+    "ModelVersion",
+    "ObjectRef",
+    "Page",
+    "PlotListItem",
+    "PlotSpec",
+    "PlotValidateResponse",
+    "ProgressSnapshot",
+    "Project",
+    "Run",
+    "RunCost",
+    "RunCreate",
+    "RunEventView",
+    "RunRetry",
+    "ScoreCall",
+    "ScoreCallResult",
+    "Scorecard",
+    "ScorecardItem",
+    "SpecCreate",
+    "SpecDoc",
+    "SpecRevision",
+    "SpecRevisionCreate",
+    "SseEventName",
+    "StageSchema",
+    "UploadCreate",
+    "UploadSession",
+    "ValidateRequest",
+    "ValidateResponse",
+    "VarMapping",
+    "check_idempotency_key",
+    "encode_sse",
+    "loc_to_pointer",
+    "new_id",
+    "parse_last_event_id",
+    "parse_prefer_wait",
+]
+
+API_PREFIX: Final = "/v1"
+DEFAULT_TENANT_ID: Final = "default"
+DEFAULT_PROJECT_ID: Final = "default"
+
+IDEMPOTENCY_KEY_HEADER: Final = "Idempotency-Key"
+IDEMPOTENCY_TTL_SECONDS: Final = 24 * 3600
+IDEMPOTENCY_KEY_RE: Final = re.compile(r"^[\x21-\x7e]{1,255}$")
+"""1-255 printable, non-space ASCII characters."""
+ARTIFACT_LINK_TTL: Final = timedelta(minutes=15)
+"""Lifetime of signed artifact URLs handed to clients."""
+LAST_EVENT_ID_HEADER: Final = "Last-Event-ID"
+PREFER_HEADER: Final = "Prefer"
+PREFERENCE_APPLIED_HEADER: Final = "Preference-Applied"
+MAX_PREFER_WAIT_SECONDS: Final = 60
+PAGE_LIMIT_DEFAULT: Final = 50
+PAGE_LIMIT_MAX: Final = 200
+SSE_HEARTBEAT_SECONDS: Final = 15
+SSE_RETRY_MS: Final = 3000
+SSE_HEARTBEAT: Final = ": keepalive\n\n"
+"""Comment frame sent every :data:`SSE_HEARTBEAT_SECONDS` when no event was sent."""
+
+Id = Annotated[str, Field(pattern=SEGMENT_RE, examples=["run_01jaf3q2x8m9v7k5h4g3f2e1d0"])]
+TenantId = Annotated[str, Field(pattern=r"^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$")]
+Sha256 = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
+
+_CROCKFORD = "0123456789abcdefghjkmnpqrstvwxyz"
+
+
+def new_id(prefix: str) -> str:
+    """A time-sortable id ``<prefix>_<26 Crockford base32 chars>`` (ULID layout, lowercase).
+
+    The first 10 characters encode the millisecond timestamp, so ids sort by creation time
+    (cursor pagination relies on it); the last 16 are 80 random bits.
+    """
+    if not re.match(r"^[a-z]{2,8}$", prefix):
+        raise ValueError("id prefixes are 2-8 lowercase letters")
+    value = (int(time.time() * 1000) << 80) | int.from_bytes(secrets.token_bytes(10), "big")
+    chars = []
+    for _ in range(26):
+        chars.append(_CROCKFORD[value & 31])
+        value >>= 5
+    return f"{prefix}_{''.join(reversed(chars))}"
+
+
+# ======================================================================================= bases
+
+
+class _Request(StrictModel):
+    """Request bodies: unknown fields are rejected."""
+
+
+class _Response(BaseModel):
+    """Response bodies: frozen; unknown fields are ignored by (older) clients."""
+
+    model_config = ConfigDict(extra="ignore", frozen=True, populate_by_name=True)
+
+
+def _examples(*items: dict[str, Any]) -> ConfigDict:
+    return ConfigDict(json_schema_extra={"examples": list(items)})
+
+
+_TS = "2026-10-15T09:30:00Z"
+_RUN_ID = "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+_DS_ID = "ds_01jaf3a1b2c3d4e5f6g7h8j9k0"
+_SPEC_ID = "spc_01jaf3b1c2d3e4f5g6h7j8k9m0"
+_MODEL_ID = "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0"
+_UPLOAD_ID = "upl_01jaf3d1e2f3g4h5j6k7m8n9p0"
+_SHA = "sha256:" + "3f" * 32
+_SCHEMA_EXAMPLE: dict[str, Any] = {
+    "dims": {
+        "market": {"kind": "categorical"},
+        "date": {"kind": "time", "policy": "extend", "freq": "D"},
+    },
+    "vars": {
+        "revenue": {"dims": ["market", "date"], "dtype": "float64", "role": "target"},
+    },
+}
+_E33_YAML_SHORT = (
+    "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\n"
+    "data:\n  dataset: dataset://default/eu_media_daily@latest\n"
+    "model:\n  use: mmm.hierarchical_geo@^1.3\n"
+)
+
+T = TypeVar("T")
+
+
+class Page(_Response, Generic[T]):  # noqa: UP046 - explicit TypeVar keeps pydantic naming stable
+    """One page of a list endpoint. Pass ``next_cursor`` back as ``?cursor=`` for the next
+    page; ``None`` means this is the last page. ``?limit=`` defaults to 50 (max 200)."""
+
+    items: list[T]
+    next_cursor: str | None = None
+
+    model_config = _examples({"items": [], "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"})
+
+
+class ObjectRef(_Response):
+    """A stored object exposed through ``…/artifacts/{name}`` (fetch it as an ArtifactLink)."""
+
+    name: str = Field(..., max_length=1024, examples=["preview.json"])
+    size: int = Field(..., ge=0)
+    content_type: str | None = None
+    crc32c: Crc32c | None = None
+
+    model_config = _examples(
+        {"name": "preview.json", "size": 20480, "content_type": "application/json"}
+    )
+
+
+class ArtifactLink(_Response):
+    """A short-lived, generation-pinned signed GET URL for one artifact (HTTP Range works)."""
+
+    name: str = Field(..., max_length=1024)
+    url: str
+    method: Literal["GET"] = "GET"
+    expires_at: AwareDatetime
+    size: int = Field(..., ge=0)
+    content_type: str | None = None
+    crc32c: Crc32c
+    generation: int = Field(..., ge=1)
+
+    model_config = _examples(
+        {
+            "name": "bundle.zarr.zip",
+            "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/"
+            "t%2Fdefault%2Fmodels%2Fmdl_01%2F1%2Fbundle.zarr.zip?generation=7&X-Goog-Signature=…",
+            "expires_at": "2026-10-15T09:45:00Z",
+            "size": 2097152,
+            "content_type": "application/zip",
+            "crc32c": "4waSgw==",
+            "generation": 7,
+        }
+    )
+
+
+class HealthCheck(_Response):
+    status: Literal["ok", "degraded", "fail"]
+    detail: str | None = Field(None, max_length=500)
+    latency_ms: float | None = Field(None, ge=0)
+
+    model_config = _examples({"status": "ok", "latency_ms": 1.2})
+
+
+class Health(_Response):
+    """``/healthz`` (process liveness) and ``/readyz`` (dependencies) body."""
+
+    status: Literal["ok", "degraded", "fail"]
+    version: str
+    contract_version: str = CONTRACT_VERSION
+    api_version: Literal["v1"] = "v1"
+    checks: dict[str, HealthCheck] = Field(default_factory=dict)
+
+    model_config = _examples(
+        {
+            "status": "ok",
+            "version": "0.2.0",
+            "contract_version": "0.1",
+            "api_version": "v1",
+            "checks": {
+                "postgres": {"status": "ok", "latency_ms": 1.2},
+                "object_store": {"status": "ok", "latency_ms": 3.4},
+            },
+        }
+    )
+
+
+# ====================================================================================== projects
+
+
+class Project(_Response):
+    """A workspace inside a tenant (M1: only ``default``)."""
+
+    id: TenantId
+    tenant_id: TenantId
+    name: str = Field(..., max_length=200)
+    description: str | None = Field(None, max_length=4000)
+    created_at: AwareDatetime
+
+    model_config = _examples(
+        {
+            "id": "default",
+            "tenant_id": "default",
+            "name": "Default project",
+            "created_at": _TS,
+        }
+    )
+
+
+# ====================================================================================== datasets
+
+
+class DatasetCreate(_Request):
+    """Create an (empty) dataset; data arrives as versions."""
+
+    name: Slug
+    description: str | None = Field(None, max_length=4000)
+    labels: dict[LabelKey, LabelValue] = Field(default_factory=dict, max_length=64)
+
+    model_config = _examples(
+        {"name": "eu_media_daily", "description": "Daily spend and revenue per market"}
+    )
+
+
+class Dataset(_Response):
+    id: Id
+    tenant_id: TenantId
+    project_id: TenantId
+    name: Slug
+    ref: str = Field(..., description="dataset://project/name (append @vN to pin)")
+    description: str | None = None
+    labels: dict[str, str] = Field(default_factory=dict)
+    latest_version: int | None = Field(None, ge=1)
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+
+    model_config = _examples(
+        {
+            "id": _DS_ID,
+            "tenant_id": "default",
+            "project_id": "default",
+            "name": "eu_media_daily",
+            "ref": "dataset://default/eu_media_daily",
+            "latest_version": 3,
+            "created_at": _TS,
+            "updated_at": _TS,
+        }
+    )
+
+
+class UploadCreate(_Request):
+    """Ask for a signed PUT URL into the quarantine bucket for one file."""
+
+    filename: str = Field(..., min_length=1, max_length=255, pattern=r"^[^/\\\x00-\x1f]+$")
+    content_type: str = Field("application/octet-stream", max_length=128)
+    size_bytes: int = Field(..., ge=1)
+
+    model_config = _examples(
+        {"filename": "eu_media_daily.csv", "content_type": "text/csv", "size_bytes": 5242880}
+    )
+
+
+class UploadSession(_Response):
+    """Where to PUT the file. ``upload.headers`` must be sent verbatim; the URL expires."""
+
+    id: Id
+    tenant_id: TenantId
+    project_id: TenantId
+    dataset_id: Id
+    filename: str
+    content_type: str
+    size_bytes: int
+    status: Literal["pending", "uploaded", "consumed", "expired"]
+    upload: SignedPut
+    expires_at: AwareDatetime
+    created_at: AwareDatetime
+
+    model_config = _examples(
+        {
+            "id": _UPLOAD_ID,
+            "tenant_id": "default",
+            "project_id": "default",
+            "dataset_id": _DS_ID,
+            "filename": "eu_media_daily.csv",
+            "content_type": "text/csv",
+            "size_bytes": 5242880,
+            "status": "pending",
+            "upload": {
+                "method": "PUT",
+                "url": "http://127.0.0.1:4443/upload/storage/v1/b/mapi-local-quarantine/o"
+                "?name=t%2Fdefault%2Fuploads%2Fupl_01&X-Goog-Signature=…",
+                "name": f"t/default/uploads/{_UPLOAD_ID}",
+                "expires_at": "2026-10-15T10:30:00Z",
+                "headers": {
+                    "content-type": "text/csv",
+                    "x-goog-if-generation-match": "0",
+                    "x-goog-content-length-range": "0,5242880",
+                },
+                "max_bytes": 5242880,
+            },
+            "expires_at": "2026-10-15T10:30:00Z",
+            "created_at": _TS,
+        }
+    )
+
+
+class DimMapping(_Request):
+    """A dim of the dataset, read from one column of a tabular upload."""
+
+    column: str = Field(..., min_length=1, max_length=256)
+    spec: DimSpec
+
+    model_config = _examples(
+        {"column": "date", "spec": {"kind": "time", "policy": "extend", "freq": "D"}}
+    )
+
+
+class VarMapping(_Request):
+    """A data variable read from one column (dtype is inferred during ingest)."""
+
+    column: str = Field(..., min_length=1, max_length=256)
+    role: Role = Role.COVARIATE
+    units: str | None = Field(None, max_length=64)
+    missing: Literal["forbid", "allow", "mask"] = "forbid"
+    description: str | None = Field(None, max_length=2000)
+
+    model_config = _examples({"column": "revenue", "role": "target", "units": "EUR"})
+
+
+class IngestMapping(_Request):
+    """How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).
+
+    Tabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit
+    ``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.
+    """
+
+    format: Literal["csv", "parquet", "zarr_zip", "netcdf"]
+    layout: Literal["dense", "long"] = "dense"
+    dims: dict[str, DimMapping] = Field(default_factory=dict, max_length=32)
+    vars: dict[str, VarMapping] = Field(default_factory=dict, max_length=1024)
+
+    model_config = _examples(
+        {
+            "format": "csv",
+            "dims": {
+                "market": {"column": "market", "spec": {"kind": "categorical"}},
+                "date": {
+                    "column": "date",
+                    "spec": {"kind": "time", "policy": "extend", "freq": "D"},
+                },
+            },
+            "vars": {
+                "revenue_local": {"column": "revenue", "role": "target", "units": "local"},
+                "spend_local": {"column": "spend", "role": "spend", "units": "local"},
+            },
+        }
+    )
+
+    @model_validator(mode="after")
+    def _tabular(self) -> IngestMapping:
+        if self.format in ("csv", "parquet") and (not self.dims or not self.vars):
+            raise ValueError("csv/parquet uploads need at least one dim and one var mapping")
+        return self
+
+
+class DatasetVersionCreate(_Request):
+    """Turn a finished upload into a new version via a sandboxed ingest run (202)."""
+
+    upload_id: Id
+    mapping: IngestMapping
+    message: str | None = Field(None, max_length=2000)
+
+    model_config = _examples(
+        {
+            "upload_id": _UPLOAD_ID,
+            "mapping": IngestMapping.model_json_schema()["examples"][0],
+            "message": "Q3 refresh",
+        }
+    )
+
+
+class DatasetVersionStatus(StrEnum):
+    INGESTING = "ingesting"
+    READY = "ready"
+    FAILED = "failed"
+
+
+class DatasetVersion(_Response):
+    """An immutable, content-addressed version (``data.zarr.zip`` + schema + profile)."""
+
+    dataset_id: Id
+    tenant_id: TenantId
+    project_id: TenantId
+    version: int = Field(..., ge=1)
+    ref: str = Field(..., description="dataset://project/name@vN")
+    status: DatasetVersionStatus
+    sha256: Sha256 | None = None
+    size_bytes: int | None = Field(None, ge=0)
+    data_schema: DataSchema | None = None
+    summary: DataSummary | None = None
+    profile: ObjectRef | None = None
+    preview: ObjectRef | None = None
+    ingest_run_id: Id | None = None
+    issues: list[Issue] = Field(default_factory=list)
+    message: str | None = None
+    created_at: AwareDatetime
+    ready_at: AwareDatetime | None = None
+
+    model_config = _examples(
+        {
+            "dataset_id": _DS_ID,
+            "tenant_id": "default",
+            "project_id": "default",
+            "version": 3,
+            "ref": "dataset://default/eu_media_daily@v3",
+            "status": "ready",
+            "sha256": _SHA,
+            "size_bytes": 1048576,
+            "data_schema": _SCHEMA_EXAMPLE,
+            "summary": {
+                "vars": ["revenue"],
+                "coords": {"market": {"kind": "categorical", "size": 2, "values": ["de", "fr"]}},
+            },
+            "preview": {"name": "preview.json", "size": 20480, "content_type": "application/json"},
+            "ingest_run_id": _RUN_ID,
+            "issues": [],
+            "created_at": _TS,
+            "ready_at": "2026-10-15T09:31:10Z",
+        }
+    )
+
+
+# ========================================================================================= specs
+
+
+class SpecCreate(_Request):
+    """Create a spec document with its first revision (YAML 1.2 or JSON text)."""
+
+    yaml: str = Field(..., min_length=1, max_length=256 * 1024)
+    message: str | None = Field(None, max_length=2000)
+
+    model_config = _examples({"yaml": _E33_YAML_SHORT, "message": "first draft"})
+
+
+class SpecRevisionCreate(_Request):
+    """Add an immutable revision. ``parent_revision`` guards against lost updates (409)."""
+
+    yaml: str = Field(..., min_length=1, max_length=256 * 1024)
+    parent_revision: int = Field(..., ge=1)
+    message: str | None = Field(None, max_length=2000)
+
+    model_config = _examples({"yaml": _E33_YAML_SHORT, "parent_revision": 1, "message": "tune"})
+
+
+class SpecRevision(_Response):
+    """One immutable, canonically hashed revision. ``issues`` holds its static validation."""
+
+    spec_id: Id
+    tenant_id: TenantId
+    project_id: TenantId
+    revision: int = Field(..., ge=1)
+    ref: str = Field(..., description="spec://project/name@rN")
+    kind: DocumentKind
+    hash: Sha256
+    yaml: str
+    document: dict[str, JsonValue]
+    valid: bool
+    issues: list[Issue] = Field(default_factory=list)
+    parent_revision: int | None = None
+    message: str | None = None
+    created_at: AwareDatetime
+
+    model_config = _examples(
+        {
+            "spec_id": _SPEC_ID,
+            "tenant_id": "default",
+            "project_id": "default",
+            "revision": 2,
+            "ref": "spec://default/eu-geo-mmm@r2",
+            "kind": "ModelSpec",
+            "hash": _SHA,
+            "yaml": _E33_YAML_SHORT,
+            "document": {"apiVersion": "mapi/v1", "kind": "ModelSpec"},
+            "valid": True,
+            "issues": [],
+            "parent_revision": 1,
+            "created_at": _TS,
+        }
+    )
+
+
+class SpecDoc(_Response):
+    """A named spec and its latest revision."""
+
+    id: Id
+    tenant_id: TenantId
+    project_id: TenantId
+    name: Slug
+    kind: DocumentKind
+    ref: str = Field(..., description="spec://project/name")
+    latest_revision: int = Field(..., ge=1)
+    latest: SpecRevision | None = None
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+
+    model_config = _examples(
+        {
+            "id": _SPEC_ID,
+            "tenant_id": "default",
+            "project_id": "default",
+            "name": "eu-geo-mmm",
+            "kind": "ModelSpec",
+            "ref": "spec://default/eu-geo-mmm",
+            "latest_revision": 2,
+            "created_at": _TS,
+            "updated_at": _TS,
+        }
+    )
+
+
+class ValidateRequest(_Request):
+    """Synchronous static validation of a document (exactly one of ``yaml``/``document``).
+
+    ``dataset`` overrides the dataset version whose stored schema is the raw input schema
+    (default: the spec's own ``data.dataset`` reference, resolved now).
+    """
+
+    yaml: str | None = Field(None, min_length=1, max_length=256 * 1024)
+    document: dict[str, JsonValue] | None = None
+    dataset: str | None = Field(None, examples=["dataset://default/eu_media_daily@v3"])
+
+    model_config = _examples({"yaml": _E33_YAML_SHORT})
+
+    @model_validator(mode="after")
+    def _one(self) -> ValidateRequest:
+        if (self.yaml is None) == (self.document is None):
+            raise ValueError("give exactly one of 'yaml' or 'document'")
+        return self
+
+
+class StageSchema(_Response):
+    """The data schema after one pipeline step (``raw`` = after binding, before any step)."""
+
+    name: str
+    data_schema: DataSchema | None = Field(None, description="None when the effect is dynamic")
+    split: bool = Field(False, description="The train/holdout split happens after this stage")
+
+    model_config = _examples({"name": "weekly", "data_schema": _SCHEMA_EXAMPLE, "split": True})
+
+
+class ValidateResponse(_Response):
+    """Every problem at once, located by JSON pointers, plus per-stage schemas."""
+
+    valid: bool
+    kind: DocumentKind | None = None
+    hash: Sha256 | None = None
+    issues: list[Issue] = Field(default_factory=list)
+    stages: list[StageSchema] = Field(default_factory=list)
+    resolved: ResolvedSpec | None = None
+    catalog_digest: Sha256 | None = None
+
+    model_config = _examples(
+        {
+            "valid": False,
+            "kind": "ModelSpec",
+            "hash": _SHA,
+            "issues": [
+                {
+                    "code": "LEAKAGE_RISK",
+                    "severity": "error",
+                    "pointer": "/pipeline/2",
+                    "message": "stateful step 'scale_y' runs before the split",
+                    "suggested_action": "move the split to after 'weekly'",
+                }
+            ],
+            "stages": [{"name": "raw", "data_schema": _SCHEMA_EXAMPLE, "split": False}],
+            "catalog_digest": "sha256:" + "cd" * 32,
+        }
+    )
+
+
+# ========================================================================================== runs
+
+RUN_CREATE_KINDS: Final = frozenset(
+    {RunKind.FIT, RunKind.VALIDATE, RunKind.SCORE, RunKind.EVALUATE, RunKind.DERIVE, RunKind.RENDER}
+)
+"""Kinds accepted by ``POST /v1/runs`` in M1 (ingest runs are created by dataset versions)."""
+
+_SPEC_KINDS = frozenset({RunKind.FIT, RunKind.VALIDATE})
+
+
+class RunCreate(_Request):
+    """Submit a run. Send an ``Idempotency-Key`` header: a retry with the same key and body
+    returns the original run (200); the same key with a different body is 409
+    ``IDEMPOTENCY_CONFLICT``. Keys are scoped to the project and kept for 24 h.
+
+    * ``fit`` / ``validate`` (sandboxed dry-run): ``spec_id`` + ``revision``;
+    * ``score``: ``model_version_id`` + ``request``;
+    * ``evaluate`` / ``derive`` / ``render``: ``model_version_id`` (+ ``params``).
+    """
+
+    kind: RunKind
+    spec_id: Id | None = None
+    revision: int | None = Field(None, ge=1)
+    model_version_id: Id | None = None
+    request: ScoreRequest | None = None
+    params: dict[str, JsonValue] = Field(default_factory=dict)
+    resource_class: ResourceClass | None = None
+    timeout: Duration | None = None
+    labels: dict[LabelKey, LabelValue] = Field(default_factory=dict, max_length=64)
+
+    model_config = _examples(
+        {"kind": "fit", "spec_id": _SPEC_ID, "revision": 2, "resource_class": "M"},
+        {
+            "kind": "score",
+            "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+            "request": {
+                "apiVersion": "mapi/v1",
+                "kind": "ScoreRequest",
+                "model": "model://default/eu-geo-mmm@v1",
+                "mode": "forecast",
+                "horizon": {"dim": "time", "periods": 8},
+            },
+        },
+    )
+
+    @model_validator(mode="after")
+    def _shape(self) -> RunCreate:
+        if self.kind not in RUN_CREATE_KINDS:
+            raise ValueError(f"runs of kind {self.kind.value!r} cannot be created via POST /runs")
+        has_spec = self.spec_id is not None or self.revision is not None
+        if self.kind in _SPEC_KINDS:
+            if self.spec_id is None or self.revision is None:
+                raise ValueError(f"{self.kind.value} runs need spec_id and revision")
+            if self.model_version_id is not None or self.request is not None:
+                raise ValueError(f"{self.kind.value} runs take a spec, not a model version")
+            return self
+        if has_spec:
+            raise ValueError(f"{self.kind.value} runs take a model_version_id, not a spec")
+        if self.model_version_id is None:
+            raise ValueError(f"{self.kind.value} runs need model_version_id")
+        if (self.kind is RunKind.SCORE) != (self.request is not None):
+            raise ValueError("'request' is required for score runs and only allowed for them")
+        return self
+
+
+class RunRetry(_Request):
+    """``POST /runs/{id}:retry``: a *new* run from a failed one, optionally one class up."""
+
+    resource_class: ResourceClass | None = None
+    seed: int | None = Field(None, ge=0, lt=2**32)
+    reason: str | None = Field(None, max_length=500)
+
+    model_config = _examples({"resource_class": "L", "reason": "RESOURCE_EXHAUSTED at M"})
+
+
+class ProgressSnapshot(_Response):
+    """Latest coalesced progress (one upserted row per run)."""
+
+    seq: int = Field(..., ge=0)
+    phase: RunnerPhase
+    fraction: float | None = Field(None, ge=0, le=1)
+    message: str | None = None
+    eta_seconds: float | None = Field(None, ge=0)
+    chains: list[ChainProgress] = Field(default_factory=list)
+    updated_at: AwareDatetime
+
+    model_config = _examples(
+        {
+            "seq": 42,
+            "phase": "sample",
+            "fraction": 0.4,
+            "message": "drawing samples",
+            "eta_seconds": 95,
+            "chains": [
+                {"chain": 0, "draws_done": 400, "draws_total": 1000, "divergences": 0},
+                {"chain": 1, "draws_done": 380, "draws_total": 1000, "divergences": 1},
+            ],
+            "updated_at": _TS,
+        }
+    )
+
+
+class RunCost(_Response):
+    """Cost fields (placeholders in M1: always ``None``; populated by the M2 ledger)."""
+
+    vcpu_seconds: float | None = None
+    gib_seconds: float | None = None
+    usd: float | None = None
+    estimated: bool = True
+
+    model_config = _examples(
+        {"vcpu_seconds": None, "gib_seconds": None, "usd": None, "estimated": True}
+    )
+
+
+class Run(_Response):
+    """A unit of work and its lifecycle (see the state machine in ``mapi_spec.run``)."""
+
+    id: Id
+    tenant_id: TenantId
+    project_id: TenantId
+    kind: RunKind
+    state: RunState
+    failure_class: FailureClass | None = None
+    problem: Problem | None = None
+    attempt: int = Field(..., ge=1)
+    spec_id: Id | None = None
+    spec_revision: int | None = None
+    spec_hash: Sha256 | None = None
+    model_version_id: Id | None = None
+    dataset_id: Id | None = None
+    output_model_version_id: Id | None = Field(
+        None, description="The model version a successful fit produced"
+    )
+    parent_run_id: Id | None = None
+    retry_of: Id | None = None
+    resource_class: ResourceClass
+    timeout: Duration
+    executor: str | None = None
+    progress: ProgressSnapshot | None = None
+    cost: RunCost = Field(default_factory=RunCost)
+    labels: dict[str, str] = Field(default_factory=dict)
+    created_at: AwareDatetime
+    queued_at: AwareDatetime | None = None
+    started_at: AwareDatetime | None = None
+    finished_at: AwareDatetime | None = None
+    updated_at: AwareDatetime
+
+    model_config = _examples(
+        {
+            "id": _RUN_ID,
+            "tenant_id": "default",
+            "project_id": "default",
+            "kind": "fit",
+            "state": "running",
+            "attempt": 1,
+            "spec_id": _SPEC_ID,
+            "spec_revision": 2,
+            "spec_hash": _SHA,
+            "resource_class": "M",
+            "timeout": "45m",
+            "executor": "local-process",
+            "progress": ProgressSnapshot.model_json_schema()["examples"][0],
+            "cost": {"estimated": True},
+            "created_at": _TS,
+            "queued_at": _TS,
+            "started_at": "2026-10-15T09:30:05Z",
+            "updated_at": "2026-10-15T09:31:00Z",
+        },
+        {
+            "id": _RUN_ID,
+            "tenant_id": "default",
+            "project_id": "default",
+            "kind": "fit",
+            "state": "failed",
+            "failure_class": "resource_exhausted",
+            "problem": {
+                "type": "urn:mapi:error:RESOURCE_EXHAUSTED",
+                "title": "Run exhausted its resources",
+                "status": 507,
+                "code": "RESOURCE_EXHAUSTED",
+                "detail": "the worker was killed (exit 137); retry at class L",
+            },
+            "attempt": 1,
+            "resource_class": "M",
+            "timeout": "45m",
+            "created_at": _TS,
+            "finished_at": "2026-10-15T09:40:00Z",
+            "updated_at": "2026-10-15T09:40:00Z",
+        },
+    )
+
+
+class RunEventView(_Response):
+    """A persisted run event (``id`` is the SSE event id, increasing per run)."""
+
+    id: int = Field(..., ge=1)
+    run_id: Id
+    attempt: int = Field(..., ge=1)
+    seq: int = Field(..., ge=0)
+    ts: AwareDatetime
+    type: RunEventType
+    payload: dict[str, JsonValue] = Field(default_factory=dict)
+
+    model_config = _examples(
+        {
+            "id": 17,
+            "run_id": _RUN_ID,
+            "attempt": 1,
+            "seq": 3,
+            "ts": _TS,
+            "type": "state",
+            "payload": {"phase": "sample"},
+        }
+    )
+
+
+class LogLine(_Response):
+    """One captured line. ``line`` is untrusted text: render it as text only."""
+
+    run_id: Id
+    attempt: int = Field(..., ge=1)
+    seq: int = Field(..., ge=0)
+    ts: AwareDatetime
+    stream: Literal["stdout", "stderr", "system"]
+    line: str = Field(..., max_length=4096)
+    truncated: bool = False
+
+    model_config = _examples(
+        {
+            "run_id": _RUN_ID,
+            "attempt": 1,
+            "seq": 120,
+            "ts": _TS,
+            "stream": "stderr",
+            "line": "Sampling 4 chains for 400 tune and 1000 draw iterations",
+        }
+    )
+
+
+class SseEventName(StrEnum):
+    """``event:`` names on ``GET /v1/runs/{id}/events`` (``text/event-stream``).
+
+    ``snapshot`` (the full :class:`Run`, no id) is sent first on every connection; run-event
+    types carry ``id:`` = :attr:`RunEventView.id`; ``end`` is sent once the run is terminal,
+    then the server closes the stream.
+    """
+
+    SNAPSHOT = "snapshot"
+    STATE = "state"
+    PROGRESS = "progress"
+    LOG = "log"
+    DIAGNOSTIC = "diagnostic"
+    WARNING = "warning"
+    CHECKPOINT = "checkpoint"
+    METRIC = "metric"
+    COMPLETE = "complete"
+    ERROR = "error"
+    END = "end"
+
+
+def encode_sse(
+    event: SseEventName | str,
+    data: BaseModel | dict[str, Any],
+    *,
+    id: int | str | None = None,
+    retry_ms: int | None = None,
+) -> str:
+    """Serialise one SSE frame (``data`` is single-line compact JSON)."""
+    name = SseEventName(event).value
+    body = (
+        data.model_dump_json(by_alias=True) if isinstance(data, BaseModel) else _compact_json(data)
+    )
+    lines = []
+    if id is not None:
+        text = str(id)
+        if "\n" in text or "\r" in text:
+            raise ValueError("SSE ids must be single-line")
+        lines.append(f"id: {text}")
+    if retry_ms is not None:
+        lines.append(f"retry: {int(retry_ms)}")
+    lines.append(f"event: {name}")
+    lines.append(f"data: {body}")
+    return "\n".join(lines) + "\n\n"
+
+
+def _compact_json(data: dict[str, Any]) -> str:
+    return json.dumps(data, separators=(",", ":"), ensure_ascii=False, default=str)
+
+
+def parse_last_event_id(value: str | None) -> int | None:
+    """Parse a ``Last-Event-ID`` header; anything but a positive integer means "from start"."""
+    if value is None or not value.strip().isdigit():
+        return None
+    n = int(value.strip())
+    return n if n > 0 else None
+
+
+def check_idempotency_key(value: str) -> str:
+    """Validate an ``Idempotency-Key`` header value (raises ``ValueError``)."""
+    if not IDEMPOTENCY_KEY_RE.match(value):
+        raise ValueError("Idempotency-Key must be 1-255 printable ASCII characters")
+    return value
+
+
+def loc_to_pointer(loc: tuple[str | int, ...] | list[str | int]) -> str:
+    """Turn a request-validation location (``("body", "kind")``) into an RFC 6901 pointer
+    (``/body/kind``) for ``Issue.pointer`` in 422 ``SCHEMA_INVALID`` problems."""
+    return "".join("/" + str(p).replace("~", "~0").replace("/", "~1") for p in loc)
+
+
+_WAIT_RE = re.compile(r"(?:^|[,;\s])wait\s*=\s*(\d{1,6})(?=$|[,;\s])", re.IGNORECASE)
+
+
+def parse_prefer_wait(value: str | None) -> int | None:
+    """``Prefer: wait=N`` (RFC 7240) capped at :data:`MAX_PREFER_WAIT_SECONDS`; else ``None``."""
+    if not value:
+        return None
+    m = _WAIT_RE.search(value)
+    if m is None:
+        return None
+    return min(int(m.group(1)), MAX_PREFER_WAIT_SECONDS)
+
+
+# ======================================================================================== models
+
+
+class ScorecardItem(_Response):
+    code: str = Field(..., pattern=r"^[A-Z][A-Z0-9_]{1,63}$")
+    status: Literal["pass", "warn", "fail"]
+    title: str = Field(..., max_length=200)
+    message_plain: str = Field(..., max_length=2000)
+    message_expert: str | None = Field(None, max_length=2000)
+    metric: MetricName | None = None
+    value: float | None = None
+    threshold: float | None = None
+    suggested_action: str | None = Field(None, max_length=2000)
+
+    model_config = _examples(
+        {
+            "code": "RHAT_OK",
+            "status": "pass",
+            "title": "Chains agree",
+            "message_plain": "All chains converged to the same answer.",
+            "metric": "r_hat_max",
+            "value": 1.004,
+            "threshold": 1.01,
+        }
+    )
+
+
+class Scorecard(_Response):
+    """Sanity scorecard: convergence, holdout error and plausibility checks rolled up."""
+
+    overall: Literal["pass", "warn", "fail"]
+    items: list[ScorecardItem] = Field(default_factory=list)
+
+    model_config = _examples(
+        {
+            "overall": "warn",
+            "items": [
+                {
+                    "code": "RHAT_OK",
+                    "status": "pass",
+                    "title": "Chains agree",
+                    "message_plain": "All chains converged to the same answer.",
+                    "metric": "r_hat_max",
+                    "value": 1.004,
+                    "threshold": 1.01,
+                },
+                {
+                    "code": "HOLDOUT_MAPE",
+                    "status": "warn",
+                    "title": "Holdout error",
+                    "message_plain": "Forecasts were off by 14% on the last 8 weeks.",
+                    "metric": "mape",
+                    "value": 0.14,
+                    "threshold": 0.1,
+                    "suggested_action": "Add holidays or check data for the last weeks.",
+                },
+            ],
+        }
+    )
+
+
+class Lineage(_Response):
+    """Everything a model version came from (plan §8.6)."""
+
+    run_id: Id
+    attempt: int = Field(..., ge=1)
+    spec_hash: Sha256
+    dataset_sha: Sha256 | None = None
+    side_tables: dict[str, Sha256] = Field(default_factory=dict)
+    plugin: str | None = Field(None, examples=["mmm.hierarchical_geo@1.3.2"])
+    base_image: str | None = None
+    overlay_hash: Sha256 | None = None
+    catalog_digest: Sha256 | None = None
+    seed: int | None = None
+    engine: str | None = None
+    executor: str | None = None
+    resource_class: ResourceClass | None = None
+    lib_versions: dict[str, str] = Field(default_factory=dict)
+    evaluation_of: Id | None = Field(
+        None, description="evaluate_then_refit: the evaluation model version this refit pairs"
+    )
+
+    model_config = _examples(
+        {
+            "run_id": _RUN_ID,
+            "attempt": 1,
+            "spec_hash": _SHA,
+            "dataset_sha": "sha256:" + "ef" * 32,
+            "plugin": "mmm.hierarchical_geo@1.3.2",
+            "base_image": "base-bayes@2026.10",
+            "seed": 20261014,
+            "engine": "nutpie",
+            "executor": "local-process",
+            "resource_class": "M",
+            "lib_versions": {"pymc": "5.25.1"},
+        }
+    )
+
+
+class Model(_Response):
+    """A registry entry grouping the versions fitted from one spec name."""
+
+    id: Id
+    tenant_id: TenantId
+    project_id: TenantId
+    name: Slug
+    ref: str = Field(..., description="model://project/name (append @vN or @latest)")
+    latest_version: int | None = Field(None, ge=1)
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+
+    model_config = _examples(
+        {
+            "id": _MODEL_ID,
+            "tenant_id": "default",
+            "project_id": "default",
+            "name": "eu-geo-mmm",
+            "ref": "model://default/eu-geo-mmm",
+            "latest_version": 1,
+            "created_at": _TS,
+            "updated_at": _TS,
+        }
+    )
+
+
+class ModelVersion(_Response):
+    """A verified bundle: signed manifest, diagnostics, scorecard, lineage and metrics."""
+
+    id: Id
+    model_id: Id
+    tenant_id: TenantId
+    project_id: TenantId
+    version: int = Field(..., ge=1)
+    ref: str = Field(..., description="model://project/name@vN")
+    status: Literal["ready", "partial"]
+    run_id: Id
+    spec_hash: Sha256
+    manifest: BundleManifest
+    capabilities: Capabilities | None = None
+    diagnostics: list[Diagnostic] = Field(default_factory=list)
+    scorecard: Scorecard | None = None
+    lineage: Lineage
+    metrics: dict[MetricName, float] = Field(default_factory=dict)
+    artifacts: list[ObjectRef] = Field(default_factory=list)
+    created_at: AwareDatetime
+
+    model_config = _examples(
+        {
+            "id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+            "model_id": _MODEL_ID,
+            "tenant_id": "default",
+            "project_id": "default",
+            "version": 1,
+            "ref": "model://default/eu-geo-mmm@v1",
+            "status": "ready",
+            "run_id": _RUN_ID,
+            "spec_hash": _SHA,
+            "manifest": BundleManifest.model_json_schema()["examples"][0],
+            "diagnostics": [
+                {
+                    "code": "RHAT_OK",
+                    "severity": "info",
+                    "metric": "r_hat_max",
+                    "value": 1.004,
+                    "threshold": 1.01,
+                    "message_expert": "max r-hat 1.004",
+                    "message_plain": "All chains converged to the same answer.",
+                }
+            ],
+            "scorecard": Scorecard.model_json_schema()["examples"][0],
+            "lineage": Lineage.model_json_schema()["examples"][0],
+            "metrics": {"mape": 0.14, "coverage_90": 0.88},
+            "artifacts": [
+                {"name": "bundle.zarr.zip", "size": 2097152, "content_type": "application/zip"}
+            ],
+            "created_at": _TS,
+        }
+    )
+
+
+class ScoreCall(_Request):
+    """Body of ``POST /v1/models/{model_id}/versions/{version}:score``.
+
+    Send ``Prefer: wait=N`` (N ≤ 60) to wait for the result: the response is 200 with
+    outputs if the run finished in time, else 202 with the run (poll it or follow its SSE).
+    """
+
+    request: ScoreRequest
+    resource_class: ResourceClass | None = None
+    timeout: Duration | None = None
+    labels: dict[LabelKey, LabelValue] = Field(default_factory=dict, max_length=64)
+
+    model_config = _examples(
+        {
+            "request": {
+                "apiVersion": "mapi/v1",
+                "kind": "ScoreRequest",
+                "model": "model://default/eu-geo-mmm@v1",
+                "mode": "forecast",
+                "horizon": {"dim": "time", "periods": 8},
+                "output": {"kind": "expected", "summary": ["mean", "hdi_90"]},
+            }
+        }
+    )
+
+
+class ScoreCallResult(_Response):
+    """``done`` with output links (200), or the still-running run (202)."""
+
+    done: bool
+    run: Run
+    outputs: list[ArtifactLink] = Field(default_factory=list)
+
+    model_config = _examples(
+        {
+            "done": True,
+            "run": {
+                **Run.model_json_schema()["examples"][0],
+                "kind": "score",
+                "state": "succeeded",
+                "progress": None,
+            },
+            "outputs": [ArtifactLink.model_json_schema()["examples"][0]],
+        }
+    )
+
+
+# ========================================================================================= plots
+
+
+class PlotListItem(_Response):
+    """A plot available for a model version; fetch the sanitized :class:`PlotSpec` at href."""
+
+    id: str = Field(..., pattern=r"^[A-Za-z0-9_.\-]{1,128}$")
+    title: str = Field(..., max_length=300)
+    kind: Literal["vega-lite", "plotly"]
+    persona: Literal["guided", "expert", "both"] = "both"
+    recipe: str | None = Field(None, max_length=128)
+    caption_plain: str | None = Field(None, max_length=4000)
+    href: str
+
+    model_config = _examples(
+        {
+            "id": "core.ppc_fan",
+            "title": "Posterior predictive fan",
+            "kind": "vega-lite",
+            "persona": "both",
+            "recipe": "core.ppc_fan@1.0.0",
+            "href": "/v1/models/mdl_01/versions/1/plots/core.ppc_fan",
+        }
+    )
+
+
+class PlotValidateResponse(_Response):
+    """Result of ``POST /v1/plots:validate`` (the server-side plot sanitizer)."""
+
+    valid: bool
+    issues: list[Issue] = Field(default_factory=list)
+    sanitized: PlotSpec | None = None
+
+    model_config = _examples(
+        {
+            "valid": False,
+            "issues": [
+                {
+                    "code": "PLOT_UNSAFE",
+                    "pointer": "/spec/data/url",
+                    "message": "URL data sources are not allowed",
+                }
+            ],
+        }
+    )
+
+
+# ======================================================================================= catalog
+
+
+class CatalogResponse(_Response):
+    """The static catalog the control plane validates against (no plugin code involved)."""
+
+    digest: Sha256
+    models: list[ModelCatalogEntry] = Field(default_factory=list)
+    steps: list[StepCatalogEntry] = Field(default_factory=list)
+    plots: list[PlotCatalogEntry] = Field(default_factory=list)
+    generated_at: AwareDatetime | None = None
+
+    model_config = _examples(
+        {
+            "digest": "sha256:" + "cd" * 32,
+            "steps": [
+                {
+                    "id": "core.log1p",
+                    "version": "1.0.0",
+                    "kind": "value",
+                    "stateful": False,
+                    "invertible": True,
+                }
+            ],
+            "plots": [{"id": "core.ppc_fan", "title": "PPC fan"}],
+            "models": [],
+        }
+    )
+
+    @field_validator("models", "steps", "plots", mode="before")
+    @classmethod
+    def _list(cls, v: Any) -> Any:
+        return [] if v is None else v
+
+
+# ===================================================================================== endpoints
+
+
+@dataclass(frozen=True, slots=True)
+class EndpointDecl:
+    """One row of the M1 endpoint table (used to test the server routes and the docs)."""
+
+    method: Literal["GET", "POST", "PUT", "DELETE"]
+    path: str
+    operation_id: str
+    summary: str
+    response: str | None
+    success: int
+    request: str | None = None
+    errors: tuple[ErrorCode, ...] = ()
+    headers: tuple[str, ...] = ()
+    paginated: bool = False
+    streaming: bool = False
+    query: tuple[str, ...] = field(default=())
+
+
+_E = ErrorCode
+_NF = (_E.NOT_FOUND,)
+_BODY = (_E.SCHEMA_INVALID,)
+_PAGE = ("limit", "cursor")
+
+M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    EndpointDecl("GET", "/healthz", "health", "Process liveness", "Health", 200),
+    EndpointDecl("GET", "/readyz", "ready", "Dependencies reachable (503 if not)", "Health", 200),
+    # identity / catalog
+    EndpointDecl(
+        "GET", "/v1/projects", "list_projects", "List projects", "Page[Project]", 200,
+        paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/projects/{project_id}", "get_project", "Get a project", "Project", 200,
+        errors=_NF,
+    ),
+    EndpointDecl("GET", "/v1/catalog", "get_catalog", "Full catalog", "CatalogResponse", 200),
+    EndpointDecl(
+        "GET", "/v1/catalog/models", "list_catalog_models", "Model plugins",
+        "Page[ModelCatalogEntry]", 200, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/catalog/models/{model_id}/{version}", "get_catalog_model",
+        "One model plugin version (manifest, sanitized schemas)", "ModelCatalogEntry", 200,
+        errors=_NF,
+    ),
+    EndpointDecl(
+        "GET", "/v1/catalog/steps", "list_catalog_steps", "Steps", "Page[StepCatalogEntry]",
+        200, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/catalog/plots", "list_catalog_plots", "Plot recipes",
+        "Page[PlotCatalogEntry]", 200, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/schemas/{name}", "get_schema", "Exported JSON Schema (e.g. modelspec.json)",
+        None, 200, errors=_NF,
+    ),
+    # datasets
+    EndpointDecl(
+        "POST", "/v1/datasets", "create_dataset", "Create a dataset", "Dataset", 201,
+        request="DatasetCreate", errors=(*_BODY, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "GET", "/v1/datasets", "list_datasets", "List datasets", "Page[Dataset]", 200,
+        paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/datasets/{dataset_id}", "get_dataset", "Get a dataset", "Dataset", 200,
+        errors=_NF,
+    ),
+    EndpointDecl(
+        "POST", "/v1/datasets/{dataset_id}/uploads", "create_upload",
+        "Signed PUT URL into quarantine", "UploadSession", 201, request="UploadCreate",
+        errors=(*_BODY, *_NF, _E.PAYLOAD_TOO_LARGE, _E.QUOTA_EXCEEDED),
+    ),
+    EndpointDecl(
+        "POST", "/v1/datasets/{dataset_id}/versions", "create_dataset_version",
+        "Ingest an upload as a new version (starts an ingest run)", "DatasetVersion", 202,
+        request="DatasetVersionCreate", errors=(*_BODY, *_NF, _E.CONFLICT),
+        headers=("Idempotency-Key",),
+    ),
+    EndpointDecl(
+        "GET", "/v1/datasets/{dataset_id}/versions", "list_dataset_versions",
+        "List versions", "Page[DatasetVersion]", 200, errors=_NF, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/datasets/{dataset_id}/versions/{version}", "get_dataset_version",
+        "Schema, summary, profile and preview refs", "DatasetVersion", 200, errors=_NF,
+    ),
+    EndpointDecl(
+        "GET", "/v1/datasets/{dataset_id}/versions/{version}/artifacts/{name}",
+        "get_dataset_artifact", "Signed URL for data.zarr.zip / preview / profile / schema",
+        "ArtifactLink", 200, errors=_NF,
+    ),
+    # specs
+    EndpointDecl(
+        "POST", "/v1/specs:validate", "validate_spec",
+        "Synchronous static validation (issues at JSON pointers, per-stage schemas)",
+        "ValidateResponse", 200, request="ValidateRequest",
+        errors=(_E.SPEC_PARSE_ERROR, _E.PAYLOAD_TOO_LARGE, _E.SCHEMA_INVALID),
+    ),
+    EndpointDecl(
+        "POST", "/v1/specs", "create_spec", "Create a spec with revision 1", "SpecDoc", 201,
+        request="SpecCreate",
+        errors=(_E.SPEC_PARSE_ERROR, _E.PAYLOAD_TOO_LARGE, _E.SCHEMA_INVALID, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "GET", "/v1/specs", "list_specs", "List specs", "Page[SpecDoc]", 200,
+        paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/specs/{spec_id}", "get_spec", "Get a spec", "SpecDoc", 200, errors=_NF,
+    ),
+    EndpointDecl(
+        "POST", "/v1/specs/{spec_id}/revisions", "create_spec_revision",
+        "Add an immutable revision (409 if parent_revision is stale)", "SpecRevision", 201,
+        request="SpecRevisionCreate",
+        errors=(*_NF, _E.SPEC_PARSE_ERROR, _E.PAYLOAD_TOO_LARGE, _E.SCHEMA_INVALID, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "GET", "/v1/specs/{spec_id}/revisions", "list_spec_revisions", "List revisions",
+        "Page[SpecRevision]", 200, errors=_NF, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/specs/{spec_id}/revisions/{revision}", "get_spec_revision",
+        "Get one revision", "SpecRevision", 200, errors=_NF,
+    ),
+    EndpointDecl(
+        "POST", "/v1/specs/{spec_id}/revisions/{revision}:dry-run", "dry_run_spec",
+        "Sandboxed dry-run (a 'validate' run)", "Run", 202, errors=(*_NF, _E.QUOTA_EXCEEDED),
+        headers=("Idempotency-Key",),
+    ),
+    # runs
+    EndpointDecl(
+        "POST", "/v1/runs", "create_run", "Submit a run (200 on idempotent replay)", "Run", 201,
+        request="RunCreate",
+        errors=(*_BODY, *_NF, _E.IDEMPOTENCY_CONFLICT, _E.QUOTA_EXCEEDED, _E.MODE_NOT_SUPPORTED,
+                _E.LEAKAGE_RISK, _E.UNSEEN_LEVELS, _E.COORD_NOT_ALLOWED, _E.HORIZON_EXCEEDS_FIT,
+                _E.MISSING_FUTURE_COVARIATE, _E.RECURSIVE_UNSUPPORTED),
+        headers=("Idempotency-Key",),
+    ),
+    EndpointDecl(
+        "GET", "/v1/runs", "list_runs", "List runs (filters: kind, state, spec_id)",
+        "Page[Run]", 200, paginated=True, query=(*_PAGE, "kind", "state", "spec_id"),
+    ),
+    EndpointDecl("GET", "/v1/runs/{run_id}", "get_run", "Get a run", "Run", 200, errors=_NF),
+    EndpointDecl(
+        "GET", "/v1/runs/{run_id}/events", "run_events",
+        "SSE stream (Accept: text/event-stream) or JSON page of persisted events",
+        "Page[RunEventView]", 200, errors=_NF, headers=("Last-Event-ID",), paginated=True,
+        streaming=True, query=("after", "limit"),
+    ),
+    EndpointDecl(
+        "GET", "/v1/runs/{run_id}/logs", "run_logs", "Captured log lines (untrusted text)",
+        "Page[LogLine]", 200, errors=_NF, paginated=True, query=(*_PAGE, "attempt", "stream"),
+    ),
+    EndpointDecl(
+        "POST", "/v1/runs/{run_id}:cancel", "cancel_run", "Request cancellation (idempotent)",
+        "Run", 202, errors=(*_NF, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "POST", "/v1/runs/{run_id}:resume", "resume_run", "Resume a PARTIAL run", "Run", 202,
+        errors=(*_NF, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "POST", "/v1/runs/{run_id}:retry", "retry_run", "New run from a failed one", "Run", 201,
+        request="RunRetry", errors=(*_BODY, *_NF, _E.CONFLICT), headers=("Idempotency-Key",),
+    ),
+    # models
+    EndpointDecl(
+        "GET", "/v1/models", "list_models", "List models", "Page[Model]", 200,
+        paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/models/{model_id}", "get_model", "Get a model", "Model", 200, errors=_NF,
+    ),
+    EndpointDecl(
+        "GET", "/v1/models/{model_id}/versions", "list_model_versions", "List versions",
+        "Page[ModelVersion]", 200, errors=_NF, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/models/{model_id}/versions/{version}", "get_model_version",
+        "Signed manifest, diagnostics, scorecard, lineage, metrics", "ModelVersion", 200,
+        errors=_NF,
+    ),
+    EndpointDecl(
+        "GET", "/v1/models/{model_id}/versions/{version}/artifacts/{name}",
+        "get_model_artifact", "Signed URL for a bundle object or ui/ view (name may contain /)",
+        "ArtifactLink", 200, errors=(*_NF, _E.INTEGRITY_FAILURE),
+    ),
+    EndpointDecl(
+        "POST", "/v1/models/{model_id}/versions/{version}:score", "score_model",
+        "Score with replayed preprocessing (Prefer: wait=N → 200 if done, else 202)",
+        "ScoreCallResult", 200, request="ScoreCall",
+        errors=(*_BODY, *_NF, _E.MODE_NOT_SUPPORTED, _E.UNSEEN_LEVELS, _E.COORD_NOT_ALLOWED,
+                _E.HORIZON_EXCEEDS_FIT, _E.MISSING_FUTURE_COVARIATE,
+                _E.NON_CONTIGUOUS_EXTENSION, _E.CAPABILITY_UNSUPPORTED,
+                _E.RECURSIVE_UNSUPPORTED, _E.QUOTA_EXCEEDED),
+        headers=("Prefer", "Idempotency-Key"),
+    ),
+    # plots
+    EndpointDecl(
+        "GET", "/v1/models/{model_id}/versions/{version}/plots", "list_plots",
+        "Plots of a model version", "Page[PlotListItem]", 200, errors=_NF, paginated=True,
+        query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/models/{model_id}/versions/{version}/plots/{plot_id}", "get_plot",
+        "A sanitized PlotSpec (render it in the plot sandbox origin)", "PlotSpec", 200,
+        errors=_NF,
+    ),
+    EndpointDecl(
+        "POST", "/v1/plots:validate", "validate_plot", "Run the plot sanitizer",
+        "PlotValidateResponse", 200, request="PlotSpec", errors=_BODY,
+    ),
+)  # fmt: skip
+"""The M1 endpoint table. ``request``/``response`` name DTOs in this module."""

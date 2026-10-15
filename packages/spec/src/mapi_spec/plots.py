@@ -12,7 +12,7 @@ import re
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, JsonValue, field_validator, model_validator
+from pydantic import ConfigDict, Field, JsonValue, field_validator, model_validator
 
 from mapi_spec._types import StrictModel
 from mapi_spec.schema import Role
@@ -153,6 +153,35 @@ class PlotSpec(StrictModel):
     persona: Literal["guided", "expert", "both"] = "both"
     caption_plain: str | None = Field(None, max_length=4000)
     provenance: PlotProvenance
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "core.ppc_fan",
+                    "title": "Posterior predictive fan",
+                    "kind": "vega-lite",
+                    "spec": {
+                        "mark": "area",
+                        "data": {"name": "fan"},
+                        "encoding": {
+                            "x": {"field": "time", "type": "temporal"},
+                            "y": {"field": "lo", "type": "quantitative"},
+                            "y2": {"field": "hi"},
+                        },
+                    },
+                    "datasets": {"fan": {"kind": "data_ref", "path": "ui/plotdata/ppc_fan.arrow"}},
+                    "schema_version": "v5",
+                    "persona": "both",
+                    "caption_plain": "The shaded band is where the model expects 90% of weeks.",
+                    "provenance": {
+                        "recipe": "core.ppc_fan@1.0.0",
+                        "generated_at": "2026-10-15T09:40:00Z",
+                    },
+                }
+            ]
+        }
+    )
 
     @field_validator("datasets")
     @classmethod

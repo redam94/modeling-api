@@ -145,6 +145,8 @@ nav:
       - Plots and the sanitizer: reference/plots.md
       - Plot recipes catalog: reference/generated/plots-catalog.md
       - Error codes: reference/generated/error-codes.md
+      - HTTP API (v1): reference/http-api.md
+      - Run protocol: reference/run-protocol.md
       - API reference:
           - reference/api/index.md
           - mapi_spec: reference/api/spec.md
