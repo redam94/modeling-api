@@ -23,6 +23,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
+from mapi_server.hardening import harden_process
 from mapi_server.settings import ObjectStoreKind, Settings
 
 if TYPE_CHECKING:
@@ -198,6 +199,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     _setup_logging(settings)
     if args.command == "migrate":
         return cmd_migrate(settings)
+    # Long-running: under the local-process executor, runs share this uid. Non-dumpable,
+    # they cannot ptrace this process or read its environment (DATABASE_URL) or memory.
+    if not harden_process():
+        log.debug("not marked non-dumpable (prctl is Linux-only)")
     if args.command == "worker":
         return cmd_worker(settings)
     if args.command == "api":

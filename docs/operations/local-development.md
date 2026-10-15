@@ -78,6 +78,15 @@ Runs use the same isolation as in production, minus what a laptop cannot do: the
 `DEV_MODE_ISOLATION` notes that the worker process runs as your user, without a uid split or
 `no_new_privs`.
 
+!!! warning "Plugin code runs as you, next to the platform's keys"
+    Without a uid split, run code (plugins and the steps they load) can read every file your
+    user can. That includes the shim's control key (`.local/gcs/_shim/keys/control.json`,
+    full access to every bucket), the bundle-signing key (`.local/keys/`) and the
+    executions directory. So a hostile plugin could forge a signed bundle or rewrite outputs
+    after the finalizer checked them. The orchestrator makes itself non-dumpable on Linux,
+    so run code cannot read its environment (`DATABASE_URL`) or its memory. The worker logs
+    the same warning when it starts. Only run plugin code you trust in `make dev`.
+
 ## Everyday commands
 
 | Command | What it does |

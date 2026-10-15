@@ -157,14 +157,32 @@ no Docker socket and is daemon-agnostic. Its trade-offs:
 
 | | local-process in `mapi/worker` (default) | docker executor (`compose.override.example.yml`) |
 |---|---|---|
-| Isolation | Process only: runs share the worker's filesystem, `/tmp` and memory limit | One container per run, from the exact runner image, with its own limits; `--network none` is possible |
+| Isolation | Process only: runs share the worker's uid, filesystem (including its keys, see below), `/tmp` and memory limit | One container per run, from the exact runner image, with its own limits; `--network none` is possible |
 | Images | One large image holding every plugin plus the control plane | The control-plane image for the worker, and `mapi/base-*` per run |
 | Privileges | None beyond the worker's own | The worker mounts `/var/run/docker.sock`, which is **root-equivalent on the host** |
 | Networking | Runs reach `127.0.0.1:4443` directly | Run containers must join the `gcs-shim` network namespace |
 | Use it for | Day-to-day development, demos, CI | Checking production images end to end, and self-hosted setups (gVisor `runsc` in v0.3) |
 
 Neither mode is a multi-tenant boundary. Both are single-tenant local stacks, and the
-local-process executor is meant to refuse any multi-tenant profile. The worker's `/tmp` is the
+local-process executor refuses any multi-tenant profile.
+
+**What a local-process run can reach.** Every run is a subprocess of `mapi-server worker` and
+runs as the same uid, `10001`. There is no uid split before v0.3. Run code, meaning plugins
+and the steps they load, can therefore read everything the orchestrator can read:
+
+- the shim's control key (`/shim/gcs/_shim/keys/control.json`): `storage.admin` on every
+  bucket, enough to read or rewrite bundles, datasets and run outputs and to mint signed
+  URLs;
+- the bundle-signing key (`/var/lib/mapi/keys/`), enough to forge a manifest the API accepts;
+- the executions directory under `/tmp/mapi-data`, including the pid files that name the
+  nonces of runs in flight.
+
+In this mode, then, bundle signatures and the finalizer's output checks protect against
+accidents, not against hostile plugin code. The orchestrator marks itself non-dumpable, so
+run code cannot ptrace it or read its `/proc/<pid>/environ` (`DATABASE_URL` with the
+password) or its memory. The worker also logs this warning at start-up. Run only trusted
+plugin code under local-process. The docker executor does not have this exposure: each
+attempt runs in its own container with none of these files mounted. The worker's `/tmp` is the
 scratch space for local-process runs. Size it with `MAPI_WORKER_TMPFS`, `MAPI_WORKER_MEMORY` and
 `MAPI_WORKER_CPUS` in `.env`.
 
