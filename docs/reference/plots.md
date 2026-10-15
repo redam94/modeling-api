@@ -160,6 +160,14 @@ standard_recipes() -> list[Recipe]       # entry point  mapi.plots: core
 mapi_plots.packs.mmm.mmm_recipes()       # entry point  mapi.plots: mmm
 Recipe.render(data, **settings) -> PlotSpec       # also Recipe(data, **settings)
 Recipe.catalog_entry() -> PlotCatalogEntry        # id, version, persona, required groups/representation
+
+# what the runner calls for outputs.plots: never raises for a single bad plot
+report = render_plots(tree, ["core.ppc_fan", "mmm.response_curves@^1"],
+                      registry=None, options={"core.ppc_fan": {"facet": "market"}})
+report.plots          # sanitized PlotSpecs
+report.issues         # skipped plots: REF_UNRESOLVED / SCHEMA_INVALID / USER_CODE_ERROR
+                      # (warnings) and PLOT_UNSAFE (error)
+report.to_json()      # plots.json sidecar body
 ```
 
 Write your own with the decorator — the result works with `Registry.register` and the
