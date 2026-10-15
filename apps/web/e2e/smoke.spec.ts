@@ -140,6 +140,28 @@ test("spec editor keeps unsaved edits when a newer revision appears", async ({ p
   await expect(page.getByText("unsaved changes", { exact: true })).toBeVisible();
 });
 
+test("saving edits of an older revision asks before replacing the latest", async ({ page }) => {
+  const posted: unknown[] = [];
+  page.on("request", (req) => {
+    if (req.method() === "POST" && /\/v1\/specs\/[^/]+\/revisions$/.test(req.url())) posted.push(req.postDataJSON());
+  });
+  await page.goto(`/build/${SPEC}?rev=1`);
+  await typeInEditor(page, "# restore r1");
+  const dialogs: string[] = [];
+  page.once("dialog", (d) => {
+    dialogs.push(d.message());
+    void d.dismiss();
+  });
+  await page.getByRole("button", { name: "Save revision" }).click();
+  await expect.poll(() => dialogs.length).toBe(1);
+  expect(dialogs[0]).toContain("r1");
+  expect(posted).toEqual([]);
+  page.once("dialog", (d) => void d.accept());
+  await page.getByRole("button", { name: "Save revision" }).click();
+  await expect(page).toHaveURL(/[?&]rev=3\b/);
+  expect(posted).toEqual([expect.objectContaining({ parent_revision: 2 })]);
+});
+
 test("a CSV is previewed locally, mapped, uploaded to the signed URL and ingested", async ({ page }) => {
   await page.goto("/datasets/ds_01jaf3a1b2c3d4e5f6g7h8j9k0?upload=true");
   const csv = "date,market,revenue,spend\n2026-01-01,de,10.5,3\n2026-01-02,de,11,4\n";

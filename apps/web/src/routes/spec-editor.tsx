@@ -25,7 +25,7 @@ import { DiffView } from "@/features/editor/diff-view";
 import { setSpecSchema } from "@/features/editor/monaco-setup";
 import { buildPipeline } from "@/features/editor/pipeline";
 import { PipelineCards } from "@/features/editor/pipeline-cards";
-import { shouldLoadRevision } from "@/features/editor/revision-sync";
+import { saveParent, shouldLoadRevision } from "@/features/editor/revision-sync";
 import { STARTER_SPEC } from "@/features/editor/starter";
 import { YamlEditor, type YamlEditorHandle } from "@/features/editor/yaml-editor";
 import { env } from "@/env";
@@ -186,9 +186,20 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
       });
       return;
     }
-    if (latest === undefined) return;
+    if (baseRev === null) return;
+    // Send the revision this text is based on, so a concurrent save elsewhere is a CONFLICT.
+    const { parent, overwrites } = saveParent(baseRev, latest);
+    if (
+      overwrites !== null &&
+      !window.confirm(
+        `Restore r${baseRev} as a new revision?\n\nYou are editing r${baseRev}, but the latest revision is r${overwrites}. ` +
+          `Saving makes r${overwrites + 1} from this text, without the changes made in r${baseRev + 1}–r${overwrites}.`,
+      )
+    ) {
+      return;
+    }
     createRevision.mutate(
-      { ...body, parent_revision: latest },
+      { ...body, parent_revision: parent },
       {
         onSuccess: (r: SpecRevision) => {
           toast.success(`Saved revision ${r.revision}`, r.valid ? "Static validation passed." : "Saved with validation issues.");
