@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import typing
 from collections.abc import Callable
 from typing import Any
 
 import pytest
 from mapi_plugin_mmm.hierarchical_geo import HierarchicalGeoMMM
+from mapi_plugin_mmm.priors import PRIOR_SLOTS
 from mapi_plugin_mmm.pymc_marketing import PyMCMarketingMMM
-from mapi_plugin_mmm.settings import HierarchicalGeoSettings, PyMCMarketingSettings
+from mapi_plugin_mmm.settings import HierarchicalGeoSettings, Priors, PyMCMarketingSettings
 from mapi_sdk.registry import Registry, default_registry
 from mapi_spec import DataSchema, load_model_spec, validate_spec
 from mapi_spec.errors import ErrorCode
@@ -25,8 +27,8 @@ def _ui_levels(schema: dict[str, Any]) -> dict[str, str | None]:
     for name, prop in schema.get("properties", {}).items():
         out[name] = prop.get("x-ui-level")
     for model, sub in schema.get("$defs", {}).items():
-        if model == "PriorSpec":
-            continue  # priors are a dict form; the whole field is advanced
+        if model == "Priors" or model.endswith("Prior"):
+            continue  # the prior dict form; the whole `priors` field is advanced
         for name, prop in sub.get("properties", {}).items():
             out[f"{model}.{name}"] = prop.get("x-ui-level")
     return out
@@ -80,10 +82,19 @@ def test_settings_validation() -> None:
         HierarchicalGeoSettings.model_validate({"controls": ["a", "a"]})
     with pytest.raises(ValidationError, match="cannot be controls"):
         HierarchicalGeoSettings.model_validate({"controls": ["y"]})
-    with pytest.raises(ValidationError, match="positive support"):
+    with pytest.raises(ValidationError, match="HalfNormal"):
         HierarchicalGeoSettings.model_validate(
             {"priors": {"beta_channel": {"distribution": "Normal", "sigma": 1}}}
         )
+    with pytest.raises(ValidationError, match="positive support"):
+        HierarchicalGeoSettings.model_validate(
+            {"priors": {"beta_channel": {"distribution": "Uniform", "lower": -1, "upper": 2}}}
+        )
+    ok = HierarchicalGeoSettings.model_validate(
+        {"priors": {"lam": {"distribution": "Gamma", "alpha": 3, "beta": 1, "dims": ["channel"]}}}
+    )
+    assert ok.resolved_priors()["lam"].params == {"alpha": 3.0, "beta": 1.0}
+    assert ok.resolved_priors()["sigma"].distribution == "HalfNormal"  # default kept
     with pytest.raises(ValidationError):
         HierarchicalGeoSettings.model_validate({"pooling": "some"})
     with pytest.raises(ValidationError, match="reserved"):
@@ -103,6 +114,27 @@ def test_settings_schema_rejects_bad_priors_statically() -> None:
     assert issues and all(i.code is ErrorCode.SETTINGS_INVALID for i in issues)
     assert any(i.pointer.startswith("/model/settings/priors/lam") for i in issues)
     assert validate_settings(schema, {"priors": {"nope": {"distribution": "Normal"}}}, "/s")
+    # support and dims are part of the static schema: no fit needed to catch them
+    for bad in (
+        {"beta_channel": {"distribution": "Normal", "sigma": 1}},
+        {"alpha": {"distribution": "Gamma", "alpha": 2, "beta": 1}},
+        {"sigma": {"distribution": "HalfNormal", "sigma": 1, "dims": ["geo"]}},
+        {"lam": {"distribution": "Gamma", "alpha": 2, "beta": 1, "dims": ["geo"]}},
+    ):
+        assert validate_settings(schema, {"priors": bad}, "/s"), bad
+    plan = {
+        "beta_channel": {"distribution": "HalfNormal", "sigma": 1.0, "dims": ["channel"]},
+        "lam": {"distribution": "Gamma", "alpha": 3, "beta": 1, "dims": ["channel"]},
+    }
+    assert validate_settings(schema, {"priors": plan}, "/s") == []
+
+
+def test_every_prior_slot_is_a_typed_setting() -> None:
+    fields = Priors.model_fields
+    assert set(fields) == set(PRIOR_SLOTS)
+    for name, slot in PRIOR_SLOTS.items():
+        assert slot.model in typing.get_args(fields[name].annotation), name
+        slot.model.model_validate(slot.default.model_dump())  # defaults satisfy their slot
 
 
 def test_plan_spec_validates_against_the_real_catalog(

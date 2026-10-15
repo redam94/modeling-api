@@ -12,6 +12,11 @@ parameter slot supports; a parameter value may be a number or a list with one va
 label of the (single) dim it varies over. Every slot has a *support* (``real``,
 ``positive`` or ``unit``) and a prior whose support does not fit is rejected, so a
 negative media effect or an adstock decay above one cannot be specified by accident.
+
+The per-slot models (:class:`RealScalarPrior`, :class:`PositiveScalarPrior`,
+:class:`PositiveChannelPrior`, :class:`UnitChannelPrior`) narrow the distribution and the
+dims in their JSON Schema, so the control plane catches those mistakes statically; the
+bounds of ``Uniform``/``TruncatedNormal`` priors are checked by :func:`resolve_priors`.
 """
 
 from __future__ import annotations
@@ -28,9 +33,13 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 __all__ = [
     "DISTRIBUTIONS",
     "PRIOR_SLOTS",
+    "PositiveChannelPrior",
+    "PositiveScalarPrior",
     "PriorSlot",
     "PriorSpec",
+    "RealScalarPrior",
     "Support",
+    "UnitChannelPrior",
     "build_prior",
     "resolve_priors",
 ]
@@ -158,6 +167,52 @@ class PriorSpec(BaseModel):
         return order[got] <= order["real"]
 
 
+PositiveDistribution = Literal[
+    "HalfNormal",
+    "HalfStudentT",
+    "HalfCauchy",
+    "Exponential",
+    "Gamma",
+    "InverseGamma",
+    "LogNormal",
+    "Weibull",
+    "Beta",
+    "Uniform",
+    "TruncatedNormal",
+]
+UnitDistribution = Literal["Beta", "Uniform", "TruncatedNormal"]
+
+
+# Narrower prior models per (support, dims): their JSON Schemas let the control plane
+# reject a wrong distribution or dim statically. Bounded distributions (Uniform,
+# TruncatedNormal) additionally have their bounds checked by resolve_priors().
+class RealScalarPrior(PriorSpec):
+    """A real-valued prior shared by every label (no dims)."""
+
+    dims: list[str] = Field(default_factory=list, max_length=0)
+
+
+class PositiveScalarPrior(PriorSpec):
+    """A positive prior shared by every label (no dims)."""
+
+    distribution: PositiveDistribution = Field(..., description="PyMC distribution name")
+    dims: list[str] = Field(default_factory=list, max_length=0)
+
+
+class PositiveChannelPrior(PriorSpec):
+    """A positive prior, optionally one per channel (``dims: [channel]``)."""
+
+    distribution: PositiveDistribution = Field(..., description="PyMC distribution name")
+    dims: list[Literal["channel"]] = Field(default_factory=list, max_length=1)  # type: ignore[assignment]
+
+
+class UnitChannelPrior(PriorSpec):
+    """A prior on (0, 1), optionally one per channel (``dims: [channel]``)."""
+
+    distribution: UnitDistribution = Field(..., description="PyMC distribution name")
+    dims: list[Literal["channel"]] = Field(default_factory=list, max_length=1)  # type: ignore[assignment]
+
+
 @dataclass(frozen=True, slots=True)
 class PriorSlot:
     """A model parameter whose prior a spec may override."""
@@ -167,6 +222,15 @@ class PriorSlot:
     dims: tuple[str, ...]
     default: PriorSpec
     description: str
+
+    @property
+    def model(self) -> type[PriorSpec]:
+        """The prior model whose JSON Schema describes what this slot accepts."""
+        if self.support == "real":
+            return RealScalarPrior
+        if self.support == "unit":
+            return UnitChannelPrior
+        return PositiveChannelPrior if self.dims else PositiveScalarPrior
 
 
 def _p(distribution: str, dims: Sequence[str] = (), **params: float) -> PriorSpec:

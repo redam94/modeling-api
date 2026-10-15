@@ -13,13 +13,22 @@ from typing import Any, Literal
 from mapi_sdk.models import ModelSettings
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from mapi_plugin_mmm.priors import PRIOR_SLOTS, PriorSpec, resolve_priors
+from mapi_plugin_mmm.priors import (
+    PRIOR_SLOTS,
+    PositiveChannelPrior,
+    PositiveScalarPrior,
+    PriorSpec,
+    RealScalarPrior,
+    UnitChannelPrior,
+    resolve_priors,
+)
 from mapi_plugin_mmm.transforms import AdstockKind, SaturationKind
 
 __all__ = [
     "AdstockSettings",
     "GridSettings",
     "HierarchicalGeoSettings",
+    "Priors",
     "PyMCMarketingSettings",
     "SaturationSettings",
     "mcmc_fit_schema",
@@ -98,6 +107,40 @@ class GridSettings(_Sub):
         return [round(i * step, 12) for i in range(self.points)]
 
 
+def _slot(name: str) -> Any:
+    return Field(None, description=PRIOR_SLOTS[name].description)
+
+
+class Priors(_Sub):
+    """Prior overrides by model parameter; unset parameters keep their defaults.
+
+    Each parameter accepts only distributions with the right support (a media effect is
+    positive, an adstock decay lies in (0, 1)) and only the dims it may vary over, so
+    the control plane rejects a wrong prior from the JSON Schema alone.
+    """
+
+    intercept: RealScalarPrior | None = _slot("intercept")
+    intercept_sigma: PositiveScalarPrior | None = _slot("intercept_sigma")
+    beta_channel: PositiveChannelPrior | None = _slot("beta_channel")
+    beta_sigma: PositiveChannelPrior | None = _slot("beta_sigma")
+    alpha: UnitChannelPrior | None = _slot("alpha")
+    theta: PositiveChannelPrior | None = _slot("theta")
+    lam: PositiveChannelPrior | None = _slot("lam")
+    slope: PositiveChannelPrior | None = _slot("slope")
+    half: PositiveChannelPrior | None = _slot("half")
+    gamma_control: RealScalarPrior | None = _slot("gamma_control")
+    sigma: PositiveScalarPrior | None = _slot("sigma")
+
+    @model_validator(mode="after")
+    def _resolve(self) -> Priors:
+        resolve_priors(self.as_dict())
+        return self
+
+    def as_dict(self) -> dict[str, PriorSpec]:
+        """The overrides that are set, by parameter name."""
+        return {k: v for k in PRIOR_SLOTS if (v := getattr(self, k)) is not None}
+
+
 class HierarchicalGeoSettings(ModelSettings):
     """Settings of ``mmm.hierarchical_geo``.
 
@@ -121,14 +164,10 @@ class HierarchicalGeoSettings(ModelSettings):
     )
     adstock: AdstockSettings = Field(AdstockSettings(), json_schema_extra=BASIC)
     saturation: SaturationSettings = Field(SaturationSettings(), json_schema_extra=BASIC)
-    priors: dict[str, PriorSpec] = Field(
-        {},
-        description="Prior overrides by parameter: "
-        + ", ".join(f"{k} ({v.description})" for k, v in PRIOR_SLOTS.items()),
-        json_schema_extra={
-            "x-ui-level": "advanced",
-            "propertyNames": {"enum": list(sorted(PRIOR_SLOTS))},
-        },
+    priors: Priors = Field(
+        Priors(),
+        description="Prior overrides by parameter (pymc-marketing Prior dict form)",
+        json_schema_extra=ADVANCED,
     )
     controls: list[str] | None = Field(
         None,
@@ -140,12 +179,6 @@ class HierarchicalGeoSettings(ModelSettings):
         "lag", pattern=_NAME, description="Lag dim of the spend tensor", json_schema_extra=ADVANCED
     )
     grid: GridSettings = Field(GridSettings(), json_schema_extra=ADVANCED)
-
-    @field_validator("priors")
-    @classmethod
-    def _priors(cls, v: dict[str, PriorSpec]) -> dict[str, PriorSpec]:
-        resolve_priors(v)
-        return v
 
     @field_validator("controls")
     @classmethod
@@ -161,7 +194,7 @@ class HierarchicalGeoSettings(ModelSettings):
         return self
 
     def resolved_priors(self) -> dict[str, PriorSpec]:
-        return resolve_priors(self.priors)
+        return resolve_priors(self.priors.as_dict())
 
 
 class PyMCMarketingSettings(ModelSettings):
