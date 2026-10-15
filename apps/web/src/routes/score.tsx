@@ -13,7 +13,7 @@ import {
   useSpecRevision,
 } from "@/api/queries";
 import type { ModelVersion, ScoreCall, ScoreCallResult } from "@/api/types";
-import { EmptyState, ErrorNotice, Mono, PageHeader, ProblemNotice, StateBadge } from "@/components/common";
+import { EmptyState, ErrorNotice, LoadingRows, Mono, PageHeader, ProblemNotice, StateBadge } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/overlays";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, NativeSelect } from "@/components/ui/primitives";
@@ -417,13 +417,6 @@ function PendingScore({
 export function ScorePage() {
   const { model, version } = route.useSearch();
   const mv = useModelVersion(model, version);
-  const [pending, setPending] = useState<{ result: ScoreCallResult; key: string; body: ScoreCall } | null>(null);
-  const [done, setDone] = useState<ScoreCallResult | null>(null);
-  const resultsRef = useRef<HTMLElement>(null);
-  // Below 2xl the results stack under the form: bring them into view when a score starts.
-  useEffect(() => {
-    if (pending || done) resultsRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-  }, [pending, done]);
 
   return (
     <>
@@ -435,17 +428,37 @@ export function ScorePage() {
       ) : mv.isError ? (
         <ErrorNotice error={mv.error} />
       ) : mv.data ? (
+        // Keyed by version: switching model or version starts a fresh form and empty results.
+        <ScoreWorkspace key={`${model}@${version}`} mv={mv.data} />
+      ) : (
+        <LoadingRows rows={6} />
+      )}
+    </>
+  );
+}
+
+/** The request form and its results, for one model version. */
+function ScoreWorkspace({ mv }: { mv: ModelVersion }) {
+  const [pending, setPending] = useState<{ result: ScoreCallResult; key: string; body: ScoreCall } | null>(null);
+  const [done, setDone] = useState<ScoreCallResult | null>(null);
+  const resultsRef = useRef<HTMLElement>(null);
+  // Below 2xl the results stack under the form: bring them into view when a score starts.
+  useEffect(() => {
+    if (pending || done) resultsRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, [pending, done]);
+
+  return (
         <div className="grid gap-5 2xl:grid-cols-[minmax(0,34rem)_minmax(0,1fr)]">
           <Card>
             <CardHeader>
               <div>
                 <CardTitle>Request</CardTitle>
-                <CardDescription><Mono>{mv.data.ref}</Mono></CardDescription>
+                <CardDescription><Mono>{mv.ref}</Mono></CardDescription>
               </div>
             </CardHeader>
             <CardContent>
               <ScoreFormView
-                mv={mv.data}
+                mv={mv}
                 onResult={({ result, key, body }) => {
                   setDone(null);
                   setPending(null);
@@ -465,7 +478,7 @@ export function ScorePage() {
                 done.run.problem ? <ProblemNotice problem={done.run.problem} /> : <ScoreResults outputs={done.outputs ?? []} runId={done.run.id} />
               ) : pending ? (
                 <PendingScore
-                  mv={mv.data}
+                  mv={mv}
                   result={pending.result}
                   scoreKey={pending.key}
                   body={pending.body}
@@ -480,8 +493,6 @@ export function ScorePage() {
             </CardContent>
           </Card>
         </div>
-      ) : null}
-    </>
   );
 }
 
