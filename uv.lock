@@ -2122,6 +2122,11 @@ dependencies = [
     { name = "httpx" },
     { name = "mapi-plots", extra = ["recipes"] },
     { name = "mapi-sdk" },
+    { name = "mapi-spec" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "pyarrow" },
+    { name = "xarray" },
 ]
 
 [package.metadata]
@@ -2129,6 +2134,11 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "mapi-plots", extras = ["recipes"], editable = "packages/plots-core" },
     { name = "mapi-sdk", editable = "packages/sdk" },
+    { name = "mapi-spec", editable = "packages/spec" },
+    { name = "numpy", specifier = ">=2.0" },
+    { name = "pandas", specifier = ">=2.2" },
+    { name = "pyarrow", specifier = ">=17" },
+    { name = "xarray", specifier = ">=2025.1" },
 ]
 
 [[package]]
