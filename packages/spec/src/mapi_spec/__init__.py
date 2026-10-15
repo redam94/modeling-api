@@ -101,6 +101,7 @@ from mapi_spec.spec import (
     StepCall,
     Sweep,
 )
+from mapi_spec.sweep import expand_sweep
 from mapi_spec.validate import (
     ResolvedSpec,
     ScoreMetadata,
@@ -194,6 +195,7 @@ __all__ = [
     "canonical_json",
     "default_summary",
     "dump_yaml",
+    "expand_sweep",
     "export_schemas",
     "http_status",
     "json_pointer",
