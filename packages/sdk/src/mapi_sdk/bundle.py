@@ -32,6 +32,7 @@ import io
 import json
 import pickletools
 import platform
+import shutil
 import zipfile
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -72,6 +73,7 @@ __all__ = [
 BUNDLE_FORMAT = "mapi-bundle/v1"
 BUNDLE_FILE = "bundle.zarr.zip"
 SIDECARS = ("manifest.json", "diagnostics.json", "plots.json", "metrics.json")
+EVALUATION_MANIFEST = "evaluation/manifest.json"
 _PICKLE_SUFFIXES = (".pkl", ".pickle", ".joblib", ".cloudpickle", ".pt", ".pth", ".npy_pickle")
 
 
@@ -373,10 +375,13 @@ class Bundle:
         for name, content in files.items():
             (root / name).write_bytes(content)
         digests = {name: file_digest(content) for name, content in files.items()}
+        ev_dir = root / "evaluation"
+        if ev_dir.exists():  # never leave (or merge into) a previous write's evaluation
+            shutil.rmtree(ev_dir)
         if self.evaluation is not None:
-            ev = self.evaluation.write(root / "evaluation")
-            ev_bytes = (root / "evaluation" / "manifest.json").read_bytes()
-            digests["evaluation/manifest.json"] = file_digest(ev_bytes)
+            ev = self.evaluation.write(ev_dir)
+            ev_bytes = (root / EVALUATION_MANIFEST).read_bytes()
+            digests[EVALUATION_MANIFEST] = file_digest(ev_bytes)
             self.manifest.lineage["evaluation_bundle"] = ev.bundle_id
         self.manifest.files = digests
         (root / "manifest.json").write_text(self.manifest.model_dump_json(indent=2))
@@ -422,11 +427,35 @@ class Bundle:
             bundle.metrics = MetricsReport.model_validate_json(contents["metrics.json"])
         except (ValidationError, json.JSONDecodeError, TypeError) as exc:
             raise BundleError(f"bundle sidecars are invalid: {exc}") from None
-        if (root / "evaluation" / "manifest.json").exists():
-            bundle.evaluation = cls.read(
-                root / "evaluation", registry, verify=verify, limits=limits
-            )
+        bundle.evaluation = cls._read_evaluation(root, manifest, registry, verify, limits)
         return bundle
+
+    @classmethod
+    def _read_evaluation(
+        cls,
+        root: Path,
+        manifest: BundleManifest,
+        registry: Registry,
+        verify: bool,
+        limits: WireLimits,
+    ) -> Bundle | None:
+        """The evaluation sub-bundle the parent manifest declares (and only that one)."""
+        declared = manifest.files.get(EVALUATION_MANIFEST)
+        if declared is None:
+            return None  # an undeclared evaluation dir is not this bundle's
+        path = root / EVALUATION_MANIFEST
+        if verify:
+            try:
+                raw = path.read_bytes()
+            except OSError as exc:
+                raise BundleError("the declared evaluation bundle is missing") from exc
+            if file_digest(raw) != declared:
+                raise BundleError("the evaluation bundle does not match its manifest hash")
+        evaluation = cls.read(root / "evaluation", registry, verify=verify, limits=limits)
+        linked = manifest.lineage.get("evaluation_bundle")
+        if verify and linked is not None and linked != evaluation.bundle_id:
+            raise BundleError("the evaluation bundle is not the one this bundle links")
+        return evaluation
 
     @classmethod
     def from_tree(

@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import pickle
 import zipfile
+from typing import Any
 
 import numpy as np
 import pytest
@@ -58,3 +59,34 @@ def test_pickle_is_detected_whatever_the_wrapping(data: bytes) -> None:
 )
 def test_safe_native_formats_pass(data: bytes) -> None:
     assert_no_pickle({"model.bin": data})
+
+
+# ------------------------------------------------- quality-security-11 (evaluation sub-bundle)
+
+
+def test_evaluation_sub_bundle_is_verified_and_never_stale(
+    tmp_path: Any, registry: Any, e33_spec: Any, panel: Any
+) -> None:
+    from mapi_sdk.bundle import Bundle
+    from mapi_sdk.harness import fit_spec
+
+    data, fx = panel
+    bundle = fit_spec(e33_spec(metrics="rmse"), data, {"fx": fx}, registry)
+    assert bundle.evaluation is not None
+    root = tmp_path / "b"
+    bundle.write(root)
+    assert Bundle.read(root, registry).evaluation is not None
+    # a replaced (internally consistent) evaluation dir no longer matches the parent
+    other = fit_spec(e33_spec(metrics="mape"), data, {"fx": fx}, registry)
+    assert other.evaluation is not None
+    other.evaluation.write(root / "evaluation")
+    with pytest.raises(BundleError, match="evaluation"):
+        Bundle.read(root, registry)
+    # rewriting without an evaluation removes the stale directory; nothing is loaded
+    bundle.evaluation = None
+    bundle.write(root)
+    assert not (root / "evaluation").exists()
+    assert Bundle.read(root, registry).evaluation is None
+    # an evaluation dir the parent manifest does not declare is ignored
+    other.evaluation.write(root / "evaluation")
+    assert Bundle.read(root, registry).evaluation is None
