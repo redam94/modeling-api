@@ -97,6 +97,26 @@ def test_plan_request_from_the_architecture_doc_is_valid(e33_meta: ScoreMetadata
     assert issues == []
 
 
+def test_dataset_names_are_bound_at_any_entry_stage(e33_meta: ScoreMetadata) -> None:
+    """The runtime binds the payload whatever ``inputs_stage`` is, so the static check does."""
+    req = load_score_request(SCORE_YAML)
+    assert req.inputs_stage != "raw"
+    to_dataset = e33_meta.resolved.binding.dataset_of()
+    assert any(k != v for k, v in to_dataset.items())  # the E33 binding renames something
+    canonical = _plan_inputs()
+    named = DataSummary.model_validate(
+        {
+            "vars": [to_dataset.get(v, v) for v in canonical.vars],
+            "coords": {
+                to_dataset.get(d, d): c.model_dump(mode="json")
+                for d, c in canonical.coords.items()
+            },
+        }
+    )
+    assert named != canonical
+    assert validate_score_request(req, e33_meta, named) == []
+
+
 def test_metadata_is_json(e33_meta: ScoreMetadata) -> None:
     assert ScoreMetadata.model_validate_json(e33_meta.model_dump_json()) == e33_meta
 

@@ -1006,7 +1006,8 @@ def validate_score_request(
     """Static CoordPlan checks for ``req`` against a fitted model's metadata.
 
     ``inputs`` summarises the payload (``data`` or ``scenario``) as it enters at
-    ``req.inputs_stage``; dataset names are accepted at the raw stage.
+    ``req.inputs_stage``; dataset names are mapped through the binding at every stage, as
+    the runtime does.
     """
     issues: list[Issue] = []
     rs = meta.resolved
@@ -1041,7 +1042,9 @@ def validate_score_request(
         executed = rs.steps_after(req.inputs_stage)
 
     model_schema = _model_view(rs)
-    to_canon = rs.binding.canonical_of() if req.inputs_stage == RESERVED_STAGE else {}
+    # The runtime applies the binding to the payload whatever the entry stage (dataset names
+    # become canonical ones), so the static check does too.
+    to_canon = rs.binding.canonical_of()
 
     def canon(name: str) -> str:
         return to_canon.get(name, name)
