@@ -37,6 +37,7 @@ from mapi_server.db import models as m
 __all__ = [
     "PRICE_TABLE_INFO_KEY",
     "bill_attempts",
+    "fold_cost",
     "ledger_dto",
     "load_price_table",
     "run_costs",

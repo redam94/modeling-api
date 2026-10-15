@@ -13,7 +13,6 @@ first run finishes.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Final
 
@@ -45,10 +44,12 @@ __all__ = [
     "ACTIVE_STATES",
     "DISPATCHED_STATES",
     "KILL_SWITCHES_KEY",
-    "QuotaLevel",
+    "admit_run",
+    "admit_storage",
     "count_requests",
     "global_policy",
     "global_spend",
+    "kill_switch_check",
     "kill_switches",
     "policy_dto",
     "quota_usage",
@@ -67,12 +68,6 @@ DISPATCHED_STATES: Final = tuple(
     s.value for s in RunState if not s.terminal and s not in (RunState.CREATED, RunState.QUEUED)
 )
 """Runs holding (or about to hold) an execution: what the dispatcher's caps count."""
-
-
-@dataclass(frozen=True, slots=True)
-class QuotaLevel:
-    policy: QuotaPolicy
-    usage: QuotaUsage
 
 
 def window_starts(now: datetime) -> tuple[datetime, datetime]:
