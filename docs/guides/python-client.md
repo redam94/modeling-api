@@ -32,8 +32,9 @@ demo files: `make dev`, then `uv run python scripts/seed.py --export demo/`.
 http://127.0.0.1:8000 ok 0.2.0
 ```
 
-`Client()` resolves its settings like the CLI: arguments (`Client("http://…", token=…)`),
-then `MAPI_URL` (or `MAPI_API_URL`), `MAPI_TOKEN` and `MAPI_PROFILE`, then a profile in
+`Client()` resolves its settings like the CLI: arguments (`Client("http://…", token=…,
+project=…)`), then `MAPI_URL` (or `MAPI_API_URL`), `MAPI_TOKEN`, `MAPI_PROJECT` and
+`MAPI_PROFILE`, then a profile in
 `~/.config/mapi/config.toml`, then `http://127.0.0.1:8000`. `api.config.sources` says where
 each value came from. Use the client as a context manager (`with Client() as api:`) or call
 `close()`.
@@ -195,8 +196,59 @@ individual `issues`. Both requests above failed during static checks, before any
 was created. Transport failures raise `mapi_client.TransportError`; responses the client
 cannot parse raise `UnexpectedResponse`.
 
-Idempotent calls (`GET`s, and `POST`s with an idempotency key) are retried on 429, 502, 503,
+Idempotent calls (`GET`s, and `POST`s with an idempotency key) are retried on 502, 503,
 504 and connection errors, honouring `Retry-After` (`ClientConfig.max_retries`, default 2).
+`429` answers are handled as described in [Quotas and rate limits](#quotas-and-rate-limits).
+
+## Projects, tokens and usage <span class="mapi-badge mapi-badge--soon">v0.3</span>
+
+On a multi-tenant API the client needs credentials and a project
+([Tenancy and authentication](../concepts/tenancy-and-auth.md)). Credentials come from an
+API token (`Client(token=…)`, `MAPI_TOKEN` or the profile) or, when none is set, from the
+sign-in `mapi login` stored for the profile; the client renews that sign-in by itself and
+only sends it to the API it was made for. The project comes from `Client(project=…)`,
+`MAPI_PROJECT` or the profile (`mapi use`), and is sent as `X-Mapi-Project` on
+project-scoped requests only:
+
+```python
+--8<-- "client_tenancy.py:me"
+```
+
+Mint a token for a program. The secret is returned exactly once and is kept out of `repr`:
+
+```python
+--8<-- "client_tenancy.py:tokens"
+```
+
+Usage reports and runs carry exact costs in integer micro-units of the currency:
+
+```python
+--8<-- "client_tenancy.py:usage"
+```
+
+`api.tenants` covers tenants, projects and members; `api.admin` the operator endpoints
+(tenants, quotas, kill switches, executors, the audit log). See the [reference](#reference).
+
+### Quotas and rate limits
+
+A `429` answer carries one of two codes. `RATE_LIMITED` means the request was refused before
+the server acted on it, so the client waits (`Retry-After`, then exponential back-off with a
+little jitter) and sends it again, whatever the method; it raises `RateLimited` only after
+`RetryPolicy.rate_limit_retries` attempts, or at once when the server asks for a wait longer
+than `max_rate_limit_wait`. `QUOTA_EXCEEDED` is raised at once as `QuotaExceeded`;
+`retry_after_of(exc)` says when the quota window resets (`None` when only finishing running
+work frees capacity):
+
+```python
+--8<-- "client_tenancy.py:quota"
+```
+
+Tune the behaviour with a `RetryPolicy` (`max_quota_wait` lets a short quota window be
+waited out too):
+
+```python
+--8<-- "client_tenancy.py:retry"
+```
 
 ## Async
 
@@ -218,8 +270,13 @@ iterated with `async for`:
 | `runs` | `create`, `fit`, `get`, `list`, `wait`, `stream_events`, `events`, `logs`, `plots`, `cancel`, `resume`, `retry` |
 | `models` | `list`, `get`, `versions`, `version`, `artifact`, `download`, `score` |
 | `plots` | `list`, `get`, `validate` |
+| `tenants` (v0.3) | `list`, `get`, `rename`, `projects`, `create_project`, `update_project`, `delete_project`, `members`, `add_member`, `set_role`, `remove_member`, `usage`, `audit` |
+| `tokens` (v0.3) | `list`, `create`, `get`, `revoke` |
+| `usage` (v0.3) | `get` (the project), `tenant` |
+| `admin` (v0.3, operators) | `tenants`, `tenant`, `create_tenant`, `update_tenant`, `quotas`, `set_quota`, `delete_quota`, `kill_switches`, `set_kill_switches`, `executors`, `executor`, `audit` |
 
 List calls return lazy paginators that follow `next_cursor`. `api.health()` and `api.ready()`
-call `/healthz` and `/readyz`. The DTOs are documented in
+call `/healthz` and `/readyz`; `api.me()` calls `/v1/me` and `api.use(project)` changes the
+selected project. The DTOs are documented in
 [`mapi_spec`](../reference/api/spec.md#rest-dtos) and the endpoints in the
 [HTTP API reference](../reference/http-api.md).

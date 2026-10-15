@@ -8,17 +8,28 @@ available through :func:`problem_of` and :func:`http_status_of`.
 
 Responses without a valid problem body (a proxy's HTML 502, a newer server's unknown code)
 still map to a code chosen from the HTTP status; the raw body goes to ``untrusted_text``.
+
+``429`` answers carry one of two codes (plan §8.8, :mod:`mapi_spec.quotas`):
+
+* ``RATE_LIMITED`` (:class:`RateLimited`): too many requests per minute; the client waits
+  for ``Retry-After`` and resends (see :class:`~mapi_client.RetryPolicy`);
+* ``QUOTA_EXCEEDED`` (:class:`~mapi_spec.errors.QuotaExceeded`): a compute, storage or
+  concurrency quota; raised at once, with :func:`retry_after_of` telling when the window
+  resets (``None`` when only finishing other runs frees capacity).
 """
 
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Any, Final, NoReturn
 
 import httpx
 from mapi_spec.errors import (
     ErrorCode,
     InfraError,
+    Issue,
     MapiError,
     Problem,
     error_for_code,
@@ -26,6 +37,7 @@ from mapi_spec.errors import (
 )
 
 __all__ = [
+    "RateLimited",
     "TransportError",
     "UnexpectedResponse",
     "error_from_response",
@@ -33,6 +45,9 @@ __all__ = [
     "is_retryable_status",
     "problem_of",
     "raise_for_response",
+    "retry_after_of",
+    "retry_after_seconds",
+    "throttle_code",
 ]
 
 _STATUS_CODES: Final[dict[int, ErrorCode]] = {
@@ -57,6 +72,16 @@ class TransportError(InfraError):
     """The request never produced an HTTP response (connection refused, timeout, TLS ...)."""
 
 
+class RateLimited(MapiError):
+    """``429 RATE_LIMITED``: the request rate of a token, tenant or the platform is exceeded.
+
+    Raised only after the client's own back-off gave up; :func:`retry_after_of` is the
+    server's ``Retry-After`` in seconds.
+    """
+
+    default_code = ErrorCode.RATE_LIMITED
+
+
 class UnexpectedResponse(MapiError):
     """A response the client cannot interpret (wrong status, undecodable body)."""
 
@@ -78,6 +103,41 @@ def http_status_of(exc: BaseException) -> int | None:
     """The HTTP status of the response a client error was built from."""
     value = getattr(exc, "http_status", None)
     return value if isinstance(value, int) else None
+
+
+def retry_after_of(exc: BaseException) -> float | None:
+    """Seconds the server asked to wait (``Retry-After``) before retrying, if it said."""
+    value = getattr(exc, "retry_after", None)
+    return float(value) if isinstance(value, int | float) else None
+
+
+def retry_after_seconds(response: httpx.Response, *, now: datetime | None = None) -> float | None:
+    """``Retry-After`` as seconds from now (delta-seconds or an HTTP date); ``None`` if absent
+    or unparsable."""
+    value = response.headers.get("Retry-After")
+    if value is None:
+        return None
+    value = value.strip()
+    if value.isdigit():
+        return float(value)
+    try:
+        when = parsedate_to_datetime(value)
+    except (TypeError, ValueError, IndexError):
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=UTC)
+    return max(0.0, (when - (now or datetime.now(UTC))).total_seconds())
+
+
+def throttle_code(response: httpx.Response) -> ErrorCode | None:
+    """``RATE_LIMITED`` or ``QUOTA_EXCEEDED`` for a ``429`` with a problem body, else ``None``
+    (a proxy's bare 429, or any other status)."""
+    if response.status_code != 429:
+        return None
+    problem = _parse_problem(response.content)
+    if problem is None or problem.code not in (ErrorCode.RATE_LIMITED, ErrorCode.QUOTA_EXCEEDED):
+        return None
+    return problem.code
 
 
 def _code_for_status(status: int) -> ErrorCode:
@@ -106,11 +166,19 @@ def _preview(body: bytes) -> str | None:
     return text or None
 
 
-def _attach(err: MapiError, status: int, problem: Problem | None) -> MapiError:
-    # MapiError has no slots: typed accessors are problem_of()/http_status_of()
+def _attach(
+    err: MapiError, status: int, problem: Problem | None, retry_after: float | None = None
+) -> MapiError:
+    # MapiError has no slots: typed accessors are problem_of()/http_status_of()/retry_after_of()
     err.http_status = status  # type: ignore[attr-defined]
     err.problem = problem  # type: ignore[attr-defined]
+    err.retry_after = retry_after  # type: ignore[attr-defined]
     return err
+
+
+def _rate_limited(detail: str, *, untrusted_text: str | None, issues: list[Issue]) -> MapiError:
+    pointer = issues[0].pointer if issues else ""
+    return RateLimited(detail, untrusted_text=untrusted_text, issues=issues, pointer=pointer)
 
 
 def error_from_response(response: httpx.Response) -> MapiError:
@@ -120,15 +188,24 @@ def error_from_response(response: httpx.Response) -> MapiError:
     problem = _parse_problem(body)
     request = response.request
     where = f"{request.method} {request.url.path}"
+    retry_after = retry_after_seconds(response) if status in (429, 503) else None
     if problem is not None:
-        return _attach(error_from_problem(problem), status, problem)
+        if problem.code is ErrorCode.RATE_LIMITED:
+            err = _rate_limited(
+                problem.detail or problem.title,
+                untrusted_text=problem.untrusted_text,
+                issues=list(problem.errors),
+            )
+        else:
+            err = error_from_problem(problem)
+        return _attach(err, status, problem, retry_after)
     code = _code_for_status(status)
-    err = error_for_code(
-        code,
-        f"HTTP {status} from {where} (no problem document)",
-        untrusted_text=_preview(body),
-    )
-    return _attach(err, status, None)
+    detail = f"HTTP {status} from {where} (no problem document)"
+    if code is ErrorCode.RATE_LIMITED:
+        err = _rate_limited(detail, untrusted_text=_preview(body), issues=[])
+    else:
+        err = error_for_code(code, detail, untrusted_text=_preview(body))
+    return _attach(err, status, None, retry_after)
 
 
 def raise_for_response(response: httpx.Response) -> NoReturn:

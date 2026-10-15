@@ -10,7 +10,7 @@ from mapi_spec.executor import RunKind
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
 
-from mapi_cli.commands.fit import follow_run, report_run
+from mapi_cli.commands.fit import cost_text, follow_run, report_run
 from mapi_cli.output import safe
 from mapi_cli.state import EXIT_FAILURE, cli_errors, state
 
@@ -47,7 +47,7 @@ def ls(
         out.emit_json(runs)
         return
     out.table(
-        ["id", "kind", "state", "attempt", "progress", "created"],
+        ["id", "kind", "state", "attempt", "progress", "cost", "created"],
         [
             (
                 r.id,
@@ -57,6 +57,7 @@ def ls(
                 f"{r.progress.fraction:.0%}"
                 if r.progress and r.progress.fraction is not None
                 else "",
+                cost_text(r.cost),
                 r.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             )
             for r in runs
@@ -67,7 +68,7 @@ def ls(
 @app.command("get")
 @cli_errors
 def get(ctx: typer.Context, run_id: Annotated[str, typer.Argument(help="Run id")]) -> None:
-    """Show one run (state, failure, progress, problem)."""
+    """Show one run (state, failure, cost, problem)."""
     st = state(ctx)
     with st.client() as api:
         run = api.runs.get(run_id)
