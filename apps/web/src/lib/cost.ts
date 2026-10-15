@@ -7,14 +7,14 @@ import type { RunCost } from "@/api/types";
 export const MICROS_PER_UNIT = 1_000_000;
 
 /**
- * `31_200` USD micros → `$0.0312`. Sub-cent amounts keep up to four decimals so a single
+ * `31_200` USD micros → `$0.0312`. Amounts under ten cents keep up to four decimals so a single
  * run's cost is never shown as `$0.00`; larger amounts use two.
  */
 export function formatMicros(micros: number | null | undefined, currency: string | null | undefined = "USD"): string {
   if (micros == null || !Number.isFinite(micros)) return "—";
   const value = micros / MICROS_PER_UNIT;
   const abs = Math.abs(value);
-  const digits = abs === 0 ? 2 : abs < 0.01 ? 4 : abs < 1 ? 3 : 2;
+  const digits = abs === 0 ? 2 : abs < 0.1 ? 4 : abs < 1 ? 3 : 2;
   try {
     return new Intl.NumberFormat("en", {
       style: "currency",
