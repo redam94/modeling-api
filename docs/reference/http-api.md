@@ -116,6 +116,12 @@ The stream sends these frames, in this order:
 4. `event: end` once the run is terminal (data: the final `Run`). The server then closes the
    stream. A client that sees `end` must not reconnect.
 
+The server also sends a fresh `event: snapshot` (no `id:`) whenever the run's state changes,
+so a client can re-render from the latest `Run` without reassembling it from events. `progress`
+and `log` frames are *not* persisted: they are sent live without an `id:` (data: `{run_id,
+attempt, seq, ts, type, payload}`) and are never replayed; `Last-Event-ID` only covers
+persisted events.
+
 Between events the server writes a heartbeat comment (`: keepalive`) every 15 seconds. The
 first frame also carries `retry: 3000`.
 

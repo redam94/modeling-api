@@ -32,10 +32,10 @@ a subprocess test enforce it).
 uv run pytest packages/runner -q
 ```
 
-The end-to-end tests run the real `mapi-runner` process against `tests/fakegcs.py`, a small
-signed-URL GCS fake (generations, server-side CRC32C/MD5, signed GET with ranges, write-once
-signed PUT, POST policies, exec-token JSON API on the bootstrap bucket). It stands in for
-`mapi_gcs_shim` until the shim lands; the tests only use the contract shapes in
-`mapi_spec.storage`, so switching to the shim fixture is a fixture swap.
+The end-to-end tests run the real `mapi-runner` process against the real local GCS emulator
+(`mapi_gcs_shim`, wrapped by `tests/shimgcs.py`, which also records every request so tests can
+assert on ranged reads and the bootstrap GET-then-DELETE). The runner only sees what a real
+execution sees: signed URLs, a POST policy and the bootstrap object read as the shim's `exec`
+principal.
 
 License: dual AGPL-3.0 / commercial (see ../../LICENSE.md).

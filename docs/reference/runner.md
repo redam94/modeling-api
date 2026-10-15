@@ -127,20 +127,22 @@ reports becomes `user`.
 
 ## What `RunSpec.spec` holds, per kind
 
-The dispatcher writes these documents, and they are defined in `mapi_runner.jobs`. Inputs
-are read with HTTP range requests. Every dataset is a single-object `*.zarr.zip`. A dataset's
-raw schema comes from the `schema` input if there is one, otherwise from the zarr root
-attribute `mapi_schema` (which ingest writes), and otherwise it is inferred.
+The dispatcher writes these documents and the runner reads them; both import the models and
+the input/output names from `mapi_spec.jobs` (see the [run protocol](run-protocol.md#job-payloads-and-object-names)).
+Inputs are read with HTTP range requests. Every dataset is a single-object `*.zarr.zip`. A
+dataset's raw schema comes from the `schema` input if there is one, otherwise from the zarr
+root attribute `mapi_schema` (`mapi_spec.jobs.DATASET_SCHEMA_ATTR`, which ingest writes and
+uploads may carry), and otherwise it is inferred.
 
 | Kind | `spec` | Inputs | Outputs (relative to the attempt prefix) |
 |---|---|---|---|
-| `ingest` | `IngestMapping`, or `{"mapping": …}`, or `{"preset": "mff", "mff": {…}}` | `upload` | `data.zarr.zip`, `schema.json`, `profile.json` (holds `sha256` and `size_bytes` of the data), `preview.json` |
-| `describe` | `{}` | none | `catalog.json` (`Catalog`), `describe.json` (`catalog_digest`, versions) |
+| `ingest` | `IngestMapping`, or `IngestJob` (`{"mapping": …}` or `{"preset": "mff", "mff": {…}}`, plus the informational `dataset` and `source`) | `upload` | `data.zarr.zip`, `schema.json`, `summary.json` (`DataSummary`), `profile.json` (`mapi.profile/v1`, plus `sha256` and `size_bytes` of the data), `preview.json` (`mapi.preview/v1`) |
+| `describe` | `DescribeJob` (`{"image_digest": …?}`) | none | `catalog.json` (`Catalog`), `describe.json` (`catalog_digest`, versions) |
 | `validate` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `validation.json` (`ValidateResponse` with the stages resolved by a dry run) |
-| `fit` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `bundle.zarr.zip`, `bundle.manifest.json`, `diagnostics.json`, `plots.json`, `metrics.json`, `evaluation/…`, `ui/thin.zarr.zip`, `ui/summaries.json`, `ui/tree_index.json`, `ui/grids/*.arrow`, `ui/plotdata/*.arrow` |
+| `fit` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `bundle.zarr.zip`, `bundle.manifest.json`, `diagnostics.json`, `plots.json`, `metrics.json`, `coords.json` (`{stage: {dim: CoordSummary}}`), `evaluation/…`, `ui/thin.zarr.zip`, `ui/summaries.json`, `ui/tree_index.json` (`mapi.tree-index/v1`), `ui/grids/*.arrow`, `ui/plotdata/*.arrow` |
 | `score` | a `ScoreRequest`, or `{"request": …, "plots": […], "max_draws": n}` | `bundle`, optional `bundle.manifest`, `dataset` (payload), `scenario`, `side.<name>` | `score.zarr.zip`, `result.json`, `ui/summary.arrow`, `plots.json` |
 | `evaluate` | `{"request": …?, "metrics": […]?}` | `bundle`, `dataset`, `side.<name>` | the score outputs plus `metrics.json` |
-| `derive` | `{"names": […], "draws": n?}` | `bundle`, `dataset`, `side.<name>` | `derived.zarr.zip`, `ui/grids/<name>.arrow`, `result.json` |
+| `derive` | `{"names": […], "draws": n?, "data": "dataset://…"?}` | `bundle`, `dataset`, `side.<name>` | `derived.zarr.zip`, `ui/grids/<name>.arrow`, `result.json` |
 | `render` | `{"plots": […]?, "format": "png" \| "svg", "scale": 2}` | `plots` (a `plots.json`) | `renders/<plot id>.<format>` |
 
 At the top level of the attempt prefix, `manifest.json` is the runner's `OutputManifest`.
