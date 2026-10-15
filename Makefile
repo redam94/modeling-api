@@ -99,10 +99,10 @@ test-fast: ## Unit tests only, skipping slow MCMC tests
 test-all: test web-test ## Python suite + web (Vitest) suites
 
 .PHONY: e2e
-e2e: ## End-to-end tests against a running stack (`make dev` or `make compose-up` first)
+e2e: ## End-to-end tests against a running stack (`make dev` first): API suite, then the browser @e2e suite
 	$(UV) run pytest -q -m e2e
 	@if ls apps/web/playwright.config.* >/dev/null 2>&1; then \
-		$(PNPM) --filter @mapi/web exec playwright test; \
+		$(PNPM) --filter @mapi/web e2e; \
 	else echo "e2e: apps/web has no Playwright config; browser suite skipped"; fi
 
 .PHONY: conformance
