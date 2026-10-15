@@ -8,20 +8,22 @@
   "scripts": {
     "dev": "vite",
     "dev:mock": "vite --mode mock",
-    "build": "tsc -b --noEmit && vite build",
+    "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview",
     "test": "vitest run && playwright test",
     "test:unit": "vitest run",
     "test:smoke": "playwright test",
     "e2e": "playwright test --grep @e2e",
     "lint": "eslint .",
-    "typecheck": "tsc -b --noEmit",
+    "typecheck": "tsc -p tsconfig.json",
     "openapi:gen": "uv run python scripts/gen_openapi.py",
     "openapi:fetch": "node scripts/fetch-openapi.mjs",
-    "openapi:types": "openapi-typescript openapi.json -o src/api/schema.d.ts",
-    "openapi:check": "openapi-typescript openapi.json -o src/api/schema.d.ts --check"
+    "openapi:types": "openapi-typescript openapi.json -o src/api/schema.d.ts --default-non-nullable false",
+    "openapi:check": "openapi-typescript openapi.json -o src/api/schema.d.ts --default-non-nullable false --check"
   },
   "dependencies": {
+    "@fontsource-variable/hanken-grotesk": "5.2.8",
+    "@fontsource-variable/jetbrains-mono": "5.2.8",
     "@mapi/plot-sandbox": "workspace:*",
     "@tanstack/react-query": "5.103.3",
     "@tanstack/react-router": "1.170.37",
