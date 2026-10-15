@@ -147,6 +147,7 @@ nav:
       - Error codes: reference/generated/error-codes.md
       - HTTP API (v1): reference/http-api.md
       - Run protocol: reference/run-protocol.md
+      - GCS shim: reference/gcs-shim.md
       - API reference:
           - reference/api/index.md
           - mapi_spec: reference/api/spec.md

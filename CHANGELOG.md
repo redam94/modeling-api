@@ -23,6 +23,14 @@ milestone releases are tagged on `main`.
   join `export_schemas()` and the contract snapshot.
 - **docs**: the "HTTP API (v1)" and "Run protocol" reference pages
   (`docs/reference/http-api.md`, `docs/reference/run-protocol.md`).
+- **gcs-shim**: `mapi-gcs-shim`, a local Cloud Storage emulator. It serves the GCS JSON-API
+  subset the platform uses, with generation and metageneration preconditions, plus V4 signed
+  GET (with `Range`) and PUT URLs and V4 POST policies (key prefix and size range). It adds
+  IAM-lite principals (`control`, and `exec` with bootstrap get and delete only), a write-once
+  bundles bucket, lifecycle sweeps, and server-computed CRC32C and MD5 on a crash-safe
+  filesystem backend. `ShimObjectStore` and the import-guarded `GcsObjectStore` implement
+  `mapi_spec.storage.ObjectStore`, and a `pytest11` plugin provides the `gcs_shim` fixture.
+  See `docs/reference/gcs-shim.md`.
 
 ## [0.1.0] — M0: contract layer — 2026-10-15
 
