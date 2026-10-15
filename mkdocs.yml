@@ -16,6 +16,8 @@ nav:
   - Home: index.md
   - Guides:
       - Write a step or model plugin: guides/plugins.md
+      - Plots, recipes and templates: guides/plots.md
   - Reference:
       - Spec format: reference/spec-format.md
       - Python SDK: reference/sdk.md
+      - Plots and the sanitizer: reference/plots.md
