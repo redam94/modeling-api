@@ -9,18 +9,9 @@ import { EmptyState, Mono, PageHeader, QueryView, StateBadge } from "@/component
 import { DataTable } from "@/components/data-table";
 import { NativeSelect } from "@/components/ui/primitives";
 import { elapsedSeconds, formatDuration, relativeTime, shortId } from "@/lib/format";
-import { RUN_STATES, STATE_META } from "@/lib/run-state";
+import { RUN_KINDS, RUN_STATES, runSubject, STATE_META } from "@/lib/run-state";
 
 const route = getRouteApi("/runs");
-
-export const RUN_KINDS: RunKind[] = ["fit", "validate", "score", "ingest", "evaluate", "derive", "render"];
-
-export function runSubject(run: Run): string {
-  if (run.spec_id) return `${shortId(run.spec_id)} r${run.spec_revision ?? "?"}`;
-  if (run.model_version_id) return shortId(run.model_version_id);
-  if (run.dataset_id) return shortId(run.dataset_id);
-  return "—";
-}
 
 export const runColumns: ColumnDef<Run, unknown>[] = [
   {

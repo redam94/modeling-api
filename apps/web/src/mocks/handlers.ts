@@ -91,7 +91,8 @@ function sseResponse(state: MockState, run: Run, request: Request): Response {
             { chain: 1, draws_done: Math.max(0, done - 20), draws_total: 1000, tuning: false, divergences: 2 },
           ],
         };
-        const ev: RunEventView = { id: 0, run_id: run.id, attempt: 1, seq, ts: new Date().toISOString(), type: "progress", payload };
+        // Same shape as the server's live frames (`_live_json`): not persisted, so no `id`.
+        const ev: Omit<RunEventView, "id"> = { run_id: run.id, attempt: 1, seq, ts: new Date().toISOString(), type: "progress", payload };
         controller.enqueue(enc.encode(sseFrame("progress", ev)));
       }, 800);
       request.signal.addEventListener("abort", () => {

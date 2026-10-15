@@ -24,9 +24,13 @@ import { CommandPalette, ShortcutsDialog } from "./command-palette";
 import { EXPERT_NAV, GUIDED_NAV, SETTINGS_NAV, type NavItem } from "./nav";
 import { Toaster } from "./toaster";
 
-function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+function useIsActive(item: NavItem): boolean {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const active = item.to === "/" ? pathname === "/" : pathname === item.to || pathname.startsWith(`${item.to}/`);
+  return item.to === "/" ? pathname === "/" : pathname === item.to || pathname.startsWith(`${item.to}/`);
+}
+
+function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+  const active = useIsActive(item);
   const Icon = item.icon;
   const link = (
     <Link
@@ -49,6 +53,23 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
     </Tooltip>
   ) : (
     link
+  );
+}
+
+/** Phone-width nav: every destination (Settings included) in a wrapping row, never scrolled. */
+function CompactNavLink({ item }: { item: NavItem }) {
+  const active = useIsActive(item);
+  return (
+    <Link
+      to={item.to}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground",
+        active && "bg-accent text-foreground",
+      )}
+    >
+      {item.label}
+    </Link>
   );
 }
 
@@ -180,31 +201,34 @@ export function AppShell({ children }: { children?: ReactNode }) {
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur md:px-6">
-          <nav aria-label="Primary (compact)" className="flex gap-1 overflow-x-auto md:hidden">
-            {nav.map((item) => (
-              <Link key={item.to} to={item.to} className="rounded px-2 py-1 text-xs text-muted-foreground [&.active]:text-foreground">
-                {item.label}
-              </Link>
+        <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
+          <div className="flex h-12 items-center gap-3 px-4 md:px-6">
+            <Button variant="ghost" size="icon-sm" onClick={() => setPaletteOpen(true)} aria-label="Jump to…" className="md:hidden">
+              <Search />
+            </Button>
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              className="hidden h-8 w-72 items-center gap-2 rounded-md border bg-card px-2.5 text-[13px] text-muted-foreground hover:text-foreground md:flex"
+            >
+              <Search className="size-4" />
+              Jump to…
+              <span className="ml-auto flex gap-0.5">
+                <Kbd>⌘</Kbd>
+                <Kbd>K</Kbd>
+              </span>
+            </button>
+            <div className="ml-auto flex min-w-0 items-center gap-2">
+              <HealthDot />
+              <PersonaToggle />
+              <ThemeMenu />
+            </div>
+          </div>
+          <nav aria-label="Primary (compact)" className="flex flex-wrap gap-1 border-t px-3 py-1.5 md:hidden">
+            {[...nav, SETTINGS_NAV].map((item) => (
+              <CompactNavLink key={item.to} item={item} />
             ))}
           </nav>
-          <button
-            type="button"
-            onClick={() => setPaletteOpen(true)}
-            className="hidden h-8 w-72 items-center gap-2 rounded-md border bg-card px-2.5 text-[13px] text-muted-foreground hover:text-foreground md:flex"
-          >
-            <Search className="size-4" />
-            Jump to…
-            <span className="ml-auto flex gap-0.5">
-              <Kbd>⌘</Kbd>
-              <Kbd>K</Kbd>
-            </span>
-          </button>
-          <div className="ml-auto flex items-center gap-2">
-            <HealthDot />
-            <PersonaToggle />
-            <ThemeMenu />
-          </div>
         </header>
         <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
           {children ?? <Outlet />}

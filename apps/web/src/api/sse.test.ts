@@ -32,6 +32,16 @@ const run = (state: Run["state"]): Run =>
 
 const event = (id: number): RunEventView => ({ id, run_id: "run_1", attempt: 1, seq: id, ts: "2026-10-15T09:30:00Z", type: "state", payload: { phase: "fit" } });
 
+/** A live frame exactly as the server's `_live_json` writes it: no `id` field and no `id:` line. */
+const live = (seq: number, type: "progress" | "log", payload: Record<string, unknown> = { phase: "sample" }) => ({
+  run_id: "run_1",
+  attempt: 1,
+  seq,
+  ts: "2026-10-15T09:30:01Z",
+  type,
+  payload,
+});
+
 function sse(body: string, status = 200): Response {
   return new Response(body, { status, headers: { "content-type": "text/event-stream" } });
 }
@@ -66,7 +76,7 @@ describe("followRunEvents", () => {
   it("does not advance Last-Event-ID for unpersisted (id-less) frames", async () => {
     const calls: (string | null)[] = [];
     const responses = [
-      sse(frame("state", event(5), 5) + frame("progress", { ...event(0), type: "progress" })),
+      sse(frame("state", event(5), 5) + frame("progress", live(9, "progress"))),
       sse(frame("end", run("failed"))),
     ];
     const fetchImpl = vi.fn(async (_u: RequestInfo | URL, init?: RequestInit) => {
@@ -79,6 +89,38 @@ describe("followRunEvents", () => {
       sleep: async () => undefined,
     });
     expect(calls).toEqual([null, "5"]);
+  });
+
+  it("delivers the server's live progress and log frames (which carry no id)", async () => {
+    const calls: (string | null)[] = [];
+    const responses = [
+      sse(
+        frame("snapshot", run("running")) +
+          frame("state", event(4), 4) +
+          frame("progress", live(10, "progress", { phase: "sample", fraction: 0.25 })) +
+          frame("log", live(11, "log", { stream: "stdout", line: "hello" })) +
+          frame("progress", { seq: 12, type: "progress" }) + // no run_id/attempt/ts: malformed, dropped
+          frame("end", run("succeeded")),
+      ),
+    ];
+    const fetchImpl = vi.fn(async (_u: RequestInfo | URL, init?: RequestInit) => {
+      calls.push(new Headers(init?.headers).get("Last-Event-ID"));
+      return responses.shift()!;
+    });
+    const onEvent = vi.fn();
+    await followRunEvents("run_1", { onSnapshot: vi.fn(), onEvent, onEnd: vi.fn() }, {
+      signal: new AbortController().signal,
+      fetchImpl,
+      sleep: async () => undefined,
+    });
+    const got = onEvent.mock.calls.map((c) => c[0] as { id: number | null; type: string; seq: number; payload: unknown });
+    expect(got.map((e) => [e.type, e.id, e.seq])).toEqual([
+      ["state", 4, 4],
+      ["progress", null, 10],
+      ["log", null, 11],
+    ]);
+    expect(got[1]!.payload).toEqual({ phase: "sample", fraction: 0.25 });
+    expect(calls).toEqual([null]);
   });
 
   it("backs off on errors and gives up on 404", async () => {

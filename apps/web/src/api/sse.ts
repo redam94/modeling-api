@@ -84,11 +84,20 @@ export class SseParser {
   }
 }
 
+/**
+ * A run event as it arrives over SSE. Persisted events carry their `run_events` row `id`;
+ * live `progress`/`log` frames (the server's `_live_json`) are not persisted and have none.
+ */
+export type RunStreamEvent = Omit<RunEventView, "id"> & { id: number | null };
+
+/** Live frame types the server sends without an id (never persisted to `run_events`). */
+const LIVE_EVENT_NAMES = new Set(["progress", "log"]);
+
 export type RunStreamStatus = "connecting" | "open" | "reconnecting" | "ended" | "error";
 
 export interface RunStreamHandlers {
   onSnapshot(run: Run): void;
-  onEvent(event: RunEventView, live: boolean): void;
+  onEvent(event: RunStreamEvent, live: boolean): void;
   onEnd(run: Run): void;
   onStatus?(status: RunStreamStatus, detail?: string): void;
 }
@@ -141,10 +150,30 @@ function isRun(v: unknown): v is Run {
   return typeof v === "object" && v !== null && typeof (v as Run).id === "string" && typeof (v as Run).state === "string";
 }
 
-function isRunEvent(v: unknown): v is RunEventView {
-  if (typeof v !== "object" || v === null) return false;
-  const e = v as RunEventView;
-  return typeof e.id === "number" && typeof e.type === "string" && typeof e.seq === "number";
+/**
+ * Validate an event frame's JSON. Persisted events must carry a numeric `id`; live
+ * `progress`/`log` frames come without one and are returned with `id: null`.
+ */
+export function parseRunStreamEvent(v: unknown): RunStreamEvent | null {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
+  const e = v as Record<string, unknown>;
+  if (
+    typeof e.type !== "string" ||
+    typeof e.seq !== "number" ||
+    typeof e.run_id !== "string" ||
+    typeof e.attempt !== "number" ||
+    typeof e.ts !== "string"
+  ) {
+    return null;
+  }
+  const payload = typeof e.payload === "object" && e.payload !== null && !Array.isArray(e.payload) ? e.payload : {};
+  let id: number | null;
+  if (typeof e.id === "number") id = e.id;
+  else if (e.id === undefined || e.id === null) {
+    if (!LIVE_EVENT_NAMES.has(e.type)) return null; // persisted kinds always carry their id
+    id = null;
+  } else return null;
+  return { ...(e as unknown as RunEventView), id, payload: payload as RunEventView["payload"] };
 }
 
 /**
@@ -194,10 +223,13 @@ export async function followRunEvents(
           } else if (frame.event === "end" && isRun(data)) {
             ended = true;
             handlers.onEnd(data);
-          } else if (RUN_EVENT_NAMES.has(frame.event) && isRunEvent(data)) {
+          } else if (RUN_EVENT_NAMES.has(frame.event)) {
+            const ev = parseRunStreamEvent(data);
+            if (!ev) continue;
+            // Only frames with an `id:` line are persisted; live frames never move the resume point.
             const persisted = frame.id !== null && /^\d+$/.test(frame.id);
             if (persisted) lastId = Number(frame.id);
-            handlers.onEvent(data, true);
+            handlers.onEvent(ev, true);
           }
         }
         if (ended) {

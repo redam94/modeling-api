@@ -103,6 +103,65 @@ test("spec editor validates live and shows the pipeline with its split", async (
   await expect(pipeline.getByText("Keeps a 6-step tail along time", { exact: false })).toBeVisible();
 });
 
+async function typeInEditor(page: import("@playwright/test").Page, text: string) {
+  const editor = page.getByTestId("yaml-editor");
+  await expect(editor.locator(".view-lines")).toContainText("apiVersion: mapi/v1", { timeout: 20_000 });
+  await editor.locator(".view-line").first().click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type(text);
+  await expect(editor.locator(".view-lines")).toContainText(text);
+}
+
+test("spec editor keeps unsaved edits when a newer revision appears", async ({ page }) => {
+  await page.goto(`/build/${SPEC}`);
+  // The revision being edited is pinned in the URL once the latest one is known.
+  await expect(page).toHaveURL(/[?&]rev=2\b/);
+  await typeInEditor(page, "# MY UNSAVED EDIT");
+  await expect(page.getByText("unsaved changes", { exact: true })).toBeVisible();
+  // Another tab (or the CLI) saves r3.
+  const status = await page.evaluate(async (spec) => {
+    const res = await fetch(`http://127.0.0.1:8000/v1/specs/${spec}/revisions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ yaml: "apiVersion: mapi/v1\nkind: ModelSpec\n", parent_revision: 2 }),
+    });
+    return res.status;
+  }, SPEC);
+  expect(status).toBe(201);
+  // Let the spec query go stale (staleTime 10 s), then refocus the window to refetch it.
+  await page.waitForTimeout(10_500);
+  await page.evaluate(() => {
+    // TanStack Query's focusManager listens for `visibilitychange` on window.
+    window.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect(page.getByRole("status").filter({ hasText: "r3" })).toBeVisible();
+  await expect(page.getByTestId("yaml-editor").locator(".view-lines")).toContainText("# MY UNSAVED EDIT");
+  await expect(page.getByText("unsaved changes", { exact: true })).toBeVisible();
+});
+
+test("saving edits of an older revision asks before replacing the latest", async ({ page }) => {
+  const posted: unknown[] = [];
+  page.on("request", (req) => {
+    if (req.method() === "POST" && /\/v1\/specs\/[^/]+\/revisions$/.test(req.url())) posted.push(req.postDataJSON());
+  });
+  await page.goto(`/build/${SPEC}?rev=1`);
+  await typeInEditor(page, "# restore r1");
+  const dialogs: string[] = [];
+  page.once("dialog", (d) => {
+    dialogs.push(d.message());
+    void d.dismiss();
+  });
+  await page.getByRole("button", { name: "Save revision" }).click();
+  await expect.poll(() => dialogs.length).toBe(1);
+  expect(dialogs[0]).toContain("r1");
+  expect(posted).toEqual([]);
+  page.once("dialog", (d) => void d.accept());
+  await page.getByRole("button", { name: "Save revision" }).click();
+  await expect(page).toHaveURL(/[?&]rev=3\b/);
+  expect(posted).toEqual([expect.objectContaining({ parent_revision: 2 })]);
+});
+
 test("a CSV is previewed locally, mapped, uploaded to the signed URL and ingested", async ({ page }) => {
   await page.goto("/datasets/ds_01jaf3a1b2c3d4e5f6g7h8j9k0?upload=true");
   const csv = "date,market,revenue,spend\n2026-01-01,de,10.5,3\n2026-01-02,de,11,4\n";
@@ -125,10 +184,68 @@ test("scoring returns outputs that open as a table and a sandboxed chart", async
   await expect(page.getByRole("table", { name: "ui/plotdata/ppc_fan.arrow" })).toContainText("week");
   const frame = page.locator('iframe[data-testid="plot-frame"]');
   await expect(frame.contentFrame().locator("svg.marks")).toBeVisible({ timeout: 20_000 });
+  // Downloading an output saves a file and keeps the results on screen.
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download summary.json" }).click();
+  expect((await download).suggestedFilename()).toBe("summary.json");
+  await expect(page).toHaveURL(/\/score\?/);
+  await expect(page.getByText("ui/plotdata/ppc_fan.arrow")).toBeVisible();
+});
+
+test("score form errors are marked on their fields and focus the first one", async ({ page }) => {
+  await page.goto(`/score?model=${MODEL}&version=1`);
+  await page.getByLabel("Draws").fill("abc");
+  await page.getByLabel("Variables (optional)").fill("bad name!");
+  await page.getByRole("button", { name: "Score", exact: true }).click();
+  const draws = page.getByLabel("Draws");
+  await expect(draws).toBeFocused();
+  await expect(draws).toHaveAttribute("aria-invalid", "true");
+  await expect(draws).toHaveAccessibleDescription(/Draws must be between 0 and 10000\..*0 returns summaries only\./);
+  await expect(page.getByLabel("Variables (optional)")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("alert").filter({ hasText: "Draws must be between" })).toBeVisible();
+  await expect(page.getByLabel("Seed (optional)")).not.toHaveAttribute("aria-invalid");
 });
 
 test("theme can be switched to dark", async ({ page }) => {
   await page.goto("/settings");
   await page.getByRole("radio", { name: "Dark" }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
+});
+
+test.describe("phone layout (375 px)", () => {
+  test.use({ viewport: { width: 375, height: 800 } });
+  const DATASET = "ds_01jaf3a1b2c3d4e5f6g7h8j9k0";
+
+  const pages: [string, string][] = [
+    ["/", "1 run in flight"],
+    [`/models/${MODEL}/versions/1`, "Diagnostics"],
+    [`/datasets/${DATASET}`, "Versions"],
+    [`/runs/${RUNNING}`, "attempt 1"],
+    [`/score?model=${MODEL}&version=1`, "Outputs"],
+  ];
+  for (const [path, marker] of pages) {
+    test(`${path} does not scroll horizontally`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.getByRole("main").getByText(marker).first()).toBeVisible();
+      await page.waitForTimeout(500); // let lazy content lay out (SSE keeps the network busy)
+      const { scroll, client } = await page.evaluate(() => ({
+        scroll: document.documentElement.scrollWidth,
+        client: document.documentElement.clientWidth,
+      }));
+      expect(scroll, `${path} is ${scroll}px wide in a ${client}px viewport`).toBeLessThanOrEqual(client);
+    });
+  }
+
+  test("the compact nav shows every destination, Settings included", async ({ page }) => {
+    await page.goto("/");
+    const nav = page.getByRole("navigation", { name: "Primary (compact)" });
+    for (const label of ["Home", "Datasets", "Build", "Runs", "Models", "Score", "Catalog", "Settings"]) {
+      const link = nav.getByRole("link", { name: label, exact: true });
+      await expect(link).toBeVisible();
+      const box = await link.boundingBox();
+      expect(box, label).not.toBeNull();
+      expect(box!.x, label).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width, label).toBeLessThanOrEqual(375);
+    }
+  });
 });

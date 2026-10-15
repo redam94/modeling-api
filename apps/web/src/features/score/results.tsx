@@ -3,6 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Download, FileJson, Table2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { errorMessage } from "@/api/client";
 import { useRunPlots } from "@/api/queries";
 import type { ArtifactLink, PlotSpec } from "@/api/types";
 import { ErrorNotice, JsonBlock, LoadingRows, Mono } from "@/components/common";
@@ -14,10 +15,12 @@ import { resolvePlotDatasets } from "@/features/plots/plot-data";
 import { PlotFrame } from "@/features/plots/plot-frame";
 import type { JsonObject } from "@mapi/plot-sandbox/protocol";
 import { decodeArrow, type DecodedTable, type Row } from "@/lib/arrow";
-import { fetchArtifactBytes, fetchArtifactJson } from "@/lib/artifacts";
+import { fetchArtifactBytes, fetchArtifactJson, MAX_ARTIFACT_BYTES } from "@/lib/artifacts";
+import { saveBytes } from "@/lib/download";
 import { formatBytes, formatNumber, formatTimestamp, relativeTime } from "@/lib/format";
 import { distinctOn, pivotStats } from "@/lib/summary";
 import { cn } from "@/lib/utils";
+import { toast } from "@/stores/toast";
 
 function isArrow(link: ArtifactLink): boolean {
   return /\.(arrow|feather|ipc)$/i.test(link.name) || (link.content_type ?? "").includes("arrow");
@@ -177,6 +180,47 @@ function RunPlots({ runId, outputs }: { runId: string; outputs: ArtifactLink[] }
 }
 
 /**
+ * Download one output. The signed URL is on the storage origin, where `<a download>` is
+ * ignored and the tab would navigate away (losing the in-memory results), so the bytes are
+ * fetched, checked against the CRC32C, and saved from a Blob. Outputs too large to buffer
+ * open in a new tab instead.
+ */
+function OutputDownload({ link }: { link: ArtifactLink }) {
+  const [busy, setBusy] = useState(false);
+  const filename = link.name.split("/").at(-1) || "output";
+  const label = `Download ${filename}`;
+  if (link.size > MAX_ARTIFACT_BYTES) {
+    return (
+      <Button size="sm" variant="ghost" asChild>
+        <a href={link.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" aria-label={label}>
+          <Download /> Download
+        </a>
+      </Button>
+    );
+  }
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      aria-label={label}
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          saveBytes(await fetchArtifactBytes(link), filename);
+        } catch (e) {
+          toast.error(`${filename} could not be downloaded`, errorMessage(e));
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <Download /> {busy ? "Downloading…" : "Download"}
+    </Button>
+  );
+}
+
+/**
  * Score outputs: the run's own plots (forecast fan, counterfactual band) first, then the list
  * of signed links; Arrow outputs open as a table and a quick chart.
  */
@@ -200,11 +244,7 @@ export function ScoreResults({ outputs, runId }: { outputs: ArtifactLink[]; runI
                   Open
                 </Button>
               ) : null}
-              <Button size="sm" variant="ghost" asChild>
-                <a href={o.url} download={o.name.split("/").at(-1)} rel="noopener noreferrer" referrerPolicy="no-referrer">
-                  <Download /> Download
-                </a>
-              </Button>
+              <OutputDownload link={o} />
             </span>
           </li>
         ))}

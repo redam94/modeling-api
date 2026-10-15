@@ -81,10 +81,41 @@ describe("PlotHost", () => {
     expect(cb.onRendered).toHaveBeenCalledWith(id);
     deliver({ protocol: PROTOCOL, type: "select", id, items: [{ x: 1 }] });
     expect(cb.onSelect).toHaveBeenCalledWith([{ x: 1 }]);
+    host.requestExport("png");
     deliver({ protocol: PROTOCOL, type: "exported", id, format: "png", dataUrl: "data:image/png;base64,AAAA" });
     expect(cb.onExported).toHaveBeenCalledWith("png", "data:image/png;base64,AAAA");
     deliver({ protocol: PROTOCOL, type: "error", id: null, code: "RENDER_FAILED", message: "x" });
     expect(cb.onError).toHaveBeenCalledWith("RENDER_FAILED", "x");
+  });
+
+  it("accepts exactly one 'exported' reply per requestExport, matching id and format", () => {
+    const { host, deliver, cb } = setup();
+    deliver(ready);
+    const id = host.render("vega-lite", { mark: "bar" }, {}, "light");
+    const svg = { protocol: PROTOCOL, type: "exported", id, format: "svg", dataUrl: "data:image/svg+xml;base64,PHN2Zz4=" };
+    const png = { protocol: PROTOCOL, type: "exported", id, format: "png", dataUrl: "data:image/png;base64,AAAA" };
+    // Unsolicited: nothing was requested, so a (possibly compromised) sandbox cannot force downloads.
+    deliver(svg);
+    deliver(png);
+    expect(cb.onExported).not.toHaveBeenCalled();
+    host.requestExport("png");
+    deliver(svg); // wrong format for the pending request
+    expect(cb.onExported).not.toHaveBeenCalled();
+    deliver(png);
+    deliver(png); // a replay after the single reply is dropped
+    expect(cb.onExported).toHaveBeenCalledTimes(1);
+    expect(cb.onExported).toHaveBeenCalledWith("png", png.dataUrl);
+  });
+
+  it("drops a pending export when a new plot is rendered", () => {
+    const { host, deliver, cb } = setup();
+    deliver(ready);
+    const first = host.render("vega-lite", { mark: "bar" }, {}, "light");
+    host.requestExport("svg");
+    const second = host.render("vega-lite", { mark: "line" }, {}, "light");
+    deliver({ protocol: PROTOCOL, type: "exported", id: first, format: "svg", dataUrl: "data:image/svg+xml;base64,PHN2Zz4=" });
+    deliver({ protocol: PROTOCOL, type: "exported", id: second, format: "svg", dataUrl: "data:image/svg+xml;base64,PHN2Zz4=" });
+    expect(cb.onExported).not.toHaveBeenCalled();
   });
 
   it("stops talking to the frame if it navigates after the first load", () => {

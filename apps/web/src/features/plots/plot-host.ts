@@ -7,6 +7,7 @@
  * is validated with `parseSandboxMessage`. Messages never cause navigation or API calls.
  * Outbound messages use target origin "*" (an opaque origin cannot be named); if the frame
  * ever navigates after its first load, the host stops talking to it and reports compromise.
+ * An `exported` reply is accepted only once, for the export `requestExport` actually asked for.
  */
 import {
   exportMessage,
@@ -54,6 +55,8 @@ export class PlotHost {
   private compromised = false;
   private pending: ParentMessage | null = null;
   private currentId: string | null = null;
+  /** The one export the parent asked for; an `exported` reply is honoured only if it matches. */
+  private pendingExport: { id: string; format: "png" | "svg" } | null = null;
 
   constructor(
     private readonly frame: FrameLike,
@@ -80,6 +83,7 @@ export class PlotHost {
     counter += 1;
     const id = `plot-${counter}`;
     this.currentId = id;
+    this.pendingExport = null;
     this.send(renderMessage(id, kind, spec, datasets, theme));
     return id;
   }
@@ -89,17 +93,24 @@ export class PlotHost {
   }
 
   requestExport(format: "png" | "svg"): void {
-    if (this.currentId) this.send(exportMessage(this.currentId, format));
+    if (!this.currentId) return;
+    if (this.send(exportMessage(this.currentId, format))) {
+      this.pendingExport = { id: this.currentId, format };
+    }
   }
 
-  private send(msg: ParentMessage): void {
-    if (this.compromised) return;
+  /** Posts to the sandbox; returns whether the message was actually sent. */
+  private send(msg: ParentMessage): boolean {
+    if (this.compromised) return false;
     if (!this.ready) {
       // Only the latest render matters before the sandbox is ready.
       if (msg.type === "render") this.pending = msg;
-      return;
+      return false;
     }
-    this.frame.contentWindow?.postMessage(msg, "*");
+    const target = this.frame.contentWindow;
+    if (!target) return false;
+    target.postMessage(msg, "*");
+    return true;
   }
 
   private readonly onLoad = (): void => {
@@ -138,9 +149,15 @@ export class PlotHost {
       case "select":
         if (msg.id === this.currentId) this.callbacks.onSelect?.(msg.items);
         break;
-      case "exported":
-        if (msg.id === this.currentId) this.callbacks.onExported?.(msg.format, msg.dataUrl);
+      case "exported": {
+        // Only a reply to an export the parent asked for, exactly once: a compromised sandbox
+        // must not be able to push unsolicited (or repeated) file downloads through the app.
+        const want = this.pendingExport;
+        if (!want || msg.id !== this.currentId || msg.id !== want.id || msg.format !== want.format) break;
+        this.pendingExport = null;
+        this.callbacks.onExported?.(msg.format, msg.dataUrl);
         break;
+      }
       case "error":
         if (msg.id === null || msg.id === this.currentId) this.callbacks.onError?.(msg.code, msg.message);
         break;

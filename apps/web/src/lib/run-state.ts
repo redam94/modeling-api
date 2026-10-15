@@ -2,7 +2,10 @@
  * Presentation metadata for the run state machine (mapi_spec.run.RunState). Terminal and
  * resumable sets mirror the contract; the UI never invents transitions.
  */
-import type { RunState } from "@/api/types";
+import type { Run, RunKind, RunState } from "@/api/types";
+import { shortId } from "@/lib/format";
+
+export const RUN_KINDS: readonly RunKind[] = ["fit", "validate", "score", "ingest", "evaluate", "derive", "render"];
 
 export const RUN_STATES: readonly RunState[] = [
   "created",
@@ -77,4 +80,12 @@ export const RESOURCE_CLASSES = ["S", "M", "L", "XL"] as const;
 export function nextResourceClass(rc: string): (typeof RESOURCE_CLASSES)[number] | null {
   const i = RESOURCE_CLASSES.indexOf(rc as (typeof RESOURCE_CLASSES)[number]);
   return i >= 0 && i < RESOURCE_CLASSES.length - 2 ? (RESOURCE_CLASSES[i + 1] ?? null) : null;
+}
+
+/** What a run ran on, as a short label (spec revision, model version or dataset). */
+export function runSubject(run: Run): string {
+  if (run.spec_id) return `${shortId(run.spec_id)} r${run.spec_revision ?? "?"}`;
+  if (run.model_version_id) return shortId(run.model_version_id);
+  if (run.dataset_id) return shortId(run.dataset_id);
+  return "—";
 }

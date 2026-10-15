@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { setupServer } from "msw/node";
 import type { ReactNode } from "react";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { Problem } from "@/api/types";
 import { PipelineCards } from "@/features/editor/pipeline-cards";
@@ -11,11 +11,13 @@ import { buildPipeline } from "@/features/editor/pipeline";
 import { ChainLanes } from "@/features/runs/progress-panel";
 import { LogsViewer } from "@/features/runs/logs-viewer";
 import { createHandlers } from "@/mocks/handlers";
-import { RUN_RUNNING, validateResponseFor } from "@/mocks/fixtures";
+import { artifactLink, profileView, RUN_RUNNING, validateResponseFor } from "@/mocks/fixtures";
+import { ScoreResults } from "@/features/score/results";
 import { STARTER_SPEC } from "@/features/editor/starter";
 import { parse } from "yaml";
 
 import { IssueList, ProblemNotice, StateBadge } from "./common";
+import { Field, Input } from "./ui/primitives";
 import { fuzzyScore } from "./shell/command-palette";
 
 const server = setupServer(...createHandlers());
@@ -103,6 +105,60 @@ describe("IssueList", () => {
     render(<IssueList issues={[{ code: "LEAKAGE_RISK", severity: "error", pointer: "/pipeline/2", message: "m" }]} onSelect={(i) => seen.push(i.pointer ?? "")} />);
     await userEvent.click(screen.getByRole("button"));
     expect(seen).toEqual(["/pipeline/2"]);
+  });
+});
+
+describe("Field", () => {
+  it("shows an error apart from the help text and ties both to the control", () => {
+    render(
+      <Field label="Draws" htmlFor="draws" hint="0 returns summaries only." error="Draws must be between 0 and 10000.">
+        <Input id="draws" />
+      </Field>,
+    );
+    const input = screen.getByLabelText("Draws");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Draws must be between 0 and 10000.");
+    expect(alert).toHaveClass("text-destructive");
+    // The help text stays, and both are announced with the field.
+    expect(screen.getByText("0 returns summaries only.")).toBeInTheDocument();
+    expect(input).toHaveAccessibleDescription("Draws must be between 0 and 10000. 0 returns summaries only.");
+  });
+
+  it("leaves a valid control unmarked", () => {
+    render(
+      <Field label="Seed" htmlFor="seed" hint="Optional.">
+        <Input id="seed" />
+      </Field>,
+    );
+    const input = screen.getByLabelText("Seed");
+    expect(input).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(input).toHaveAccessibleDescription("Optional.");
+  });
+});
+
+describe("ScoreResults download", () => {
+  it("saves the verified bytes as a file instead of navigating to the storage origin", async () => {
+    const bytes = new TextEncoder().encode(JSON.stringify(profileView));
+    const link = artifactLink("profile.json", bytes, "application/json");
+    const blobs: Blob[] = [];
+    const created = vi.fn((b: Blob) => {
+      blobs.push(b);
+      return "blob:http://127.0.0.1:5173/saved";
+    });
+    Object.assign(URL, { createObjectURL: created, revokeObjectURL: vi.fn() });
+    const clicks: { href: string; download: string }[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      clicks.push({ href: this.href, download: this.download });
+    });
+    withQuery(<ScoreResults outputs={[link]} />);
+    // No link to the signed URL: a cross-origin <a download> would replace the app.
+    expect(document.querySelector(`a[href^="http://127.0.0.1:4443"]`)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Download profile.json" }));
+    await waitFor(() => expect(clicks).toHaveLength(1));
+    expect(clicks[0]).toEqual({ href: "blob:http://127.0.0.1:5173/saved", download: "profile.json" });
+    expect(blobs[0]?.size).toBe(bytes.length);
   });
 });
 

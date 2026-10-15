@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useReducer } from "react";
 
 import { qk } from "@/api/queries";
-import { followRunEvents, type RunStreamStatus } from "@/api/sse";
+import { followRunEvents, type RunStreamEvent, type RunStreamStatus } from "@/api/sse";
 import type { ProgressPayload, ProgressSnapshot, Run, RunEventView } from "@/api/types";
 import { isTerminal } from "@/lib/run-state";
 
@@ -41,7 +41,7 @@ export function runStreamReducer(state: RunStreamState, action: Action): RunStre
 
 const initial: RunStreamState = { status: "connecting", detail: null, events: [], progress: null };
 
-export function progressFromEvent(e: RunEventView): ProgressSnapshot | null {
+export function progressFromEvent(e: RunStreamEvent): ProgressSnapshot | null {
   if (e.type !== "progress") return null;
   const p = e.payload as Partial<ProgressPayload>;
   if (typeof p.phase !== "string") return null;
@@ -93,7 +93,8 @@ export function useRunEvents(run: Run | undefined): RunStreamState {
             return;
           }
           if (e.type === "log") return; // logs are paged from /logs
-          dispatch({ type: "event", event: e });
+          if (e.id === null) return; // only persisted events are kept (and deduped by id)
+          dispatch({ type: "event", event: { ...e, id: e.id } });
           if (e.type === "state" || e.type === "complete" || e.type === "error") {
             void qc.invalidateQueries({ queryKey: qk.run(runId) });
           }

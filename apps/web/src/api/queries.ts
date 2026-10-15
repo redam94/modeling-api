@@ -13,11 +13,11 @@ import {
 import { isTerminal } from "@/lib/run-state";
 
 import { api, newIdempotencyKey, unwrap, unwrapWithStatus } from "./client";
+import { advanceLogTail, EMPTY_LOG_TAIL, type LogTail } from "./logs";
 import type {
   ArtifactLink,
   DatasetCreate,
   DatasetVersionCreate,
-  LogLine,
   Model,
   ModelVersion,
   Page,
@@ -325,32 +325,38 @@ export function useRunEventsPage(id: string) {
   });
 }
 
+/** Pages of 200 lines fetched per poll (or per "Load more"). */
 export const MAX_LOG_PAGES = 10;
+/** Lines kept in memory per (run, stream); the oldest are dropped beyond this. */
+export const MAX_LOG_LINES = 10_000;
 
-/** Captured log lines (up to {@link MAX_LOG_PAGES} pages of 200); `next_cursor` set if more exist. */
+/**
+ * Captured log lines, followed as a tail: each fetch continues after what is already loaded
+ * (see {@link advanceLogTail}), so a live run's newest lines keep arriving however long it
+ * logs, and no page is downloaded twice except the still-open last one. `behind` means newer
+ * pages exist that are not loaded yet; a live run catches up quickly, otherwise `refetch()`
+ * loads the next batch.
+ */
 export function useRunLogs(id: string, stream: "stdout" | "stderr" | "system" | null, live: boolean) {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: qk.runLogs(id, stream),
-    queryFn: async ({ signal }): Promise<Page<LogLine>> => {
-      const items: LogLine[] = [];
-      let cursor: string | null | undefined;
-      for (let page = 0; page < MAX_LOG_PAGES; page++) {
-        const res = await unwrap(
-          api.GET("/v1/runs/{run_id}/logs", {
-            params: {
-              path: { run_id: id },
-              query: { limit: 200, ...(stream ? { stream } : {}), ...(cursor ? { cursor } : {}) },
-            },
-            signal,
-          }),
-        );
-        items.push(...res.items);
-        cursor = res.next_cursor;
-        if (!cursor) break;
-      }
-      return { items, next_cursor: cursor ?? null };
-    },
-    refetchInterval: live ? 4000 : false,
+    queryFn: ({ queryKey, signal }): Promise<LogTail> =>
+      advanceLogTail(
+        qc.getQueryData<LogTail>(queryKey) ?? EMPTY_LOG_TAIL,
+        (cursor) =>
+          unwrap(
+            api.GET("/v1/runs/{run_id}/logs", {
+              params: {
+                path: { run_id: id },
+                query: { limit: 200, ...(stream ? { stream } : {}), ...(cursor ? { cursor } : {}) },
+              },
+              signal,
+            }),
+          ),
+        { maxPages: MAX_LOG_PAGES, maxLines: MAX_LOG_LINES },
+      ),
+    refetchInterval: (q) => (live ? (q.state.data?.behind ? 500 : 4000) : false),
   });
 }
 
