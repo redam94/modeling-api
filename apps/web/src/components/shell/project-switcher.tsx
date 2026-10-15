@@ -77,7 +77,7 @@ export function ProjectSwitcher({ className }: { className?: string }) {
             type="button"
             aria-label={`Project: ${label}. Switch project`}
             className={cn(
-              "group flex h-8 max-w-[9.5rem] min-w-0 items-center sm:max-w-[16rem] lg:max-w-[19rem] gap-2 rounded-md border bg-card px-2 text-left text-[13px] shadow-xs hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring",
+              "group flex h-8 max-w-[9.5rem] min-w-0 items-center sm:max-w-[16rem] lg:max-w-[19rem] xl:max-w-[26rem] gap-2 rounded-md border bg-card px-2 text-left text-[13px] shadow-xs hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring",
               className,
             )}
           >

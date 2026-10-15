@@ -139,7 +139,7 @@ export function LogsViewer({ runId, live }: { runId: string; live: boolean }) {
       >
         {lines.length === 0 ? (
           <p className="p-4 font-sans text-[13px] text-muted-foreground">
-            {logs.isPending ? "Loading logs…" : needle ? "No lines match the filter." : "No output captured yet."}
+            {logs.isPending ? "Loading logs…" : needle ? "No lines match the filter." : live ? "No output captured yet." : "This run wrote no output."}
           </p>
         ) : virtualItems.length === 0 ? (
           // Before the first layout pass (and in non-layout environments) render a plain slice.

@@ -7,14 +7,16 @@ import type { RunCost } from "@/api/types";
 export const MICROS_PER_UNIT = 1_000_000;
 
 /**
- * `31_200` USD micros → `$0.0312`. Amounts under ten cents keep up to four decimals so a single
- * run's cost is never shown as `$0.00`; larger amounts use two.
+ * `31_200` USD micros → `$0.0312`. Amounts under ten cents keep up to four decimals, and amounts
+ * under a hundredth of a cent two significant digits (`47` → `$0.000047`), so a run that cost
+ * something is never shown as `$0.00`; larger amounts use two.
  */
 export function formatMicros(micros: number | null | undefined, currency: string | null | undefined = "USD"): string {
   if (micros == null || !Number.isFinite(micros)) return "—";
   const value = micros / MICROS_PER_UNIT;
   const abs = Math.abs(value);
-  const digits = abs === 0 ? 2 : abs < 0.1 ? 4 : abs < 1 ? 3 : 2;
+  const digits =
+    abs === 0 ? 2 : abs < 0.0001 ? Math.min(8, Math.ceil(-Math.log10(abs)) + 1) : abs < 0.1 ? 4 : abs < 1 ? 3 : 2;
   try {
     return new Intl.NumberFormat("en", {
       style: "currency",
@@ -32,6 +34,23 @@ export function formatVcpuSeconds(seconds: number | null | undefined): string {
   if (seconds == null || !Number.isFinite(seconds)) return "—";
   if (Math.abs(seconds) < 3600) return `${trimNumber(seconds, seconds < 10 ? 2 : 0)} vCPU·s`;
   return `${trimNumber(seconds / 3600, 1)} vCPU·h`;
+}
+
+/** `90_000` → `25 GiB·h`; under an hour stays in seconds (`52 GiB·s`), like compute. */
+export function formatGibSeconds(seconds: number | null | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds)) return "—";
+  if (Math.abs(seconds) < 3600) return `${trimNumber(seconds, seconds < 10 ? 2 : 0)} GiB·s`;
+  return `${trimNumber(seconds / 3600, 1)} GiB·h`;
+}
+
+/**
+ * The usage report's ``group_by=token`` key for runs started without an API token (browser
+ * and CLI sessions): ``"-"`` (``mapi_spec.cost``); older servers sent an empty key.
+ */
+export const SESSION_GROUP_KEY = "-";
+
+export function isSessionGroup(key: string): boolean {
+  return key === SESSION_GROUP_KEY || key === "" || key === "none" || key === "session";
 }
 
 /** Compact counts for axis labels: `12 300` → `12.3k`. */

@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/overlays";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/primitives";
 import { useWorkspace } from "@/features/auth/workspace";
-import { compactNumber, formatMicros, formatVcpuSeconds } from "@/lib/cost";
+import { compactNumber, formatGibSeconds, formatMicros, formatVcpuSeconds, isSessionGroup } from "@/lib/cost";
 import { formatBytes } from "@/lib/format";
 import { humanWait } from "@/lib/problems";
 import { cn } from "@/lib/utils";
@@ -170,7 +170,7 @@ function totalsKpis(t: CostTotals, currency: string | null | undefined): ReactNo
       <Kpi icon={<Receipt />} label="Cost" value={formatMicros(t.amount_micros ?? 0, t.currency ?? currency ?? "USD")} />
       <Kpi icon={<Cpu />} label="Compute" value={formatVcpuSeconds(t.vcpu_seconds ?? 0)} />
       <Kpi icon={<Rows3 />} label="Runs" value={(t.runs ?? 0).toLocaleString("en")} sub={t.attempts && t.attempts !== t.runs ? `${t.attempts} attempts billed` : undefined} />
-      <Kpi icon={<Server />} label="Memory" value={`${compactNumber((t.gib_seconds ?? 0) / 3600)} GiB·h`} />
+      <Kpi icon={<Server />} label="Memory" value={formatGibSeconds(t.gib_seconds ?? 0)} />
     </div>
   );
 }
@@ -316,7 +316,7 @@ export function UsagePage() {
                   metric={metric}
                   currency={currency}
                   label={tenantScope ? "Cost by project" : "Cost by token"}
-                  name={(k) => (tenantScope ? (projectNames.get(k) ?? k) : k === "" || k === "none" || k === "session" ? "Signed-in users" : (tokenNames.get(k) ?? k))}
+                  name={(k) => (tenantScope ? (projectNames.get(k) ?? k) : isSessionGroup(k) ? "Signed-in users" : (tokenNames.get(k) ?? k))}
                 />
               </CardContent>
             </Card>
