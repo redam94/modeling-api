@@ -364,6 +364,31 @@ def test_fit_vs_actual_and_residuals(scored: Any) -> None:
         get_recipe("core.fit_vs_actual").render({"draws": base["draws"].to_dataset()})
 
 
+def test_point_vs_actual_compare_summaries_per_cell() -> None:
+    """Quantile/interval summaries over extra dims cannot be summed; the cell-wise recipes
+    keep every cell instead (the fan still refuses)."""
+    base = ex.score_tree(with_draws=False)
+    summ = base["summary"].to_dataset()
+    obs = base["observed"].to_dataset()
+    sku = ["k0", "k1"]
+    tree = {
+        "summary": xr.concat([summ, summ * 1.1], dim=pd.Index(sku, name="sku")),
+        "observed": xr.concat([obs, obs * 1.1], dim=pd.Index(sku, name="sku")),
+    }
+    with pytest.raises(RecipeDataError, match="cannot be added up"):
+        get_recipe("core.ppc_fan").render(tree)
+    pts = frame(get_recipe("core.fit_vs_actual").render(tree), "points")
+    # geo is picked as the colour facet; the remaining sku dim labels each cell
+    assert len(pts) == 2 * 60 and set(pts["group"]) == {"north", "south", "east"}
+    assert set(pts["cell"]) == {"k0", "k1"}
+    res = get_recipe("core.residuals_over_time").render(tree)
+    r = frame(res, "residuals")
+    np.testing.assert_allclose(r["residual"], pts["observed"] - pts["point"], atol=1e-3)
+    assert "one sku cell" in caption(res)
+    by_sku = frame(get_recipe("core.fit_vs_actual").render(tree, facet="sku"), "points")
+    assert set(by_sku["group"]) == {"k0", "k1"} and set(by_sku["cell"]) == set(ex.GEOS)
+
+
 def test_observed_variable_may_be_named_differently() -> None:
     base = ex.score_tree()
     obs = base["observed"].to_dataset().rename(revenue="revenue_local")

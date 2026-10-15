@@ -8,7 +8,7 @@ score output tree (``summary`` with a ``stat`` dim, ``draws``/``predictions`` wi
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import altair as alt
@@ -68,13 +68,14 @@ OBS_GROUPS = ("observed_data", "observed")
 
 @dataclass(slots=True)
 class Bands:
-    frame: pd.DataFrame  # x, group, point, lo_*/hi_*, [observed]
+    frame: pd.DataFrame  # x, group, [cell], point, lo_*/hi_*, [observed]
     var: str
     x_dim: str
     facet: str | None
     summed: list[str]
     source: Literal["draws", "summary"]
     temporal: bool
+    cells: list[str] = field(default_factory=list)  # dims kept per cell (summaries only)
 
 
 def _x_values(da: xr.DataArray, dim: str) -> np.ndarray:
@@ -104,8 +105,15 @@ def band_frame(
     obs_groups: tuple[str, ...] = OBS_GROUPS,
     need_time: bool = True,
     observed_var: str | None = None,
+    per_cell: bool = False,
 ) -> Bands:
-    """Point + interval bands over a time-like dim (optionally per facet) with observations."""
+    """Point + interval bands over a time-like dim (optionally per facet) with observations.
+
+    Draws are summed over the other dims (joint samples make totals valid). Summaries cannot
+    be added up, so they need a single cell per ``(x, facet)``; with ``per_cell`` the other
+    dims are kept instead and labelled in a ``cell`` column (for cell-wise comparisons such as
+    predicted vs actual, never for totals).
+    """
     ds = inp.find(*draw_groups)
     source: Literal["draws", "summary"] = "draws"
     if ds is not None:
@@ -129,6 +137,7 @@ def band_frame(
         t = next(str(d) for d in da.dims if d not in ("chain", "draw", SAMPLE, "stat"))
     f = facet_dim(da, [t], prefer=facet, max_levels=max_facets)
     keep = [t] + ([f] if f else [])
+    cells: list[str] = []
     cols: dict[str, xr.DataArray] = {}
     if source == "draws":
         st = stack_samples(da)
@@ -141,23 +150,25 @@ def band_frame(
     else:
         extra = [str(d) for d in da.dims if d not in (*keep, "stat")]
         big = [d for d in extra if da.sizes[d] > 1]
-        if big:
+        if big and not per_cell:
             raise RecipeDataError(
                 f"summaries cannot be added up over {big}; request them aggregated "
                 "(ScoreRequest output.aggregate) or pass facet=<dim>"
             )
-        da = da.squeeze(extra, drop=True) if extra else da
+        cells = big
+        single = [d for d in extra if d not in big]
+        da = da.squeeze(single, drop=True) if single else da
         cols = summary_bands(da, levels)
         summed = []
     obs_ds = inp.find(*obs_groups)
     obs_name = observed_name(obs_ds, v, observed_var)
     if obs_ds is not None and obs_name is not None:
         o = obs_ds[obs_name]
-        o_other = [d for d in o.dims if d not in keep]
+        o_other = [d for d in o.dims if d not in (*keep, *cells)]
         if o_other:
             o = o.sum(o_other, min_count=1)
         ref = cols["point"]
-        o = o.reindex({d: ref[d] for d in keep if d in ref.coords and d in o.dims})
+        o = o.reindex({d: ref[d] for d in (*keep, *cells) if d in ref.coords and d in o.dims})
         cols["observed"] = o
     frame = xr.Dataset(
         {k: c.drop_vars([x for x in c.coords if x not in c.dims]) for k, c in cols.items()}
@@ -165,10 +176,13 @@ def band_frame(
     frame = frame.reset_index()
     frame = frame.rename(columns={t: "x"})
     frame["group"] = frame[f].astype(str) if f else "all"
-    order = ["x", "group", *cols]
+    if cells:
+        labels = frame[cells].astype(str)
+        frame["cell"] = labels.agg(", ".join, axis=1) if len(cells) > 1 else labels[cells[0]]
+    order = ["x", "group", *(["cell"] if cells else []), *cols]
     frame = frame[order]
     temporal = t in da.coords and np.issubdtype(da[t].dtype, np.datetime64)
-    return Bands(frame, v, t, f, summed, source, temporal)
+    return Bands(frame, v, t, f, summed, source, temporal, cells)
 
 
 def _split_point(inp: RecipeInput, bands: Bands, requested: Any) -> Any:
@@ -312,6 +326,14 @@ class FitVsActualSettings(RecipeSettings):
     point: Literal["median", "mean"] = "median"
 
 
+def _cell_col(b: Bands) -> list[str]:
+    return ["cell"] if b.cells else []
+
+
+def _cell_tip(b: Bands) -> list[Any]:
+    return [alt.Tooltip("cell:N", title=" × ".join(b.cells))] if b.cells else []
+
+
 def _point_and_obs(inp: RecipeInput, s: FitVsActualSettings) -> Bands:
     b = band_frame(
         inp,
@@ -323,6 +345,7 @@ def _point_and_obs(inp: RecipeInput, s: FitVsActualSettings) -> Bands:
         point=s.point,
         need_time=False,
         observed_var=s.observed_var,
+        per_cell=True,
     )
     if "observed" not in b.frame:
         raise RecipeDataError(f"no observed values of {b.var!r} (observed_data/observed group)")
@@ -352,7 +375,7 @@ def fit_vs_actual(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
             x=alt.X("observed:Q", title=f"actual {b.var}"),
             y=alt.Y("point:Q", title=f"predicted {b.var}"),
             color=alt.Color("group:N", title=b.facet or ""),
-            tooltip=[_xtip(b), "group:N", "observed:Q", "point:Q"],
+            tooltip=[_xtip(b), "group:N", *_cell_tip(b), "observed:Q", "point:Q"],
         )
     )
     line = (
@@ -374,7 +397,7 @@ def fit_vs_actual(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
         f"(R² = {r2:.2f})"
         + (f" with a typical error of {pct(mape)} (MAPE)." if np.isfinite(mape) else ".")
     )
-    data = {"points": f[["x", "group", "point", "observed"]], "identity": diag}
+    data = {"points": f[["x", "group", *_cell_col(b), "point", "observed"]], "identity": diag}
     return Figure(chart=chart, datasets=data, caption=caption)
 
 
@@ -392,11 +415,12 @@ def residuals_over_time(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
     base = alt.Chart()
     chart = alt.layer(
         base.mark_rule(color="#999").encode(y=alt.datum(0)),
-        base.mark_line(point=True, strokeWidth=1).encode(
+        base.mark_line(point=True, strokeWidth=1, opacity=0.6 if b.cells else 1.0).encode(
             x=_xenc(b, title=b.x_dim),
             y=alt.Y("residual:Q", title=f"actual − predicted {b.var}"),
             color=alt.Color("group:N", title=b.facet or ""),
-            tooltip=[_xtip(b), "group:N", "residual:Q"],
+            tooltip=[_xtip(b), "group:N", *_cell_tip(b), "residual:Q"],
+            **({"detail": alt.Detail("cell:N")} if b.cells else {}),
         ),
         data=named("residuals"),
     ).properties(width=s.width, height=s.height)
@@ -408,7 +432,9 @@ def residuals_over_time(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
         caption += f" On average the model {direction}-predicts by {fmt(abs(bias))}."
     else:
         caption += " There is no notable average bias."
-    data = {"residuals": f[["x", "group", "residual"]]}
+    if b.cells:
+        caption += f" Each line is one {' × '.join(b.cells)} cell."
+    data = {"residuals": f[["x", "group", *_cell_col(b), "residual"]]}
     return Figure(chart=chart, datasets=data, caption=caption)
 
 
