@@ -46,6 +46,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.executors.cloudrun import same_execution
 from mapi_server.jsonlimits import loads_limited
 from mapi_server.services.notify import notify_run
 from mapi_server.services.runs import append_event, apply_transition, now
@@ -116,7 +117,7 @@ class EventIngestor:
             if not verify_event(event, attempt.hmac_key):
                 await self._violation(session, attempt, "event HMAC verification failed")
                 return IngestResult.BAD_HMAC
-            if execution is not None and attempt.external_id not in (None, execution):
+            if not same_execution(attempt.external_id, execution):
                 await self._violation(session, attempt, "event execution label mismatch")
                 return IngestResult.IDENTITY_MISMATCH
             try:

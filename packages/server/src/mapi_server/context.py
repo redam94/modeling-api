@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from mapi_spec.storage import Buckets, ObjectStore
 
@@ -14,6 +14,9 @@ from mapi_server.services.notify import NotificationHub
 from mapi_server.services.runs import Scope
 from mapi_server.services.signing import BundleSigner
 from mapi_server.settings import Settings
+
+if TYPE_CHECKING:
+    from mapi_server.services.pubsub import PushVerifier
 
 __all__ = ["FinalizeQueue", "ServerContext"]
 
@@ -34,6 +37,8 @@ class ServerContext:
     hub: NotificationHub
     queue: FinalizeQueue | None = None
     on_shutdown: list[Callable[[], Awaitable[None]]] = field(default_factory=list)
+    push_verifier: PushVerifier | None = None
+    """Pub/Sub push OIDC verifier (built on first use when push auth is configured)."""
 
     @property
     def buckets(self) -> Buckets:
