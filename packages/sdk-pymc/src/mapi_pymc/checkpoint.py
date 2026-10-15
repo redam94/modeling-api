@@ -13,7 +13,8 @@ Two kinds of checkpoint exist:
   its adaptation state, so a snapshot feeds a PARTIAL bundle but a retry starts again.
 
 Nothing here pickles. Sampling states are encoded to JSON by :func:`encode_state`; arrays
-travel base64-encoded and dataclasses are rebuilt only from an allow-list of PyMC modules.
+travel base64-encoded and dataclasses are rebuilt only from classes defined in an allow-list of
+PyMC step-method modules (and this package).
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
@@ -46,7 +48,10 @@ __all__ = [
 ]
 
 _KEY_RE = re.compile(r"^[0-9a-f]{16,64}$")
-_ALLOWED_MODULES = ("pymc.", "mapi_pymc.")
+# Where rebuildable classes may live: PyMC's step-method states, PyMC's RNG-state namedtuple
+# (pymc.util) and this package. A class must be *defined* at the path it is encoded under.
+_ALLOWED_MODULE_PREFIXES = ("pymc.step_methods.", "mapi_pymc.")
+_ALLOWED_MODULES = frozenset({"pymc.step_methods", "pymc.util"})
 _CHECKPOINT_LIMITS = WireLimits(
     max_elements=500_000_000,
     max_variables=65_536,
@@ -268,14 +273,26 @@ def _decode_array(spec: Mapping[str, Any]) -> np.ndarray:
 
 
 def _allowed_type(path: str) -> type[Any]:
+    """Resolve ``module:qualname`` to a class defined in an allow-listed module.
+
+    The walk never passes through a module object (``pymc.data:xr.…`` would otherwise reach
+    xarray), and a resolved class must be defined exactly at ``module:qualname``, so imported
+    names and re-exports are refused.
+    """
     module, _, qual = path.partition(":")
-    if not module.startswith(_ALLOWED_MODULES) or not qual:
-        raise ValueError(f"refusing to rebuild {path!r}: not a PyMC sampling-state class")
+    refused = ValueError(f"refusing to rebuild {path!r}: not a PyMC sampling-state class")
+    allowed = module in _ALLOWED_MODULES or module.startswith(_ALLOWED_MODULE_PREFIXES)
+    if not allowed or not qual or not all(p.isidentifier() for p in qual.split(".")):
+        raise refused
     obj: Any = importlib.import_module(module)
     for part in qual.split("."):
-        obj = getattr(obj, part)
+        obj = getattr(obj, part, None)
+        if obj is None or isinstance(obj, ModuleType):
+            raise refused
     if not isinstance(obj, type):
         raise ValueError(f"{path!r} is not a class")
+    if (obj.__module__, obj.__qualname__) != (module, qual):
+        raise refused
     return obj
 
 

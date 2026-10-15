@@ -18,6 +18,7 @@ from mapi_pymc.checkpoint import (
     DirectoryCheckpointSink,
     MemoryCheckpointSink,
     SamplingCheckpoint,
+    _allowed_type,
     decode_state,
     encode_state,
     fit_key,
@@ -124,7 +125,39 @@ def test_codec_handles_special_values_and_refuses_foreign_types() -> None:
     with pytest.raises(ValueError, match="unrecognised"):
         decode_state({"weird": 1})
     with pytest.raises(ValueError, match="not a dataclass"):
-        decode_state({"__dataclass__": "pymc.model.core:Model", "fields": {}})
+        decode_state({"__dataclass__": "pymc.step_methods.hmc.nuts:NUTS", "fields": {}})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "pymc.data:xr.IndexSelResult",  # attribute traversal through an imported module
+        "pymc.pytensorf:pd.NamedAgg",
+        "pymc.data:xr.core.indexing.IndexSelResult",
+        "pymc.step_methods.hmc.quadpotential:np.ndarray",
+        "pymc.step_methods:hmc",  # a module, not a class
+        "pymc.step_methods:NUTS",  # a re-export: not where the class is defined
+        "pymc.model.core:Model",  # outside the sampling-state modules
+        "pymc:Model",
+        "pymcx.evil:Thing",
+        "mapi_pymc.checkpoint:np.ndarray",
+    ],
+)
+def test_allowed_type_rejects_traversal_and_foreign_classes(path: str) -> None:
+    with pytest.raises(ValueError, match="refusing"):
+        _allowed_type(path)
+    with pytest.raises(ValueError, match="refusing"):
+        decode_state({"__namedtuple__": path, "fields": {}})
+
+
+def test_allowed_type_accepts_the_classes_the_samplers_emit() -> None:
+    from pymc.step_methods.hmc.quadpotential import WeightedVarianceState
+    from pymc.util import RandomGeneratorState
+
+    path = "pymc.step_methods.hmc.quadpotential:WeightedVarianceState"
+    assert _allowed_type(path) is WeightedVarianceState
+    assert _allowed_type("pymc.util:RandomGeneratorState") is RandomGeneratorState
+    assert _allowed_type("mapi_pymc.checkpoint:SamplingCheckpoint") is SamplingCheckpoint
 
 
 _leaf = (
