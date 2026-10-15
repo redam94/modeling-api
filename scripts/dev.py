@@ -9,8 +9,8 @@ service     command                                          ready when
 postgres    embedded PostgreSQL 16 (``pgserver``) in         ``pg_ctl`` reports it running
             ``.local/pg`` (skipped when ``DATABASE_URL``
             is set)
-gcs-shim    ``mapi-gcs-shim --host H --port 4443 --data-dir  TCP port accepts connections
-            .local/gcs``
+gcs-shim    ``mapi-gcs-shim serve --host H --port 4443       TCP port accepts connections
+            --root .local/gcs`` (CORS for the web origin)
 migrate     ``mapi-server migrate`` (one-shot)               exits 0
 api         ``mapi-server api --host H --port 8000``         ``GET /healthz`` returns 2xx
 worker      ``mapi-server worker``                           started
@@ -239,10 +239,13 @@ def build_services(cfg: DevConfig, environ: Mapping[str, str]) -> list[Service]:
     web, plots = Endpoint.from_url(cfg.web_origin), Endpoint.from_url(cfg.plots_origin)
     server = _console_script("mapi-server")
     server_req = Requirement(
-        "module", "mapi_server.__main__", "mapi-server has no CLI yet (packages/server)"
+        "module", "mapi_server.__main__", "run `uv sync --all-packages` (packages/server)"
     )
     shim_req = Requirement(
-        "module", "mapi_gcs_shim.__main__", "mapi-gcs-shim has no CLI yet (packages/gcs-shim)"
+        "module", "mapi_gcs_shim.__main__", "run `uv sync --all-packages` (packages/gcs-shim)"
+    )
+    runner_req = Requirement(
+        "module", "mapi_runner.__main__", "run `uv sync --all-packages` (packages/runner)"
     )
     pnpm_req = Requirement("exe", "pnpm", "install pnpm (corepack enable)")
     js_req = Requirement("file", "node_modules/.modules.yaml", "run `pnpm install` first")
@@ -251,11 +254,14 @@ def build_services(cfg: DevConfig, environ: Mapping[str, str]) -> list[Service]:
             "gcs-shim",
             (
                 _console_script("mapi-gcs-shim"),
+                "serve",
                 "--host",
                 shim.host,
                 "--port",
                 str(shim.port),
-                "--data-dir",
+                "--cors-origin",
+                cfg.web_origin,
+                "--root",
                 str(cfg.gcs_dir),
             ),
             ready=TcpProbe(shim.host, shim.port),
@@ -276,7 +282,7 @@ def build_services(cfg: DevConfig, environ: Mapping[str, str]) -> list[Service]:
             (server, "worker"),
             depends_on=("migrate", "gcs-shim"),
             env={EXECUTOR_ENV: environ.get(EXECUTOR_ENV, "local-process")},
-            requires=(server_req,),
+            requires=(server_req, runner_req),
         ),
         Service(
             "web",
@@ -292,6 +298,11 @@ def build_services(cfg: DevConfig, environ: Mapping[str, str]) -> list[Service]:
                 "--strictPort",
             ),
             depends_on=("api",),
+            env={
+                "VITE_API_BASE": cfg.api_url.rstrip("/"),
+                "VITE_PLOTS_ORIGIN": cfg.plots_origin.rstrip("/"),
+                "VITE_STORAGE_ORIGINS": cfg.gcs_endpoint.rstrip("/"),
+            },
             ready=TcpProbe(web.host, web.port),
             requires=(
                 pnpm_req,
@@ -314,6 +325,7 @@ def build_services(cfg: DevConfig, environ: Mapping[str, str]) -> list[Service]:
                 str(plots.port),
                 "--strictPort",
             ),
+            env={"VITE_APP_ORIGINS": cfg.web_origin.rstrip("/")},
             ready=TcpProbe(plots.host, plots.port),
             requires=(
                 pnpm_req,

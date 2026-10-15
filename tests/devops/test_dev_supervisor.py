@@ -99,7 +99,10 @@ class TestServiceTable:
         services = {s.name: s for s in dev.build_services(_cfg(dev, tmp_path), {})}
         assert set(services) == {"gcs-shim", "migrate", "api", "worker", "web", "plots"}
         assert Path(services["gcs-shim"].argv[0]).name == "mapi-gcs-shim"
-        assert services["gcs-shim"].argv[-2:] == ("--data-dir", str(tmp_path / "data" / "gcs"))
+        assert services["gcs-shim"].argv[1] == "serve"
+        assert services["web"].env["VITE_API_BASE"] == "http://127.0.0.1:8000"
+        assert services["plots"].env["VITE_APP_ORIGINS"] == "http://127.0.0.1:5173"
+        assert services["gcs-shim"].argv[-2:] == ("--root", str(tmp_path / "data" / "gcs"))
         assert [Path(services[n].argv[0]).name for n in ("migrate", "api", "worker")] == [
             "mapi-server"
         ] * 3

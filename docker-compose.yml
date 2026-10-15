@@ -110,6 +110,9 @@ services:
     network_mode: "service:gcs-shim"
     environment:
       <<: *mapi-env
+      MAPI_GCS_ROOT: /shim/gcs    # the shim's principal key files (control, exec)
+    volumes:
+      - gcsdata:/shim:ro
     tmpfs:
       - /tmp:size=128m,mode=1777
     depends_on:
@@ -137,6 +140,9 @@ services:
     environment:
       <<: *mapi-env
       MAPI_EXECUTOR: ${MAPI_EXECUTOR:-local-process}
+      MAPI_GCS_ROOT: /shim/gcs    # control key for the store, exec token for local runs
+    volumes:
+      - gcsdata:/shim:ro
     tmpfs:
       # Runs (scratch, compile caches, HOME) live here, like Cloud Run's in-memory filesystem.
       - /tmp:size=${MAPI_WORKER_TMPFS:-4g},mode=1777

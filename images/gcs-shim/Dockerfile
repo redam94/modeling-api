@@ -83,4 +83,6 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
   CMD ["python", "-I", "/opt/mapi/bin/healthcheck.py", "tcp", "127.0.0.1:4443"]
 STOPSIGNAL SIGTERM
 ENTRYPOINT ["/usr/bin/tini", "--", "mapi-gcs-shim"]
-CMD ["--host", "0.0.0.0", "--port", "4443", "--data-dir", "/data"]
+# State (config, principal key files, objects) lives under /data/gcs; the control plane reads
+# the key files from the same volume (mounted read-only). CORS defaults to $MAPI_WEB_ORIGIN.
+CMD ["serve", "--host", "0.0.0.0", "--port", "4443", "--root", "/data/gcs"]
