@@ -11,7 +11,7 @@ usage() {
 Usage: deploy/gcp/deploy.sh --env ENV [--images-file FILE | --foundation]
          [--plan-only] [--plan-file FILE] [--apply-plan FILE]
          [--var-file FILE]... [--backend-config FILE]
-         [--skip-migrate] [--skip-smoke] [--dry-run] [--yes]
+         [--skip-migrate] [--skip-smoke] [--rollback-of ID] [--dry-run] [--yes]
 
 Release flow (default):
   1. terraform init (state in the bucket named by envs/ENV/backend.hcl)
@@ -21,7 +21,7 @@ Release flow (default):
      on the very first release the migrate job does not exist yet, so they run after apply
   5. terraform apply of exactly the saved plan
   6. release record: the images file is copied to gs://<state bucket>/mapi/ENV/releases/
-     (rollback.sh --previous uses these)
+     as <UTC stamp>-<release id>.json, the id naming the images (rollback.sh uses these)
   7. smoke test: API /healthz and /readyz, web app, plot sandbox, events not public
 
 Modes:
@@ -39,6 +39,7 @@ Options:
   --backend-config FILE  backend config (default: envs/ENV/backend.hcl)
   --skip-migrate         do not run migrations (rollbacks: schema changes are forward-only)
   --skip-smoke           do not run the smoke test (e.g. while a new certificate provisions)
+  --rollback-of ID       record this apply as a rollback to release ID (set by rollback.sh)
   --dry-run              print every command instead of running it
   --yes                  do not ask for confirmation
   -h, --help             show this help
@@ -56,6 +57,7 @@ apply_plan=""
 backend_config=""
 skip_migrate=0
 skip_smoke=0
+rollback_of=""
 var_files=()
 
 while (($#)); do
@@ -70,6 +72,7 @@ while (($#)); do
     --backend-config) need_value "$1" "${2:-}"; backend_config=$2; shift 2 ;;
     --skip-migrate) skip_migrate=1; shift ;;
     --skip-smoke) skip_smoke=1; shift ;;
+    --rollback-of) need_value "$1" "${2:-}"; rollback_of=$2; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
     --yes) ASSUME_YES=1; shift ;;
     -h | --help) usage; exit 0 ;;
@@ -78,6 +81,7 @@ while (($#)); do
 done
 
 [[ -n $env ]] || die "--env is required"
+[[ -z $rollback_of || $rollback_of =~ ^[A-Za-z0-9]+$ ]] || die "--rollback-of must be a release id"
 valid_env "$env" || die "--env must match ^[a-z][a-z0-9-]{0,15}$"
 [[ $plan_only == 0 || -z $apply_plan ]] || die "--plan-only and --apply-plan exclude each other"
 [[ $foundation == 0 || -z $images_file ]] || die "--foundation deploys no images; drop --images-file"
@@ -182,8 +186,15 @@ fi
 # ----------------------------------------------------------------------- 6. release record
 if [[ -f $images_file || $DRY_RUN == 1 ]]; then
   bucket=$(backend_bucket "$env" "$backend_config")
-  sha=$(git -C "$REPO_ROOT" rev-parse --short=12 HEAD 2>/dev/null || echo unknown)
-  release="$(utc_stamp)-$sha.json"
+  # Named after what was deployed (not the operator's checkout), so a retried deploy of the
+  # same images is the same release; rollbacks are marked (rollback.sh --previous replays them)
+  if [[ -n $rollback_of ]]; then
+    release="$(utc_stamp)-$rollback_of-rollback.json"
+  elif [[ -f $images_file ]]; then
+    release="$(utc_stamp)-$(python3 -I "$REPO_ROOT/deploy/gcp/lib/releases.py" id "$images_file").json"
+  else
+    release="$(utc_stamp)-RELEASEID.json"
+  fi
   run gcloud storage cp "$images_file" "gs://$bucket/mapi/$env/releases/$release"
   log "release recorded as $release"
 fi

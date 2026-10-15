@@ -675,3 +675,95 @@ def test_deploy_refuses_a_public_events_service(bash: str, tmp_path: Path) -> No
     curl.write_text(curl.read_text().replace("printf '404'", "printf '200'"))
     code, err, _ = _deploy(bash, tmp_path, bin_dir, "--yes")
     assert code != 0 and "accepted an unauthenticated request" in err
+
+
+# ----------------------------------------------------------------- rollback --previous
+
+
+RELEASES = DEPLOY / "lib" / "releases.py"
+
+
+def _previous(*names: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["python3", "-I", str(RELEASES), "previous"],
+        input="\n".join(names) + "\n",
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_previous_skips_retries_and_replays_rollbacks() -> None:
+    r0, r1, r2 = (
+        "20261001T000000Z-aaaa.json",
+        "20261002T000000Z-bbbb.json",
+        "20261003T000000Z-cccc.json",
+    )
+    # a plain history: the release before the newest
+    assert _previous(r2, r0, r1).stdout.strip() == r1
+    # R2 deployed twice (a retried deploy): still R1, never the deployed release itself
+    assert _previous(r0, r1, r2, "20261003T010000Z-cccc.json").stdout.strip() == r1
+    # R2 was bad and rolled back to R1: "go back one more" is R0, not the bad R2
+    rolled = (r0, r1, r2, "20261004T000000Z-bbbb-rollback.json")
+    assert _previous(*rolled).stdout.strip() == r0
+    # nothing earlier than what runs now
+    lonely = _previous(r0, "20261005T000000Z-aaaa.json")
+    assert lonely.returncode == 1 and "no earlier release" in lonely.stderr
+
+
+def test_rollback_previous_picks_the_release_before_the_deployed_one(
+    bash: str, tmp_path: Path
+) -> None:
+    """End to end over stubs: R1 good, R2 bad and deployed twice; --previous redeploys R1
+    and records the rollback under R1's id, so a second --previous goes back to R0."""
+    bin_dir = _fake_cloud(tmp_path, _outputs(services_deployed=True))
+    listing = tmp_path / "releases.txt"
+    names = [
+        "20261001T000000Z-r0r0r0.json",
+        "20261002T000000Z-r1r1r1.json",
+        "20261003T000000Z-r2r2r2.json",
+        "20261003T010000Z-r2r2r2.json",
+    ]
+    listing.write_text("".join(f"gs://acme-tfstate/mapi/staging/releases/{n}\n" for n in names))
+    source = images_file(tmp_path / "source-images.json")
+    log = tmp_path / "calls.log"
+    (bin_dir / "gcloud").write_text(
+        "#!/bin/sh\n"
+        f'echo "gcloud $*" >> "{log}"\n'
+        f'case "$1 $2" in "storage ls") cat "{listing}" ;;\n'
+        f'  "storage cp") case "$3" in gs://*) cp "{source}" "$4" ;; esac ;;\n'
+        "esac\nexit 0\n"
+    )
+    backend = tmp_path / "backend.hcl"
+    backend.write_text('bucket = "acme-tfstate"\nprefix = "mapi/staging"\n')
+    res = script(
+        bash, "rollback", "--env", "staging", "--previous", "--backend-config", str(backend),
+        "--yes", stubs=bin_dir, out=tmp_path,
+    )  # fmt: skip
+    assert res.returncode == 0, res.stderr
+    lines = log.read_text().splitlines()
+    fetched = [line for line in lines if "storage cp gs://" in line]
+    assert fetched and fetched[0].split()[3].endswith("/20261002T000000Z-r1r1r1.json"), fetched
+    recorded = [line for line in lines if "storage cp" in line and "releases/" in line.split()[-1]]
+    assert recorded[-1].split()[-1].endswith("-r1r1r1-rollback.json"), recorded
+    assert not any("gcloud run jobs execute" in line for line in lines), "no migrations"
+    # the history now says R1 runs again: the next --previous is R0
+    after = [*names, recorded[-1].split()[-1].rsplit("/", 1)[-1]]
+    assert _previous(*after).stdout.strip() == "20261001T000000Z-r0r0r0.json"
+
+
+def test_deploy_names_the_release_after_its_images(bash: str, tmp_path: Path) -> None:
+    bin_dir = _fake_cloud(tmp_path, _outputs(services_deployed=True))
+    code, err, log = _deploy(bash, tmp_path, bin_dir, "--yes")
+    assert code == 0, err
+    rid = subprocess.run(
+        ["python3", "-I", str(RELEASES), "id", str(tmp_path / "images.json")],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()  # fmt: skip
+    record = log[_position(log, "gcloud storage cp")]
+    assert record.endswith(f"-{rid}.json"), record
+    sha = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", "--short=12", "HEAD"],
+        capture_output=True, text=True, check=False,
+    ).stdout.strip()  # fmt: skip
+    assert not sha or sha not in record, "named after the images, not the operator's checkout"

@@ -175,7 +175,8 @@ deploy/gcp/deploy.sh --env staging
    yet, so they run right after the apply instead.
 4. `terraform apply` of exactly the saved plan.
 5. The images file is recorded as a release in
-   `gs://<state bucket>/mapi/staging/releases/<UTC timestamp>-<sha>.json`.
+   `gs://<state bucket>/mapi/staging/releases/<UTC timestamp>-<release id>.json`. The release id
+   is a hash of the images, so a retried deploy of the same images is the same release.
 6. Smoke test: API `/healthz` and `/readyz`, the web app (with a Content-Security-Policy), the
    plot sandbox, and a check that the events service refuses requests from the internet.
 
@@ -261,12 +262,15 @@ Terraform or read the exec projects' logs from outside it need an access level
 
 ```bash
 deploy/gcp/rollback.sh --env prod --list            # recorded releases, newest first
-deploy/gcp/rollback.sh --env prod --previous        # redeploy the release before the newest
+deploy/gcp/rollback.sh --env prod --previous        # redeploy the release before the deployed one
 deploy/gcp/rollback.sh --env prod --traffic-only    # seconds: services back to their previous revision
 ```
 
 A release rollback goes through `deploy.sh` (plan, confirmation, apply, smoke test) with
-`--skip-migrate`: schema changes only move forward. `--traffic-only` shifts traffic with
+`--skip-migrate`: schema changes only move forward. It is recorded as
+`<UTC timestamp>-<id of the release it redeployed>-rollback.json`, and `--previous` replays the
+records: retried deploys count once, and after rolling back from a bad release a second
+`--previous` goes one release further back instead of returning to the bad one. `--traffic-only` shifts traffic with
 `gcloud` without touching Terraform, for incidents; it leaves the orchestrator and the Jobs as
 they are, and the next deploy moves traffic to the newest revision again.
 
