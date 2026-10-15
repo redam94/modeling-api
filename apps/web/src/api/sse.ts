@@ -5,6 +5,7 @@
  * `Last-Event-ID` on every (re)connect, can abort, and can stop for good on `end`.
  */
 import { env } from "@/env";
+import { useAuth } from "@/stores/auth";
 
 import type { Run, RunEventView } from "./types";
 
@@ -180,7 +181,8 @@ export function parseRunStreamEvent(v: unknown): RunStreamEvent | null {
 
 /**
  * Follow a run's event stream until the server sends `end` or `signal` aborts.
- * Reconnects with `Last-Event-ID` (server `retry:` hint, exponential backoff on errors).
+ * Reconnects with `Last-Event-ID` (server `retry:` hint, exponential backoff on errors);
+ * stops for good on 404, 401 (raising the session-expired flag) and 403.
  */
 export async function followRunEvents(
   runId: string,
@@ -204,6 +206,18 @@ export async function followRunEvents(
       const res = await fetchImpl(url, { headers, signal: opts.signal, credentials: "include", cache: "no-store" });
       if (res.status === 404) {
         handlers.onStatus?.("error", "run not found");
+        return;
+      }
+      // The server closes a stream whose credential stopped granting access; the reconnect
+      // then answers 401/403. Retrying cannot fix either: stop, and let the shell ask for a
+      // new sign-in on 401 (like every other API call does).
+      if (res.status === 401) {
+        useAuth.getState().markExpired();
+        handlers.onStatus?.("error", "your session has expired; sign in again");
+        return;
+      }
+      if (res.status === 403) {
+        handlers.onStatus?.("error", "you no longer have access to this run");
         return;
       }
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);

@@ -97,6 +97,7 @@ __all__ = [
     "authenticate",
     "csrf_cookie",
     "session_cookie",
+    "still_authorized",
 ]
 
 log = logging.getLogger(__name__)
@@ -463,7 +464,13 @@ def _local_memberships(ctx: ServerContext, at: datetime) -> list[Membership]:
 
 
 async def _resolve(
-    s: AsyncSession, ctx: ServerContext, request: Request, auth: RequestAuth, at: datetime
+    s: AsyncSession,
+    ctx: ServerContext,
+    request: Request,
+    auth: RequestAuth,
+    at: datetime,
+    *,
+    rate_limited: bool = True,
 ) -> RequestAuth:
     settings = ctx.settings
     who = await _credentials(s, ctx, request, at)
@@ -555,7 +562,7 @@ async def _resolve(
         if auth.operation_id not in _CONDITIONAL_ALSO:
             for resource, action in access.also:
                 auth.context.require(action, resource)
-    if settings.rate_limits_enabled:
+    if settings.rate_limits_enabled and rate_limited:
         levels: list[tuple[QuotaPolicy, str]] = []
         if token is not None:
             levels.append((await token_policy(s, token), f"token:{token.id}"))
@@ -617,6 +624,33 @@ async def authenticate(request: Request) -> RequestAuth:
         raise
     request.state.auth = auth
     return auth
+
+
+async def still_authorized(request: Request, auth: RequestAuth) -> bool:
+    """Does the caller behind ``auth`` still have access, the same way, right now?
+
+    Long-lived responses (event streams) call this periodically: the credential is checked
+    again from the request (a revoked or expired token, an expired or deleted session, a
+    disabled owner, a lost membership or a suspended tenant all answer ``False``), without
+    counting a request against the rate limits.
+    """
+    if auth.access.scope in (RouteScope.PUBLIC, RouteScope.INTERNAL):
+        return True
+    ctx: ServerContext = request.app.state.ctx
+    fresh = RequestAuth(
+        operation_id=auth.operation_id,
+        access=auth.access,
+        credential=Credential.ANONYMOUS,
+        request_id=auth.request_id,
+        client_ip=auth.client_ip,
+        user_agent=auth.user_agent,
+    )
+    try:
+        async with ctx.db.session() as s:
+            await _resolve(s, ctx, request, fresh, now(), rate_limited=False)
+    except (MapiError, _AuthFailure):
+        return False
+    return fresh.credential is auth.credential and fresh.scope == auth.scope
 
 
 _DENIED_AUDIT: Final[dict[str, tuple[AuditAction, ResourceKind]]] = {

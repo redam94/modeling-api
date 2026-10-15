@@ -58,6 +58,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | unset | Set both to require a Google-signed OIDC token from the push subscription's service account on `POST /internal/events` (see [Authentication](authentication.md#pubsub-push) and the Cloud Run settings below) |
 | `MAPI_SSE_HEARTBEAT_S` | `15` | Seconds between `: keepalive` comments on event streams |
 | `MAPI_SSE_POLL_S` | `5` | Fallback poll of an event stream when no PostgreSQL `NOTIFY` arrives |
+| `MAPI_SSE_REAUTH_S` | `60` | How often an open event stream re-checks its caller's credential (revoked tokens, ended sessions and lost access close it) |
 | `MAPI_MAX_SIDECAR_BYTES` | 8 MiB | Largest JSON sidecar (`plots.json`, `diagnostics.json`, …) the control plane will parse |
 
 !!! warning "`MAPI_PROFILE` means two things"

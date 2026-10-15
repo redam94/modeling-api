@@ -133,6 +133,11 @@ persisted events.
 Between events the server writes a heartbeat comment (`: keepalive`) every 15 seconds. The
 first frame also carries `retry: 3000`.
 
+An open stream checks its caller's credential again every minute (`MAPI_SSE_REAUTH_S`). Once
+the token is revoked or expired, the session has ended, or the caller has lost access to the
+project, the server closes the stream without `end`. The reconnect then answers `401` or
+`403`, and clients should stop there rather than retry.
+
 Progress frames are coalesced to at most one every 2–5 seconds. Only state changes,
 warnings, diagnostics, checkpoints, metrics and terminal events are persisted and replayable.
 A reconnecting client gets the latest progress from the `snapshot` frame. Log lines are paged

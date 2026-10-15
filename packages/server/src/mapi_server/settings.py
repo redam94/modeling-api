@@ -439,6 +439,12 @@ class Settings(BaseSettings):
     executor_report_interval_s: float = Field(10.0, gt=0)
     sse_heartbeat_s: float = Field(15.0, gt=0)
     sse_poll_s: float = Field(5.0, gt=0, description="Fallback poll when no NOTIFY arrives")
+    sse_reauth_s: float = Field(
+        60.0,
+        gt=0,
+        description="How often an open event stream re-checks its caller's credential "
+        "(a revoked token, an expired session or a lost membership closes the stream)",
+    )
     max_sidecar_bytes: int = Field(8 * 1024 * 1024, ge=1024)
     log_level: Literal["debug", "info", "warning", "error"] = "info"
 

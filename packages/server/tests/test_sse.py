@@ -15,7 +15,7 @@ from mapi_server.db import models as m
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.events import EventIngestor
 from mapi_server.services.notify import RunNotice, notify_run
-from mapi_server.services.runs import append_event, apply_transition, load_run
+from mapi_server.services.runs import append_event, apply_transition, load_run, now
 from mapi_server_testkit.builders import queued_fit, signed_event
 from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_spec.api import SSE_HEARTBEAT
@@ -30,6 +30,7 @@ from mapi_spec.run import (
     RunTrigger,
     StatePayload,
 )
+from sqlalchemy import select
 
 
 def parse_frames(text: str) -> list[dict[str, Any]]:
@@ -142,6 +143,40 @@ async def test_live_stream_with_progress_logs_heartbeat_and_end(ctx: ServerConte
     assert snapshots[0] == "provisioning" and "running" in snapshots
     progress = next(f for f in parsed if f["event"] == "progress")
     assert "id" not in progress and progress["json"]["payload"]["fraction"] == 0.5
+
+
+async def test_streams_close_when_the_credential_is_revoked(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """A stream re-checks its caller's credential every ``sse_reauth_s``: a token revoked
+    while a long run streams stops receiving its progress and logs, and reconnecting is
+    refused."""
+    from mapi_server.auth.identity import LOCAL_USER_ID
+    from mapi_server_testkit.identity import make_token, token_caller
+
+    ctx.settings = ctx.settings.model_copy(update={"sse_reauth_s": 0.2})
+    att = await _provisioned(ctx)
+    await ctx.hub.start()
+    async with ctx.db.session() as s:
+        owner = await s.get(m.User, LOCAL_USER_ID)
+        assert owner is not None
+    tok = token_caller(client, await make_token(ctx, owner, "default", "default", ["models:read"]))
+    url = f"/v1/runs/{att.run_id}/events"
+
+    async def revoke_soon() -> None:
+        await asyncio.sleep(0.5)
+        async with ctx.db.session() as s:
+            for row in (await s.execute(select(m.ApiToken))).scalars():
+                row.revoked_at = now()
+
+    revoker = asyncio.create_task(revoke_soon())
+    r = await asyncio.wait_for(tok.get(url, headers={"Accept": "text/event-stream"}), 10)
+    await revoker
+    assert r.status_code == 200
+    events = [f["event"] for f in parse_frames(r.text) if "event" in f]
+    assert events[0] == "snapshot" and "end" not in events  # closed, the run goes on
+    again = await tok.get(url, headers={"Accept": "text/event-stream"})
+    assert again.status_code == 401
 
 
 async def test_end_is_never_sent_before_the_final_event(

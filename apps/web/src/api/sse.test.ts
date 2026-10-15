@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { useAuth } from "@/stores/auth";
+
 import type { Run, RunEventView } from "./types";
 
 import { followRunEvents, SseParser } from "./sse";
@@ -136,6 +138,37 @@ describe("followRunEvents", () => {
     });
     expect(delays).toEqual([3000, 6000]);
     expect(onStatus).toHaveBeenLastCalledWith("error", "run not found");
+  });
+
+  it("stops on 401 and raises the session-expired flag instead of retrying forever", async () => {
+    useAuth.setState({ mode: "session", expired: false });
+    const delays: number[] = [];
+    const responses = [sse(frame("snapshot", run("running"))), new Response("{}", { status: 401 })];
+    const fetchImpl = vi.fn(async () => responses.shift() ?? sse("", 500));
+    const onStatus = vi.fn();
+    await followRunEvents("run_1", { onSnapshot: vi.fn(), onEvent: vi.fn(), onEnd: vi.fn(), onStatus }, {
+      signal: new AbortController().signal,
+      fetchImpl,
+      sleep: async (ms) => {
+        delays.push(ms);
+      },
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(onStatus).toHaveBeenLastCalledWith("error", "your session has expired; sign in again");
+    expect(useAuth.getState().expired).toBe(true);
+    useAuth.setState({ expired: false });
+  });
+
+  it("stops on 403 (access to the run was revoked)", async () => {
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 403 }));
+    const onStatus = vi.fn();
+    await followRunEvents("run_1", { onSnapshot: vi.fn(), onEvent: vi.fn(), onEnd: vi.fn(), onStatus }, {
+      signal: new AbortController().signal,
+      fetchImpl,
+      sleep: async () => undefined,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(onStatus).toHaveBeenLastCalledWith("error", "you no longer have access to this run");
   });
 
   it("refuses a non-SSE response body", async () => {

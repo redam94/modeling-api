@@ -178,6 +178,11 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   Unauthenticated failures that anyone can cause (`token.auth_failed`, `auth.login_failed`)
   are audited at most five times per token prefix or client and minute, so they can no longer
   flood a tenant's audit log. The housekeeper sweeps old rate counters.
+- **server/web**: run event streams re-check the caller's credential every
+  `MAPI_SSE_REAUTH_S` (60 s). A revoked token, an ended session or a lost membership no
+  longer keeps receiving a 24-hour run's progress and logs: the stream closes and the
+  reconnect is refused. The web client stops on 401 (and raises the session-expired prompt)
+  or 403, where it used to retry forever.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 

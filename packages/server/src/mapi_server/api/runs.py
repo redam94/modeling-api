@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Annotated
@@ -45,6 +46,7 @@ from mapi_server.api.common import (
     decode_cursor,
     encode_cursor,
 )
+from mapi_server.auth.request import still_authorized
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict
@@ -55,6 +57,8 @@ from mapi_server.services.runs import apply_transition, load_run, run_dto
 from mapi_server.services.submit import admit, submit_retry, submit_run
 
 __all__ = ["RUN_PLOTS_OUTPUT", "render_run", "router", "run_view", "sse_stream"]
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/runs", tags=["runs"])
 
@@ -227,9 +231,15 @@ async def sse_stream(
     so a lost notification delays a frame but never drops it. Progress and log frames are
     not persisted events and carry no ``id:``; a reconnecting client gets the latest
     progress from the ``snapshot`` frame.
+
+    Every ``sse_reauth_s`` the caller's credential is checked again
+    (:func:`~mapi_server.auth.request.still_authorized`): once it no longer grants access
+    the stream closes without ``end``, and the client's reconnect gets the 401/403.
     """
     settings = ctx.settings
     cursor = last_id
+    auth = ctx.request
+    checked_at = time.monotonic()
     async with ctx.hub.subscribe(run_id) as sub:
         async with ctx.data_session() as session:
             run = await load_run(session, None, run_id)
@@ -350,6 +360,15 @@ async def sse_stream(
                 return
             if request is not None and await request.is_disconnected():
                 return
+            if (
+                request is not None
+                and auth is not None
+                and time.monotonic() - checked_at >= settings.sse_reauth_s
+            ):
+                if not await still_authorized(request, auth):
+                    log.info("closing the event stream of run %s: access was revoked", run_id)
+                    return
+                checked_at = time.monotonic()
             wait = min(
                 settings.sse_poll_s,
                 max(0.0, settings.sse_heartbeat_s - (time.monotonic() - last_write)),
