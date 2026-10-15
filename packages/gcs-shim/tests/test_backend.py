@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 from mapi_gcs_shim._errors import ShimError
-from mapi_gcs_shim.backend import FsBackend, Preconditions, StoredObject
+from mapi_gcs_shim.backend import NO_PRECONDITIONS, FsBackend, Preconditions, StoredObject
 from mapi_gcs_shim.config import WRITE_ONCE_RETENTION_SECONDS, BucketConfig
 from mapi_spec.storage import crc32c, crc32c_to_base64, md5_base64
 
@@ -45,7 +45,7 @@ def put(
     name: str,
     data: bytes,
     *,
-    pre: Preconditions = Preconditions(),
+    pre: Preconditions = NO_PRECONDITIONS,
     now: datetime | None = None,
     **kw: object,
 ) -> StoredObject:

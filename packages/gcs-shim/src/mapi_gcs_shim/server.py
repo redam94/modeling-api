@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import signal
 import socket
 import threading
 import time
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from types import TracebackType
+from types import FrameType, TracebackType
 from typing import TYPE_CHECKING, Any
 
 from mapi_spec.localdev import DEFAULT_ENV, LOCALHOST
@@ -92,19 +93,37 @@ def serve(
     log_level: str = "info",
     on_ready: Callable[[str], None] | None = None,
 ) -> None:
-    """Serve until interrupted (SIGINT/SIGTERM)."""
+    """Serve until interrupted (SIGINT/SIGTERM), then shut down gracefully and return."""
     import uvicorn
 
     sock = bind_socket(host, port)
     endpoint = _endpoint(host, sock.getsockname()[1])
     app = build_app(root, env=env, endpoint=endpoint, sweep_interval=sweep_interval)
+
+    # uvicorn handles SIGINT/SIGTERM itself during run() and re-raises the signal after its
+    # graceful shutdown; these handlers turn that re-raise into a clean return so the backend
+    # is closed and the process exits 0.
+    def _stop(signum: int, frame: FrameType | None) -> None:
+        raise _Stopped
+
+    previous: dict[int, Any] = {}
+    if threading.current_thread() is threading.main_thread():
+        previous = {s: signal.signal(s, _stop) for s in (signal.SIGINT, signal.SIGTERM)}
     try:
         if on_ready is not None:
             on_ready(endpoint)
         uvicorn.Server(_uvicorn_config(app, log_level)).run(sockets=[sock])
+    except _Stopped:
+        pass
     finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
         app.backend.close()
         sock.close()
+
+
+class _Stopped(Exception):
+    """Raised by the re-delivered shutdown signal."""
 
 
 class ShimServer:
