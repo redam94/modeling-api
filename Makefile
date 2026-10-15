@@ -32,6 +32,7 @@ typecheck: ## mypy over every type-checked package (spec, sdk, steps, pymc, skle
 	$(UV) run mypy packages/spec/src packages/sdk/src packages/steps-core/src packages/sdk-pymc/src \
 		packages/sdk-sklearn/src packages/plots-core/src plugins/mmm/src plugins/ts/src \
 		plugins/tabular/src conformance/src packages/gcs-shim/src
+	$(UV) run mypy --strict packages/server/src
 
 ## ---------------------------------------------------------------- tests
 .PHONY: test
