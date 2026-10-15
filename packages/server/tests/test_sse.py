@@ -8,6 +8,7 @@ import json
 from typing import Any
 
 import httpx
+import pytest
 from mapi_server.api.runs import sse_stream
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
@@ -141,6 +142,39 @@ async def test_live_stream_with_progress_logs_heartbeat_and_end(ctx: ServerConte
     assert snapshots[0] == "provisioning" and "running" in snapshots
     progress = next(f for f in parsed if f["event"] == "progress")
     assert "id" not in progress and progress["json"]["payload"]["fraction"] == 0.5
+
+
+async def test_end_is_never_sent_before_the_final_event(
+    ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A commit that appends the last event *and* makes the run terminal can land between
+    the stream's reads; the stream must still send that event before ``end``."""
+    import mapi_server.api.runs as runs_api
+
+    att = await _provisioned(ctx)
+    real = runs_api.load_run
+    calls = 0
+
+    async def racing_load_run(*args: Any, **kwargs: Any) -> m.Run:
+        nonlocal calls
+        calls += 1
+        if calls == 2:  # first read inside the loop: the finalizer-style commit lands now
+            async with ctx.db.session() as s:
+                run = await real(s, None, att.run_id, for_update=True)
+                await append_event(
+                    s,
+                    run,
+                    type=RunEventType.ERROR,
+                    payload={"failure_class": "integrity", "message": "boom"},
+                )
+                await apply_transition(s, run, RunTrigger.FAIL_USER, Actor.RECONCILER)
+        return await real(*args, **kwargs)
+
+    monkeypatch.setattr(runs_api, "load_run", racing_load_run)
+    frames = [f async for f in sse_stream(ctx, None, att.run_id, 0)]
+    events = [f["event"] for f in parse_frames("".join(frames)) if "event" in f]
+    assert events[-1] == "end"
+    assert "error" in events, events
 
 
 async def test_notification_hub_fans_out_on_commit(ctx: ServerContext) -> None:

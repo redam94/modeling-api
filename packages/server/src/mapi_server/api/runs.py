@@ -240,6 +240,11 @@ async def sse_stream(
         while True:
             frames: list[str] = []
             async with ctx.db.session() as session:
+                # The state is read *before* the events (READ COMMITTED, separate statements):
+                # a commit that appends the final event and makes the run terminal is then
+                # either missed by both reads (seen next pass) or its event is read too, so
+                # ``end`` never goes out without the run's last event.
+                run = await load_run(session, None, run_id)
                 rows = list(
                     (
                         await session.execute(
@@ -253,7 +258,6 @@ async def sse_stream(
                 for e in rows:
                     frames.append(_frame(e.type, event_view(e).model_dump_json(), id=e.id))
                     cursor = e.id
-                run = await load_run(session, None, run_id)
                 progress = await session.get(m.RunProgress, run_id)
                 if progress is not None and (progress.attempt, progress.seq) > progress_key:
                     progress_key = (progress.attempt, progress.seq)
