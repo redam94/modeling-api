@@ -120,7 +120,8 @@ async def _truncate(ctx: ServerContext) -> None:
 
 @pytest.fixture
 async def ctx(settings: Settings) -> AsyncIterator[ServerContext]:
-    context = build_context(settings, store=make_store(settings), signer=BundleSigner.generate())
+    store = make_store(settings) if settings.object_store is ObjectStoreKind.MEMORY else None
+    context = build_context(settings, store=store, signer=BundleSigner.generate())
     await _truncate(context)
     await startup(context)
     try:

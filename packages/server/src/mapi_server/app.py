@@ -42,7 +42,8 @@ def build_context(
     """Wire the process-wide services (no I/O besides starting an embedded Postgres)."""
     url = database_url or resolve_database_url(settings)
     db = Database(url, pool_size=settings.db_pool_size, echo=settings.db_echo)
-    return ServerContext(
+    owned_store = store is None
+    ctx = ServerContext(
         settings=settings,
         db=db,
         store=store or build_object_store(settings),
@@ -53,6 +54,10 @@ def build_context(
         hub=NotificationHub(db.url),
         queue=queue,
     )
+    aclose = getattr(ctx.store, "aclose", None)
+    if owned_store and callable(aclose):
+        ctx.on_shutdown.append(aclose)
+    return ctx
 
 
 async def ensure_scope(ctx: ServerContext) -> None:

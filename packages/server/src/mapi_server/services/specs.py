@@ -21,6 +21,7 @@ from mapi_spec.errors import (
     ValidationFailed,
     has_errors,
 )
+from mapi_spec.jobs import INPUT_DATASET, INPUT_SCENARIO, SCORE_INPUTS, side_table_input
 from mapi_spec.loader import check_limits, parse_document, parse_text, spec_hash
 from mapi_spec.refs import DatasetRef, EndpointRef, ModelVersionRef
 from mapi_spec.schema import DataSchema
@@ -257,13 +258,13 @@ async def check_score_request(
         if dv is None:
             issues.append(_issue(ErrorCode.REF_UNRESOLVED, f"/{name}", why or ""))
         else:
-            datasets[name] = dv
+            datasets[SCORE_INPUTS[name]] = dv
     for name, ref in req.side_tables.items():
         dv, why = await resolve_dataset(session, scope, ref)
         if dv is None:
             issues.append(_issue(ErrorCode.REF_UNRESOLVED, f"/side_tables/{name}", why or ""))
         else:
-            datasets[f"side_table.{name}"] = dv
+            datasets[side_table_input(name)] = dv
     if mv.score_meta is None:
         issues.append(
             _issue(
@@ -274,7 +275,7 @@ async def check_score_request(
         )
         return datasets
     meta = ScoreMetadata.model_validate(mv.score_meta)
-    payload = datasets.get("scenario") or datasets.get("data")
+    payload = datasets.get(INPUT_SCENARIO) or datasets.get(INPUT_DATASET)
     summary = None
     if payload is not None and payload.summary is not None:
         summary = DataSummary.model_validate(payload.summary)

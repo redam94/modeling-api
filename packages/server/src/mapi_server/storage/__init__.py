@@ -7,10 +7,6 @@ emulator); :class:`MemoryObjectStore` is an in-process implementation for tests.
 
 from __future__ import annotations
 
-import importlib
-import inspect
-from typing import Any
-
 from mapi_spec.storage import ObjectMeta, ObjectStore
 
 from mapi_server.settings import ObjectStoreKind, Settings
@@ -32,30 +28,22 @@ async def list_all(store: ObjectStore, bucket: str, prefix: str) -> list[ObjectM
 
 
 def _shim_store(settings: Settings) -> ObjectStore:
-    try:
-        mod = importlib.import_module("mapi_gcs_shim")
-    except ImportError as exc:  # pragma: no cover - workspace always installs it
-        raise RuntimeError("MAPI_OBJECT_STORE=shim needs the mapi-gcs-shim package") from exc
-    cls: Any = getattr(mod, "ShimObjectStore", None)
-    if cls is None:
-        raise NotImplementedError(
-            "mapi_gcs_shim does not provide ShimObjectStore yet; run with "
-            "MAPI_OBJECT_STORE=memory (tests only) or install a shim that implements it"
+    """``ShimObjectStore`` as the shim's ``control`` principal (key file under the shim root)."""
+    from mapi_gcs_shim import PRINCIPAL_CONTROL, ShimCredentials, ShimObjectStore
+
+    key_file = settings.gcs_key_path(PRINCIPAL_CONTROL)
+    if not key_file.is_file():
+        raise RuntimeError(
+            f"the GCS shim's control key {str(key_file)!r} does not exist: start the shim "
+            f"first (mapi-gcs-shim serve --root {settings.resolved_gcs_root()}) or set "
+            "MAPI_GCS_ROOT / MAPI_GCS_KEY_FILE"
         )
-    params = inspect.signature(cls).parameters
-    kwargs: dict[str, Any] = {}
-    for name, value in (
-        ("endpoint", settings.gcs_endpoint),
-        ("base_url", settings.gcs_endpoint),
-        ("token", settings.control_token),
-        ("env", settings.env),
-    ):
-        if name in params and value is not None:
-            kwargs[name] = value
-    store = cls(**kwargs)
-    if not isinstance(store, ObjectStore):
-        raise TypeError("mapi_gcs_shim.ShimObjectStore does not satisfy the ObjectStore protocol")
-    return store
+    credentials = ShimCredentials.load(key_file)
+    return ShimObjectStore(
+        settings.gcs_endpoint,
+        credentials,
+        public_endpoint=settings.gcs_public_endpoint,
+    )
 
 
 def build_object_store(settings: Settings) -> ObjectStore:

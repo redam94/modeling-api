@@ -33,6 +33,15 @@ from mapi_spec.catalog import Catalog
 from mapi_spec.coords import CoordSummary, DataSummary
 from mapi_spec.errors import ErrorCode, MapiError, Problem
 from mapi_spec.executor import RunEventType, RunKind
+from mapi_spec.jobs import (
+    DESCRIBE_OUTPUT,
+    FIT_BUNDLE,
+    FIT_SIDECARS,
+    INGEST_DATA,
+    INGEST_SCHEMA,
+    DescribeJob,
+    MetricsSidecar,
+)
 from mapi_spec.loader import canonical_json, spec_hash
 from mapi_spec.plots import PlotSpec
 from mapi_spec.run import (
@@ -82,16 +91,10 @@ __all__ = [
 
 log = logging.getLogger(__name__)
 
-# ---- output names the runner writes (relative to the attempt prefix) ----------------------
-FIT_BUNDLE = "bundle.zarr.zip"
-FIT_SIDECARS = ("diagnostics.json", "metrics.json", "plots.json", "coords.json")
-INGEST_DATA = "data.zarr.zip"
-INGEST_SCHEMA = "schema.json"
-INGEST_OPTIONAL = ("summary.json", "profile.json", "preview.json")
-DESCRIBE_OUTPUT = "catalog.json"
+# Output names the runner writes (relative to the attempt prefix) come from mapi_spec.jobs.
 
 _DIAGNOSTICS = TypeAdapter(list[Diagnostic])
-_METRICS = TypeAdapter(dict[MetricName, float])
+_METRIC_NAMES = TypeAdapter(dict[MetricName, float])
 _COORDS = TypeAdapter(dict[str, dict[str, CoordSummary]])
 _MAX_PLOTS = 200
 
@@ -376,7 +379,10 @@ class Finalizer:
                     await self._read_json(meta.bucket, meta, cap)
                 )
             if (meta := v.objects.get("metrics.json")) is not None:
-                metrics = _METRICS.validate_python(await self._read_json(meta.bucket, meta, cap))
+                report = MetricsSidecar.model_validate(
+                    await self._read_json(meta.bucket, meta, cap)
+                )
+                metrics = _METRIC_NAMES.validate_python(report.finite())
             if (meta := v.objects.get("coords.json")) is not None:
                 coords = _COORDS.validate_python(await self._read_json(meta.bucket, meta, cap))
         except ValidationError as exc:
@@ -687,7 +693,11 @@ class Finalizer:
             raise IntegrityError(
                 "catalog.json does not match the Catalog schema", untrusted_text=str(exc)[:8000]
             ) from exc
-        image = v.run.payload.get("image_digest") or self.ctx.catalogs.image_digest
+        try:
+            job = DescribeJob.model_validate(v.run.payload)
+        except ValidationError:
+            job = DescribeJob()
+        image = job.image_digest or self.ctx.catalogs.image_digest
 
         async def apply(session: AsyncSession, row: m.Run) -> None:
             await self.ctx.catalogs.store(

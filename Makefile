@@ -70,12 +70,17 @@ fmt: ## Auto-format Python code
 	$(UV) run ruff check --fix $(PY_DIRS)
 	$(UV) run ruff format $(PY_DIRS)
 
+# Packages checked with ``mypy --strict`` one at a time (per-package strictness is part of
+# their contract: e.g. untyped third-party calls need explicit ignores only under --strict).
+STRICT_PY := packages/spec/src packages/gcs-shim/src packages/runner/src packages/server/src \
+	packages/client/src packages/cli/src
+
 .PHONY: typecheck
 typecheck: ## mypy over every type-checked package, the dev scripts and the image helpers
 	$(UV) run mypy packages/spec/src packages/sdk/src packages/steps-core/src packages/sdk-pymc/src \
 		packages/sdk-sklearn/src packages/plots-core/src plugins/mmm/src plugins/ts/src \
-		plugins/tabular/src conformance/src packages/gcs-shim/src
-	$(UV) run mypy --strict packages/server/src
+		plugins/tabular/src conformance/src
+	@set -e; for pkg in $(STRICT_PY); do echo "mypy --strict $$pkg"; $(UV) run mypy --strict $$pkg; done
 	$(UV) run mypy $(DEVOPS_PY)
 	$(UV) run mypy images/common
 

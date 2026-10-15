@@ -16,7 +16,26 @@ from mapi_spec.api import RunCreate, RunRetry
 from mapi_spec.capabilities import Capabilities
 from mapi_spec.errors import ErrorCode, Issue, MapiError, ValidationFailed
 from mapi_spec.executor import RunKind
+from mapi_spec.jobs import (
+    BUNDLE_MANIFEST_OUTPUT,
+    FIT_BUNDLE,
+    INGEST_DATA,
+    INPUT_BUNDLE,
+    INPUT_BUNDLE_MANIFEST,
+    INPUT_DATASET,
+    INPUT_PLOTS,
+    INPUT_UPLOAD,
+    DeriveJob,
+    DescribeJob,
+    EvaluateJob,
+    IngestJob,
+    IngestSource,
+    RenderJob,
+    parse_model_job_params,
+    side_table_input,
+)
 from mapi_spec.loader import spec_hash
+from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.spec import ModelSpec, ScoreRequest
@@ -33,6 +52,7 @@ from mapi_server.services.specs import (
     Validation,
     check_score_request,
     pin_document,
+    resolve_dataset,
     validate_document,
 )
 
@@ -48,10 +68,10 @@ __all__ = [
 ]
 
 DEFAULT_TIMEOUT_S = 1800
-BUNDLE_INPUT = "bundle"
+BUNDLE_INPUT = INPUT_BUNDLE
 
 
-def data_ref(dv: m.DatasetVersion, name: str = "data.zarr.zip") -> dict[str, Any]:
+def data_ref(dv: m.DatasetVersion, name: str = INGEST_DATA) -> dict[str, Any]:
     obj = dv.objects.get(name)
     if obj is None:
         raise MapiError(
@@ -107,9 +127,9 @@ async def submit_spec_run(
         checkpointable = caps.checkpointable
     else:
         checkpointable = False
-    inputs = {"dataset": data_ref(v.dataset)}
+    inputs = {INPUT_DATASET: data_ref(v.dataset)}
     for name, tv in v.side_tables.items():
-        inputs[f"side_table.{name}"] = data_ref(tv)
+        inputs[side_table_input(name)] = data_ref(tv)
     run = await create_run(
         session,
         scope,
@@ -145,6 +165,79 @@ async def _model_ref(session: AsyncSession, mv: m.ModelVersion) -> str:
     return f"model://{mv.project_id}/{model.name}@v{mv.version}"
 
 
+async def _fit_dataset(session: AsyncSession, mv: m.ModelVersion) -> m.DatasetVersion:
+    """The dataset version the model version was fitted on."""
+    fit = await session.get(m.Run, mv.run_id)
+    if fit is None or fit.dataset_id is None or fit.dataset_version is None:
+        raise MapiError(
+            f"model version {mv.id} has no recorded fit dataset; pass a dataset ref",
+            code=ErrorCode.REF_UNRESOLVED,
+        )
+    dv = await session.get(m.DatasetVersion, (fit.dataset_id, fit.dataset_version))
+    if dv is None or dv.status != "ready":
+        raise MapiError(
+            f"the fit dataset of model version {mv.id} is no longer available",
+            code=ErrorCode.REF_UNRESOLVED,
+        )
+    return dv
+
+
+async def _dataset_input(
+    session: AsyncSession, scope: Scope, ref: str | DatasetRef | None, pointer: str
+) -> m.DatasetVersion | None:
+    if ref is None:
+        return None
+    if isinstance(ref, str):
+        try:
+            ref = DatasetRef.parse(ref)
+        except ValueError as exc:
+            raise MapiError(
+                f"{ref!r} is not a dataset reference",
+                code=ErrorCode.SCHEMA_INVALID,
+                pointer=pointer,
+                untrusted_text=str(exc)[:2000],
+            ) from None
+    dv, why = await resolve_dataset(session, scope, ref)
+    if dv is None:
+        raise MapiError(
+            why or f"cannot resolve {ref}", code=ErrorCode.REF_UNRESOLVED, pointer=pointer
+        )
+    return dv
+
+
+async def _model_job_inputs(
+    session: AsyncSession,
+    ctx: ServerContext,
+    mv: m.ModelVersion,
+    job: EvaluateJob | DeriveJob | RenderJob,
+) -> dict[str, Any]:
+    """Inputs of an ``evaluate``/``derive``/``render`` run besides the bundle."""
+    scope = ctx.scope
+    if isinstance(job, RenderJob):
+        if "plots.json" not in (mv.manifest.get("objects") or {}):
+            raise MapiError(
+                f"model version {mv.id} has no plots to render",
+                code=ErrorCode.CAPABILITY_UNSUPPORTED,
+            )
+        plots = await verified_bundle_object(ctx.store, ctx.signer, mv, "plots.json")
+        return {INPUT_PLOTS: StoredRef(plots.bucket, plots.key, plots.generation)}
+    if isinstance(job, EvaluateJob):
+        req = job.request
+        dv = await _dataset_input(session, scope, req.data if req else None, "/params/request/data")
+        tables: dict[str, Any] = dict(req.side_tables) if req else {}
+    else:
+        dv = await _dataset_input(session, scope, job.data, "/params/data")
+        tables = {}
+    if dv is None:
+        dv = await _fit_dataset(session, mv)
+    inputs = {INPUT_DATASET: data_ref(dv)}
+    for name, ref in tables.items():
+        tv = await _dataset_input(session, scope, ref, f"/params/request/side_tables/{name}")
+        assert tv is not None
+        inputs[side_table_input(name)] = data_ref(tv)
+    return inputs
+
+
 async def submit_model_run(
     session: AsyncSession,
     ctx: ServerContext,
@@ -175,14 +268,18 @@ async def submit_model_run(
         for name, dv in datasets.items():
             inputs[name] = data_ref(dv)
     else:
-        payload = {
-            "apiVersion": "mapi/v1",
-            "kind": f"{kind.value.capitalize()}Request",
-            "model": ref,
-            "params": dict(params or {}),
-        }
-    bundle = await verified_bundle_object(ctx.store, ctx.signer, mv, "bundle.zarr.zip")
+        job = parse_model_job_params(kind, dict(params or {}))
+        payload = job.model_dump(mode="json", by_alias=True, exclude_none=True)
+        inputs.update(await _model_job_inputs(session, ctx, mv, job))
+    bundle = await verified_bundle_object(ctx.store, ctx.signer, mv, FIT_BUNDLE)
     inputs[BUNDLE_INPUT] = StoredRef(bundle.bucket, bundle.key, bundle.generation)
+    if BUNDLE_MANIFEST_OUTPUT in (mv.manifest.get("objects") or {}):
+        sdk_manifest = await verified_bundle_object(
+            ctx.store, ctx.signer, mv, BUNDLE_MANIFEST_OUTPUT
+        )
+        inputs[INPUT_BUNDLE_MANIFEST] = StoredRef(
+            sdk_manifest.bucket, sdk_manifest.key, sdk_manifest.generation
+        )
     run = await create_run(
         session,
         scope,
@@ -276,17 +373,16 @@ async def submit_ingest(
     generation: int,
     mapping: dict[str, Any],
 ) -> m.Run:
-    payload = {
-        "apiVersion": "mapi/v1",
-        "kind": "IngestRequest",
-        "dataset": f"dataset://{dataset.project_id}/{dataset.name}@v{version}",
-        "mapping": mapping,
-        "upload": {
-            "filename": upload.filename,
-            "content_type": upload.content_type,
-            "size_bytes": upload.size_bytes,
-        },
-    }
+    job = IngestJob(
+        mapping=mapping,
+        dataset=f"dataset://{dataset.project_id}/{dataset.name}@v{version}",
+        source=IngestSource(
+            filename=upload.filename,
+            content_type=upload.content_type,
+            size_bytes=upload.size_bytes,
+        ),
+    )
+    payload = job.model_dump(mode="json", by_alias=True, exclude_none=True)
     snapshot = await ctx.catalogs.get(session)
     run = await create_run(
         session,
@@ -295,7 +391,7 @@ async def submit_ingest(
         resource_class=ResourceClass.S,
         timeout_s=DEFAULT_TIMEOUT_S,
         payload=payload,
-        inputs={"upload": StoredRef(upload.bucket, upload.object_name, generation)},
+        inputs={INPUT_UPLOAD: StoredRef(upload.bucket, upload.object_name, generation)},
         spec_hash=spec_hash(payload),
         dataset_id=dataset.id,
         dataset_version=version,
@@ -320,7 +416,7 @@ async def submit_describe(session: AsyncSession, ctx: ServerContext) -> m.Run | 
     ).first()
     if pending is not None:
         return None
-    payload = {"apiVersion": "mapi/v1", "kind": "DescribeRequest", "image_digest": image}
+    payload = DescribeJob(image_digest=image).model_dump(mode="json", exclude_none=True)
     run = await create_run(
         session,
         ctx.scope,
