@@ -21,6 +21,7 @@ __all__ = [
     "fmt",
     "has_samples",
     "interval_columns",
+    "observed_name",
     "pick_var",
     "sample_dims",
     "stack_samples",
@@ -123,6 +124,25 @@ def pick_var(ds: xr.Dataset, var: str | None, *, what: str = "variable") -> str:
     if not names:
         raise RecipeDataError(f"the group has no {what}s")
     return names[0]
+
+
+def observed_name(obs: xr.Dataset | None, var: str, explicit: str | None = None) -> str | None:
+    """The observed variable matching prediction ``var``.
+
+    Score outputs name predictions by the model output (``y_hat``) and observations by the
+    dataset's target (``revenue_local``), so: ``explicit`` if given, else ``var`` itself, else
+    the only variable of the observed group.
+    """
+    if obs is None:
+        return None
+    if explicit is not None:
+        if explicit not in obs.data_vars:
+            raise RecipeDataError(f"no observed variable {explicit!r}")
+        return explicit
+    if var in obs.data_vars:
+        return var
+    names = [str(n) for n in obs.data_vars]
+    return names[0] if len(names) == 1 else None
 
 
 def element_label(var: str, idx: dict[str, Any]) -> str:

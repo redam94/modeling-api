@@ -37,6 +37,7 @@ from mapi_plots.recipes._util import (
     has_samples,
     interval_columns,
     normalise_time,
+    observed_name,
     pct,
     pick_var,
     stack_samples,
@@ -102,6 +103,7 @@ def band_frame(
     summary_groups: tuple[str, ...] = ("summary",),
     obs_groups: tuple[str, ...] = OBS_GROUPS,
     need_time: bool = True,
+    observed_var: str | None = None,
 ) -> Bands:
     """Point + interval bands over a time-like dim (optionally per facet) with observations."""
     ds = inp.find(*draw_groups)
@@ -148,8 +150,9 @@ def band_frame(
         cols = summary_bands(da, levels)
         summed = []
     obs_ds = inp.find(*obs_groups)
-    if obs_ds is not None and v in obs_ds.data_vars:
-        o = obs_ds[v]
+    obs_name = observed_name(obs_ds, v, observed_var)
+    if obs_ds is not None and obs_name is not None:
+        o = obs_ds[obs_name]
         o_other = [d for d in o.dims if d not in keep]
         if o_other:
             o = o.sum(o_other, min_count=1)
@@ -192,6 +195,9 @@ def _xtip(bands: Bands) -> alt.Tooltip:
 
 class FanSettings(RecipeSettings):
     var: str | None = None
+    observed_var: str | None = Field(
+        None, description="Observed variable (default: same name, or the only one)"
+    )
     along: str | None = None
     facet: str | None = None
     max_facets: int = Field(12, ge=1, le=48)
@@ -226,6 +232,7 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
         max_facets=s.max_facets,
         levels=s.levels,
         point=s.point,
+        observed_var=s.observed_var,
     )
     frame = b.frame
     if len(frame) > s.max_rows:
@@ -298,6 +305,7 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
 
 class FitVsActualSettings(RecipeSettings):
     var: str | None = None
+    observed_var: str | None = None
     along: str | None = None
     facet: str | None = None
     max_facets: int = Field(12, ge=1, le=48)
@@ -314,6 +322,7 @@ def _point_and_obs(inp: RecipeInput, s: FitVsActualSettings) -> Bands:
         levels=[0.9],
         point=s.point,
         need_time=False,
+        observed_var=s.observed_var,
     )
     if "observed" not in b.frame:
         raise RecipeDataError(f"no observed values of {b.var!r} (observed_data/observed group)")
@@ -562,14 +571,20 @@ def _series(ds: xr.Dataset, var: str, t: str, prob: float, label: str) -> pd.Dat
     else:
         extra = [d for d in da.dims if d not in (t, "stat")]
         if any(da.sizes[d] > 1 for d in extra):
-            raise RecipeDataError(
-                f"summary {var!r} has extra dims {extra}; request an aggregated output"
-            )
-        da = da.squeeze(extra, drop=True) if extra else da
-        b = summary_bands(da, [prob])
-        _, lo_c, hi_c = interval_columns([prob])[0]
-        point = b["point"]
-        lo, hi = b.get(lo_c, point), b.get(hi_c, point)
+            if "mean" not in [str(x) for x in da["stat"].values]:
+                raise RecipeDataError(
+                    f"summary {var!r} has extra dims {extra} and no mean; request an "
+                    "aggregated output"
+                )
+            # means add up (intervals do not): show the summed mean without a band
+            point = da.sel(stat="mean", drop=True).sum(extra)
+            lo = hi = point
+        else:
+            da = da.squeeze(extra, drop=True) if extra else da
+            b = summary_bands(da, [prob])
+            _, lo_c, hi_c = interval_columns([prob])[0]
+            point = b["point"]
+            lo, hi = b.get(lo_c, point), b.get(hi_c, point)
     return pd.DataFrame(
         {
             "x": coord_values(point, t),
@@ -581,6 +596,13 @@ def _series(ds: xr.Dataset, var: str, t: str, prob: float, label: str) -> pd.Dat
     )
 
 
+def _with_samples(ds: xr.Dataset | None, var: str | None) -> bool:
+    if ds is None:
+        return False
+    names = [var] if var else list(map(str, ds.data_vars))
+    return bool(names) and all(n in ds.data_vars and has_samples(ds[n]) for n in names)
+
+
 @recipe(
     "core.counterfactual",
     title="Scenario vs baseline",
@@ -590,8 +612,20 @@ def _series(ds: xr.Dataset, var: str, t: str, prob: float, label: str) -> pd.Dat
 )
 def counterfactual(inp: RecipeInput, s: CounterfactualSettings) -> Figure:
     """Scenario vs baseline bands and the distribution of the total change."""
-    scen = inp.find("scenario", "draws", "predictions", "summary")
-    base = inp.find("baseline/draws", "baseline/predictions", "baseline/summary", "baseline")
+    scen = next(
+        (g for g in (inp.find("scenario", "draws", "predictions"),) if _with_samples(g, s.var)),
+        None,
+    ) or inp.find("summary")
+    delta_ds = inp.find("delta/draws", "delta/predictions", "delta")
+    base = inp.find("baseline/draws", "baseline/predictions", "baseline")
+    if base is None or not _with_samples(base, s.var):
+        if scen is not None and _with_samples(scen, s.var) and _with_samples(delta_ds, s.var):
+            # score_bundle keeps baseline summaries only; the draws share the thinning index,
+            # so baseline draws are exactly scenario draws minus delta draws
+            assert delta_ds is not None
+            base = scen - delta_ds
+        else:
+            base = inp.find("baseline/summary") or base
     if scen is None or base is None:
         raise RecipeDataError("a counterfactual needs scenario and baseline groups")
     var = pick_var(scen, s.var)
@@ -607,7 +641,6 @@ def counterfactual(inp: RecipeInput, s: CounterfactualSettings) -> Figure:
         ],
         ignore_index=True,
     )
-    delta_ds = inp.find("delta/draws", "delta/predictions", "delta")
     total: np.ndarray | None = None
     if delta_ds is not None and var in delta_ds.data_vars and has_samples(delta_ds[var]):
         st = stack_samples(delta_ds[var])

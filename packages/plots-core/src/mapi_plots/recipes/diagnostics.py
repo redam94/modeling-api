@@ -27,6 +27,7 @@ from mapi_plots.recipes._util import (
     flatten_samples,
     interval_columns,
     iter_elements,
+    observed_name,
     pct,
     pick_var,
     stack_samples,
@@ -47,12 +48,15 @@ __all__ = [
 _LEVELS_DOC = "Central interval levels to shade, e.g. [0.5, 0.9]"
 
 
-def _matched(pred: xr.Dataset, obs: xr.Dataset | None, var: str) -> tuple[np.ndarray, np.ndarray]:
+def _matched(
+    pred: xr.Dataset, obs: xr.Dataset | None, var: str, observed_var: str | None = None
+) -> tuple[np.ndarray, np.ndarray]:
     """``(draws (S, N), observed (N,))`` over the cells both share, NaN cells dropped."""
-    if obs is None or var not in obs.data_vars:
+    name = observed_name(obs, var, observed_var)
+    if obs is None or name is None:
         raise RecipeDataError(f"no observed values for {var!r} (observed_data group)")
     p = stack_samples(pred[var])
-    o = obs[var]
+    o = obs[name]
     p, o = xr.align(p, o, join="inner", exclude=[SAMPLE])
     o = o.transpose(*[d for d in p.dims if d != SAMPLE and d in o.dims])
     extra = [d for d in p.dims if d != SAMPLE and d not in o.dims]
@@ -520,6 +524,7 @@ def posterior_forest(inp: RecipeInput, s: ForestSettings) -> Figure:
 
 class PPCSettings(RecipeSettings):
     var: str | None = None
+    observed_var: str | None = None
     num_draws: int = Field(50, ge=1, le=500)
     bins: int = Field(20, ge=4, le=100)
     levels: list[float] = Field(
@@ -545,7 +550,7 @@ def ppc(inp: RecipeInput, s: PPCSettings) -> Figure:
     pred = inp.require("posterior_predictive", "predictions")
     obs = inp.find("observed_data", "observed")
     var = pick_var(pred, s.var)
-    draws, y = _matched(pred, obs, var)
+    draws, y = _matched(pred, obs, var, s.observed_var)
     density = _density_frame(draws, y, s.num_draws, "predictive draw")
     pit = _stats.pit_values(draws, y)
     counts, edges = np.histogram(pit, bins=s.bins, range=(0.0, 1.0))

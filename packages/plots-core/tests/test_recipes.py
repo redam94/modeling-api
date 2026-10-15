@@ -361,6 +361,24 @@ def test_fit_vs_actual_and_residuals(scored: Any) -> None:
         get_recipe("core.fit_vs_actual").render({"draws": base["draws"].to_dataset()})
 
 
+def test_observed_variable_may_be_named_differently() -> None:
+    base = ex.score_tree()
+    obs = base["observed"].to_dataset().rename(revenue="revenue_local")
+    data = {"draws": base["draws"].to_dataset(), "observed": obs}
+    plot = get_recipe("core.ppc_fan").render(data)  # the only observed variable is used
+    assert "observed" in frame(plot, "fan")
+    two = obs.assign(other=obs["revenue_local"])
+    assert "observed" not in frame(
+        get_recipe("core.ppc_fan").render({**data, "observed": two}), "fan"
+    )
+    plot = get_recipe("core.fit_vs_actual").render(
+        {**data, "observed": two}, observed_var="revenue_local"
+    )
+    assert len(frame(plot, "points")) == 60
+    with pytest.raises(RecipeDataError, match="no observed variable"):
+        get_recipe("core.ppc_fan").render(data, observed_var="nope")
+
+
 # ------------------------------------------------------------------------ decomposition
 
 
@@ -467,8 +485,23 @@ def test_counterfactual_without_delta_or_draws(cf_tree: Any) -> None:
     point_only = {"summary": summary.sum("geo") + 1, "baseline/summary": summary.sum("geo")}
     plot = get_recipe("core.counterfactual").render(point_only)
     assert "delta" not in plot.datasets and "no draws" in caption(plot)
+    summed = get_recipe("core.counterfactual").render(
+        {"summary": summary + 1, "baseline/summary": summary}
+    )
+    lines = frame(summed, "lines")
+    assert (lines["lo"] == lines["hi"]).all()  # summed means carry no band
+    no_mean = summary.sel(stat=["hdi_90_lower", "hdi_90_upper"])
     with pytest.raises(RecipeDataError, match="extra dims"):
-        get_recipe("core.counterfactual").render({"summary": summary, "baseline/summary": summary})
+        get_recipe("core.counterfactual").render({"summary": no_mean, "baseline/summary": no_mean})
+    scen = cf_tree["predictions"].to_dataset()
+    rebuilt = {
+        "draws": scen,
+        "baseline/summary": summary,
+        "delta/draws": cf_tree["delta/predictions"].to_dataset(),
+    }
+    plot = get_recipe("core.counterfactual").render(rebuilt)
+    base_line = frame(plot, "lines").query("series == 'baseline'")
+    assert (base_line["lo"] < base_line["hi"]).all()  # baseline draws = scenario - delta
     with pytest.raises(RecipeDataError, match="scenario and baseline"):
         get_recipe("core.counterfactual").render({"summary": summary, "x": summary})
 
