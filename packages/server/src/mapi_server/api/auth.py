@@ -28,8 +28,10 @@ from mapi_spec.audit import AuditAction, AuditOutcome, client_fingerprint, make_
 from mapi_spec.auth import SESSION_IDLE_TTL, CookieSpec, LoginTransaction, SessionInfo
 from mapi_spec.errors import ErrorCode, MapiError, Problem
 from mapi_spec.tenancy import PrincipalKind, ResourceKind
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.auth.identity import (
+    AccountDisabled,
     claim_or_create_user,
     create_session,
     delete_session,
@@ -42,6 +44,7 @@ from mapi_server.auth.identity import (
 from mapi_server.auth.oidc import OidcError
 from mapi_server.auth.request import CSRF_HEADER, _check_csrf, csrf_cookie, session_cookie
 from mapi_server.context import ServerContext
+from mapi_server.db import models as m
 from mapi_server.errors import problem_response
 from mapi_server.services.audit import write_audit
 from mapi_server.services.runs import now
@@ -119,6 +122,44 @@ async def auth_login(
     return resp
 
 
+async def _start_session(
+    ctx: ServerContext,
+    s: AsyncSession,
+    user: m.User,
+    issuer: str,
+    ip: str | None,
+    ua: str | None,
+) -> tuple[str, str]:
+    """A new session for a signed-in user, audited: ``(cookie value, CSRF token)``."""
+    key = ctx.secrets.audit_key
+    cookie_value, sess = await create_session(
+        s,
+        user,
+        ip_hash=client_fingerprint(ip, key),
+        user_agent_hash=client_fingerprint(ua, key),
+    )
+    await write_audit(
+        ctx.db,
+        [
+            make_audit_event(
+                action=AuditAction.AUTH_LOGIN,
+                resource_kind=ResourceKind.TENANT,
+                outcome=AuditOutcome.SUCCESS,
+                ts=now(),
+                fingerprint_key=key,
+                actor_kind=PrincipalKind.USER,
+                actor_id=user.id,
+                operator=user.operator,
+                client_ip=ip,
+                user_agent=ua,
+                details={"issuer": issuer},
+            )
+        ],
+        session=s,
+    )
+    return cookie_value, sess.csrf_token
+
+
 @router.get(
     "/callback",
     operation_id="auth_callback",
@@ -164,37 +205,14 @@ async def auth_callback(
             ctx, request, f"identity provider unreachable: {type(exc).__name__}"
         )
     ip, ua = _client(request)
-    key = ctx.secrets.audit_key
-    async with ctx.db.session() as s:
-        user = await claim_or_create_user(
-            s, ident, operator_emails=settings.effective_operator_emails()
-        )
-        cookie_value, sess = await create_session(
-            s,
-            user,
-            ip_hash=client_fingerprint(ip, key),
-            user_agent_hash=client_fingerprint(ua, key),
-        )
-        await write_audit(
-            ctx.db,
-            [
-                make_audit_event(
-                    action=AuditAction.AUTH_LOGIN,
-                    resource_kind=ResourceKind.TENANT,
-                    outcome=AuditOutcome.SUCCESS,
-                    ts=now(),
-                    fingerprint_key=key,
-                    actor_kind=PrincipalKind.USER,
-                    actor_id=user.id,
-                    operator=user.operator,
-                    client_ip=ip,
-                    user_agent=ua,
-                    details={"issuer": ident.issuer},
-                )
-            ],
-            session=s,
-        )
-        csrf = sess.csrf_token
+    try:
+        async with ctx.db.session() as s:
+            user = await claim_or_create_user(
+                s, ident, operator_emails=settings.effective_operator_emails()
+            )
+            cookie_value, csrf = await _start_session(ctx, s, user, ident.issuer, ip, ua)
+    except AccountDisabled as exc:
+        return await _login_failed(ctx, request, f"the account {exc} is disabled")
     # return_to is a path (safe_return_to); it belongs to the web app, which may be served
     # from another origin than the API (local dev; behind a load balancer they coincide)
     resp = RedirectResponse(

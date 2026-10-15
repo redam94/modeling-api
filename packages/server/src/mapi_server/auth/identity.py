@@ -28,6 +28,7 @@ __all__ = [
     "LOCAL_ISSUER",
     "LOCAL_USER_ID",
     "SESSION_TOUCH_INTERVAL",
+    "AccountDisabled",
     "VerifiedIdentity",
     "claim_or_create_user",
     "create_session",
@@ -94,6 +95,10 @@ def _norm_email(email: str | None) -> str | None:
     return email.strip().lower() if email else None
 
 
+class AccountDisabled(Exception):
+    """A verified sign-in for an account an operator disabled (it stays disabled)."""
+
+
 # ======================================================================================= users
 
 
@@ -101,7 +106,11 @@ async def claim_or_create_user(
     s: AsyncSession, ident: VerifiedIdentity, *, operator_emails: Iterable[str] = ()
 ) -> m.User:
     """The user for a verified sign-in: the known ``(issuer, subject)``, else the pending
-    invitation for the *verified* e-mail (claimed now), else a new user."""
+    invitation for the *verified* e-mail (claimed now), else a new user.
+
+    Raises :class:`AccountDisabled` for a disabled account: signing in never re-activates
+    it (only an invitation becomes active at its first sign-in).
+    """
     ts = now()
     email = _norm_email(ident.email)
     operators = {e.strip().lower() for e in operator_emails if e.strip()}
@@ -122,6 +131,8 @@ async def claim_or_create_user(
         ).scalar_one_or_none()
         if user is not None:
             user.issuer, user.subject = ident.issuer, ident.subject
+    if user is not None and user.status == "disabled":
+        raise AccountDisabled(user.id)
     if user is None:
         user = m.User(
             id=new_id("usr"),

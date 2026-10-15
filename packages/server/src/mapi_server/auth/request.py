@@ -67,6 +67,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.auth.identity import (
     LOCAL_USER_ID,
+    AccountDisabled,
     claim_or_create_user,
     load_session,
     local_principal,
@@ -364,10 +365,12 @@ async def _from_id_token(s: AsyncSession, ctx: ServerContext, raw: str) -> _Reso
             select(m.User).where(m.User.issuer == ident.issuer, m.User.subject == ident.subject)
         )
     ).scalar_one_or_none()
+    operators = ctx.settings.effective_operator_emails()
     if user is None:  # first use: claim an invitation or create the user, like /auth/callback
-        user = await claim_or_create_user(
-            s, ident, operator_emails=ctx.settings.effective_operator_emails()
-        )
+        try:
+            user = await claim_or_create_user(s, ident, operator_emails=operators)
+        except AccountDisabled:
+            raise unauthenticated("this account is disabled") from None
     elif user.status != "active":
         raise unauthenticated("this account is disabled")
     return _Resolved(Credential.SESSION, user_principal(user), user.operator)

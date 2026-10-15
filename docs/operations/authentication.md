@@ -133,6 +133,8 @@ narrowed by its scopes, and is bound to that project:
   before any database lookup, and no error ever echoes the presented value;
 - expired, revoked or orphaned tokens (owner disabled) answer `401`; a wrong secret for a
   known prefix, expiry and revocation are audited as `token.auth_failed`;
+- a disabled account stays disabled: signing in again is refused (a generic `401`, audited
+  as `auth.login_failed`), and only an invitation becomes active at its first sign-in;
 - a token never carries operator powers, even if its owner is an operator;
 - per-token `rate_limit_per_minute` (`RATE_LIMITED`, `Retry-After`) and a vCPU-second
   budget per UTC day or month apply in addition to the tenant's quotas.

@@ -129,6 +129,9 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   project, so tenant members, project create and delete, the tenant audit log and tenant usage
   now need a signed-in session (`403` for any token). A token may still read its own tenant
   and list its own project (`mapi_spec.api.TOKEN_TENANT_ROUTES`).
+- **server**: signing in again no longer re-activates a disabled account. `/auth/callback`
+  refuses it with the generic `401` and audits `auth.login_failed`; only an invitation becomes
+  active at its first sign-in.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 

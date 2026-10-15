@@ -225,6 +225,38 @@ async def test_bearer_id_tokens_need_a_cli_audience_and_a_valid_signature(
     assert r.status_code == 401
 
 
+async def test_disabled_accounts_stay_disabled_when_they_sign_in_again(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    await sign_in(client, "analyst@dev.local")
+    token = await _cli_id_token(client, "analyst@dev.local", client_id="mapi-cli")
+    async with ctx.db.session() as s:
+        [user] = [
+            u for u in (await s.execute(select(m.User))).scalars()
+            if u.email == "analyst@dev.local"
+        ]  # fmt: skip
+        user.status = "disabled"
+    assert (await client.get("/v1/me")).status_code == 401  # the session is refused
+    r = await client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 401
+    # a new browser sign-in is refused (generic 401) and does not re-activate the account
+    r = await client.get("/auth/login")
+    r = await client.get(r.headers["location"] + "&login_hint=analyst%40dev.local")
+    r = await client.get(r.headers["location"])
+    assert r.status_code == 401 and r.json()["detail"] == "sign-in failed; start again"
+    assert not any(c.startswith("mapi_session=") for c in r.headers.get_list("set-cookie"))
+    async with ctx.db.session() as s:
+        row = await s.get(m.User, user.id)
+        assert row is not None and row.status == "disabled"
+        failed = [
+            e.details for e in (await s.execute(select(m.AuditEvent))).scalars()
+            if e.action == "auth.login_failed"
+        ]  # fmt: skip
+    assert any("disabled" in str(d.get("reason")) for d in failed)
+    r = await client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 401
+
+
 async def test_callback_is_single_use_and_checks_state(client: httpx.AsyncClient) -> None:
     r = await client.get("/auth/login")
     authorize = r.headers["location"]
