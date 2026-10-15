@@ -271,7 +271,8 @@ class Settings(BaseSettings):
         None,
         repr=False,
         description="Root secret of the token pepper and audit fingerprints (default: read "
-        "or create data_dir/keys/server-secret). Changing it invalidates every API token.",
+        "or create server-secret next to the bundle-signing key). Changing it invalidates "
+        "every API token.",
     )
     server_secret_path: Path | None = None
     cookie_secure: bool | None = Field(
@@ -399,7 +400,8 @@ class Settings(BaseSettings):
 
     @property
     def secret_path(self) -> Path:
-        return self.server_secret_path or (self.data_dir / "keys" / "server-secret")
+        """Next to the bundle-signing key by default: both live on durable, shared storage."""
+        return self.server_secret_path or (self.key_path.parent / "server-secret")
 
     def effective_operator_emails(self) -> list[str]:
         """``operator_emails`` plus, in the dev profile, the first development account."""

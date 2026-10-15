@@ -78,7 +78,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 |---|---|---|
 | `MAPI_AUTH_REQUIRED` | on, except `single-tenant` | Require a session or API token on every non-public route. Cannot be turned off in a multi-tenant profile |
 | `MAPI_SERVER_SECRET` | from `MAPI_SERVER_SECRET_PATH` | Root secret of the API-token pepper and the audit fingerprints. Every API instance must share it; changing it invalidates every token |
-| `MAPI_SERVER_SECRET_PATH` | `$MAPI_DATA_DIR/keys/server-secret` | File holding the root secret (`0600`, created by `mapi-server migrate`) |
+| `MAPI_SERVER_SECRET_PATH` | `server-secret` next to the bundle-signing key | File holding the root secret (`0600`, created by `mapi-server migrate`; Compose keeps it on the `keys` volume) |
 | `MAPI_COOKIE_SECURE` | on when `MAPI_API_URL` is `https` | `__Host-` prefixed, `Secure` session cookies. Off: `mapi_session`/`mapi_csrf` for plain-HTTP development |
 | `MAPI_OIDC_ISSUER` | unset | The OpenID provider (for example `https://accounts.google.com`). Unset outside the `dev` profile: browser sign-in is off, tokens still work |
 | `MAPI_OIDC_DISCOVERY_URL` | `<issuer>/.well-known/openid-configuration` | Where the provider's metadata is |
