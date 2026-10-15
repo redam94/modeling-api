@@ -230,6 +230,7 @@ class Supervisor:
             self._cleanup()
 
     def _run(self) -> RunnerExit:
+        self._install_signals()  # first: a SIGTERM during bootstrap is handled, not fatal
         rs = self._bootstrap()
         self.rs = rs
         self.emitter = EventEmitter(
@@ -265,8 +266,10 @@ class Supervisor:
             return self._finish_failure(
                 _Failure(FailureClass.TIMEOUT, "the run deadline passed before the run started")
             )
+        if self._signals:
+            self._emit_error(_Failure(FailureClass.TIMEOUT, "terminated before the run started"))
+            return RunnerExit.TERMINATED
         self._prepare_scratch()
-        self._install_signals()
         self._spawn_worker(rs)
         self._loop(remaining)
         return self._finalize()
