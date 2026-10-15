@@ -17,6 +17,7 @@ coverage.xml
 htmlcov/
 dist/
 build/
+!infra/terraform/modules/build/
 
 # --- Node ---
 node_modules/
