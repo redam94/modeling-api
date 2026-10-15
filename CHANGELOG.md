@@ -162,6 +162,11 @@ is tested against fakes, and the Terraform is validated and tested against mocke
 - **docs**: data residency is enforced only on executors that declare regions (Cloud Run
   Jobs). The self-hosted executors are not checked, and the tenancy page now says so instead
   of promising a region match everywhere.
+- **server**: `MAPI_DISPATCH_TIERS` restricts an orchestrator to some trust tiers. Two
+  orchestrators serving different exec pools can no longer lease each other's runs (leasing
+  was not pool-aware, so public-tier code could land in the paid pool).
+  `gcp-deployment.md` no longer suggests a second orchestrator without it, and says that one
+  environment deploys one pool until M5.
 - **ops**: three Prometheus rule fixes.
   - `MapiQuota70` is now `MapiQuotaRejections`. It fires on rejections, not at 70 %, and it
     aggregates `by (scope)`, so its summary names the scope.

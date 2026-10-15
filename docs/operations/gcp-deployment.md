@@ -354,9 +354,15 @@ From Secret Manager (references, resolved when a revision starts):
 | `MAPI_METRICS_TOKEN` | api, events, orchestrator, collector sidecars | The bearer a scraper presents on `GET /metrics` (the multi-tenant profile refuses scrapes without it) |
 | `MAPI_OIDC_CLIENT_SECRET` | api | Only once a client secret version exists |
 
-One orchestrator serves one exec pool. A second pool (for example a separate project for
-public tenants) needs its own orchestrator with `control.dispatch_pool` and
-`MAPI_CLOUDRUN_PROJECT` pointing at it; placing tenants across pools by tier is part of M5.
+One orchestrator serves one exec pool, and an environment deploys **one** orchestrator: runs
+go only to `control.dispatch_pool`. Until tier placement across pools (M5), keep every tenant
+on that pool. A second pool, such as a separate exec project for `public` tenants, needs a
+second orchestrator outside this module. **Both** orchestrators must then set disjoint
+`MAPI_DISPATCH_TIERS`, for example `internal,self-hosted-trusted,verified` through
+`control.extra_env.orchestrator` here and `public` on the other. Without that, leasing is not
+pool-aware: either orchestrator takes any tenant's queued runs, and public-tier code can land
+in the paid pool. Terraform's `exec_pools[*].public` only chooses the default
+`dispatch_pool`. The server does not read it.
 
 Each workload can get extra plain variables through `control.extra_env` in the environment's
 `main.tf`; secrets never go there.

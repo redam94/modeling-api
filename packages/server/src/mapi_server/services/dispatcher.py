@@ -216,12 +216,20 @@ class Dispatcher:
             if report is not None and not report.enabled:
                 log.debug("executor %s is disabled by an operator: not leasing", report.name)
                 return leased
+            queued = select(m.Run).where(m.Run.state == RunState.QUEUED.value)
+            if s.dispatch_tiers:
+                # several orchestrators, one exec pool each: only this pool's tiers
+                queued = queued.where(
+                    m.Run.tenant_id.in_(
+                        select(m.Tenant.id).where(
+                            m.Tenant.trust_tier.in_([TrustTier(t).value for t in s.dispatch_tiers])
+                        )
+                    )
+                )
             rows = list(
                 (
                     await session.execute(
-                        select(m.Run)
-                        .where(m.Run.state == RunState.QUEUED.value)
-                        .order_by(m.Run.queued_at, m.Run.id)
+                        queued.order_by(m.Run.queued_at, m.Run.id)
                         .limit(s.lease_candidates)
                         .with_for_update(skip_locked=True)
                     )

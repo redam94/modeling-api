@@ -322,6 +322,34 @@ async def test_dispatcher_holds_runs_the_kill_switches_or_tenant_status_stop(
     assert await _leased(ctx, dispatcher) == [untrusted]
 
 
+async def test_orchestrators_lease_only_their_tiers(ctx: ServerContext, tenants: None) -> None:
+    """Two orchestrators serving different exec pools (one per tier group) must never take
+    each other's runs: leasing is filtered by MAPI_DISPATCH_TIERS."""
+    await make_tenant(ctx, "own", tier="self-hosted-trusted", projects=("main",))
+    internal = await _queue(ctx, "big", minutes_ago=2)
+    hosted = await _queue(ctx, "own", minutes_ago=1)
+    ctx.settings.dispatch_tiers = ["self-hosted-trusted"]  # the "other pool" orchestrator
+    assert await _leased(ctx, Dispatcher(ctx, FakeExecutor(), name="pool-b")) == [hosted]
+    async with ctx.db.session() as s:
+        assert (await load_run(s, None, internal)).state == RunState.QUEUED.value
+    ctx.settings.dispatch_tiers = ["internal", "verified"]
+    assert await _leased(ctx, Dispatcher(ctx, FakeExecutor(), name="pool-a")) == [internal]
+    # unset (the default): one orchestrator serves every tier
+    ctx.settings.dispatch_tiers = []
+    third = await _queue(ctx, "own")
+    assert await _leased(ctx, Dispatcher(ctx, FakeExecutor())) == [third]
+
+
+def test_dispatch_tiers_setting_parses() -> None:
+    from mapi_server.settings import Settings
+
+    s = Settings(database_url="postgresql://x/y", dispatch_tiers="public, verified")
+    assert [t.value for t in s.dispatch_tiers] == ["public", "verified"]
+    assert Settings(database_url="postgresql://x/y").dispatch_tiers == []
+    with pytest.raises(ValueError):
+        Settings(database_url="postgresql://x/y", dispatch_tiers="gold")
+
+
 async def test_shared_tiers_need_a_sandboxing_executor(ctx: ServerContext) -> None:
     await make_tenant(ctx, "pub", tier="public", projects=("main",))
     run_id = await _queue(ctx, "pub")
