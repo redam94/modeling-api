@@ -368,3 +368,32 @@ def test_output_units_follow_the_reverse_binding(
     report = check_model(_SameName, fixture, checks=["manifest", "fit", "output_space_and_units"])
     result = report.get("output_space_and_units")
     assert result.passed and not result.skipped, report.summary()
+
+
+class _ImplicitTarget(toy.QuantileModel):
+    """Declares y_hat without units_of: the harness inverts it through the single target."""
+
+    id = "test.implicit"
+    outputs: ClassVar[dict[str, Any]] = {"y_hat": {"dims": ["geo", "time"]}}
+
+
+def test_output_space_covers_outputs_that_inherit_the_target(
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    raw_schema: DataSchema,
+    registry: Registry,
+) -> None:
+    data, fx = panel
+    fixture = ModelFixture(
+        spec=e33_spec(model="test.implicit@^1", metrics="rmse"),
+        data=data,
+        side_tables={"fx": fx},
+        raw_schema=raw_schema,
+        registry=registry,
+    )
+    report = check_model(
+        _ImplicitTarget, fixture, checks=["manifest", "fit", "output_space_and_units"]
+    )
+    result = report.get("output_space_and_units")
+    assert result.passed and not result.skipped, report.summary()
+    assert "y_hat in weekly (EUR)" in result.detail

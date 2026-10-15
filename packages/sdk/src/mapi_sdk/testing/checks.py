@@ -39,7 +39,7 @@ from mapi_spec.spec import AsOfSplit, ModelSpec, ScorePolicy, ScoreRequest, Time
 from mapi_sdk._util import dtype_family
 from mapi_sdk.bundle import BUNDLE_FILE, Bundle, assert_no_pickle
 from mapi_sdk.context import drop_context, extract_context, prepend_context
-from mapi_sdk.harness import fit_spec, score_bundle
+from mapi_sdk.harness import _var_sources, fit_spec, score_bundle
 from mapi_sdk.metrics import point_estimate
 from mapi_sdk.pipeline import Pipeline
 from mapi_sdk.registry import Registry, default_registry
@@ -867,17 +867,15 @@ def check_model(
         tree = score(_request(), window(), return_full=True)
         space = json.loads(tree.attrs["output_space"])
         b = fit_once()
+        # the harness's own mapping: units_of, else the single target unless units are declared
+        sources = _var_sources(b.model, b.resolved.model.input_schema)
         notes = []
         for var, stage in space.items():
-            decl = manifest.outputs.get(var)
-            if decl is None or decl.units_of is None or stage == "model-owned":
+            src = sources.get(var)
+            if src is None or stage == "model-owned":
                 continue
             sch = b.resolved.stages.get(stage)
-            want = (
-                sch.vars[decl.units_of].units
-                if sch is not None and decl.units_of in sch.vars
-                else None
-            )
+            want = sch.vars[src].units if sch is not None and src in sch.vars else None
             # outputs are reverse-bound: 'y' bound to 'revenue_local' comes back as the latter
             preds = tree["predictions"]
             name = binding_dim(var)
@@ -889,7 +887,7 @@ def check_model(
                 raise AssertionError(f"{var}: missing output_space attribute")
             notes.append(f"{var} in {stage} ({want})")
         if not notes:
-            raise _Skip("no outputs declare units_of")
+            raise _Skip("no outputs inherit the units of an input variable")
         return "; ".join(notes)
 
     def c_aggregation() -> str:
