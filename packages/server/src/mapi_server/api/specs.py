@@ -9,6 +9,7 @@ from fastapi import APIRouter, Path, Query, Request, status
 from fastapi.responses import JSONResponse
 from mapi_spec.api import (
     Page,
+    Run,
     SpecCreate,
     SpecDoc,
     SpecRevision,
@@ -379,9 +380,13 @@ async def diff_spec_revisions(
 
 @router.post(
     "/{spec_id}/revisions/{revision}:dry-run",
+    response_model=Run,
     status_code=status.HTTP_202_ACCEPTED,
     operation_id="dry_run_spec",
-    responses={202: {"description": "The validate run"}},
+    responses={
+        202: {"model": Run, "description": "The validate run"},
+        200: {"model": Run, "description": "Idempotent replay"},
+    },
 )
 async def dry_run_spec(
     ctx: Ctx,

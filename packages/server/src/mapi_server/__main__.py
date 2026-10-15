@@ -3,7 +3,9 @@
 * ``api`` — the FastAPI app under uvicorn (127.0.0.1:8000 by default);
 * ``worker`` — the orchestrator: procrastinate worker + dispatcher + reconciler + events;
 * ``migrate`` — apply Alembic migrations (including the procrastinate schema);
-* ``dev`` — migrate, then API and orchestrator in one process (local all-in-one).
+* ``dev`` — migrate, then API and orchestrator in one process (local all-in-one); starts an
+  embedded GCS shim when ``MAPI_OBJECT_STORE=shim`` and nothing listens at
+  ``MAPI_GCS_ENDPOINT`` (like the embedded Postgres when ``DATABASE_URL`` is unset).
 
 Configuration comes from ``MAPI_*`` environment variables (see ``mapi_server.settings``).
 """
@@ -15,12 +17,18 @@ import asyncio
 import contextlib
 import logging
 import signal
+import socket
 import sys
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
-from mapi_server.settings import Settings
+from mapi_server.settings import ObjectStoreKind, Settings
 
-__all__ = ["main"]
+if TYPE_CHECKING:
+    from mapi_gcs_shim.server import ShimServer
+
+__all__ = ["main", "start_embedded_shim"]
 
 log = logging.getLogger("mapi_server")
 
@@ -113,10 +121,55 @@ async def _dev(settings: Settings, host: str, port: int) -> None:
         await shutdown(ctx)
 
 
+_LOOPBACK = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+def _listening(host: str, port: int) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
+def start_embedded_shim(settings: Settings) -> ShimServer | None:
+    """Start the GCS shim in this process if the store is the shim and nothing listens at
+    ``gcs_endpoint`` (loopback only). Returns the server to stop, or ``None``."""
+    if settings.object_store is not ObjectStoreKind.SHIM:
+        return None
+    parts = urlsplit(settings.gcs_endpoint)
+    host, port = parts.hostname or "127.0.0.1", parts.port or 80
+    if _listening(host, port):
+        return None
+    if host not in _LOOPBACK:
+        raise RuntimeError(
+            f"nothing listens at MAPI_GCS_ENDPOINT={settings.gcs_endpoint} and it is not a "
+            "loopback address, so no embedded shim is started; start the object store first"
+        )
+    from mapi_gcs_shim.server import ShimServer
+
+    shim = ShimServer(
+        settings.resolved_gcs_root(),
+        host=host,
+        port=port,
+        env=settings.env,
+        sweep_interval=300.0,
+        cors_origins=[settings.web_origin],
+    )
+    shim.start()
+    log.info("embedded GCS shim serving %s at %s", settings.resolved_gcs_root(), shim.endpoint)
+    return shim
+
+
 def cmd_dev(settings: Settings, *, host: str | None, port: int | None) -> int:
     cmd_migrate(settings)
-    with contextlib.suppress(KeyboardInterrupt):  # uvicorn re-raises the SIGINT it captured
-        asyncio.run(_dev(settings, host or settings.api_host, port or settings.api_port))
+    shim = start_embedded_shim(settings)
+    try:
+        with contextlib.suppress(KeyboardInterrupt):  # uvicorn re-raises the SIGINT it captured
+            asyncio.run(_dev(settings, host or settings.api_host, port or settings.api_port))
+    finally:
+        if shim is not None:
+            shim.stop()
     return 0
 
 

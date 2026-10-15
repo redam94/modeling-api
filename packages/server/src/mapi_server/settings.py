@@ -8,7 +8,9 @@ an embedded Postgres (``pgserver``) under ``MAPI_DATA_DIR`` unless ``DATABASE_UR
 from __future__ import annotations
 
 import hashlib
+import json
 import shlex
+import sys
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Literal
@@ -49,6 +51,12 @@ class ObjectStoreKind(StrEnum):
 def local_image_digest(lock_path: Path) -> str:
     """``sha256:<hex>`` of ``uv.lock``: the image digest of the local environment."""
     return "sha256:" + hashlib.sha256(lock_path.read_bytes()).hexdigest()
+
+
+def _default_runner_command() -> list[str]:
+    """``mapi-runner`` next to this interpreter (works without the venv on ``PATH``)."""
+    sibling = Path(sys.executable).parent / "mapi-runner"
+    return [str(sibling)] if sibling.is_file() else ["mapi-runner"]
 
 
 def _find_uv_lock(start: Path) -> Path | None:
@@ -92,19 +100,30 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------------------- storage
     object_store: ObjectStoreKind = ObjectStoreKind.SHIM
     gcs_endpoint: str = f"http://{LOCALHOST}:{GCS_SHIM_PORT}"
+    gcs_public_endpoint: str | None = Field(
+        None,
+        description="Base URL put into signed URLs when executions/browsers reach the shim "
+        "under another host name (default: gcs_endpoint)",
+    )
+    gcs_root: Path | None = Field(
+        None, description="The GCS shim's state directory (default: data_dir/gcs)"
+    )
+    gcs_key_file: Path | None = Field(
+        None,
+        description="Key file of the shim's control principal "
+        "(default: gcs_root/_shim/keys/control.json)",
+    )
     exec_token: str | None = Field(
         None,
         repr=False,
-        description="Bearer token of the shim's exec principal (local executors only)",
-    )
-    control_token: str | None = Field(
-        None, repr=False, description="Bearer token of the shim's control-plane principal"
+        description="Bearer token of the shim's exec principal (local executors only; default: "
+        "read from gcs_root/_shim/keys/exec.json)",
     )
 
     # ----------------------------------------------------------------------------- executors
     executor: ExecutorName = ExecutorName.LOCAL_PROCESS
     runner_command: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["mapi-runner"],
+        default_factory=lambda: _default_runner_command(),
         description="argv of the supervisor (shell-quoted string in the environment)",
     )
     docker_image: str = "mapi/base-bayes:local"
@@ -186,6 +205,25 @@ class Settings(BaseSettings):
     @property
     def key_path(self) -> Path:
         return self.signing_key_path or (self.data_dir / "keys" / "bundle-signing-p256.pem")
+
+    def resolved_gcs_root(self) -> Path:
+        return self.gcs_root or (self.data_dir / "gcs")
+
+    def gcs_key_path(self, principal: str) -> Path:
+        """Key file of a shim principal (``control`` honours ``MAPI_GCS_KEY_FILE``)."""
+        if principal == "control" and self.gcs_key_file is not None:
+            return self.gcs_key_file
+        return self.resolved_gcs_root() / "_shim" / "keys" / f"{principal}.json"
+
+    def resolved_exec_token(self) -> str | None:
+        """``MAPI_EXEC_TOKEN``, else the token in the shim's ``exec`` key file (shim store)."""
+        if self.exec_token is not None or self.object_store is not ObjectStoreKind.SHIM:
+            return self.exec_token
+        path = self.gcs_key_path("exec")
+        if not path.is_file():
+            return None
+        token = json.loads(path.read_text()).get("token")
+        return str(token) if token else None
 
     def bootstrap_url_template(self) -> str:
         """``MAPI_BOOTSTRAP_URL`` handed to local executions (the GCS shim JSON API)."""

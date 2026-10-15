@@ -9,6 +9,7 @@ authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
 dependencies = [
   "mapi-spec",
   "mapi-plots",
+  "mapi-gcs-shim",
   "fastapi>=0.115",
   "uvicorn[standard]>=0.30",
   "pydantic-settings>=2.4",
@@ -41,3 +42,4 @@ packages = ["src/mapi_server"]
 [tool.uv.sources]
 mapi-spec = { workspace = true }
 mapi-plots = { workspace = true }
+mapi-gcs-shim = { workspace = true }

@@ -12,6 +12,7 @@ from mapi_sdk.bundle import BUNDLE_FILE, Bundle, BundleManifest, file_digest
 from mapi_sdk.errors import BundleError, WireFormatError
 from mapi_sdk.wire import read_datatree_zip, read_zarr_zip
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.jobs import DATASET_SCHEMA_ATTR
 from mapi_spec.run import INPUT_BUNDLE, INPUT_DATASET
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import ModelSpec, ScorePolicy
@@ -29,7 +30,7 @@ __all__ = [
     "supplied_side_tables",
 ]
 
-SCHEMA_ATTR = "mapi_schema"
+SCHEMA_ATTR = DATASET_SCHEMA_ATTR
 _MAX_JSON_INPUT = 32 * 1024 * 1024
 
 

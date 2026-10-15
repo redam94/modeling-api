@@ -1,4 +1,4 @@
-"""Helpers that write RunSpecs to the GCS fake and run the real ``mapi-runner`` process."""
+"""Helpers that write RunSpecs to the GCS shim and run the real ``mapi-runner`` process."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fakegcs import FakeGcs
 from mapi_spec.executor import RunEvent, RunEventType, RunKind
 from mapi_spec.loader import spec_hash
 from mapi_spec.resources import ResourceClass
@@ -27,15 +26,16 @@ from mapi_spec.run import (
     verify_event,
 )
 from mapi_spec.storage import run_checkpoint_prefix, run_prefix
+from shimgcs import ShimGcs
 
 TENANT = "default"
 
 
 @dataclass
 class Run:
-    """A RunSpec written to the fake's bootstrap bucket, plus how to start its runner."""
+    """A RunSpec written to the shim's bootstrap bucket, plus how to start its runner."""
 
-    gcs: FakeGcs
+    gcs: ShimGcs
     rs: RunSpec
     env: dict[str, str]
     prefix: str
@@ -52,7 +52,7 @@ class Result:
     events: list[RunEvent]
     stderr: str
     run: Run
-    store: FakeGcs = field(repr=False)
+    store: ShimGcs = field(repr=False)
 
     def of(self, kind: RunEventType | str) -> list[RunEvent]:
         return [e for e in self.events if e.type == RunEventType(kind)]
@@ -70,7 +70,7 @@ class Result:
 
 
 def make_run(
-    gcs: FakeGcs,
+    gcs: ShimGcs,
     kind: RunKind | str,
     spec: Mapping[str, Any] | None = None,
     *,

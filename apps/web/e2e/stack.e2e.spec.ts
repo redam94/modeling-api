@@ -21,8 +21,16 @@ test.describe("@e2e local stack", () => {
 
   test("a new spec validates live and saves as revision 1 @e2e", async ({ page }) => {
     await page.goto("/build/new");
-    await expect(page.getByTestId("yaml-editor").locator(".monaco-editor")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(/valid|error/)).toBeVisible({ timeout: 15_000 });
+    const editor = page.getByTestId("yaml-editor").locator(".monaco-editor");
+    await expect(editor).toBeVisible({ timeout: 30_000 });
+    // The starter is named eu-geo-mmm; a seeded stack already has that spec (409), so save
+    // under a unique name.
+    await editor.locator(".view-line", { hasText: "name: eu-geo-mmm" }).click();
+    await page.keyboard.press("End");
+    await page.keyboard.press("Shift+Home");
+    await page.keyboard.type(`name: e2e-${Date.now().toString(36)}`);
+    await page.keyboard.press("Escape");
+    await expect(page.getByText(/valid|error/).first()).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Save spec" }).click();
     await expect(page).toHaveURL(/\/build\/spc_/);
     await expect(page.getByText("r1")).toBeVisible();

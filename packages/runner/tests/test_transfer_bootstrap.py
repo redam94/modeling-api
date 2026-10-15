@@ -1,4 +1,4 @@
-"""Signed-URL transfers and the bootstrap read-then-delete (fake GCS + mocked transports)."""
+"""Signed-URL transfers and the bootstrap read-then-delete (the GCS shim + mocked transports)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from pathlib import Path
 
 import httpx
 import pytest
-from fakegcs import FakeGcs
 from mapi_runner.bootstrap import (
     METADATA_TOKEN_URL,
     BootstrapError,
@@ -19,6 +18,7 @@ from mapi_runner.transfer import TransferError, Transfers, hashes_of, new_client
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.run import RunnerEnv, new_nonce
 from mapi_spec.storage import crc32c, crc32c_to_base64, md5_base64
+from shimgcs import ShimGcs
 
 pytestmark = pytest.mark.unit
 
@@ -32,7 +32,7 @@ def transfers() -> Transfers:
 
 
 def test_ranged_download_verifies_hashes(
-    gcs: FakeGcs, transfers: Transfers, tmp_path: Path
+    gcs: ShimGcs, transfers: Transfers, tmp_path: Path
 ) -> None:
     data = secrets.token_bytes(10_000)
     gcs.put("mapi-test-data", "obj", data)
@@ -40,11 +40,11 @@ def test_ranged_download_verifies_hashes(
     digest = transfers.download(get, tmp_path / "x", chunk=4096)
     assert (tmp_path / "x").read_bytes() == data
     assert digest.crc32c == crc32c_to_base64(crc32c(data)) and digest.md5 == md5_base64(data)
-    ranges = [r for r in gcs.requests if r.path.startswith("/download/")]
+    ranges = [r for r in gcs.requests if r.path.startswith("/mapi-test-data/")]
     assert [r.status for r in ranges] == [206, 206, 206]
 
 
-def test_empty_object_downloads(gcs: FakeGcs, transfers: Transfers, tmp_path: Path) -> None:
+def test_empty_object_downloads(gcs: ShimGcs, transfers: Transfers, tmp_path: Path) -> None:
     gcs.put("mapi-test-data", "empty", b"")
     transfers.download(gcs.sign_get("mapi-test-data", "empty"), tmp_path / "e")
     assert (tmp_path / "e").read_bytes() == b""
@@ -59,7 +59,7 @@ def test_empty_object_downloads(gcs: FakeGcs, transfers: Transfers, tmp_path: Pa
     ],
 )
 def test_download_mismatch_is_an_integrity_failure(
-    gcs: FakeGcs, transfers: Transfers, tmp_path: Path, override: dict[str, object], code: ErrorCode
+    gcs: ShimGcs, transfers: Transfers, tmp_path: Path, override: dict[str, object], code: ErrorCode
 ) -> None:
     gcs.put("mapi-test-data", "obj", b"0123456789")
     get = gcs.sign_get("mapi-test-data", "obj").model_copy(update=override)
@@ -69,7 +69,7 @@ def test_download_mismatch_is_an_integrity_failure(
 
 
 def test_download_respects_the_scratch_budget(
-    gcs: FakeGcs, transfers: Transfers, tmp_path: Path
+    gcs: ShimGcs, transfers: Transfers, tmp_path: Path
 ) -> None:
     gcs.put("mapi-test-data", "obj", b"x" * 100)
     with pytest.raises(MapiError) as exc:
@@ -78,7 +78,7 @@ def test_download_respects_the_scratch_budget(
     assert not (tmp_path / "x").exists()
 
 
-def test_bad_signature_is_refused(gcs: FakeGcs, transfers: Transfers, tmp_path: Path) -> None:
+def test_bad_signature_is_refused(gcs: ShimGcs, transfers: Transfers, tmp_path: Path) -> None:
     gcs.put("mapi-test-data", "obj", b"abc")
     get = gcs.sign_get("mapi-test-data", "obj")
     forged = get.model_copy(
@@ -92,7 +92,7 @@ def test_bad_signature_is_refused(gcs: FakeGcs, transfers: Transfers, tmp_path: 
 
 
 def test_post_policy_upload_streams_and_hashes(
-    gcs: FakeGcs, transfers: Transfers, tmp_path: Path
+    gcs: ShimGcs, transfers: Transfers, tmp_path: Path
 ) -> None:
     data = secrets.token_bytes(50_000)
     src = tmp_path / "f"
@@ -106,7 +106,7 @@ def test_post_policy_upload_streams_and_hashes(
 
 
 def test_post_outside_the_policy_is_refused_locally(
-    gcs: FakeGcs, transfers: Transfers, tmp_path: Path
+    gcs: ShimGcs, transfers: Transfers, tmp_path: Path
 ) -> None:
     policy = gcs.post_policy("mapi-test-runs", "t/x/a1/", max_bytes=10)
     src = tmp_path / "f"
@@ -122,7 +122,7 @@ def test_post_outside_the_policy_is_refused_locally(
     assert gcs.list("mapi-test-runs") == []
 
 
-def test_signed_put_is_write_once(gcs: FakeGcs, transfers: Transfers) -> None:
+def test_signed_put_is_write_once(gcs: ShimGcs, transfers: Transfers) -> None:
     put = gcs.sign_put("mapi-test-runs", "t/x/a1/manifest.json", max_bytes=100)
     d = transfers.put_bytes(put, b"{}", content_type="application/json")
     assert d == hashes_of(b"{}")
@@ -165,7 +165,7 @@ def test_transient_errors_are_retried() -> None:
 # ====================================================================== bootstrap
 
 
-def _env(gcs: FakeGcs, nonce: str, token: str | None = None) -> RunnerEnv:
+def _env(gcs: ShimGcs, nonce: str, token: str | None = None) -> RunnerEnv:
     return RunnerEnv(
         run_id="run_1",
         nonce=nonce,
@@ -174,7 +174,7 @@ def _env(gcs: FakeGcs, nonce: str, token: str | None = None) -> RunnerEnv:
     )
 
 
-def test_bootstrap_is_fetched_then_deleted(gcs: FakeGcs) -> None:
+def test_bootstrap_is_fetched_then_deleted(gcs: ShimGcs) -> None:
     nonce = new_nonce()
     meta = gcs.put(gcs.buckets.bootstrap, nonce, b"{}")
     with new_client() as client:
@@ -185,7 +185,7 @@ def test_bootstrap_is_fetched_then_deleted(gcs: FakeGcs) -> None:
         fetch_and_delete(_env(gcs, nonce), client)
 
 
-def test_bootstrap_needs_the_exec_token(gcs: FakeGcs) -> None:
+def test_bootstrap_needs_the_exec_token(gcs: ShimGcs) -> None:
     nonce = new_nonce()
     gcs.put(gcs.buckets.bootstrap, nonce, b"{}")
     with new_client() as client, pytest.raises(BootstrapError, match="401"):

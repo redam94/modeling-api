@@ -31,7 +31,7 @@ flowchart LR
 | Service | Command | Ready when |
 |---|---|---|
 | `postgres` | Embedded PostgreSQL 16 (`pgserver`), data in `.local/pg`, unix socket only. Skipped when `DATABASE_URL` is set. | `pg_ctl` reports it running and the `mapi` database exists |
-| `gcs-shim` | `mapi-gcs-shim --host 127.0.0.1 --port 4443 --data-dir .local/gcs` | The port accepts connections |
+| `gcs-shim` | `mapi-gcs-shim serve --host 127.0.0.1 --port 4443 --cors-origin <web origin> --root .local/gcs` | The port accepts connections |
 | `migrate` | `mapi-server migrate` (runs once) | It exits with status 0 |
 | `api` | `mapi-server api --host 127.0.0.1 --port 8000` | `GET /healthz` returns 2xx |
 | `worker` | `mapi-server worker` with `MAPI_EXECUTOR=local-process` | Started |

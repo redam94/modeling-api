@@ -6,7 +6,7 @@ import signal
 import socket
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
 from types import FrameType, TracebackType
@@ -27,6 +27,7 @@ from mapi_gcs_shim.config import (
 
 if TYPE_CHECKING:
     import uvicorn
+    from starlette.types import ASGIApp
 
     from mapi_gcs_shim.client import ShimObjectStore
 
@@ -40,6 +41,7 @@ def build_app(
     endpoint: str | None = None,
     sweep_interval: float | None = 300.0,
     clock: Callable[[], datetime] | None = None,
+    cors_origins: Sequence[str] = (),
 ) -> ShimApp:
     """Initialise ``root`` (config, keys, buckets) and return the ASGI app.
 
@@ -50,7 +52,9 @@ def build_app(
     write_key_files(root, config, endpoint=endpoint)
     backend = FsBackend(root)
     try:
-        return ShimApp(backend, config, clock=clock, sweep_interval=sweep_interval)
+        return ShimApp(
+            backend, config, clock=clock, sweep_interval=sweep_interval, cors_origins=cors_origins
+        )
     except BaseException:
         backend.close()
         raise
@@ -70,7 +74,7 @@ def _endpoint(host: str, port: int) -> str:
     return f"http://[{host}]:{port}" if ":" in host else f"http://{host}:{port}"
 
 
-def _uvicorn_config(app: ShimApp, log_level: str) -> uvicorn.Config:
+def _uvicorn_config(app: ASGIApp, log_level: str) -> uvicorn.Config:
     import uvicorn
 
     return uvicorn.Config(
@@ -92,13 +96,16 @@ def serve(
     sweep_interval: float | None = 300.0,
     log_level: str = "info",
     on_ready: Callable[[str], None] | None = None,
+    cors_origins: Sequence[str] = (),
 ) -> None:
     """Serve until interrupted (SIGINT/SIGTERM), then shut down gracefully and return."""
     import uvicorn
 
     sock = bind_socket(host, port)
     endpoint = _endpoint(host, sock.getsockname()[1])
-    app = build_app(root, env=env, endpoint=endpoint, sweep_interval=sweep_interval)
+    app = build_app(
+        root, env=env, endpoint=endpoint, sweep_interval=sweep_interval, cors_origins=cors_origins
+    )
 
     # uvicorn handles SIGINT/SIGTERM itself during run() and re-raises the signal after its
     # graceful shutdown; these handlers turn that re-raise into a clean return so the backend
@@ -144,7 +151,11 @@ class ShimServer:
         sweep_interval: float | None = None,
         clock: Callable[[], datetime] | None = None,
         log_level: str = "warning",
+        cors_origins: Sequence[str] = (),
+        wrap: Callable[[ASGIApp], ASGIApp] | None = None,
     ) -> None:
+        """``wrap`` wraps the ASGI app served by uvicorn (e.g. a request recorder in tests);
+        :attr:`app` stays the :class:`ShimApp`."""
         self.root = Path(root)
         self.host = host
         self.port = port
@@ -152,6 +163,8 @@ class ShimServer:
         self.sweep_interval = sweep_interval
         self.clock = clock
         self.log_level = log_level
+        self.cors_origins = tuple(cors_origins)
+        self._wrap = wrap
         self._server: uvicorn.Server | None = None
         self._thread: threading.Thread | None = None
         self._app: ShimApp | None = None
@@ -176,8 +189,10 @@ class ShimServer:
             endpoint=self.endpoint,
             sweep_interval=self.sweep_interval,
             clock=self.clock,
+            cors_origins=self.cors_origins,
         )
-        self._server = uvicorn.Server(_uvicorn_config(self._app, self.log_level))
+        served: ASGIApp = self._app if self._wrap is None else self._wrap(self._app)
+        self._server = uvicorn.Server(_uvicorn_config(served, self.log_level))
         server, sock = self._server, self._sock
 
         def run() -> None:

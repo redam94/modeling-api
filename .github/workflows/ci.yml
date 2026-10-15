@@ -32,7 +32,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: {node-version: 22, cache: pnpm}
-      - run: uv sync --package mapi-spec
+      - run: uv sync --package mapi-server
       - run: uv run python apps/web/scripts/gen_openapi.py --check
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @mapi/web openapi:check

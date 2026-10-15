@@ -34,7 +34,7 @@ import binascii
 import contextlib
 import json
 import logging
-from collections.abc import AsyncIterator, Callable, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
 from functools import partial
@@ -46,10 +46,11 @@ import anyio
 import anyio.to_thread
 from mapi_spec.storage import crc32c_from_base64
 from starlette.applications import Starlette
+from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import ClientDisconnect, Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
-from starlette.types import Receive, Scope, Send
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from mapi_gcs_shim._errors import ShimError
 from mapi_gcs_shim.backend import (
@@ -77,6 +78,16 @@ _MAX_FORM_FIELD: Final = 64 * 1024
 _MAX_FORM_FIELDS: Final = 64
 _DRAIN_LIMIT: Final = 4 * 1024 * 1024
 _METHODS: Final = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]
+CORS_EXPOSE_HEADERS: Final = (
+    "content-length",
+    "content-range",
+    "etag",
+    "x-goog-generation",
+    "x-goog-hash",
+    "x-goog-metageneration",
+    "x-goog-stored-content-length",
+)
+"""Response headers a browser on an allowed origin may read (GCS bucket CORS equivalent)."""
 
 
 # ---------------------------------------------------------------------------- helpers
@@ -302,7 +313,10 @@ class ShimApp:
         *,
         clock: Callable[[], datetime] | None = None,
         sweep_interval: float | None = 300.0,
+        cors_origins: Sequence[str] = (),
     ) -> None:
+        """``cors_origins`` are the browser origins allowed to use signed URLs and the JSON
+        API cross-origin (like a bucket CORS configuration); empty disables CORS."""
         self.backend = backend
         self.config = config
         self.clock = clock or (lambda: datetime.now(UTC))
@@ -310,10 +324,21 @@ class ShimApp:
         self.skew = timedelta(seconds=config.clock_skew_seconds)
         for bucket in config.buckets:
             backend.ensure_bucket(bucket)
-        self.asgi = Starlette(
+        starlette = Starlette(
             routes=[Route("/{path:path}", self._endpoint, methods=_METHODS)],
             lifespan=self._lifespan,
         )
+        self.cors_origins = tuple(o.rstrip("/") for o in cors_origins)
+        self.asgi: ASGIApp = starlette
+        if self.cors_origins:
+            self.asgi = CORSMiddleware(
+                starlette,
+                allow_origins=list(self.cors_origins),
+                allow_methods=_METHODS,
+                allow_headers=["*"],
+                expose_headers=list(CORS_EXPOSE_HEADERS),
+                max_age=600,
+            )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         await self.asgi(scope, receive, send)

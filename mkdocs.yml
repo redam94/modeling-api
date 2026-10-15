@@ -150,6 +150,8 @@ nav:
       - Run protocol: reference/run-protocol.md
       - GCS shim: reference/gcs-shim.md
       - Runner: reference/runner.md
+      - CLI and Python client: reference/cli.md
+      - Web app and plot sandbox: reference/web-app.md
       - API reference:
           - reference/api/index.md
           - mapi_spec: reference/api/spec.md

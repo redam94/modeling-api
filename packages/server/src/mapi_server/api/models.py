@@ -19,6 +19,7 @@ from mapi_spec.api import (
     Page,
     PlotListItem,
     PlotValidateResponse,
+    Run,
     ScoreCall,
     ScoreCallResult,
     Scorecard,
@@ -326,9 +327,13 @@ class EvaluateCall(BaseModel):
 
 @router.post(
     "/{model_id}/versions/{version}:evaluate",
+    response_model=Run,
     status_code=status.HTTP_202_ACCEPTED,
     operation_id="evaluate_model",
-    responses={202: {"description": "The evaluate run"}},
+    responses={
+        202: {"model": Run, "description": "The evaluate run"},
+        200: {"model": Run, "description": "Idempotent replay"},
+    },
 )
 async def evaluate_model(
     ctx: Ctx,

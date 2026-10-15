@@ -29,6 +29,7 @@ from typing import Any, TypeVar
 
 import httpx
 from mapi_spec import api as dto
+from mapi_spec.jobs import DATASET_SCHEMA_ATTR
 from mapi_spec.localdev import ENV_API_URL, LocalDev
 from pydantic import BaseModel
 
@@ -233,6 +234,9 @@ def fixture_tables(size: str) -> dict[str, bytes]:
     from mapi_sdk.wire import write_zarr_zip
 
     main_ds, side = e33.generate(seed=0, size=size)  # type: ignore[arg-type]
+    # Ship the raw schema (market: new_levels, roles, units) with the data; without it ingest
+    # infers one (every dim fixed, every variable a covariate) and new-market scoring fails.
+    main_ds = main_ds.assign_attrs({DATASET_SCHEMA_ATTR: e33.schema().model_dump_json()})
     tables = {"data": main_ds, **side}
     out: dict[str, bytes] = {}
     for key, ds in tables.items():

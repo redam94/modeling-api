@@ -24,6 +24,14 @@ from mapi_sdk.errors import PayloadLimitError
 from mapi_sdk.summarise import hdi, select_draws
 from mapi_sdk.wire import to_arrow_table, write_arrow_ipc, write_datatree_zip
 from mapi_spec.storage import crc32c, crc32c_to_base64
+from mapi_spec.views import (
+    MAX_TREE_COORD_VALUES,
+    TreeCoord,
+    TreeGroup,
+    TreeIndexView,
+    TreeVar,
+    ViewScalar,
+)
 
 from mapi_runner.worker.context import WorkerContext
 
@@ -128,30 +136,62 @@ def summaries(bundle: Bundle) -> dict[str, Any]:
     }
 
 
+def _scalar(v: Any) -> ViewScalar:
+    if isinstance(v, np.generic):
+        v = v.item()
+    if isinstance(v, np.datetime64):
+        return str(np.datetime_as_string(v))
+    if isinstance(v, float):
+        return v if math.isfinite(v) else None
+    if isinstance(v, bool | int | str) or v is None:
+        return v[:1000] if isinstance(v, str) else v
+    return str(v)[:1000]
+
+
+def _coord_values(values: np.ndarray) -> list[ViewScalar] | None:
+    if values.ndim != 1 or values.size > MAX_TREE_COORD_VALUES:
+        return None
+    if np.issubdtype(values.dtype, np.datetime64):
+        return [str(x) for x in np.datetime_as_string(values)]
+    return [_scalar(x) for x in values.tolist()]
+
+
 def tree_index(tree: xr.DataTree) -> dict[str, Any]:
-    """Structure of a DataTree: one entry per node with dims and variable metadata."""
-    nodes: list[dict[str, Any]] = []
+    """``ui/tree_index.json`` (:class:`~mapi_spec.views.TreeIndexView`): every node's dims,
+    coordinates (small ones with values), variables and scalar attributes; no arrays."""
+    groups: dict[str, TreeGroup] = {}
     for node in tree.subtree:
         ds = node.to_dataset(inherit=False)
-        nodes.append(
-            {
-                "path": node.path,
-                "dims": {str(k): int(v) for k, v in ds.sizes.items()},
-                "coords": sorted(str(c) for c in ds.coords),
-                "vars": {
-                    str(name): {
-                        "dims": [str(d) for d in var.dims],
-                        "dtype": str(var.dtype),
-                        "units": var.attrs.get("units")
-                        if isinstance(var.attrs.get("units"), str)
-                        else None,
-                    }
-                    for name, var in ds.data_vars.items()
-                },
-                "attrs": sorted(str(k) for k in node.attrs),
-            }
+        groups[node.path] = TreeGroup(
+            dims={str(k): int(v) for k, v in ds.sizes.items()},
+            coords={
+                str(name): TreeCoord(
+                    dims=[str(d) for d in c.dims],
+                    dtype=str(c.dtype),
+                    size=int(c.size),
+                    values=_coord_values(np.asarray(c.values)),
+                )
+                for name, c in ds.coords.items()
+            },
+            vars={
+                str(name): TreeVar(
+                    dims=[str(d) for d in var.dims],
+                    shape=[int(n) for n in var.shape],
+                    dtype=str(var.dtype),
+                    units=var.attrs["units"] if isinstance(var.attrs.get("units"), str) else None,
+                    description=var.attrs["description"][:2000]
+                    if isinstance(var.attrs.get("description"), str)
+                    else None,
+                )
+                for name, var in ds.data_vars.items()
+            },
+            attrs={
+                str(k): _scalar(v)
+                for k, v in node.attrs.items()
+                if isinstance(v, str | int | float | bool | np.generic)
+            },
         )
-    return {"nodes": nodes}
+    return TreeIndexView(groups=groups).model_dump(mode="json")
 
 
 def externalize_plot_data(

@@ -57,25 +57,36 @@ Without `DATABASE_URL` an embedded PostgreSQL 16 (`pgserver`) starts under
 
 ## Runner contract details owned by the server
 
-`RunSpec.spec` carries the resolved document: a `ModelSpec` with `use:` pinned to exact
-versions and `data.dataset` pinned to `sha256:` for `fit`/`validate`; the `ScoreRequest` (model
-pinned to `model://project/name@vN`) for `score`; `{"kind": "IngestRequest", "dataset",
-"mapping", "upload"}` for `ingest`; `{"kind": "DescribeRequest", "image_digest"}` for
-`describe`; `{"kind": "<Kind>Request", "model", "params"}` for `evaluate`/`derive`/`render`.
-Inputs are named `dataset`, `side_table.<name>`, `upload`, `bundle`, `data`, `scenario`.
+`RunSpec.spec` and the input/output object names follow `mapi_spec.jobs`, the contract the
+runner reads: for `fit`/`validate` the resolved `ModelSpec` (`use:` pinned to exact versions,
+`data.dataset` pinned to `sha256:`); for `score` the `ScoreRequest` (model pinned to
+`model://project/name@vN`); for `ingest` an `IngestJob`; for `describe` a `DescribeJob`; for
+`evaluate`/`derive`/`render` the run's `params` validated as `EvaluateJob`/`DeriveJob`/
+`RenderJob`. Inputs: `dataset` (fit data, or a score request's `data`), `scenario`,
+`side.<name>`, `upload`, `bundle`, `bundle.manifest`, `plots`. `evaluate` and `derive`
+default to the dataset version the model was fitted on.
 
 Outputs the finalizer reads (relative to the attempt prefix): `fit` → `bundle.zarr.zip`
 (required) plus optional `diagnostics.json` (`list[Diagnostic]`), `metrics.json`
-(`{metric: float}`), `plots.json` (`list[PlotSpec]`, sanitized; unsafe plots are dropped with
-a warning), `coords.json` (`{stage: {dim: CoordSummary}}` for score-time CoordPlan checks) and
-`ui/*`; `ingest` → `data.zarr.zip`, `schema.json` (`DataSchema`) and optional `summary.json`
-(`DataSummary`), `profile.json`, `preview.json`; `describe` → `catalog.json` (`Catalog`).
+(`MetricsSidecar`: finite `values` are stored), `plots.json` (`list[PlotSpec]`, sanitized;
+unsafe plots are dropped with a warning), `coords.json` (`{stage: {dim: CoordSummary}}` for
+score-time CoordPlan checks) and `ui/*`; `ingest` → `data.zarr.zip`, `schema.json`
+(`DataSchema`) and optional `summary.json` (`DataSummary`), `profile.json`, `preview.json`;
+`describe` → `catalog.json` (`Catalog`).
+
+**Object store.** `MAPI_OBJECT_STORE=shim` (default) uses `mapi_gcs_shim.ShimObjectStore` as the
+shim's `control` principal, loading its key file from `MAPI_GCS_ROOT` (default
+`$MAPI_DATA_DIR/gcs`) or `MAPI_GCS_KEY_FILE`; local executions get the `exec` token from the
+same directory unless `MAPI_EXEC_TOKEN` is set. Start the shim first (`make dev` does).
 
 ## Tests
 
 `uv run pytest packages/server -q` — an embedded Postgres is started once per session
-(`DATABASE_URL` overrides it). The end-to-end tests drive real subprocesses through
+(`DATABASE_URL` overrides it). Most end-to-end tests drive real subprocesses through
 `LocalProcessExecutor` with a protocol-following stand-in supervisor
-(`tests/mapi_server_testkit/fake_runner.py`) and an HTTP front for the in-memory store;
-`test_real_runner.py` runs the real `mapi-runner` once it ships its entry point. Docker tests
-are marked `docker` and skip without a daemon.
+(`tests/mapi_server_testkit/fake_runner.py`) and an HTTP front for the in-memory store, so
+failure paths (OOM, tampering, bad HMAC, partial, cancel) are deterministic.
+`test_real_runner.py` runs the whole stack for real: the GCS shim, `ShimObjectStore`, the
+orchestrator with `LocalProcessExecutor` and the real `mapi-runner` (describe → CSV ingest →
+xgboost fit → signed artifact download → score → evaluate). Docker tests are marked `docker`
+and skip without a daemon.

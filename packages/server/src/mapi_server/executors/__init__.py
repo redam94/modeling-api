@@ -53,14 +53,14 @@ def build_executor(settings: Settings) -> Executor:
             command=settings.runner_command,
             bootstrap_url_template=template,
             workdir=settings.workdir,
-            exec_token=settings.exec_token,
+            exec_token=settings.resolved_exec_token(),
             profile=settings.profile,
             cancel_grace_s=settings.cancel_grace_s,
         )
     return DockerExecutor(
         image=settings.docker_image,
         bootstrap_url_template=template,
-        exec_token=settings.exec_token,
+        exec_token=settings.resolved_exec_token(),
         network=settings.docker_network,
         gvisor=settings.executor is ExecutorName.DOCKER_GVISOR,
         gvisor_runtime=settings.docker_runtime_gvisor,

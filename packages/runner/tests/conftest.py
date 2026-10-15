@@ -1,4 +1,4 @@
-"""Fixtures for the runner tests: the signed-URL GCS fake (``fakegcs``)."""
+"""Fixtures for the runner tests: the real local GCS emulator (``shimgcs.ShimGcs``)."""
 
 from __future__ import annotations
 
@@ -10,13 +10,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from fakegcs import FakeGcs
+from shimgcs import ShimGcs
 
 
 @pytest.fixture
-def gcs() -> Iterator[FakeGcs]:
-    fake = FakeGcs().start()
+def gcs(tmp_path_factory: pytest.TempPathFactory) -> Iterator[ShimGcs]:
+    shim = ShimGcs(tmp_path_factory.mktemp("gcs")).start()
     try:
-        yield fake
+        yield shim
     finally:
-        fake.stop()
+        shim.stop()

@@ -124,7 +124,7 @@ def outputs_for(rs: RunSpec, mode: str) -> dict[str, tuple[bytes, str]]:
         out = {
             "bundle.zarr.zip": (os.urandom(2048), "application/zip"),
             "diagnostics.json": js([diag.model_dump(mode="json")]),
-            "metrics.json": js({"rmse": 0.25}),
+            "metrics.json": js({"values": {"rmse": 0.25, "mape": None}, "n_holdout": 4}),
             "plots.json": js([SAFE_PLOT, UNSAFE_PLOT]),
             "coords.json": js(
                 {

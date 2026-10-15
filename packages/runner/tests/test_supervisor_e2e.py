@@ -1,4 +1,4 @@
-"""The real supervisor + worker processes against the signed-URL GCS fake."""
+"""The real supervisor + worker processes against the local GCS shim."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ import subprocess
 import threading
 
 import pytest
-from fakegcs import FakeGcs
 from mapi_spec.catalog import Catalog
 from mapi_spec.executor import RunEvent, RunEventType, RunKind
 from mapi_spec.run import (
@@ -26,6 +25,7 @@ from mapi_spec.run import (
     verify_output_objects,
 )
 from runner_helpers import Result, assert_signed_stream, make_run, run_supervisor
+from shimgcs import ShimGcs
 
 pytestmark = pytest.mark.integration
 
@@ -52,13 +52,15 @@ def _verify_outputs(result: Result) -> None:
 # ===================================================================== bootstrap
 
 
-def test_bootstrap_is_read_then_deleted_before_the_worker_starts(gcs: FakeGcs) -> None:
+def test_bootstrap_is_read_then_deleted_before_the_worker_starts(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, registry_spec := {})
     del registry_spec
+    before = len(gcs.requests)
     result = run_supervisor(run, registry=f"{TESTING}:empty_registry")
+    by_runner = gcs.requests[before:]
     assert result.code == RunnerExit.OK, result.stderr
     assert not gcs.exists(gcs.buckets.bootstrap, run.rs.nonce)
-    boot = [r for r in gcs.requests if gcs.buckets.bootstrap in r.path]
+    boot = [r for r in by_runner if gcs.buckets.bootstrap in r.path]
     assert [(r.method, r.status) for r in boot] == [("GET", 200), ("DELETE", 204)]
     assert_signed_stream(result)
     first = result.events[0]
@@ -66,9 +68,9 @@ def test_bootstrap_is_read_then_deleted_before_the_worker_starts(gcs: FakeGcs) -
     assert StatePayload.model_validate(first.payload).phase.value == "bootstrap"
 
 
-def test_missing_bootstrap_is_a_config_error_with_no_events(gcs: FakeGcs) -> None:
+def test_missing_bootstrap_is_a_config_error_with_no_events(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {})
-    gcs.objects.pop((gcs.buckets.bootstrap, run.rs.nonce))
+    gcs.delete(gcs.buckets.bootstrap, run.rs.nonce)
     result = run_supervisor(run)
     assert result.code == RunnerExit.CONFIG_ERROR
     assert result.lines == []
@@ -76,7 +78,7 @@ def test_missing_bootstrap_is_a_config_error_with_no_events(gcs: FakeGcs) -> Non
     assert failure_class_for_exit(result.code) is FailureClass.INFRA
 
 
-def test_bad_environment_is_a_config_error(gcs: FakeGcs) -> None:
+def test_bad_environment_is_a_config_error(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {})
     result = run_supervisor(run, env={"MAPI_NONCE": "not-a-nonce"})
     assert result.code == RunnerExit.CONFIG_ERROR
@@ -87,7 +89,7 @@ def test_bad_environment_is_a_config_error(gcs: FakeGcs) -> None:
 # ====================================================================== describe
 
 
-def test_describe_exports_the_catalog(gcs: FakeGcs) -> None:
+def test_describe_exports_the_catalog(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {})
     result = run_supervisor(run)
     assert result.code == RunnerExit.OK, result.stderr
@@ -107,7 +109,7 @@ def test_describe_exports_the_catalog(gcs: FakeGcs) -> None:
 # ===================================================================== tampering
 
 
-def test_worker_stdout_cannot_forge_events(gcs: FakeGcs) -> None:
+def test_worker_stdout_cannot_forge_events(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {})
     result = run_supervisor(run, registry=f"{TESTING}:forging_registry")
     assert result.code == RunnerExit.OK, result.stderr
@@ -125,7 +127,7 @@ def test_worker_stdout_cannot_forge_events(gcs: FakeGcs) -> None:
     assert len(result.of(RunEventType.COMPLETE)) == 1
 
 
-def test_a_tampered_event_line_fails_verification(gcs: FakeGcs) -> None:
+def test_a_tampered_event_line_fails_verification(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {})
     result = run_supervisor(run, registry=f"{TESTING}:empty_registry")
     line = next(ln for ln in result.lines if json.loads(ln)["mapi_event"]["type"] == "complete")
@@ -139,7 +141,7 @@ def test_a_tampered_event_line_fails_verification(gcs: FakeGcs) -> None:
     assert verify_event(original, run.key) and not verify_event(original, other_key)
 
 
-def test_log_flood_is_a_sandbox_violation(gcs: FakeGcs) -> None:
+def test_log_flood_is_a_sandbox_violation(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {}, limits={"log_total_bytes": 256 * 1024})
     result = run_supervisor(run, registry=f"{TESTING}:flooding_registry")
     assert result.code == RunnerExit.SANDBOX_VIOLATION, result.stderr
@@ -151,7 +153,7 @@ def test_log_flood_is_a_sandbox_violation(gcs: FakeGcs) -> None:
     assert logged <= 256 * 1024
 
 
-def test_log_lines_are_capped(gcs: FakeGcs) -> None:
+def test_log_lines_are_capped(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {}, limits={"log_line_bytes": 256})
     result = run_supervisor(run, registry=f"{TESTING}:flooding_registry")
     # the flood registry also overflows 20 MB; every line event stays within the line cap
@@ -162,7 +164,7 @@ def test_log_lines_are_capped(gcs: FakeGcs) -> None:
             assert p.truncated and len(p.line) == 256
 
 
-def test_symlinked_output_is_a_sandbox_violation(gcs: FakeGcs) -> None:
+def test_symlinked_output_is_a_sandbox_violation(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {})
     result = run_supervisor(run, registry=f"{TESTING}:symlink_output_registry")
     assert result.code == RunnerExit.SANDBOX_VIOLATION, result.stderr
@@ -170,21 +172,21 @@ def test_symlinked_output_is_a_sandbox_violation(gcs: FakeGcs) -> None:
     assert gcs.list(gcs.buckets.runs, run.prefix) == []
 
 
-def test_malformed_channel_message_is_a_sandbox_violation(gcs: FakeGcs) -> None:
+def test_malformed_channel_message_is_a_sandbox_violation(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {})
     result = run_supervisor(run, registry=f"{TESTING}:garbage_channel_registry")
     assert result.code == RunnerExit.SANDBOX_VIOLATION, result.stderr
     assert "invalid worker message" in _error(result).message
 
 
-def test_worker_crash_without_a_result_is_a_user_failure(gcs: FakeGcs) -> None:
+def test_worker_crash_without_a_result_is_a_user_failure(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {})
     result = run_supervisor(run, registry=f"{TESTING}:crashing_registry")
     assert result.code == RunnerExit.USER_ERROR
     assert "status 7" in _error(result).message
 
 
-def test_invalid_job_spec_fails_as_user_error(gcs: FakeGcs) -> None:
+def test_invalid_job_spec_fails_as_user_error(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.FIT, {"apiVersion": "mapi/v1", "kind": "ModelSpec"})
     result = run_supervisor(run, registry=f"{TESTING}:empty_registry")
     assert result.code == RunnerExit.USER_ERROR
@@ -193,7 +195,7 @@ def test_invalid_job_spec_fails_as_user_error(gcs: FakeGcs) -> None:
     assert "SCHEMA_INVALID" in err.message
 
 
-def test_input_hash_mismatch_is_an_integrity_failure(gcs: FakeGcs) -> None:
+def test_input_hash_mismatch_is_an_integrity_failure(gcs: ShimGcs) -> None:
     gcs.put(gcs.buckets.data, "t/default/x/data.zarr.zip", b"not what was promised")
     run = make_run(
         gcs,
@@ -227,7 +229,7 @@ def _term_on_first(kind: RunEventType, *, delay: float = 0.0) -> object:
     return on_event
 
 
-def test_sigterm_without_checkpoints_exits_terminated(gcs: FakeGcs) -> None:
+def test_sigterm_without_checkpoints_exits_terminated(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {})
     result = run_supervisor(
         run,
@@ -243,7 +245,7 @@ def test_sigterm_without_checkpoints_exits_terminated(gcs: FakeGcs) -> None:
     assert _error(result).failure_class is FailureClass.TIMEOUT
 
 
-def test_deadline_without_checkpoints_is_a_timeout(gcs: FakeGcs) -> None:
+def test_deadline_without_checkpoints_is_a_timeout(gcs: ShimGcs) -> None:
     run = make_run(gcs, RunKind.DESCRIBE, {}, deadline_s=4)
     result = run_supervisor(
         run,
