@@ -1,6 +1,7 @@
 {
   "contract_version": "0.1",
   "schemas": {
+    "api-AdminUsageReport.json": "db1b8f984533640efeb2e5b844efc9dece8a05d6c8e7ea13730791b7bb8cd926",
     "api-ApiToken.json": "74aa4debea4f82bb27359e6b5f8748d6176d73544fa51911fd24531a00a82cea",
     "api-ArtifactLink.json": "754c18f9c6c2127d3e089c71e9455624a1c98bba86fdfdce778d3d3fa08341e4",
     "api-AuditEvent.json": "f662061f8ce1427ace99c621f02c41957d8ee390e275bc992a85443a8a2be0ec",
@@ -14,6 +15,7 @@
     "api-ExecutorEvidence.json": "d8d51acb9a25c563dd1e1eba4b7832d0a61e6cf644f9c580f2b3b428e05865ee",
     "api-ExecutorEvidenceUpdate.json": "d1e5f4cc68d2661435595fabc0e26e98ee05f576eb8c4a51bfa19934640104b8",
     "api-ExecutorHealth.json": "f0ef2a5def019f76ec408804b70684a1585566836b5cc20f83507deb5eb82c4b",
+    "api-GlobalSpend.json": "fc0a6c574bd851c9e9be6dd61ac120ca22579359eb157abcdb580ec5c1b76953",
     "api-Health.json": "c90096fb9bff02470bb6b77430b2dc448e86802d10a254e4c1987e3d17b80218",
     "api-HealthCheck.json": "f39d50e2349300f75eb98a88a109f90b6846a87cffa2c7bb764cd73fb4163b0b",
     "api-IngestMapping.json": "2e0834acd703246f329a8c6a6688c7054b5aa3d5a78cd00654c106d6df0c3ed5",
@@ -57,6 +59,7 @@
     "api-StageSchema.json": "c8daeb52dc365caf2e5b63e5c3360599bb3b97d77d708d67c823e8998b51f7b9",
     "api-Tenant.json": "dde1a1813aa651ebde9162b294af7fc5769823fbe0687fe201c2ec9f78b8f42a",
     "api-TenantAdminUpdate.json": "dd5a49951f088e952af9dc6957a839097c4821aeffc56afaf7861388457c9334",
+    "api-TenantCost.json": "8e2845bbe75193590d8e674e35166e91323e88ed21330f47b03cdbc7efd8a26b",
     "api-TenantCreate.json": "4e7b9a17df088c3a70dc691f9b92483fa7ee60401f26520176e65185f7dfbf49",
     "api-TenantUpdate.json": "bff881bcd89e1826ccddded915854860e3a462ad2f570662d0ae6326bd7189a4",
     "api-TokenCreate.json": "d9a652e5b42f2377cc169daed98f9f0e54670268756413128f98eacc2f14f500",

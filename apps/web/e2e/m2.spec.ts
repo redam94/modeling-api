@@ -175,6 +175,11 @@ test("operators manage tenants, kill switches, executors and the audit log", asy
 
   await page.getByRole("tab", { name: "Kill switches" }).click();
   await expect(page).toHaveURL(/tab=kill-switches/);
+  // The spend cap shows how much of it is used, with the 70 %/90 % warning ticks.
+  const spend = page.getByRole("meter", { name: "Global spend against the cap" });
+  await expect(spend).toHaveAttribute("aria-valuenow", "74");
+  await expect(page.getByText(/\$370\.00 of \$500\.00 spent today/)).toBeVisible();
+  await expect(page.getByText(/Over 70% of the cap is used/)).toBeVisible();
   await page.getByRole("switch", { name: "Allow uploaded code to run" }).click();
   const confirm = page.getByRole("dialog", { name: "Pause all uploaded code?" });
   const go = confirm.getByRole("button", { name: "Confirm" });
@@ -184,6 +189,16 @@ test("operators manage tenants, kill switches, executors and the audit log", asy
   await go.click();
   await expect(page.getByText("paused", { exact: true })).toBeVisible();
   await expect(page.getByText("incident 42: sandbox probe")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Cost" }).click();
+  await expect(page).toHaveURL(/tab=cost/);
+  const cost = page.getByRole("table", { name: "Cost by tenant" });
+  // biggest spender first
+  await expect(cost.getByRole("row").nth(1)).toContainText("Acme Retail");
+  await expect(cost.getByRole("row").nth(2)).toContainText("Globex");
+  await expect(page.getByRole("list", { name: "Share of platform spend" }).getByText("Acme Retail")).toBeVisible();
+  await page.getByRole("radio", { name: "Today" }).click();
+  await expect(cost.getByRole("row").nth(1)).toContainText("Acme Retail");
 
   await page.getByRole("tab", { name: "Executors" }).click();
   const cloudrun = page.getByRole("region", { name: "Executor cloudrun-jobs" });

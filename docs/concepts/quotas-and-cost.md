@@ -116,7 +116,8 @@ failure). A run's `cost` field folds its entries together:
 
 `GET /v1/usage` reports a project's ledger totals for a UTC day or month (grouped by resource
 class, day, token or run) and where it stands against each quota. Tenant admins see the
-whole tenant at `GET /v1/tenants/{tenant_id}/usage`.
+whole tenant at `GET /v1/tenants/{tenant_id}/usage`. Operators see cost by tenant for the
+whole platform at `GET /v1/admin/usage` (the **Cost** tab of the admin console).
 
 Retries are capped by cost as well as by count: an infrastructure failure is retried
 automatically only while what the run has cost (its metered attempts plus the attempt that
@@ -135,5 +136,7 @@ is required):
 | `untrusted_execution_enabled` | When off, no run of tenant-uploaded plugin code is accepted or leased. Built-in models keep working. |
 | `global_spend_cap_micros` | Once the platform's spend in the current UTC day (or month) reaches the cap, no new compute starts except for `internal` tenants. Spend counts the cost ledger plus the estimates of work not metered yet: admitted runs at admission, started runs (one by one) at dispatch |
 
-Both answer `QUOTA_EXCEEDED` at the global level. In a suspected sandbox escape, turning off
+Both answer `QUOTA_EXCEEDED` at the global level. `GET /v1/admin/usage` returns the spend
+in the cap's current window next to the cap (`spend_cap`), and the admin console shows it as a
+meter that warns at 70% and 90%. In a suspected sandbox escape, turning off
 untrusted execution is the first step of the incident runbook.

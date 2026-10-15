@@ -171,7 +171,7 @@ const usageRoute = createRoute({
   }),
 });
 
-export const ADMIN_TABS = ["tenants", "quotas", "kill-switches", "executors", "audit", "promotions"] as const;
+export const ADMIN_TABS = ["tenants", "quotas", "kill-switches", "cost", "executors", "audit", "promotions"] as const;
 export type AdminTab = (typeof ADMIN_TABS)[number];
 
 const adminRoute = createRoute({

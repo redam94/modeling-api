@@ -21,7 +21,7 @@ import { useAuth } from "@/stores/auth";
 import { scopeKey, useScope } from "@/stores/scope";
 
 import { api, newIdempotencyKey, PROJECT_HEADER, unwrap, unwrapVoid, unwrapWithStatus } from "./client";
-import { advanceLogTail, EMPTY_LOG_TAIL, type LogTail } from "./logs";
+import { advanceLogTail, EMPTY_LOG_TAIL, logPollDelay, type LogTail } from "./logs";
 import { fetchSession } from "./session";
 import type {
   ArtifactLink,
@@ -127,6 +127,7 @@ export const qk = {
   adminTenants: (f: AdminTenantFilters) => ["admin", "tenants", f] as const,
   adminQuotas: (f: QuotaFilters) => ["admin", "quotas", f] as const,
   killSwitches: ["admin", "kill-switches"] as const,
+  adminUsage: (q: AdminUsageQuery) => ["admin", "usage", q] as const,
   executors: ["admin", "executors"] as const,
   adminAudit: (f: AuditFilters) => ["admin", "audit", f] as const,
 };
@@ -478,8 +479,10 @@ export function useRunEventsPage(id: string) {
   });
 }
 
-/** Pages of 200 lines fetched per poll (or per "Load more"). */
-export const MAX_LOG_PAGES = 10;
+/** Pages of 200 lines fetched per "Load more" (or the first load) of a finished run. */
+export const MAX_LOG_PAGES = 5;
+/** Pages fetched per poll of a live run: catching up is paced by {@link logPollDelay}. */
+export const LIVE_LOG_PAGES = 1;
 /** Lines kept in memory per (run, stream); the oldest are dropped beyond this. */
 export const MAX_LOG_LINES = 10_000;
 
@@ -487,8 +490,8 @@ export const MAX_LOG_LINES = 10_000;
  * Captured log lines, followed as a tail: each fetch continues after what is already loaded
  * (see {@link advanceLogTail}), so a live run's newest lines keep arriving however long it
  * logs, and no page is downloaded twice except the still-open last one. `behind` means newer
- * pages exist that are not loaded yet; a live run catches up quickly, otherwise `refetch()`
- * loads the next batch.
+ * pages exist that are not loaded yet; a live run catches up one page per poll (paced to fit
+ * the tenant's request rate, backing off on 429), otherwise `refetch()` loads the next batch.
  */
 export function useRunLogs(id: string, stream: "stdout" | "stderr" | "system" | null, live: boolean) {
   const qc = useQueryClient();
@@ -509,9 +512,14 @@ export function useRunLogs(id: string, stream: "stdout" | "stderr" | "system" | 
               signal,
             }),
           ),
-        { maxPages: MAX_LOG_PAGES, maxLines: MAX_LOG_LINES },
+        { maxPages: live ? LIVE_LOG_PAGES : MAX_LOG_PAGES, maxLines: MAX_LOG_LINES },
       ),
-    refetchInterval: (q) => (live ? (q.state.data?.behind ? 500 : 4000) : false),
+    refetchInterval: (q) =>
+      logPollDelay({
+        live,
+        behind: q.state.data?.behind ?? false,
+        error: q.state.status === "error" ? q.state.error : null,
+      }),
   });
 }
 
@@ -1001,6 +1009,24 @@ export function useDeleteQuota() {
   });
 }
 
+export interface AdminUsageQuery {
+  period: "day" | "month";
+  /** An instant inside the period (default: now). */
+  start?: string | undefined;
+}
+
+/** `GET /v1/admin/usage`: cost by tenant for one UTC period and spend against the global cap. */
+export function useAdminUsage(query: AdminUsageQuery, enabled = true) {
+  return useQuery({
+    queryKey: qk.adminUsage(query),
+    queryFn: ({ signal }) =>
+      unwrap(api.GET("/v1/admin/usage", { params: { query: { period: query.period, ...defined({ start: query.start }) } }, signal })),
+    enabled,
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
+  });
+}
+
 export function useKillSwitches() {
   return useQuery({
     queryKey: qk.killSwitches,
@@ -1013,7 +1039,10 @@ export function usePutKillSwitches() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: KillSwitchUpdate) => unwrap(api.PUT("/v1/admin/kill-switches", { body })),
-    onSuccess: (next) => qc.setQueryData(qk.killSwitches, next),
+    onSuccess: (next) => {
+      qc.setQueryData(qk.killSwitches, next);
+      void qc.invalidateQueries({ queryKey: ["admin", "usage"] }); // the cap shown next to spend
+    },
   });
 }
 

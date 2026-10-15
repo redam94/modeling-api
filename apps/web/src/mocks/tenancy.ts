@@ -11,6 +11,7 @@
 import { http, HttpResponse, type HttpHandler } from "msw";
 
 import type {
+  AdminUsageReport,
   ApiToken,
   AuditEvent,
   CostTotals,
@@ -363,6 +364,57 @@ export function usageReport(tenantId: string, projectId: string | null, url: URL
   };
 }
 
+/** Each tenant's share of the mock platform's spend (Acme spends the most). */
+const TENANT_WEIGHT: Record<string, number> = { acme: 1, globex: 0.35, initech: 0.08 };
+
+/** `GET /v1/admin/usage`: per-tenant totals (biggest first) and spend against the cap. */
+export function adminUsageReport(tenants: Tenant[], quotas: QuotaPolicy[], killSwitches: KillSwitches, url: URL): AdminUsageReport {
+  const rows = tenants
+    .map((t) => {
+      const base = usageReport(t.id, null, url, quotas);
+      const w = TENANT_WEIGHT[t.id] ?? 0.1;
+      const b = base.totals;
+      const runs = Math.max(1, Math.round((b.runs ?? 0) * w));
+      const totals: CostTotals = {
+        runs,
+        attempts: runs + Math.max(0, (b.attempts ?? 0) - (b.runs ?? 0)),
+        vcpu_seconds: (b.vcpu_seconds ?? 0) * w,
+        gib_seconds: (b.gib_seconds ?? 0) * w,
+        amount_micros: Math.round((b.amount_micros ?? 0) * w),
+        currency: "USD",
+      };
+      return { tenant_id: t.id, name: t.name, trust_tier: t.trust_tier, totals };
+    })
+    .sort((a, b) => (b.totals.amount_micros ?? 0) - (a.totals.amount_micros ?? 0));
+  const first = usageReport("acme", null, url, quotas);
+  const capPeriod = killSwitches.spend_cap_period ?? "day";
+  const now = new Date();
+  const capStart = capPeriod === "month" ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)) : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const capEnd = new Date(capStart);
+  if (capPeriod === "month") capEnd.setUTCMonth(capEnd.getUTCMonth() + 1);
+  else capEnd.setUTCDate(capEnd.getUTCDate() + 1);
+  const iso = (d: Date) => d.toISOString().replace(/\.\d+Z$/, "Z");
+  const cap = killSwitches.global_spend_cap_micros ?? null;
+  const spent = 370_000_000; // 74 % of the default $500/day cap: inside the 70 % warning band
+  return {
+    period: first.period,
+    start: first.start,
+    end: first.end,
+    totals: [totals(rows.map((r) => r.totals))],
+    tenants: rows,
+    price_versions: [PRICE_VERSION],
+    spend_cap: {
+      period: capPeriod,
+      start: iso(capStart),
+      end: iso(capEnd),
+      currency: killSwitches.spend_cap_currency ?? "USD",
+      spent_micros: spent,
+      cap_micros: cap,
+      fraction: cap ? spent / cap : null,
+    },
+  };
+}
+
 const EXECUTORS: ExecutorHealth[] = [
   {
     name: "cloudrun-jobs",
@@ -684,6 +736,7 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
       };
       return HttpResponse.json(state.killSwitches);
     }),
+    http.get(`${API}/v1/admin/usage`, ({ request }) => needOperator() ?? HttpResponse.json(adminUsageReport(state.tenants, state.quotas, state.killSwitches, new URL(request.url)))),
     http.get(`${API}/v1/admin/executors`, () => needOperator() ?? page(EXECUTORS)),
     http.get(`${API}/v1/admin/audit`, ({ request }) => {
       const denied = needOperator();

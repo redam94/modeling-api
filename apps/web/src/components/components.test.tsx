@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import type { ReactNode } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { Problem } from "@/api/types";
+import { env } from "@/env";
 import { PipelineCards } from "@/features/editor/pipeline-cards";
 import { buildPipeline } from "@/features/editor/pipeline";
 import { ChainLanes } from "@/features/runs/progress-panel";
@@ -31,6 +33,24 @@ function withQuery(ui: ReactNode) {
 }
 
 describe("LogsViewer", () => {
+  it("follows a long live log one page per poll, not in a burst that trips the rate limit", async () => {
+    let requests = 0;
+    server.use(
+      http.get(`${env.apiBase}/v1/runs/:id/logs`, ({ request }) => {
+        requests += 1;
+        const start = Number(new URL(request.url).searchParams.get("cursor") ?? 0);
+        const items = Array.from({ length: 200 }, (_, i) => ({
+          run_id: RUN_RUNNING, attempt: 1, seq: start + i + 1, ts: "2026-10-15T09:30:00Z", stream: "stdout" as const, line: `line ${start + i + 1}`,
+        }));
+        return HttpResponse.json({ items, next_cursor: String(start + 200) }); // always more: far behind
+      }),
+    );
+    withQuery(<LogsViewer runId={RUN_RUNNING} live />);
+    await screen.findByText("Loading newer lines…");
+    await new Promise((r) => setTimeout(r, 1200));
+    expect(requests).toBe(1);
+  });
+
   it("renders untrusted log lines as text with ANSI removed", async () => {
     const { container } = withQuery(<LogsViewer runId={RUN_RUNNING} live={false} />);
     const log = await screen.findByRole("log", { name: "Run logs" });
