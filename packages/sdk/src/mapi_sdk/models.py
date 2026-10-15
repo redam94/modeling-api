@@ -163,6 +163,12 @@ class ScoreContext:
     The dataset handed to ``score`` is canonicalised: fixed and new-level dims are in fit
     order (padded to the full fit set), new levels are appended and flagged by the bool
     coordinate ``<dim>__is_new``, and ``<dim>__requested`` marks real (non-padding) labels.
+
+    ``to_original`` is set when the harness computes fit-cached derived quantities
+    (:meth:`CustomModel.derive`): ``to_original(da, src)`` maps a model-stage array in the
+    units of input variable ``src`` (e.g. a contribution in ``y`` units, a spend level in
+    ``spend`` units) to the output space - the pipeline inverse back to its last reshape
+    step - and labels it with ``units`` and ``output_space`` attributes.
     """
 
     mode: ScoreMode = "predict"
@@ -174,6 +180,7 @@ class ScoreContext:
     draw_index: np.ndarray | None = None
     log: Callable[[str], None] | None = None
     cancel: CancelToken | None = None
+    to_original: Callable[[xr.DataArray, str], xr.DataArray] | None = None
     rng: np.random.Generator = field(init=False)
 
     def __post_init__(self) -> None:
