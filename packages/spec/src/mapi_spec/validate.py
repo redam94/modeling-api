@@ -1,0 +1,1390 @@
+"""Static (JSON-only) validation of ModelSpecs and ScoreRequests.
+
+:func:`validate_spec` checks a :class:`~mapi_spec.spec.ModelSpec` against a
+:class:`~mapi_spec.catalog.Catalog` and the dataset's raw :class:`DataSchema`:
+
+1. binding references exist and do not collide;
+2. every ``use:`` resolves to a non-yanked version (semver range);
+3. step and model settings validate against their JSON Schemas;
+4. side-table references exist;
+5. the schema is propagated through every step's SchemaEffect, with per-step input checks;
+6. the split stage is resolved (default: end of the stateless prefix), its dims exist there,
+   and ``LEAKAGE_RISK`` is raised if a stateful step precedes it;
+7. the model's schema template is resolved and compared with the final stage; spec dim
+   policies may only *tighten* the plugin's;
+8. recursive forecasting (a target-dependent lag feeding a longer holdout) is rejected
+   unless the model owns recursion; outputs, plots, metrics and resource class are checked.
+
+:func:`validate_score_request` runs the static CoordPlan checks for a ScoreRequest from
+metadata only (resolved spec + fit coordinate summaries + dim policies).
+
+Every finding is an :class:`~mapi_spec.errors.Issue` with a JSON pointer into the document.
+"""
+
+from __future__ import annotations
+
+import re
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from typing import Any
+
+from jsonschema import Draft202012Validator
+from pydantic import Field, JsonValue
+
+from mapi_spec._types import RESERVED_STAGE, Scalar, StrictModel
+from mapi_spec.capabilities import (
+    REPRESENTATION_RULES,
+    Capabilities,
+    Representation,
+    can_aggregate,
+    summary_allowed,
+)
+from mapi_spec.catalog import Catalog, StepCatalogEntry
+from mapi_spec.coords import CoordSummary, DataSummary
+from mapi_spec.effects import ContextNeed, Stage, StepKind, propagate
+from mapi_spec.errors import (
+    ErrorCode,
+    Issue,
+    Severity,
+    ValidationFailed,
+    has_errors,
+    join_pointer,
+    json_pointer,
+)
+from mapi_spec.loader import spec_hash
+from mapi_spec.schema import (
+    NUMERIC_DTYPES,
+    DataSchema,
+    DimPolicy,
+    DimSpec,
+    Role,
+    policy_is_at_least_as_tight,
+    tighten_policy,
+)
+from mapi_spec.spec import Binding, ModelSpec, ScorePolicy, ScoreRequest
+from mapi_spec.template import TemplateError
+
+__all__ = [
+    "KNOWN_METRICS",
+    "ResolvedModel",
+    "ResolvedSpec",
+    "ResolvedStep",
+    "ScoreMetadata",
+    "SpecValidation",
+    "apply_defaults",
+    "validate_score_request",
+    "validate_settings",
+    "validate_spec",
+]
+
+MAX_SETTINGS_ISSUES = 50
+
+KNOWN_METRICS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p)
+    for p in (
+        r"^elpd_(loo|waic)$",
+        r"^coverage_[1-9][0-9]?$",
+        r"^interval_width_[1-9][0-9]?$",
+        r"^(mape|smape|wape|rmse|mae|mase|crps|r2|bias|log_score|accuracy|auc|brier)$",
+    )
+)
+_UNCERTAINTY_METRICS = re.compile(r"^(coverage_|interval_width_|crps$|elpd_|log_score$)")
+
+
+# ---------------------------------------------------------------------------------- results
+
+
+class ResolvedStep(StrictModel):
+    """A pipeline step after ref resolution, with defaults applied and effects evaluated."""
+
+    id: str
+    use: str
+    resolved: str
+    kind: StepKind
+    stateful: bool
+    invertible: bool
+    depends_on_target: bool
+    context: ContextNeed | None = None
+    settings: dict[str, JsonValue] = Field(default_factory=dict)
+    side_tables: list[str] = Field(default_factory=list)
+    input_stage: str
+
+
+class ResolvedModel(StrictModel):
+    use: str
+    resolved: str
+    capabilities: Capabilities
+    input_schema: DataSchema | None = None
+    effective_policies: dict[str, DimPolicy] = Field(default_factory=dict)
+    outputs: list[str] = Field(default_factory=list)
+    derived: list[str] = Field(default_factory=list)
+
+
+class ResolvedSpec(StrictModel):
+    """What the control plane stores with a run: everything score-time checks need."""
+
+    spec_hash: str
+    binding: Binding
+    steps: list[ResolvedStep]
+    stages: dict[str, DataSchema | None]
+    split_stage: str | None
+    side_tables: dict[str, ScorePolicy] = Field(default_factory=dict)
+    model: ResolvedModel
+
+    @property
+    def stage_order(self) -> list[str]:
+        return list(self.stages)
+
+    @property
+    def model_stage(self) -> str:
+        return list(self.stages)[-1]
+
+    def steps_after(self, stage: str) -> list[ResolvedStep]:
+        """Steps executed when data enters at ``stage``."""
+        if stage == RESERVED_STAGE:
+            return list(self.steps)
+        ids = [s.id for s in self.steps]
+        return list(self.steps[ids.index(stage) + 1 :]) if stage in ids else []
+
+    @property
+    def last_reshape_stage(self) -> str:
+        """Inverse transforms stop here (the output space of results)."""
+        last = RESERVED_STAGE
+        for s in self.steps:
+            if s.kind is StepKind.RESHAPE:
+                last = s.id
+        return last
+
+
+@dataclass(slots=True)
+class SpecValidation:
+    """Outcome of :func:`validate_spec`."""
+
+    issues: list[Issue]
+    stages: list[Stage]
+    resolved: ResolvedSpec | None = None
+
+    @property
+    def ok(self) -> bool:
+        return not has_errors(self.issues)
+
+    @property
+    def errors(self) -> list[Issue]:
+        return [i for i in self.issues if i.severity is Severity.ERROR]
+
+    @property
+    def warnings(self) -> list[Issue]:
+        return [i for i in self.issues if i.severity is Severity.WARNING]
+
+    def raise_for_errors(self) -> ResolvedSpec:
+        if not self.ok or self.resolved is None:
+            raise ValidationFailed(self.issues)
+        return self.resolved
+
+
+# ------------------------------------------------------------------------ JSON Schema bits
+
+
+def apply_defaults(schema: Mapping[str, Any], instance: Mapping[str, Any]) -> dict[str, Any]:
+    """Fill ``default`` values of (nested) object properties missing from ``instance``."""
+    out = dict(instance)
+    props = schema.get("properties")
+    if not isinstance(props, Mapping):
+        return out
+    for name, sub in props.items():
+        if not isinstance(sub, Mapping):
+            continue
+        if name not in out and "default" in sub:
+            out[name] = sub["default"]
+        if isinstance(out.get(name), Mapping) and sub.get("type") == "object":
+            out[name] = apply_defaults(sub, out[name])
+    return out
+
+
+_KEYWORD_MESSAGES = {
+    "required": "a required setting is missing",
+    "additionalProperties": "unknown setting",
+    "unevaluatedProperties": "unknown setting",
+    "type": "wrong type",
+    "enum": "value is not one of the allowed options",
+    "const": "value is not the allowed constant",
+    "minimum": "value is below the minimum",
+    "exclusiveMinimum": "value is below the minimum",
+    "maximum": "value is above the maximum",
+    "exclusiveMaximum": "value is above the maximum",
+    "minItems": "too few items",
+    "maxItems": "too many items",
+    "uniqueItems": "items must be unique",
+    "minLength": "text is too short",
+    "maxLength": "text is too long",
+    "pattern": "text does not match the required pattern",
+    "oneOf": "value matches none (or several) of the allowed shapes",
+    "anyOf": "value matches none of the allowed shapes",
+    "multipleOf": "value is not an allowed multiple",
+}
+
+
+def validate_settings(
+    schema: Mapping[str, Any],
+    instance: Any,
+    pointer: str,
+    *,
+    code: ErrorCode = ErrorCode.SETTINGS_INVALID,
+) -> list[Issue]:
+    """Validate ``instance`` against a JSON Schema; issues point into the document.
+
+    Messages are platform-authored; jsonschema's own text (which may echo user values) goes
+    into ``untrusted_text``.
+    """
+    if not schema:
+        return []
+    validator = Draft202012Validator(schema)
+    issues: list[Issue] = []
+    for err in sorted(validator.iter_errors(instance), key=lambda e: list(e.absolute_path)):
+        path = list(err.absolute_path)
+        ptr = join_pointer(pointer, *path)
+        if err.validator == "required" and isinstance(err.instance, dict):
+            missing = [r for r in (err.validator_value or []) if r not in err.instance]
+            for name in missing:
+                issues.append(
+                    Issue(
+                        code=code,
+                        pointer=join_pointer(ptr, str(name)),
+                        message=f"required setting {str(name)[:64]!r} is missing",
+                    )
+                )
+            continue
+        issues.append(
+            Issue(
+                code=code,
+                pointer=ptr,
+                message=_KEYWORD_MESSAGES.get(str(err.validator), "value is invalid"),
+                untrusted_text=str(err.message)[:2000],
+            )
+        )
+        if len(issues) >= MAX_SETTINGS_ISSUES:
+            break
+    return issues
+
+
+# ------------------------------------------------------------------------------- binding
+
+
+def _apply_binding(bind: Binding, raw: DataSchema, issues: list[Issue]) -> DataSchema | None:
+    n_before = len(issues)
+    for section, mapping, expect_dim in (("dims", bind.dims, True), ("vars", bind.vars, False)):
+        for canon, ds in mapping.items():
+            ptr = json_pointer("data", "bind", section, canon)
+            present = ds in (raw.dims if expect_dim else raw.vars)
+            if not present:
+                other = ds in (raw.vars if expect_dim else raw.dims)
+                what = "dim" if expect_dim else "variable"
+                hint = f" (it is a {'variable' if expect_dim else 'dim'})" if other else ""
+                issues.append(
+                    Issue(
+                        code=ErrorCode.BINDING_INVALID,
+                        pointer=ptr,
+                        message=f"dataset has no {what} named {ds!r}{hint}",
+                    )
+                )
+    bound_sources = set(bind.dims.values()) | set(bind.vars.values())
+    for canon, ds in {**bind.dims, **bind.vars}.items():
+        if canon != ds and raw.has_name(canon) and canon not in bound_sources:
+            section = "dims" if canon in bind.dims else "vars"
+            issues.append(
+                Issue(
+                    code=ErrorCode.BINDING_INVALID,
+                    pointer=json_pointer("data", "bind", section, canon),
+                    message=(
+                        f"canonical name {canon!r} collides with an unbound dataset name; "
+                        "bind or drop that name first"
+                    ),
+                )
+            )
+    if len(issues) > n_before:
+        return None
+    mapping = {ds: canon for canon, ds in {**bind.dims, **bind.vars}.items()}
+    return raw.renamed(mapping) if mapping else raw
+
+
+# ------------------------------------------------------------------------------ helpers
+
+
+def _names(value: Any) -> list[tuple[str | None, Any]]:
+    """Settings value → [(index-or-None, name)] for str or list[str] values."""
+    if isinstance(value, str):
+        return [(None, value)]
+    if isinstance(value, list):
+        return [(str(i), v) for i, v in enumerate(value) if isinstance(v, str)]
+    return []
+
+
+def _check_step_inputs(
+    entry: StepCatalogEntry,
+    settings: Mapping[str, Any],
+    schema: DataSchema,
+    ptr: str,
+    context: ContextNeed | None,
+) -> list[Issue]:
+    issues: list[Issue] = []
+    for param in entry.var_params:
+        for idx, name in _names(settings.get(param)):
+            if name not in schema.vars:
+                p = join_pointer(ptr, "with", param, *(() if idx is None else (idx,)))
+                issues.append(
+                    Issue(
+                        code=ErrorCode.SCHEMA_INVALID,
+                        pointer=p,
+                        message=f"variable {name!r} does not exist at this step's input stage",
+                        context={"available": sorted(schema.vars)[:50]},
+                    )
+                )
+    for param in entry.dim_params:
+        for idx, name in _names(settings.get(param)):
+            if name not in schema.dims:
+                p = join_pointer(ptr, "with", param, *(() if idx is None else (idx,)))
+                issues.append(
+                    Issue(
+                        code=ErrorCode.SCHEMA_INVALID,
+                        pointer=p,
+                        message=f"dim {name!r} does not exist at this step's input stage",
+                        context={"available": sorted(schema.dims)[:50]},
+                    )
+                )
+    if context is not None and not issues:
+        for d in [context.along, *context.within]:
+            if d not in schema.dims:
+                issues.append(
+                    Issue(
+                        code=ErrorCode.SCHEMA_INVALID,
+                        pointer=join_pointer(ptr, "with"),
+                        message=f"context dim {d!r} does not exist at this step's input stage",
+                    )
+                )
+    return issues
+
+
+def _depends_on_target(
+    entry: StepCatalogEntry, settings: Mapping[str, Any], schema: DataSchema | None
+) -> bool:
+    if not entry.depends_on_target:
+        return False
+    if entry.target_vars_param is None or schema is None:
+        return True
+    names = {n for _, n in _names(settings.get(entry.target_vars_param))}
+    return bool(names & set(schema.targets))
+
+
+def _metric_known(name: str) -> bool:
+    return any(p.match(name) for p in KNOWN_METRICS)
+
+
+def _dtype_family(dtype: str) -> str:
+    return "numeric" if dtype in NUMERIC_DTYPES else dtype
+
+
+# ---------------------------------------------------------------------------- validate_spec
+
+
+def validate_spec(spec: ModelSpec, catalog: Catalog, raw_schema: DataSchema) -> SpecValidation:
+    """Statically validate ``spec`` against ``catalog`` and the dataset's ``raw_schema``."""
+    issues: list[Issue] = []
+
+    # 1. binding ------------------------------------------------------------------------
+    current = _apply_binding(spec.data.bind, raw_schema, issues)
+    stages: list[Stage] = [Stage(RESERVED_STAGE, current)]
+
+    # 2-5. steps ------------------------------------------------------------------------
+    resolved_steps: list[ResolvedStep | None] = []
+    for i, call in enumerate(spec.pipeline):
+        ptr = json_pointer("pipeline", i)
+        input_stage = stages[-1].name
+        entry = catalog.resolve_step(call.use)
+        if entry is None:
+            known = catalog.versions("step", call.use.id)
+            msg = (
+                f"no version of {call.use.id!r} satisfies {str(call.use.range)!r} "
+                f"(available: {', '.join(known)})"
+                if known
+                else f"unknown step {call.use.id!r}"
+            )
+            issues.append(Issue(code=ErrorCode.REF_UNRESOLVED, pointer=f"{ptr}/use", message=msg))
+            resolved_steps.append(None)
+            current = None
+            stages.append(Stage(call.id, None))
+            continue
+
+        issues += validate_settings(entry.settings_schema, call.with_, f"{ptr}/with")
+        settings = apply_defaults(entry.settings_schema, call.with_)
+
+        tables: list[str] = []
+        for param in entry.side_table_params:
+            for idx, name in _names(settings.get(param)):
+                tables.append(name)
+                if name not in spec.data.side_tables:
+                    p = join_pointer(ptr, "with", param, *(() if idx is None else (idx,)))
+                    issues.append(
+                        Issue(
+                            code=ErrorCode.REF_UNRESOLVED,
+                            pointer=p,
+                            message=f"side table {name!r} is not declared in data.side_tables",
+                        )
+                    )
+
+        context: ContextNeed | None = None
+        try:
+            context = entry.resolved_context(settings)
+        except (TemplateError, ValueError) as exc:
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer=f"{ptr}/with",
+                    message=f"could not resolve the step's context need: {exc}"[:2000],
+                )
+            )
+
+        if current is not None:
+            input_issues = _check_step_inputs(entry, settings, current, ptr, context)
+            issues += input_issues
+            if input_issues:
+                current = None
+                stages.append(Stage(call.id, None))
+            else:
+                result = propagate(current, [(call.id, entry.effect, settings)], pointers=[ptr])
+                issues += result.issues
+                current = result.final
+                stages.append(Stage(call.id, current))
+        else:
+            stages.append(Stage(call.id, None))
+
+        input_schema = stages[-2].schema
+        resolved_steps.append(
+            ResolvedStep(
+                id=call.id,
+                use=str(call.use),
+                resolved=entry.ref,
+                kind=entry.kind,
+                stateful=entry.stateful,
+                invertible=entry.invertible,
+                depends_on_target=_depends_on_target(entry, settings, input_schema),
+                context=context,
+                settings=settings,
+                side_tables=tables,
+                input_stage=input_stage,
+            )
+        )
+
+    # 6. split --------------------------------------------------------------------------
+    split_stage = _check_split(spec, resolved_steps, stages, issues)
+
+    # 7-8. model ------------------------------------------------------------------------
+    resolved_model = _check_model(spec, catalog, stages[-1].schema, resolved_steps, issues)
+
+    resolved: ResolvedSpec | None = None
+    if not has_errors(issues) and resolved_model is not None and all(resolved_steps):
+        resolved = ResolvedSpec(
+            spec_hash=spec_hash(spec),
+            binding=spec.data.bind,
+            steps=[s for s in resolved_steps if s is not None],
+            stages={s.name: s.schema for s in stages},
+            split_stage=split_stage,
+            side_tables={k: v.score_policy for k, v in spec.data.side_tables.items()},
+            model=resolved_model,
+        )
+    return SpecValidation(issues=issues, stages=stages, resolved=resolved)
+
+
+def _check_split(
+    spec: ModelSpec,
+    steps: Sequence[ResolvedStep | None],
+    stages: Sequence[Stage],
+    issues: list[Issue],
+) -> str | None:
+    split = spec.data.split
+    if split is None:
+        if spec.model.fit.mode.value == "evaluate_then_refit":
+            issues.append(
+                Issue(
+                    code=ErrorCode.SPLIT_INVALID,
+                    severity=Severity.WARNING,
+                    pointer="/data",
+                    message="fit.mode is evaluate_then_refit but no split is declared; "
+                    "there is no holdout to evaluate on",
+                    suggested_action="Add data.split (e.g. time_holdout) or use train_only.",
+                )
+            )
+        return None
+
+    # default stage: end of the stateless prefix (stateless steps without context needs)
+    if split.after_step is None:
+        prefix_end = 0
+        for s in steps:
+            if s is None or s.stateful or s.context is not None:
+                break
+            prefix_end += 1
+        stage_index = prefix_end  # index into stages (0 = raw)
+    elif split.after_step == RESERVED_STAGE:
+        stage_index = 0
+    else:
+        stage_index = 1 + [s.name for s in stages[1:]].index(split.after_step)
+    stage = stages[stage_index]
+
+    for j, s in enumerate(steps[:stage_index]):
+        if s is not None and s.stateful:
+            sev = Severity.WARNING if split.allow_leakage else Severity.ERROR
+            issues.append(
+                Issue(
+                    code=ErrorCode.LEAKAGE_RISK,
+                    severity=sev,
+                    pointer="/data/split/after_step"
+                    if split.after_step is not None
+                    else "/data/split",
+                    message=(
+                        f"stateful step {s.id!r} (pipeline[{j}]) runs before the split at "
+                        f"stage {stage.name!r}; its state would be learned from holdout data"
+                    ),
+                    suggested_action="Move the split earlier (after_step) or move the step "
+                    "after the split.",
+                )
+            )
+
+    schema = stage.schema
+    if schema is not None:
+        dim_fields: list[tuple[str, str]] = []
+        if hasattr(split, "dim"):
+            dim_fields.append(("/data/split/dim", split.dim))
+        for k, d in enumerate(getattr(split, "within", []) or []):
+            dim_fields.append((f"/data/split/within/{k}", d))
+        for k, d in enumerate(getattr(split, "dims", []) or []):
+            dim_fields.append((f"/data/split/dims/{k}", d))
+        for ptr, d in dim_fields:
+            if d not in schema.dims:
+                issues.append(
+                    Issue(
+                        code=ErrorCode.SPLIT_INVALID,
+                        pointer=ptr,
+                        message=f"split dim {d!r} does not exist at stage {stage.name!r}",
+                        context={"stage": stage.name, "dims": sorted(schema.dims)},
+                        suggested_action="Set data.split.after_step to the stage where the dim "
+                        "exists (e.g. after a resample step).",
+                    )
+                )
+        fdim = split.forecast_dim
+        if fdim is not None and fdim in schema.dims:
+            spec_ = schema.dims[fdim]
+            if spec_.kind not in ("time", "integer", "index") and not spec_.ordered:
+                issues.append(
+                    Issue(
+                        code=ErrorCode.SPLIT_INVALID,
+                        pointer="/data/split/dim",
+                        message=f"split {split.kind!r} needs an ordered dim; {fdim!r} is not",
+                    )
+                )
+    return stage.name
+
+
+def _check_model(
+    spec: ModelSpec,
+    catalog: Catalog,
+    final: DataSchema | None,
+    steps: Sequence[ResolvedStep | None],
+    issues: list[Issue],
+) -> ResolvedModel | None:
+    mb = spec.model
+    entry = catalog.resolve_model(mb.use)
+    if entry is None:
+        known = catalog.versions("model", mb.use.id)
+        msg = (
+            f"no version of {mb.use.id!r} satisfies {str(mb.use.range)!r} "
+            f"(available: {', '.join(known)})"
+            if known
+            else f"unknown model {mb.use.id!r}"
+        )
+        issues.append(Issue(code=ErrorCode.REF_UNRESOLVED, pointer="/model/use", message=msg))
+        return None
+    man = entry.manifest
+    caps = man.capabilities
+
+    plugin_settings = mb.plugin_settings
+    issues += validate_settings(man.settings_schema, plugin_settings, "/model/settings")
+    fit_json = mb.fit.model_dump(mode="json", exclude_defaults=True)
+    issues += validate_settings(man.fit_schema, fit_json, "/model/fit")
+    settings = apply_defaults(man.settings_schema, plugin_settings)
+
+    model_schema, err = man.schema_template.try_resolve(settings)
+    if model_schema is None:
+        issues.append(
+            Issue(
+                code=ErrorCode.SCHEMA_INVALID,
+                pointer="/model/settings",
+                message=f"could not resolve the model's input schema template: {err}"[:2000],
+            )
+        )
+
+    effective: dict[str, DimPolicy] = {}
+    input_schema: DataSchema | None = None
+    if model_schema is not None:
+        effective, input_schema = _effective_schema(mb.dim_policies, model_schema, final, issues)
+        if final is not None:
+            _compare_schemas(model_schema, final, issues)
+
+    # recursion vs split holdout
+    split = spec.data.split
+    if split is not None and "recursion" not in caps.owns:
+        for idx, s in enumerate(steps):
+            if s is None or not s.depends_on_target or s.context is None:
+                continue
+            if s.context.along != split.forecast_dim:
+                continue
+            min_lag = s.context.min_lag if s.context.min_lag is not None else 1
+            periods = split.forecast_periods
+            if periods is None:
+                issues.append(
+                    Issue(
+                        code=ErrorCode.RECURSIVE_UNSUPPORTED,
+                        severity=Severity.WARNING,
+                        pointer=json_pointer("pipeline", idx),
+                        message=f"step {s.id!r} lags the target along {s.context.along!r}; the "
+                        "holdout length is not static, so recursive forecasting cannot be ruled "
+                        "out",
+                    )
+                )
+            elif periods > min_lag:
+                issues.append(
+                    Issue(
+                        code=ErrorCode.RECURSIVE_UNSUPPORTED,
+                        pointer=json_pointer("pipeline", idx),
+                        message=(
+                            f"step {s.id!r} lags the target by {min_lag} along "
+                            f"{s.context.along!r} but the holdout spans {periods} periods; "
+                            "recursive forecasting is not supported in v1"
+                        ),
+                        suggested_action="Lag the target by at least the holdout length, "
+                        "shorten the holdout, or use a model that owns recursion.",
+                    )
+                )
+
+    # outputs / plots / metrics / resources
+    derived = man.derived_names()
+    for j, name in enumerate(spec.outputs.derived):
+        if name not in derived:
+            issues.append(
+                Issue(
+                    code=ErrorCode.REF_UNRESOLVED,
+                    pointer=json_pointer("outputs", "derived", j),
+                    message=f"model {man.id!r} does not declare derived quantity {name!r}",
+                    context={"available": sorted(derived)},
+                )
+            )
+    for j, plot in enumerate(spec.outputs.plots):
+        pentry = catalog.resolve_plot(plot)
+        if pentry is None:
+            issues.append(
+                Issue(
+                    code=ErrorCode.REF_UNRESOLVED,
+                    pointer=json_pointer("outputs", "plots", j),
+                    message=f"unknown plot {plot.id!r}",
+                )
+            )
+        elif pentry.requires_representation and caps.representation not in (
+            pentry.requires_representation
+        ):
+            issues.append(
+                Issue(
+                    code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                    pointer=json_pointer("outputs", "plots", j),
+                    message=f"plot {plot.id!r} needs representation "
+                    f"{'/'.join(r.value for r in pentry.requires_representation)}; the model "
+                    f"produces {caps.representation.value}",
+                )
+            )
+    for j, metric in enumerate(spec.evaluate.metrics):
+        ptr = json_pointer("evaluate", "metrics", j)
+        if not _metric_known(metric):
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    severity=Severity.WARNING,
+                    pointer=ptr,
+                    message=f"unknown metric {metric!r}; it will be ignored unless the model "
+                    "computes it",
+                )
+            )
+        if metric == "elpd_loo" and not caps.loo_valid:
+            issues.append(
+                Issue(
+                    code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                    pointer=ptr,
+                    message="LOO is not valid for this model",
+                    untrusted_text=caps.loo_invalid_reason,
+                )
+            )
+        if caps.representation is Representation.POINT and _UNCERTAINTY_METRICS.match(metric):
+            issues.append(
+                Issue(
+                    code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                    pointer=ptr,
+                    message=f"metric {metric!r} needs uncertainty; the model only produces "
+                    "point predictions",
+                )
+            )
+    if spec.execution.resource_class < man.resources.min_class:
+        issues.append(
+            Issue(
+                code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                pointer="/execution/resource_class",
+                message=f"model {man.id!r} needs at least resource class "
+                f"{man.resources.min_class.value}",
+            )
+        )
+
+    return ResolvedModel(
+        use=str(mb.use),
+        resolved=entry.ref,
+        capabilities=caps,
+        input_schema=input_schema,
+        effective_policies=effective,
+        outputs=sorted(man.outputs),
+        derived=sorted(derived),
+    )
+
+
+def _effective_schema(
+    overrides: Mapping[str, DimPolicy],
+    model_schema: DataSchema,
+    final: DataSchema | None,
+    issues: list[Issue],
+) -> tuple[dict[str, DimPolicy], DataSchema]:
+    """Combine data and plugin dim policies; spec overrides may only tighten them."""
+    effective: dict[str, DimPolicy] = {}
+    dims: dict[str, DimSpec] = {}
+    for name, mspec in model_schema.dims.items():
+        policy = mspec.policy
+        if final is not None and name in final.dims:
+            policy = tighten_policy(policy, final.dims[name].policy)
+        dims[name] = mspec
+        effective[name] = policy
+    for name, wanted in overrides.items():
+        ptr = json_pointer("model", "settings", "dim_policies", name)
+        if name not in effective:
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer=ptr,
+                    message=f"dim {name!r} is not a dim of the model's input schema",
+                )
+            )
+            continue
+        if not policy_is_at_least_as_tight(wanted, effective[name]):
+            issues.append(
+                Issue(
+                    code=ErrorCode.DIM_POLICY_LOOSENED,
+                    pointer=ptr,
+                    message=f"dim {name!r} policy {effective[name].value!r} may only be tightened"
+                    f", not changed to {wanted.value!r}",
+                )
+            )
+            continue
+        effective[name] = wanted
+    new_dims: dict[str, DimSpec] = {}
+    for name, d in dims.items():
+        pol = effective[name]
+        update: dict[str, Any] = {"policy": pol}
+        if pol is not DimPolicy.EXTEND:
+            update["max_extension"] = None
+        if pol is not DimPolicy.NEW_LEVELS:
+            update["new_level_strategy"] = "error"
+        if final is not None and name in final.dims:
+            fd = final.dims[name]
+            if d.freq is None and fd.freq is not None and d.kind == "time":
+                update["freq"] = fd.freq
+            if pol is DimPolicy.EXTEND and fd.max_extension is not None:
+                cur = d.max_extension
+                update["max_extension"] = (
+                    fd.max_extension if cur is None else min(cur, fd.max_extension)
+                )
+        new_dims[name] = d.model_copy(update=update)
+    return effective, model_schema.model_copy(update={"dims": new_dims})
+
+
+def _compare_schemas(model: DataSchema, final: DataSchema, issues: list[Issue]) -> None:
+    for name, mdim in model.dims.items():
+        if name not in final.dims:
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer="/model",
+                    message=f"the model needs dim {name!r}, which the pipeline does not produce",
+                    context={"pipeline_dims": sorted(final.dims)},
+                )
+            )
+            continue
+        fdim = final.dims[name]
+        if mdim.kind != fdim.kind:
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer="/model",
+                    message=f"dim {name!r}: the model needs kind {mdim.kind!r}, the pipeline "
+                    f"produces {fdim.kind!r}",
+                )
+            )
+        if mdim.freq is not None and fdim.freq is not None and mdim.freq != fdim.freq:
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer="/model",
+                    message=f"dim {name!r}: the model needs frequency {mdim.freq!r}, the "
+                    f"pipeline produces {fdim.freq!r}",
+                )
+            )
+    for name, mvar in model.vars.items():
+        fvar = final.vars.get(name)
+        if fvar is None:
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer="/model",
+                    message=f"the model needs variable {name!r}, which the pipeline does not "
+                    "produce",
+                    suggested_action="Bind a dataset variable to this name in data.bind.vars.",
+                    context={"pipeline_vars": sorted(final.vars)[:100]},
+                )
+            )
+            continue
+        if set(mvar.dims) != set(fvar.dims):
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer="/model",
+                    message=f"variable {name!r}: the model needs dims {list(mvar.dims)}, the "
+                    f"pipeline produces {list(fvar.dims)}",
+                )
+            )
+        if _dtype_family(mvar.dtype) != _dtype_family(fvar.dtype):
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer="/model",
+                    message=f"variable {name!r}: the model needs dtype {mvar.dtype}, the "
+                    f"pipeline produces {fvar.dtype}",
+                )
+            )
+        if mvar.role != fvar.role:
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    severity=Severity.WARNING,
+                    pointer="/model",
+                    message=f"variable {name!r}: the model expects role {mvar.role.value!r}, "
+                    f"the data declares {fvar.role.value!r}",
+                )
+            )
+
+
+# ------------------------------------------------------------------- validate_score_request
+
+
+class ScoreMetadata(StrictModel):
+    """Per-model-version metadata used for static CoordPlan checks.
+
+    ``fit_coords`` maps a stage name to coordinate summaries of the *full* fit data at that
+    stage (the production refit), at least for the model stage.
+    """
+
+    resolved: ResolvedSpec
+    fit_coords: dict[str, dict[str, CoordSummary]] = Field(default_factory=dict)
+
+
+def _issue(code: ErrorCode, pointer: str, message: str, **kw: Any) -> Issue:
+    return Issue(code=code, pointer=pointer, message=message[:2000], **kw)
+
+
+def _preview(values: Sequence[Scalar] | set[Scalar], n: int = 10) -> str:
+    vals = sorted(values, key=str)
+    s = ", ".join(str(v) for v in vals[:n])
+    return s + (f", ... (+{len(vals) - n})" if len(vals) > n else "")
+
+
+def validate_score_request(
+    req: ScoreRequest,
+    meta: ScoreMetadata,
+    inputs: DataSummary | None = None,
+    *,
+    max_draws: int | None = None,
+) -> list[Issue]:
+    """Static CoordPlan checks for ``req`` against a fitted model's metadata.
+
+    ``inputs`` summarises the payload (``data`` or ``scenario``) as it enters at
+    ``req.inputs_stage``; dataset names are accepted at the raw stage.
+    """
+    issues: list[Issue] = []
+    rs = meta.resolved
+    caps = rs.model.capabilities
+    rules = REPRESENTATION_RULES[caps.representation]
+
+    # mode -----------------------------------------------------------------------------
+    if req.mode not in caps.score_modes:
+        issues.append(
+            _issue(
+                ErrorCode.MODE_NOT_SUPPORTED,
+                "/mode",
+                f"model {rs.model.resolved!r} does not support mode {req.mode!r}",
+                context={"supported": sorted(caps.score_modes)},
+            )
+        )
+
+    # stage ----------------------------------------------------------------------------
+    if req.inputs_stage not in rs.stages:
+        issues.append(
+            _issue(
+                ErrorCode.REF_UNRESOLVED,
+                "/inputs_stage",
+                f"unknown stage {req.inputs_stage!r}",
+                context={"stages": list(rs.stages)},
+            )
+        )
+        stage_schema: DataSchema | None = None
+        executed = []
+    else:
+        stage_schema = rs.stages[req.inputs_stage]
+        executed = rs.steps_after(req.inputs_stage)
+
+    model_schema = rs.model.input_schema or rs.stages.get(rs.model_stage)
+    to_canon = rs.binding.canonical_of() if req.inputs_stage == RESERVED_STAGE else {}
+
+    def canon(name: str) -> str:
+        return to_canon.get(name, name)
+
+    # side tables ----------------------------------------------------------------------
+    needed: set[str] = set()
+    for step in executed:
+        needed.update(step.side_tables)
+    for name in req.side_tables:
+        if name not in rs.side_tables:
+            issues.append(
+                _issue(
+                    ErrorCode.REF_UNRESOLVED,
+                    json_pointer("side_tables", name),
+                    f"the model has no side table named {name!r}",
+                )
+            )
+    for name in sorted(needed):
+        if rs.side_tables.get(name) is ScorePolicy.SUPPLIED and name not in req.side_tables:
+            issues.append(
+                _issue(
+                    ErrorCode.SIDE_TABLE_COVERAGE,
+                    json_pointer("side_tables", name),
+                    f"side table {name!r} has score_policy 'supplied' and must be provided for "
+                    f"stage {req.inputs_stage!r}",
+                    suggested_action="Supply it in side_tables, or enter at a later "
+                    "inputs_stage that skips the step using it.",
+                )
+            )
+
+    # horizon --------------------------------------------------------------------------
+    if req.horizon is not None:
+        hdim, periods = req.horizon.dim, req.horizon.periods
+        dspec = model_schema.dims.get(hdim) if model_schema is not None else None
+        if dspec is None:
+            issues.append(
+                _issue(
+                    ErrorCode.COORD_NOT_ALLOWED,
+                    "/horizon/dim",
+                    f"{hdim!r} is not a dim of the model",
+                )
+            )
+        elif dspec.policy is not DimPolicy.EXTEND:
+            issues.append(
+                _issue(
+                    ErrorCode.COORD_NOT_ALLOWED,
+                    "/horizon/dim",
+                    f"dim {hdim!r} has policy {dspec.policy.value!r}; only 'extend' dims "
+                    "accept a horizon",
+                )
+            )
+        elif dspec.max_extension is not None and periods > dspec.max_extension:
+            issues.append(
+                _issue(
+                    ErrorCode.HORIZON_EXCEEDS_FIT,
+                    "/horizon/periods",
+                    f"horizon of {periods} exceeds the {dspec.max_extension} periods this fit "
+                    f"supports along {hdim!r}; a refit is required",
+                    suggested_action="Refit with a larger anticipated range.",
+                )
+            )
+        if "recursion" not in caps.owns:
+            for step in executed:
+                ctx = step.context
+                if not step.depends_on_target or ctx is None or ctx.along != hdim:
+                    continue
+                min_lag = ctx.min_lag if ctx.min_lag is not None else 1
+                if periods > min_lag:
+                    issues.append(
+                        _issue(
+                            ErrorCode.RECURSIVE_UNSUPPORTED,
+                            "/horizon/periods",
+                            f"step {step.id!r} lags the target by {min_lag}; a horizon of "
+                            f"{periods} would need recursive forecasting (unsupported in v1)",
+                        )
+                    )
+
+    # future covariates ----------------------------------------------------------------
+    inputs_ptr = "/scenario" if req.scenario is not None else "/data"
+    supplied = {canon(v) for v in inputs.vars} if inputs is not None else set()
+    if req.horizon is not None and stage_schema is not None:
+        required = {n for n, v in stage_schema.vars.items() if v.future_required}
+        if model_schema is not None:
+            required |= {
+                n
+                for n, v in model_schema.vars.items()
+                if v.future_required and n in stage_schema.vars
+            }
+        required -= set(stage_schema.targets)
+        missing = sorted(required - supplied)
+        if missing:
+            issues.append(
+                _issue(
+                    ErrorCode.MISSING_FUTURE_COVARIATE,
+                    inputs_ptr,
+                    f"forecasting needs future values of {missing} at stage {req.inputs_stage!r}",
+                    suggested_action="Provide them in a scenario dataset.",
+                )
+            )
+        elif required and inputs is not None:
+            _check_horizon_coverage(req, meta, inputs, canon, inputs_ptr, issues)
+
+    # input coords ---------------------------------------------------------------------
+    if inputs is not None and stage_schema is not None:
+        fit_stage = meta.fit_coords.get(req.inputs_stage, {})
+        for raw_dim, cs in inputs.coords.items():
+            dim = canon(raw_dim)
+            in_spec = stage_schema.dims.get(dim)
+            ptr = join_pointer(inputs_ptr)
+            if in_spec is None:
+                issues.append(
+                    _issue(
+                        ErrorCode.COORD_NOT_ALLOWED,
+                        ptr,
+                        f"input has dim {dim!r}, which does not exist at stage "
+                        f"{req.inputs_stage!r}",
+                    )
+                )
+                continue
+            policy = in_spec.policy
+            strategy: str = in_spec.new_level_strategy
+            max_ext = in_spec.max_extension
+            if model_schema is not None and dim in model_schema.dims:
+                mdim = model_schema.dims[dim]
+                policy = tighten_policy(policy, mdim.policy)
+                if policy is DimPolicy.NEW_LEVELS:
+                    strategy = mdim.new_level_strategy
+                if req.inputs_stage == rs.model_stage or in_spec.freq == mdim.freq:
+                    vals = [v for v in (max_ext, mdim.max_extension) if v is not None]
+                    max_ext = min(vals) if vals else None
+            fit = fit_stage.get(dim)
+            if fit is None:
+                continue
+            issues += _check_coord(dim, cs, fit, policy, strategy, max_ext, ptr, req.mode)
+
+    # select ---------------------------------------------------------------------------
+    model_fit = meta.fit_coords.get(rs.model_stage, {})
+    dataset_to_canon = rs.binding.canonical_of()
+    for raw_dim, values in req.select.items():
+        dim = dataset_to_canon.get(raw_dim, raw_dim)
+        ptr = json_pointer("select", raw_dim)
+        sdim = model_schema.dims.get(dim) if model_schema is not None else None
+        if sdim is None:
+            issues.append(_issue(ErrorCode.COORD_NOT_ALLOWED, ptr, f"{dim!r} is not a model dim"))
+            continue
+        fit = model_fit.get(dim)
+        levels = fit.level_set if fit is not None else None
+        if levels is None or sdim.policy is DimPolicy.EXTEND:
+            continue
+        unseen = set(values) - levels
+        new_ok = sdim.policy is DimPolicy.NEW_LEVELS and sdim.new_level_strategy != "error"
+        if unseen and not new_ok:
+            issues.append(
+                _issue(
+                    ErrorCode.UNSEEN_LEVELS,
+                    ptr,
+                    f"{len(unseen)} selected level(s) of {dim!r} were not seen at fit and the "
+                    f"dim's policy is {sdim.policy.value!r}",
+                    untrusted_text=_preview(unseen),
+                )
+            )
+
+    # interventions --------------------------------------------------------------------
+    for k, iv in enumerate(req.interventions):
+        ptr = json_pointer("interventions", k)
+        if stage_schema is None:
+            break
+        var = canon(iv.var)
+        vspec = stage_schema.vars.get(var)
+        if vspec is None:
+            issues.append(
+                _issue(
+                    ErrorCode.SCHEMA_INVALID,
+                    f"{ptr}/var",
+                    f"variable {var!r} does not exist at stage {req.inputs_stage!r}",
+                )
+            )
+            continue
+        if vspec.role is Role.TARGET:
+            issues.append(
+                _issue(ErrorCode.SCHEMA_INVALID, f"{ptr}/var", "cannot intervene on the target")
+            )
+        fit_stage = meta.fit_coords.get(req.inputs_stage, {})
+        for raw_dim, sel in iv.sel.items():
+            dim = canon(raw_dim)
+            if dim not in vspec.dims:
+                issues.append(
+                    _issue(
+                        ErrorCode.COORD_NOT_ALLOWED,
+                        join_pointer(ptr, "sel", raw_dim),
+                        f"variable {var!r} has no dim {dim!r}",
+                    )
+                )
+                continue
+            sel_spec = stage_schema.dims[dim]
+            fit = fit_stage.get(dim)
+            levels = fit.level_set if fit is not None else None
+            if sel_spec.policy is DimPolicy.FIXED and levels is not None:
+                chosen = set(sel if isinstance(sel, list) else [sel])
+                unseen = chosen - levels
+                if unseen:
+                    issues.append(
+                        _issue(
+                            ErrorCode.UNSEEN_LEVELS,
+                            join_pointer(ptr, "sel", raw_dim),
+                            f"{len(unseen)} level(s) of fixed dim {dim!r} are unknown",
+                            untrusted_text=_preview(unseen),
+                        )
+                    )
+
+    # output selector ------------------------------------------------------------------
+    out = req.output
+    if out.draws > 0 and not rules.draws_available:
+        issues.append(
+            _issue(
+                ErrorCode.CAPABILITY_UNSUPPORTED,
+                "/output/draws",
+                f"draws were requested but the model's representation is "
+                f"{caps.representation.value!r}",
+            )
+        )
+    if max_draws is not None and out.draws > max_draws:
+        issues.append(
+            _issue(
+                ErrorCode.QUOTA_EXCEEDED,
+                "/output/draws",
+                f"at most {max_draws} draws may be returned on this tier",
+            )
+        )
+    if out.summary is not None:
+        for j, name in enumerate(out.summary):
+            if not summary_allowed(caps.representation, name):
+                issues.append(
+                    _issue(
+                        ErrorCode.CAPABILITY_UNSUPPORTED,
+                        json_pointer("output", "summary", j),
+                        f"summary {name!r} cannot be computed from "
+                        f"{caps.representation.value!r} output",
+                        suggested_action=rules.note,
+                    )
+                )
+    if out.kind == "predictive" and not rules.predictive:
+        issues.append(
+            _issue(
+                ErrorCode.CAPABILITY_UNSUPPORTED,
+                "/output/kind",
+                "predictive output (with observation noise) needs an uncertainty "
+                "representation; this model produces point predictions",
+            )
+        )
+    if out.aggregate is not None:
+        for j, d in enumerate(out.aggregate.over):
+            if model_schema is not None and dataset_to_canon.get(d, d) not in model_schema.dims:
+                issues.append(
+                    _issue(
+                        ErrorCode.COORD_NOT_ALLOWED,
+                        json_pointer("output", "aggregate", "over", j),
+                        f"{d!r} is not a model dim",
+                    )
+                )
+        verdict = can_aggregate(caps.representation, out.aggregate.over, out.aggregate.how)
+        if not verdict.allowed:
+            issues.append(
+                _issue(
+                    ErrorCode.CAPABILITY_UNSUPPORTED,
+                    "/output/aggregate",
+                    f"cannot aggregate {caps.representation.value!r} output: {verdict.reason}",
+                )
+            )
+        elif verdict.flagged:
+            issues.append(
+                Issue(
+                    code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                    severity=Severity.WARNING,
+                    pointer="/output/aggregate",
+                    message=verdict.reason,
+                )
+            )
+    known_outputs = set(rs.model.outputs) | set(rs.model.derived)
+    if known_outputs:
+        for j, v in enumerate(out.vars):
+            if v not in known_outputs:
+                issues.append(
+                    _issue(
+                        ErrorCode.REF_UNRESOLVED,
+                        json_pointer("output", "vars", j),
+                        f"the model has no output or derived quantity {v!r}",
+                    )
+                )
+    return issues
+
+
+def _check_coord(
+    dim: str,
+    cs: CoordSummary,
+    fit: CoordSummary,
+    policy: DimPolicy,
+    strategy: str,
+    max_ext: int | None,
+    ptr: str,
+    mode: str,
+) -> list[Issue]:
+    issues: list[Issue] = []
+    if policy is not DimPolicy.EXTEND:
+        new_vals = cs.level_set
+        fit_vals = fit.level_set
+        unseen: set[Scalar] | None = None
+        if new_vals is not None and fit_vals is not None:
+            unseen = new_vals - fit_vals
+        elif cs.start is not None and fit.start is not None and cs.end is not None:
+            lo, hi = cs.ordinal(cs.start), cs.ordinal(cs.end)
+            flo, fhi = fit.ordinal(fit.start), fit.ordinal(fit.end) if fit.end is not None else None
+            if None not in (lo, hi, flo, fhi):
+                assert lo is not None and hi is not None and flo is not None and fhi is not None
+                unseen = {cs.start} if lo < flo else ({cs.end} if hi > fhi else set())
+        if not unseen:
+            return issues
+        if policy is DimPolicy.FIXED or strategy == "error":
+            issues.append(
+                _issue(
+                    ErrorCode.UNSEEN_LEVELS,
+                    ptr,
+                    f"{len(unseen)} level(s) of {dim!r} were not seen at fit and the dim's "
+                    f"policy is {policy.value!r}"
+                    + ("" if policy is DimPolicy.FIXED else " with strategy 'error'"),
+                    untrusted_text=_preview(unseen),
+                )
+            )
+        else:
+            issues.append(
+                Issue(
+                    code=ErrorCode.UNSEEN_LEVELS,
+                    severity=Severity.INFO,
+                    pointer=ptr,
+                    message=f"{len(unseen)} new level(s) of {dim!r} will use strategy {strategy!r}",
+                    untrusted_text=_preview(unseen),
+                )
+            )
+        return issues
+
+    # EXTEND
+    if cs.start is None or cs.end is None or fit.start is None or fit.end is None:
+        return issues
+    s, e = cs.ordinal(cs.start), cs.ordinal(cs.end)
+    fs, fe = fit.ordinal(fit.start), fit.ordinal(fit.end)
+    if None in (s, e, fs, fe):
+        issues.append(
+            Issue(
+                code=ErrorCode.NON_CONTIGUOUS_EXTENSION,
+                severity=Severity.ERROR if None in (s, e) else Severity.WARNING,
+                pointer=ptr,
+                message=f"coords of {dim!r} are not aligned to its frequency/step; contiguity "
+                "cannot be checked",
+            )
+        )
+        return issues
+    assert s is not None and e is not None and fs is not None and fe is not None
+    if s < fs:
+        issues.append(
+            _issue(
+                ErrorCode.COORD_NOT_ALLOWED,
+                ptr,
+                f"input coords of {dim!r} start before the fitted range",
+                untrusted_text=f"{cs.start} < {fit.start}",
+            )
+        )
+    if e > fe:
+        if s > fe + 1:
+            issues.append(
+                _issue(
+                    ErrorCode.NON_CONTIGUOUS_EXTENSION,
+                    ptr,
+                    f"input coords of {dim!r} leave a gap of {s - fe - 1} period(s) after the "
+                    "fitted range",
+                    untrusted_text=f"fit ends {fit.end}; input starts {cs.start}",
+                )
+            )
+        if not cs.contiguous:
+            issues.append(
+                _issue(
+                    ErrorCode.NON_CONTIGUOUS_EXTENSION,
+                    ptr,
+                    f"input coords of {dim!r} have gaps",
+                )
+            )
+        if max_ext is not None and e - fe > max_ext:
+            issues.append(
+                _issue(
+                    ErrorCode.HORIZON_EXCEEDS_FIT,
+                    ptr,
+                    f"input extends {e - fe} period(s) past the fit along {dim!r}; at most "
+                    f"{max_ext} are supported without a refit",
+                )
+            )
+    elif mode == "forecast" and e <= fe:
+        issues.append(
+            Issue(
+                code=ErrorCode.NON_CONTIGUOUS_EXTENSION,
+                severity=Severity.WARNING,
+                pointer=ptr,
+                message=f"forecast input along {dim!r} does not extend past the fitted range",
+            )
+        )
+    return issues
+
+
+def _check_horizon_coverage(
+    req: ScoreRequest,
+    meta: ScoreMetadata,
+    inputs: DataSummary,
+    canon: Any,
+    inputs_ptr: str,
+    issues: list[Issue],
+) -> None:
+    assert req.horizon is not None
+    hdim = req.horizon.dim
+    cs = next((c for d, c in inputs.coords.items() if canon(d) == hdim), None)
+    fit = meta.fit_coords.get(req.inputs_stage, {}).get(hdim)
+    model_fit = meta.fit_coords.get(meta.resolved.model_stage, {}).get(hdim)
+    if cs is None or fit is None or cs.end is None or fit.end is None:
+        return
+    if model_fit is not None and model_fit.freq != fit.freq:
+        return  # different frequency at the input stage; checked in the sandbox
+    e, fe = cs.ordinal(cs.end), fit.ordinal(fit.end)
+    if e is None or fe is None:
+        return
+    covered = e - fe
+    if covered < req.horizon.periods:
+        issues.append(
+            _issue(
+                ErrorCode.MISSING_FUTURE_COVARIATE,
+                inputs_ptr,
+                f"future covariates cover {max(covered, 0)} of the {req.horizon.periods} "
+                f"horizon periods along {hdim!r}",
+            )
+        )
