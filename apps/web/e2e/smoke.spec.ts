@@ -186,6 +186,20 @@ test("scoring returns outputs that open as a table and a sandboxed chart", async
   await expect(frame.contentFrame().locator("svg.marks")).toBeVisible({ timeout: 20_000 });
 });
 
+test("score form errors are marked on their fields and focus the first one", async ({ page }) => {
+  await page.goto(`/score?model=${MODEL}&version=1`);
+  await page.getByLabel("Draws").fill("abc");
+  await page.getByLabel("Variables (optional)").fill("bad name!");
+  await page.getByRole("button", { name: "Score", exact: true }).click();
+  const draws = page.getByLabel("Draws");
+  await expect(draws).toBeFocused();
+  await expect(draws).toHaveAttribute("aria-invalid", "true");
+  await expect(draws).toHaveAccessibleDescription(/Draws must be between 0 and 10000\..*0 returns summaries only\./);
+  await expect(page.getByLabel("Variables (optional)")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("alert").filter({ hasText: "Draws must be between" })).toBeVisible();
+  await expect(page.getByLabel("Seed (optional)")).not.toHaveAttribute("aria-invalid");
+});
+
 test("theme can be switched to dark", async ({ page }) => {
   await page.goto("/settings");
   await page.getByRole("radio", { name: "Dark" }).click();

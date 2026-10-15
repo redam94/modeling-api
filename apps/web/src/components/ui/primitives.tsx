@@ -5,6 +5,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { Label as LabelPrimitive, Separator as SeparatorPrimitive } from "radix-ui";
 import type * as React from "react";
+import { createContext, useContext } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -69,17 +70,45 @@ export function CardContent({ className, ...props }: React.ComponentProps<"div">
 const fieldBase =
   "w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm shadow-xs transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring";
 
+/** Set by {@link Field} for the control whose id is `controlId`. */
+interface FieldState {
+  controlId: string;
+  invalid: boolean;
+  describedBy: string | undefined;
+}
+
+const FieldContext = createContext<FieldState | null>(null);
+
+/**
+ * `aria-invalid` / `aria-describedby` for a control inside a {@link Field}, applied only to
+ * the control the label points at; explicit props win.
+ */
+function useFieldAria(
+  id: string | undefined,
+  props: Pick<React.AriaAttributes, "aria-invalid" | "aria-describedby">,
+): Pick<React.AriaAttributes, "aria-invalid" | "aria-describedby"> {
+  const field = useContext(FieldContext);
+  if (!field || !id || field.controlId !== id) return {};
+  return {
+    "aria-invalid": props["aria-invalid"] ?? (field.invalid ? true : undefined),
+    "aria-describedby": props["aria-describedby"] ?? field.describedBy,
+  };
+}
+
 export function Input({ className, type = "text", ...props }: React.ComponentProps<"input">) {
-  return <input type={type} data-slot="input" className={cn(fieldBase, "h-9 py-1", className)} {...props} />;
+  const aria = useFieldAria(props.id, props);
+  return <input type={type} data-slot="input" className={cn(fieldBase, "h-9 py-1", className)} {...props} {...aria} />;
 }
 
 export function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
-  return <textarea data-slot="textarea" className={cn(fieldBase, "min-h-20 py-2", className)} {...props} />;
+  const aria = useFieldAria(props.id, props);
+  return <textarea data-slot="textarea" className={cn(fieldBase, "min-h-20 py-2", className)} {...props} {...aria} />;
 }
 
 export function NativeSelect({ className, children, ...props }: React.ComponentProps<"select">) {
+  const aria = useFieldAria(props.id, props);
   return (
-    <select data-slot="select" className={cn(fieldBase, "h-9 py-1 pr-8", className)} {...props}>
+    <select data-slot="select" className={cn(fieldBase, "h-9 py-1 pr-8", className)} {...props} {...aria}>
       {children}
     </select>
   );
@@ -95,24 +124,46 @@ export function Label({ className, ...props }: React.ComponentProps<typeof Label
   );
 }
 
+/**
+ * A labelled control with optional help text and a validation error. The error is shown in
+ * the destructive colour above the help text (which stays), announced (`role="alert"`), and
+ * tied to the control with `htmlFor`: the Input/Textarea/NativeSelect with that id gets
+ * `aria-invalid` and an `aria-describedby` naming the error and the hint.
+ */
 export function Field({
   label,
   hint,
+  error,
   htmlFor,
   children,
   className,
 }: {
   label: string;
   hint?: React.ReactNode;
+  error?: React.ReactNode;
   htmlFor?: string;
   children: React.ReactNode;
   className?: string;
 }) {
+  const errorId = htmlFor && error ? `${htmlFor}-error` : undefined;
+  const hintId = htmlFor && hint ? `${htmlFor}-hint` : undefined;
+  const describedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined;
   return (
     <div className={cn("grid gap-1.5", className)}>
       <Label htmlFor={htmlFor}>{label}</Label>
-      {children}
-      {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
+      <FieldContext.Provider value={htmlFor ? { controlId: htmlFor, invalid: Boolean(error), describedBy } : null}>
+        {children}
+      </FieldContext.Provider>
+      {error ? (
+        <p id={errorId} role="alert" className="text-xs font-medium text-destructive">
+          {error}
+        </p>
+      ) : null}
+      {hint ? (
+        <p id={hintId} className="text-muted-foreground text-xs">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

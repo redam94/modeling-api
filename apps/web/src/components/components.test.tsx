@@ -16,6 +16,7 @@ import { STARTER_SPEC } from "@/features/editor/starter";
 import { parse } from "yaml";
 
 import { IssueList, ProblemNotice, StateBadge } from "./common";
+import { Field, Input } from "./ui/primitives";
 import { fuzzyScore } from "./shell/command-palette";
 
 const server = setupServer(...createHandlers());
@@ -103,6 +104,36 @@ describe("IssueList", () => {
     render(<IssueList issues={[{ code: "LEAKAGE_RISK", severity: "error", pointer: "/pipeline/2", message: "m" }]} onSelect={(i) => seen.push(i.pointer ?? "")} />);
     await userEvent.click(screen.getByRole("button"));
     expect(seen).toEqual(["/pipeline/2"]);
+  });
+});
+
+describe("Field", () => {
+  it("shows an error apart from the help text and ties both to the control", () => {
+    render(
+      <Field label="Draws" htmlFor="draws" hint="0 returns summaries only." error="Draws must be between 0 and 10000.">
+        <Input id="draws" />
+      </Field>,
+    );
+    const input = screen.getByLabelText("Draws");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Draws must be between 0 and 10000.");
+    expect(alert).toHaveClass("text-destructive");
+    // The help text stays, and both are announced with the field.
+    expect(screen.getByText("0 returns summaries only.")).toBeInTheDocument();
+    expect(input).toHaveAccessibleDescription("Draws must be between 0 and 10000. 0 returns summaries only.");
+  });
+
+  it("leaves a valid control unmarked", () => {
+    render(
+      <Field label="Seed" htmlFor="seed" hint="Optional.">
+        <Input id="seed" />
+      </Field>,
+    );
+    const input = screen.getByLabelText("Seed");
+    expect(input).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(input).toHaveAccessibleDescription("Optional.");
   });
 });
 

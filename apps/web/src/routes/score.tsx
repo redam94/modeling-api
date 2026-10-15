@@ -111,6 +111,12 @@ function ScoreFormView({ mv, onResult }: { mv: ModelVersion; onResult: (r: { res
   const [form, setForm] = useState<ScoreForm>(defaultScoreForm);
   const [problems, setProblems] = useState<FormProblem[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  /** Bumped by a submit that found problems: focus the first invalid control once rendered. */
+  const [focusInvalid, setFocusInvalid] = useState(0);
+  useEffect(() => {
+    if (focusInvalid) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [focusInvalid]);
   const [error, setError] = useState<unknown>(null);
   const { stages, sideTables } = useSpecOptions(mv);
   const datasets = useDatasets();
@@ -134,6 +140,7 @@ function ScoreFormView({ mv, onResult }: { mv: ModelVersion; onResult: (r: { res
     const built = buildScoreRequest(form, mv.ref);
     if ("problems" in built) {
       setProblems(built.problems);
+      setFocusInvalid((n) => n + 1);
       return;
     }
     setProblems([]);
@@ -153,7 +160,9 @@ function ScoreFormView({ mv, onResult }: { mv: ModelVersion; onResult: (r: { res
 
   return (
     <form
+      ref={formRef}
       className="grid gap-6"
+      noValidate
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
@@ -174,15 +183,15 @@ function ScoreFormView({ mv, onResult }: { mv: ModelVersion; onResult: (r: { res
       <div className="grid gap-4 sm:grid-cols-3">
         {form.mode === "forecast" ? (
           <>
-            <Field label="Horizon dim" htmlFor="h-dim" hint={problemFor(problems, "horizonDim")}>
+            <Field label="Horizon dim" htmlFor="h-dim" error={problemFor(problems, "horizonDim")}>
               <Input id="h-dim" value={form.horizonDim} onChange={(e) => set("horizonDim", e.target.value)} className="font-mono" />
             </Field>
-            <Field label="Periods" htmlFor="h-periods" hint={problemFor(problems, "horizonPeriods")}>
+            <Field label="Periods" htmlFor="h-periods" error={problemFor(problems, "horizonPeriods")}>
               <Input id="h-periods" inputMode="numeric" value={form.horizonPeriods} onChange={(e) => set("horizonPeriods", e.target.value)} />
             </Field>
           </>
         ) : null}
-        <Field label="Inputs enter at stage" htmlFor="inputs-stage" hint={problemFor(problems, "inputsStage") ?? "Send data in the units of this stage, e.g. weekly EUR spend."}>
+        <Field label="Inputs enter at stage" htmlFor="inputs-stage" error={problemFor(problems, "inputsStage")} hint="Send data in the units of this stage, e.g. weekly EUR spend.">
           <NativeSelect id="inputs-stage" value={form.inputsStage} onChange={(e) => set("inputsStage", e.target.value)} className="font-mono">
             {stages.map((s) => <option key={s} value={s}>{s}</option>)}
           </NativeSelect>
@@ -197,7 +206,8 @@ function ScoreFormView({ mv, onResult }: { mv: ModelVersion; onResult: (r: { res
       <Field
         label="Input data"
         htmlFor="score-data"
-        hint={problemFor(problems, "data") ?? "The inputs to score, in the units of the entry stage: future spend over the horizon, new markets, or a window of past data. Upload it under Datasets first."}
+        error={problemFor(problems, "data")}
+        hint="The inputs to score, in the units of the entry stage: future spend over the horizon, new markets, or a window of past data. Upload it under Datasets first."
       >
         <div className="flex gap-2">
           <Input id="score-data" value={form.data} onChange={(e) => set("data", e.target.value)} placeholder="dataset://default/eu_media_future@v1" className="font-mono" list="score-datasets" />
@@ -207,7 +217,7 @@ function ScoreFormView({ mv, onResult }: { mv: ModelVersion; onResult: (r: { res
         </div>
       </Field>
 
-      <Field label="Scenario data (optional)" htmlFor="scenario" hint={problemFor(problems, "scenario") ?? "A changed copy of the input data. Counterfactuals compare it against the input data."}>
+      <Field label="Scenario data (optional)" htmlFor="scenario" error={problemFor(problems, "scenario")} hint="A changed copy of the input data. Counterfactuals compare it against the input data.">
         <Input id="scenario" value={form.scenario} onChange={(e) => set("scenario", e.target.value)} placeholder="dataset://default/plan_2027h1@v1" className="font-mono" list="score-datasets" />
       </Field>
 
@@ -224,11 +234,11 @@ function ScoreFormView({ mv, onResult }: { mv: ModelVersion; onResult: (r: { res
                 key={t.name}
                 label={t.name}
                 htmlFor={`side-${t.name}`}
+                error={problemFor(problems, `sideTables.${t.name}`)}
                 hint={
-                  problemFor(problems, `sideTables.${t.name}`) ??
-                  (t.policy === "supplied"
+                  t.policy === "supplied"
                     ? "Required when a step before the entry stage uses it; it must cover the scored dates."
-                    : "Optional: defaults to its latest version.")
+                    : "Optional: defaults to its latest version."
                 }
               >
                 <Input
@@ -264,23 +274,28 @@ function ScoreFormView({ mv, onResult }: { mv: ModelVersion; onResult: (r: { res
               const update = (patch: Partial<typeof row>) =>
                 set("interventions", form.interventions.map((r, j) => (j === i ? { ...r, ...patch } : r)));
               const msg = problemFor(problems, `interventions.${i}`);
+              const rowAria = msg ? ({ "aria-invalid": true, "aria-describedby": `iv-${i}-error` } as const) : {};
               return (
                 <li key={i} className="grid gap-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Input aria-label="Variable" value={row.var} onChange={(e) => update({ var: e.target.value })} className="h-8 w-32 font-mono" />
+                    <Input aria-label="Variable" {...rowAria} value={row.var} onChange={(e) => update({ var: e.target.value })} className="h-8 w-32 font-mono" />
                     <span className="text-xs text-muted-foreground">where</span>
-                    <Input aria-label="Selection" value={row.sel} onChange={(e) => update({ sel: e.target.value })} placeholder="channel=meta; geo=de,fr" className="h-8 w-56 font-mono" />
+                    <Input aria-label="Selection" {...rowAria} value={row.sel} onChange={(e) => update({ sel: e.target.value })} placeholder="channel=meta; geo=de,fr" className="h-8 w-56 font-mono" />
                     <NativeSelect aria-label="Operation" value={row.op} onChange={(e) => update({ op: e.target.value as InterventionOp })} className="h-8 w-28">
                       <option value="multiply">multiply</option>
                       <option value="add">add</option>
                       <option value="set">set to</option>
                     </NativeSelect>
-                    <Input aria-label="Value" inputMode="decimal" value={row.value} onChange={(e) => update({ value: e.target.value })} className="h-8 w-24" />
+                    <Input aria-label="Value" {...rowAria} inputMode="decimal" value={row.value} onChange={(e) => update({ value: e.target.value })} className="h-8 w-24" />
                     <Button type="button" variant="ghost" size="icon-sm" aria-label="Remove intervention" onClick={() => set("interventions", form.interventions.filter((_, j) => j !== i))}>
                       <Trash2 />
                     </Button>
                   </div>
-                  {msg ? <p className="text-xs text-destructive">{msg}</p> : null}
+                  {msg ? (
+                    <p id={`iv-${i}-error`} role="alert" className="text-xs font-medium text-destructive">
+                      {msg}
+                    </p>
+                  ) : null}
                 </li>
               );
             })}
@@ -332,13 +347,13 @@ function ScoreFormView({ mv, onResult }: { mv: ModelVersion; onResult: (r: { res
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Draws" htmlFor="out-draws" hint={problemFor(problems, "draws") ?? "0 returns summaries only."}>
+          <Field label="Draws" htmlFor="out-draws" error={problemFor(problems, "draws")} hint="0 returns summaries only.">
             <Input id="out-draws" inputMode="numeric" value={form.output.draws} onChange={(e) => setOut("draws", e.target.value)} />
           </Field>
-          <Field label="Variables (optional)" htmlFor="out-vars" hint={problemFor(problems, "vars") ?? "Comma-separated; empty means all outputs."}>
+          <Field label="Variables (optional)" htmlFor="out-vars" error={problemFor(problems, "vars")} hint="Comma-separated; empty means all outputs.">
             <Input id="out-vars" value={form.output.vars} onChange={(e) => setOut("vars", e.target.value)} className="font-mono" placeholder="y_hat" />
           </Field>
-          <Field label="Seed (optional)" htmlFor="seed" hint={problemFor(problems, "seed")}>
+          <Field label="Seed (optional)" htmlFor="seed" error={problemFor(problems, "seed")}>
             <Input id="seed" inputMode="numeric" value={form.seed} onChange={(e) => set("seed", e.target.value)} />
           </Field>
         </div>
