@@ -6,8 +6,6 @@ Fits use tiny settings (tune/draws of 100-150, 2 chains) with the seed-determini
 
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 import pymc as pm
 import pytest
@@ -79,22 +77,3 @@ def linear_model() -> tuple[pm.Model, np.ndarray, np.ndarray]:
         mu = pm.Deterministic("mu", a + b * xd, dims="obs")
         pm.Normal("y", mu, s, observed=y, dims="obs")
     return model, x, y
-
-
-def posterior_of(model: pm.Model, **kw: Any) -> xr.DataTree:
-    """Sample ``model`` with the in-process PyMC sampler (tiny, seeded)."""
-    opts: dict[str, Any] = {
-        "draws": 100,
-        "tune": 100,
-        "chains": 2,
-        "random_seed": 42,
-        "progressbar": False,
-        "nuts_sampler": "pymc",
-        "cores": 1,
-        "compute_convergence_checks": False,
-    }
-    opts.update(kw)
-    with model:
-        out = pm.sample(**opts)
-    assert isinstance(out, xr.DataTree)
-    return out
