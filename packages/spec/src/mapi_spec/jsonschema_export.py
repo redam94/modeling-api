@@ -19,7 +19,16 @@ from mapi_spec.effects import SchemaEffect
 from mapi_spec.errors import Problem
 from mapi_spec.plots import PlotSpec
 from mapi_spec.schema import DataSchema, DataSchemaTemplate
-from mapi_spec.spec import SBC, AnyDocument, Backtest, Campaign, ModelSpec, ScoreRequest, Sweep
+from mapi_spec.spec import (
+    CONTRACT_VERSION,
+    SBC,
+    AnyDocument,
+    Backtest,
+    Campaign,
+    ModelSpec,
+    ScoreRequest,
+    Sweep,
+)
 
 __all__ = ["SCHEMA_BASE_URI", "SCHEMA_MODELS", "export_schemas"]
 
@@ -50,7 +59,12 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
 
 
 def _finish(name: str, schema: dict[str, Any]) -> dict[str, Any]:
-    return {"$schema": JSON_SCHEMA_DIALECT, "$id": SCHEMA_BASE_URI + name, **schema}
+    return {
+        "$schema": JSON_SCHEMA_DIALECT,
+        "$id": SCHEMA_BASE_URI + name,
+        "x-mapi-contract-version": CONTRACT_VERSION,
+        **schema,
+    }
 
 
 def export_schemas(out_dir: str | Path | None = None) -> dict[str, dict[str, Any]]:

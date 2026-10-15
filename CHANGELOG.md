@@ -6,6 +6,14 @@ milestone releases are tagged on `main`.
 ## [Unreleased]
 - Repository scaffold: uv workspace, package skeletons, split Apache-2.0 / AGPLv3+commercial licensing.
 
+### Contract v0.1 (frozen)
+- `mapi_spec.CONTRACT_VERSION = "0.1"` names the contract the exported JSON Schemas describe; every
+  exported schema carries it as `x-mapi-contract-version`.
+- The contract is frozen for the v0.1.x line: `packages/spec/tests/snapshots/contract.json` pins a digest
+  of every exported schema and the drift test fails on any change. Additive changes (new optional
+  fields, new error codes) regenerate the snapshot (`MAPI_UPDATE_SNAPSHOTS=1`); breaking changes bump
+  `CONTRACT_VERSION` first.
+
 ### Added
 - **`mapi-spec`**: the pure-Pydantic contract layer.
   - DataSchema, DimSpec and VarSpec, with schema templates.

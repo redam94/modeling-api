@@ -55,6 +55,21 @@ short; `--size full` uses the spec's own fit settings and larger data.
 | `e33` | `mmm.hierarchical_geo` | FX (`supplied`) and holiday (`pinned`) side tables, split after `resample`, per-market lag context, new market from the hyperprior, weekly EUR plan via `inputs_stage`, CRN counterfactual, derived quantities in EUR |
 | `pymc_marketing` | `mmm.pymc_marketing` | a model that `owns` scaling, carry-over and units; a scoring window equals the same weeks of the full series |
 
+## Porting time
+
+The M0 exit criteria ask for the porting time of every fixture (target: under one day each,
+model plugin plus fixture). It measures human effort, so it cannot be derived from the code or
+from commit timestamps; record it here when a fixture is ported or re-ported.
+
+| Fixture | Porting time | Recorded |
+|---|---|---|
+| `e02` | not measured yet | – |
+| `c08` | not measured yet | – |
+| `e24` | not measured yet | – |
+| `xgb_store_demand` | not measured yet | – |
+| `e33` | not measured yet | – |
+| `pymc_marketing` | not measured yet | – |
+
 ## Add a fixture
 
 Create a package `conformance/src/mapi_conformance/fixtures/<id>/` and list `<id>` in
