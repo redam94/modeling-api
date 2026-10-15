@@ -1,0 +1,24 @@
+[project]
+name = "mapi-plots"
+version = "0.0.0"
+description = "Plot recipes and the JSON-only PlotSpec sanitizer"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
+dependencies = [
+  "mapi-spec",
+]
+
+[project.optional-dependencies]
+recipes = ["altair>=5.4", "plotly>=6.0", "pandas>=2.2", "pyarrow>=17", "xarray>=2025.1"]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mapi_plots"]
+
+[tool.uv.sources]
+mapi-spec = { workspace = true }

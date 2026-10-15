@@ -1,0 +1,16 @@
+site_name: modeling-api
+site_description: Fit, score and share labelled multi-dimensional models — safely.
+docs_dir: docs
+exclude_docs: |
+  architecture-plan.md
+theme:
+  name: material
+  features: [navigation.tabs, navigation.sections, content.code.copy, search.suggest]
+  palette:
+    - scheme: default
+      toggle: {icon: material/weather-night, name: Dark mode}
+    - scheme: slate
+      toggle: {icon: material/weather-sunny, name: Light mode}
+markdown_extensions: [admonition, tables, attr_list, md_in_html, pymdownx.details, pymdownx.superfences, pymdownx.tabbed]
+nav:
+  - Home: index.md

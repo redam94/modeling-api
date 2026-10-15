@@ -1,0 +1,27 @@
+[project]
+name = "mapi-sdk"
+version = "0.0.0"
+description = "xarray modelling runtime: steps, pipelines, coord plans, bundles, contract kit"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
+dependencies = [
+  "mapi-spec",
+  "numpy>=2.0",
+  "pandas>=2.2",
+  "xarray>=2025.1",
+  "zarr>=3.0",
+  "pyarrow>=17",
+  "google-crc32c>=1.5",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mapi_sdk"]
+
+[tool.uv.sources]
+mapi-spec = { workspace = true }
