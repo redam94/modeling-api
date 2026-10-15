@@ -712,6 +712,7 @@ def score_bundle(
     request: ScoreRequest | str,
     data: xr.Dataset | None = None,
     *,
+    scenario: xr.Dataset | None = None,
     side_tables: Mapping[str, xr.Dataset] | None = None,
     registry: Registry | None = None,
     max_draws: int | None = None,
@@ -721,6 +722,11 @@ def score_bundle(
     hooks: FitHooks | None = None,
 ) -> xr.DataTree:
     """Score a fitted bundle; returns a ``DataTree``.
+
+    ``data`` is the request's ``data`` payload and ``scenario`` its ``scenario`` payload.
+    Outside counterfactuals a scenario simply *is* the payload. A counterfactual scores
+    the scenario (or the data, when no scenario is given) with the interventions applied
+    against the **baseline** ``data``; a scenario without baseline data is rejected.
 
     Groups: ``summary`` (stats along a ``stat`` dim), ``draws`` (when requested; joint,
     from the bundle thinning index), ``predictions`` (full representation, when
@@ -740,6 +746,21 @@ def score_bundle(
     pipeline = bundle.pipeline(registry)
     pipeline.index(req.inputs_stage)
 
+    counterfactual = req.mode == "counterfactual"
+    if counterfactual and req.scenario is not None and scenario is None:
+        raise MapiError(
+            "the counterfactual names a scenario dataset but none was supplied",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer="/scenario",
+        )
+    if counterfactual and scenario is not None and data is None:
+        raise MapiError(
+            "a counterfactual with a scenario needs the baseline in 'data'",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer="/data",
+        )
+    if not counterfactual and scenario is not None:
+        data, scenario = scenario, None  # the scenario is the payload
     if data is None:
         if req.horizon is None:
             raise MapiError(
@@ -750,7 +771,11 @@ def score_bundle(
         data = _horizon_payload(bundle, req)
     data = binding.apply(normalise_dataset(data), missing="ignore")
 
-    issues = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws).check(data)
+    plan = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws)
+    issues = plan.check(data)
+    if scenario is not None:
+        scenario = binding.apply(normalise_dataset(scenario), missing="ignore")
+        issues += [i for i in plan.check(scenario) if i not in issues]
     tables = {
         **bundle.side_tables,
         **{k: normalise_dataset(v) for k, v in (side_tables or {}).items()},
@@ -817,10 +842,12 @@ def score_bundle(
         }
         return _Scored(pred, observed, extra, trace.issues)
 
-    scenario = _apply_interventions(data, req, binding) if req.interventions else data
-    main = run(scenario)
+    scored = data if scenario is None else scenario
+    if req.interventions:
+        scored = _apply_interventions(scored, req, binding)
+    main = run(scored)
     issues += main.issues
-    baseline = run(data) if req.mode == "counterfactual" else None
+    baseline = run(data) if counterfactual else None
 
     def finish(pred: xr.Dataset) -> tuple[xr.Dataset, dict[str, str], dict[str, str]]:
         if req.select:

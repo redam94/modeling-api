@@ -24,6 +24,7 @@ Each step is independent where possible (a failed score request does not hide th
     - name: forecast_12                    # unique within the fixture
       request: {mode: forecast, horizon: {dim: t, periods: 12}}
       payload: none                        # none | fit_data | tail:<n> | <builder name>
+      scenario: <builder name>             # optional scenario payload (counterfactual vs data)
       drop_targets: true                   # drop target variables from the payload
       side_tables: true                    # pass the fixture's side tables (default)
       expect: {groups: [summary], vars: [y_hat], sizes: {date: 12}}
@@ -38,6 +39,7 @@ registry, side tables and the score results so far), e.g. to compare two request
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import importlib
 import inspect
 import json
@@ -98,6 +100,7 @@ class ScoreCase:
     expect: dict[str, Any] = field(default_factory=dict)
     expect_error: str | None = None
     side_tables: bool = True
+    scenario: str | None = None
 
     @classmethod
     def parse(cls, raw: Mapping[str, Any], fixture_id: str) -> ScoreCase:
@@ -109,6 +112,7 @@ class ScoreCase:
             "expect",
             "expect_error",
             "side_tables",
+            "scenario",
         }
         if unknown:
             raise ValueError(f"score request entry has unknown keys {sorted(unknown)}")
@@ -131,6 +135,7 @@ class ScoreCase:
             expect=dict(raw.get("expect") or {}),
             expect_error=err,
             side_tables=bool(raw.get("side_tables", True)),
+            scenario=None if raw.get("scenario") is None else str(raw["scenario"]),
         )
 
     def score_request(self) -> ScoreRequest:
@@ -495,6 +500,7 @@ class _Runner:
         tables: Sequence[str],
         fixture_id: str,
         metrics: Sequence[str] | None = None,
+        scenario_ref: str | None = None,
     ) -> tuple[Any, Any]:
         payload: dict[str, Any] = {
             "request": dict(request),
@@ -503,6 +509,8 @@ class _Runner:
         }
         if data_ref is not None:
             payload["data"] = data_ref
+        if scenario_ref is not None:
+            payload["scenario"] = scenario_ref
         if metrics is not None:
             payload["metrics"] = list(metrics)
         status, tree, _ = self._submit(kind, payload, label)
@@ -704,6 +712,13 @@ def _score_cases(
                 if payload is not None:
                     ref = f"fixture://{fx.id}/payload/{case.name}"
                     runner.datasets[ref] = payload
+                sref = None
+                if case.scenario is not None:
+                    scen_case = dataclasses.replace(case, payload=case.scenario)
+                    scen = fx.payload(scen_case, data, spec, schema, ctx.seed, ctx.size)
+                    if scen is not None:
+                        sref = f"fixture://{fx.id}/scenario/{case.name}"
+                        runner.datasets[sref] = scen
                 case.score_request()  # validates the document before submitting
                 status, tree = runner.score(
                     RunKind.EVALUATE if case.request.get("mode") == "evaluate" else RunKind.SCORE,
@@ -713,6 +728,7 @@ def _score_cases(
                     f"{fx.id}-{case.name}",
                     all_tables if case.side_tables else [],
                     fx.id,
+                    scenario_ref=sref,
                 )
                 problems: list[str] = []
                 if case.expect_error is not None:

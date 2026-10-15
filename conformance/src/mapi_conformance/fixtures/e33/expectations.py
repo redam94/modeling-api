@@ -91,3 +91,12 @@ def check_score(
         assert float(abs(others).max()) < 1e-6
         report = render_plots(tree, ["core.counterfactual"], registry=registry)
         assert [p.id for p in report.plots] == ["core.counterfactual"], report.issues
+    if name == "counterfactual_tv_plan":
+        # the scenario dataset is scored against the baseline data, never against itself
+        plan_delta = _group(tree, "delta/summary")["y_hat"].sel(stat="mean")
+        assert float(plan_delta.sum()) > 0
+        if "counterfactual_tv" in results:
+            # the same tv uplift given as an intervention gives the same delta
+            ref = _group(results["counterfactual_tv"], "delta/summary")["y_hat"].sel(stat="mean")
+            got = np.asarray(plan_delta.transpose(*ref.dims).values)
+            np.testing.assert_allclose(got, np.asarray(ref.values), rtol=1e-6, atol=1e-6)

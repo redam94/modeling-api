@@ -8,7 +8,8 @@ objects. Payloads are JSON only; dataset references are resolved by a ``resolver
 Supported run kinds: ``fit`` (payload ``spec``, ``data``, optional ``side_tables`` and
 ``raw_schema``) and ``score``/``evaluate`` (payload ``request``, ``bundle`` - a bundle
 directory or a key registered with :meth:`InprocExecutor.put_bundle` - and optional
-``data``/``side_tables``; otherwise the request's ``data``/``scenario`` refs are used).
+``data``/``scenario``/``side_tables``; otherwise the request's ``data``/``scenario`` refs are
+used). A counterfactual resolves ``data`` as the baseline and ``scenario`` as the scenario.
 
 Never use this executor for untrusted code: it runs plugins in the caller's process.
 """
@@ -288,8 +289,15 @@ class InprocExecutor:
         if rs.kind in (RunKind.SCORE, RunKind.EVALUATE):
             req = _score_request(p.get("request"))
             bundle = self._bundle(p.get("bundle"))
-            ref = p.get("data") or req.scenario or req.data
+            if req.mode == "counterfactual":
+                # the baseline and the scenario are separate payloads
+                ref = p.get("data") or req.data
+                sref = p.get("scenario") or req.scenario
+            else:
+                ref = p.get("scenario") or p.get("data") or req.scenario or req.data
+                sref = None
             payload: xr.Dataset | None = self.resolver(str(ref)) if ref is not None else None
+            scenario = self.resolver(str(sref)) if sref is not None else None
             tables = {k: self.resolver(str(v)) for k, v in _mapping(p.get("side_tables")).items()}
             for name, dref in req.side_tables.items():
                 if name not in tables:  # tables in the run payload win over request refs
@@ -299,6 +307,7 @@ class InprocExecutor:
                 bundle,
                 req,
                 payload,
+                scenario=scenario,
                 side_tables=tables,
                 registry=self.registry,
                 hooks=self._hooks(run),

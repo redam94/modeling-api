@@ -35,3 +35,14 @@
     interventions: [{var: spend_local, sel: {channel: tv}, multiply: 1.2}]
     output: {kind: predictive, summary: [mean, hdi_90], draws: 50}
   expect: {groups: [summary, delta/summary]}
+
+- name: counterfactual_tv_plan
+  payload: window             # the baseline: the last 4 weeks of the fit data
+  scenario: window_tv_plan    # the same weeks with tv spend raised 20% (a planner's scenario)
+  request:
+    mode: counterfactual
+    data: dataset://growth/window@v1
+    scenario: dataset://growth/tv_plan@v1
+    side_tables: {fx: dataset://growth/fx_daily@latest}
+    output: {kind: predictive, summary: [mean, hdi_90], draws: 50}
+  expect: {groups: [summary, baseline/summary, delta/summary]}
