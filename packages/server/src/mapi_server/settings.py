@@ -421,6 +421,12 @@ class Settings(BaseSettings):
         500, ge=1, le=10_000, description="Queued runs the fair-share planner considers"
     )
     executor_report_interval_s: float = Field(10.0, gt=0)
+    executor_evidence_max_age_s: float = Field(
+        3 * 86400.0,
+        gt=0,
+        description="How long a recorded conformance or security-suite report lets an "
+        "executor take verified and public tenants (the nightly suites renew it)",
+    )
     sse_heartbeat_s: float = Field(15.0, gt=0)
     sse_poll_s: float = Field(5.0, gt=0, description="Fallback poll when no NOTIFY arrives")
     max_sidecar_bytes: int = Field(8 * 1024 * 1024, ge=1024)

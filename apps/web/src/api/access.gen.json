@@ -62,6 +62,10 @@
       "level": "platform",
       "min_role": null
     },
+    "executor:update": {
+      "level": "platform",
+      "min_role": null
+    },
     "kill_switch:read": {
       "level": "platform",
       "min_role": null

@@ -105,6 +105,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_RATE_LIMITS_ENABLED` | `true` | Enforce `requests_per_minute` at token, tenant and global level |
 | `MAPI_LEASE_CANDIDATES` | `500` | Queued runs the dispatcher's fair-share planner considers per pass |
 | `MAPI_EXECUTOR_REPORT_INTERVAL_S` | `10` | How often each dispatcher reports executor health for `/v1/admin/executors` |
+| `MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S` | `259200` (3 days) | How long a recorded conformance or security-suite report lets an executor take `verified` and `public` tenants ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)) |
 
 **Object storage**
 

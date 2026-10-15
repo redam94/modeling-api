@@ -879,7 +879,12 @@ function ExecutorCard({ e }: { e: ExecutorHealth }) {
           <Badge variant={e.conformance_passed ? "success" : "danger"}>
             {e.conformance_passed ? <CheckCircle2 /> : <XCircle />} conformance {e.conformance_passed ? "passed" : "not passed"}
           </Badge>
-          <Badge variant={e.allows_public_tenants ? "info" : "outline"}>{e.allows_public_tenants ? "public tenants allowed" : "trusted tenants only"}</Badge>
+          <Badge variant={e.security_passed ? "success" : "danger"}>
+            {e.security_passed ? <CheckCircle2 /> : <XCircle />} security suite {e.security_passed ? "passed" : "not passed"}
+          </Badge>
+          <Badge variant={e.shared_tiers_enabled ? "info" : "outline"}>
+            {e.shared_tiers_enabled ? "verified & public tenants" : e.allows_public_tenants ? "shared tiers held: no evidence" : "trusted tenants only"}
+          </Badge>
           {e.caps.egress_enforced ? <Badge variant="outline">egress locked</Badge> : null}
           {e.caps.dns_enforced ? <Badge variant="outline">DNS locked</Badge> : null}
         </div>

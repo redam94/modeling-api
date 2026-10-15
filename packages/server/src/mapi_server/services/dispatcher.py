@@ -57,6 +57,7 @@ from mapi_server.observability import metrics as obs_metrics
 from mapi_server.observability.tracing import run_span
 from mapi_server.ratelimit import TokenBucket
 from mapi_server.services.bundles import BundleIntegrityError, verify_bundle_inputs
+from mapi_server.services.evidence import gated_tier, shared_tiers_gate
 from mapi_server.services.quotas import (
     DISPATCHED_STATES,
     global_policy,
@@ -127,10 +128,18 @@ class Dispatcher:
             while q and t - q[0] > horizon:
                 q.popleft()
         ts = now()
+        caps = self.executor.caps()
+        # Enabled = every tier its caps admit is backed by evidence: an executor whose caps
+        # allow shared tiers is enabled only with passing, unexpired conformance and security
+        # reports for these caps (plan §8.4). Others serve the trusted tiers only.
+        gate: str | None = None
+        if caps.allows_public_tenants():
+            async with self.ctx.db.session() as session:
+                gate = await shared_tiers_gate(session, self.executor.name, caps, now=ts)
         values = {
             "name": self.executor.name,
-            "enabled": True,
-            "caps": self.executor.caps().model_dump(mode="json"),
+            "enabled": gate is None,
+            "caps": caps.model_dump(mode="json"),
             "submits_last_minute": len(self._submits),
             "submit_rate_limit_per_minute": int(self.ctx.settings.dispatch_rate_per_minute),
             "throttled_last_hour": len(self._throttles),
@@ -153,6 +162,8 @@ class Dispatcher:
             values["throttled_last_hour"] = max(len(self._throttles), h.throttled_last_hour)
             values["last_success_at"] = self._last_success or h.last_success_at
             values["message"] = h.message
+        if gate is not None:
+            values["message"] = f"verified and public tenants are held: {gate}"[:500]
         update = {k: v for k, v in values.items() if k != "name"}
         if values["last_success_at"] is None:
             update.pop("last_success_at")
@@ -288,12 +299,23 @@ class Dispatcher:
         budgets: dict[str, tuple[QuotaPolicy, QuotaUsage]] = {}
         candidates: list[LeaseCandidate] = []
         held = 0
+        caps = self.executor.caps()
+        shared_gate: str | None = None
+        if caps.allows_public_tenants() and any(
+            r.tenant_id not in tenants or gated_tier(tenants[r.tenant_id].trust_tier) for r in rows
+        ):
+            shared_gate = await shared_tiers_gate(session, self.executor.name, caps, now=at)
         for run in rows:
             tenant = tenants.get(run.tenant_id)
             tier = tenant.trust_tier if tenant is not None else TrustTier.PUBLIC.value
             if tenant is not None and tenant.status != TenantStatus.ACTIVE.value:
                 held += 1
                 continue  # suspended tenants keep their queue until reactivated
+            if shared_gate is not None and gated_tier(tier):
+                # plan §8.4: no shared-tier work without passing, unexpired conformance and
+                # security reports for the current caps; the run waits for the evidence
+                held += 1
+                continue
             decision = kill_switch_decision(
                 switches,
                 untrusted_code=run.untrusted_code,
@@ -332,7 +354,9 @@ class Dispatcher:
                 )
             )
         if held:
-            log.debug("%d queued run(s) held back (kill switches or tenant status)", held)
+            log.debug("%d queued run(s) held back (kill switches, tenant status, evidence)", held)
+            if shared_gate is not None:
+                log.warning("verified and public runs are held: %s", shared_gate)
         return plan_leases(
             candidates, capacity=capacity, running_tasks=running_tasks, concurrency_left=left
         )

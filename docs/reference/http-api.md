@@ -429,6 +429,8 @@ Every change is written to the audit log.
 | `PUT /v1/admin/kill-switches` | Change them; omitted fields keep their value, `reason` is required | `KillSwitchUpdate` | `KillSwitches` | 200 | `FORBIDDEN` |
 | `GET /v1/admin/executors` | Every executor: caps, health, submit rate, 429s, conformance report | — | `Page[ExecutorHealth]` | 200 | `FORBIDDEN` |
 | `GET /v1/admin/executors/{name}` | One executor | — | `ExecutorHealth` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/admin/executors/{name}/evidence` | The conformance and security-suite reports recorded for an executor | — | `ExecutorEvidence` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `PUT /v1/admin/executors/{name}/evidence` | Record suite results (audited); shared tiers need both, passing, for the current caps | `ExecutorEvidenceUpdate` | `ExecutorEvidence` | 200 | `SCHEMA_INVALID`, `FORBIDDEN` |
 | `GET /v1/admin/audit` | The platform audit log; filters `tenant_id`, `project_id`, `actor_id`, `action`, `outcome`, `since`, `until` | — | `Page[AuditEvent]` | 200 | `FORBIDDEN` |
 
 #### Browser session (backend-for-frontend)

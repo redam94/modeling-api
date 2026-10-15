@@ -44,7 +44,13 @@ from mapi_spec._dto import TenantId as TenantId
 from mapi_spec._dto import dto_examples as _examples
 from mapi_spec._dto import new_id
 from mapi_spec._types import Duration, LabelKey, LabelValue, MetricName, Slug
-from mapi_spec.admin import ExecutorHealth, KillSwitches, KillSwitchUpdate
+from mapi_spec.admin import (
+    ExecutorEvidence,
+    ExecutorEvidenceUpdate,
+    ExecutorHealth,
+    KillSwitches,
+    KillSwitchUpdate,
+)
 from mapi_spec.audit import AuditEvent
 from mapi_spec.auth import PubSubPushEnvelope, SessionInfo
 from mapi_spec.capabilities import Capabilities, Diagnostic
@@ -112,6 +118,8 @@ __all__ = [
     "DatasetVersionStatus",
     "DimMapping",
     "EndpointDecl",
+    "ExecutorEvidence",
+    "ExecutorEvidenceUpdate",
     "ExecutorHealth",
     "Health",
     "HealthCheck",
@@ -1971,6 +1979,16 @@ M2_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "ExecutorHealth", 200, errors=(*_NF, *_FB),
     ),
     EndpointDecl(
+        "GET", "/v1/admin/executors/{name}/evidence", "admin_get_executor_evidence",
+        "The conformance and security-suite reports recorded for an executor",
+        "ExecutorEvidence", 200, errors=(*_NF, *_FB),
+    ),
+    EndpointDecl(
+        "PUT", "/v1/admin/executors/{name}/evidence", "admin_put_executor_evidence",
+        "Record suite results (audited); shared tiers need both, passing, for the current caps",
+        "ExecutorEvidence", 200, request="ExecutorEvidenceUpdate", errors=(*_BODY, *_FB),
+    ),
+    EndpointDecl(
         "GET", "/v1/admin/audit", "admin_list_audit", "The platform audit log",
         "Page[AuditEvent]", 200, errors=_FB, paginated=True,
         query=(*_PAGE, "tenant_id", "project_id", "actor_id", "action", "outcome", "since",
@@ -2107,6 +2125,8 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "admin_put_kill_switches": _op(_RK.KILL_SWITCH, _AC.UPDATE),
     "admin_list_executors": _op(_RK.EXECUTOR, _AC.READ),
     "admin_get_executor": _op(_RK.EXECUTOR, _AC.READ),
+    "admin_get_executor_evidence": _op(_RK.EXECUTOR, _AC.READ),
+    "admin_put_executor_evidence": _op(_RK.EXECUTOR, _AC.UPDATE),
     "admin_list_audit": _op(_RK.AUDIT, _AC.READ),
     # session and internal
     "auth_login": _PUBLIC,
