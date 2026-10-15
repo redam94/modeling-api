@@ -31,6 +31,15 @@ from mapi_spec.api import IngestMapping
 from mapi_spec.errors import ErrorCode, MapiError, Severity
 from mapi_spec.run import INPUT_DATASET, RunnerPhase
 from mapi_spec.schema import DataSchema, DimPolicy, DimSpec, Role
+from mapi_spec.views import (
+    MAX_GRID_COORDS,
+    MAX_PREVIEW_ROWS,
+    MissingnessGrid,
+    PreviewColumn,
+    PreviewView,
+    ProfileView,
+    VarProfile,
+)
 
 from mapi_runner.jobs import INGEST_DATA, INGEST_SCHEMA, INPUT_UPLOAD, IngestJob, MffOptions
 from mapi_runner.worker.context import WorkerContext
@@ -340,6 +349,7 @@ def _var_profile(da: xr.DataArray) -> dict[str, Any]:
         x = values.astype(float).reshape(-1)
         ok = x[np.isfinite(x)]
         out["missing"] = int(x.size - ok.size)
+        out["count"] = int(ok.size)
         if ok.size:
             q = np.quantile(ok, [0.05, 0.5, 0.95])
             out.update(
@@ -355,28 +365,75 @@ def _var_profile(da: xr.DataArray) -> dict[str, Any]:
     else:
         flat = pd.Series(values.reshape(-1))
         out["missing"] = int(flat.isna().sum())
+        out["count"] = int(flat.size - out["missing"])
         out["distinct"] = int(flat.nunique())
     return out
 
 
+def _time_dim(ds: xr.Dataset, schema: DataSchema) -> str | None:
+    for name, spec in schema.dims.items():
+        if spec.kind == "time" and name in ds.dims:
+            return str(name)
+    for dim in ds.dims:
+        if dim in ds.coords and np.issubdtype(ds[dim].dtype, np.datetime64):
+            return str(dim)
+    return None
+
+
+def missingness_grid(ds: xr.Dataset, schema: DataSchema) -> MissingnessGrid | None:
+    """Fraction missing per variable along the time-like dim, binned to at most
+    :data:`~mapi_spec.views.MAX_GRID_COORDS` columns (other dims are averaged)."""
+    along = _time_dim(ds, schema)
+    if along is None:
+        return None
+    names = [str(v) for v in ds.data_vars if along in ds[v].dims][:1024]
+    if not names:
+        return None
+    n = int(ds.sizes[along])
+    bins = np.array_split(np.arange(n), min(n, MAX_GRID_COORDS)) if n else []
+    coords = [str(_json_scalar(ds[along].values[b[0]])) for b in bins]
+    fraction: list[list[float]] = []
+    for name in names:
+        da = ds[name]
+        other = [d for d in da.dims if d != along]
+        per = da.isnull().mean(dim=other) if other else da.isnull().astype(float)
+        vals = np.asarray(per.transpose(along).values, dtype=float)
+        fraction.append([round(float(vals[b].mean()), 6) for b in bins])
+    return MissingnessGrid(along=along, labels=names, coords=coords, fraction=fraction)
+
+
 def profile(ds: xr.Dataset, schema: DataSchema, issues: list[Any], raw: bytes) -> dict[str, Any]:
+    """``profile.json`` (:class:`~mapi_spec.views.ProfileView`) plus provenance fields."""
+    view = ProfileView(
+        vars={str(v): VarProfile.model_validate(_var_profile(ds[v])) for v in ds.data_vars},
+        missingness=missingness_grid(ds, schema),
+    )
     return {
+        **view.model_dump(mode="json"),
         "sha256": hashlib.sha256(raw).hexdigest(),
         "size_bytes": len(raw),
         "summary": data_summary(ds, schema).model_dump(mode="json"),
-        "vars": {str(v): _var_profile(ds[v]) for v in ds.data_vars},
         "issues": [i.model_dump(mode="json") for i in issues],
     }
 
 
 def preview(ds: xr.Dataset, rows: int) -> dict[str, Any]:
+    """``preview.json`` (:class:`~mapi_spec.views.PreviewView`): dim columns, then vars."""
     df = ds.to_dataframe().reset_index() if ds.dims else pd.DataFrame()
-    head = df.head(rows)
-    return {
-        "columns": [str(c) for c in head.columns],
-        "rows": [[_json_scalar(v) for v in row] for row in head.itertuples(index=False)],
-        "total_rows": len(df),
-    }
+    head = df.head(min(rows, MAX_PREVIEW_ROWS))
+    dims = {str(d) for d in ds.dims}
+    columns = [
+        PreviewColumn(
+            name=str(c), dtype=str(head[c].dtype), role="dim" if str(c) in dims else "var"
+        )
+        for c in head.columns
+    ]
+    view = PreviewView(
+        columns=columns,
+        rows=[[_json_scalar(v) for v in row] for row in head.itertuples(index=False)],
+        total_rows=len(df),
+    )
+    return view.model_dump(mode="json")
 
 
 # ==================================================================================== run

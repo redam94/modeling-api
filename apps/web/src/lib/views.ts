@@ -2,9 +2,11 @@
  * Shapes of the precomputed UI views the runner writes next to datasets and bundles
  * (`preview.json`, `profile.json`, `ui/tree_index.json`, `ui/preprocess.json`).
  *
- * These views are not part of mapi_spec yet (M1 gap): the formats below are the web app's
- * proposal and every parser validates defensively, so an unknown or malformed view degrades
- * to "not available" instead of breaking the page. Each view carries a `format` tag.
+ * `preview.json`, `profile.json` and `ui/tree_index.json` are defined in `mapi_spec.views`
+ * (the runner validates what it writes against those models); `ui/preprocess.json` is still a
+ * web-side proposal the runner does not write yet. Every parser validates defensively, so an
+ * unknown or malformed view degrades to "not available" instead of breaking the page. Each
+ * view carries a `format` tag.
  */
 import type { Scalar } from "./arrow";
 
