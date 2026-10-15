@@ -309,8 +309,11 @@ class ValidationFailed(SpecError):
         errors = [i for i in issues if i.severity is Severity.ERROR]
         code = errors[0].code if errors else ErrorCode.SCHEMA_INVALID
         n = len(errors)
+        summary = f"validation failed with {n} error{'s' if n != 1 else ''}"
+        if errors:
+            summary += f"; first at {errors[0].pointer or '/'}: {errors[0].message}"
         super().__init__(
-            detail or f"validation failed with {n} error{'s' if n != 1 else ''}",
+            detail or summary[:2000],
             code=code,
             pointer=errors[0].pointer if errors else "",
             issues=issues,

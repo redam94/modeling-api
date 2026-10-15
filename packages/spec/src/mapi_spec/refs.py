@@ -333,7 +333,7 @@ class UseRef(_StrRef):
     id: str
     range: VersionRange
 
-    json_pattern: ClassVar[str] = rf"^{_ID_BODY}(@[^@\s]+)?$"
+    json_pattern: ClassVar[str] = rf"^{_ID_BODY}(@[^@]{{1,256}})?$"
     json_description: ClassVar[str] = "Registered id with an optional semver range"
     json_examples: ClassVar[tuple[str, ...]] = ("core.resample@^1", "mmm.hierarchical_geo@^1.3")
 
