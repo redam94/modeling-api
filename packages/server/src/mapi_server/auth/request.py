@@ -517,7 +517,10 @@ async def _resolve(
     else:  # AUTHENTICATED, PLATFORM
         auth.context = AuthContext(**common)
     if access.resource is not None and access.action is not None:
-        auth.context.require(access.action, access.resource)
+        named = request.path_params.get(access.name_param) if access.name_param else None
+        auth.context.require(
+            access.action, access.resource, resource_name=str(named) if named else None
+        )
         if auth.operation_id not in _CONDITIONAL_ALSO:
             for resource, action in access.also:
                 auth.context.require(action, resource)

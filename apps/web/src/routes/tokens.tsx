@@ -253,7 +253,7 @@ export function validateTokenForm(f: TokenForm): { body: TokenCreate | null; err
     .map((a) => a.trim())
     .filter(Boolean);
   const badAlias = aliases.find((a) => !ALIAS_RE.test(a));
-  if (badAlias) errors.aliases = `“${badAlias.slice(0, 40)}” is not an endpoint alias (lowercase letters, digits, - and _, or *).`;
+  if (badAlias) errors.aliases = `“${badAlias.slice(0, 40)}” is not a model id or endpoint alias (lowercase letters, digits, - and _, or *).`;
   const scopes = [...new Set([...f.scopes, ...aliases.map((a) => `score:${a}`)])];
   if (!scopes.length) errors.scopes = "Pick at least one scope.";
   if (scopes.length > 32) errors.scopes = "At most 32 scopes.";
@@ -345,12 +345,12 @@ function CreateTokenDialog({ role, onClose, onCreated }: { role: ProjectRole | n
             ) : null}
           </fieldset>
           <Field
-            label="Score endpoints (optional)"
+            label="Score models (optional)"
             htmlFor="tok-aliases"
             error={shown.aliases}
-            hint="Endpoint aliases this token may score, separated by spaces or commas; * means every endpoint of the project."
+            hint="Model ids (mdl_…) this token may score, separated by spaces or commas; * means every model of the project. Endpoint aliases work the same way once endpoints exist."
           >
-            <Input id="tok-aliases" className="font-mono" placeholder="geo-mmm-prod" value={form.aliases} onChange={(e) => set("aliases", e.target.value)} />
+            <Input id="tok-aliases" className="font-mono" placeholder="mdl_01jaf3r1s2t3v4w5x6y7z8a9b0" value={form.aliases} onChange={(e) => set("aliases", e.target.value)} />
           </Field>
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Expires after" htmlFor="tok-exp" error={shown.expires}>

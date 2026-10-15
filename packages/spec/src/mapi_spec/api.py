@@ -1792,12 +1792,15 @@ class RouteAccess:
     with :meth:`~mapi_spec.tenancy.AuthContext.allows`; ``None`` means membership in the
     scope suffices (lists are filtered by visibility). Handlers add the secondary checks in
     ``also`` when they apply (e.g. a ``score`` run also needs ``run`` on the model).
+    ``name_param`` is the path parameter that names the resource, passed as
+    ``resource_name`` so targeted scopes (``score:<model id>``) can match it.
     """
 
     scope: RouteScope
     resource: ResourceKind | None = None
     action: Action | None = None
     also: tuple[tuple[ResourceKind, Action], ...] = ()
+    name_param: str | None = None
 
     def __post_init__(self) -> None:
         if (self.resource is None) != (self.action is None):
@@ -2068,7 +2071,7 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "list_model_versions": _p(_RK.MODEL, _AC.READ),
     "get_model_version": _p(_RK.MODEL, _AC.READ),
     "get_model_artifact": _p(_RK.MODEL, _AC.READ),
-    "score_model": _p(_RK.MODEL, _AC.RUN),
+    "score_model": RouteAccess(RouteScope.PROJECT, _RK.MODEL, _AC.RUN, name_param="model_id"),
     "list_plots": _p(_RK.PLOT, _AC.READ),
     "get_plot": _p(_RK.PLOT, _AC.READ),
     "validate_plot": _p(_RK.PLOT, _AC.READ),

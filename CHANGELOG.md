@@ -138,6 +138,11 @@ is tested against fakes, and the Terraform is validated and tested against mocke
 - **spec/server**: an API token can no longer mint tokens, whatever its scopes
   (`mapi_spec.tokens.TOKEN_NEVER`). A child token dropped its parent's expiry, vCPU budget and
   rate limit, and outlived its revocation. `POST /v1/tokens` needs a signed-in session.
+- **spec/server**: `score:<target>` tokens can score. They authorized nothing, because
+  `:score` checks `run` on the model and the scope covered only endpoints, so integrations
+  fell back to broader `runs:create` tokens. `score:<model id>` now covers `:score` on that
+  model and `score:*` on every model of the project (`RouteAccess.name_param`). The web
+  tokens page, the CLI help and the docs say so.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
