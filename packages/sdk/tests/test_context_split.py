@@ -91,6 +91,12 @@ def test_prepend_dense_contiguity(weekly_panel: Callable[..., xr.Dataset]) -> No
     extra = future.assign(z=future["x"] * 2)
     out5, _, _ = prepend_context(extra, ctx, NEED, freq="W-SUN")
     assert np.isnan(out5["z"].isel(time=0)).all()
+    # coordinate-only frames (forecast horizons without a payload) keep their axis
+    coords_only = future.drop_vars(["x"])
+    out6, mark6, _ = prepend_context(coords_only, ctx, NEED, freq="W-SUN")
+    assert mark6 is not None and out6.sizes["time"] == 7
+    assert list(out6["time"].values[3:]) == list(future["time"].values)
+    xr.testing.assert_identical(drop_context(out6, [mark6]), coords_only)
 
 
 def test_prepend_noops_and_errors(weekly_panel: Callable[..., xr.Dataset]) -> None:

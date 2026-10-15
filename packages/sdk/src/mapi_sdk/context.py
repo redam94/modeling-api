@@ -183,6 +183,9 @@ def _prepend_dense(
         parts[v] = combined.transpose(*cur.dims)
     rest = ds.drop_dims(along)
     out = xr.Dataset(parts).merge(rest, join="outer", combine_attrs="override")
+    if along not in out.dims:
+        # coordinate-only frame (e.g. a forecast horizon with no payload): keep the axis
+        out = out.assign_coords({along: np.concatenate([np.asarray(ctx[along].values), score])})
     out.attrs = ds.attrs
     labels = np.asarray(ctx[along].values).copy()
     mark = ContextMark(dim=along, labels=labels, score_start=start, step_id=step_id)
