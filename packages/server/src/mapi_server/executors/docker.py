@@ -94,7 +94,10 @@ class DockerExecutor:
         self._grace = cancel_grace_s
         self._client_factory = client_factory or self._default_client
         self._client: Any = None
-        self._events: asyncio.Queue[RunEvent] = asyncio.Queue()
+        self._events: asyncio.Queue[tuple[str, RunEvent]] = asyncio.Queue()
+        self._pending: dict[str, int] = {}
+        """Events per nonce queued or handed out but not yet processed by the consumer."""
+        self._consumers = 0
         self._loop: asyncio.AbstractEventLoop | None = None
         self._followers: dict[str, threading.Thread] = {}
         self._cancelled: set[str] = set()
@@ -217,8 +220,11 @@ class DockerExecutor:
         if status in ("running", "paused"):
             return ExecStatus(state=ExecState.RUNNING, started_at=started)
         follower = self._followers.get(h.nonce)
-        if follower is not None and follower.is_alive():
-            return ExecStatus(state=ExecState.RUNNING, started_at=started)  # draining stdout
+        if (follower is not None and follower.is_alive()) or (
+            self._consumers > 0 and self._pending.get(h.nonce, 0) > 0
+        ):
+            # still draining stdout, or its events are not ingested yet (complete is last)
+            return ExecStatus(state=ExecState.RUNNING, started_at=started)
         code = int(st.get("ExitCode", 1))
         if st.get("OOMKilled"):
             code = 137
@@ -270,8 +276,25 @@ class DockerExecutor:
         return self._iter_events()
 
     async def _iter_events(self) -> AsyncIterator[RunEvent]:
-        while True:
-            yield await self._events.get()
+        self._consumers += 1
+        try:
+            while True:
+                nonce, event = await self._events.get()
+                try:
+                    yield event
+                finally:  # the consumer is back for the next one: this one is processed
+                    left = self._pending.get(nonce, 0) - 1
+                    if left > 0:
+                        self._pending[nonce] = left
+                    else:
+                        self._pending.pop(nonce, None)
+        finally:
+            self._consumers -= 1
+
+    def _enqueue(self, nonce: str, event: RunEvent) -> None:
+        """Runs on the event loop (``call_soon_threadsafe`` from a follower thread)."""
+        self._pending[nonce] = self._pending.get(nonce, 0) + 1
+        self._events.put_nowait((nonce, event))
 
     # ------------------------------------------------------------------ internals
     def _follow(self, handle: Handle, container: Any) -> None:
@@ -303,4 +326,4 @@ class DockerExecutor:
             return
         if event is None or event.run_id != handle.run_id or event.attempt != handle.attempt:
             return
-        loop.call_soon_threadsafe(self._events.put_nowait, event)
+        loop.call_soon_threadsafe(self._enqueue, handle.nonce, event)

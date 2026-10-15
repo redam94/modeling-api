@@ -266,6 +266,34 @@ async def test_exit_zero_needs_the_complete_event(
     assert run.state == RunState.FAILED.value and "no 'complete' event" in run.problem["detail"]  # type: ignore[index]
 
 
+async def test_complete_event_ingested_during_the_pass_is_not_missed(
+    ctx: ServerContext,
+    executor: FakeExecutor,
+    wired: tuple[Dispatcher, Reconciler],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The attempt row is read before the executor status: a ``complete`` event ingested in
+    between must not fail a successful run whose grace period has run out."""
+    dispatcher, reconciler = wired
+    run_id, att = await _provisioned(ctx, dispatcher)
+    executor.finish(att.nonce, 0)
+    real_status = executor.status
+
+    async def status_then_ingest(h: Handle) -> ExecStatus:
+        st = await real_status(h)
+        run = await _state(ctx, run_id)
+        await simulate_outputs(ctx, run, att)  # records complete_payload, like the ingestor
+        return st
+
+    monkeypatch.setattr(executor, "status", status_then_ingest)
+    await reconciler.reconcile_run(run_id)
+    run = await _state(ctx, run_id)
+    assert run.state in (RunState.FINALIZING.value, RunState.SUCCEEDED.value), (
+        run.state,
+        run.problem,
+    )
+
+
 async def test_silence_only_stalls_and_events_revive(
     ctx: ServerContext, executor: FakeExecutor, wired: tuple[Dispatcher, Reconciler]
 ) -> None:

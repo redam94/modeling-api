@@ -235,3 +235,45 @@ async def test_cancel_returns_at_once_and_escalates_in_the_background(tmp_path: 
     st = await ex.status(h)
     assert st.state is ExecState.CANCELLED and st.exit_code == 137
     await ex.aclose()
+
+
+async def test_exit_is_reported_only_after_the_consumer_drained_the_events(
+    tmp_path: Path,
+) -> None:
+    """A chatty worker can leave a long event backlog behind its exit; until the ingestor has
+    processed it (the ``complete`` event is last), the execution must not look finished, or
+    the reconciler's complete-event grace runs out on a successful run."""
+    from mapi_spec.run import LogPayload
+
+    n = 40
+    lines = [
+        encode_event_line(make_event("run_1", 1, i, LogPayload(stream="stdout", line=f"l{i}")))
+        for i in range(n)
+    ]
+    cmd = _script(
+        tmp_path,
+        f"""
+        import sys
+        for line in {lines!r}:
+            print(line)
+        sys.exit(0)
+        """,
+    )
+    ex = LocalProcessExecutor(command=cmd, bootstrap_url_template=TEMPLATE, workdir=tmp_path / "w")
+    h = await ex.submit(_submit(), NONCE)
+    source = ex.event_source()
+    first = await asyncio.wait_for(source.__anext__(), 5)  # the ingestor is consuming
+    consumed = 1
+    assert first.seq == 0
+    await asyncio.sleep(0.5)  # the process has exited by now; the backlog is still queued
+    while consumed < n:
+        assert not (await ex.status(h)).state.terminal, f"terminal after {consumed}/{n} events"
+        await asyncio.wait_for(source.__anext__(), 5)  # slow ingest: one at a time
+        consumed += 1
+    # the last event was handed out; it counts as processed once the consumer comes back
+    assert not (await ex.status(h)).state.terminal
+    nxt = asyncio.ensure_future(source.__anext__())
+    await asyncio.sleep(0.05)
+    assert (await ex.status(h)).state is ExecState.SUCCEEDED
+    nxt.cancel()
+    await ex.aclose()

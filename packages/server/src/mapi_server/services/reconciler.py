@@ -368,15 +368,20 @@ class Reconciler:
         }
         await self._delete_bootstrap(att.nonce)
         if code in (RunnerExit.OK, RunnerExit.PARTIAL) and not stopped_outside:
-            if att.complete_payload is not None:
+            waited = (now() - finished).total_seconds()
+            grace_over = waited >= self.ctx.settings.complete_event_grace_s
+            # before giving up, re-read the row: the event may have been ingested after this
+            # pass loaded the attempt (the executor reports the exit only once drained)
+            if att.complete_payload is not None or (
+                grace_over and await self._complete_arrived(att)
+            ):
                 moved = await self._transition(
                     run, RunTrigger.COMPLETE, expect_state=state, attempt_update=base_update
                 )
                 if moved:
                     await self._defer_finalize(run.id, run.attempt)
                 return
-            waited = (now() - finished).total_seconds()
-            if waited < self.ctx.settings.complete_event_grace_s:
+            if not grace_over:
                 return  # events can lag the exit (log pipeline); look again next pass
             await self._transition(
                 run,
@@ -428,6 +433,17 @@ class Reconciler:
         await self._transition(
             run, trigger, expect_state=state, attempt_update=base_update, problem=problem
         )
+
+    async def _complete_arrived(self, att: m.RunAttempt) -> bool:
+        async with self.ctx.db.session() as session:
+            payload = (
+                await session.execute(
+                    select(m.RunAttempt.complete_payload).where(
+                        m.RunAttempt.run_id == att.run_id, m.RunAttempt.attempt == att.attempt
+                    )
+                )
+            ).scalar_one_or_none()
+        return payload is not None
 
     @staticmethod
     def _error_payload(att: m.RunAttempt) -> ErrorPayload | None:

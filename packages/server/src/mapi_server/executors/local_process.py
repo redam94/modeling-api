@@ -6,6 +6,11 @@ environment only (``MAPI_RUN_ID``, ``MAPI_NONCE``, ``MAPI_BOOTSTRAP_URL`` and th
 ``MAPI_EXEC_TOKEN``); nothing goes in argv. The supervisor's stdout is the event pipe: each
 ``{"mapi_event": …}`` line is decoded here and handed to the event ingestor, which verifies
 its HMAC. A pid file per nonce lets a restarted orchestrator adopt still-running children.
+
+An execution is reported finished only once its event backlog has been *processed* (the
+consumer came back for the next event): a chatty worker can leave thousands of queued
+lines behind its exit, with the ``complete`` event last, and the reconciler's
+complete-event grace must not run out while they are still being ingested.
 """
 
 from __future__ import annotations
@@ -147,7 +152,10 @@ class LocalProcessExecutor:
         self._max_runtime_s = max_runtime_s
         self._parent_env = dict(os.environ if parent_env is None else parent_env)
         self._execs: dict[str, _Exec] = {}
-        self._events: asyncio.Queue[RunEvent] = asyncio.Queue()
+        self._events: asyncio.Queue[tuple[str, RunEvent]] = asyncio.Queue()
+        self._pending: dict[str, int] = {}
+        """Events per nonce queued or handed out but not yet processed by the consumer."""
+        self._consumers = 0
 
     # ------------------------------------------------------------------ protocol
     def caps(self) -> ExecutorCaps:
@@ -255,7 +263,7 @@ class LocalProcessExecutor:
                 message="the adopted supervisor exited; its exit code is unavailable",
             )
         rc = ex.proc.returncode
-        if rc is None or not all(t.done() for t in ex.readers):
+        if rc is None or not all(t.done() for t in ex.readers) or self._backlog(h.nonce):
             return ExecStatus(state=ExecState.RUNNING, started_at=ex.started_at)
         code = _exit_code(rc)
         if ex.timed_out and rc < 0:
@@ -296,8 +304,27 @@ class LocalProcessExecutor:
         return self._iter_events()
 
     async def _iter_events(self) -> AsyncIterator[RunEvent]:
-        while True:
-            yield await self._events.get()
+        self._consumers += 1
+        try:
+            while True:
+                nonce, event = await self._events.get()
+                try:
+                    yield event
+                finally:  # the consumer is back for the next one: this one is processed
+                    self._done(nonce)
+        finally:
+            self._consumers -= 1
+
+    def _backlog(self, nonce: str) -> bool:
+        """Unprocessed events of ``nonce`` (only while someone consumes the source)."""
+        return self._consumers > 0 and self._pending.get(nonce, 0) > 0
+
+    def _done(self, nonce: str) -> None:
+        left = self._pending.get(nonce, 0) - 1
+        if left > 0:
+            self._pending[nonce] = left
+        else:
+            self._pending.pop(nonce, None)
 
     async def aclose(self) -> None:
         """Terminate every child (used on shutdown of a dev process)."""
@@ -369,7 +396,8 @@ class LocalProcessExecutor:
                 ex.invalid_lines += 1
                 log.warning("event identity mismatch from run %s", ex.handle.run_id)
                 continue
-            await self._events.put(event)
+            self._pending[ex.handle.nonce] = self._pending.get(ex.handle.nonce, 0) + 1
+            await self._events.put((ex.handle.nonce, event))
 
     async def _read_stderr(self, ex: _Exec) -> None:
         assert ex.proc is not None and ex.proc.stderr is not None
