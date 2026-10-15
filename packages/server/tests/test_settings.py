@@ -48,6 +48,8 @@ def test_default_residency_follows_the_cloud_run_region() -> None:
     assert pinned.effective_default_residency() == "europe-west4"
     with pytest.raises(ValueError, match="default_residency"):
         Settings(default_residency="Not A Region")
+
+
 def test_cloud_storage_store_needs_a_separate_uploader() -> None:
     """Every run asks for a create_only output policy, which GCS can only sign as an account
     without delete: a gcs deployment without MAPI_URL_UPLOADER would fail every run at
