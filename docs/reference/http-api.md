@@ -1,10 +1,16 @@
-# HTTP API (v1) <span class="mapi-badge mapi-badge--soon">v0.2</span>
+# HTTP API (v1) <span class="mapi-badge">v0.2</span>
 
 The platform API that ships with v0.2 (milestone M1, the local vertical slice). Every request
 and response body is a Pydantic model in [`mapi_spec.api`](api/spec.md#rest-dtos). The server
 serves an OpenAPI 3.1 document generated from those models, and each model carries examples.
 The endpoint table on this page matches `mapi_spec.api.M1_ENDPOINTS`, and a test fails if the
 two drift apart.
+
+| See also | |
+|---|---|
+| [OpenAPI explorer](openapi.md) | The OpenAPI 3.1 document, browsable, with every schema and example ([full screen](openapi-viewer.html)) |
+| [HTTP API guide](../guides/http-api.md) | The main flow with `curl` and `jq`: upload, validate, fit, follow, score |
+| [Python client](../guides/python-client.md) | The same flow with `mapi_client` |
 
 !!! info "M1 is single-tenant"
     A local install has one tenant and one project, both called `default`. Every resource

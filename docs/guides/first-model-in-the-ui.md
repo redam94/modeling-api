@@ -1,4 +1,4 @@
-# Your first model in the web app <span class="mapi-badge mapi-badge--soon">v0.2</span>
+# Your first model in the web app <span class="mapi-badge">v0.2</span>
 
 This guide fits a hierarchical geo marketing-mix model (the corpus' E33 example) on the
 local stack and then uses it, entirely from the browser:
@@ -24,7 +24,12 @@ open http://127.0.0.1:5173
 
 !!! tip "Port 8000 taken?"
     Move the API with `export MAPI_API_URL=http://127.0.0.1:8010` before `make dev`. Every
-    other command in this guide (`make seed`, `make e2e`) reads the same variable.
+    other command in this guide (`make seed`, `make e2e`) reads the same variable. The other
+    three ports move the same way; see [Port conflicts](../operations/troubleshooting.md#port-conflicts).
+
+This guide clicks through every step, including the uploads. For the short path (`make seed`
+loads the data and the spec for you) see the [quickstart](../getting-started/quickstart.md);
+for every page of the app, [The Expert web app](web-ui.md).
 
 Then write the demo files to a folder. Nothing is uploaded yet:
 

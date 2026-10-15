@@ -1,4 +1,4 @@
-# Runner <span class="mapi-badge mapi-badge--soon">v0.2</span>
+# Runner <span class="mapi-badge">v0.2</span>
 
 `mapi-runner` executes one run inside a sandbox. It implements the
 [run protocol](run-protocol.md) from the execution's side. Two processes take part:

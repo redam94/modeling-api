@@ -1,4 +1,4 @@
-# Web app and plot sandbox <span class="mapi-badge mapi-badge--soon">v0.2</span>
+# Web app and plot sandbox <span class="mapi-badge">v0.2</span>
 
 The browser front end is two separately served apps in the pnpm workspace:
 
