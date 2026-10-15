@@ -217,7 +217,9 @@ async def ensure_scope(ctx: ServerContext) -> None:
     sc = ctx.platform_scope
     settings = ctx.settings
     async with ctx.db.session() as s:
-        await ensure_platform_tenant(s, sc.tenant_id, sc.project_id)
+        await ensure_platform_tenant(
+            s, sc.tenant_id, sc.project_id, residency=settings.effective_default_residency()
+        )
         if not settings.multi_tenant:
             await ensure_local_admin(s, sc.tenant_id)
         if settings.devidp_enabled:

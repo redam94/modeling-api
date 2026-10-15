@@ -265,3 +265,27 @@ async def test_expired_sessions_are_deleted(ctx: ServerContext, client: httpx.As
         logins = list((await s.execute(select(m.LoginTransactionRow))).scalars())
     assert left == [ids[2]] and logins == []
     assert (await live.get("/v1/me")).status_code == 200
+
+
+async def test_default_residency_comes_from_the_deployment(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """On an EU deployment the platform tenant and tenants created without a residency are
+    EU tenants (a 'us' default could never be placed on an EU executor)."""
+    from mapi_server.app import ensure_scope
+
+    ctx.settings = ctx.settings.model_copy(
+        update={"default_residency": "eu", "tenant_id": "platform-eu"}
+    )
+    await ensure_scope(ctx)
+    async with ctx.db.session() as s:
+        platform = await s.get(m.Tenant, "platform-eu")
+        assert platform is not None and platform.data_residency == "eu"
+    op = await _operator(ctx, client)
+    r = await op.post("/v1/admin/tenants", json={"id": "acme", "name": "Acme"})
+    assert r.status_code == 201, r.text
+    assert r.json()["data_residency"] == "eu"
+    r = await op.post(
+        "/v1/admin/tenants", json={"id": "usco", "name": "US Co", "data_residency": "us"}
+    )
+    assert r.status_code == 201 and r.json()["data_residency"] == "us"

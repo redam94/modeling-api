@@ -26,6 +26,7 @@ from mapi_spec.localdev import (
     WEB_PORT,
 )
 from mapi_spec.storage import Buckets
+from mapi_spec.tenancy import DEFAULT_RESIDENCY, residency_of_region
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
@@ -252,6 +253,13 @@ class Settings(BaseSettings):
         None, description="Exec project that holds the Cloud Run Job inventory (cloudrun-jobs)"
     )
     cloudrun_region: str = Field("europe-west1", description="Region of the Job inventory")
+    default_residency: str | None = Field(
+        None,
+        pattern=r"^(?:[a-z]{2,6}|[a-z]+-[a-z]+[0-9]{1,2})$",
+        description="Data residency of the platform tenant, of tenants adopted by the "
+        "migrations and of tenants created without one (default: the multi-region of "
+        "MAPI_CLOUDRUN_REGION for cloudrun-jobs, e.g. eu, else us)",
+    )
     cloudrun_job_template: str = Field(
         "mapi-{env}-{base}-{class}",
         description="Job id convention; {env}, {base} (base-bayes|base-ml|base-forecast) and "
@@ -575,6 +583,15 @@ class Settings(BaseSettings):
     def secret_path(self) -> Path:
         """Next to the bundle-signing key by default: both live on durable, shared storage."""
         return self.server_secret_path or (self.key_path.parent / "server-secret")
+
+    def effective_default_residency(self) -> str:
+        """``default_residency``, else what the Cloud Run inventory's region satisfies (the
+        executor must be able to place the tenants created by default), else ``us``."""
+        if self.default_residency:
+            return self.default_residency
+        if self.executor is ExecutorName.CLOUDRUN_JOBS:
+            return residency_of_region(self.cloudrun_region)
+        return DEFAULT_RESIDENCY
 
     def effective_operator_emails(self) -> list[str]:
         """``operator_emails`` plus, in the dev profile, the first development account."""

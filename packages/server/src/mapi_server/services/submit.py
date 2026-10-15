@@ -9,6 +9,7 @@ RunSpec built later signs exactly what was validated.
 from __future__ import annotations
 
 import copy
+from datetime import timedelta
 from typing import Any
 
 from mapi_spec._types import Duration
@@ -49,6 +50,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError, ProblemWithHeaders
+from mapi_server.executors import PlacementRefused, placement_refusal, reported_caps
 from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import verified_bundle_object, verify_bundle_inputs
 from mapi_server.services.catalog import CatalogSnapshot
@@ -127,6 +129,7 @@ async def admit(
         return
     run.token_id = auth.token.id if auth.token is not None else None
     run.created_by = auth.user_id
+    await _check_placement(session, ctx, run, rc)
     demand = QuotaDemand(
         new_runs=1,
         vcpu_seconds=estimate.vcpu_seconds if estimate is not None else 0.0,
@@ -182,6 +185,31 @@ async def admit(
         ],
         session=session,
     )
+
+
+async def _check_placement(
+    session: AsyncSession, ctx: ServerContext, run: m.Run, rc: ResourceClass
+) -> None:
+    """Refuse at admission what no running executor could place (tier, class, residency),
+    rather than queueing a run the dispatcher can only fail as INFRA_ERROR. Executors are
+    known from their dispatchers' recent reports; without any, the dispatcher decides."""
+    tenant = await session.get(m.Tenant, run.tenant_id)
+    if tenant is None:
+        return
+    max_age = timedelta(seconds=6 * ctx.settings.executor_report_interval_s)
+    async with ctx.db.session() as system:
+        offered = await reported_caps(system, max_age=max_age)
+    why = placement_refusal(
+        offered,
+        trust_tier=tenant.trust_tier,
+        resource_class=rc,
+        residency=tenant.data_residency,
+    )
+    if why is not None:
+        raise PlacementRefused(
+            f"no executor of this platform can run this tenant's work ({why}); "
+            "an operator must change the tenant's residency or tier"
+        )
 
 
 def _overlay(snapshot: CatalogSnapshot | None, model_ref: str | None) -> bool:

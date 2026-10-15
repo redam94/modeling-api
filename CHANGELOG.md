@@ -187,6 +187,14 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   `0004_append_only_records`). Both runtime roles lose `UPDATE` and `DELETE` on them, and a
   trigger refuses any change to an existing row, so a request-path bug or injection can no
   longer rewrite a tenant's audit trail or billing history.
+- **server/infra**: the default data residency follows the deployment. It used to be `us`
+  everywhere, so on the documented EU deployment every run of the platform tenant and of
+  tenants created with defaults failed as `INFRA_ERROR`. `MAPI_DEFAULT_RESIDENCY` defaults
+  to the multi-region of the Cloud Run region, and Terraform sets it from the dispatch pool's
+  region (`default_residency` overrides it). It applies to the platform tenant, to rows the
+  tenancy migration adopts and to `POST /v1/admin/tenants` without `data_residency`.
+  Submissions that no reporting executor can place are refused at admission with a clear
+  `403` instead of being queued, and the worker warns at start-up about such tenants.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 

@@ -21,6 +21,7 @@ Besides the new tables this revision
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -354,13 +355,24 @@ def _schema() -> None:
     op.create_check_constraint(op.f("ck_runs_task_count"), "runs", "task_count >= 1")
 
 
+def _residency() -> str:
+    """The deployment's default residency (``mapi.default_residency``, set by
+    ``mapi-server migrate`` from ``MAPI_DEFAULT_RESIDENCY`` or the Cloud Run region)."""
+    cfg = op.get_context().config
+    value = (cfg.get_main_option("mapi.default_residency") if cfg else None) or "us"
+    if not re.fullmatch(r"(?:[a-z]{2,6}|[a-z]+-[a-z]+[0-9]{1,2})", value):
+        raise ValueError(f"invalid residency {value!r}")
+    return value
+
+
 def _adopt_existing_rows() -> None:
     """Give every (tenant, project) pair that v0.2 rows carry a tenant and a project row."""
     pairs = " UNION ".join(f"SELECT tenant_id, project_id FROM {t}" for t in _DATA_TABLES)
     op.execute(
         f"""
         INSERT INTO tenants (id, name, trust_tier, status, data_residency)
-        SELECT DISTINCT p.tenant_id, initcap(p.tenant_id), 'internal', 'active', 'us'
+        SELECT DISTINCT p.tenant_id, initcap(p.tenant_id), 'internal', 'active',
+               '{_residency()}'
         FROM ({pairs}) AS p
         ON CONFLICT (id) DO NOTHING
         """

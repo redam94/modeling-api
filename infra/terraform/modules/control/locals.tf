@@ -45,6 +45,20 @@ locals {
     length(local.private_pools) > 0 ? local.private_pools[0] : sort(keys(var.exec_pools))[0],
   )
 
+  # The residency of tenants created without one (the platform tenant first): what the
+  # dispatch pool's region satisfies (europe-* -> eu, us-*/northamerica-* -> us, asia-* ->
+  # asia, else the region itself), so the executor can always place them. A "us" default
+  # on an EU deployment would fail every run of those tenants.
+  dispatch_region = var.exec_pools[local.dispatch_pool].region
+  default_residency = coalesce(
+    var.default_residency,
+    lookup(
+      { europe = "eu", us = "us", northamerica = "us", asia = "asia" },
+      split("-", local.dispatch_region)[0],
+      local.dispatch_region,
+    ),
+  )
+
   # ------------------------------------------------------------------------ environment
   # The deployment contract with mapi-server: every name is a mapi_server.settings.Settings
   # field (tests/infra/test_contract.py checks it; docs/operations/gcp-deployment.md lists
@@ -64,6 +78,8 @@ locals {
     MAPI_URL_SIGNER      = google_service_account.sa["url-signer"].email
     MAPI_DB_APP_ROLE     = "mapi_app"
     MAPI_DB_SYSTEM_ROLE  = "mapi_orchestrator"
+    # every service (and the migration's adoption of v0.2 rows) agrees on the default
+    MAPI_DEFAULT_RESIDENCY = local.default_residency
   }
 
   env = {

@@ -10,6 +10,7 @@ import logging
 from mapi_spec.executor import Executor
 
 from mapi_server.context import ServerContext
+from mapi_server.executors import placement_warnings
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.events import EventIngestor
 from mapi_server.services.finalizer import Finalizer
@@ -57,8 +58,20 @@ class Orchestrator:
                         run.id,
                     )
 
+    async def warn_unplaceable(self) -> list[str]:
+        """Log every active tenant this executor cannot place (residency or tier): their
+        runs would be refused at admission (or fail at dispatch)."""
+        async with self.ctx.db.session() as s:
+            lines = await placement_warnings(s, self.executor.caps())
+        for line in lines[:20]:
+            log.warning("%s", line)
+        if len(lines) > 20:
+            log.warning("... and %d more tenants this executor cannot place", len(lines) - 20)
+        return lines
+
     async def run(self) -> None:
         await self.ensure_catalog()
+        await self.warn_unplaceable()
         tasks = [
             asyncio.create_task(self.dispatcher.run_forever(self.stop), name="dispatcher"),
             asyncio.create_task(self.reconciler.run_forever(self.stop), name="reconciler"),

@@ -69,6 +69,28 @@ run "events_path" {
   }
 }
 
+run "default_residency_follows_the_dispatch_region" {
+  command = plan
+
+  assert {
+    condition     = local.env_common.MAPI_DEFAULT_RESIDENCY == "eu"
+    error_message = "An EU dispatch pool makes EU the default residency (a us default could not be placed)."
+  }
+}
+
+run "default_residency_can_be_pinned" {
+  command = plan
+
+  variables {
+    default_residency = "europe-west4"
+  }
+
+  assert {
+    condition     = local.env_common.MAPI_DEFAULT_RESIDENCY == "europe-west4"
+    error_message = "An explicit default_residency wins."
+  }
+}
+
 run "database" {
   command = apply
 

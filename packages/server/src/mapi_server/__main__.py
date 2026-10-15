@@ -53,7 +53,12 @@ def cmd_migrate(settings: Settings) -> int:
     from mapi_server.settings import SignerKind
 
     url = resolve_database_url(settings)
-    upgrade(url, app_role=settings.db_app_role, system_role=settings.db_system_role)
+    upgrade(
+        url,
+        app_role=settings.db_app_role,
+        system_role=settings.db_system_role,
+        default_residency=settings.effective_default_residency(),
+    )
     log.info("database is at the latest migration")
     load_server_secrets(settings, create=True)  # token pepper and audit key; shared by all
     log.info("server secret ready (%s)", "environment" if settings.server_secret else "file")

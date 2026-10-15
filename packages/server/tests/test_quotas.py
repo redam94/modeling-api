@@ -501,6 +501,51 @@ async def test_held_runs_cannot_fill_the_lease_window(
     assert states == {RunState.QUEUED.value}
 
 
+async def test_runs_the_executor_cannot_place_are_refused_at_admission(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """A tenant whose residency the executor's regions cannot satisfy gets a clear refusal
+    when it submits, instead of a run that is queued and then fails as INFRA_ERROR. The
+    worker also warns at start-up when such tenants exist."""
+    from mapi_server.executors import placement_warnings
+    from mapi_spec.executor import ExecutorCaps
+    from mapi_spec.tenancy import Isolation
+
+    await ready_dataset(ctx)
+    spec_id = await _spec(client)
+    fit = {"kind": "fit", "spec_id": spec_id, "revision": 1}
+    caps = ExecutorCaps(
+        isolation=Isolation.MICROVM, egress_enforced=True, dns_enforced=True,
+        classes=[ResourceClass.S, ResourceClass.M, ResourceClass.L],
+        regions=("europe-west4",),
+    )  # fmt: skip
+    async with ctx.db.session() as s:
+        s.add(
+            m.ExecutorReport(
+                name="cloudrun-jobs", enabled=True, caps=caps.model_dump(mode="json"),
+                submits_last_minute=0, throttled_last_hour=0, checked_at=now(),
+            )
+        )  # fmt: skip
+        tenant = await s.get(m.Tenant, "default")
+        assert tenant is not None and tenant.data_residency == "us"
+    r = await client.post("/v1/runs", json=fit)
+    assert r.status_code == 403, r.text
+    assert "residency us" in r.json()["detail"]
+    assert await _runs(ctx) == []
+    async with ctx.db.session() as s:
+        warnings = await placement_warnings(s, caps)
+    assert any("default" in w and "residency us" in w for w in warnings)
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Tenant).values(data_residency="eu"))
+        assert await placement_warnings(s, caps) == []
+    assert (await client.post("/v1/runs", json=fit)).status_code == 201
+    # a stale report (no worker running it) does not block submissions
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Tenant).values(data_residency="us"))
+        await s.execute(update(m.ExecutorReport).values(checked_at=now() - timedelta(hours=1)))
+    assert (await client.post("/v1/runs", json=fit)).status_code == 201
+
+
 async def test_shared_tiers_need_a_sandboxing_executor(ctx: ServerContext) -> None:
     await make_tenant(ctx, "pub", tier="public", projects=("main",))
     run_id = await _queue(ctx, "pub")

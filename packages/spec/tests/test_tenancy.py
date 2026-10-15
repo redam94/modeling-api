@@ -33,6 +33,7 @@ from mapi_spec.tenancy import (
     placement_allows,
     region_satisfies,
     required_rule,
+    residency_of_region,
     resolve_project_scope,
 )
 from pydantic import TypeAdapter, ValidationError
@@ -307,6 +308,24 @@ def test_shared_tiers_match_executor_public_tenant_rule() -> None:
 )
 def test_region_residency(residency: str, region: str, ok: bool) -> None:
     assert region_satisfies(residency, region) is ok
+
+
+@pytest.mark.parametrize(
+    ("region", "residency"),
+    [
+        ("europe-west4", "eu"),
+        ("europe-west1", "eu"),
+        ("us-central1", "us"),
+        ("northamerica-northeast1", "us"),
+        ("asia-southeast1", "asia"),
+        ("me-central1", "me-central1"),
+    ],
+)
+def test_the_residency_a_region_satisfies(region: str, residency: str) -> None:
+    """The default residency of a deployment comes from its region, so the tenants it
+    creates by default can always run there."""
+    assert residency_of_region(region) == residency
+    assert region_satisfies(residency_of_region(region), region)
 
 
 def test_placement_with_residency_needs_a_matching_offered_region() -> None:

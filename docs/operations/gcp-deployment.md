@@ -122,6 +122,15 @@ Fill in the project ids, region, bucket location (follow your tenants' data resi
 exec pools, the access policy id, the domains, the OAuth client id and the GitHub repository.
 The file holds no secrets and is not committed.
 
+!!! warning "Data residency and the exec region"
+    A run is placed only on an executor whose region satisfies its tenant's data residency.
+    The default residency (the platform tenant's, and that of every tenant created without
+    one) is therefore what the dispatch pool's region satisfies: `eu` for `europe-west4`.
+    Override it with the control module's `default_residency`. A tenant whose residency the
+    exec region cannot satisfy has its runs refused at submission (`403`, "no executor of
+    this platform can run this tenant's work"), and the worker logs a warning for it at
+    start-up. Change it with `PATCH /v1/admin/tenants/{id}` (`data_residency`).
+
 ### 3. Apply the foundation
 
 ```bash
@@ -292,6 +301,7 @@ server does not read. Plain values:
 | `MAPI_URL_SIGNER` | all | Service account whose `signBlob` signs URLs (no key file exists) |
 | `MAPI_SIGNER`, `MAPI_KMS_KEY_VERSION` | all | `kms` and `…/cryptoKeyVersions/<control.kms_key_version>` of the EC P-256 key that signs bundle manifests |
 | `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE` | all | `mapi_app` (row-level security) and `mapi_orchestrator` (the platform role) |
+| `MAPI_DEFAULT_RESIDENCY` | all | Residency of the platform tenant and of tenants created without one: the control module's `default_residency`, else what the dispatch pool's region satisfies (`eu` for `europe-west4`) |
 | `MAPI_API_URL`, `MAPI_WEB_ORIGIN`, `MAPI_PLOTS_ORIGIN` | all, web | Public origins (the API shares the app origin behind the load balancer) |
 | `MAPI_DATA_DIR` | all | `/tmp/mapi` (in-memory scratch) |
 | `MAPI_ALLOWED_HOSTS` | api, events | Host names the service answers |

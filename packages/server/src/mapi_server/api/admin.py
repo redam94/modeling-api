@@ -96,13 +96,19 @@ async def admin_create_tenant(
     """Create a tenant; ``initial_admin_email`` is invited as its tenant admin."""
     if await system.get(m.Tenant, body.id) is not None:
         raise Conflict(f"tenant {body.id} already exists")
+    # left out: the deployment's residency, which its executor can place (not the DTO's "us")
+    residency = (
+        body.data_residency
+        if "data_residency" in body.model_fields_set
+        else ctx.settings.effective_default_residency()
+    )
     ts = now()
     row = m.Tenant(
         id=body.id,
         name=body.name,
         trust_tier=body.trust_tier.value,
         status=TenantStatus.ACTIVE.value,
-        data_residency=body.data_residency,
+        data_residency=residency,
         created_at=ts,
         updated_at=ts,
     )
@@ -127,7 +133,7 @@ async def admin_create_tenant(
                 ResourceKind.TENANT,
                 resource_id=body.id,
                 tenant_id=body.id,
-                details={"trust_tier": body.trust_tier.value, "residency": body.data_residency},
+                details={"trust_tier": body.trust_tier.value, "residency": residency},
             )
         ],
         session=system,

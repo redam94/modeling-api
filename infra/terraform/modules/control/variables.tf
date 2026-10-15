@@ -78,6 +78,17 @@ variable "dispatch_pool" {
   default     = null
 }
 
+variable "default_residency" {
+  description = "Data residency of the platform tenant and of tenants created without one (MAPI_DEFAULT_RESIDENCY): a multi-region (eu, us, asia) or one region. Default: what the dispatch pool's region satisfies, so the executor can place those tenants."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.default_residency == null || can(regex("^(?:[a-z]{2,6}|[a-z]+-[a-z]+[0-9]{1,2})$", var.default_residency))
+    error_message = "default_residency must be a multi-region (eu, us, asia) or a region such as europe-west4."
+  }
+}
+
 variable "kms_key_version" {
   description = "Version of the bundle-signing key the server signs with (MAPI_KMS_KEY_VERSION). Bump after creating a new version; list the old one in extra_env MAPI_KMS_TRUSTED_KEY_VERSIONS while bundles it signed are live."
   type        = number

@@ -171,6 +171,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 |---|---|---|
 | `MAPI_CLOUDRUN_PROJECT` | unset (required) | The exec project holding the Job inventory |
 | `MAPI_CLOUDRUN_REGION` | `europe-west1` | Region of the inventory |
+| `MAPI_DEFAULT_RESIDENCY` | derived | Data residency of the platform tenant, of tenants the migrations adopt and of tenants created without one. Default: the multi-region of `MAPI_CLOUDRUN_REGION` with `cloudrun-jobs` (`eu` for `europe-west1`), else `us` |
 | `MAPI_CLOUDRUN_JOB_TEMPLATE` | `mapi-{env}-{base}-{class}` | Job id convention; it must match the Jobs the infrastructure creates |
 | `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to base image family (JSON) |
 | `MAPI_CLOUDRUN_DEFAULT_BASE` | `base-bayes` | Base for runs without a mapped plugin (ingest, describe) |

@@ -65,6 +65,7 @@ __all__ = [
     "placement_allows",
     "region_satisfies",
     "required_rule",
+    "residency_of_region",
     "resolve_project_scope",
 ]
 
@@ -117,6 +118,16 @@ MULTI_REGIONS: Final[dict[str, tuple[str, ...]]] = {
     "asia": ("asia-",),
 }
 """Region-name prefixes each multi-region covers."""
+
+
+def residency_of_region(region: str) -> str:
+    """The broadest residency ``region`` satisfies: its multi-region (:data:`MULTI_REGIONS`,
+    e.g. ``europe-west4`` → ``eu``), else the region itself. A deployment's default
+    residency: tenants created without one can always run in its region."""
+    for residency, prefixes in MULTI_REGIONS.items():
+        if region.startswith(prefixes):
+            return residency
+    return region
 
 
 def region_satisfies(residency: str, region: str) -> bool:

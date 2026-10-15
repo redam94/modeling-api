@@ -14,7 +14,7 @@ from collections.abc import Sequence
 
 from mapi_spec.api import MembershipCreate, new_id
 from mapi_spec.errors import ErrorCode, MapiError
-from mapi_spec.tenancy import PrincipalKind, ProjectRole
+from mapi_spec.tenancy import DEFAULT_RESIDENCY, PrincipalKind, ProjectRole
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,8 +36,12 @@ __all__ = [
 ]
 
 
-async def ensure_platform_tenant(s: AsyncSession, tenant_id: str, project_id: str) -> None:
-    """Create the default tenant (``internal``) and project if missing (idempotent)."""
+async def ensure_platform_tenant(
+    s: AsyncSession, tenant_id: str, project_id: str, *, residency: str = DEFAULT_RESIDENCY
+) -> None:
+    """Create the default tenant (``internal``, in ``residency``: the deployment's default,
+    :meth:`~mapi_server.settings.Settings.effective_default_residency`) and project if
+    missing (idempotent: an existing tenant keeps its residency)."""
     await s.execute(
         insert(m.Tenant)
         .values(
@@ -45,7 +49,7 @@ async def ensure_platform_tenant(s: AsyncSession, tenant_id: str, project_id: st
             name=tenant_id.capitalize(),
             trust_tier="internal",
             status="active",
-            data_residency="us",
+            data_residency=residency,
         )
         .on_conflict_do_nothing()
     )
