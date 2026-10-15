@@ -108,11 +108,72 @@ See [Job payloads and object names](../run-protocol.md#job-payloads-and-object-n
 
 ## REST DTOs
 
-See [HTTP API (v1)](../http-api.md) for the endpoint table and conventions.
+See [HTTP API (v1)](../http-api.md) for the endpoint tables, conventions and the
+[multi-tenant additions](../http-api.md#multi-tenant-api) of v0.3.
 
 ::: mapi_spec.api
     options:
-      members: [Page, Project, Dataset, DatasetCreate, UploadCreate, UploadSession, IngestMapping, DimMapping, VarMapping, DatasetVersionCreate, DatasetVersion, DatasetVersionStatus, SpecCreate, SpecDoc, SpecRevisionCreate, SpecRevision, ValidateRequest, ValidateResponse, StageSchema, RunCreate, RunRetry, Run, RunCost, ProgressSnapshot, RunEventView, LogLine, SseEventName, Model, ModelVersion, Scorecard, ScorecardItem, Lineage, ScoreCall, ScoreCallResult, ArtifactLink, ObjectRef, PlotListItem, PlotValidateResponse, CatalogResponse, Health, HealthCheck, EndpointDecl, M1_ENDPOINTS, encode_sse, parse_last_event_id, parse_prefer_wait, check_idempotency_key, loc_to_pointer, new_id]
+      members: [Page, Dataset, DatasetCreate, UploadCreate, UploadSession, IngestMapping, DimMapping, VarMapping, DatasetVersionCreate, DatasetVersion, DatasetVersionStatus, SpecCreate, SpecDoc, SpecRevisionCreate, SpecRevision, ValidateRequest, ValidateResponse, StageSchema, RunCreate, RunRetry, Run, ProgressSnapshot, RunEventView, LogLine, SseEventName, Model, ModelVersion, Scorecard, ScorecardItem, Lineage, ScoreCall, ScoreCallResult, ArtifactLink, ObjectRef, PlotListItem, PlotValidateResponse, CatalogResponse, Health, HealthCheck, Me, MeTenant, MeProject, TenantCreate, TenantUpdate, TenantAdminUpdate, ProjectCreate, ProjectUpdate, MembershipCreate, MembershipUpdate, UsageReport, EndpointDecl, M1_ENDPOINTS, M2_ENDPOINTS, ENDPOINTS, RouteScope, RouteAccess, ROUTE_ACCESS, route_access, encode_sse, parse_last_event_id, parse_prefer_wait, check_idempotency_key, loc_to_pointer, new_id]
+      heading_level: 3
+
+## Tenancy and authorization
+
+See [Tenancy and authentication](../../concepts/tenancy-and-auth.md).
+
+::: mapi_spec.tenancy
+    options:
+      members: [Tenant, Project, TrustTier, TenantStatus, ResidencyRegion, region_satisfies, PlacementRequirement, TIER_PLACEMENT, placement_allows, ProjectRole, Action, ResourceKind, Level, Rule, PERMISSIONS, OPERATOR_PERMISSIONS, required_rule, can, Membership, effective_role, PrincipalKind, UserPrincipal, TokenPrincipal, ServicePrincipal, InternalService, Principal, AuthContext, PROJECT_HEADER, ProjectSelector, parse_project_selector, resolve_project_scope]
+      heading_level: 3
+
+## API tokens
+
+::: mapi_spec.tokens
+    options:
+      members: [ParsedToken, generate_token, parse_token, token_checksum, looks_like_token, redact_token, bearer_token, hash_token, verify_token_hash, ScopeName, TokenScope, parse_scope, scope_allows, TokenCreate, ApiToken, TokenCreated, TokenRecord, TokenStatus, BudgetPeriod]
+      heading_level: 3
+
+## Sessions and Pub/Sub push
+
+::: mapi_spec.auth
+    options:
+      members: [pkce_verifier, pkce_challenge, random_state, safe_return_to, LoginTransaction, build_authorize_url, CookieSpec, SessionInfo, PubSubMessage, PubSubPushEnvelope, PushAuthExpectation, check_push_claims]
+      heading_level: 3
+
+## Quotas and scheduling
+
+See [Quotas and cost](../../concepts/quotas-and-cost.md).
+
+::: mapi_spec.quotas
+    options:
+      members: [QuotaScope, QuotaLimits, QuotaPolicy, QuotaPolicyUpsert, QuotaUsage, QuotaDemand, QuotaDecision, LimitName, evaluate_quota, QuotaLimitStatus, quota_status, window_reset, DEFAULT_TIER_LIMITS, DEFAULT_GLOBAL_LIMITS, policy_for_token, PriorityClass, PRIORITY_WEIGHTS, default_priority, LeaseCandidate, plan_leases, backoff_seconds]
+      heading_level: 3
+
+## Cost
+
+::: mapi_spec.cost
+    options:
+      members: [PriceTable, ClassPrice, DEFAULT_PRICE_TABLE, ResourceUsage, class_usage, price_usage, estimate_cost, CostEstimate, CostEntryKind, CostLedgerEntry, ledger_entry, CostTotals, summarize_ledger, RunCost, format_micros]
+      heading_level: 3
+
+## Audit
+
+::: mapi_spec.audit
+    options:
+      members: [AuditAction, AuditOutcome, AuditEvent, AuditQuery, client_fingerprint, make_audit_event]
+      heading_level: 3
+
+## Operator controls
+
+::: mapi_spec.admin
+    options:
+      members: [KillSwitches, KillSwitchUpdate, kill_switch_decision, ExecutorHealth, ExecutorStatus]
+      heading_level: 3
+
+## Executor conformance suite
+
+::: mapi_spec.conformance_executor
+    options:
+      members: [EXECUTOR_CONFORMANCE, ConformanceCase, ConformanceCaseId, Fault, Requirement, Expectation, ConformanceTarget, applicable_cases, ObservedRun, check_expectation, ConformanceReport, ConformanceResult, CaseOutcome]
       heading_level: 3
 
 ## Local development

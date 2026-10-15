@@ -1,4 +1,5 @@
-"""Pure-Pydantic contracts for modeling-api (specs, schemas, manifests, plot envelopes).
+"""Pure-Pydantic contracts for modeling-api (specs, schemas, manifests, plot envelopes, and
+the multi-tenant control-plane contracts: tenancy, tokens, quotas, cost, audit, admin).
 
 This package never imports numpy, xarray or pandas: the control plane depends on it and
 must stay JSON-only. Public names are re-exported here; see the submodules for details.
@@ -6,6 +7,8 @@ must stay JSON-only. Public names are re-exported here; see the submodules for d
 
 from importlib import metadata as _metadata
 
+from mapi_spec.admin import ExecutorHealth, KillSwitches, kill_switch_decision
+from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome
 from mapi_spec.capabilities import (
     REPRESENTATION_RULES,
     Aggregation,
@@ -25,7 +28,15 @@ from mapi_spec.capabilities import (
     summary_allowed,
 )
 from mapi_spec.catalog import Catalog, ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
+from mapi_spec.conformance_executor import EXECUTOR_CONFORMANCE, ConformanceCase
 from mapi_spec.coords import CoordSummary, DataSummary, parse_freq
+from mapi_spec.cost import (
+    DEFAULT_PRICE_TABLE,
+    CostLedgerEntry,
+    PriceTable,
+    RunCost,
+    estimate_cost,
+)
 from mapi_spec.effects import (
     ContextNeed,
     PropagationResult,
@@ -63,6 +74,15 @@ from mapi_spec.loader import (
     upgrade,
 )
 from mapi_spec.plots import DataRef, InlineArrow, PlotBindings, PlotProvenance, PlotSpec
+from mapi_spec.quotas import (
+    PriorityClass,
+    QuotaDecision,
+    QuotaLimits,
+    QuotaPolicy,
+    QuotaScope,
+    evaluate_quota,
+    plan_leases,
+)
 from mapi_spec.refs import (
     DatasetRef,
     EndpointRef,
@@ -103,6 +123,20 @@ from mapi_spec.spec import (
     Sweep,
 )
 from mapi_spec.sweep import expand_sweep
+from mapi_spec.tenancy import (
+    PERMISSIONS,
+    Action,
+    AuthContext,
+    Membership,
+    Principal,
+    ProjectRole,
+    ResourceKind,
+    Tenant,
+    TenantStatus,
+    TrustTier,
+    can,
+)
+from mapi_spec.tokens import ApiToken, ScopeName, generate_token, parse_token, scope_allows
 from mapi_spec.validate import (
     ResolvedSpec,
     ScoreMetadata,
@@ -119,20 +153,31 @@ except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout wit
 __all__ = [
     "API_VERSION",
     "CONTRACT_VERSION",
+    "DEFAULT_PRICE_TABLE",
     "ERROR_INFO",
+    "EXECUTOR_CONFORMANCE",
+    "PERMISSIONS",
     "REPRESENTATION_RULES",
     "RESOURCE_CLASSES",
     "SBC",
+    "Action",
     "Aggregation",
     "AggregationVerdict",
     "AnyDocument",
+    "ApiToken",
+    "AuditAction",
+    "AuditEvent",
+    "AuditOutcome",
+    "AuthContext",
     "Backtest",
     "Binding",
     "Campaign",
     "Capabilities",
     "Catalog",
+    "ConformanceCase",
     "ContextNeed",
     "CoordSummary",
+    "CostLedgerEntry",
     "DataBlock",
     "DataRef",
     "DataSchema",
@@ -145,13 +190,16 @@ __all__ = [
     "DimSpec",
     "EndpointRef",
     "ErrorCode",
+    "ExecutorHealth",
     "FitConfig",
     "Horizon",
     "InlineArrow",
     "Intervention",
     "Issue",
+    "KillSwitches",
     "Limits",
     "MapiError",
+    "Membership",
     "ModelBlock",
     "ModelCatalogEntry",
     "ModelManifest",
@@ -163,15 +211,26 @@ __all__ = [
     "PlotCatalogEntry",
     "PlotProvenance",
     "PlotSpec",
+    "PriceTable",
+    "Principal",
+    "PriorityClass",
     "Problem",
+    "ProjectRole",
     "PropagationResult",
+    "QuotaDecision",
+    "QuotaLimits",
+    "QuotaPolicy",
+    "QuotaScope",
     "RaggedSpec",
     "Representation",
     "ResolvedSpec",
     "ResourceClass",
     "ResourceHint",
+    "ResourceKind",
     "Role",
+    "RunCost",
     "SchemaEffect",
+    "ScopeName",
     "ScoreMetadata",
     "ScoreMode",
     "ScoreRequest",
@@ -184,6 +243,9 @@ __all__ = [
     "StepCatalogEntry",
     "StepKind",
     "Sweep",
+    "Tenant",
+    "TenantStatus",
+    "TrustTier",
     "UseRef",
     "ValidationFailed",
     "VarDerive",
@@ -193,24 +255,32 @@ __all__ = [
     "VersionRange",
     "__version__",
     "apply_effect",
+    "can",
     "can_aggregate",
     "canonical_json",
     "default_summary",
     "dump_yaml",
+    "estimate_cost",
+    "evaluate_quota",
     "expand_sweep",
     "export_schemas",
+    "generate_token",
     "http_status",
     "json_pointer",
+    "kill_switch_decision",
     "load_document",
     "load_model_spec",
     "load_score_request",
     "parse_document",
     "parse_freq",
     "parse_summary",
+    "parse_token",
+    "plan_leases",
     "propagate",
     "register_upgrader",
     "resolve_effect",
     "resolve_version",
+    "scope_allows",
     "spec_hash",
     "summary_allowed",
     "upgrade",

@@ -3259,12 +3259,38 @@ export interface components {
         };
         /**
          * RunCost
-         * @description Cost fields (placeholders in M1: always ``None``; populated by the M2 ledger).
+         * @description Cost of a run (all attempts). ``estimated`` is true until an ``actual`` ledger entry
+         *     exists; ``usd`` is kept for v0.2 clients and is set only when the currency is USD.
          * @example {
          *       "estimated": true
          *     }
+         * @example {
+         *       "amount_micros": 31200,
+         *       "attempts_billed": 1,
+         *       "currency": "USD",
+         *       "estimate_micros": 30000,
+         *       "estimated": false,
+         *       "gib_seconds": 4800,
+         *       "price_version": "cloudrun-list-2026-10",
+         *       "usd": 0.0312,
+         *       "vcpu_seconds": 1200
+         *     }
          */
         RunCost: {
+            /** Amount Micros */
+            amount_micros?: number | null;
+            /**
+             * Attempts Billed
+             * @default 0
+             */
+            attempts_billed?: number;
+            /** Currency */
+            currency?: string | null;
+            /**
+             * Estimate Micros
+             * @description Pre-run estimate
+             */
+            estimate_micros?: number | null;
             /**
              * Estimated
              * @default true
@@ -3272,6 +3298,8 @@ export interface components {
             estimated?: boolean;
             /** Gib Seconds */
             gib_seconds?: number | null;
+            /** Price Version */
+            price_version?: string | null;
             /** Usd */
             usd?: number | null;
             /** Vcpu Seconds */
