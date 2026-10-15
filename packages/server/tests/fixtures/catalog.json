@@ -1,0 +1,573 @@
+{
+ "models": [
+  {
+   "base_image": null,
+   "manifest": {
+    "artifact_format": "zarr.zip/v1",
+    "capabilities": {
+     "checkpointable": true,
+     "contribution_scale": "none",
+     "decision": false,
+     "deterministic_given_seed": true,
+     "evidence": false,
+     "fast_score": false,
+     "identified_quantities": [
+      "lengthscale",
+      "eta",
+      "sigma"
+     ],
+     "inference": "mcmc",
+     "loo_invalid_reason": null,
+     "loo_valid": true,
+     "owns": [],
+     "recommend": false,
+     "representation": "draws",
+     "score_modes": [
+      "evaluate",
+      "forecast",
+      "predict"
+     ]
+    },
+    "derived": [],
+    "description": "A smooth Hilbert-space GP trend with optional linear drift and Fourier seasonality for one regular time series (Mauna-Loa style). Forecasts reach at most max_extension periods past the fit; further horizons need a refit.",
+    "fit_schema": {},
+    "id": "ts.hsgp_trend",
+    "outputs": {
+     "trend": {
+      "description": "The long-term component (intercept + drift + GP), no seasonality",
+      "dims": [
+       "t"
+      ],
+      "dims_of": null,
+      "units": null,
+      "units_of": "y"
+     },
+     "y_hat": {
+      "description": "The series: expected value (trend + seasonality) or a predictive draw",
+      "dims": [
+       "t"
+      ],
+      "dims_of": null,
+      "units": null,
+      "units_of": "y"
+     }
+    },
+    "plots": [
+     "core.ppc_fan",
+     "core.convergence",
+     "core.posterior_forest"
+    ],
+    "resources": {
+     "default_class": "S",
+     "est_fit_seconds": null,
+     "gpu": false,
+     "min_class": "S"
+    },
+    "schema_template": {
+     "cases": [],
+     "params": {
+      "max_extension": {
+       "default": 24,
+       "enum": null,
+       "path": null,
+       "required": false,
+       "type": "integer"
+      }
+     },
+     "template": {
+      "dims": {
+       "t": {
+        "kind": "time",
+        "max_extension": "{max_extension}",
+        "policy": "extend"
+       }
+      },
+      "vars": {
+       "y": {
+        "dims": [
+         "t"
+        ],
+        "dtype": "float64",
+        "missing": "allow",
+        "role": "target"
+       }
+      }
+     }
+    },
+    "settings_schema": {
+     "additionalProperties": false,
+     "description": "Settings of ``ts.hsgp_trend`` (priors are on the standardised target).",
+     "properties": {
+      "c": {
+       "default": 1.5,
+       "description": "Boundary factor (L = c on the scaled axis)",
+       "exclusiveMinimum": 1.0,
+       "maximum": 5.0,
+       "title": "C",
+       "type": "number"
+      },
+      "eta_sigma": {
+       "default": 1.0,
+       "description": "Half-normal scale of the GP amplitude",
+       "exclusiveMinimum": 0,
+       "title": "Eta Sigma",
+       "type": "number"
+      },
+      "intercept_sigma": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "title": "Intercept Sigma",
+       "type": "number"
+      },
+      "kernel": {
+       "default": "expquad",
+       "description": "Covariance kernel of the smooth trend",
+       "enum": [
+        "expquad",
+        "matern52",
+        "matern32"
+       ],
+       "title": "Kernel",
+       "type": "string"
+      },
+      "lengthscale_mu": {
+       "default": 0.4,
+       "description": "Median of the lengthscale prior on the scaled axis [-1, 1]",
+       "exclusiveMinimum": 0,
+       "title": "Lengthscale Mu",
+       "type": "number"
+      },
+      "lengthscale_sigma": {
+       "default": 0.5,
+       "description": "Log-scale sd of the lengthscale",
+       "exclusiveMinimum": 0,
+       "title": "Lengthscale Sigma",
+       "type": "number"
+      },
+      "linear_trend": {
+       "default": true,
+       "title": "Linear Trend",
+       "type": "boolean"
+      },
+      "m": {
+       "default": 30,
+       "description": "Number of HSGP basis functions",
+       "maximum": 400,
+       "minimum": 4,
+       "title": "M",
+       "type": "integer"
+      },
+      "max_extension": {
+       "default": 24,
+       "description": "Periods a forecast may reach past the fitted range without a refit; sizes the HSGP domain (x-ui-level: basic)",
+       "maximum": 10000,
+       "minimum": 1,
+       "title": "Max Extension",
+       "type": "integer"
+      },
+      "noise_sigma": {
+       "default": 0.5,
+       "exclusiveMinimum": 0,
+       "title": "Noise Sigma",
+       "type": "number"
+      },
+      "season_order": {
+       "default": 3,
+       "description": "Fourier order of the seasonality",
+       "maximum": 20,
+       "minimum": 0,
+       "title": "Season Order",
+       "type": "integer"
+      },
+      "season_period": {
+       "anyOf": [
+        {
+         "exclusiveMinimum": 1,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": 12.0,
+       "description": "Seasonal period in periods of t (12 for monthly data)",
+       "title": "Season Period"
+      },
+      "season_sigma": {
+       "default": 0.5,
+       "exclusiveMinimum": 0,
+       "title": "Season Sigma",
+       "type": "number"
+      },
+      "slope_sigma": {
+       "default": 1.0,
+       "exclusiveMinimum": 0,
+       "title": "Slope Sigma",
+       "type": "number"
+      }
+     },
+     "title": "HSGPTrendSettings",
+     "type": "object"
+    },
+    "version": "1.0.0"
+   },
+   "overlay_hash": null,
+   "yanked": false
+  }
+ ],
+ "plots": [
+  {
+   "id": "core.convergence",
+   "persona": "expert",
+   "requires_groups": [
+    "posterior"
+   ],
+   "requires_representation": [
+    "draws"
+   ],
+   "title": "Sampler convergence",
+   "version": "1.0.0",
+   "yanked": false
+  },
+  {
+   "id": "core.ppc_fan",
+   "persona": "both",
+   "requires_groups": [],
+   "requires_representation": [],
+   "title": "Fit and forecast",
+   "version": "1.0.0",
+   "yanked": false
+  }
+ ],
+ "steps": [
+  {
+   "context": null,
+   "depends_on_target": false,
+   "dim_params": [
+    "along"
+   ],
+   "effect": {
+    "adds": {
+     "{out}": {
+      "dims": [
+       "{along}",
+       "{out}_mode"
+      ],
+      "dtype": "float64"
+     }
+    },
+    "template_params": [
+     "out",
+     "along"
+    ],
+    "transforms_dims": {
+     "{out}_mode": {
+      "kind": "categorical",
+      "policy": "fixed"
+     }
+    }
+   },
+   "id": "core.fourier",
+   "invertible": false,
+   "kind": "feature",
+   "provides": [],
+   "settings_schema": {
+    "additionalProperties": false,
+    "properties": {
+     "along": {
+      "default": "time",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Along",
+      "type": "string"
+     },
+     "order": {
+      "default": 2,
+      "maximum": 50,
+      "minimum": 1,
+      "title": "Order",
+      "type": "integer"
+     },
+     "out": {
+      "default": "fourier",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Out",
+      "type": "string"
+     },
+     "period": {
+      "description": "Season length in units of `unit`",
+      "exclusiveMinimum": 0,
+      "title": "Period",
+      "type": "number"
+     },
+     "unit": {
+      "default": "step",
+      "description": "'step': periods of the dim's frequency; 'days': calendar days",
+      "enum": [
+       "step",
+       "days"
+      ],
+      "title": "Unit",
+      "type": "string"
+     }
+    },
+    "required": [
+     "period"
+    ],
+    "title": "FourierSettings",
+    "type": "object"
+   },
+   "side_table_params": [],
+   "stateful": true,
+   "summary": "Fourier seasonality features",
+   "summary_plain": "Adds smooth repeating patterns (for example yearly seasonality)",
+   "target_vars_param": null,
+   "var_params": [],
+   "version": "1.0.0",
+   "yanked": false
+  },
+  {
+   "context": null,
+   "depends_on_target": false,
+   "dim_params": [],
+   "effect": {
+    "template_params": [
+     "vars"
+    ],
+    "updates": {
+     "{*vars as v}": {
+      "dtype": "float64"
+     }
+    }
+   },
+   "id": "core.log1p",
+   "invertible": true,
+   "kind": "value",
+   "provides": [],
+   "settings_schema": {
+    "additionalProperties": false,
+    "properties": {
+     "vars": {
+      "items": {
+       "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+       "type": "string"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Vars",
+      "type": "array",
+      "uniqueItems": true
+     }
+    },
+    "required": [
+     "vars"
+    ],
+    "title": "VarsSettings",
+    "type": "object"
+   },
+   "side_table_params": [],
+   "stateful": false,
+   "summary": "log(1 + x) of the named variables",
+   "summary_plain": "Compresses large values with a logarithm",
+   "target_vars_param": null,
+   "var_params": [
+    "vars"
+   ],
+   "version": "1.0.0",
+   "yanked": false
+  },
+  {
+   "context": null,
+   "depends_on_target": false,
+   "dim_params": [
+    "over"
+   ],
+   "effect": {
+    "template_params": [
+     "vars"
+    ],
+    "updates": {
+     "{*vars as v}": {
+      "dtype": "float64",
+      "units": "1"
+     }
+    }
+   },
+   "id": "core.mean_scale",
+   "invertible": true,
+   "kind": "value",
+   "provides": [
+    "scaling"
+   ],
+   "settings_schema": {
+    "additionalProperties": false,
+    "properties": {
+     "fill_value": {
+      "default": 1.0,
+      "description": "Scale used for unseen levels with 'fill'",
+      "exclusiveMinimum": 0,
+      "title": "Fill Value",
+      "type": "number"
+     },
+     "over": {
+      "description": "Dims the statistic reduces over",
+      "items": {
+       "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+       "type": "string"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Over",
+      "type": "array",
+      "uniqueItems": true
+     },
+     "unseen_levels": {
+      "default": "error",
+      "description": "Unseen levels at score time: error, pooled (mean) or fill",
+      "enum": [
+       "error",
+       "pooled",
+       "fill"
+      ],
+      "title": "Unseen Levels",
+      "type": "string"
+     },
+     "vars": {
+      "items": {
+       "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+       "type": "string"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Vars",
+      "type": "array",
+      "uniqueItems": true
+     }
+    },
+    "required": [
+     "vars",
+     "over"
+    ],
+    "title": "ScaleSettings",
+    "type": "object"
+   },
+   "side_table_params": [],
+   "stateful": true,
+   "summary": "Divide by the mean absolute value over the named dims",
+   "summary_plain": "Puts each series on a comparable scale (average becomes 1)",
+   "target_vars_param": null,
+   "var_params": [
+    "vars"
+   ],
+   "version": "1.0.0",
+   "yanked": false
+  },
+  {
+   "context": null,
+   "depends_on_target": false,
+   "dim_params": [
+    "over"
+   ],
+   "effect": {
+    "template_params": [
+     "vars"
+    ],
+    "updates": {
+     "{*vars as v}": {
+      "dtype": "float64",
+      "units": "1"
+     }
+    }
+   },
+   "id": "core.standardize",
+   "invertible": true,
+   "kind": "value",
+   "provides": [
+    "scaling"
+   ],
+   "settings_schema": {
+    "additionalProperties": false,
+    "properties": {
+     "ddof": {
+      "default": 0,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Ddof",
+      "type": "integer"
+     },
+     "fill_mean": {
+      "default": 0.0,
+      "description": "Mean used for unseen levels with 'fill'",
+      "title": "Fill Mean",
+      "type": "number"
+     },
+     "fill_sd": {
+      "default": 1.0,
+      "description": "SD used for unseen levels with 'fill'",
+      "exclusiveMinimum": 0,
+      "title": "Fill Sd",
+      "type": "number"
+     },
+     "over": {
+      "description": "Dims the moments reduce over",
+      "items": {
+       "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+       "type": "string"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Over",
+      "type": "array",
+      "uniqueItems": true
+     },
+     "unseen_levels": {
+      "default": "error",
+      "enum": [
+       "error",
+       "pooled",
+       "fill"
+      ],
+      "title": "Unseen Levels",
+      "type": "string"
+     },
+     "vars": {
+      "items": {
+       "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+       "type": "string"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Vars",
+      "type": "array",
+      "uniqueItems": true
+     },
+     "with_mean": {
+      "default": true,
+      "title": "With Mean",
+      "type": "boolean"
+     },
+     "with_sd": {
+      "default": true,
+      "title": "With Sd",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "vars",
+     "over"
+    ],
+    "title": "StandardizeSettings",
+    "type": "object"
+   },
+   "side_table_params": [],
+   "stateful": true,
+   "summary": "Standardise to zero mean and unit variance over the named dims",
+   "summary_plain": "Centres each series and scales it to unit spread",
+   "target_vars_param": null,
+   "var_params": [
+    "vars"
+   ],
+   "version": "1.0.0",
+   "yanked": false
+  }
+ ]
+}
