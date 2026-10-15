@@ -74,7 +74,7 @@ class FxConvertSettings(StepSettings):
         None, description="Data dim whose levels have different local currencies (e.g. geo)"
     )
     currencies: dict[str, str] = Field(
-        default_factory=dict, description="Local currency per level of currency_dim"
+        default={}, description="Local currency per level of currency_dim"
     )
     default_currency: str | None = Field(
         None, pattern=ISO_CURRENCY, description="Currency of levels missing from currencies"
@@ -534,13 +534,11 @@ def _expit(x: np.ndarray) -> np.ndarray:
 class ImputeSettings(StepSettings):
     vars: NameList = Field(..., min_length=1)
     method: Literal["mean", "median", "constant", "ffill"] = "mean"
-    over: NameList = Field(
-        default_factory=list, description="mean/median: dims the statistic reduces over"
-    )
+    over: NameList = Field(default=[], description="mean/median: dims the statistic reduces over")
     value: float = Field(0.0, description="constant: the fill value")
     along: Name = Field("time", description="ffill: ordered dim to carry values along")
     within: NameList = Field(
-        default_factory=list, description="ffill: group dims (dense) or row group vars (long)"
+        default=[], description="ffill: group dims (dense) or row group vars (long)"
     )
     limit: int | None = Field(
         None, ge=1, le=100_000, description="ffill: max consecutive missing values filled"
@@ -713,7 +711,7 @@ def _last_valid(x: xr.DataArray, along: str) -> tuple[xr.DataArray, xr.DataArray
 class ReplaceSentinelSettings(StepSettings):
     vars: NameList = Field(..., min_length=1)
     sentinels: list[float] = Field(
-        default_factory=list, max_length=64, description="Exact codes that mean 'missing'"
+        default=[], max_length=64, description="Exact codes that mean 'missing'"
     )
     below: float | None = Field(None, description="Values strictly below this are missing")
     above: float | None = Field(None, description="Values strictly above this are missing")

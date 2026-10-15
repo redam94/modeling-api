@@ -296,9 +296,7 @@ class HolidaysSettings(StepSettings):
     table_along: Name | None = Field(None, description="Time dim of the table, if different")
     table_var: Name = Field("holiday", description="Indicator/weight variable in the table")
     out: Name = "holiday"
-    by: NameList = Field(
-        default_factory=list, description="Dims shared by table and data (e.g. country/geo)"
-    )
+    by: NameList = Field(default=[], description="Dims shared by table and data (e.g. country/geo)")
     how: Literal["sum", "max"] = Field(
         "sum", description="Aggregate table rows inside each data period (count or any)"
     )
@@ -419,7 +417,7 @@ class _LagBase(StepSettings):
     vars: NameList = Field(..., min_length=1)
     along: Name = "time"
     within: NameList = Field(
-        default_factory=list, description="Group dims (dense) or row group variables (long)"
+        default=[], description="Group dims (dense) or row group variables (long)"
     )
     mask: Name | None = Field(
         None, description="Boolean variable; cells where it is False count as missing"
@@ -716,8 +714,8 @@ class OneHotStep(Step[OneHotSettings, StepState]):
 
 
 class EncodeLevelsSettings(StepSettings):
-    vars: NameList = Field(default_factory=list, description="Categorical variables to encode")
-    dims: NameList = Field(default_factory=list, description="Dims whose labels to encode")
+    vars: NameList = Field(default=[], description="Categorical variables to encode")
+    dims: NameList = Field(default=[], description="Dims whose labels to encode")
     role: Literal["covariate", "index"] = "covariate"
     max_levels: int = Field(100_000, ge=1, le=1_000_000)
     unseen_levels: UnseenPolicy = Field(

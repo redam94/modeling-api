@@ -6,12 +6,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+import mapi_steps as ms
 import pytest
 import xarray as xr
 from mapi_sdk.schema import infer_schema
 from mapi_sdk.testing import check_step
-
-import mapi_steps as ms
 
 pytestmark = pytest.mark.mapi_contract
 

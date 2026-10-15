@@ -56,7 +56,7 @@ class ResampleSettings(StepSettings):
     freq: str = Field(..., description="Target frequency, e.g. 'W-SUN' or 'MS'")
     how: How = "sum"
     how_vars: dict[Name, How] = Field(
-        default_factory=dict, description="Per-variable aggregation overriding `how`"
+        default={}, description="Per-variable aggregation overriding `how`"
     )
     full_periods_only: bool = Field(
         True, description="Drop periods that are not fully covered by the source data"
@@ -164,13 +164,11 @@ class CountEventsSettings(StepSettings):
     time_var: Name = Field("timestamp", description="Datetime variable along the rows")
     freq: str = Field(..., description="Period length of the counts, e.g. 'D' or 'W-SUN'")
     dim: Name = Field("time", description="Name of the new time dim")
-    by: NameList = Field(default_factory=list, description="Row variables that become dims")
-    sum_vars: NameList = Field(
-        default_factory=list, description="Numeric row variables summed per period"
-    )
+    by: NameList = Field(default=[], description="Row variables that become dims")
+    sum_vars: NameList = Field(default=[], description="Numeric row variables summed per period")
     out: Name = "count"
     levels: dict[Name, list[str]] = Field(
-        default_factory=dict, description="Pinned levels per `by` variable (default: observed)"
+        default={}, description="Pinned levels per `by` variable (default: observed)"
     )
     start: str | None = Field(
         None, description="Earliest event time kept (ISO); the grid starts at its period"

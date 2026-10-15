@@ -34,7 +34,7 @@ from typing import Any, ClassVar, Literal
 
 import numpy as np
 import xarray as xr
-from lark import Lark, Token, Transformer, v_args
+from lark import Lark, Token, Transformer, Tree, v_args
 from lark.exceptions import LarkError, VisitError
 from mapi_sdk.steps import Step, StepContext, StepSettings, StepState
 from mapi_spec.effects import StepKind
@@ -45,7 +45,7 @@ from mapi_steps._common import Name, NameList, schema_error
 __all__ = ["FormulaError", "FormulaStep", "compile_formula", "evaluate"]
 
 MAX_EXPR_CHARS = 4000
-MAX_NODES = 500
+MAX_NODES = 1000
 MAX_DEPTH = 64
 
 GRAMMAR = r"""
@@ -197,16 +197,16 @@ class _ToAst(Transformer[Token, Node]):
         raise FormulaError(f"unsupported syntax {data!r}")
 
 
-def _measure(node: Node, depth: int = 1) -> tuple[int, int]:
-    """(node count, max depth) of an AST."""
-    count, deepest = 1, depth
-    for child in node[1:]:
-        kids = child if isinstance(child, list) else [child]
-        for k in kids:
-            if isinstance(k, tuple):
-                c, d = _measure(k, depth + 1)
-                count += c
-                deepest = max(deepest, d)
+def _measure(tree: Tree[Token]) -> tuple[int, int]:
+    """(node count, max depth) of a parse tree, computed iteratively (no recursion)."""
+    count, deepest = 0, 0
+    stack: list[tuple[Tree[Token] | Token, int]] = [(tree, 1)]
+    while stack:
+        node, depth = stack.pop()
+        count += 1
+        deepest = max(deepest, depth)
+        if isinstance(node, Tree):
+            stack.extend((child, depth + 1) for child in node.children)
     return count, deepest
 
 
@@ -237,6 +237,12 @@ def compile_formula(expr: str) -> Compiled:
         raise FormulaError(f"formula is longer than {MAX_EXPR_CHARS} characters")
     try:
         tree = _PARSER.parse(expr)
+    except LarkError as exc:
+        raise FormulaError(f"formula does not parse: {str(exc).splitlines()[0]}") from None
+    count, depth = _measure(tree)
+    if count > MAX_NODES or depth > MAX_DEPTH:
+        raise FormulaError(f"formula is too large ({count} nodes, depth {depth})")
+    try:
         ast = _ToAst().transform(tree)
     except VisitError as exc:
         if isinstance(exc.orig_exc, FormulaError):
@@ -246,9 +252,6 @@ def compile_formula(expr: str) -> Compiled:
         raise FormulaError(f"formula does not parse: {str(exc).splitlines()[0]}") from None
     if ast[0] == "str":
         raise FormulaError("a formula must not be a bare string")
-    count, depth = _measure(ast)
-    if count > MAX_NODES or depth > MAX_DEPTH:
-        raise FormulaError(f"formula is too large ({count} nodes, depth {depth})")
     return Compiled(ast, frozenset(_names(ast)))
 
 
@@ -340,9 +343,7 @@ RoleName = Literal[
 class FormulaSettings(StepSettings):
     out: Name = Field(..., description="Name of the new variable")
     expr: str = Field(..., min_length=1, max_length=MAX_EXPR_CHARS)
-    dims: NameList = Field(
-        default_factory=list, description="Dims of the result (broadcast if it has fewer)"
-    )
+    dims: NameList = Field(default=[], description="Dims of the result (broadcast if it has fewer)")
     role: RoleName = "covariate"
     units: str | None = Field(None, max_length=64)
 

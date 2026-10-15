@@ -115,7 +115,7 @@ def adstock_weights(
 class AdstockSettings(StepSettings):
     vars: NameList = Field(..., min_length=1)
     along: Name = "time"
-    within: NameList = Field(default_factory=list)
+    within: NameList = Field(default=[])
     kind: AdstockKind = "geometric"
     l_max: int = Field(12, ge=1, le=520)
     alpha: Param | None = Field(None, description="geometric/delayed decay in [0, 1)")
