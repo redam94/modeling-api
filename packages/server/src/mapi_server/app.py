@@ -10,8 +10,21 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mapi_spec.api import IDEMPOTENCY_KEY_HEADER, LAST_EVENT_ID_HEADER, PREFER_HEADER
+from mapi_spec.capabilities import Diagnostic
+from mapi_spec.run import (
+    CheckpointPayload,
+    CompletePayload,
+    ErrorPayload,
+    LogPayload,
+    MetricPayload,
+    ProgressPayload,
+    StatePayload,
+    WarningPayload,
+)
 from mapi_spec.spec import CONTRACT_VERSION
 from mapi_spec.storage import ObjectStore
+from pydantic import BaseModel
+from pydantic.json_schema import models_json_schema
 from sqlalchemy.dialects.postgresql import insert
 
 import mapi_server
@@ -26,7 +39,40 @@ from mapi_server.services.signing import BundleSigner
 from mapi_server.settings import Settings
 from mapi_server.storage import build_object_store
 
-__all__ = ["build_context", "create_app", "ensure_scope", "startup"]
+__all__ = [
+    "EVENT_PAYLOAD_MODELS",
+    "build_context",
+    "create_app",
+    "ensure_scope",
+    "openapi_document",
+    "startup",
+]
+
+EVENT_PAYLOAD_MODELS: tuple[type[BaseModel], ...] = (
+    StatePayload,
+    ProgressPayload,
+    LogPayload,
+    WarningPayload,
+    CheckpointPayload,
+    MetricPayload,
+    CompletePayload,
+    ErrorPayload,
+    Diagnostic,
+)
+"""``payload`` schemas of run events (SSE frames and the events page), published as OpenAPI
+components so generated clients can type them (FastAPI cannot infer them from routes)."""
+
+
+def _with_event_payloads(doc: dict[str, Any]) -> dict[str, Any]:
+    _, top = models_json_schema(
+        [(model, "serialization") for model in EVENT_PAYLOAD_MODELS],
+        ref_template="#/components/schemas/{model}",
+    )
+    schemas = doc.setdefault("components", {}).setdefault("schemas", {})
+    for name, schema in sorted(top.get("$defs", {}).items()):
+        schemas.setdefault(name, schema)
+    return doc
+
 
 log = logging.getLogger(__name__)
 
@@ -148,6 +194,14 @@ def create_app(
     )
     if ctx is not None:
         app.state.ctx = ctx
+    base_openapi = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        if app.openapi_schema is None:
+            app.openapi_schema = _with_event_payloads(base_openapi())
+        return app.openapi_schema
+
+    app.openapi = openapi  # type: ignore[method-assign]
     install_error_handlers(app, debug=settings.debug)
     app.add_middleware(
         CORSMiddleware,

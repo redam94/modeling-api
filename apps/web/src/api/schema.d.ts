@@ -11,10 +11,30 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Process liveness */
+        /**
+         * Healthz
+         * @description Process liveness (never touches dependencies).
+         */
         get: operations["health"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ingest Event */
+        post: operations["ingest_event"];
         delete?: never;
         options?: never;
         head?: never;
@@ -28,42 +48,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Dependencies reachable (503 if not) */
+        /**
+         * Readyz
+         * @description Postgres and the object store are reachable (503 with the same body if not).
+         */
         get: operations["ready"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/projects": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List projects */
-        get: operations["list_projects"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/projects/{project_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a project */
-        get: operations["get_project"];
         put?: never;
         post?: never;
         delete?: never;
@@ -79,7 +68,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Full catalog */
+        /** Get Catalog */
         get: operations["get_catalog"];
         put?: never;
         post?: never;
@@ -96,7 +85,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Model plugins */
+        /** List Catalog Models */
         get: operations["list_catalog_models"];
         put?: never;
         post?: never;
@@ -113,25 +102,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One model plugin version (manifest, sanitized schemas) */
+        /** Get Catalog Model */
         get: operations["get_catalog_model"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/catalog/steps": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Steps */
-        get: operations["list_catalog_steps"];
         put?: never;
         post?: never;
         delete?: never;
@@ -147,7 +119,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Plot recipes */
+        /** List Catalog Plots */
         get: operations["list_catalog_plots"];
         put?: never;
         post?: never;
@@ -157,15 +129,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/schemas/{name}": {
+    "/v1/catalog/steps": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Exported JSON Schema (e.g. modelspec.json) */
-        get: operations["get_schema"];
+        /** List Catalog Steps */
+        get: operations["list_catalog_steps"];
         put?: never;
         post?: never;
         delete?: never;
@@ -181,10 +153,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List datasets */
+        /** List Datasets */
         get: operations["list_datasets"];
         put?: never;
-        /** Create a dataset */
+        /** Create Dataset */
         post: operations["create_dataset"];
         delete?: never;
         options?: never;
@@ -199,7 +171,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a dataset */
+        /** Get Dataset */
         get: operations["get_dataset"];
         put?: never;
         post?: never;
@@ -218,7 +190,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Signed PUT URL into quarantine */
+        /** Create Upload */
         post: operations["create_upload"];
         delete?: never;
         options?: never;
@@ -233,10 +205,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List versions */
+        /** List Dataset Versions */
         get: operations["list_dataset_versions"];
         put?: never;
-        /** Ingest an upload as a new version (starts an ingest run) */
+        /** Create Dataset Version */
         post: operations["create_dataset_version"];
         delete?: never;
         options?: never;
@@ -251,7 +223,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Schema, summary, profile and preview refs */
+        /** Get Dataset Version */
         get: operations["get_dataset_version"];
         put?: never;
         post?: never;
@@ -268,7 +240,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Signed URL for data.zarr.zip / preview / profile / schema */
+        /**
+         * Get Dataset Artifact
+         * @description Signed, generation-pinned URL for ``data.zarr.zip``/``schema.json``/``profile.json``/
+         *     ``preview.json`` (15 min, HTTP Range works).
+         */
         get: operations["get_dataset_artifact"];
         put?: never;
         post?: never;
@@ -278,50 +254,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/specs:validate": {
+    "/v1/datasets/{dataset_id}/versions/{version}/{view}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /** Synchronous static validation (issues at JSON pointers, per-stage schemas) */
-        post: operations["validate_spec"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/specs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List specs */
-        get: operations["list_specs"];
-        put?: never;
-        /** Create a spec with revision 1 */
-        post: operations["create_spec"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/specs/{spec_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a spec */
-        get: operations["get_spec"];
+        /**
+         * Redirect Dataset View
+         * @description ``…/preview``, ``…/schema``, ``…/profile``, ``…/summary``: 307 to the signed URL.
+         */
+        get: operations["redirect_dataset_view"];
         put?: never;
         post?: never;
         delete?: never;
@@ -330,33 +274,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/specs/{spec_id}/revisions": {
+    "/v1/me": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List revisions */
-        get: operations["list_spec_revisions"];
-        put?: never;
-        /** Add an immutable revision (409 if parent_revision is stale) */
-        post: operations["create_spec_revision"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/specs/{spec_id}/revisions/{revision}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get one revision */
-        get: operations["get_spec_revision"];
+        /**
+         * Me
+         * @description M1 has no authentication: every caller is the local default principal.
+         */
+        get: operations["get_me"];
         put?: never;
         post?: never;
         delete?: never;
@@ -365,7 +294,154 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/specs/{spec_id}/revisions/{revision}:dry-run": {
+    "/v1/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Models */
+        get: operations["list_models"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models/{model_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Model */
+        get: operations["get_model"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models/{model_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Model Versions */
+        get: operations["list_model_versions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models/{model_id}/versions/{version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Model Version */
+        get: operations["get_model_version"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models/{model_id}/versions/{version}/artifacts/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Model Artifact
+         * @description Signed URL for a bundle object or ``ui/…`` view, minted only after the signed bundle
+         *     manifest verifies (``INTEGRITY_FAILURE`` otherwise).
+         */
+        get: operations["get_model_artifact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models/{model_id}/versions/{version}/plots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plots */
+        get: operations["list_plots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models/{model_id}/versions/{version}/plots/{plot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plot
+         * @description A sanitized PlotSpec — render it only in the plot-sandbox origin. The manifest is
+         *     verified first, and the stored spec is re-sanitized on the way out.
+         */
+        get: operations["get_plot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models/{model_id}/versions/{version}/ui/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Redirect Model Ui
+         * @description Precomputed ``ui/`` views (summaries, thin draws, grids): 307 to a signed URL.
+         */
+        get: operations["redirect_model_ui"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models/{model_id}/versions/{version}:evaluate": {
         parameters: {
             query?: never;
             header?: never;
@@ -374,8 +450,84 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sandboxed dry-run (a 'validate' run) */
-        post: operations["dry_run_spec"];
+        /** Evaluate Model */
+        post: operations["evaluate_model"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models/{model_id}/versions/{version}:score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Score Model
+         * @description Score with replayed preprocessing. ``Prefer: wait=N`` (≤ 60) waits up to N s:
+         *     200 with output links if the run finished, else 202 with the run.
+         */
+        post: operations["score_model"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate Plot
+         * @description Run the server-side plot sanitizer on a user-authored PlotSpec (200 even when it is
+         *     unsafe: the verdict is ``valid`` + ``issues``).
+         */
+        post: operations["validate_plot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Projects */
+        get: operations["list_projects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Project */
+        get: operations["get_project"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -389,10 +541,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List runs (filters: kind, state, spec_id) */
+        /** List Runs */
         get: operations["list_runs"];
         put?: never;
-        /** Submit a run (200 on idempotent replay) */
+        /** Create Run */
         post: operations["create_run"];
         delete?: never;
         options?: never;
@@ -407,7 +559,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a run */
+        /** Get Run */
         get: operations["get_run"];
         put?: never;
         post?: never;
@@ -424,7 +576,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** SSE stream (Accept: text/event-stream) or JSON page of persisted events */
+        /**
+         * Run Events
+         * @description ``Accept: text/event-stream`` → live SSE; anything else → a JSON page of events.
+         */
         get: operations["run_events"];
         put?: never;
         post?: never;
@@ -441,7 +596,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Captured log lines (untrusted text) */
+        /**
+         * Run Logs
+         * @description Captured lines, oldest first. ``line`` is untrusted text: render it as text only.
+         */
         get: operations["run_logs"];
         put?: never;
         post?: never;
@@ -460,7 +618,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Request cancellation (idempotent) */
+        /**
+         * Cancel Run
+         * @description Idempotent: ``cancelling``, or the terminal state if the run already finished.
+         */
         post: operations["cancel_run"];
         delete?: never;
         options?: never;
@@ -477,7 +638,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Resume a PARTIAL run */
+        /**
+         * Resume Run
+         * @description Re-queue a ``partial`` run from its checkpoints (new attempt).
+         */
         post: operations["resume_run"];
         delete?: never;
         options?: never;
@@ -494,7 +658,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** New run from a failed one */
+        /**
+         * Retry Run
+         * @description A *new* run from a failed one (optionally one resource class up or a new seed).
+         */
         post: operations["retry_run"];
         delete?: never;
         options?: never;
@@ -502,15 +669,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/models": {
+    "/v1/schemas/{name}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List models */
-        get: operations["list_models"];
+        /**
+         * Get Schema
+         * @description An exported JSON Schema, e.g. ``modelspec.json`` (drives Monaco and JSON Forms).
+         */
+        get: operations["get_schema"];
         put?: never;
         post?: never;
         delete?: never;
@@ -519,15 +689,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/models/{model_id}": {
+    "/v1/specs": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get a model */
-        get: operations["get_model"];
+        /** List Specs */
+        get: operations["list_specs"];
+        put?: never;
+        /**
+         * Create Spec
+         * @description Store revision 1 (invalid documents are stored too, with ``valid: false``).
+         */
+        post: operations["create_spec"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/specs/{spec_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Spec */
+        get: operations["get_spec"];
         put?: never;
         post?: never;
         delete?: never;
@@ -536,15 +727,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/models/{model_id}/versions": {
+    "/v1/specs/{spec_id}/revisions": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List versions */
-        get: operations["list_model_versions"];
+        /** List Spec Revisions */
+        get: operations["list_spec_revisions"];
+        put?: never;
+        /** Create Spec Revision */
+        post: operations["create_spec_revision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/specs/{spec_id}/revisions/{revision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Spec Revision */
+        get: operations["get_spec_revision"];
         put?: never;
         post?: never;
         delete?: never;
@@ -553,15 +762,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/models/{model_id}/versions/{version}": {
+    "/v1/specs/{spec_id}/revisions/{revision}/diff": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Signed manifest, diagnostics, scorecard, lineage, metrics */
-        get: operations["get_model_version"];
+        /**
+         * Diff Spec Revisions
+         * @description What changed from ``against`` (default: the previous revision) to ``revision``.
+         */
+        get: operations["diff_spec_revisions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -570,24 +782,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/models/{model_id}/versions/{version}/artifacts/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Signed URL for a bundle object or ui/ view (name may contain /) */
-        get: operations["get_model_artifact"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/models/{model_id}/versions/{version}:score": {
+    "/v1/specs/{spec_id}/revisions/{revision}:dry-run": {
         parameters: {
             query?: never;
             header?: never;
@@ -596,49 +791,18 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Score with replayed preprocessing (Prefer: wait=N → 200 if done, else 202) */
-        post: operations["score_model"];
+        /**
+         * Dry Run Spec
+         * @description Explicit sandboxed dry-run: the same as ``POST /v1/runs`` with ``kind: validate``.
+         */
+        post: operations["dry_run_spec"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/v1/models/{model_id}/versions/{version}/plots": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Plots of a model version */
-        get: operations["list_plots"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/models/{model_id}/versions/{version}/plots/{plot_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** A sanitized PlotSpec (render it in the plot sandbox origin) */
-        get: operations["get_plot"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/plots:validate": {
+    "/v1/specs:validate": {
         parameters: {
             query?: never;
             header?: never;
@@ -647,8 +811,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Run the plot sanitizer */
-        post: operations["validate_plot"];
+        /**
+         * Validate Spec
+         * @description 200 even for invalid documents: the verdict is ``valid`` + ``issues``.
+         */
+        post: operations["validate_spec"];
         delete?: never;
         options?: never;
         head?: never;
@@ -664,14 +831,14 @@ export interface components {
          * @description Reduce outputs over dims before summarising (validity depends on representation).
          */
         Aggregation: {
-            /** Over */
-            over: string[];
             /**
              * How
              * @default sum
              * @enum {string}
              */
             how?: "sum" | "mean" | "min" | "max";
+            /** Over */
+            over: string[];
         };
         /**
          * ArtifactLink
@@ -687,27 +854,7 @@ export interface components {
          *     }
          */
         ArtifactLink: {
-            /** Name */
-            name: string;
-            /** Url */
-            url: string;
-            /**
-             * Method
-             * @default GET
-             * @constant
-             */
-            method?: "GET";
-            /**
-             * Expires At
-             * Format: date-time
-             */
-            expires_at: string;
-            /** Size */
-            size: number;
-            /**
-             * Content Type
-             * @default null
-             */
+            /** Content Type */
             content_type?: string | null;
             /**
              * Crc32C
@@ -715,8 +862,25 @@ export interface components {
              * @example 4waSgw==
              */
             crc32c: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
             /** Generation */
             generation: number;
+            /**
+             * Method
+             * @default GET
+             * @constant
+             */
+            method?: "GET";
+            /** Name */
+            name: string;
+            /** Size */
+            size: number;
+            /** Url */
+            url: string;
         };
         /**
          * Binding
@@ -776,72 +940,62 @@ export interface components {
          *     }
          */
         BundleManifest: {
+            /** Attempt */
+            attempt: number;
+            /** Base Image */
+            base_image?: string | null;
+            /** Catalog Digest */
+            catalog_digest: string;
+            /** Data Hash */
+            data_hash?: string | null;
+            kind: components["schemas"]["RunKind"];
+            /** Model Id */
+            model_id: string;
+            /** Model Version */
+            model_version: number;
+            /** Objects */
+            objects?: {
+                [key: string]: components["schemas"]["BundleObject"];
+            };
+            /** Overlay Hash */
+            overlay_hash?: string | null;
+            /**
+             * Project Id
+             * @example default
+             */
+            project_id: string;
+            /** Run Id */
+            run_id: string;
             /**
              * Schema Version
              * @default mapi.bundle-manifest/v1
              * @constant
              */
             schema_version?: "mapi.bundle-manifest/v1";
+            signature?: components["schemas"]["ManifestSignature"] | null;
             /**
-             * Tenant Id
-             * @example default
+             * Signed At
+             * Format: date-time
              */
-            tenant_id: string;
-            /**
-             * Project Id
-             * @example default
-             */
-            project_id: string;
-            /** Model Id */
-            model_id: string;
-            /** Model Version */
-            model_version: number;
-            /** Run Id */
-            run_id: string;
-            /** Attempt */
-            attempt: number;
-            kind: components["schemas"]["RunKind"];
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "complete" | "partial";
-            /** Spec Hash */
-            spec_hash: string;
-            /**
-             * Data Hash
-             * @default null
-             */
-            data_hash?: string | null;
-            /** Catalog Digest */
-            catalog_digest: string;
-            /**
-             * Base Image
-             * @default null
-             */
-            base_image?: string | null;
-            /**
-             * Overlay Hash
-             * @default null
-             */
-            overlay_hash?: string | null;
-            /** Objects */
-            objects?: {
-                [key: string]: components["schemas"]["BundleObject"];
-            };
+            signed_at: string;
             /**
              * Source Manifest Crc32C
              * @description CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum
              * @example 4waSgw==
              */
             source_manifest_crc32c: string;
+            /** Spec Hash */
+            spec_hash: string;
             /**
-             * Signed At
-             * Format: date-time
+             * Status
+             * @enum {string}
              */
-            signed_at: string;
-            /** @default null */
-            signature?: components["schemas"]["ManifestSignature"] | null;
+            status: "complete" | "partial";
+            /**
+             * Tenant Id
+             * @example default
+             */
+            tenant_id: string;
         };
         /**
          * BundleObject
@@ -850,28 +1004,25 @@ export interface components {
         BundleObject: {
             /** Bucket */
             bucket: string;
-            /** Key */
-            key: string;
-            /** Generation */
-            generation: number;
-            /** Size */
-            size: number;
+            /** Content Type */
+            content_type?: string | null;
             /**
              * Crc32C
              * @description CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum
              * @example 4waSgw==
              */
             crc32c: string;
+            /** Generation */
+            generation: number;
+            /** Key */
+            key: string;
             /**
              * Md5
              * @description MD5 as GCS reports it: base64 of the 16-byte digest
              */
             md5: string;
-            /**
-             * Content Type
-             * @default null
-             */
-            content_type?: string | null;
+            /** Size */
+            size: number;
         };
         /**
          * Capabilities
@@ -879,23 +1030,26 @@ export interface components {
          */
         Capabilities: {
             /**
-             * Inference
+             * Checkpointable
+             * @default false
+             */
+            checkpointable?: boolean;
+            /**
+             * Contribution Scale
+             * @default none
              * @enum {string}
              */
-            inference: "mcmc" | "vi" | "map" | "smc" | "kalman" | "point" | "bootstrap" | "custom";
-            representation: components["schemas"]["Representation"];
-            /** Score Modes */
-            score_modes: unknown[];
+            contribution_scale?: "additive" | "multiplicative" | "none";
             /**
              * Decision
              * @default false
              */
             decision?: boolean;
             /**
-             * Recommend
-             * @default false
+             * Deterministic Given Seed
+             * @default true
              */
-            recommend?: boolean;
+            deterministic_given_seed?: boolean;
             /**
              * Evidence
              * @default false
@@ -906,39 +1060,33 @@ export interface components {
              * @default false
              */
             fast_score?: boolean;
+            /** Identified Quantities */
+            identified_quantities?: string[];
             /**
-             * Contribution Scale
-             * @default none
+             * Inference
              * @enum {string}
              */
-            contribution_scale?: "additive" | "multiplicative" | "none";
+            inference: "mcmc" | "vi" | "map" | "smc" | "kalman" | "point" | "bootstrap" | "custom";
+            /** Loo Invalid Reason */
+            loo_invalid_reason?: string | null;
             /**
              * Loo Valid
              * @default true
              */
             loo_valid?: boolean;
             /**
-             * Loo Invalid Reason
-             * @default null
-             */
-            loo_invalid_reason?: string | null;
-            /** Identified Quantities */
-            identified_quantities?: string[];
-            /**
              * Owns
              * @default []
              */
             owns?: unknown[];
             /**
-             * Deterministic Given Seed
-             * @default true
-             */
-            deterministic_given_seed?: boolean;
-            /**
-             * Checkpointable
+             * Recommend
              * @default false
              */
-            checkpointable?: boolean;
+            recommend?: boolean;
+            representation: components["schemas"]["Representation"];
+            /** Score Modes */
+            score_modes: unknown[];
         };
         /**
          * CatalogResponse
@@ -966,17 +1114,14 @@ export interface components {
         CatalogResponse: {
             /** Digest */
             digest: string;
+            /** Generated At */
+            generated_at?: string | null;
             /** Models */
             models?: components["schemas"]["ModelCatalogEntry"][];
-            /** Steps */
-            steps?: components["schemas"]["StepCatalogEntry"][];
             /** Plots */
             plots?: components["schemas"]["PlotCatalogEntry"][];
-            /**
-             * Generated At
-             * @default null
-             */
-            generated_at?: string | null;
+            /** Steps */
+            steps?: components["schemas"]["StepCatalogEntry"][];
         };
         /**
          * ChainProgress
@@ -985,6 +1130,11 @@ export interface components {
         ChainProgress: {
             /** Chain */
             chain: number;
+            /**
+             * Divergences
+             * @default 0
+             */
+            divergences?: number;
             /** Draws Done */
             draws_done: number;
             /** Draws Total */
@@ -994,11 +1144,6 @@ export interface components {
              * @default false
              */
             tuning?: boolean;
-            /**
-             * Divergences
-             * @default 0
-             */
-            divergences?: number;
         };
         /**
          * CheckpointPayload
@@ -1006,25 +1151,25 @@ export interface components {
          */
         CheckpointPayload: {
             /**
-             * Name
-             * @description Object name relative to the checkpoint prefix
-             */
-            name: string;
-            /** Size */
-            size: number;
-            /**
              * Crc32C
              * @description CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum
              * @example 4waSgw==
              */
             crc32c: string;
-            /** Segment */
-            segment: number;
             /**
              * Draws Done
              * @default null
              */
             draws_done?: number | null;
+            /**
+             * Name
+             * @description Object name relative to the checkpoint prefix
+             */
+            name: string;
+            /** Segment */
+            segment: number;
+            /** Size */
+            size: number;
         };
         /**
          * CompletePayload
@@ -1032,23 +1177,23 @@ export interface components {
          */
         CompletePayload: {
             /**
-             * Status
-             * @enum {string}
-             */
-            status: "complete" | "partial";
-            /**
-             * Manifest Name
-             * @description Object name of manifest.json
-             */
-            manifest_name: string;
-            /**
              * Manifest Crc32C
              * @description CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum
              * @example 4waSgw==
              */
             manifest_crc32c: string;
+            /**
+             * Manifest Name
+             * @description Object name of manifest.json
+             */
+            manifest_name: string;
             /** Objects */
             objects: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "complete" | "partial";
             /** Total Bytes */
             total_bytes: number;
         };
@@ -1062,15 +1207,12 @@ export interface components {
         ContextNeed: {
             /** Along */
             along: string;
+            /** Min Lag */
+            min_lag?: number | null;
             /** N */
             n: number;
             /** Within */
             within?: string[];
-            /**
-             * Min Lag
-             * @default null
-             */
-            min_lag?: number | null;
         };
         /**
          * CoordSummary
@@ -1082,48 +1224,41 @@ export interface components {
          */
         CoordSummary: {
             /**
+             * Contiguous
+             * @default true
+             */
+            contiguous?: boolean;
+            /** End */
+            end?: string | number | boolean | null;
+            /** Freq */
+            freq?: string | null;
+            /**
              * Kind
              * @enum {string}
              */
             kind: "categorical" | "time" | "integer" | "float" | "index";
             /** Size */
             size: number;
-            /**
-             * Values
-             * @default null
-             */
-            values?: (string | number | boolean)[] | null;
-            /**
-             * Start
-             * @default null
-             */
+            /** Start */
             start?: string | number | boolean | null;
-            /**
-             * End
-             * @default null
-             */
-            end?: string | number | boolean | null;
-            /**
-             * Freq
-             * @default null
-             */
-            freq?: string | null;
-            /**
-             * Step
-             * @default null
-             */
+            /** Step */
             step?: number | null;
-            /**
-             * Contiguous
-             * @default true
-             */
-            contiguous?: boolean;
+            /** Values */
+            values?: (string | number | boolean)[] | null;
         };
         /**
          * DataRef
          * @description A dataset stored next to the bundle (path relative to the bundle root).
          */
         DataRef: {
+            /** Crc32C */
+            crc32c?: string | null;
+            /**
+             * Format
+             * @default arrow
+             * @enum {string}
+             */
+            format?: "arrow" | "json";
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -1134,44 +1269,30 @@ export interface components {
              * @example ui/plotdata/contrib.arrow
              */
             path: string;
-            /**
-             * Format
-             * @default arrow
-             * @enum {string}
-             */
-            format?: "arrow" | "json";
-            /**
-             * Size
-             * @default null
-             */
+            /** Size */
             size?: number | null;
-            /**
-             * Crc32C
-             * @default null
-             */
-            crc32c?: string | null;
         };
         /**
          * DataSchema
          * @description Schema of an ``xr.Dataset``: dims, variables, layout and ragged structure.
          */
         DataSchema: {
+            /** Dims */
+            dims?: {
+                [key: string]: components["schemas"]["DimSpec"];
+            };
             /**
              * Layout
              * @default dense
              * @enum {string}
              */
             layout?: "dense" | "long";
-            /** Dims */
-            dims?: {
-                [key: string]: components["schemas"]["DimSpec"];
-            };
+            /** Ragged */
+            ragged?: components["schemas"]["RaggedSpec"][];
             /** Vars */
             vars?: {
                 [key: string]: components["schemas"]["VarSpec"];
             };
-            /** Ragged */
-            ragged?: components["schemas"]["RaggedSpec"][];
         };
         /**
          * DataSchemaTemplate
@@ -1183,6 +1304,8 @@ export interface components {
          *     validates the result as a :class:`DataSchema`.
          */
         DataSchemaTemplate: {
+            /** Cases */
+            cases?: components["schemas"]["TemplateCase"][];
             /** Params */
             params?: {
                 [key: string]: components["schemas"]["TemplateParam"];
@@ -1191,20 +1314,18 @@ export interface components {
             template: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
-            /** Cases */
-            cases?: components["schemas"]["TemplateCase"][];
         };
         /**
          * DataSummary
          * @description Summary of a dataset (or score payload): variable names and coordinate summaries.
          */
         DataSummary: {
-            /** Vars */
-            vars?: string[];
             /** Coords */
             coords?: {
                 [key: string]: components["schemas"]["CoordSummary"];
             };
+            /** Vars */
+            vars?: string[];
         };
         /**
          * Dataset
@@ -1221,40 +1342,34 @@ export interface components {
          */
         Dataset: {
             /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description?: string | null;
+            /**
              * Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             id: string;
-            /** Tenant Id */
-            tenant_id: string;
-            /** Project Id */
-            project_id: string;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Latest Version */
+            latest_version?: number | null;
             /** Name */
             name: string;
+            /** Project Id */
+            project_id: string;
             /**
              * Ref
              * @description dataset://project/name (append @vN to pin)
              */
             ref: string;
-            /**
-             * Description
-             * @default null
-             */
-            description?: string | null;
-            /** Labels */
-            labels?: {
-                [key: string]: string;
-            };
-            /**
-             * Latest Version
-             * @default null
-             */
-            latest_version?: number | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
+            /** Tenant Id */
+            tenant_id: string;
             /**
              * Updated At
              * Format: date-time
@@ -1270,17 +1385,14 @@ export interface components {
          *     }
          */
         DatasetCreate: {
-            /** Name */
-            name: string;
-            /**
-             * Description
-             * @default null
-             */
+            /** Description */
             description?: string | null;
             /** Labels */
             labels?: {
                 [key: string]: string;
             };
+            /** Name */
+            name: string;
         };
         /**
          * DatasetVersion
@@ -1344,62 +1456,43 @@ export interface components {
          */
         DatasetVersion: {
             /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            data_schema?: components["schemas"]["DataSchema"] | null;
+            /**
              * Dataset Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             dataset_id: string;
-            /** Tenant Id */
-            tenant_id: string;
+            /** Ingest Run Id */
+            ingest_run_id?: string | null;
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /** Message */
+            message?: string | null;
+            preview?: components["schemas"]["ObjectRef"] | null;
+            profile?: components["schemas"]["ObjectRef"] | null;
             /** Project Id */
             project_id: string;
-            /** Version */
-            version: number;
+            /** Ready At */
+            ready_at?: string | null;
             /**
              * Ref
              * @description dataset://project/name@vN
              */
             ref: string;
-            status: components["schemas"]["DatasetVersionStatus"];
-            /**
-             * Sha256
-             * @default null
-             */
+            /** Sha256 */
             sha256?: string | null;
-            /**
-             * Size Bytes
-             * @default null
-             */
+            /** Size Bytes */
             size_bytes?: number | null;
-            /** @default null */
-            data_schema?: components["schemas"]["DataSchema"] | null;
-            /** @default null */
+            status: components["schemas"]["DatasetVersionStatus"];
             summary?: components["schemas"]["DataSummary"] | null;
-            /** @default null */
-            profile?: components["schemas"]["ObjectRef"] | null;
-            /** @default null */
-            preview?: components["schemas"]["ObjectRef"] | null;
-            /**
-             * Ingest Run Id
-             * @default null
-             */
-            ingest_run_id?: string | null;
-            /** Issues */
-            issues?: components["schemas"]["Issue"][];
-            /**
-             * Message
-             * @default null
-             */
-            message?: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Ready At
-             * @default null
-             */
-            ready_at?: string | null;
+            /** Tenant Id */
+            tenant_id: string;
+            /** Version */
+            version: number;
         };
         /**
          * DatasetVersionCreate
@@ -1441,17 +1534,14 @@ export interface components {
          *     }
          */
         DatasetVersionCreate: {
+            mapping: components["schemas"]["IngestMapping"];
+            /** Message */
+            message?: string | null;
             /**
              * Upload Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             upload_id: string;
-            mapping: components["schemas"]["IngestMapping"];
-            /**
-             * Message
-             * @default null
-             */
-            message?: string | null;
         };
         /**
          * DatasetVersionStatus
@@ -1463,26 +1553,20 @@ export interface components {
          * @description A derived quantity (contributions, response curves, ...).
          */
         DerivedDecl: {
-            /** Name */
-            name: string;
-            /** Dims */
-            dims: string[];
-            /**
-             * Units
-             * @default null
-             */
-            units?: string | null;
             /**
              * Cache
              * @default on_demand
              * @enum {string}
              */
             cache?: "fit" | "on_demand";
-            /**
-             * Description
-             * @default null
-             */
+            /** Description */
             description?: string | null;
+            /** Dims */
+            dims: string[];
+            /** Name */
+            name: string;
+            /** Units */
+            units?: string | null;
         };
         /**
          * Diagnostic
@@ -1491,45 +1575,44 @@ export interface components {
         Diagnostic: {
             /** Code */
             code: string;
+            /** Coords */
+            coords?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Message Expert */
+            message_expert: string;
+            /** Message Plain */
+            message_plain: string;
+            /** Metric */
+            metric?: string | null;
             /**
              * Severity
              * @default warning
              * @enum {string}
              */
             severity?: "info" | "warning" | "error";
-            /**
-             * Metric
-             * @default null
-             */
-            metric?: string | null;
-            /**
-             * Value
-             * @default null
-             */
-            value?: number | null;
-            /**
-             * Threshold
-             * @default null
-             */
-            threshold?: number | null;
-            /** Message Expert */
-            message_expert: string;
-            /** Message Plain */
-            message_plain: string;
-            /**
-             * Suggested Action
-             * @default null
-             */
+            /** Suggested Action */
             suggested_action?: string | null;
-            /**
-             * Var
-             * @default null
-             */
+            /** Threshold */
+            threshold?: number | null;
+            /** Value */
+            value?: number | null;
+            /** Var */
             var?: string | null;
-            /** Coords */
-            coords?: {
-                [key: string]: components["schemas"]["JsonValue"];
-            };
+        };
+        /** DiffEntry */
+        DiffEntry: {
+            /** New */
+            new?: unknown;
+            /** Old */
+            old?: unknown;
+            /** Op */
+            op: string;
+            /**
+             * Path
+             * @description RFC 6901 pointer into the documents
+             */
+            path: string;
         };
         /**
          * DimMapping
@@ -1559,28 +1642,21 @@ export interface components {
          * @description A dimension and its score-time policy.
          */
         DimSpec: {
+            /** Description */
+            description?: string | null;
+            /**
+             * Freq
+             * @description Pandas-style frequency, e.g. 'W-SUN'
+             */
+            freq?: string | null;
             /**
              * Kind
              * @enum {string}
              */
             kind: "categorical" | "time" | "integer" | "float" | "index";
-            /** @default fixed */
-            policy?: components["schemas"]["DimPolicy"];
-            /**
-             * Ordered
-             * @default false
-             */
-            ordered?: boolean;
-            /**
-             * Freq
-             * @description Pandas-style frequency, e.g. 'W-SUN'
-             * @default null
-             */
-            freq?: string | null;
             /**
              * Max Extension
              * @description Periods allowed past the fit
-             * @default null
              */
             max_extension?: number | null;
             /**
@@ -1590,10 +1666,12 @@ export interface components {
              */
             new_level_strategy?: "error" | "hyperprior" | "pooled" | "zero";
             /**
-             * Description
-             * @default null
+             * Ordered
+             * @default false
              */
-            description?: string | null;
+            ordered?: boolean;
+            /** @default fixed */
+            policy?: components["schemas"]["DimPolicy"];
         };
         /**
          * ErrorCode
@@ -1617,11 +1695,30 @@ export interface components {
             untrusted_text?: string | null;
         };
         /**
+         * EvaluateCall
+         * @description Body of ``…:evaluate`` (holdout metrics through the score path).
+         */
+        EvaluateCall: {
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Params */
+            params?: {
+                [key: string]: unknown;
+            };
+        };
+        /**
          * FailureClass
          * @description Why a run ended ``FAILED``; each maps to one stable :class:`ErrorCode`.
          * @enum {string}
          */
         FailureClass: "user" | "resource_exhausted" | "infra" | "integrity" | "timeout" | "sandbox";
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
         /**
          * Health
          * @description ``/healthz`` (process liveness) and ``/readyz`` (dependencies) body.
@@ -1644,18 +1741,6 @@ export interface components {
          */
         Health: {
             /**
-             * Status
-             * @enum {string}
-             */
-            status: "ok" | "degraded" | "fail";
-            /** Version */
-            version: string;
-            /**
-             * Contract Version
-             * @default 0.1
-             */
-            contract_version?: string;
-            /**
              * Api Version
              * @default v1
              * @constant
@@ -1665,6 +1750,18 @@ export interface components {
             checks?: {
                 [key: string]: components["schemas"]["HealthCheck"];
             };
+            /**
+             * Contract Version
+             * @default 0.1
+             */
+            contract_version?: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "degraded" | "fail";
+            /** Version */
+            version: string;
         };
         /**
          * HealthCheck
@@ -1674,21 +1771,15 @@ export interface components {
          *     }
          */
         HealthCheck: {
+            /** Detail */
+            detail?: string | null;
+            /** Latency Ms */
+            latency_ms?: number | null;
             /**
              * Status
              * @enum {string}
              */
             status: "ok" | "degraded" | "fail";
-            /**
-             * Detail
-             * @default null
-             */
-            detail?: string | null;
-            /**
-             * Latency Ms
-             * @default null
-             */
-            latency_ms?: number | null;
         };
         /** Horizon */
         Horizon: {
@@ -1736,6 +1827,10 @@ export interface components {
          *     }
          */
         IngestMapping: {
+            /** Dims */
+            dims?: {
+                [key: string]: components["schemas"]["DimMapping"];
+            };
             /**
              * Format
              * @enum {string}
@@ -1747,31 +1842,33 @@ export interface components {
              * @enum {string}
              */
             layout?: "dense" | "long";
-            /** Dims */
-            dims?: {
-                [key: string]: components["schemas"]["DimMapping"];
-            };
             /** Vars */
             vars?: {
                 [key: string]: components["schemas"]["VarMapping"];
             };
         };
+        /** IngestResponse */
+        IngestResponse: {
+            result: components["schemas"]["IngestResult"];
+        };
+        /**
+         * IngestResult
+         * @enum {string}
+         */
+        IngestResult: "accepted" | "duplicate" | "bad_hmac" | "invalid" | "unknown_attempt" | "stale_attempt" | "late" | "identity_mismatch";
         /**
          * InlineArrow
          * @description A small Arrow IPC stream embedded as base64.
          */
         InlineArrow: {
+            /** Data */
+            data: string;
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
             kind: "inline_arrow";
-            /** Data */
-            data: string;
-            /**
-             * Rows
-             * @default null
-             */
+            /** Rows */
             rows?: number | null;
         };
         /**
@@ -1779,27 +1876,18 @@ export interface components {
          * @description Change ``var`` on the coords selected by ``sel``: exactly one of multiply/add/set.
          */
         Intervention: {
-            /** Var */
-            var: string;
+            /** Add */
+            add?: number | null;
+            /** Multiply */
+            multiply?: number | null;
             /** Sel */
             sel?: {
                 [key: string]: string | number | boolean | (string | number | boolean)[];
             };
-            /**
-             * Multiply
-             * @default null
-             */
-            multiply?: number | null;
-            /**
-             * Add
-             * @default null
-             */
-            add?: number | null;
-            /**
-             * Set
-             * @default null
-             */
+            /** Set */
             set?: number | null;
+            /** Var */
+            var: string;
         };
         /**
          * Issue
@@ -1807,34 +1895,30 @@ export interface components {
          */
         Issue: {
             code: components["schemas"]["ErrorCode"];
-            /** @default error */
-            severity?: components["schemas"]["Severity"];
-            /**
-             * Pointer
-             * @description RFC 6901 JSON pointer into the submitted document
-             * @default
-             */
-            pointer?: string;
+            /** Context */
+            context?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
             /**
              * Message
              * @description Trusted, platform-authored text
              */
             message: string;
             /**
-             * Suggested Action
-             * @default null
+             * Pointer
+             * @description RFC 6901 JSON pointer into the submitted document
+             * @default
              */
+            pointer?: string;
+            /** @default error */
+            severity?: components["schemas"]["Severity"];
+            /** Suggested Action */
             suggested_action?: string | null;
             /**
              * Untrusted Text
              * @description User/plugin-originated text; render as text only
-             * @default null
              */
             untrusted_text?: string | null;
-            /** Context */
-            context?: {
-                [key: string]: components["schemas"]["JsonValue"];
-            };
         };
         JsonValue: unknown;
         /**
@@ -1857,72 +1941,48 @@ export interface components {
          *     }
          */
         Lineage: {
+            /** Attempt */
+            attempt: number;
+            /** Base Image */
+            base_image?: string | null;
+            /** Catalog Digest */
+            catalog_digest?: string | null;
+            /** Dataset Sha */
+            dataset_sha?: string | null;
+            /** Engine */
+            engine?: string | null;
+            /**
+             * Evaluation Of
+             * @description evaluate_then_refit: the evaluation model version this refit pairs
+             */
+            evaluation_of?: string | null;
+            /** Executor */
+            executor?: string | null;
+            /** Lib Versions */
+            lib_versions?: {
+                [key: string]: string;
+            };
+            /** Overlay Hash */
+            overlay_hash?: string | null;
+            /**
+             * Plugin
+             * @example mmm.hierarchical_geo@1.3.2
+             */
+            plugin?: string | null;
+            resource_class?: components["schemas"]["ResourceClass"] | null;
             /**
              * Run Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             run_id: string;
-            /** Attempt */
-            attempt: number;
-            /** Spec Hash */
-            spec_hash: string;
-            /**
-             * Dataset Sha
-             * @default null
-             */
-            dataset_sha?: string | null;
+            /** Seed */
+            seed?: number | null;
             /** Side Tables */
             side_tables?: {
                 [key: string]: string;
             };
-            /**
-             * Plugin
-             * @default null
-             * @example mmm.hierarchical_geo@1.3.2
-             */
-            plugin?: string | null;
-            /**
-             * Base Image
-             * @default null
-             */
-            base_image?: string | null;
-            /**
-             * Overlay Hash
-             * @default null
-             */
-            overlay_hash?: string | null;
-            /**
-             * Catalog Digest
-             * @default null
-             */
-            catalog_digest?: string | null;
-            /**
-             * Seed
-             * @default null
-             */
-            seed?: number | null;
-            /**
-             * Engine
-             * @default null
-             */
-            engine?: string | null;
-            /**
-             * Executor
-             * @default null
-             */
-            executor?: string | null;
-            /** @default null */
-            resource_class?: components["schemas"]["ResourceClass"] | null;
-            /** Lib Versions */
-            lib_versions?: {
-                [key: string]: string;
-            };
-            /**
-             * Evaluation Of
-             * @description evaluate_then_refit: the evaluation model version this refit pairs
-             * @default null
-             */
-            evaluation_of?: string | null;
+            /** Spec Hash */
+            spec_hash: string;
         };
         /**
          * LogLine
@@ -1937,45 +1997,45 @@ export interface components {
          *     }
          */
         LogLine: {
+            /** Attempt */
+            attempt: number;
+            /** Line */
+            line: string;
             /**
              * Run Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             run_id: string;
-            /** Attempt */
-            attempt: number;
             /** Seq */
             seq: number;
-            /**
-             * Ts
-             * Format: date-time
-             */
-            ts: string;
             /**
              * Stream
              * @enum {string}
              */
             stream: "stdout" | "stderr" | "system";
-            /** Line */
-            line: string;
             /**
              * Truncated
              * @default false
              */
             truncated?: boolean;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
         };
         /**
          * LogPayload
          * @description ``log``: one captured worker output line (ANSI/control sequences already stripped).
          */
         LogPayload: {
+            /** Line */
+            line: string;
             /**
              * Stream
              * @enum {string}
              */
             stream: "stdout" | "stderr" | "system";
-            /** Line */
-            line: string;
             /**
              * Truncated
              * @default false
@@ -2001,23 +2061,43 @@ export interface components {
             value: string;
         };
         /**
+         * Me
+         * @description The calling identity (M1: the local, unauthenticated default principal).
+         */
+        Me: {
+            /**
+             * Auth
+             * @default none
+             * @enum {string}
+             */
+            auth?: "none" | "oidc" | "token";
+            /** Project Ids */
+            project_ids: string[];
+            /** Scopes */
+            scopes?: string[];
+            /** Subject */
+            subject: string;
+            /** Tenant Id */
+            tenant_id: string;
+        };
+        /**
          * MetricPayload
          * @description ``metric``: a scalar metric (holdout error, elpd, ...).
          */
         MetricPayload: {
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
             /** Name */
             name: string;
-            /** Value */
-            value: number;
             /**
              * Step
              * @default null
              */
             step?: number | null;
-            /** Labels */
-            labels?: {
-                [key: string]: string;
-            };
+            /** Value */
+            value: number;
         };
         /**
          * Model
@@ -2035,31 +2115,28 @@ export interface components {
          */
         Model: {
             /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
              * Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             id: string;
-            /** Tenant Id */
-            tenant_id: string;
-            /** Project Id */
-            project_id: string;
+            /** Latest Version */
+            latest_version?: number | null;
             /** Name */
             name: string;
+            /** Project Id */
+            project_id: string;
             /**
              * Ref
              * @description model://project/name (append @vN or @latest)
              */
             ref: string;
-            /**
-             * Latest Version
-             * @default null
-             */
-            latest_version?: number | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
+            /** Tenant Id */
+            tenant_id: string;
             /**
              * Updated At
              * Format: date-time
@@ -2071,17 +2148,13 @@ export interface components {
          * @description A model plugin version: its manifest plus registry metadata.
          */
         ModelCatalogEntry: {
-            manifest: components["schemas"]["ModelManifest"];
             /**
              * Base Image
-             * @default null
              * @example base-bayes@2026.10
              */
             base_image?: string | null;
-            /**
-             * Overlay Hash
-             * @default null
-             */
+            manifest: components["schemas"]["ModelManifest"];
+            /** Overlay Hash */
             overlay_hash?: string | null;
             /**
              * Yanked
@@ -2094,39 +2167,36 @@ export interface components {
          * @description Everything the control plane knows about a model plugin version (static JSON).
          */
         ModelManifest: {
-            /** Id */
-            id: string;
-            /** Version */
-            version: string;
-            capabilities: components["schemas"]["Capabilities"];
-            schema_template: components["schemas"]["DataSchemaTemplate"];
-            /** Settings Schema */
-            settings_schema?: {
-                [key: string]: components["schemas"]["JsonValue"];
-            };
-            /** Fit Schema */
-            fit_schema?: {
-                [key: string]: components["schemas"]["JsonValue"];
-            };
-            /** Outputs */
-            outputs?: {
-                [key: string]: components["schemas"]["OutputDecl"];
-            };
-            /** Derived */
-            derived?: components["schemas"]["DerivedDecl"][];
-            /** Plots */
-            plots?: string[];
-            resources?: components["schemas"]["ResourceHint"];
             /**
              * Artifact Format
              * @default zarr.zip/v1
              */
             artifact_format?: string;
-            /**
-             * Description
-             * @default null
-             */
+            capabilities: components["schemas"]["Capabilities"];
+            /** Derived */
+            derived?: components["schemas"]["DerivedDecl"][];
+            /** Description */
             description?: string | null;
+            /** Fit Schema */
+            fit_schema?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Id */
+            id: string;
+            /** Outputs */
+            outputs?: {
+                [key: string]: components["schemas"]["OutputDecl"];
+            };
+            /** Plots */
+            plots?: string[];
+            resources?: components["schemas"]["ResourceHint"];
+            schema_template: components["schemas"]["DataSchemaTemplate"];
+            /** Settings Schema */
+            settings_schema?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Version */
+            version: string;
         };
         /**
          * ModelVersion
@@ -2239,58 +2309,56 @@ export interface components {
          *     }
          */
         ModelVersion: {
+            /** Artifacts */
+            artifacts?: components["schemas"]["ObjectRef"][];
+            capabilities?: components["schemas"]["Capabilities"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Diagnostics */
+            diagnostics?: components["schemas"]["Diagnostic"][];
             /**
              * Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             id: string;
+            lineage: components["schemas"]["Lineage"];
+            manifest: components["schemas"]["BundleManifest"];
+            /** Metrics */
+            metrics?: {
+                [key: string]: number;
+            };
             /**
              * Model Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             model_id: string;
-            /** Tenant Id */
-            tenant_id: string;
             /** Project Id */
             project_id: string;
-            /** Version */
-            version: number;
             /**
              * Ref
              * @description model://project/name@vN
              */
             ref: string;
             /**
-             * Status
-             * @enum {string}
-             */
-            status: "ready" | "partial";
-            /**
              * Run Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             run_id: string;
+            scorecard?: components["schemas"]["Scorecard"] | null;
             /** Spec Hash */
             spec_hash: string;
-            manifest: components["schemas"]["BundleManifest"];
-            /** @default null */
-            capabilities?: components["schemas"]["Capabilities"] | null;
-            /** Diagnostics */
-            diagnostics?: components["schemas"]["Diagnostic"][];
-            /** @default null */
-            scorecard?: components["schemas"]["Scorecard"] | null;
-            lineage: components["schemas"]["Lineage"];
-            /** Metrics */
-            metrics?: {
-                [key: string]: number;
-            };
-            /** Artifacts */
-            artifacts?: components["schemas"]["ObjectRef"][];
             /**
-             * Created At
-             * Format: date-time
+             * Status
+             * @enum {string}
              */
-            created_at: string;
+            status: "ready" | "partial";
+            /** Tenant Id */
+            tenant_id: string;
+            /** Version */
+            version: number;
         };
         /**
          * ObjectRef
@@ -2302,6 +2370,10 @@ export interface components {
          *     }
          */
         ObjectRef: {
+            /** Content Type */
+            content_type?: string | null;
+            /** Crc32C */
+            crc32c?: string | null;
             /**
              * Name
              * @example preview.json
@@ -2309,52 +2381,40 @@ export interface components {
             name: string;
             /** Size */
             size: number;
-            /**
-             * Content Type
-             * @default null
-             */
-            content_type?: string | null;
-            /**
-             * Crc32C
-             * @default null
-             */
-            crc32c?: string | null;
         };
         /**
          * OutputDecl
          * @description An output variable the model writes (e.g. ``y_hat``).
          */
         OutputDecl: {
+            /** Description */
+            description?: string | null;
             /** Dims */
             dims: string[];
             /**
              * Dims Of
              * @description The output also carries every dim of this input variable (e.g. 'y' for models whose data dims come from settings, such as the sklearn row dims)
-             * @default null
              */
             dims_of?: string | null;
+            /** Units */
+            units?: string | null;
             /**
              * Units Of
              * @description Take units from this input variable
-             * @default null
              */
             units_of?: string | null;
-            /**
-             * Units
-             * @default null
-             */
-            units?: string | null;
-            /**
-             * Description
-             * @default null
-             */
-            description?: string | null;
         };
         /**
          * OutputSelector
          * @description What a score request returns.
          */
         OutputSelector: {
+            aggregate?: components["schemas"]["Aggregation"] | null;
+            /**
+             * Draws
+             * @default 0
+             */
+            draws?: number;
             /**
              * Kind
              * @default expected
@@ -2362,16 +2422,16 @@ export interface components {
              */
             kind?: "expected" | "predictive";
             /**
+             * Names
+             * @default dataset
+             * @enum {string}
+             */
+            names?: "dataset" | "canonical";
+            /**
              * Summary
              * @description Summaries to return; default depends on representation
-             * @default null
              */
             summary?: string[] | null;
-            /**
-             * Draws
-             * @default 0
-             */
-            draws?: number;
             /**
              * Thin Index
              * @default bundle
@@ -2384,14 +2444,6 @@ export interface components {
              * @enum {string}
              */
             units?: "original" | "model";
-            /**
-             * Names
-             * @default dataset
-             * @enum {string}
-             */
-            names?: "dataset" | "canonical";
-            /** @default null */
-            aggregate?: components["schemas"]["Aggregation"] | null;
             /** Vars */
             vars?: string[];
         };
@@ -2405,10 +2457,7 @@ export interface components {
         Page_DatasetVersion_: {
             /** Items */
             items: components["schemas"]["DatasetVersion"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2421,10 +2470,7 @@ export interface components {
         Page_Dataset_: {
             /** Items */
             items: components["schemas"]["Dataset"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2437,10 +2483,7 @@ export interface components {
         Page_LogLine_: {
             /** Items */
             items: components["schemas"]["LogLine"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2453,10 +2496,7 @@ export interface components {
         Page_ModelCatalogEntry_: {
             /** Items */
             items: components["schemas"]["ModelCatalogEntry"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2469,10 +2509,7 @@ export interface components {
         Page_ModelVersion_: {
             /** Items */
             items: components["schemas"]["ModelVersion"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2485,10 +2522,7 @@ export interface components {
         Page_Model_: {
             /** Items */
             items: components["schemas"]["Model"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2501,10 +2535,7 @@ export interface components {
         Page_PlotCatalogEntry_: {
             /** Items */
             items: components["schemas"]["PlotCatalogEntry"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2517,10 +2548,7 @@ export interface components {
         Page_PlotListItem_: {
             /** Items */
             items: components["schemas"]["PlotListItem"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2533,10 +2561,7 @@ export interface components {
         Page_Project_: {
             /** Items */
             items: components["schemas"]["Project"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2549,10 +2574,7 @@ export interface components {
         Page_RunEventView_: {
             /** Items */
             items: components["schemas"]["RunEventView"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2565,10 +2587,7 @@ export interface components {
         Page_Run_: {
             /** Items */
             items: components["schemas"]["Run"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2581,10 +2600,7 @@ export interface components {
         Page_SpecDoc_: {
             /** Items */
             items: components["schemas"]["SpecDoc"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2597,10 +2613,7 @@ export interface components {
         Page_SpecRevision_: {
             /** Items */
             items: components["schemas"]["SpecRevision"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2613,10 +2626,7 @@ export interface components {
         Page_StepCatalogEntry_: {
             /** Items */
             items: components["schemas"]["StepCatalogEntry"][];
-            /**
-             * Next Cursor
-             * @default null
-             */
+            /** Next Cursor */
             next_cursor?: string | null;
         };
         /**
@@ -2626,63 +2636,30 @@ export interface components {
          *     Templates bound this way apply to every model of a family, not one bundle.
          */
         PlotBindings: {
-            /**
-             * X
-             * @default null
-             */
-            x?: string | null;
-            /**
-             * Y
-             * @default null
-             */
-            y?: string | null;
-            /**
-             * Y2
-             * @default null
-             */
-            y2?: string | null;
-            /**
-             * Color
-             * @default null
-             */
-            color?: string | null;
-            /**
-             * Facet
-             * @default null
-             */
-            facet?: string | null;
-            /**
-             * Row
-             * @default null
-             */
-            row?: string | null;
-            /**
-             * Column
-             * @default null
-             */
-            column?: string | null;
-            /**
-             * Size
-             * @default null
-             */
-            size?: string | null;
-            /**
-             * Shape
-             * @default null
-             */
-            shape?: string | null;
-            /**
-             * Band Lower
-             * @default null
-             */
+            /** Band Lower */
             band_lower?: string | null;
-            /**
-             * Band Upper
-             * @default null
-             */
+            /** Band Upper */
             band_upper?: string | null;
+            /** Color */
+            color?: string | null;
+            /** Column */
+            column?: string | null;
+            /** Facet */
+            facet?: string | null;
+            /** Row */
+            row?: string | null;
+            /** Shape */
+            shape?: string | null;
+            /** Size */
+            size?: string | null;
             /** Tooltip */
             tooltip?: string[];
+            /** X */
+            x?: string | null;
+            /** Y */
+            y?: string | null;
+            /** Y2 */
+            y2?: string | null;
         };
         /**
          * PlotCatalogEntry
@@ -2692,22 +2669,22 @@ export interface components {
             /** Id */
             id: string;
             /**
-             * Version
-             * @default 1.0.0
-             */
-            version?: string;
-            /** Title */
-            title: string;
-            /**
              * Persona
              * @default both
              * @enum {string}
              */
             persona?: "guided" | "expert" | "both";
-            /** Requires Representation */
-            requires_representation?: components["schemas"]["Representation"][];
             /** Requires Groups */
             requires_groups?: string[];
+            /** Requires Representation */
+            requires_representation?: components["schemas"]["Representation"][];
+            /** Title */
+            title: string;
+            /**
+             * Version
+             * @default 1.0.0
+             */
+            version?: string;
             /**
              * Yanked
              * @default false
@@ -2727,10 +2704,12 @@ export interface components {
          *     }
          */
         PlotListItem: {
+            /** Caption Plain */
+            caption_plain?: string | null;
+            /** Href */
+            href: string;
             /** Id */
             id: string;
-            /** Title */
-            title: string;
             /**
              * Kind
              * @enum {string}
@@ -2742,49 +2721,29 @@ export interface components {
              * @enum {string}
              */
             persona?: "guided" | "expert" | "both";
-            /**
-             * Recipe
-             * @default null
-             */
+            /** Recipe */
             recipe?: string | null;
-            /**
-             * Caption Plain
-             * @default null
-             */
-            caption_plain?: string | null;
-            /** Href */
-            href: string;
+            /** Title */
+            title: string;
         };
         /**
          * PlotProvenance
          * @description Who produced a plot: exactly one of ``recipe``, ``plugin`` or ``author``.
          */
         PlotProvenance: {
-            /**
-             * Bundle Id
-             * @default null
-             */
-            bundle_id?: string | null;
-            /**
-             * Recipe
-             * @default null
-             */
-            recipe?: string | null;
-            /**
-             * Plugin
-             * @default null
-             */
-            plugin?: string | null;
-            /**
-             * Author
-             * @default null
-             */
+            /** Author */
             author?: string | null;
+            /** Bundle Id */
+            bundle_id?: string | null;
             /**
              * Generated At
              * Format: date-time
              */
             generated_at: string;
+            /** Plugin */
+            plugin?: string | null;
+            /** Recipe */
+            recipe?: string | null;
         };
         /**
          * PlotSpec
@@ -2828,43 +2787,39 @@ export interface components {
          *     }
          */
         PlotSpec: {
+            bindings?: components["schemas"]["PlotBindings"] | null;
+            /** Caption Plain */
+            caption_plain?: string | null;
+            /** Datasets */
+            datasets?: {
+                [key: string]: components["schemas"]["DataRef"] | components["schemas"]["InlineArrow"];
+            };
             /** Id */
             id: string;
-            /** Title */
-            title: string;
             /**
              * Kind
              * @enum {string}
              */
             kind: "vega-lite" | "plotly";
-            /** Spec */
-            spec: {
-                [key: string]: components["schemas"]["JsonValue"];
-            };
-            /** Datasets */
-            datasets?: {
-                [key: string]: components["schemas"]["DataRef"] | components["schemas"]["InlineArrow"];
-            };
-            /** @default null */
-            bindings?: components["schemas"]["PlotBindings"] | null;
-            /**
-             * Schema Version
-             * @example v5
-             * @example 2.35.2
-             */
-            schema_version: string;
             /**
              * Persona
              * @default both
              * @enum {string}
              */
             persona?: "guided" | "expert" | "both";
-            /**
-             * Caption Plain
-             * @default null
-             */
-            caption_plain?: string | null;
             provenance: components["schemas"]["PlotProvenance"];
+            /**
+             * Schema Version
+             * @example v5
+             * @example 2.35.2
+             */
+            schema_version: string;
+            /** Spec */
+            spec: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Title */
+            title: string;
         };
         /**
          * PlotValidateResponse
@@ -2881,57 +2836,50 @@ export interface components {
          *     }
          */
         PlotValidateResponse: {
-            /** Valid */
-            valid: boolean;
             /** Issues */
             issues?: components["schemas"]["Issue"][];
-            /** @default null */
             sanitized?: components["schemas"]["PlotSpec"] | null;
+            /** Valid */
+            valid: boolean;
         };
         /**
          * Problem
          * @description RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).
          */
         Problem: {
+            code: components["schemas"]["ErrorCode"];
+            /** Detail */
+            detail?: string | null;
+            /** Errors */
+            errors?: components["schemas"]["Issue"][];
+            /** Instance */
+            instance?: string | null;
+            /** Status */
+            status: number;
+            /** Title */
+            title: string;
+            /** Trace Id */
+            trace_id?: string | null;
             /**
              * Type
              * @default about:blank
              */
             type?: string;
-            /** Title */
-            title: string;
-            /** Status */
-            status: number;
-            /**
-             * Detail
-             * @default null
-             */
-            detail?: string | null;
-            /**
-             * Instance
-             * @default null
-             */
-            instance?: string | null;
-            code: components["schemas"]["ErrorCode"];
-            /** Errors */
-            errors?: components["schemas"]["Issue"][];
-            /**
-             * Untrusted Text
-             * @default null
-             */
+            /** Untrusted Text */
             untrusted_text?: string | null;
-            /**
-             * Trace Id
-             * @default null
-             */
-            trace_id?: string | null;
         };
         /**
          * ProgressPayload
          * @description ``progress``: coalesced to at most one event per ``limits.progress_interval_s``.
          */
         ProgressPayload: {
-            phase: components["schemas"]["RunnerPhase"];
+            /** Chains */
+            chains?: components["schemas"]["ChainProgress"][];
+            /**
+             * Eta Seconds
+             * @default null
+             */
+            eta_seconds?: number | null;
             /**
              * Fraction
              * @default null
@@ -2942,13 +2890,7 @@ export interface components {
              * @default null
              */
             message?: string | null;
-            /**
-             * Eta Seconds
-             * @default null
-             */
-            eta_seconds?: number | null;
-            /** Chains */
-            chains?: components["schemas"]["ChainProgress"][];
+            phase: components["schemas"]["RunnerPhase"];
         };
         /**
          * ProgressSnapshot
@@ -2977,26 +2919,17 @@ export interface components {
          *     }
          */
         ProgressSnapshot: {
-            /** Seq */
-            seq: number;
-            phase: components["schemas"]["RunnerPhase"];
-            /**
-             * Fraction
-             * @default null
-             */
-            fraction?: number | null;
-            /**
-             * Message
-             * @default null
-             */
-            message?: string | null;
-            /**
-             * Eta Seconds
-             * @default null
-             */
-            eta_seconds?: number | null;
             /** Chains */
             chains?: components["schemas"]["ChainProgress"][];
+            /** Eta Seconds */
+            eta_seconds?: number | null;
+            /** Fraction */
+            fraction?: number | null;
+            /** Message */
+            message?: string | null;
+            phase: components["schemas"]["RunnerPhase"];
+            /** Seq */
+            seq: number;
             /**
              * Updated At
              * Format: date-time
@@ -3014,42 +2947,36 @@ export interface components {
          *     }
          */
         Project: {
-            /** Id */
-            id: string;
-            /** Tenant Id */
-            tenant_id: string;
-            /** Name */
-            name: string;
-            /**
-             * Description
-             * @default null
-             */
-            description?: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** Description */
+            description?: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Tenant Id */
+            tenant_id: string;
         };
         /**
          * RaggedSpec
          * @description Ragged nesting (``hh → trip``): long form (obs + index vars) or padded + mask.
          */
         RaggedSpec: {
-            /** Group Dim */
-            group_dim: string;
-            /** Within Dim */
-            within_dim: string;
             /**
              * Form
              * @enum {string}
              */
             form: "long" | "padded";
-            /**
-             * Mask Var
-             * @default null
-             */
+            /** Group Dim */
+            group_dim: string;
+            /** Mask Var */
             mask_var?: string | null;
+            /** Within Dim */
+            within_dim: string;
         };
         /**
          * Representation
@@ -3059,72 +2986,70 @@ export interface components {
         Representation: "draws" | "quantiles" | "interval" | "point" | "moments";
         /** ResolvedModel */
         ResolvedModel: {
-            /** Use */
-            use: string;
-            /** Resolved */
-            resolved: string;
             capabilities: components["schemas"]["Capabilities"];
-            /** @default null */
-            input_schema?: components["schemas"]["DataSchema"] | null;
+            /** Derived */
+            derived?: string[];
             /** Effective Policies */
             effective_policies?: {
                 [key: string]: components["schemas"]["DimPolicy"];
             };
+            input_schema?: components["schemas"]["DataSchema"] | null;
             /** Outputs */
             outputs?: string[];
-            /** Derived */
-            derived?: string[];
+            /** Resolved */
+            resolved: string;
+            /** Use */
+            use: string;
         };
         /**
          * ResolvedSpec
          * @description What the control plane stores with a run: everything score-time checks need.
          */
         ResolvedSpec: {
-            /** Spec Hash */
-            spec_hash: string;
             binding: components["schemas"]["Binding"];
-            /** Steps */
-            steps: components["schemas"]["ResolvedStep"][];
-            /** Stages */
-            stages: {
-                [key: string]: components["schemas"]["DataSchema"] | null;
-            };
-            /** Split Stage */
-            split_stage: string | null;
+            model: components["schemas"]["ResolvedModel"];
             /** Side Tables */
             side_tables?: {
                 [key: string]: components["schemas"]["ScorePolicy"];
             };
-            model: components["schemas"]["ResolvedModel"];
+            /** Spec Hash */
+            spec_hash: string;
+            /** Split Stage */
+            split_stage: string | null;
+            /** Stages */
+            stages: {
+                [key: string]: components["schemas"]["DataSchema"] | null;
+            };
+            /** Steps */
+            steps: components["schemas"]["ResolvedStep"][];
         };
         /**
          * ResolvedStep
          * @description A pipeline step after ref resolution, with defaults applied and effects evaluated.
          */
         ResolvedStep: {
-            /** Id */
-            id: string;
-            /** Use */
-            use: string;
-            /** Resolved */
-            resolved: string;
-            kind: components["schemas"]["StepKind"];
-            /** Stateful */
-            stateful: boolean;
-            /** Invertible */
-            invertible: boolean;
+            context?: components["schemas"]["ContextNeed"] | null;
             /** Depends On Target */
             depends_on_target: boolean;
-            /** @default null */
-            context?: components["schemas"]["ContextNeed"] | null;
+            /** Id */
+            id: string;
+            /** Input Stage */
+            input_stage: string;
+            /** Invertible */
+            invertible: boolean;
+            kind: components["schemas"]["StepKind"];
+            /** Resolved */
+            resolved: string;
             /** Settings */
             settings?: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
             /** Side Tables */
             side_tables?: string[];
-            /** Input Stage */
-            input_stage: string;
+            /** Stateful */
+            stateful: boolean;
+            /** Use */
+            use: string;
         };
         /**
          * ResourceClass
@@ -3138,19 +3063,16 @@ export interface components {
          */
         ResourceHint: {
             /** @default S */
-            min_class?: components["schemas"]["ResourceClass"];
-            /** @default S */
             default_class?: components["schemas"]["ResourceClass"];
-            /**
-             * Est Fit Seconds
-             * @default null
-             */
+            /** Est Fit Seconds */
             est_fit_seconds?: number | null;
             /**
              * Gpu
              * @default false
              */
             gpu?: boolean;
+            /** @default S */
+            min_class?: components["schemas"]["ResourceClass"];
         };
         /**
          * Role
@@ -3227,65 +3149,60 @@ export interface components {
          *     }
          */
         Run: {
+            /** Attempt */
+            attempt: number;
+            cost?: components["schemas"]["RunCost"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Dataset Id */
+            dataset_id?: string | null;
+            /** Executor */
+            executor?: string | null;
+            failure_class?: components["schemas"]["FailureClass"] | null;
+            /** Finished At */
+            finished_at?: string | null;
             /**
              * Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             id: string;
-            /** Tenant Id */
-            tenant_id: string;
-            /** Project Id */
-            project_id: string;
             kind: components["schemas"]["RunKind"];
-            state: components["schemas"]["RunState"];
-            /** @default null */
-            failure_class?: components["schemas"]["FailureClass"] | null;
-            /** @default null */
-            problem?: components["schemas"]["Problem"] | null;
-            /** Attempt */
-            attempt: number;
-            /**
-             * Spec Id
-             * @default null
-             */
-            spec_id?: string | null;
-            /**
-             * Spec Revision
-             * @default null
-             */
-            spec_revision?: number | null;
-            /**
-             * Spec Hash
-             * @default null
-             */
-            spec_hash?: string | null;
-            /**
-             * Model Version Id
-             * @default null
-             */
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Model Version Id */
             model_version_id?: string | null;
-            /**
-             * Dataset Id
-             * @default null
-             */
-            dataset_id?: string | null;
             /**
              * Output Model Version Id
              * @description The model version a successful fit produced
-             * @default null
              */
             output_model_version_id?: string | null;
-            /**
-             * Parent Run Id
-             * @default null
-             */
+            /** Parent Run Id */
             parent_run_id?: string | null;
-            /**
-             * Retry Of
-             * @default null
-             */
-            retry_of?: string | null;
+            problem?: components["schemas"]["Problem"] | null;
+            progress?: components["schemas"]["ProgressSnapshot"] | null;
+            /** Project Id */
+            project_id: string;
+            /** Queued At */
+            queued_at?: string | null;
             resource_class: components["schemas"]["ResourceClass"];
+            /** Retry Of */
+            retry_of?: string | null;
+            /** Spec Hash */
+            spec_hash?: string | null;
+            /** Spec Id */
+            spec_id?: string | null;
+            /** Spec Revision */
+            spec_revision?: number | null;
+            /** Started At */
+            started_at?: string | null;
+            state: components["schemas"]["RunState"];
+            /** Tenant Id */
+            tenant_id: string;
             /**
              * Timeout
              * @description Duration such as '45m', '1h30m' or '90s'.
@@ -3293,38 +3210,6 @@ export interface components {
              * @example 1h30m
              */
             timeout: string;
-            /**
-             * Executor
-             * @default null
-             */
-            executor?: string | null;
-            /** @default null */
-            progress?: components["schemas"]["ProgressSnapshot"] | null;
-            cost?: components["schemas"]["RunCost"];
-            /** Labels */
-            labels?: {
-                [key: string]: string;
-            };
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Queued At
-             * @default null
-             */
-            queued_at?: string | null;
-            /**
-             * Started At
-             * @default null
-             */
-            started_at?: string | null;
-            /**
-             * Finished At
-             * @default null
-             */
-            finished_at?: string | null;
             /**
              * Updated At
              * Format: date-time
@@ -3335,33 +3220,21 @@ export interface components {
          * RunCost
          * @description Cost fields (placeholders in M1: always ``None``; populated by the M2 ledger).
          * @example {
-         *       "estimated": true,
-         *       "gib_seconds": null,
-         *       "usd": null,
-         *       "vcpu_seconds": null
+         *       "estimated": true
          *     }
          */
         RunCost: {
-            /**
-             * Vcpu Seconds
-             * @default null
-             */
-            vcpu_seconds?: number | null;
-            /**
-             * Gib Seconds
-             * @default null
-             */
-            gib_seconds?: number | null;
-            /**
-             * Usd
-             * @default null
-             */
-            usd?: number | null;
             /**
              * Estimated
              * @default true
              */
             estimated?: boolean;
+            /** Gib Seconds */
+            gib_seconds?: number | null;
+            /** Usd */
+            usd?: number | null;
+            /** Vcpu Seconds */
+            vcpu_seconds?: number | null;
         };
         /**
          * RunCreate
@@ -3395,38 +3268,24 @@ export interface components {
          */
         RunCreate: {
             kind: components["schemas"]["RunKind"];
-            /**
-             * Spec Id
-             * @default null
-             */
-            spec_id?: string | null;
-            /**
-             * Revision
-             * @default null
-             */
-            revision?: number | null;
-            /**
-             * Model Version Id
-             * @default null
-             */
-            model_version_id?: string | null;
-            /** @default null */
-            request?: components["schemas"]["ScoreRequest"] | null;
-            /** Params */
-            params?: {
-                [key: string]: components["schemas"]["JsonValue"];
-            };
-            /** @default null */
-            resource_class?: components["schemas"]["ResourceClass"] | null;
-            /**
-             * Timeout
-             * @default null
-             */
-            timeout?: string | null;
             /** Labels */
             labels?: {
                 [key: string]: string;
             };
+            /** Model Version Id */
+            model_version_id?: string | null;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            request?: components["schemas"]["ScoreRequest"] | null;
+            resource_class?: components["schemas"]["ResourceClass"] | null;
+            /** Revision */
+            revision?: number | null;
+            /** Spec Id */
+            spec_id?: string | null;
+            /** Timeout */
+            timeout?: string | null;
         };
         /**
          * RunEventType
@@ -3450,15 +3309,19 @@ export interface components {
          *     }
          */
         RunEventView: {
+            /** Attempt */
+            attempt: number;
             /** Id */
             id: number;
+            /** Payload */
+            payload?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
             /**
              * Run Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             run_id: string;
-            /** Attempt */
-            attempt: number;
             /** Seq */
             seq: number;
             /**
@@ -3467,10 +3330,6 @@ export interface components {
              */
             ts: string;
             type: components["schemas"]["RunEventType"];
-            /** Payload */
-            payload?: {
-                [key: string]: components["schemas"]["JsonValue"];
-            };
         };
         /**
          * RunKind
@@ -3490,18 +3349,11 @@ export interface components {
          *     }
          */
         RunRetry: {
-            /** @default null */
-            resource_class?: components["schemas"]["ResourceClass"] | null;
-            /**
-             * Seed
-             * @default null
-             */
-            seed?: number | null;
-            /**
-             * Reason
-             * @default null
-             */
+            /** Reason */
             reason?: string | null;
+            resource_class?: components["schemas"]["ResourceClass"] | null;
+            /** Seed */
+            seed?: number | null;
         };
         /**
          * RunState
@@ -3543,18 +3395,14 @@ export interface components {
          *     }
          */
         ScoreCall: {
-            request: components["schemas"]["ScoreRequest"];
-            /** @default null */
-            resource_class?: components["schemas"]["ResourceClass"] | null;
-            /**
-             * Timeout
-             * @default null
-             */
-            timeout?: string | null;
             /** Labels */
             labels?: {
                 [key: string]: string;
             };
+            request: components["schemas"]["ScoreRequest"];
+            resource_class?: components["schemas"]["ResourceClass"] | null;
+            /** Timeout */
+            timeout?: string | null;
         };
         /**
          * ScoreCallResult
@@ -3581,7 +3429,6 @@ export interface components {
          *         "executor": "local-process",
          *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
          *         "kind": "score",
-         *         "progress": null,
          *         "project_id": "default",
          *         "queued_at": "2026-10-15T09:30:00Z",
          *         "resource_class": "M",
@@ -3599,9 +3446,9 @@ export interface components {
         ScoreCallResult: {
             /** Done */
             done: boolean;
-            run: components["schemas"]["Run"];
             /** Outputs */
             outputs?: components["schemas"]["ArtifactLink"][];
+            run: components["schemas"]["Run"];
         };
         /**
          * ScorePolicy
@@ -3619,55 +3466,45 @@ export interface components {
              * @constant
              */
             apiVersion: "mapi/v1";
-            /**
-             * Kind
-             * @constant
-             */
-            kind: "ScoreRequest";
-            /**
-             * Model
-             * @description endpoint://project/alias or model://project/name@vN
-             */
-            model: string;
-            /**
-             * Mode
-             * @default predict
-             * @enum {string}
-             */
-            mode?: "predict" | "forecast" | "counterfactual" | "simulate" | "filter" | "evaluate";
-            /** @default null */
+            /** Data */
+            data?: string | null;
             horizon?: components["schemas"]["Horizon"] | null;
             /**
              * Inputs Stage
              * @default raw
              */
             inputs_stage?: string;
+            /** Interventions */
+            interventions?: components["schemas"]["Intervention"][];
             /**
-             * Data
-             * @default null
+             * Kind
+             * @constant
              */
-            data?: string | null;
+            kind: "ScoreRequest";
             /**
-             * Scenario
-             * @default null
+             * Mode
+             * @default predict
+             * @enum {string}
              */
+            mode?: "predict" | "forecast" | "counterfactual" | "simulate" | "filter" | "evaluate";
+            /**
+             * Model
+             * @description endpoint://project/alias or model://project/name@vN
+             */
+            model: string;
+            output?: components["schemas"]["OutputSelector"];
+            /** Scenario */
             scenario?: string | null;
-            /** Side Tables */
-            side_tables?: {
-                [key: string]: string;
-            };
+            /** Seed */
+            seed?: number | null;
             /** Select */
             select?: {
                 [key: string]: (string | number | boolean)[];
             };
-            /** Interventions */
-            interventions?: components["schemas"]["Intervention"][];
-            output?: components["schemas"]["OutputSelector"];
-            /**
-             * Seed
-             * @default null
-             */
-            seed?: number | null;
+            /** Side Tables */
+            side_tables?: {
+                [key: string]: string;
+            };
         };
         /**
          * Scorecard
@@ -3698,13 +3535,13 @@ export interface components {
          *     }
          */
         Scorecard: {
+            /** Items */
+            items?: components["schemas"]["ScorecardItem"][];
             /**
              * Overall
              * @enum {string}
              */
             overall: "pass" | "warn" | "fail";
-            /** Items */
-            items?: components["schemas"]["ScorecardItem"][];
         };
         /**
          * ScorecardItem
@@ -3721,40 +3558,25 @@ export interface components {
         ScorecardItem: {
             /** Code */
             code: string;
+            /** Message Expert */
+            message_expert?: string | null;
+            /** Message Plain */
+            message_plain: string;
+            /** Metric */
+            metric?: string | null;
             /**
              * Status
              * @enum {string}
              */
             status: "pass" | "warn" | "fail";
+            /** Suggested Action */
+            suggested_action?: string | null;
+            /** Threshold */
+            threshold?: number | null;
             /** Title */
             title: string;
-            /** Message Plain */
-            message_plain: string;
-            /**
-             * Message Expert
-             * @default null
-             */
-            message_expert?: string | null;
-            /**
-             * Metric
-             * @default null
-             */
-            metric?: string | null;
-            /**
-             * Value
-             * @default null
-             */
+            /** Value */
             value?: number | null;
-            /**
-             * Threshold
-             * @default null
-             */
-            threshold?: number | null;
-            /**
-             * Suggested Action
-             * @default null
-             */
-            suggested_action?: string | null;
         };
         /**
          * Severity
@@ -3784,16 +3606,6 @@ export interface components {
          */
         SignedPut: {
             /**
-             * Method
-             * @default PUT
-             * @constant
-             */
-            method?: "PUT";
-            /** Url */
-            url: string;
-            /** Name */
-            name: string;
-            /**
              * Expires At
              * Format: date-time
              */
@@ -3802,11 +3614,18 @@ export interface components {
             headers?: {
                 [key: string]: string;
             };
-            /**
-             * Max Bytes
-             * @default null
-             */
+            /** Max Bytes */
             max_bytes?: number | null;
+            /**
+             * Method
+             * @default PUT
+             * @constant
+             */
+            method?: "PUT";
+            /** Name */
+            name: string;
+            /** Url */
+            url: string;
         };
         /**
          * SpecCreate
@@ -3817,13 +3636,25 @@ export interface components {
          *     }
          */
         SpecCreate: {
+            /** Message */
+            message?: string | null;
             /** Yaml */
             yaml: string;
-            /**
-             * Message
-             * @default null
-             */
-            message?: string | null;
+        };
+        /** SpecDiff */
+        SpecDiff: {
+            /** Changes */
+            changes: components["schemas"]["DiffEntry"][];
+            /** From Hash */
+            from_hash: string;
+            /** From Revision */
+            from_revision: number;
+            /** Spec Id */
+            spec_id: string;
+            /** To Hash */
+            to_hash: string;
+            /** To Revision */
+            to_revision: number;
         };
         /**
          * SpecDoc
@@ -3842,35 +3673,34 @@ export interface components {
          */
         SpecDoc: {
             /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
              * Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             id: string;
-            /** Tenant Id */
-            tenant_id: string;
-            /** Project Id */
-            project_id: string;
-            /** Name */
-            name: string;
             /**
              * Kind
              * @enum {string}
              */
             kind: "ModelSpec" | "ScoreRequest" | "Sweep" | "Backtest" | "SBC" | "Campaign";
+            latest?: components["schemas"]["SpecRevision"] | null;
+            /** Latest Revision */
+            latest_revision: number;
+            /** Name */
+            name: string;
+            /** Project Id */
+            project_id: string;
             /**
              * Ref
              * @description spec://project/name
              */
             ref: string;
-            /** Latest Revision */
-            latest_revision: number;
-            /** @default null */
-            latest?: components["schemas"]["SpecRevision"] | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
+            /** Tenant Id */
+            tenant_id: string;
             /**
              * Updated At
              * Format: date-time
@@ -3901,53 +3731,47 @@ export interface components {
          */
         SpecRevision: {
             /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Document */
+            document: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Hash */
+            hash: string;
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "ModelSpec" | "ScoreRequest" | "Sweep" | "Backtest" | "SBC" | "Campaign";
+            /** Message */
+            message?: string | null;
+            /** Parent Revision */
+            parent_revision?: number | null;
+            /** Project Id */
+            project_id: string;
+            /**
+             * Ref
+             * @description spec://project/name@rN
+             */
+            ref: string;
+            /** Revision */
+            revision: number;
+            /**
              * Spec Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             spec_id: string;
             /** Tenant Id */
             tenant_id: string;
-            /** Project Id */
-            project_id: string;
-            /** Revision */
-            revision: number;
-            /**
-             * Ref
-             * @description spec://project/name@rN
-             */
-            ref: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "ModelSpec" | "ScoreRequest" | "Sweep" | "Backtest" | "SBC" | "Campaign";
-            /** Hash */
-            hash: string;
-            /** Yaml */
-            yaml: string;
-            /** Document */
-            document: {
-                [key: string]: components["schemas"]["JsonValue"];
-            };
             /** Valid */
             valid: boolean;
-            /** Issues */
-            issues?: components["schemas"]["Issue"][];
-            /**
-             * Parent Revision
-             * @default null
-             */
-            parent_revision?: number | null;
-            /**
-             * Message
-             * @default null
-             */
-            message?: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
+            /** Yaml */
+            yaml: string;
         };
         /**
          * SpecRevisionCreate
@@ -3959,15 +3783,12 @@ export interface components {
          *     }
          */
         SpecRevisionCreate: {
-            /** Yaml */
-            yaml: string;
+            /** Message */
+            message?: string | null;
             /** Parent Revision */
             parent_revision: number;
-            /**
-             * Message
-             * @default null
-             */
-            message?: string | null;
+            /** Yaml */
+            yaml: string;
         };
         /**
          * StageSchema
@@ -4000,13 +3821,10 @@ export interface components {
          *     }
          */
         StageSchema: {
+            /** @description None when the effect is dynamic */
+            data_schema?: components["schemas"]["DataSchema"] | null;
             /** Name */
             name: string;
-            /**
-             * @description None when the effect is dynamic
-             * @default null
-             */
-            data_schema?: components["schemas"]["DataSchema"] | null;
             /**
              * Split
              * @description The train/holdout split happens after this stage
@@ -4019,12 +3837,12 @@ export interface components {
          * @description ``state``: the runner entered a new phase.
          */
         StatePayload: {
-            phase: components["schemas"]["RunnerPhase"];
             /**
              * Message
              * @default null
              */
             message?: string | null;
+            phase: components["schemas"]["RunnerPhase"];
         };
         /**
          * StepCatalogEntry
@@ -4036,68 +3854,58 @@ export interface components {
          *     ``side_table_params`` name fields that refer to ``data.side_tables`` entries.
          */
         StepCatalogEntry: {
-            /** Id */
-            id: string;
-            /** Version */
-            version: string;
-            kind: components["schemas"]["StepKind"];
-            /**
-             * Stateful
-             * @description Has a fitted State (fit on train only)
-             */
-            stateful: boolean;
-            /**
-             * Invertible
-             * @default false
-             */
-            invertible?: boolean;
+            /** Context */
+            context?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
             /**
              * Depends On Target
              * @default false
              */
             depends_on_target?: boolean;
-            /**
-             * Target Vars Param
-             * @description If set, the step depends on the target only when this settings field lists a target-role variable
-             * @default null
-             */
-            target_vars_param?: string | null;
-            /** Settings Schema */
-            settings_schema?: {
-                [key: string]: components["schemas"]["JsonValue"];
-            };
+            /** Dim Params */
+            dim_params?: string[];
             /** Effect */
             effect?: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
+            /** Id */
+            id: string;
             /**
-             * Context
-             * @default null
+             * Invertible
+             * @default false
              */
-            context?: {
-                [key: string]: components["schemas"]["JsonValue"];
-            } | null;
-            /** Var Params */
-            var_params?: string[];
-            /** Dim Params */
-            dim_params?: string[];
-            /** Side Table Params */
-            side_table_params?: string[];
+            invertible?: boolean;
+            kind: components["schemas"]["StepKind"];
             /**
              * Provides
              * @description Preprocessing a model may declare it owns (ModelManifest owns); such a step is rejected on the target/media variables of a model that owns it
              */
             provides?: ("scaling" | "carryover")[];
+            /** Settings Schema */
+            settings_schema?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Side Table Params */
+            side_table_params?: string[];
             /**
-             * Summary
-             * @default null
+             * Stateful
+             * @description Has a fitted State (fit on train only)
              */
+            stateful: boolean;
+            /** Summary */
             summary?: string | null;
-            /**
-             * Summary Plain
-             * @default null
-             */
+            /** Summary Plain */
             summary_plain?: string | null;
+            /**
+             * Target Vars Param
+             * @description If set, the step depends on the target only when this settings field lists a target-role variable
+             */
+            target_vars_param?: string | null;
+            /** Var Params */
+            var_params?: string[];
+            /** Version */
+            version: string;
             /**
              * Yanked
              * @default false
@@ -4115,12 +3923,12 @@ export interface components {
          * @description Conditional fragment merged into the template when all ``when`` params match.
          */
         TemplateCase: {
-            /** When */
-            when: {
-                [key: string]: components["schemas"]["JsonValue"];
-            };
             /** Merge */
             merge: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** When */
+            when: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
         };
@@ -4129,29 +3937,24 @@ export interface components {
          * @description A settings value that a :class:`DataSchemaTemplate` depends on.
          */
         TemplateParam: {
-            /**
-             * Type
-             * @enum {string}
-             */
-            type: "string" | "integer" | "number" | "boolean" | "string_list" | "integer_list";
+            default?: components["schemas"]["JsonValue"];
+            /** Enum */
+            enum?: components["schemas"]["JsonValue"][] | null;
             /**
              * Path
              * @description Dotted path into the settings (defaults to the parameter name)
-             * @default null
              */
             path?: string | null;
-            /**
-             * Enum
-             * @default null
-             */
-            enum?: components["schemas"]["JsonValue"][] | null;
-            /** @default null */
-            default?: components["schemas"]["JsonValue"];
             /**
              * Required
              * @default false
              */
             required?: boolean;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "string" | "integer" | "number" | "boolean" | "string_list" | "integer_list";
         };
         /**
          * UploadCreate
@@ -4163,13 +3966,13 @@ export interface components {
          *     }
          */
         UploadCreate: {
-            /** Filename */
-            filename: string;
             /**
              * Content Type
              * @default application/octet-stream
              */
             content_type?: string;
+            /** Filename */
+            filename: string;
             /** Size Bytes */
             size_bytes: number;
         };
@@ -4202,24 +4005,32 @@ export interface components {
          *     }
          */
         UploadSession: {
+            /** Content Type */
+            content_type: string;
             /**
-             * Id
-             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             * Created At
+             * Format: date-time
              */
-            id: string;
-            /** Tenant Id */
-            tenant_id: string;
-            /** Project Id */
-            project_id: string;
+            created_at: string;
             /**
              * Dataset Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
              */
             dataset_id: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
             /** Filename */
             filename: string;
-            /** Content Type */
-            content_type: string;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Project Id */
+            project_id: string;
             /** Size Bytes */
             size_bytes: number;
             /**
@@ -4227,17 +4038,9 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "uploaded" | "consumed" | "expired";
+            /** Tenant Id */
+            tenant_id: string;
             upload: components["schemas"]["SignedPut"];
-            /**
-             * Expires At
-             * Format: date-time
-             */
-            expires_at: string;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
         };
         /**
          * ValidateRequest
@@ -4251,23 +4054,16 @@ export interface components {
          */
         ValidateRequest: {
             /**
-             * Yaml
-             * @default null
-             */
-            yaml?: string | null;
-            /**
-             * Document
-             * @default null
-             */
-            document?: {
-                [key: string]: components["schemas"]["JsonValue"];
-            } | null;
-            /**
              * Dataset
-             * @default null
              * @example dataset://default/eu_media_daily@v3
              */
             dataset?: string | null;
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Yaml */
+            yaml?: string | null;
         };
         /**
          * ValidateResponse
@@ -4317,29 +4113,32 @@ export interface components {
          *     }
          */
         ValidateResponse: {
-            /** Valid */
-            valid: boolean;
-            /**
-             * Kind
-             * @default null
-             */
-            kind?: ("ModelSpec" | "ScoreRequest" | "Sweep" | "Backtest" | "SBC" | "Campaign") | null;
-            /**
-             * Hash
-             * @default null
-             */
+            /** Catalog Digest */
+            catalog_digest?: string | null;
+            /** Hash */
             hash?: string | null;
             /** Issues */
             issues?: components["schemas"]["Issue"][];
+            /** Kind */
+            kind?: ("ModelSpec" | "ScoreRequest" | "Sweep" | "Backtest" | "SBC" | "Campaign") | null;
+            resolved?: components["schemas"]["ResolvedSpec"] | null;
             /** Stages */
             stages?: components["schemas"]["StageSchema"][];
-            /** @default null */
-            resolved?: components["schemas"]["ResolvedSpec"] | null;
-            /**
-             * Catalog Digest
-             * @default null
-             */
-            catalog_digest?: string | null;
+            /** Valid */
+            valid: boolean;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
         };
         /**
          * VarMapping
@@ -4353,30 +4152,31 @@ export interface components {
         VarMapping: {
             /** Column */
             column: string;
-            /** @default covariate */
-            role?: components["schemas"]["Role"];
-            /**
-             * Units
-             * @default null
-             */
-            units?: string | null;
+            /** Description */
+            description?: string | null;
             /**
              * Missing
              * @default forbid
              * @enum {string}
              */
             missing?: "forbid" | "allow" | "mask";
-            /**
-             * Description
-             * @default null
-             */
-            description?: string | null;
+            /** @default covariate */
+            role?: components["schemas"]["Role"];
+            /** Units */
+            units?: string | null;
         };
         /**
          * VarSpec
          * @description A data variable: its dims (by name), dtype, role, units and missingness.
          */
         VarSpec: {
+            /** Bounds */
+            bounds?: [
+                number | null,
+                number | null
+            ] | null;
+            /** Description */
+            description?: string | null;
             /** Dims */
             dims: string[];
             /**
@@ -4384,36 +4184,6 @@ export interface components {
              * @enum {string}
              */
             dtype: "float64" | "float32" | "int64" | "int32" | "bool" | "str" | "datetime64[ns]";
-            /** @default covariate */
-            role?: components["schemas"]["Role"];
-            /**
-             * Units
-             * @description pint-style, e.g. 'EUR'
-             * @default null
-             */
-            units?: string | null;
-            /**
-             * Description
-             * @default null
-             */
-            description?: string | null;
-            /**
-             * Missing
-             * @default forbid
-             * @enum {string}
-             */
-            missing?: "forbid" | "allow" | "mask";
-            /**
-             * Missing Sentinel
-             * @default null
-             */
-            missing_sentinel?: number | null;
-            /**
-             * Index Of
-             * @description Long layout: this var indexes that dim
-             * @default null
-             */
-            index_of?: string | null;
             /**
              * Future Required
              * @description Must be supplied over a forecast horizon
@@ -4421,13 +4191,25 @@ export interface components {
              */
             future_required?: boolean;
             /**
-             * Bounds
-             * @default null
+             * Index Of
+             * @description Long layout: this var indexes that dim
              */
-            bounds?: [
-                number | null,
-                number | null
-            ] | null;
+            index_of?: string | null;
+            /**
+             * Missing
+             * @default forbid
+             * @enum {string}
+             */
+            missing?: "forbid" | "allow" | "mask";
+            /** Missing Sentinel */
+            missing_sentinel?: number | null;
+            /** @default covariate */
+            role?: components["schemas"]["Role"];
+            /**
+             * Units
+             * @description pint-style, e.g. 'EUR'
+             */
+            units?: string | null;
         };
         /**
          * WarningPayload
@@ -4462,7 +4244,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Process liveness */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4471,13 +4253,41 @@ export interface operations {
                     "application/json": components["schemas"]["Health"];
                 };
             };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
+        };
+    };
+    ingest_event: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["IngestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4491,7 +4301,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Dependencies reachable (503 if not) */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4500,94 +4310,13 @@ export interface operations {
                     "application/json": components["schemas"]["Health"];
                 };
             };
-            /** @description A dependency is unreachable */
+            /** @description Service Unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    list_projects: {
-        parameters: {
-            query?: {
-                limit?: number;
-                cursor?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List projects */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_Project_"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    get_project: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                project_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Get a project */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Project"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -4601,7 +4330,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Full catalog */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4610,22 +4339,13 @@ export interface operations {
                     "application/json": components["schemas"]["CatalogResponse"];
                 };
             };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
         };
     };
     list_catalog_models: {
         parameters: {
             query?: {
                 limit?: number;
-                cursor?: string;
+                cursor?: string | null;
             };
             header?: never;
             path?: never;
@@ -4633,7 +4353,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Model plugins */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4642,13 +4362,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_ModelCatalogEntry_"];
                 };
             };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4659,13 +4379,13 @@ export interface operations {
             header?: never;
             path: {
                 model_id: string;
-                version: number;
+                version: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description One model plugin version (manifest, sanitized schemas) */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4674,54 +4394,13 @@ export interface operations {
                     "application/json": components["schemas"]["ModelCatalogEntry"];
                 };
             };
-            /** @description NOT_FOUND */
-            404: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    list_catalog_steps: {
-        parameters: {
-            query?: {
-                limit?: number;
-                cursor?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Steps */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_StepCatalogEntry_"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4730,7 +4409,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
-                cursor?: string;
+                cursor?: string | null;
             };
             header?: never;
             path?: never;
@@ -4738,7 +4417,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Plot recipes */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4747,56 +4426,45 @@ export interface operations {
                     "application/json": components["schemas"]["Page_PlotCatalogEntry_"];
                 };
             };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-    get_schema: {
+    list_catalog_steps: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Object name; may contain '/' (sent percent-encoded). */
-                name: string;
+            query?: {
+                limit?: number;
+                cursor?: string | null;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Exported JSON Schema (e.g. modelspec.json) */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["Page_StepCatalogEntry_"];
                 };
             };
-            /** @description NOT_FOUND */
-            404: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4805,7 +4473,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
-                cursor?: string;
+                cursor?: string | null;
             };
             header?: never;
             path?: never;
@@ -4813,7 +4481,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description List datasets */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4822,13 +4490,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_Dataset_"];
                 };
             };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4846,7 +4514,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Create a dataset */
+            /** @description Successful Response */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -4855,31 +4523,13 @@ export interface operations {
                     "application/json": components["schemas"]["Dataset"];
                 };
             };
-            /** @description CONFLICT */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description SCHEMA_INVALID */
+            /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4895,7 +4545,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Get a dataset */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4904,22 +4554,13 @@ export interface operations {
                     "application/json": components["schemas"]["Dataset"];
                 };
             };
-            /** @description NOT_FOUND */
-            404: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4939,7 +4580,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Signed PUT URL into quarantine */
+            /** @description Successful Response */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -4948,49 +4589,13 @@ export interface operations {
                     "application/json": components["schemas"]["UploadSession"];
                 };
             };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description PAYLOAD_TOO_LARGE */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description SCHEMA_INVALID */
+            /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description QUOTA_EXCEEDED */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4999,7 +4604,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
-                cursor?: string;
+                cursor?: string | null;
             };
             header?: never;
             path: {
@@ -5009,7 +4614,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description List versions */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5018,22 +4623,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_DatasetVersion_"];
                 };
             };
-            /** @description NOT_FOUND */
-            404: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5042,7 +4638,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                "Idempotency-Key"?: string;
+                "Idempotency-Key"?: string | null;
             };
             path: {
                 dataset_id: string;
@@ -5055,7 +4651,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Ingest an upload as a new version (starts an ingest run) */
+            /** @description Successful Response */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -5064,40 +4660,13 @@ export interface operations {
                     "application/json": components["schemas"]["DatasetVersion"];
                 };
             };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description CONFLICT */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description SCHEMA_INVALID */
+            /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5114,7 +4683,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Schema, summary, profile and preview refs */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5123,22 +4692,13 @@ export interface operations {
                     "application/json": components["schemas"]["DatasetVersion"];
                 };
             };
-            /** @description NOT_FOUND */
-            404: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5150,14 +4710,13 @@ export interface operations {
             path: {
                 dataset_id: string;
                 version: number;
-                /** @description Object name; may contain '/' (sent percent-encoded). */
                 name: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Signed URL for data.zarr.zip / preview / profile / schema */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5166,27 +4725,425 @@ export interface operations {
                     "application/json": components["schemas"]["ArtifactLink"];
                 };
             };
-            /** @description NOT_FOUND */
-            404: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-    validate_spec: {
+    redirect_dataset_view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+                version: number;
+                view: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to a signed URL */
+            307: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+        };
+    };
+    list_models: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Model_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_model: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Model"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_model_versions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ModelVersion_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_model_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelVersion"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_model_artifact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+                version: number;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactLink"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plots: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PlotListItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+                version: number;
+                plot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotSpec"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redirect_model_ui: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+                version: number;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to a signed URL of the precomputed view */
+            307: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    evaluate_model: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluateCall"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description The evaluate run */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    score_model: {
+        parameters: {
+            query?: never;
+            header?: {
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScoreCall"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoreCallResult"];
+                };
+            };
+            /** @description Still running */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoreCallResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_plot: {
         parameters: {
             query?: never;
             header?: never;
@@ -5195,53 +5152,413 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ValidateRequest"];
+                "application/json": components["schemas"]["PlotSpec"];
             };
         };
         responses: {
-            /** @description Synchronous static validation (issues at JSON pointers, per-stage schemas) */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidateResponse"];
+                    "application/json": components["schemas"]["PlotValidateResponse"];
                 };
             };
-            /** @description SPEC_PARSE_ERROR */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description PAYLOAD_TOO_LARGE */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description SCHEMA_INVALID */
+            /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
+        };
+    };
+    list_projects: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["Page_Project_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                kind?: components["schemas"]["RunKind"] | null;
+                state?: components["schemas"]["RunState"] | null;
+                spec_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Run_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_run: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunCreate"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_events: {
+        parameters: {
+            query?: {
+                after?: number | null;
+                limit?: number;
+            };
+            header?: {
+                "Last-Event-ID"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_RunEventView_"];
+                    "text/event-stream": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_logs: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                attempt?: number | null;
+                stream?: string | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_LogLine_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_run: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunRetry"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_schema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5250,7 +5567,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
-                cursor?: string;
+                cursor?: string | null;
             };
             header?: never;
             path?: never;
@@ -5258,7 +5575,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description List specs */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5267,13 +5584,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_SpecDoc_"];
                 };
             };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5291,7 +5608,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Create a spec with revision 1 */
+            /** @description Successful Response */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -5300,49 +5617,13 @@ export interface operations {
                     "application/json": components["schemas"]["SpecDoc"];
                 };
             };
-            /** @description SPEC_PARSE_ERROR */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description CONFLICT */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description PAYLOAD_TOO_LARGE */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description SCHEMA_INVALID */
+            /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5358,7 +5639,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Get a spec */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5367,22 +5648,13 @@ export interface operations {
                     "application/json": components["schemas"]["SpecDoc"];
                 };
             };
-            /** @description NOT_FOUND */
-            404: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5391,7 +5663,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
-                cursor?: string;
+                cursor?: string | null;
             };
             header?: never;
             path: {
@@ -5401,7 +5673,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description List revisions */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5410,22 +5682,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_SpecRevision_"];
                 };
             };
-            /** @description NOT_FOUND */
-            404: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5445,7 +5708,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Add an immutable revision (409 if parent_revision is stale) */
+            /** @description Successful Response */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -5454,58 +5717,13 @@ export interface operations {
                     "application/json": components["schemas"]["SpecRevision"];
                 };
             };
-            /** @description SPEC_PARSE_ERROR */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description CONFLICT */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description PAYLOAD_TOO_LARGE */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description SCHEMA_INVALID */
+            /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5522,7 +5740,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Get one revision */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5531,22 +5749,48 @@ export interface operations {
                     "application/json": components["schemas"]["SpecRevision"];
                 };
             };
-            /** @description NOT_FOUND */
-            404: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
+        };
+    };
+    diff_spec_revisions: {
+        parameters: {
+            query?: {
+                /** @description Default: revision - 1 */
+                against?: number | null;
+            };
+            header?: never;
+            path: {
+                spec_id: string;
+                revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["SpecDiff"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5555,7 +5799,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                "Idempotency-Key"?: string;
+                "Idempotency-Key"?: string | null;
             };
             path: {
                 spec_id: string;
@@ -5565,7 +5809,16 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Sandboxed dry-run (a 'validate' run) */
+            /** @description Idempotent replay */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description The validate run */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -5574,831 +5827,18 @@ export interface operations {
                     "application/json": components["schemas"]["Run"];
                 };
             };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description QUOTA_EXCEEDED */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    list_runs: {
-        parameters: {
-            query?: {
-                limit?: number;
-                cursor?: string;
-                kind?: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign";
-                state?: "created" | "rejected" | "queued" | "dispatching" | "provisioning" | "running" | "stalled" | "finalizing" | "succeeded" | "partial" | "failed" | "cancelling" | "cancelled";
-                spec_id?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List runs (filters: kind, state, spec_id) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_Run_"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    create_run: {
-        parameters: {
-            query?: never;
-            header?: {
-                "Idempotency-Key"?: string;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RunCreate"];
-            };
-        };
-        responses: {
-            /** @description Idempotent replay: the run created by the first request */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Run"];
-                };
-            };
-            /** @description Submit a run (200 on idempotent replay) */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Run"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description IDEMPOTENCY_CONFLICT, HORIZON_EXCEEDS_FIT */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description SCHEMA_INVALID, MODE_NOT_SUPPORTED, LEAKAGE_RISK, UNSEEN_LEVELS, COORD_NOT_ALLOWED, MISSING_FUTURE_COVARIATE, RECURSIVE_UNSUPPORTED */
+            /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description QUOTA_EXCEEDED */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-    get_run: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                run_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Get a run */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Run"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    run_events: {
-        parameters: {
-            query?: {
-                after?: number;
-                limit?: number;
-            };
-            header?: {
-                "Last-Event-ID"?: string;
-            };
-            path: {
-                run_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description SSE stream (Accept: text/event-stream) or JSON page of persisted events */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_RunEventView_"];
-                    "text/event-stream": string;
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    run_logs: {
-        parameters: {
-            query?: {
-                limit?: number;
-                cursor?: string;
-                attempt?: number;
-                stream?: "stdout" | "stderr" | "system";
-            };
-            header?: never;
-            path: {
-                run_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Captured log lines (untrusted text) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_LogLine_"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    cancel_run: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                run_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Request cancellation (idempotent) */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Run"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description CONFLICT */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    resume_run: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                run_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Resume a PARTIAL run */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Run"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description CONFLICT */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    retry_run: {
-        parameters: {
-            query?: never;
-            header?: {
-                "Idempotency-Key"?: string;
-            };
-            path: {
-                run_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RunRetry"];
-            };
-        };
-        responses: {
-            /** @description Idempotent replay: the run created by the first request */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Run"];
-                };
-            };
-            /** @description New run from a failed one */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Run"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description CONFLICT */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description SCHEMA_INVALID */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    list_models: {
-        parameters: {
-            query?: {
-                limit?: number;
-                cursor?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List models */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_Model_"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    get_model: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                model_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Get a model */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Model"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    list_model_versions: {
-        parameters: {
-            query?: {
-                limit?: number;
-                cursor?: string;
-            };
-            header?: never;
-            path: {
-                model_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List versions */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_ModelVersion_"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    get_model_version: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                model_id: string;
-                version: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Signed manifest, diagnostics, scorecard, lineage, metrics */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ModelVersion"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    get_model_artifact: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                model_id: string;
-                version: number;
-                /** @description Object name; may contain '/' (sent percent-encoded). */
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Signed URL for a bundle object or ui/ view (name may contain /) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ArtifactLink"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description INTEGRITY_FAILURE */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    score_model: {
-        parameters: {
-            query?: never;
-            header?: {
-                Prefer?: string;
-                "Idempotency-Key"?: string;
-            };
-            path: {
-                model_id: string;
-                version: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ScoreCall"];
-            };
-        };
-        responses: {
-            /** @description Score with replayed preprocessing (Prefer: wait=N → 200 if done, else 202) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScoreCallResult"];
-                };
-            };
-            /** @description Not finished within the Prefer: wait budget */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScoreCallResult"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description HORIZON_EXCEEDS_FIT */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description SCHEMA_INVALID, MODE_NOT_SUPPORTED, UNSEEN_LEVELS, COORD_NOT_ALLOWED, MISSING_FUTURE_COVARIATE, NON_CONTIGUOUS_EXTENSION, CAPABILITY_UNSUPPORTED, RECURSIVE_UNSUPPORTED */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description QUOTA_EXCEEDED */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    list_plots: {
-        parameters: {
-            query?: {
-                limit?: number;
-                cursor?: string;
-            };
-            header?: never;
-            path: {
-                model_id: string;
-                version: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Plots of a model version */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_PlotListItem_"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    get_plot: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                model_id: string;
-                version: number;
-                plot_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A sanitized PlotSpec (render it in the plot sandbox origin) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlotSpec"];
-                };
-            };
-            /** @description NOT_FOUND */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    validate_plot: {
+    validate_spec: {
         parameters: {
             query?: never;
             header?: never;
@@ -6407,35 +5847,26 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PlotSpec"];
+                "application/json": components["schemas"]["ValidateRequest"];
             };
         };
         responses: {
-            /** @description Run the plot sanitizer */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PlotValidateResponse"];
+                    "application/json": components["schemas"]["ValidateResponse"];
                 };
             };
-            /** @description SCHEMA_INVALID */
+            /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description RATE_LIMITED, INTERNAL_ERROR, INFRA_ERROR or an endpoint error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
