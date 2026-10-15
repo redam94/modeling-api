@@ -105,8 +105,24 @@ milestone releases are tagged on `main`.
   iframe); a server test proves the finalizer refuses tampered output of the real runner.
 - **docs**: "Your first model in the web app" guide; the local-development page covers the
   first start, `make e2e` and the state under `.local/`.
+- **docs**: the M1 documentation set. A landing page with screenshots of the running platform
+  (`docs/assets/screenshots/`, captured by `scripts/docs_screenshots.mjs` and shrunk by
+  `scripts/optimise_screenshots.py`, `make docs-screenshots`); a validated "zero to first
+  model in 10 minutes" quickstart; guides to every page of the Expert web app, the CLI, the
+  Python client and the HTTP API; an OpenAPI explorer page (a vendored, hash-pinned Redoc
+  bundle over the committed `openapi.json`, `scripts/vendor_redoc.py`); a Deployment section
+  (local, Docker Compose, container images, a configuration reference naming every `MAPI_*`
+  variable, troubleshooting); an architecture overview and a security model; an updated
+  roadmap (M2 cloud and multi-tenant, M3 Guided mode). `scripts/gen_docs_reference.py` (run by
+  `make docs-build` and the MkDocs hook) generates the CLI reference from the Typer app, the
+  server settings table from `Settings`, and copies the OpenAPI document.
+  `conformance/tests/test_docs_platform.py` runs the CLI walkthrough, checks the generated
+  pages, the configuration reference, the Redoc pin and the screenshots, and (under `make e2e`)
+  runs the client, HTTP and remote-CLI walkthroughs against the live stack.
 
 ### Changed
+- **docs**: anchors are validated in strict builds; mermaid is pinned to 11.17.2 instead of
+  Material's moving `mermaid@11`.
 - **server**: the object store is `ShimObjectStore` built from the shim's `control` key file
   (`MAPI_GCS_ROOT`, default `$MAPI_DATA_DIR/gcs`, or `MAPI_GCS_KEY_FILE`); local executions get
   the `exec` token from the same directory unless `MAPI_EXEC_TOKEN` is set. RunSpec payloads and

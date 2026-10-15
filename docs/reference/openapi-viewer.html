@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Nothing leaves this site: the Redoc bundle is vendored (scripts/vendor_redoc.py) and the
+       OpenAPI document is the committed apps/web/openapi.json, copied at build time. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; worker-src blob:; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>modeling-api HTTP API (v1)</title>
+  <style>
+    body { margin: 0; background: #fff; }
+    .mapi-viewer-bar { font: 14px/1.4 system-ui, sans-serif; padding: 8px 16px; border-bottom: 1px solid #e5e5e5; }
+    .mapi-viewer-bar a { color: #4f46e5; }
+  </style>
+</head>
+<body>
+  <div class="mapi-viewer-bar">
+    <a href="../http-api/">← HTTP API reference</a> ·
+    <a href="generated/openapi.json" download="mapi-openapi.json">openapi.json</a>
+  </div>
+  <redoc spec-url="generated/openapi.json" expand-responses="200,201,202" required-props-first="true"
+         sort-props-alphabetically="false" hide-hostname="true" native-scrollbars="true"></redoc>
+  <script src="../assets/vendor/redoc/redoc.standalone.js"></script>
+</body>
+</html>

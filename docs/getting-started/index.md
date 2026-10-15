@@ -1,7 +1,33 @@
 # Getting started
 
-modeling-api v0.1 runs in your own Python process: a notebook, a script or a test suite. You
-need Python 3.12 and [uv](https://docs.astral.sh/uv/).
+There are two ways to use modeling-api, and they share everything: the spec format, the
+steps, the models and the bundles.
+
+<div class="grid cards" markdown>
+
+-   :material-rocket-launch-outline: **Run the platform** <span class="mapi-badge">v0.2</span>
+
+    ---
+
+    Start the API, the job queue, the sandboxed runner and the web app on your laptop with
+    `make dev`, then fit and score from the browser, the CLI, Python or HTTP.
+
+    [:octicons-arrow-right-24: Quickstart: zero to first model in 10 minutes](quickstart.md)
+
+-   :material-language-python: **Use the library in your own process**
+
+    ---
+
+    `import mapi_sdk` in a notebook, a script or a test suite: validate specs, fit, score and
+    write bundles in-process, and test your own plugins with the contract kit.
+
+    [:octicons-arrow-right-24: Your first model in Python](first-model.md)
+
+</div>
+
+Both need Python 3.12 and [uv](https://docs.astral.sh/uv/). The platform also needs Node.js 22+
+with pnpm for the web app; Docker is optional
+([Deployment](../operations/index.md)).
 
 ## Install
 
@@ -13,7 +39,7 @@ need Python 3.12 and [uv](https://docs.astral.sh/uv/).
     ```bash
     git clone <repository-url> modeling-api
     cd modeling-api
-    uv sync --all-packages        # or: make install
+    uv sync --all-packages        # or: make install (also installs the web app)
     uv run python -c "import mapi_sdk, mapi_spec; print(mapi_sdk.__version__)"
     ```
 
@@ -47,6 +73,11 @@ need Python 3.12 and [uv](https://docs.astral.sh/uv/).
 | `mapi-plots` | `mapi_plots` | The JSON-only plot sanitizer and templates; recipes with the `recipes` extra | Altair, Plotly (extra) |
 | `mapi-plugin-*` | `mapi_plugin_*` | Built-in models: marketing mix, time series, tabular | as above |
 | `mapi-conformance` | `mapi_conformance` | The conformance corpus and its runner | all of the above |
+| `mapi-client` | `mapi_client` | Typed Python client for the HTTP API ([guide](../guides/python-client.md)) | httpx (xarray optional) |
+| `mapi-cli` | `mapi_cli` | The `mapi` command line ([guide](../guides/cli.md)) | typer, rich |
+| `mapi-server` | `mapi_server` | The control plane: API, orchestrator, executors (AGPL or commercial) | FastAPI, SQLAlchemy; **no** numpy |
+| `mapi-runner` | `mapi_runner` | The sandboxed run harness: supervisor and worker (AGPL or commercial) | the SDK, in the worker only |
+| `mapi-gcs-shim` | `mapi_gcs_shim` | A local emulator of the Cloud Storage features the platform uses | Starlette |
 
 Plugins register themselves through Python entry points (`mapi.steps`, `mapi.models`,
 `mapi.plots`), so `mapi_sdk.default_registry()` finds everything that is installed.
@@ -70,15 +101,20 @@ xgb_store_demand  tabular.regressor@1.0.0  ok        ok   ok 6/6  ok        ok 1
 
 <div class="grid cards" markdown>
 
--   :material-rocket-launch-outline: **[Your first model](first-model.md)**
+-   :material-rocket-launch-outline: **[Quickstart](quickstart.md)**
+
+    The platform end to end: `make dev`, `make seed`, then fit, inspect and score from the
+    browser. About ten minutes.
+
+-   :material-language-python: **[Your first model in Python](first-model.md)**
 
     Build a labelled dataset, write a spec, fit it, forecast a new store and see the typed
     errors that protect you. About ten minutes.
 
 -   :material-play-network-outline: **[Runs and executors](executor.md)**
 
-    Submit the same work as *runs* to the in-process executor: the protocol the hosted
-    platform will use.
+    Submit the same work as *runs* to the in-process executor: the protocol the platform's
+    executors implement.
 
 -   :material-book-open-variant: **[Concepts](../concepts/index.md)**
 

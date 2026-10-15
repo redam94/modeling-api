@@ -1,4 +1,4 @@
-# Run protocol <span class="mapi-badge mapi-badge--soon">v0.2</span>
+# Run protocol <span class="mapi-badge">v0.2</span>
 
 This page specifies how a run moves from the API to a sandbox and back. It covers:
 

@@ -1,9 +1,9 @@
 # Guided UI and integrations <span class="mapi-badge mapi-badge--soon">coming in v0.4</span>
 
-!!! abstract "Status"
-    Planned. v0.4 lets analysts go from a CSV to a trustworthy report and a what-if scenario
-    without writing YAML, and lets other applications call fitted models through stable
-    endpoints. It is the first public launch: declarative specs and built-in models.
+!!! abstract "Status: planned (milestone M3)"
+    v0.4 lets analysts go from a CSV to a trustworthy report and a what-if scenario without
+    writing YAML, and lets other applications call fitted models through stable endpoints. It
+    is the first public launch: declarative specs and built-in models.
 
 ## Guided mode: organised around tasks
 
@@ -39,7 +39,8 @@ journey
 
 ### Already in place
 
-The pieces Guided mode is built on ship in v0.1:
+The pieces Guided mode is built on already ship, most since v0.1, the rest in the v0.2 web
+app:
 
 | Guided feature | Built on (available now) |
 |---|---|
@@ -49,13 +50,17 @@ The pieces Guided mode is built on ship in v0.1:
 | Data problems in words | `validate_dataset` ("2 markets are missing 2 days of revenue in March 2026") |
 | What-if sliders | `response_curves` derived quantity of `mmm.hierarchical_geo`, per thinned draw |
 | Role-based plot templates | `tmpl.*` templates bound to roles and dims, not variable names |
+| One app, two modes | The v0.2 web app's **Guided / Expert** switch and the Guided task preview |
+| The scorecard in the UI | The v0.2 model page's scorecard, with plain messages and suggested actions |
+| Column mapping | The v0.2 upload panel's CSV preview and dim/role mapping |
 
 ## Integrations
 
 - **Endpoints and aliases** (`endpoint://growth/eu-geo-mmm-prod`) with promotion gated on the
   scorecard.
-- A **Python client** (and a TypeScript one) generated from the OpenAPI document, plus
-  ready-to-paste snippets prefilled from an endpoint's schema.
+- The Python client (available in v0.2) gains endpoints and the Atlas `RemoteModel` adapter;
+  ready-to-paste snippets (Python, TypeScript, curl, R) are prefilled from an endpoint's
+  schema.
 - **Webhooks** with signed, timestamped payloads and a delivery log.
 - **Static plot rendering** (PNG, SVG, PDF) and read-only embed links for BI tools and docs.
 - An **MCP server** with a curated set of tools (`list_models`, `describe_model`, `score`,

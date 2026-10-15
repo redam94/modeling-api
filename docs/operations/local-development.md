@@ -1,4 +1,4 @@
-# Local development <span class="mapi-badge mapi-badge--soon">v0.2</span>
+# Local, without Docker <span class="mapi-badge">v0.2</span>
 
 `make dev` runs the whole platform on your machine **without Docker**. PostgreSQL comes from the
 `pgserver` wheel and object storage from the GCS shim, so the only requirements are the uv
@@ -11,8 +11,9 @@ make seed             # in another shell: load the E33 demo data and spec
 open http://127.0.0.1:5173
 ```
 
-[Your first model in the web app](../guides/first-model-in-the-ui.md) walks through fitting,
-inspecting and scoring the demo model from the browser.
+The [quickstart](../getting-started/quickstart.md) walks through fitting, inspecting and
+scoring the demo model from the browser. This page explains what `make dev` runs, how to
+work on one component, and where local state lives.
 
 ## What `make dev` starts
 
@@ -45,7 +46,7 @@ Every service receives the same resolved environment: `MAPI_ENV`, `DATABASE_URL`
 `MAPI_GCS_ENDPOINT`, `MAPI_API_URL`, `MAPI_WEB_ORIGIN`, `MAPI_PLOTS_ORIGIN` and `MAPI_DATA_DIR`.
 The values come from `mapi_spec.localdev.LocalDev`, the same contract the services themselves
 read, so they cannot disagree about ports. The
-[run protocol](../reference/run-protocol.md#local-development) page lists the defaults.
+[configuration reference](configuration.md) lists every variable.
 
 !!! note "The plot sandbox is a separate origin"
     Plots render in an `<iframe sandbox="allow-scripts">` served from `MAPI_PLOTS_ORIGIN`
@@ -164,7 +165,9 @@ export DATABASE_URL=postgresql://me@localhost/mapi  # use your own PostgreSQL in
 make dev
 ```
 
-`.env.example` documents every variable, including those that only compose or the images use.
+Export the same `MAPI_*` URLs in every shell that talks to the stack (`make seed`, `make e2e`,
+the CLI, the Python client). The [configuration reference](configuration.md) lists every
+variable, including those that only compose or the images use.
 
 ## Where state lives
 
@@ -186,41 +189,6 @@ verify, so the API refuses to mint download links for them (`INTEGRITY_FAILURE`)
 
 ## Troubleshooting
 
-`cannot start - fix these first`
-:   The supervisor checks every requirement before starting anything. Typical entries:
-
-    - **`module 'mapi_server.__main__' not found`**: the package has no command-line entry
-      point yet, or your environment is stale. Run `uv sync --all-packages`.
-    - **`exe 'pnpm' not found`** or **`run pnpm install first`**: install pnpm
-      (`corepack enable`) and the JavaScript dependencies (`pnpm install`). You can also skip
-      the front end with `WITHOUT=web,plots`.
-    - **`127.0.0.1:8000 is already in use`**: another `make dev`, or an unrelated process, owns
-      the port. Run `make stop`, find the process with `lsof -iTCP:8000 -sTCP:LISTEN`, or move
-      the service by exporting the matching `MAPI_*` URL.
-
-`already running (supervisor pid N)`
-:   A previous `make dev` is still alive, perhaps in another terminal. Run `make stop`. If that
-    process is gone but the state file stayed behind (after `kill -9`, for example), the next
-    start detects the dead pid and ignores the file.
-
-`postgres | failed to start`
-:   Read `.local/pg/log`. If the data directory came from a different PostgreSQL major version,
-    or is corrupt, run `make clean-local`; this deletes the local database. An orphaned server
-    from an earlier crash is stopped by `make stop`.
-
-`migrate exited with status 1`
-:   The migration's own output is printed just above this line. Fix the migration, or reset the
-    database with `make stop && make clean-local`, then run `make dev` again.
-
-`api not ready after 60s`
-:   The API process is running but `GET /healthz` never succeeded. Look at the `api |` lines. A
-    wrong `DATABASE_URL`, or a GCS shim that is not reachable, are the usual causes.
-
-The web app cannot reach the API, or plots stay blank
-:   Check that `MAPI_WEB_ORIGIN` and `MAPI_PLOTS_ORIGIN` are different origins, and that the API
-    allows the web origin (CORS). The browser console names the blocked origin.
-
-Leftover processes after a crash
-:   Each service runs in its own process group, which you can find with
-    `ps -o pid,pgid,command`. `make stop` also kills the process groups recorded in
-    `.local/dev/supervisor.json` when the supervisor itself does not respond within 30 s.
+Port conflicts, a stale supervisor, PostgreSQL that will not start, failed migrations, an API
+that never becomes ready and blank plots are covered in
+[Troubleshooting](troubleshooting.md).

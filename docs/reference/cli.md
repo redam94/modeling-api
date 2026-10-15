@@ -1,4 +1,4 @@
-# CLI and Python client <span class="mapi-badge mapi-badge--soon">v0.2</span>
+# CLI and Python client <span class="mapi-badge">v0.2</span>
 
 Two Apache-2.0 packages talk to the `/v1` [HTTP API](http-api.md):
 
@@ -7,6 +7,11 @@ Two Apache-2.0 packages talk to the `/v1` [HTTP API](http-api.md):
 
 Both use the Pydantic DTOs from `mapi_spec.api` for every request and response, and raise
 `mapi_spec.errors.MapiError` subclasses rebuilt from RFC 7807 problem documents.
+
+This page is a compact summary. The guides walk through each with tested examples
+([command line](../guides/cli.md), [Python client](../guides/python-client.md)), and the
+[CLI reference](generated/cli-reference.md) lists every command's `--help`, generated from the
+installed CLI.
 
 ## Python client
 

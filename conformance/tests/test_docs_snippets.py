@@ -24,7 +24,11 @@ DOCS = ROOT / "docs"
 SNIPPETS = DOCS / "snippets"
 SLOW = {"plugin_pymc.py", "pymc_fast.py"}  # tiny MCMC fits
 
-SCRIPTS = sorted(p for p in SNIPPETS.glob("*.py") if not p.name.startswith("test_"))
+NEEDS_STACK = {"client_tour.py"}  # run against `make dev` by test_docs_platform.py (e2e)
+
+SCRIPTS = sorted(
+    p for p in SNIPPETS.glob("*.py") if not p.name.startswith("test_") and p.name not in NEEDS_STACK
+)
 INCLUDE = re.compile(r'^\s*--8<--\s+"([^"]+)"\s*$', re.M)  # block includes only
 
 
