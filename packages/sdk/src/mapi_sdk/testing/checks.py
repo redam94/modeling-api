@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from jsonschema import Draft202012Validator
 from mapi_spec.capabilities import (
@@ -499,6 +500,13 @@ def check_model(
                 return binding_dim(name)
         return None
 
+    def raw_time_freq() -> str | None:
+        raw = fit_once().resolved.stages.get("raw")
+        for d in raw.dims.values() if raw is not None else []:
+            if d.policy is DimPolicy.EXTEND and d.kind == "time":
+                return d.freq
+        return None
+
     def window() -> xr.Dataset:
         tdim = raw_time_dim()
         if tdim is None:
@@ -612,13 +620,23 @@ def check_model(
         coords = data[tdim].values
         if coords.dtype.kind != "M" or len(coords) < 4:
             raise _Skip("extend checks need a datetime dim")
-        step = coords[1] - coords[0]
         n = len(coords)
+
+        def shifted(values: np.ndarray, periods: int) -> np.ndarray:
+            # calendar frequencies (MS, QS, ...) have no fixed step: shift by whole periods
+            freq = raw_time_freq()
+            if freq is not None:
+                offset = pd.tseries.frequencies.to_offset(freq)
+                return np.array(
+                    [np.datetime64(pd.Timestamp(v) + periods * offset, "ns") for v in values]
+                )
+            return values + (coords[1] - coords[0]) * periods
+
         gap = data.isel({tdim: slice(n // 2, None)}).assign_coords(
-            {tdim: coords[n // 2 :] + step * (n + 30)}
+            {tdim: shifted(coords[n // 2 :], n + 30)}
         )
         notes = [_expect_code(ErrorCode.NON_CONTIGUOUS_EXTENSION, lambda: score(_request(), gap))]
-        before = data.isel({tdim: slice(0, 3)}).assign_coords({tdim: coords[:3] - step * 400})
+        before = data.isel({tdim: slice(0, 3)}).assign_coords({tdim: shifted(coords[:3], -400)})
         notes.append(_expect_code(ErrorCode.COORD_NOT_ALLOWED, lambda: score(_request(), before)))
         return "; ".join(notes)
 
