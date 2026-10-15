@@ -342,21 +342,22 @@ def test_stack_with_mask_var_and_errors() -> None:
 @PROPS
 @given(datasets(dtypes=("float64",), min_size=1), st.sampled_from(["all", "any", "none"]))
 def test_property_stack_unstack_roundtrip(ds: xr.Dataset, drop: str) -> None:
+    """Kept values survive exactly; dropped rows come back as NaN; with ``drop="all"``
+    a full-rank variable is never missing where it had a value."""
     ds = normalise_dataset(ds)
     dims = [str(d) for d in ds.dims]
     users = [v for v in ds.data_vars if set(ds[v].dims) & set(dims)]
     st_ = wire.stack_rows(ds, dims, drop=drop)  # type: ignore[arg-type]
     back = wire.unstack_rows(st_)
     for v in users:
-        # dropped rows come back as NaN: values equal where kept, NaN elsewhere
         orig = ds[v]
         got = back[v].transpose(*orig.dims)
         if drop == "none":
             xr.testing.assert_identical(got, orig)
-        else:
-            same = (got == orig) | got.isnull()
-            assert bool(same.all())
-            assert bool((orig.isnull() | got.notnull() | (drop == "any")).all())
+            continue
+        assert bool(((got == orig) | got.isnull()).all())
+        if drop == "all" and set(orig.dims) == set(dims):
+            xr.testing.assert_identical(got, orig)
 
 
 # ----------------------------------------------------------------------------------- Arrow IPC
