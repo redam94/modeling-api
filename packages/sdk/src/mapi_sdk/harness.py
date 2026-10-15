@@ -876,6 +876,7 @@ def score_bundle(
 
     plan = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws)
     issues = plan.check(data)
+    derived = _requested_derived(bundle, req)
     if scenario is not None:
         scenario = binding.apply(normalise_dataset(scenario), missing="ignore")
         scenario = _order_payload(scenario, entry_schema)
@@ -1083,11 +1084,37 @@ def score_bundle(
         attrs["metrics"] = report.model_dump_json()
         if return_full:
             groups["observed"] = _observed_output(bundle, pipeline, main, tables)
+    for name, cached in derived.items():
+        groups[f"derived/{name}"] = cached
     if req.output.names == "dataset":
         groups = {k: binding.reverse(v) for k, v in groups.items()}
     nodes: dict[str, xr.Dataset] = {"/": xr.Dataset(attrs=attrs)}
     nodes.update({f"/{k}": v for k, v in groups.items()})
     return xr.DataTree.from_dict(nodes)
+
+
+def _requested_derived(bundle: Bundle, req: ScoreRequest) -> dict[str, xr.Dataset]:
+    """Derived quantities named in ``output.vars``: the fit-cached copies in the bundle.
+
+    A declared quantity the bundle does not cache (``cache: on_demand``, or not listed in
+    the spec's ``outputs.derived``) cannot be computed by a score run yet, so it is refused
+    rather than silently left out of the result.
+    """
+    declared = set(bundle.resolved.model.derived) - set(bundle.model.manifest.outputs)
+    out: dict[str, xr.Dataset] = {}
+    for j, name in enumerate(req.output.vars):
+        if name not in declared:
+            continue
+        cached = bundle.model.derived.get(name)
+        if cached is None:
+            raise MapiError(
+                f"derived quantity {name!r} is not cached in this bundle; only quantities "
+                "with cache 'fit' listed in outputs.derived can be returned",
+                code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                pointer=f"/output/vars/{j}",
+            )
+        out[name] = cached
+    return out
 
 
 def _labels(ds: xr.Dataset, dim: str, values: Sequence[Any]) -> np.ndarray:

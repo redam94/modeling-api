@@ -158,3 +158,26 @@ def test_models_owning_inverse_units_are_not_inverted_for_metrics(
     )
     out = score_bundle(owned, req, data.isel(date=slice(-28, None)), registry=reg)
     assert set(json.loads(out.attrs["output_space"]).values()) == {"model-owned"}
+
+
+def test_derived_quantities_requested_in_output_vars(
+    reg: Registry, e33_spec: Callable[..., ModelSpec], panel: tuple[xr.Dataset, xr.Dataset]
+) -> None:
+    """``output.vars`` naming a fit-cached derived quantity returns it; one that is not
+    cached in the bundle is refused instead of silently returning nothing."""
+    data, fx = panel
+    bundle = fit_spec(_spec(e33_spec, "toy.derived_linear@^1", ["levels"]), data, {"fx": fx}, reg)
+    head = "apiVersion: mapi/v1\nkind: ScoreRequest\nmodel: endpoint://g/t\nmode: predict\n"
+    window = data.isel(date=slice(-28, None))
+    both = load_score_request(head + "output: {vars: [y_hat, levels]}\n")
+    out = score_bundle(bundle, both, window, registry=reg)
+    paths = {n.path for n in out.subtree}
+    assert "/derived/levels" in paths
+    got = out["derived/levels"].to_dataset()
+    assert "revenue_local" in got  # reverse-bound like every other group
+    assert "y_hat" in out["summary"].to_dataset()
+    lazy = load_score_request(head + "output: {vars: [lazy]}\n")
+    with pytest.raises(MapiError) as err:
+        score_bundle(bundle, lazy, window, registry=reg)
+    assert err.value.code is ErrorCode.CAPABILITY_UNSUPPORTED
+    assert err.value.pointer == "/output/vars/0"
