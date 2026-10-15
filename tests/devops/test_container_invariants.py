@@ -708,6 +708,49 @@ def _mapi_names(text: str) -> set[str]:
     return set(re.findall(r"\bMAPI_[A-Z0-9_]*[A-Z0-9]\b", text))
 
 
+def _settings_env_names() -> dict[str, str]:
+    """Environment name -> field name of every ``mapi_server.settings.Settings`` field."""
+    from mapi_server.settings import Settings
+    from pydantic import AliasChoices
+
+    prefix = Settings.model_config.get("env_prefix", "")
+    out: dict[str, str] = {}
+    for name, info in Settings.model_fields.items():
+        alias = info.validation_alias
+        if isinstance(alias, AliasChoices):
+            for choice in alias.choices:
+                if isinstance(choice, str) and choice.isupper():
+                    out[choice] = name
+        else:
+            out[f"{prefix}{name}".upper()] = name
+    return out
+
+
+def test_env_example_covers_the_server_settings() -> None:
+    """mapi-server reads every Settings field from MAPI_<NAME>: all are documented, and a
+    documented scalar default (``# MAPI_X=value``) is the real default."""
+    from enum import Enum
+
+    from mapi_server.settings import Settings
+
+    documented = (ROOT / ".env.example").read_text(encoding="utf-8")
+    names = _settings_env_names()
+    assert {"MAPI_IMAGE_DIGEST", "MAPI_SIGNING_KEY_PATH", "MAPI_PROFILE"} <= set(names)
+    missing = sorted(v for v in names if not re.search(rf"\b{v}\b", documented))
+    assert not missing, f".env.example does not document: {missing}"
+    for env, value in re.findall(r"^# (MAPI_[A-Z0-9_]+)=(\S+)$", documented, re.M):
+        field = names.get(env)
+        if field is None:
+            continue
+        default = Settings.model_fields[field].default
+        if isinstance(default, Enum):
+            default = default.value
+        if isinstance(default, bool):
+            default = str(default).lower()
+        if isinstance(default, int | float | str):
+            assert value == str(default), f"{env}: documented {value}, default {default}"
+
+
 def test_env_example_documents_every_runtime_variable(dev: ModuleType) -> None:
     from mapi_spec import localdev
     from mapi_spec import run as run_contract
@@ -728,6 +771,7 @@ def test_env_example_documents_every_runtime_variable(dev: ModuleType) -> None:
     used |= {getattr(localdev, n) for n in dir(localdev) if n.startswith("ENV_")}
     used |= set(run_contract.RUNNER_ENV_VARS)
     used |= {dev.override_var(s) for s in ("gcs-shim", "migrate", "api", "worker", "web", "plots")}
+    used |= set(_settings_env_names())  # everything mapi-server reads
     used -= build_args
     used = {u for u in used if u.startswith(("MAPI_", "DATABASE_URL"))}
     documented = (ROOT / ".env.example").read_text(encoding="utf-8")
