@@ -22,6 +22,7 @@ import re
 import secrets
 import time
 from dataclasses import dataclass, field
+from datetime import timedelta
 from enum import StrEnum
 from typing import Annotated, Any, Final, Generic, Literal, TypeVar
 
@@ -51,9 +52,11 @@ from mapi_spec.validate import ResolvedSpec
 
 __all__ = [
     "API_PREFIX",
+    "ARTIFACT_LINK_TTL",
     "DEFAULT_PROJECT_ID",
     "DEFAULT_TENANT_ID",
     "IDEMPOTENCY_KEY_HEADER",
+    "IDEMPOTENCY_KEY_RE",
     "IDEMPOTENCY_TTL_SECONDS",
     "LAST_EVENT_ID_HEADER",
     "M1_ENDPOINTS",
@@ -109,7 +112,9 @@ __all__ = [
     "ValidateRequest",
     "ValidateResponse",
     "VarMapping",
+    "check_idempotency_key",
     "encode_sse",
+    "loc_to_pointer",
     "new_id",
     "parse_last_event_id",
     "parse_prefer_wait",
@@ -121,6 +126,10 @@ DEFAULT_PROJECT_ID: Final = "default"
 
 IDEMPOTENCY_KEY_HEADER: Final = "Idempotency-Key"
 IDEMPOTENCY_TTL_SECONDS: Final = 24 * 3600
+IDEMPOTENCY_KEY_RE: Final = re.compile(r"^[\x21-\x7e]{1,255}$")
+"""1-255 printable, non-space ASCII characters."""
+ARTIFACT_LINK_TTL: Final = timedelta(minutes=15)
+"""Lifetime of signed artifact URLs handed to clients."""
 LAST_EVENT_ID_HEADER: Final = "Last-Event-ID"
 PREFER_HEADER: Final = "Prefer"
 PREFERENCE_APPLIED_HEADER: Final = "Preference-Applied"
@@ -967,6 +976,19 @@ def parse_last_event_id(value: str | None) -> int | None:
         return None
     n = int(value.strip())
     return n if n > 0 else None
+
+
+def check_idempotency_key(value: str) -> str:
+    """Validate an ``Idempotency-Key`` header value (raises ``ValueError``)."""
+    if not IDEMPOTENCY_KEY_RE.match(value):
+        raise ValueError("Idempotency-Key must be 1-255 printable ASCII characters")
+    return value
+
+
+def loc_to_pointer(loc: tuple[str | int, ...] | list[str | int]) -> str:
+    """Turn a request-validation location (``("body", "kind")``) into an RFC 6901 pointer
+    (``/body/kind``) for ``Issue.pointer`` in 422 ``SCHEMA_INVALID`` problems."""
+    return "".join("/" + str(p).replace("~", "~0").replace("/", "~1") for p in loc)
 
 
 _WAIT_RE = re.compile(r"(?:^|[,;\s])wait\s*=\s*(\d{1,6})(?=$|[,;\s])", re.IGNORECASE)

@@ -173,6 +173,18 @@ def test_sse_frames() -> None:
     assert {t.value for t in RunEventType} <= {e.value for e in SseEventName}
 
 
+def test_idempotency_keys_and_error_pointers() -> None:
+    assert api.check_idempotency_key("b6f1c2d4-1d2e-4f00-9a1b-2c3d4e5f6a7b")
+    for bad in ("", "has space", "x" * 256, "tab\t", "é"):
+        with pytest.raises(ValueError):
+            api.check_idempotency_key(bad)
+    assert api.loc_to_pointer(("body", "request", "horizon", 0)) == "/body/request/horizon/0"
+    assert api.loc_to_pointer(["query", "a/b~c"]) == "/query/a~1b~0c"
+    assert api.loc_to_pointer(()) == ""
+    assert api.ARTIFACT_LINK_TTL.total_seconds() == 900
+    storage.check_ttl(api.ARTIFACT_LINK_TTL)
+
+
 def test_ids_are_prefixed_sortable_and_storage_safe() -> None:
     a = new_id("run")
     time.sleep(0.002)

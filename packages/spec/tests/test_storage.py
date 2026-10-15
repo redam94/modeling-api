@@ -396,3 +396,28 @@ async def test_reference_store_satisfies_the_protocol() -> None:
     await store.delete("mapi-local-runs", "t/d/runs/r/a1/x")
     assert (await store.list("mapi-local-runs")).items == []
     assert builtins.list is list  # the protocol's ``list`` method does not shadow the builtin
+
+
+# ------------------------------------------------------------------------------- local dev
+
+
+def test_local_dev_defaults_and_overrides() -> None:
+    from mapi_spec.localdev import LocalDev
+    from mapi_spec.run import RunnerEnv, new_nonce
+
+    cfg = LocalDev.from_environ({})
+    assert cfg.api_url == "http://127.0.0.1:8000" and cfg.gcs_endpoint.endswith(":4443")
+    assert cfg.web_origin.endswith(":5173") and cfg.plots_origin.endswith(":5174")
+    assert cfg.database_url is None and cfg.buckets.runs == "mapi-local-runs"
+    tmpl = cfg.bootstrap_url_template()
+    assert tmpl == "http://127.0.0.1:4443/storage/v1/b/mapi-local-bootstrap/o/{nonce}"
+    RunnerEnv(run_id="r", nonce=new_nonce(), bootstrap_url=tmpl)  # a valid runner template
+    over = LocalDev.from_environ(
+        {"DATABASE_URL": "postgresql://u@h/db", "MAPI_ENV": "dev", "MAPI_API_URL": " "}
+    )
+    assert over.database_url == "postgresql://u@h/db" and over.buckets.data == "mapi-dev-data"
+    assert over.api_url == cfg.api_url
+    with pytest.raises(ValueError, match="different origin"):
+        LocalDev(plots_origin="http://127.0.0.1:5173")
+    with pytest.raises(ValueError):
+        LocalDev(env="Bad")
