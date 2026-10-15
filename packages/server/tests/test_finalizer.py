@@ -12,7 +12,7 @@ from mapi_server.db import models as m
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.finalizer import Finalizer, build_scorecard, dataset_sha
 from mapi_server.services.runs import apply_transition, load_run
-from mapi_server_testkit.builders import CATALOG, queued_fit, simulate_outputs
+from mapi_server_testkit.builders import CATALOG, queued_fit, ready_dataset, simulate_outputs
 from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_spec.api import ModelVersion
 from mapi_spec.run import Actor, BundleManifest, RunState, RunTrigger, new_hmac_key
@@ -101,6 +101,25 @@ async def test_fit_is_verified_copied_signed_and_registered(
     assert [x["latest_version"] for x in models["items"]] == [1]
     # finalizing again is a no-op (idempotent)
     assert await Finalizer(ctx).finalize(run.id, att.attempt) is None
+
+
+async def test_lineage_records_the_side_table_versions_the_fit_read(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    run, att = await _finalizing(ctx)
+    _, fx = await ready_dataset(ctx, "fx_daily")
+    async with ctx.db.session() as s:
+        row = await load_run(s, None, run.id, for_update=True)
+        row.inputs = {**row.inputs, "side.fx": dict(fx.objects["data.zarr.zip"])}
+    run = await _reload(ctx, run.id)  # the runner's manifest claims every pinned input
+    await simulate_outputs(ctx, run, att)
+    assert await Finalizer(ctx).finalize(run.id, att.attempt) is RunState.SUCCEEDED
+    done = await _reload(ctx, run.id)
+    async with ctx.db.session() as s:
+        mv = await s.get(m.ModelVersion, done.output_model_version_id)
+    assert mv is not None
+    view = (await client.get(f"/v1/models/{mv.model_id}/versions/{mv.version}")).json()
+    assert view["lineage"]["side_tables"] == {"fx": fx.sha256}
 
 
 async def test_url_minting_refuses_a_tampered_manifest(
