@@ -124,10 +124,9 @@ async def ready_dataset(
     return ds, dv
 
 
-async def queued_fit(ctx: ServerContext, *, yaml: str = TREND_SPEC) -> str:
-    """Store a ready dataset + a valid spec revision and submit a fit run (QUEUED)."""
+async def trend_spec(ctx: ServerContext, *, yaml: str = TREND_SPEC) -> str:
+    """Store a ready dataset and a valid spec revision; returns the spec id."""
     from mapi_server.services.specs import validate_document
-    from mapi_server.services.submit import submit_spec_run
 
     await ready_dataset(ctx)
     async with ctx.db.session() as s:
@@ -157,9 +156,39 @@ async def queued_fit(ctx: ServerContext, *, yaml: str = TREND_SPEC) -> str:
                 resolved=v.resolved.model_dump(mode="json") if v.resolved else None,
             )
         )
-        await s.flush()
-        run = await submit_spec_run(s, ctx, kind=RunKind.FIT, spec_id=spec.id, revision=1)
+        return spec.id
+
+
+async def submit_fit(
+    ctx: ServerContext,
+    spec_id: str,
+    *,
+    labels: dict[str, str] | None = None,
+    timeout_s: int | None = None,
+    checkpointable: bool | None = None,
+) -> str:
+    """Submit a fit of revision 1 of ``spec_id`` (QUEUED), optionally overriding the row."""
+    from mapi_server.services.submit import submit_spec_run
+    from mapi_spec._types import Duration
+
+    async with ctx.db.session() as s:
+        run = await submit_spec_run(
+            s,
+            ctx,
+            kind=RunKind.FIT,
+            spec_id=spec_id,
+            revision=1,
+            labels=labels,
+            timeout=Duration(timeout_s) if timeout_s is not None else None,
+        )
+        if checkpointable is not None:
+            run.checkpointable = checkpointable
         return run.id
+
+
+async def queued_fit(ctx: ServerContext, *, yaml: str = TREND_SPEC) -> str:
+    """Store a ready dataset + a valid spec revision and submit a fit run (QUEUED)."""
+    return await submit_fit(ctx, await trend_spec(ctx, yaml=yaml))
 
 
 async def runspec_from_bootstrap(ctx: ServerContext, nonce: str) -> RunSpec:

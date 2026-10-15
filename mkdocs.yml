@@ -187,6 +187,7 @@ nav:
       - Docker Compose: operations/docker.md
       - Container images: operations/images.md
       - Authentication and isolation: operations/authentication.md
+      - Cloud Run Jobs executor: operations/cloud-run.md
       - Configuration reference: operations/configuration.md
       - Troubleshooting: operations/troubleshooting.md
   - Roadmap:

@@ -157,12 +157,16 @@ with OIDC authentication. Configure the subscription with a dedicated service ac
 the audience `https://<api host>/internal/events`, then set
 
 ```bash
-MAPI_PUBSUB_AUDIENCE=https://api.mapi.example/internal/events
-MAPI_PUBSUB_SERVICE_ACCOUNT=pubsub-push@mapi-prod-control.iam.gserviceaccount.com
+MAPI_PUBSUB_PUSH_AUDIENCE=https://api.mapi.example/internal/events
+MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT=pubsub-push@mapi-prod-control.iam.gserviceaccount.com
+# optional: only accept pushes from these subscriptions
+MAPI_PUBSUB_PUSH_SUBSCRIPTIONS=projects/mapi-prod-control/subscriptions/mapi-run-events-push
 ```
 
 Each push must carry a Google-signed ID token (RS256, checked against
 `MAPI_GOOGLE_JWKS_URL`) whose issuer is Google, audience the configured one, `email` the
-service account with `email_verified: true`, and which has not expired. Without these
+service account with `email_verified: true`, and which has not expired (a valid Google token for another audience or account gets 403).
+With `MAPI_PUBSUB_PUSH_SUBSCRIPTIONS` set, the envelope must also come from one of those
+subscriptions. Without these
 settings `MAPI_INTERNAL_TOKEN` is required when set, and a multi-tenant deployment with
 neither refuses every push. Refused pushes are audited as `event.rejected`.

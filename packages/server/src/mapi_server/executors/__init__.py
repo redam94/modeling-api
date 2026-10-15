@@ -2,7 +2,9 @@
 
 * :class:`LocalProcessExecutor` (``local-process``, PROCESS isolation; dev loop and tests;
   refuses multi-tenant profiles);
-* :class:`DockerExecutor` (``docker`` / ``docker-gvisor``).
+* :class:`DockerExecutor` (``docker`` / ``docker-gvisor``);
+* :class:`CloudRunJobsExecutor` (``cloudrun-jobs``, MICROVM; the primary cloud backend, over
+  the Cloud Run Admin API — :class:`FakeCloudRun` stands in for it in tests).
 
 Placement is enforced in code (:func:`check_placement`), never by tenant configuration.
 """
@@ -17,18 +19,28 @@ from mapi_spec.executor import Executor, ExecutorCaps
 from mapi_spec.resources import ResourceClass
 from mapi_spec.tenancy import TIER_PLACEMENT, TrustTier, placement_allows
 
+from mapi_server.executors.cloudrun import (
+    Base,
+    CloudRunApi,
+    CloudRunJobsExecutor,
+    GoogleCloudRunApi,
+    JobInventory,
+)
 from mapi_server.executors.docker import DockerExecutor, docker_available
 from mapi_server.executors.local_process import ExecutorRefused, LocalProcessExecutor
-from mapi_server.settings import ExecutorName, Settings
+from mapi_server.settings import ExecutorName, Profile, Settings
 
 __all__ = [
+    "CloudRunJobsExecutor",
     "DockerExecutor",
     "Executor",
     "ExecutorRefused",
     "LocalProcessExecutor",
     "PlacementRefused",
+    "build_cloudrun_executor",
     "build_executor",
     "check_placement",
+    "cloudrun_inventory",
     "docker_available",
 ]
 
@@ -75,8 +87,49 @@ def check_placement(
         raise PlacementRefused(f"the executor does not offer resource class {resource_class.value}")
 
 
+def cloudrun_inventory(settings: Settings) -> JobInventory:
+    """The Job inventory the Cloud Run settings describe."""
+    if not settings.cloudrun_project:
+        raise ExecutorRefused("MAPI_EXECUTOR=cloudrun-jobs needs MAPI_CLOUDRUN_PROJECT")
+    return JobInventory(
+        project=settings.cloudrun_project,
+        region=settings.cloudrun_region,
+        env=settings.env,
+        template=settings.cloudrun_job_template,
+        plugin_bases={k: Base(v) for k, v in settings.cloudrun_plugin_bases.items()},
+        default_base=Base(settings.cloudrun_default_base),
+    )
+
+
+def build_cloudrun_executor(
+    settings: Settings, api: CloudRunApi | None = None
+) -> CloudRunJobsExecutor:
+    """``cloudrun-jobs`` from settings (``api`` defaults to the real google-cloud-run client)."""
+    inventory = cloudrun_inventory(settings)
+    if settings.profile is Profile.MULTI_TENANT and settings.pubsub_push_audience is None:
+        log.warning(
+            "cloudrun-jobs in a multi-tenant profile without MAPI_PUBSUB_PUSH_AUDIENCE: "
+            "POST /internal/events will refuse every push until it is configured"
+        )
+    return CloudRunJobsExecutor(
+        api if api is not None else GoogleCloudRunApi(),
+        inventory,
+        submits_per_minute=settings.cloudrun_submits_per_minute,
+        burst=settings.cloudrun_submit_burst,
+        max_rate_limit_retries=settings.cloudrun_max_429_retries,
+        backoff_base_s=settings.cloudrun_backoff_base_s,
+        backoff_cap_s=settings.cloudrun_backoff_cap_s,
+        timeout_margin_s=settings.cloudrun_timeout_margin_s,
+        egress_enforced=settings.cloudrun_egress_enforced,
+        dns_enforced=settings.cloudrun_dns_enforced,
+        adopt_lookback_s=settings.cloudrun_adopt_lookback_s,
+    )
+
+
 def build_executor(settings: Settings) -> Executor:
     """The executor selected by ``MAPI_EXECUTOR``."""
+    if settings.executor is ExecutorName.CLOUDRUN_JOBS:
+        return build_cloudrun_executor(settings)
     template = settings.bootstrap_url_template()
     if settings.executor is ExecutorName.LOCAL_PROCESS:
         uid = os.getuid() if hasattr(os, "getuid") else "?"

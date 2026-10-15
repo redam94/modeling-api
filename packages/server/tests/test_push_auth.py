@@ -1,6 +1,7 @@
 """``POST /internal/events`` authentication: Google-signed Pub/Sub OIDC tokens (verified
-against a JWKS, then :func:`mapi_spec.auth.check_push_claims`), the internal bearer, and
-fail-closed behaviour in multi-tenant profiles. Refusals are audited."""
+against a JWKS by :class:`~mapi_server.services.pubsub.PushVerifier`, then
+:func:`mapi_spec.auth.check_push_claims`), the internal bearer, and fail-closed behaviour in
+multi-tenant profiles. Refusals are audited."""
 
 from __future__ import annotations
 
@@ -12,10 +13,11 @@ import httpx
 import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
-from mapi_server.auth.oidc import JwksCache
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.services.pubsub import GOOGLE_JWKS_URL, JwksCache, PushVerifier
 from mapi_server.settings import Profile
+from mapi_spec.auth import PushAuthExpectation
 from sqlalchemy import select
 
 pytestmark = pytest.mark.integration
@@ -26,10 +28,15 @@ KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 OTHER = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
 
-async def _jwks() -> Mapping[str, Any]:
+def _jwks() -> Mapping[str, Any]:
     jwk = jwt.algorithms.RSAAlgorithm.to_jwk(KEY.public_key(), as_dict=True)
     jwk.update(kid="g1", alg="RS256", use="sig")
     return {"keys": [jwk]}
+
+
+def _jwks_cache() -> JwksCache:
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, json=dict(_jwks())))
+    return JwksCache(GOOGLE_JWKS_URL, client=httpx.AsyncClient(transport=transport))
 
 
 def _token(key: Any = KEY, **overrides: Any) -> str:
@@ -50,9 +57,11 @@ def _token(key: Any = KEY, **overrides: Any) -> str:
 @pytest.fixture
 def push_ctx(ctx: ServerContext) -> ServerContext:
     ctx.settings = ctx.settings.model_copy(
-        update={"pubsub_audience": AUDIENCE, "pubsub_service_account": PUSHER}
+        update={"pubsub_push_audience": AUDIENCE, "pubsub_push_service_account": PUSHER}
     )
-    ctx.push_jwks = JwksCache(_jwks)
+    ctx.push_verifier = PushVerifier(
+        PushAuthExpectation(audience=AUDIENCE, service_account_email=PUSHER), _jwks_cache()
+    )
     return ctx
 
 
@@ -79,7 +88,8 @@ async def test_google_signed_push_tokens(
     }
     for why, token in refused.items():
         r = await _post(client, token)
-        assert r.status_code == 401, why
+        # 401: not authenticated; 403: a valid Google token, but not for our push identity
+        assert r.status_code in (401, 403), why
     async with push_ctx.db.session() as s:
         rejected = [
             e for e in (await s.execute(select(m.AuditEvent))).scalars()

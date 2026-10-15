@@ -49,8 +49,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_DEBUG` | `false` | Put tracebacks into problem documents' `untrusted_text`. Never in production |
 | `MAPI_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
 | `MAPI_INTERNAL_TOKEN` | unset | If set (and Pub/Sub push authentication is not), `POST /internal/events` requires this bearer token. A multi-tenant profile with neither refuses every push |
-| `MAPI_PUBSUB_AUDIENCE`, `MAPI_PUBSUB_SERVICE_ACCOUNT` | unset | Set both to require a Google-signed OIDC token from the push subscription's service account on `POST /internal/events` (see [Authentication](authentication.md#pubsub-push)) |
-| `MAPI_GOOGLE_JWKS_URL` | `https://www.googleapis.com/oauth2/v3/certs` | Google's signing keys for push tokens |
+| `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | unset | Set both to require a Google-signed OIDC token from the push subscription's service account on `POST /internal/events` (see [Authentication](authentication.md#pubsub-push) and the Cloud Run settings below) |
 | `MAPI_SSE_HEARTBEAT_S` | `15` | Seconds between `: keepalive` comments on event streams |
 | `MAPI_SSE_POLL_S` | `5` | Fallback poll of an event stream when no PostgreSQL `NOTIFY` arrives |
 | `MAPI_MAX_SIDECAR_BYTES` | 8 MiB | Largest JSON sidecar (`plots.json`, `diagnostics.json`, …) the control plane will parse |
@@ -114,7 +113,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MAPI_EXECUTOR` | `local-process` | `local-process`, `docker` or `docker-gvisor` |
+| `MAPI_EXECUTOR` | `local-process` | `local-process`, `docker`, `docker-gvisor` or `cloudrun-jobs` ([Cloud Run Jobs executor](cloud-run.md), with its own settings) |
 | `MAPI_RUNNER_COMMAND` | `mapi-runner` next to the interpreter | The supervisor's command line (shell-quoted) for `local-process` |
 | `MAPI_EXECUTOR_WORKDIR` | `$MAPI_DATA_DIR/executions` | Per-run scratch of the local executor |
 | `MAPI_DOCKER_IMAGE` | `mapi/base-bayes:<version>` | Runner image of the docker executors for runs without a mapped plugin (ingest, describe) |
@@ -148,6 +147,35 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_UV_LOCK_PATH` | found above the working directory | The `uv.lock` whose hash is the local image digest |
 | `MAPI_SIGNING_KEY_PATH` | `$MAPI_DATA_DIR/keys/bundle-signing-p256.pem` | The EC P-256 key that signs bundle manifests (standing in for Cloud KMS). The worker signs and the API verifies, so both must load the same file. `mapi-server migrate` creates it |
 | `MAPI_SIGNING_KEY_CREATE` | `true` | Create the key on first use when it is missing. Compose turns it off for `api` and `worker`, so a missing key fails start-up instead of a new key being minted |
+| `MAPI_SIGNER` | `local` | `local`: the key file above. `kms`: a Cloud KMS asymmetric key version signs (`gcp` extra) |
+| `MAPI_KMS_KEY_VERSION` | unset | With `MAPI_SIGNER=kms`: the `projects/…/cryptoKeyVersions/N` that signs new manifests |
+| `MAPI_KMS_TRUSTED_KEY_VERSIONS` | none | Older key versions whose signatures still verify (comma-separated; rotation) |
+
+**Cloud Run Jobs** (`MAPI_EXECUTOR=cloudrun-jobs`; see [Cloud Run Jobs executor](cloud-run.md))
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_CLOUDRUN_PROJECT` | unset (required) | The exec project holding the Job inventory |
+| `MAPI_CLOUDRUN_REGION` | `europe-west1` | Region of the inventory |
+| `MAPI_CLOUDRUN_JOB_TEMPLATE` | `mapi-{env}-{base}-{class}` | Job id convention; it must match the Jobs the infrastructure creates |
+| `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to base image family (JSON) |
+| `MAPI_CLOUDRUN_DEFAULT_BASE` | `base-bayes` | Base for runs without a mapped plugin (ingest, describe) |
+| `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE`, `MAPI_CLOUDRUN_SUBMIT_BURST` | `150`, `10` | Token bucket in front of `jobs.run` per orchestrator (at most 180, the regional quota) |
+| `MAPI_CLOUDRUN_MAX_429_RETRIES` | `6` | `429` answers in a row before a submit fails |
+| `MAPI_CLOUDRUN_BACKOFF_BASE_S`, `MAPI_CLOUDRUN_BACKOFF_CAP_S` | `1`, `64` | Exponential back-off after a `429` (never shorter than `Retry-After`) |
+| `MAPI_CLOUDRUN_TIMEOUT_MARGIN_S` | `120` | Task timeout = run timeout + this margin (the reconciler stops runs at their deadline; this is the backstop) |
+| `MAPI_CLOUDRUN_EGRESS_ENFORCED` | `true` | The exec network denies all egress except the restricted Google APIs VIP |
+| `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified to apply to Jobs. Public tenants are placed only when both are `true` |
+| `MAPI_CLOUDRUN_ADOPT_LOOKBACK_S` | `93600` | How far back orphan adoption lists executions |
+
+**Pub/Sub push events** (`POST /internal/events`)
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_PUBSUB_PUSH_AUDIENCE` | unset | Expected audience of the push subscription's OIDC token. When set, every push needs a Google-signed token |
+| `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | unset | The service account the subscription signs as (set together with the audience) |
+| `MAPI_PUBSUB_PUSH_SUBSCRIPTIONS` | any | Accepted subscription names (comma-separated) |
+| `MAPI_GOOGLE_JWKS_URL` | `https://www.googleapis.com/oauth2/v3/certs` | Google's OIDC signing keys |
 
 ## The runner (per run)
 

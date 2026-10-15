@@ -53,6 +53,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.executors import check_placement
+from mapi_server.ratelimit import TokenBucket
 from mapi_server.services.bundles import BundleIntegrityError, verify_bundle_inputs
 from mapi_server.services.quotas import (
     DISPATCHED_STATES,
@@ -84,36 +85,6 @@ def _over_budget(policy: QuotaPolicy, usage: QuotaUsage) -> bool:
         lim.vcpu_seconds_per_month is not None
         and usage.vcpu_seconds_month > lim.vcpu_seconds_per_month
     )
-
-
-class TokenBucket:
-    """Classic token bucket: ``rate`` tokens per second, at most ``burst`` saved up."""
-
-    def __init__(self, rate_per_s: float, burst: int) -> None:
-        if rate_per_s <= 0 or burst < 1:
-            raise ValueError("rate must be > 0 and burst >= 1")
-        self.rate = rate_per_s
-        self.burst = float(burst)
-        self._tokens = float(burst)
-        self._stamp = time.monotonic()
-        self._lock = asyncio.Lock()
-
-    def _refill(self) -> None:
-        t = time.monotonic()
-        self._tokens = min(self.burst, self._tokens + (t - self._stamp) * self.rate)
-        self._stamp = t
-
-    def try_acquire(self) -> bool:
-        self._refill()
-        if self._tokens >= 1:
-            self._tokens -= 1
-            return True
-        return False
-
-    async def acquire(self) -> None:
-        async with self._lock:
-            while not self.try_acquire():
-                await asyncio.sleep((1 - self._tokens) / self.rate)
 
 
 class Dispatcher:
@@ -406,6 +377,8 @@ class Dispatcher:
                 self._backoff_until = time.monotonic() + delay
             with contextlib.suppress(Exception):
                 handle = await self.executor.adopt(att.nonce)
+            if handle is not None and handle.attempt != attempt_no:
+                handle = handle.model_copy(update={"attempt": attempt_no})
         if handle is not None:
             self._submits.append(time.monotonic())
             if error is None:

@@ -32,6 +32,7 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from mapi_server import __version__
 
 __all__ = [
+    "DEFAULT_CLOUDRUN_BASES",
     "DEFAULT_DEV_USERS",
     "DEFAULT_DOCKER_IMAGES",
     "DEFAULT_ESTIMATE_WALL_S",
@@ -39,8 +40,17 @@ __all__ = [
     "ObjectStoreKind",
     "Profile",
     "Settings",
+    "SignerKind",
     "local_image_digest",
 ]
+
+DEFAULT_CLOUDRUN_BASES: dict[str, str] = {
+    "mmm": "base-bayes",
+    "tabular": "base-bayes",
+    "sklearn": "base-ml",
+    "ts": "base-forecast",
+}
+"""Plugin namespace → the base whose Cloud Run Jobs ship it (mirrors the docker images)."""
 
 DEFAULT_DOCKER_IMAGES: dict[str, str] = {
     "mmm": f"mapi/base-bayes:{__version__}",
@@ -90,6 +100,14 @@ class ExecutorName(StrEnum):
     LOCAL_PROCESS = "local-process"
     DOCKER = "docker"
     DOCKER_GVISOR = "docker-gvisor"
+    CLOUDRUN_JOBS = "cloudrun-jobs"
+
+
+class SignerKind(StrEnum):
+    """Who signs bundle manifests: a local P-256 key file, or a Cloud KMS key version."""
+
+    LOCAL = "local"
+    KMS = "kms"
 
 
 class ObjectStoreKind(StrEnum):
@@ -215,6 +233,67 @@ class Settings(BaseSettings):
     executor_workdir: Path | None = None
     cancel_grace_s: float = Field(10.0, ge=0)
 
+    # ------------------------------------------------------------------------ Cloud Run Jobs
+    cloudrun_project: str | None = Field(
+        None, description="Exec project that holds the Cloud Run Job inventory (cloudrun-jobs)"
+    )
+    cloudrun_region: str = Field("europe-west1", description="Region of the Job inventory")
+    cloudrun_job_template: str = Field(
+        "mapi-{env}-{base}-{class}",
+        description="Job id convention; {env}, {base} (base-bayes|base-ml|base-forecast) and "
+        "{class} (s|m|l) are substituted. Must match the Jobs Terraform creates",
+    )
+    cloudrun_plugin_bases: dict[str, str] = Field(
+        default_factory=lambda: dict(DEFAULT_CLOUDRUN_BASES),
+        description="Plugin namespace → base image family (JSON in the environment)",
+    )
+    cloudrun_default_base: str = Field(
+        "base-bayes", description="Base for runs without a mapped plugin (ingest, describe)"
+    )
+    cloudrun_submits_per_minute: float = Field(
+        150.0,
+        gt=0,
+        le=180,
+        description="Token-bucket rate of jobs.run calls per orchestrator; the regional quota "
+        "is 180/min [verify M0], so split it between orchestrator replicas",
+    )
+    cloudrun_submit_burst: int = Field(10, ge=1)
+    cloudrun_max_429_retries: int = Field(6, ge=0, description="429 answers before giving up")
+    cloudrun_backoff_base_s: float = Field(1.0, gt=0)
+    cloudrun_backoff_cap_s: float = Field(64.0, gt=0)
+    cloudrun_timeout_margin_s: int = Field(
+        120, ge=0, description="Task timeout = run timeout + margin (the supervisor flushes)"
+    )
+    cloudrun_egress_enforced: bool = Field(
+        True, description="The exec network denies all egress except the restricted VIP"
+    )
+    cloudrun_dns_enforced: bool = Field(
+        False,
+        description="The DNS response policy is verified to apply to Jobs [verify M0]; public "
+        "tenants are only placed when both egress and DNS are enforced",
+    )
+    cloudrun_adopt_lookback_s: float = Field(
+        26 * 3600, gt=0, description="How far back orphan adoption lists executions"
+    )
+
+    # ------------------------------------------------------------------ Pub/Sub push events
+    pubsub_push_audience: str | None = Field(
+        None,
+        description="Expected audience of the Pub/Sub push OIDC token (usually the push "
+        "endpoint URL). When set, POST /internal/events requires a Google-signed token",
+    )
+    pubsub_push_service_account: str | None = Field(
+        None, description="Service account the push subscription signs its tokens as"
+    )
+    pubsub_push_subscriptions: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Accepted subscription names (comma-separated; empty = any)",
+    )
+    google_jwks_url: str = Field(
+        "https://www.googleapis.com/oauth2/v3/certs",
+        description="JWKS of Google's OIDC signing keys (push token verification)",
+    )
+
     # ------------------------------------------------------------- dispatcher / reconciler
     dispatch_rate_per_minute: float = Field(180.0, gt=0)
     dispatch_burst: int = Field(10, ge=1)
@@ -247,19 +326,22 @@ class Settings(BaseSettings):
         "migrate` creates it on shared storage (compose api/worker)",
     )
 
+    signer: SignerKind = Field(
+        SignerKind.LOCAL, description="local = PEM key file; kms = Cloud KMS asymmetric key"
+    )
+    kms_key_version: str | None = Field(
+        None,
+        description="projects/…/cryptoKeys/…/cryptoKeyVersions/N that signs bundle manifests",
+    )
+    kms_trusted_key_versions: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Older key versions whose signatures still verify (comma-separated)",
+    )
+
     # ------------------------------------------------------------------------------ API misc
     internal_token: str | None = Field(
         None, repr=False, description="If set, POST /internal/events requires this bearer"
     )
-    pubsub_audience: str | None = Field(
-        None,
-        description="Audience of the OIDC token on Pub/Sub pushes to /internal/events; when "
-        "set (with pubsub_service_account) pushes must carry a Google-signed token",
-    )
-    pubsub_service_account: str | None = Field(
-        None, description="Service-account e-mail the push subscription authenticates as"
-    )
-    google_jwks_url: str = "https://www.googleapis.com/oauth2/v3/certs"
 
     # -------------------------------------------------------------- authentication (M2)
     auth_required: bool | None = Field(
@@ -341,6 +423,8 @@ class Settings(BaseSettings):
         "operator_emails",
         "default_tenant_admins",
         "devidp_users",
+        "pubsub_push_subscriptions",
+        "kms_trusted_key_versions",
         mode="before",
     )
     @classmethod
@@ -363,8 +447,12 @@ class Settings(BaseSettings):
             raise ValueError("db_app_role and db_system_role must be different roles")
         if self.profile is not Profile.SINGLE_TENANT and self.auth_required is False:
             raise ValueError("authentication cannot be turned off in a multi-tenant profile")
-        if bool(self.pubsub_audience) != bool(self.pubsub_service_account):
-            raise ValueError("set both pubsub_audience and pubsub_service_account, or neither")
+        if (self.pubsub_push_audience is None) != (self.pubsub_push_service_account is None):
+            raise ValueError(
+                "set MAPI_PUBSUB_PUSH_AUDIENCE and MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT together"
+            )
+        if self.signer is SignerKind.KMS and not self.kms_key_version:
+            raise ValueError("MAPI_SIGNER=kms needs MAPI_KMS_KEY_VERSION")
         weak = [a for a in self.oidc_algorithms if a.upper().startswith("HS") or a == "none"]
         if weak:
             raise ValueError("oidc_algorithms must be asymmetric (RS*, ES*, PS* or EdDSA)")

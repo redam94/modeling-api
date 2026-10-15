@@ -57,6 +57,10 @@ flowchart TB
 - Other backends plug in through the same `Executor` protocol, each gated by an executor
   conformance suite.
 
+The Cloud Run executor, the authenticated Pub/Sub event path, KMS manifest signing and the
+hardened Cloud Storage driver are described in [Cloud Run Jobs executor](../operations/cloud-run.md)
+(tested against fakes; no live cloud yet).
+
 ## What it means for plugins
 
 Nothing changes in your code. The contract kit already checks the properties the cloud relies

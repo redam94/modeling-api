@@ -22,13 +22,14 @@ from mapi_server.services.catalog import CatalogService
 from mapi_server.services.notify import NotificationHub
 from mapi_server.services.runs import Scope
 from mapi_server.services.secrets import ServerSecrets
-from mapi_server.services.signing import BundleSigner
+from mapi_server.services.signing import ManifestSigner
 from mapi_server.settings import Settings
 
 if TYPE_CHECKING:
-    from mapi_server.auth.oidc import JwksCache, OidcClient
+    from mapi_server.auth.oidc import OidcClient
     from mapi_server.auth.request import RequestAuth
     from mapi_server.devidp import DevIdP
+    from mapi_server.services.pubsub import PushVerifier
 
 __all__ = ["FinalizeQueue", "NoProjectScope", "ServerContext"]
 
@@ -49,7 +50,7 @@ class ServerContext:
     db: Database
     store: ObjectStore
     catalogs: CatalogService
-    signer: BundleSigner
+    signer: ManifestSigner
     hub: NotificationHub
     queue: FinalizeQueue | None = None
     on_shutdown: list[Callable[[], Awaitable[None]]] = field(default_factory=list)
@@ -57,8 +58,8 @@ class ServerContext:
     price_table: PriceTable = DEFAULT_PRICE_TABLE
     oidc: OidcClient | None = None
     devidp: DevIdP | None = None
-    push_jwks: JwksCache | None = None
-    """Google's signing keys for Pub/Sub push tokens (when push OIDC is configured)."""
+    push_verifier: PushVerifier | None = None
+    """Pub/Sub push OIDC verifier (built on first use when push auth is configured)."""
     request: RequestAuth | None = None
     """The authenticated caller (request views only; ``None`` in the orchestrator)."""
 

@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-import httpx
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -45,7 +44,7 @@ from mapi_server.api import (
     usage,
 )
 from mapi_server.api import auth as auth_routes
-from mapi_server.auth.oidc import HttpOidcProvider, JwksCache, OidcClient
+from mapi_server.auth.oidc import HttpOidcProvider, OidcClient
 from mapi_server.auth.request import CSRF_HEADER, access_for, authenticate
 from mapi_server.context import FinalizeQueue, ServerContext
 from mapi_server.db import Database, resolve_database_url
@@ -55,14 +54,14 @@ from mapi_server.services.catalog import CatalogService
 from mapi_server.services.cost import PRICE_TABLE_INFO_KEY, load_price_table
 from mapi_server.services.notify import NotificationHub
 from mapi_server.services.secrets import ServerSecrets, load_server_secrets
-from mapi_server.services.signing import BundleSigner
+from mapi_server.services.signing import LocalSigner, ManifestSigner
 from mapi_server.services.tenancy import (
     ensure_local_admin,
     ensure_platform_tenant,
     invite_admins,
     seed_dev_accounts,
 )
-from mapi_server.settings import Settings
+from mapi_server.settings import Settings, SignerKind
 from mapi_server.storage import build_object_store
 
 __all__ = [
@@ -74,6 +73,7 @@ __all__ = [
     "ensure_scope",
     "load_signer",
     "openapi_document",
+    "prepare_signer",
     "startup",
 ]
 
@@ -106,10 +106,22 @@ def _with_event_payloads(doc: dict[str, Any]) -> dict[str, Any]:
 log = logging.getLogger(__name__)
 
 
-def load_signer(settings: Settings) -> BundleSigner:
-    """The bundle-signing key at ``settings.key_path`` (created if allowed and missing)."""
+def load_signer(settings: Settings) -> ManifestSigner:
+    """The bundle signer ``MAPI_SIGNER`` selects.
+
+    ``local``: the P-256 key at ``settings.key_path`` (created if allowed and missing).
+    ``kms``: the Cloud KMS key version ``MAPI_KMS_KEY_VERSION`` (plus the trusted older
+    versions); its public keys are loaded by :func:`startup`.
+    """
+    if settings.signer is SignerKind.KMS:
+        from mapi_server.services.kms import KmsSigner
+
+        assert settings.kms_key_version is not None  # enforced by Settings
+        return KmsSigner.create(
+            settings.kms_key_version, trusted_versions=settings.kms_trusted_key_versions
+        )
     try:
-        return BundleSigner.from_file(settings.key_path, create=settings.signing_key_create)
+        return LocalSigner.from_file(settings.key_path, create=settings.signing_key_create)
     except FileNotFoundError:
         raise RuntimeError(
             f"no bundle-signing key at {settings.key_path} and MAPI_SIGNING_KEY_CREATE is off: "
@@ -143,27 +155,11 @@ def build_oidc(settings: Settings, devidp: DevIdP | None) -> OidcClient | None:
     return None
 
 
-def build_push_jwks(settings: Settings) -> JwksCache | None:
-    """Google's JWKS (cached) when Pub/Sub push authentication is configured."""
-    if not settings.pubsub_audience:
-        return None
-    url = settings.google_jwks_url
-
-    async def fetch() -> Mapping[str, Any]:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
-            r = await client.get(url)
-            r.raise_for_status()
-            doc: Mapping[str, Any] = r.json()
-            return doc
-
-    return JwksCache(fetch)
-
-
 def build_context(
     settings: Settings,
     *,
     store: ObjectStore | None = None,
-    signer: BundleSigner | None = None,
+    signer: ManifestSigner | None = None,
     queue: FinalizeQueue | None = None,
     database_url: str | None = None,
     secrets: ServerSecrets | None = None,
@@ -198,7 +194,6 @@ def build_context(
         price_table=price_table,
         devidp=devidp,
         oidc=build_oidc(settings, devidp),
-        push_jwks=build_push_jwks(settings),
     )
     aclose = getattr(ctx.store, "aclose", None)
     if owned_store and callable(aclose):
@@ -225,7 +220,15 @@ async def ensure_scope(ctx: ServerContext) -> None:
             await invite_admins(s, settings.default_tenant_admins, tenant_id=sc.tenant_id)
 
 
+async def prepare_signer(signer: ManifestSigner) -> None:
+    """Load what a remote signer needs to verify locally (KMS public keys)."""
+    prepare = getattr(signer, "prepare", None)
+    if prepare is not None:
+        await prepare()
+
+
 async def startup(ctx: ServerContext, *, listen: bool = True) -> None:
+    await prepare_signer(ctx.signer)
     await ensure_scope(ctx)
     async with ctx.db.session() as s:
         await ctx.catalogs.load_file(

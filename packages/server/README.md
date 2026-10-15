@@ -40,7 +40,7 @@ Without `DATABASE_URL` an embedded PostgreSQL 16 (`pgserver`) starts under
 | `MAPI_UV_LOCK_PATH` | `uv.lock` above the working directory | lock whose sha256 is the image digest (the images set `/opt/mapi/uv.lock`) |
 | `MAPI_SIGNING_KEY_PATH` | `$MAPI_DATA_DIR/keys/bundle-signing-p256.pem` | bundle manifest key (KMS emulation); api and worker must share it |
 | `MAPI_SIGNING_KEY_CREATE` | `true` | create the key if missing; `migrate` always creates it, compose turns this off for api/worker |
-| `MAPI_INTERNAL_TOKEN` | — | bearer required by `POST /internal/events` when set (Pub/Sub OIDC: `MAPI_PUBSUB_AUDIENCE`, `MAPI_PUBSUB_SERVICE_ACCOUNT`) |
+| `MAPI_INTERNAL_TOKEN` | — | bearer required by `POST /internal/events` when set (Pub/Sub OIDC: `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT`) |
 | `MAPI_OIDC_ISSUER`, `MAPI_OIDC_CLIENT_ID`, `MAPI_OIDC_CLIENT_SECRET` | — | browser sign-in (BFF, Authorization Code + PKCE) |
 | `MAPI_OPERATOR_EMAILS` | — | verified e-mails that sign in as platform operators |
 | `MAPI_SERVER_SECRET` | file next to the signing key | root of the API-token pepper and audit fingerprints |
