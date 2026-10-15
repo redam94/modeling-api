@@ -461,3 +461,43 @@ def test_chained_look_back_steps_replay_the_fit_time_history() -> None:
     xr.testing.assert_allclose(out["x12"], ref["x12"].sel(time=[20, 21]))
     assert out["x12"].sel(geo="a").values.tolist() == [17.0, 18.0]
     assert not rp.issues
+
+
+# ---------------------------------------------------- statistics-7 (long-layout group context)
+
+
+def test_long_layout_group_context_survives_canonicalisation() -> None:
+    """``lag(along=obs, within=[hh])``: synthetic context rows never trip the extend checks."""
+    from mapi_sdk.context import drop_context
+    from mapi_sdk.coords import canonicalise_coords
+    from mapi_sdk.pipeline import Pipeline
+    from mapi_sdk.testing import toy
+    from mapi_spec import DataSchema
+
+    ds = xr.Dataset(
+        {"x": ("obs", np.arange(1.0, 9.0)), "hh": ("obs", np.array([0, 1] * 4))},
+        coords={"obs": np.arange(8)},
+    )
+    pipe = Pipeline.build(
+        [("lag", toy.LagStep, {"vars": ["x"], "along": "obs", "within": ["hh"], "lags": [1]})]
+    )
+    trace = pipe.fit(ds.isel(obs=slice(0, 6)))
+    rp = pipe.transform(ds.isel(obs=[6, 7]), trace.states)
+    assert rp.marks and int(rp.data.sizes["obs"]) == 4  # two context rows, one per household
+    schema = DataSchema.model_validate(
+        {
+            "dims": {"obs": {"kind": "index", "policy": "extend"}},
+            "vars": {
+                "x": {"dims": ["obs"], "dtype": "float64"},
+                "hh": {"dims": ["obs"], "dtype": "int64"},
+            },
+        }
+    )
+    for pad in (False, True):
+        canon, plan = canonicalise_coords(
+            rp.data, trace.coords["lag"], schema, pad_extend=pad, marks=rp.marks
+        )
+        out = plan.restore(drop_context(canon, rp.marks))
+        assert out["obs"].values.tolist() == [6, 7]
+        # each household's previous trip: x at obs 4 (hh 0) and obs 5 (hh 1)
+        assert out["x_lag"].sel(lag=1).values.tolist() == [5.0, 6.0]

@@ -137,7 +137,7 @@ STEPS: list[dict[str, Any]] = [
             "min_lag": "{min:lags}",
         },
         var_params=["vars"],
-        dim_params=["along", "within"],
+        dim_params=["along"],  # within: dims (dense) or variables along ``along`` (long)
     ),
     _step(
         id="core.fourier",

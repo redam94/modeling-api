@@ -352,15 +352,30 @@ def _check_step_inputs(
                     )
                 )
     if context is not None and not issues:
-        for d in [context.along, *context.within]:
-            if d not in schema.dims:
-                issues.append(
-                    Issue(
-                        code=ErrorCode.SCHEMA_INVALID,
-                        pointer=join_pointer(ptr, "with"),
-                        message=f"context dim {d!r} does not exist at this step's input stage",
-                    )
+        if context.along not in schema.dims:
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer=join_pointer(ptr, "with"),
+                    message=f"context dim {context.along!r} does not exist at this step's "
+                    "input stage",
                 )
+            )
+        for d in context.within:
+            # dense layout: a dim; long layout: a variable along the row dim (``hh(obs)``)
+            if d in schema.dims:
+                continue
+            var = schema.vars.get(d)
+            if var is not None and list(var.dims) == [context.along]:
+                continue
+            issues.append(
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer=join_pointer(ptr, "with"),
+                    message=f"context group {d!r} is neither a dim nor a variable along "
+                    f"{context.along!r} at this step's input stage",
+                )
+            )
     return issues
 
 

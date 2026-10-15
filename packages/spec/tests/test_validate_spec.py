@@ -494,6 +494,40 @@ def test_platform_carryover_rejected_when_the_model_owns_it(catalog: Catalog) ->
     assert "owns carryover" in errs[0].message
 
 
+LONG_RAW: dict[str, Any] = {
+    "dims": {"obs": {"kind": "index"}, "county": {"kind": "categorical"}},
+    "vars": {
+        "y": {"dims": ["obs"], "dtype": "float64", "role": "target"},
+        "county_idx": {"dims": ["obs"], "dtype": "int64", "role": "index", "index_of": "county"},
+        "x": {"dims": ["obs"], "dtype": "float64"},
+        "w": {"dims": ["county"], "dtype": "float64"},
+    },
+}
+
+
+def _long_lag(within: list[str]) -> dict[str, Any]:
+    d = _e33()
+    d["data"] = {"dataset": "dataset://growth/radon@latest"}
+    d["model"]["fit"]["mode"] = "train_only"
+    d["pipeline"] = [
+        {
+            "id": "xlag",
+            "use": "core.lag@^1",
+            "with": {"vars": ["x"], "along": "obs", "within": within, "lags": [1]},
+        }
+    ]
+    return d
+
+
+def test_long_layout_context_groups_are_variables_along_the_row_dim(catalog: Catalog) -> None:
+    """``lag(along=obs, within=[county_idx])``: groups of a long layout are row variables."""
+    res = _run(catalog, _long_lag(["county_idx"]), LONG_RAW)
+    assert not [i for i in res.issues if "context" in i.message], res.issues
+    for bad in (["nope"], ["w"]):  # unknown, or not a variable along the row dim
+        res = _run(catalog, _long_lag(bad), LONG_RAW)
+        assert any("context group" in i.message for i in res.errors), res.issues
+
+
 def test_recursion_unknown_horizon_warns(catalog: Catalog) -> None:
     d = _target_lag_spec(8, [1])
     d["data"]["split"] = {
