@@ -279,8 +279,9 @@ reading any object content:
 
     Any discrepancy is an `INTEGRITY_FAILURE` issue. The run moves to `FAILED(integrity)` and
     a security alert is raised.
-3. **Validate sidecars.** JSON sidecars (`diagnostics.json`, `plots.json`, `metrics.json`) are
-    read with size caps, validated with Pydantic, and plots are sanitized.
+3. **Validate sidecars.** JSON sidecars (`diagnostics.json`, `plots.json`, `metrics.json`,
+    `coords.json`; `schema.json` and `summary.json` for ingest; `catalog.json` for describe)
+    are read with size caps, validated with Pydantic, and plots are sanitized.
 4. **Server-side copy.** Each verified object is copied into the bundles bucket under
     `t/{tenant}/models/{model}/{version}/`. The copy pins `source_generation` to the verified
     generation and uses `if_generation_match=0`, so bundle objects are write-once. The
@@ -288,11 +289,46 @@ reading any object content:
 5. **Sign.** The platform writes a **`BundleManifest`** that binds the tenant, run, base
     image, overlay hash, spec hash, data hash, catalog digest and every *destination*
     generation, and signs it:
-    - **M1 (local):** HS256, an HMAC with a server-held key (`sign_bundle_manifest`), with
-      the key id in `signature.key_id`;
-    - **v0.3 (M2):** a KMS asymmetric signature over the same bytes.
+    - **M1 (local):** `KMS-EC-P256-SHA256` with a local P-256 key the server keeps under
+      `MAPI_DATA_DIR/keys/` (an emulation of the KMS signer, so a real KMS key can be swapped
+      in without changing the signing bytes). Bundles signed `HS256` are refused when URLs
+      are minted;
+    - **v0.3 (M2):** a Cloud KMS asymmetric signature over the same bytes.
 
     URLs to the bundle are minted only after `verify_bundle_manifest()` succeeds.
+
+## Job payloads and object names
+
+`mapi_spec.jobs` is the contract between the dispatcher, which writes `RunSpec.spec` and
+names the inputs, and the runner, which reads them and names the outputs. Both sides import
+it, so a renamed input or a changed payload fails type checks and tests on both sides.
+
+| Kind | `RunSpec.spec` | Inputs | Outputs the control plane reads |
+|---|---|---|---|
+| `ingest` | `IngestJob` (a mapping or the MFF preset; `dataset` and `source` are informational) | `upload` | `data.zarr.zip`, `schema.json` (`DataSchema`), `summary.json` (`DataSummary`), `profile.json`, `preview.json` |
+| `describe` | `DescribeJob` (`image_digest`) | none | `catalog.json` (`Catalog`) |
+| `validate` | the resolved `ModelSpec` | `dataset`, `side.<name>` | `validation.json` |
+| `fit` | the resolved `ModelSpec` (`use:` and dataset refs pinned) | `dataset`, `side.<name>` | `bundle.zarr.zip`, `diagnostics.json`, `metrics.json` (`MetricsSidecar`), `plots.json`, `coords.json` (`ScoreMetadata.fit_coords`), `ui/…` |
+| `score` | the `ScoreRequest` | `bundle`, `bundle.manifest`, `dataset` (the request's `data`), `scenario`, `side.<name>` | `score.zarr.zip`, `result.json`, `plots.json`, `ui/summary.arrow` |
+| `evaluate` / `derive` / `render` | `EvaluateJob` / `DeriveJob` / `RenderJob` from the run's `params` | `bundle`, `dataset` (default: the fit dataset), `side.<name>`; `plots` for render | as listed in the [runner reference](runner.md#what-runspecspec-holds-per-kind) |
+
+`side_table_input(name)` builds `side.<name>`; `SCORE_INPUTS` maps a `ScoreRequest`'s `data`
+and `scenario` fields to their input names. A `*.zarr.zip` dataset may carry its raw
+`DataSchema` as JSON in the root attribute `DATASET_SCHEMA_ATTR` (`mapi_schema`); ingest writes
+it, and an upload that carries it keeps its dim policies, roles and units instead of an
+inferred schema.
+
+### UI views
+
+Small JSON views go next to datasets and bundles for the browser (the control plane never
+decodes them; the web app fetches them through signed URLs). `mapi_spec.views` defines them
+and each carries a `format` tag:
+
+| Object | `format` | Model |
+|---|---|---|
+| `preview.json` | `mapi.preview/v1` | `PreviewView`: dim columns then variable columns, the first rows, `total_rows` |
+| `profile.json` | `mapi.profile/v1` | `ProfileView`: per-variable statistics and a missingness grid along the time-like dim (at most 1,000 binned columns) |
+| `ui/tree_index.json` | `mapi.tree-index/v1` | `TreeIndexView`: every DataTree node's dims, coordinates (values for small ones), variables and scalar attributes; no arrays |
 
 ## Storage layout
 
@@ -305,7 +341,7 @@ input never becomes a path.
 | `mapi-{env}-bootstrap` | `{nonce}` | The execution identity may get and delete, but not list; 1-day lifecycle |
 | `mapi-{env}-runs` | `t/{tenant}/runs/{run}/a{n}/[tasks/{i}/]`, with `checkpoints/` inside | Written only through signed URLs |
 | `mapi-{env}-bundles` | `t/{tenant}/models/{model}/{version}/`: `bundle.zarr.zip`, `manifest.json`, `manifest.sig`, `diagnostics.json`, `plots.json`, `metrics.json`, `ui/…` | Control plane only; write-once |
-| `mapi-{env}-data` | `t/{tenant}/datasets/{sha256}/`: `data.zarr.zip`, `schema.json`, `profile.json`, `preview.json` | Content-addressed |
+| `mapi-{env}-data` | `t/{tenant}/datasets/{sha256}/`: `data.zarr.zip`, `schema.json`, `summary.json`, `profile.json`, `preview.json` | Content-addressed |
 
 The control plane accesses storage only through the async `ObjectStore` protocol:
 

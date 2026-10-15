@@ -83,6 +83,22 @@ See [Run protocol](../run-protocol.md) for the narrative specification.
       members: [RunState, FailureClass, RunTrigger, Actor, TransitionRule, transition, can_transition, allowed_triggers, IllegalTransition, RunSpec, RunLimits, RunnerEnv, RunnerExit, failure_class_for_exit, worker_environ, RunnerPhase, StatePayload, ProgressPayload, ChainProgress, LogPayload, WarningPayload, CheckpointPayload, MetricPayload, CompletePayload, ErrorPayload, parse_payload, make_event, canonical_bytes, sign_event, verify_event, compute_event_hmac, encode_event_line, decode_event_line, event_from_log_payload, InvalidEvent, OutputManifest, ManifestObject, InputDigest, verify_output_objects, VerificationResult, sign_output_manifest, verify_output_manifest, BundleManifest, BundleObject, ManifestSignature, sign_bundle_manifest, verify_bundle_manifest, catalog_digest, new_nonce, new_hmac_key, decode_hmac_key]
       heading_level: 3
 
+## Job payloads
+
+See [Job payloads and object names](../run-protocol.md#job-payloads-and-object-names).
+
+::: mapi_spec.jobs
+    options:
+      members: [IngestJob, IngestSource, MffOptions, DescribeJob, ScoreJob, EvaluateJob, DeriveJob, RenderJob, MetricsSidecar, parse_job, parse_model_job_params, side_table_input, SCORE_INPUTS, DATASET_SCHEMA_ATTR, DATASET_OUTPUTS, FIT_SIDECARS, BUNDLE_MANIFEST_OUTPUT]
+      heading_level: 3
+
+## UI views
+
+::: mapi_spec.views
+    options:
+      members: [PreviewView, PreviewColumn, ProfileView, VarProfile, MissingnessGrid, TreeIndexView, TreeGroup, TreeCoord, TreeVar]
+      heading_level: 3
+
 ## Object storage
 
 ::: mapi_spec.storage

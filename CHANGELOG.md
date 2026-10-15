@@ -74,6 +74,49 @@ milestone releases are tagged on `main`.
   - CI: a web job, a build-only docker job for every image, and digest-pin and compose checks.
   - Docs: "Local development" and "Containers and docker compose" (Operations), and
     `deploy/README.md`.
+- **client**: `mapi-client`, the typed Python client (`Client`, `AsyncClient`) for every
+  `M1_ENDPOINTS` row: DTO-typed resources, RFC 7807 errors as `MapiError` subclasses,
+  idempotency keys and safe retries, lazy pagination, SSE with `Last-Event-ID` resume, dataset
+  upload through signed URLs, `Prefer: wait` scoring, CRC32C-checked transfers without the API
+  token. See `docs/reference/cli.md`.
+- **cli**: `mapi` (`new`, `check`, `fit`, `score` locally or `--remote`, `runs`, `datasets`,
+  `catalog`, `plugin init|test`, `spec upgrade`, `serve`, `config`), with `--json` output and
+  ANSI-stripped untrusted text.
+- **spec**: `mapi_spec.jobs`, the run job contract shared by the dispatcher and the runner
+  (`IngestJob`, `DescribeJob`, `ScoreJob`, `EvaluateJob`, `DeriveJob`, `RenderJob`, input and
+  output object names, `MetricsSidecar`, `DATASET_SCHEMA_ATTR`), and `mapi_spec.views`, the UI
+  views the web app reads (`mapi.preview/v1`, `mapi.profile/v1`, `mapi.tree-index/v1`).
+- **gcs-shim**: CORS for the web origin (`--cors-origin`, default `$MAPI_WEB_ORIGIN`) so browsers
+  can use signed URLs, and a `wrap` hook on `ShimServer`.
+- **server**: `mapi-server dev` (and so `mapi serve`) starts an embedded GCS shim when nothing
+  listens at `MAPI_GCS_ENDPOINT`; the OpenAPI document publishes the run-event payload schemas.
+- **docs**: "CLI and Python client" and "Web app and plot sandbox" reference pages; the run
+  protocol documents job payloads, object names and UI views.
+
+### Changed
+- **server**: the object store is `ShimObjectStore` built from the shim's `control` key file
+  (`MAPI_GCS_ROOT`, default `$MAPI_DATA_DIR/gcs`, or `MAPI_GCS_KEY_FILE`); local executions get
+  the `exec` token from the same directory unless `MAPI_EXEC_TOKEN` is set. RunSpec payloads and
+  input names follow `mapi_spec.jobs` (score data under `dataset`, side tables under
+  `side.<name>`, `bundle.manifest` passed to score runs); `evaluate`/`derive` default to the fit
+  dataset and `render` gets the bundle's `plots.json`. `metrics.json` is read as
+  `MetricsSidecar`.
+- **runner**: fit writes `coords.json` and ingest writes `summary.json` (the control plane's
+  CoordPlan metadata); `preview.json`, `profile.json` and `ui/tree_index.json` follow
+  `mapi_spec.views`. The runner tests run against the real GCS shim.
+- **web**: `openapi.json` and `schema.d.ts` are generated from the real server
+  (`apps/web/scripts/gen_openapi.py`, checked in CI); the `@e2e` specs can reuse a running
+  stack on any ports.
+- **devops**: `make dev` starts `mapi-gcs-shim serve --root …` with CORS and passes the resolved
+  URLs to the Vite servers; compose mounts the shim volume read-only into `api` and `worker`
+  (`MAPI_GCS_ROOT`) so they can load the principal keys.
+
+### Fixed
+- **spec**: static score validation binds dataset names to canonical names at every
+  `inputs_stage`, as the runtime does (a weekly EUR plan entering at `weekly` was refused).
+- **server**: the dry-run and evaluate endpoints declare their `Run` response in OpenAPI.
+- **seed**: `make seed` ships E33's raw schema with the data, so the fit keeps
+  `market: new_levels` and new-market scoring works.
 
 ## [0.1.0] — M0: contract layer — 2026-10-15
 
