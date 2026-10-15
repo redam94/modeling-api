@@ -1,0 +1,436 @@
+"""``GcsObjectStore``: :class:`mapi_spec.storage.ObjectStore` on real Cloud Storage.
+
+Built on ``google-cloud-storage`` (install ``mapi-gcs-shim[gcp]``); the import is deferred so
+the shim and its client never need it. The synchronous library calls run in worker threads.
+
+This driver is exercised only with mocks in this repository — it has **not** been run against
+live GCP (see the package README).
+
+Signing: V4 signed URLs use ``Blob.generate_signed_url``; POST policies are built here (the
+library's helper pins an exact ``key``, while the platform needs a key *prefix*) and signed
+with ``signing_credentials.sign_bytes`` (a service-account key or impersonated credentials).
+On Cloud Run, pass ``service_account_email`` and ``access_token`` for IAM ``signBlob``-based
+URL signing.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime, timedelta
+from typing import Any, NoReturn, TypeVar
+
+import anyio.to_thread
+from mapi_spec.errors import ErrorCode
+from mapi_spec.storage import (
+    AccessDenied,
+    NotFound,
+    ObjectMeta,
+    ObjectPage,
+    PostPolicy,
+    PreconditionFailed,
+    SignedGet,
+    SignedPut,
+    StorageError,
+    check_object_name,
+    check_ttl,
+)
+
+from mapi_gcs_shim.client import InvalidRange
+from mapi_gcs_shim.signing import build_post_policy
+
+__all__ = ["GCS_API_ENDPOINT", "GcsObjectStore", "map_gcs_error"]
+
+T = TypeVar("T")
+
+GCS_API_ENDPOINT = "https://storage.googleapis.com"
+RSA_ALGORITHM = "GOOG4-RSA-SHA256"
+
+
+def _import_storage() -> Any:
+    try:
+        from google.cloud import storage  # type: ignore[import-not-found,unused-ignore]
+    except ImportError as exc:  # pragma: no cover - depends on the environment
+        raise ImportError(
+            "GcsObjectStore needs google-cloud-storage: pip install 'mapi-gcs-shim[gcp]'"
+        ) from exc
+    return storage
+
+
+def _status(exc: BaseException) -> int | None:
+    code = getattr(exc, "code", None)
+    if isinstance(code, int) and 300 <= code <= 599:
+        return code
+    response = getattr(exc, "response", None)  # google.resumable_media.InvalidResponse
+    status = getattr(response, "status_code", None)
+    return status if isinstance(status, int) else None
+
+
+def map_gcs_error(exc: BaseException, *, bucket: str | None, name: str | None) -> NoReturn:
+    """Re-raise a google-cloud-storage error as the ``mapi_spec.storage`` hierarchy.
+
+    Exceptions that carry no HTTP status (programming errors) propagate unchanged.
+    """
+    status = _status(exc)
+    detail = f"GCS: {exc}"
+    if status is None:
+        raise exc
+    if status == 404:
+        raise NotFound(detail, bucket=bucket, name=name) from exc
+    if status in (304, 412):
+        raise PreconditionFailed(detail, bucket=bucket, name=name) from exc
+    if status in (401, 403):
+        raise AccessDenied(detail, bucket=bucket, name=name) from exc
+    if status == 416:
+        raise InvalidRange(detail, bucket=bucket, name=name) from exc
+    if status == 409:
+        raise StorageError(detail, bucket=bucket, name=name, code=ErrorCode.CONFLICT) from exc
+    raise StorageError(detail, bucket=bucket, name=name) from exc
+
+
+def _blob_meta(blob: Any) -> ObjectMeta:
+    if blob.generation is None or blob.size is None or blob.crc32c is None:
+        raise StorageError(
+            "GCS returned an object resource without generation/size/crc32c",
+            bucket=getattr(blob.bucket, "name", None),
+            name=blob.name,
+        )
+    return ObjectMeta(
+        bucket=blob.bucket.name,
+        name=blob.name,
+        generation=int(blob.generation),
+        metageneration=int(blob.metageneration or 1),
+        size=int(blob.size),
+        crc32c=blob.crc32c,
+        md5_hash=blob.md5_hash,
+        content_type=blob.content_type,
+        metadata=dict(blob.metadata or {}),
+        time_created=blob.time_created,
+    )
+
+
+class GcsObjectStore:
+    """Async :class:`~mapi_spec.storage.ObjectStore` on Google Cloud Storage.
+
+    Args:
+        client: a ``google.cloud.storage.Client`` (created with default credentials if omitted).
+        signing_credentials: credentials with ``sign_bytes``/``signer_email`` used for signed
+            URLs and POST policies (default: the client's credentials).
+        service_account_email / access_token: IAM ``signBlob`` signing for signed URLs when
+            the credentials hold no private key (e.g. Cloud Run metadata credentials).
+        api_endpoint: base URL for POST policies.
+        clock: ``now()`` for POST-policy timestamps (tests).
+    """
+
+    def __init__(
+        self,
+        client: Any | None = None,
+        *,
+        project: str | None = None,
+        signing_credentials: Any | None = None,
+        service_account_email: str | None = None,
+        access_token: str | None = None,
+        api_endpoint: str = GCS_API_ENDPOINT,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
+        if client is None:
+            client = _import_storage().Client(project=project)
+        self._client = client
+        self._signing_credentials = signing_credentials
+        self._sa_email = service_account_email
+        self._access_token = access_token
+        self._api_endpoint = api_endpoint.rstrip("/")
+        self._clock = clock or (lambda: datetime.now(UTC))
+
+    async def _call(self, fn: Callable[[], T], *, bucket: str | None, name: str | None) -> T:
+        try:
+            return await anyio.to_thread.run_sync(fn)
+        except (StorageError, ValueError, TypeError):
+            raise
+        except Exception as exc:
+            map_gcs_error(exc, bucket=bucket, name=name)
+
+    def _blob(self, bucket: str, name: str, generation: int | None = None) -> Any:
+        return self._client.bucket(bucket).blob(name, generation=generation)
+
+    def _sign_kwargs(self) -> dict[str, Any]:
+        out: dict[str, Any] = {"version": "v4"}
+        if self._signing_credentials is not None:
+            out["credentials"] = self._signing_credentials
+        if self._sa_email is not None:
+            out["service_account_email"] = self._sa_email
+        if self._access_token is not None:
+            out["access_token"] = self._access_token
+        return out
+
+    # ---------------------------------------------------------------- ObjectStore
+
+    async def put(
+        self,
+        bucket: str,
+        name: str,
+        data: bytes,
+        *,
+        content_type: str | None = None,
+        metadata: Mapping[str, str] | None = None,
+        if_generation_match: int | None = None,
+    ) -> ObjectMeta:
+        check_object_name(name)
+
+        def run() -> ObjectMeta:
+            blob = self._blob(bucket, name)
+            if metadata:
+                blob.metadata = dict(metadata)
+            blob.upload_from_string(
+                bytes(data),
+                content_type=content_type or "application/octet-stream",
+                if_generation_match=if_generation_match,
+                checksum="crc32c",
+            )
+            return _blob_meta(blob)
+
+        return await self._call(run, bucket=bucket, name=name)
+
+    async def get(
+        self,
+        bucket: str,
+        name: str,
+        *,
+        generation: int | None = None,
+        byte_range: tuple[int, int | None] | None = None,
+        max_bytes: int | None = None,
+    ) -> bytes:
+        check_object_name(name)
+        if byte_range is not None:
+            start, end = byte_range
+            if start < 0 or (end is not None and end < start):
+                raise ValueError("byte_range must be (start >= 0, end >= start | None)")
+
+        def run() -> bytes:
+            gen = generation
+            if max_bytes is not None:
+                live = self._client.bucket(bucket).get_blob(name, generation=generation)
+                if live is None:
+                    raise NotFound("no such object", bucket=bucket, name=name)
+                size = int(live.size)
+                if byte_range is not None:
+                    s, e = byte_range
+                    size = max(0, min(size - 1, size - 1 if e is None else e) - s + 1)
+                if size > max_bytes:
+                    raise StorageError(
+                        f"object is {size} bytes, above the {max_bytes}-byte cap",
+                        bucket=bucket,
+                        name=name,
+                        code=ErrorCode.PAYLOAD_TOO_LARGE,
+                    )
+                gen = int(live.generation)  # pin: the object cannot grow under us
+            blob = self._blob(bucket, name, gen)
+            if byte_range is None:
+                data: bytes = blob.download_as_bytes()
+            else:
+                data = blob.download_as_bytes(start=byte_range[0], end=byte_range[1], checksum=None)
+            if max_bytes is not None and len(data) > max_bytes:  # pragma: no cover - defensive
+                raise StorageError("object exceeds the byte cap", code=ErrorCode.PAYLOAD_TOO_LARGE)
+            return data
+
+        return await self._call(run, bucket=bucket, name=name)
+
+    async def stat(self, bucket: str, name: str, *, generation: int | None = None) -> ObjectMeta:
+        check_object_name(name)
+
+        def run() -> ObjectMeta:
+            blob = self._client.bucket(bucket).get_blob(name, generation=generation)
+            if blob is None:
+                raise NotFound("no such object", bucket=bucket, name=name)
+            return _blob_meta(blob)
+
+        return await self._call(run, bucket=bucket, name=name)
+
+    async def list(
+        self,
+        bucket: str,
+        *,
+        prefix: str = "",
+        delimiter: str | None = None,
+        page_token: str | None = None,
+        max_results: int = 1000,
+    ) -> ObjectPage:
+        def run() -> ObjectPage:
+            iterator = self._client.list_blobs(
+                bucket,
+                prefix=prefix or None,
+                delimiter=delimiter,
+                page_token=page_token,
+                page_size=max_results,
+            )
+            page = next(iter(iterator.pages), None)
+            if page is None:
+                return ObjectPage()
+            items = [_blob_meta(b) for b in page]
+            return ObjectPage(
+                items=items,
+                prefixes=sorted(page.prefixes or ()),
+                next_page_token=iterator.next_page_token,
+            )
+
+        return await self._call(run, bucket=bucket, name=None)
+
+    async def delete(
+        self,
+        bucket: str,
+        name: str,
+        *,
+        generation: int | None = None,
+        if_generation_match: int | None = None,
+    ) -> None:
+        check_object_name(name)
+
+        def run() -> None:
+            self._blob(bucket, name, generation).delete(if_generation_match=if_generation_match)
+
+        await self._call(run, bucket=bucket, name=name)
+
+    async def copy(
+        self,
+        src_bucket: str,
+        src_name: str,
+        dst_bucket: str,
+        dst_name: str,
+        *,
+        source_generation: int | None = None,
+        if_generation_match: int | None = None,
+    ) -> ObjectMeta:
+        check_object_name(src_name)
+        check_object_name(dst_name)
+
+        def run() -> ObjectMeta:
+            src = self._blob(src_bucket, src_name, source_generation)
+            dst = self._blob(dst_bucket, dst_name)
+            token, _, _ = dst.rewrite(src, if_generation_match=if_generation_match)
+            while token is not None:
+                token, _, _ = dst.rewrite(src, token=token, if_generation_match=if_generation_match)
+            if dst.generation is None:
+                dst.reload()
+            return _blob_meta(dst)
+
+        return await self._call(run, bucket=dst_bucket, name=dst_name)
+
+    async def sign_get(
+        self, bucket: str, name: str, *, expires_in: timedelta, generation: int | None = None
+    ) -> SignedGet:
+        check_ttl(expires_in)
+        meta = await self.stat(bucket, name, generation=generation)
+        now = self._clock()
+
+        def run() -> str:
+            blob = self._blob(bucket, name, meta.generation)
+            url: str = blob.generate_signed_url(
+                expiration=expires_in,
+                method="GET",
+                generation=meta.generation,
+                **self._sign_kwargs(),
+            )
+            return url
+
+        url = await self._call(run, bucket=bucket, name=name)
+        return SignedGet(
+            url=url,
+            expires_at=now + expires_in,
+            generation=meta.generation,
+            size=meta.size,
+            crc32c=meta.crc32c,
+            md5_hash=meta.md5_hash,
+            content_type=meta.content_type,
+        )
+
+    async def sign_put(
+        self,
+        bucket: str,
+        name: str,
+        *,
+        expires_in: timedelta,
+        content_type: str | None = None,
+        max_bytes: int | None = None,
+        if_generation_match: int | None = 0,
+    ) -> SignedPut:
+        check_ttl(expires_in)
+        check_object_name(name)
+        extra: dict[str, str] = {}
+        if if_generation_match is not None:
+            extra["x-goog-if-generation-match"] = str(if_generation_match)
+        if max_bytes is not None:
+            if max_bytes < 0:
+                raise ValueError("max_bytes must be >= 0")
+            extra["x-goog-content-length-range"] = f"0,{max_bytes}"
+        now = self._clock()
+
+        def run() -> str:
+            url: str = self._blob(bucket, name).generate_signed_url(
+                expiration=expires_in,
+                method="PUT",
+                content_type=content_type,
+                headers=extra or None,
+                **self._sign_kwargs(),
+            )
+            return url
+
+        url = await self._call(run, bucket=bucket, name=name)
+        headers = dict(extra)
+        if content_type is not None:
+            headers["content-type"] = content_type
+        return SignedPut(
+            url=url,
+            name=name,
+            expires_at=now + expires_in,
+            headers=headers,
+            max_bytes=max_bytes,
+        )
+
+    async def post_policy(
+        self,
+        bucket: str,
+        prefix: str,
+        *,
+        expires_in: timedelta,
+        max_bytes: int,
+        min_bytes: int = 0,
+    ) -> PostPolicy:
+        check_ttl(expires_in)
+        check_object_name(prefix)
+        if not prefix.endswith("/"):
+            raise ValueError("a POST policy prefix must end with '/'")
+        creds = self._signing_credentials or getattr(self._client, "_credentials", None)
+        sign_bytes = getattr(creds, "sign_bytes", None)
+        signer_email = getattr(creds, "signer_email", None) or self._sa_email
+        if sign_bytes is None or not signer_email:
+            raise NotImplementedError(
+                "GcsObjectStore.post_policy needs signing credentials with sign_bytes() and a "
+                "signer email (a service-account key or google.auth impersonated credentials); "
+                "IAM signBlob signing of POST policies is not implemented"
+            )
+
+        def sign(policy_b64: str, _date8: str) -> str:
+            raw: bytes = sign_bytes(policy_b64.encode())
+            return raw.hex()
+
+        fields, expires_at = await self._call(
+            lambda: build_post_policy(
+                access_id=signer_email,
+                bucket=bucket,
+                prefix=prefix,
+                min_bytes=min_bytes,
+                max_bytes=max_bytes,
+                expires_in=expires_in,
+                sign=sign,
+                algorithm=RSA_ALGORITHM,
+                now=self._clock(),
+            ),
+            bucket=bucket,
+            name=prefix,
+        )
+        return PostPolicy(
+            url=f"{self._api_endpoint}/{bucket}/",
+            prefix=prefix,
+            fields=fields,
+            content_length_range=(min_bytes, max_bytes),
+            expires_at=expires_at,
+        )
