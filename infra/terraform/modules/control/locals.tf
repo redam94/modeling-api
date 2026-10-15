@@ -62,6 +62,7 @@ locals {
     MAPI_SIGNER          = "kms"
     MAPI_KMS_KEY_VERSION = "${google_kms_crypto_key.bundle_signing.id}/cryptoKeyVersions/${var.kms_key_version}"
     MAPI_URL_SIGNER      = google_service_account.sa["url-signer"].email
+    MAPI_URL_UPLOADER    = google_service_account.sa["url-uploader"].email
     MAPI_DB_APP_ROLE     = "mapi_app"
     MAPI_DB_SYSTEM_ROLE  = "mapi_orchestrator"
   }

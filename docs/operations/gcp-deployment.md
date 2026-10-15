@@ -290,6 +290,7 @@ server does not read. Plain values:
 | `MAPI_OBJECT_STORE` | all | `gcs`: real Cloud Storage, URLs signed keylessly |
 | `MAPI_GCP_PROJECT` | all | Project of the Cloud Storage client |
 | `MAPI_URL_SIGNER` | all | Service account whose `signBlob` signs URLs (no key file exists) |
+| `MAPI_URL_UPLOADER` | all | Service account whose `signBlob` signs create-only upload policies (run outputs); it may create objects in `runs` and `quarantine` but never delete them |
 | `MAPI_SIGNER`, `MAPI_KMS_KEY_VERSION` | all | `kms` and `…/cryptoKeyVersions/<control.kms_key_version>` of the EC P-256 key that signs bundle manifests |
 | `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE` | all | `mapi_app` (row-level security) and `mapi_orchestrator` (the platform role) |
 | `MAPI_API_URL`, `MAPI_WEB_ORIGIN`, `MAPI_PLOTS_ORIGIN` | all, web | Public origins (the API shares the app origin behind the load balancer) |

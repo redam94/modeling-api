@@ -87,12 +87,14 @@ variable "access" {
     - orchestrator: dispatcher, reconciler and finalizer (writes bootstrap objects, verifies and copies outputs).
     - api: the API service (metadata reads, upload bookkeeping).
     - url_signer: the identity whose signBlob signs V4 URLs; signed URLs act with its permissions.
+    - url_uploader: signs create-only upload policies (run outputs); create, never delete.
     - exec: pool name => execution service account of that exec project (get+delete on bootstrap only).
   EOT
   type = object({
     orchestrator = string
     api          = string
     url_signer   = string
+    url_uploader = string
     exec         = map(string)
   })
 }

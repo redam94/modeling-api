@@ -4,6 +4,7 @@
 #   orchestrator  objectUser          objectUser          objectUser          creator + viewer    creator + viewer
 #   api           objectUser          -                   objectViewer        objectViewer        objectViewer
 #   url_signer    reader + writer     -                   reader + writer     reader              reader
+#   url_uploader  writer              -                   writer              -                   -
 #   exec SAs      -                   get + delete        -                   -                   -
 #
 # objectUser = get, list, create, update, delete. Nothing above can delete a bundle (and the
@@ -59,6 +60,7 @@ locals {
       orchestrator = var.access.orchestrator
       api          = var.access.api
       url_signer   = var.access.url_signer
+      url_uploader = var.access.url_uploader
     },
     { for pool, email in var.access.exec : "exec-${pool}" => email },
   )
@@ -84,6 +86,11 @@ locals {
       ["runs", "writer", "url_signer"],
       ["bundles", "reader", "url_signer"],
       ["data", "reader", "url_signer"],
+
+      # create-only upload policies: GCS POST forms carry no generation precondition, so only
+      # a signer without storage.objects.delete makes them create-only
+      ["quarantine", "writer", "url_uploader"],
+      ["runs", "writer", "url_uploader"],
     ],
     [for pool in keys(var.access.exec) : ["bootstrap", "bootstrap_consumer", "exec-${pool}"]],
   )

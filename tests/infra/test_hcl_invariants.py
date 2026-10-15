@@ -434,3 +434,36 @@ def test_server_workloads_get_only_real_settings() -> None:
         "MAPI_CLOUDRUN_PROJECT", "MAPI_EXECUTOR",
     ):  # fmt: skip
         assert required in names, required
+
+
+def test_create_only_uploads_have_their_own_identity() -> None:
+    """Every run's output policy is create_only, which GcsObjectStore signs as
+    MAPI_URL_UPLOADER: Terraform must create that account (signBlob for api and orchestrator
+    only), hand it to every server workload, and grant it create (never delete) on the two
+    buckets written through upload policies."""
+    iam = strip_comments((TF_ROOT / "modules" / "control" / "iam.tf").read_text())
+    assert re.search(r'url-uploader\s*=\s*\{\s*id\s*=\s*"\$\{local\.prefix\}-uploader"', iam)
+    signblob = re.search(
+        r'resource "google_service_account_iam_member" "url_signer" \{(.*?)\n\}', iam, re.S
+    )
+    assert signblob, "signBlob grants exist"
+    assert '"url-signer"' in signblob.group(1) and '"url-uploader"' in signblob.group(1)
+    assert '["api", "orchestrator"]' in signblob.group(1)
+
+    locals_tf = strip_comments((TF_ROOT / "modules" / "control" / "locals.tf").read_text())
+    assert {"MAPI_URL_SIGNER", "MAPI_URL_UPLOADER"} <= _env_names(locals_tf, "env_common")
+    assert 'google_service_account.sa["url-uploader"].email' in locals_tf
+
+    data_iam = strip_comments((TF_ROOT / "modules" / "data" / "iam.tf").read_text())
+    grants = re.findall(r'\["(\w+)", "(\w+)", "url_uploader"\]', data_iam)
+    assert sorted(grants) == [("quarantine", "writer"), ("runs", "writer")], grants
+    writer = _one(_module_blocks("data"), "google_project_iam_custom_role", "object_writer")
+    assert "storage.objects.delete" not in writer.body, "the uploader can never overwrite"
+
+    stack = strip_comments((TF_ROOT / "modules" / "stack" / "main.tf").read_text())
+    assert re.search(
+        r'url_uploader\s*=\s*module\.control\.service_accounts\["url-uploader"\]', stack
+    )
+    assert re.search(
+        r'url-uploader\s*=\s*module\.control\.service_accounts\["url-uploader"\]', stack
+    )

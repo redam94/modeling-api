@@ -12,6 +12,10 @@
 #                 principal allowed to invoke the events service.
 #   signer        holds the bucket permissions that signed URLs carry. Nobody has a key for it;
 #                 api and orchestrator may only call signBlob on it.
+#   uploader      signs the create-only upload policies (every run's outputs). GCS POST forms
+#                 carry no generation precondition, so "create-only" means "signed by an
+#                 account without storage.objects.delete": this one may only create objects.
+#                 Keyless as well; api and orchestrator may only call signBlob on it.
 #
 # No workload gets roles/cloudsql.client: Cloud SQL is reached over private IP with password
 # auth, so the Cloud SQL Admin API is not needed at runtime.
@@ -25,6 +29,7 @@ locals {
     web          = { id = "${local.prefix}-web", title = "web app and plot sandbox (nginx)" }
     push         = { id = "${local.prefix}-push", title = "Pub/Sub push identity (invokes events)" }
     url-signer   = { id = "${local.prefix}-signer", title = "signed URL identity (signBlob only, no keys)" }
+    url-uploader = { id = "${local.prefix}-uploader", title = "create-only upload policy identity (signBlob only, no keys)" }
   }
 
   # Telemetry for the workloads that emit it.
@@ -63,9 +68,12 @@ resource "google_project_iam_custom_role" "url_signer" {
 }
 
 resource "google_service_account_iam_member" "url_signer" {
-  for_each = toset(["api", "orchestrator"])
+  for_each = {
+    for pair in setproduct(["url-signer", "url-uploader"], ["api", "orchestrator"]) :
+    "${pair[0]}|${pair[1]}" => { signer = pair[0], caller = pair[1] }
+  }
 
-  service_account_id = google_service_account.sa["url-signer"].name
+  service_account_id = google_service_account.sa[each.value.signer].name
   role               = google_project_iam_custom_role.url_signer.id
-  member             = "serviceAccount:${google_service_account.sa[each.key].email}"
+  member             = "serviceAccount:${google_service_account.sa[each.value.caller].email}"
 }

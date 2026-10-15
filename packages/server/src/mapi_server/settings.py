@@ -206,7 +206,7 @@ class Settings(BaseSettings):
     url_uploader: str | None = Field(
         None,
         description="Service account that signs create-only upload policies (objects.create, "
-        "no delete); default: url_signer",
+        "never delete; required with MAPI_OBJECT_STORE=gcs and distinct from url_signer)",
     )
     gcs_root: Path | None = Field(
         None, description="The GCS shim's state directory (default: data_dir/gcs)"
@@ -516,6 +516,15 @@ class Settings(BaseSettings):
             raise ValueError("MAPI_SIGNER=kms needs MAPI_KMS_KEY_VERSION")
         if self.object_store is ObjectStoreKind.GCS and not self.url_signer:
             raise ValueError("MAPI_OBJECT_STORE=gcs needs MAPI_URL_SIGNER (the signBlob account)")
+        if self.object_store is ObjectStoreKind.GCS and (
+            not self.url_uploader or self.url_uploader == self.url_signer
+        ):
+            # Every run's output policy is create_only; GCS POST forms carry no generation
+            # precondition, so only an account without storage.objects.delete can sign one.
+            raise ValueError(
+                "MAPI_OBJECT_STORE=gcs needs MAPI_URL_UPLOADER: a service account other than "
+                "MAPI_URL_SIGNER that may create objects but never delete them"
+            )
         weak = [a for a in self.oidc_algorithms if a.upper().startswith("HS") or a == "none"]
         if weak:
             raise ValueError("oidc_algorithms must be asymmetric (RS*, ES*, PS* or EdDSA)")

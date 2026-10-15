@@ -136,6 +136,7 @@ module "data" {
     orchestrator = module.control.service_accounts["orchestrator"]
     api          = module.control.service_accounts["api"]
     url_signer   = module.control.service_accounts["url-signer"]
+    url_uploader = module.control.service_accounts["url-uploader"]
     exec         = { for pool, m in module.exec : pool => m.exec_sa_email }
   }
 
@@ -174,6 +175,7 @@ module "perimeter" {
       api          = module.control.service_accounts["api"]
       orchestrator = module.control.service_accounts["orchestrator"]
       url-signer   = module.control.service_accounts["url-signer"]
+      url-uploader = module.control.service_accounts["url-uploader"]
     }
     run = {
       orchestrator = module.control.service_accounts["orchestrator"]

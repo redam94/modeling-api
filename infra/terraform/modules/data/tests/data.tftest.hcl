@@ -13,6 +13,7 @@ variables {
     orchestrator = "mapi-test-orch@acme-test-control.iam.gserviceaccount.com"
     api          = "mapi-test-api@acme-test-control.iam.gserviceaccount.com"
     url_signer   = "mapi-test-signer@acme-test-control.iam.gserviceaccount.com"
+    url_uploader = "mapi-test-uploader@acme-test-control.iam.gserviceaccount.com"
     exec = {
       paid   = "mapi-test-exec@acme-test-exec-paid.iam.gserviceaccount.com"
       public = "mapi-test-exec@acme-test-exec-public.iam.gserviceaccount.com"
