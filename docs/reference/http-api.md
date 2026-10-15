@@ -283,7 +283,7 @@ requests.
 | `GET /v1/models/{model_id}/versions/{version}/plots/{plot_id}` | A sanitized `PlotSpec`. Render it only inside the plot-sandbox iframe, which has its own origin. | — | `PlotSpec` | 200 | `NOT_FOUND` |
 | `POST /v1/plots:validate` | Run the server-side plot sanitizer on a user-authored spec | `PlotSpec` | `PlotValidateResponse` | 200 | `SCHEMA_INVALID` |
 
-## Multi-tenant API <span class="mapi-badge mapi-badge--soon">v0.3</span> { #multi-tenant-api }
+## Multi-tenant API <span class="mapi-badge">v0.3</span> { #multi-tenant-api }
 
 v0.3 (milestone M2) adds tenants, projects, members, API tokens, quotas, cost and an operator
 console. The models are in `mapi_spec.api`, `mapi_spec.tenancy`, `mapi_spec.tokens`,

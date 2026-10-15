@@ -8,7 +8,7 @@ hide:
 
 <div class="mapi-hero" markdown>
 <div markdown>
-<p class="mapi-tagline">Labelled models · replayed preprocessing · typed, honest answers</p>
+<p class="mapi-tagline">Labelled models · replayed preprocessing · typed, honest answers · many teams, one safe platform</p>
 
 # Fit with preprocessing.<br>Score with the *same* preprocessing.
 
@@ -16,26 +16,28 @@ hide:
 dimensions</strong>: geo × channel × week, store × sku × day, household × trip. Describe a model
 in a small YAML spec or a few lines of Python. The platform checks your data, learns every
 preprocessing step on the training data only, and replays exactly that work whenever you
-forecast, add a new market or ask "what if".</p>
+forecast, add a new market or ask "what if". Many organisations share one deployment, each
+in its own tenant, and every run executes in a fresh sandbox whose outputs are verified before
+anyone can download them.</p>
 
 [Quickstart: 10 minutes](getting-started/quickstart.md){ .md-button .md-button--primary }
 [Get started](getting-started/index.md){ .md-button }
-[How it works](concepts/architecture.md){ .md-button }
+[Run it for your teams](guides/administration.md){ .md-button }
 
 </div>
 ![modeling-api logo: a labelled data cube](assets/logo.svg)
 </div>
 
-!!! info "Where the project is today: v0.2, the platform runs end to end on your laptop"
-    `make install && make dev && make seed` starts the whole platform locally, without Docker:
-    an HTTP API with an OpenAPI document, a job queue, a sandboxed runner, an object store
-    that behaves like Google Cloud Storage, the web app and an isolated plot sandbox. From the
-    browser, the [CLI](guides/cli.md), the [Python client](guides/python-client.md) or plain
-    [HTTP](guides/http-api.md), you upload data, validate a spec as you type, fit it, follow
-    the sampler live, inspect a signed model and score forecasts, new markets and what-ifs.
-    The v0.1 contract layer (specs, 28 steps, 11 model plugins, plots, conformance corpus)
-    still runs in your own Python process too. Cloud execution and multiple tenants come next:
-    see the [roadmap](roadmap/index.md).
+!!! info "Where the project is today: v0.3, multi-tenant, with a cloud backend for a private beta"
+    `make install && make dev && make seed` starts the whole platform on your laptop, without
+    Docker: an HTTP API, a job queue, a sandboxed runner, an object store that behaves like
+    Google Cloud Storage, the web app and an isolated plot sandbox, with sign-in through a
+    development identity provider. v0.3 adds **tenants, roles, sign-in and API tokens**,
+    **quotas and a cost ledger**, an audit log and kill switches, a **Cloud Run Jobs executor**
+    with Terraform for every Google Cloud project, and metrics, alerts and runbooks. The cloud
+    pieces are tested against fakes; a [short checklist](operations/gcp-deployment.md#before-you-start-the-verify-m0-checklist)
+    of cloud behaviours waits for a real project. Guided mode for analysts comes next: see the
+    [roadmap](roadmap/index.md).
 
 ## See it run
 
@@ -72,6 +74,47 @@ These are screenshots of the [quickstart](getting-started/quickstart.md), taken 
 <figure markdown>
 [![An 8-week forecast per market](assets/screenshots/score-forecast.png){ .mapi-shot loading=lazy }](guides/web-ui.md#score)
 <figcaption>Score: an 8-week forecast with the fitted preprocessing replayed exactly.</figcaption>
+</figure>
+
+</div>
+
+## Run it for many teams
+
+One deployment serves many organisations. People sign in with their own identity provider,
+work in the projects they have a role in, and see what their compute costs; operators look
+after the platform without ever reading a tenant's data. These screenshots come from a `make
+dev` stack with a few tenants.
+
+<div class="mapi-shots" markdown>
+
+<figure markdown>
+[![The sign-in page](assets/screenshots/signin.png){ .mapi-shot loading=lazy }](guides/authentication.md#browser-sign-in)
+<figcaption>Sign in with your organisation's identity provider; the app never holds a token.</figcaption>
+</figure>
+
+<figure markdown>
+[![The project switcher with two tenants](assets/screenshots/project-switcher.png){ .mapi-shot loading=lazy }](guides/authentication.md#browser-sign-in)
+<figcaption>Tenants and projects: your role in each, and each tenant's trust tier.</figcaption>
+</figure>
+
+<figure markdown>
+[![The Members page](assets/screenshots/members.png){ .mapi-shot loading=lazy }](guides/administration.md#projects-and-members)
+<figcaption>Members: viewer, editor, runner, admin. Running sits above editing: compute costs money.</figcaption>
+</figure>
+
+<figure markdown>
+[![A new token's secret, shown once](assets/screenshots/token-created.png){ .mapi-shot loading=lazy }](guides/administration.md#api-tokens)
+<figcaption>API tokens: scoped, bound to one project, shown once, revoked at once.</figcaption>
+</figure>
+
+<figure markdown>
+[![Usage and cost of a project](assets/screenshots/usage.png){ .mapi-shot loading=lazy }](guides/administration.md#cost-and-usage)
+<figcaption>Usage: metered cost per run, by token and resource class, against every quota.</figcaption>
+</figure>
+
+<figure markdown>
+[![The kill switches](assets/screenshots/admin-kill-switches.png){ .mapi-shot loading=lazy }](guides/administration.md#kill-switches)
+<figcaption>Operators: tenants, quotas, a global spend cap and a switch that stops uploaded code.</figcaption>
 </figure>
 
 </div>
@@ -161,9 +204,45 @@ flowchart LR
     - What-if deltas that share their noise with the baseline (common random numbers), so
       the delta reflects the change, not sampling noise.
 
-## Safe by construction
+## Secure by design
+
+The platform is built to run models and data from people it does not trust. The controls that
+matter most are not settings you can forget to turn on: they are how it works.
+[The security model](concepts/security.md) says what each one stops, and what is still to be
+verified in the cloud.
 
 <div class="grid cards" markdown>
+
+-   :material-cube-scan:{ .lg .middle } **A fresh sandbox per run**
+
+    ---
+
+    Every fit and score runs in its own sandbox (a microVM on Cloud Run Jobs), with no
+    secrets, no network but signed URLs to its own objects, and the model code under its own
+    user. Placement by trust tier is enforced in code.
+
+-   :material-domain:{ .lg .middle } **Tenants never see each other**
+
+    ---
+
+    PostgreSQL row-level security on every table, pinned per transaction and failing closed;
+    roles checked at every request; operators manage the platform without reading tenant
+    data.
+
+-   :material-check-decagram-outline:{ .lg .middle } **Outputs are claims**
+
+    ---
+
+    A run's outputs are checked against the store's own hashes and generations, copied where
+    runs cannot write, and signed. Download links are minted only after the signature
+    verifies.
+
+-   :material-cash-lock:{ .lg .middle } **Compute you can see and cap**
+
+    ---
+
+    Quotas in vCPU-seconds per token, tenant and platform, fair sharing between interactive
+    and batch work, a cost on every run, a global spend cap and an audited kill switch.
 
 -   :material-file-lock-outline:{ .lg .middle } **No pickle, anywhere**
 
@@ -234,21 +313,56 @@ flowchart LR
 
     [:octicons-arrow-right-24: Port a model](guides/port-a-model.md)
 
+-   :material-shield-account-outline:{ .lg .middle } **Administrators and operators**
+
+    ---
+
+    Tenant admins invite people and set their roles, mint and revoke tokens, and read their
+    organisation's usage and audit log. Operators run the platform: tenants, quotas, kill
+    switches, executors, dashboards and runbooks.
+
+    [:octicons-arrow-right-24: Administration](guides/administration.md)
+
 -   :material-connection:{ .lg .middle } **Integrators**
 
     ---
 
     A versioned HTTP API with an OpenAPI 3.1 document, RFC 7807 errors, idempotency keys and
-    server-sent events, plus a typed Python client. Endpoints, webhooks and MCP tools follow
-    in [v0.4](roadmap/guided-ui.md).
+    server-sent events, scoped API tokens with budgets, and a typed Python client. Endpoints,
+    webhooks and MCP tools follow in [v0.4](roadmap/guided-ui.md).
 
     [:octicons-arrow-right-24: HTTP API guide](guides/http-api.md)
 
 </div>
 
-## What you get in v0.2
+## What you get in v0.3
 
 <div class="grid cards" markdown>
+
+-   :material-account-group-outline: **Tenants, projects and roles** <span class="mapi-badge">new</span>
+
+    Trust tiers, data residency, four roles and one permission matrix, row-level security on
+    every table. [:octicons-arrow-right-24: Administration](guides/administration.md)
+
+-   :material-login: **Sign-in and API tokens** <span class="mapi-badge">new</span>
+
+    OpenID Connect through the API, a development IdP, `mapi login`, and scoped, project-bound
+    tokens with budgets. [:octicons-arrow-right-24: Authentication](guides/authentication.md)
+
+-   :material-gauge: **Quotas, cost and kill switches** <span class="mapi-badge">new</span>
+
+    vCPU-second quotas, fair share, a cost ledger shown on every run, a spend cap and an audit
+    log. [:octicons-arrow-right-24: Quotas and cost](concepts/quotas-and-cost.md)
+
+-   :material-google-cloud: **Cloud Run Jobs and Terraform** <span class="mapi-badge">new</span>
+
+    A sandbox per run in a zero-egress project, Pub/Sub events, KMS signatures, deploy and
+    rollback scripts. [:octicons-arrow-right-24: Google Cloud](operations/gcp-deployment.md)
+
+-   :material-chart-line: **Observability** <span class="mapi-badge">new</span>
+
+    Prometheus metrics, traces, dashboards, alerts, runbooks, and a security suite of
+    sandbox-escape probes. [:octicons-arrow-right-24: Observability](operations/observability.md)
 
 -   :material-monitor-dashboard: **The Expert web app**
 

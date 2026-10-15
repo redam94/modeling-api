@@ -1,7 +1,7 @@
-# Guided UI and integrations <span class="mapi-badge mapi-badge--soon">coming in v0.4</span>
+# Guided UI and integrations <span class="mapi-badge mapi-badge--soon">next: v0.4</span>
 
-!!! abstract "Status: planned (milestone M3)"
-    v0.4 lets analysts go from a CSV to a trustworthy report and a what-if scenario without
+!!! abstract "Status: next (milestone M3)"
+    With the multi-tenant core in place ([v0.3](cloud.md)), v0.4 lets analysts go from a CSV to a trustworthy report and a what-if scenario without
     writing YAML, and lets other applications call fitted models through stable endpoints. It
     is the first public launch: declarative specs and built-in models.
 
@@ -40,7 +40,7 @@ journey
 ### Already in place
 
 The pieces Guided mode is built on already ship, most since v0.1, the rest in the v0.2 web
-app:
+app and the v0.3 platform:
 
 | Guided feature | Built on (available now) |
 |---|---|
@@ -53,6 +53,8 @@ app:
 | One app, two modes | The v0.2 web app's **Guided / Expert** switch and the Guided task preview |
 | The scorecard in the UI | The v0.2 model page's scorecard, with plain messages and suggested actions |
 | Column mapping | The v0.2 upload panel's CSV preview and dim/role mapping |
+| Endpoints others may call | The v0.3 permission matrix (`endpoint` run and promote) and `score:<alias>` token scopes |
+| Safe sharing with other organisations | v0.3 tenants, roles, quotas and the audit log |
 
 ## Integrations
 

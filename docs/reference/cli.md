@@ -1,4 +1,4 @@
-# CLI and Python client <span class="mapi-badge">v0.2</span>
+# CLI and Python client <span class="mapi-badge">v0.3</span>
 
 Two Apache-2.0 packages talk to the `/v1` [HTTP API](http-api.md):
 
@@ -113,7 +113,8 @@ mapi spec upgrade spec.yaml --check
 mapi config show | path | set KEY VALUE | unset KEY
 ```
 
-Multi-tenant commands (v0.3):
+Multi-tenant commands (v0.3; walked through in [Authentication](../guides/authentication.md#the-command-line)
+and [Administration](../guides/administration.md), both run by the test suite):
 
 ```bash
 mapi login [--device | --no-browser | --with-token] [--issuer URL --client-id ID]

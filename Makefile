@@ -221,9 +221,10 @@ _env-check:
 
 ## ---------------------------------------------------------------- docs
 .PHONY: docs-catalog
-docs-catalog: ## Regenerate the generated reference pages (catalogs, errors, CLI, settings, OpenAPI)
+docs-catalog: ## Regenerate the generated reference pages (catalogs, errors, CLI, settings, OpenAPI, permissions, metrics)
 	$(UV) run python scripts/gen_docs_catalog.py
 	$(UV) run python scripts/gen_docs_reference.py
+	$(UV) run python scripts/gen_docs_platform.py
 
 .PHONY: docs-serve
 docs-serve: docs-catalog ## Serve the documentation site with live reload
@@ -241,6 +242,13 @@ docs-test: ## Run every documentation snippet and check every include
 docs-screenshots: ## Recapture docs/assets/screenshots from a running, seeded stack (see the script)
 	node scripts/docs_screenshots.mjs .local/screenshots
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots docs/assets/screenshots
+
+DOCS_ADMIN_SHOTS := signin,dev-idp,project-switcher,members,tokens,token-new,token-created,usage,admin-tenants,admin-quotas,admin-kill-switches,admin-executors,admin-audit
+
+.PHONY: docs-screenshots-admin
+docs-screenshots-admin: ## Recapture the multi-tenant screenshots (sign-in, members, tokens, usage, admin) from a dev stack
+	node scripts/docs_screenshots_admin.mjs .local/screenshots-admin
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-admin docs/assets/screenshots --only $(DOCS_ADMIN_SHOTS)
 
 ## ---------------------------------------------------------------- release
 .PHONY: release-check

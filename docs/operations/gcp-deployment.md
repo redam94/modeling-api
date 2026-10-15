@@ -2,7 +2,7 @@
 description: Deploy modeling-api to Google Cloud step by step - projects, bootstrap, Terraform, images by digest, migrations, smoke tests, GitHub Actions with approvals, rollbacks and day-2 operations.
 ---
 
-# Deploy to Google Cloud <span class="mapi-badge mapi-badge--soon">v0.3</span>
+# Deploy to Google Cloud <span class="mapi-badge">v0.3</span>
 
 This page takes an environment (`dev`, `staging` or `prod`) from empty Google Cloud projects to
 a running, multi-tenant platform: the API and web app on Cloud Run, runs executing as Cloud Run
@@ -13,11 +13,41 @@ perimeter. Everything is in `infra/terraform` and driven by four scripts in `dep
     The Terraform passes `terraform validate` for every environment and a `terraform test` suite
     that applies every module against mocked providers (see
     [Testing the infrastructure](#testing-the-infrastructure)). It has **not** been applied to a
-    real organisation yet, and several cloud behaviours it relies on are marked **[verify M0]**:
-    check them with the [M0 verification checklist](security-hardening.md#m0-verification-checklist)
-    before the first production deploy. The server's cloud adapters (Cloud Run Jobs executor,
-    Cloud Storage, KMS signing, Pub/Sub push verification) ship in the same release; the
-    environment variables they read are listed [below](#environment-of-the-cloud-run-workloads).
+    real organisation yet. The server's cloud adapters (Cloud Run Jobs executor, Cloud Storage,
+    KMS signing, Pub/Sub push verification) ship in the same release and are tested against
+    fakes only; the environment variables they read are listed
+    [below](#environment-of-the-cloud-run-workloads). Read the next section before you start.
+
+## Before you start: the [verify M0] checklist { #before-you-start-the-verify-m0-checklist }
+
+The design rests on cloud behaviours that the documentation of Google Cloud suggests but that
+nobody has yet confirmed against a real Cloud Run Jobs execution. The plan marks each one
+**[verify M0]**. Nothing here is broken by them in a `dev` environment, but **do not admit
+untrusted tenants until each one has a recorded pass**. The full procedure, with the probe for
+each item, is the [M0 verification checklist](security-hardening.md#m0-verification-checklist);
+the steps that remain after the offline M2 verification are in
+[M2 verification](m2-verification.md#what-remains-for-real-gcp).
+
+| Assumption | What depends on it | If it does not hold |
+|---|---|---|
+| The Direct VPC egress resolver honours the **DNS response policy** (`*.` to NXDOMAIN, Google APIs to the restricted VIP) | DNS exfiltration is blocked; `MAPI_CLOUDRUN_DNS_ENFORCED` may be set to `true`, which is what lets `verified` and `public` tenants run at all | Cloud Run Jobs cannot host untrusted code. Keep shared tiers off it; fall back to GKE Sandbox behind the same executor protocol |
+| **Deny-all egress** and **VPC Service Controls** apply to Jobs executions | Runs cannot reach the internet or buckets outside the perimeter | Same as above |
+| gen2 allows the **supervisor/worker uid split** with `no_new_privs`, seccomp and no `ptrace` | The worker cannot read the supervisor's credentials | Runs report `DEV_MODE_ISOLATION`; the runner images must start the supervisor as root for the split |
+| Execution **overrides are env-only** (no image, resources, service account or network) | `jobs.run` can pass only the run id and nonce | The dispatcher's role must be narrowed further |
+| The **in-memory filesystem** limits behave as planned (no ephemeral disk; exit 137 at the limit) | Scratch budgets of 3/6/12 GiB for classes S/M/L; `RESOURCE_EXHAUSTED` with a retry one class up | Large-data fits move to GKE |
+| A **deleted bootstrap object** cannot be restored | The nonce in the audit log points at nothing | Terraform already sets the bootstrap bucket's soft-delete window to 0; if a copy can still be restored, the bootstrap design needs a second look before launch |
+| **Quotas**: 180 `jobs.run` per minute and 1,000 running executions per region | The dispatcher's token bucket (150 a minute by default) and the global limit of 700 concurrent runs | Lower `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE`, shard across exec projects |
+| **Cold start** of a ~2.5 GB base image keeps time-to-`RUNNING` p95 under 90 s | The M2 latency target (met offline against the fake backend only) | Slimmer images, or warm capacity (M6) |
+| The **Logging sink to Pub/Sub** path carries the execution's labels within seconds, and Pub/Sub can push to an internal-only service | Run events and progress | Runs still finish (the executor's status decides liveness), but progress goes quiet |
+| Cloud SQL **managed connection pooling** works in transaction mode with the server's driver, and the migrate role can grant **`BYPASSRLS`** | Row-level security for requests; the platform role for the orchestrator | Give `mapi_orchestrator` its own policy-based access (the explicit policy already exists) |
+| `run.jobs.runWithOverrides` works **without `iam.serviceAccounts.actAs`** on the execution account | The orchestrator's least-privilege role | Grant `actAs` on that one account |
+| Cloud Run accepts the **image indexes** `build-push.sh` pushes (with attestations) | Deploys | Build with `--no-attestations` |
+
+Two further limits of v0.3 are not cloud facts but matter on day one: browser sign-in uses an
+OpenID provider with an authorization-code endpoint (Google by default; Identity Platform's own
+tokens are not accepted yet, see [Authentication](../guides/authentication.md#identity-platform)),
+and the nightly security suite has no probe Job in Terraform yet
+([Security suite](security-suite.md#where-the-probes-run)).
 
 ## Topology
 
@@ -203,7 +233,48 @@ the services answer on their `run.app` URLs (`terraform output urls`).
 
 Work through the [security hardening](security-hardening.md) page, and the
 [M0 verification checklist](security-hardening.md#m0-verification-checklist) before the first
-production deploy.
+production deploy. Once the DNS item has a recorded pass, tell the orchestrator so, in the
+environment's `main.tf`, and deploy again:
+
+```hcl
+control = {
+  # ...
+  extra_env = {
+    orchestrator = { MAPI_CLOUDRUN_DNS_ENFORCED = "true" }
+  }
+}
+```
+
+Until then the executor declares DNS as not enforced, and the dispatcher refuses to place
+`verified` and `public` tenants on it ([trust tiers](../guides/administration.md#trust-tiers)).
+
+### 9. Name the operators and create the first tenant
+
+Platform operators are the people whose **verified** e-mail is in `MAPI_OPERATOR_EMAILS`. Set it
+on the API (plain values only; never secrets in `extra_env`):
+
+```hcl
+control = {
+  # ...
+  extra_env = {
+    api = { MAPI_OPERATOR_EMAILS = "oncall@acme.example,platform@acme.example" }
+  }
+}
+```
+
+After `deploy/gcp/deploy.sh --env staging`, an operator signs in to the web app (or with
+`mapi login --issuer https://accounts.google.com --client-id <the CLI's client id>`) and creates
+each organisation's tenant with its first admin, who is invited by e-mail and becomes tenant
+admin at their first sign-in:
+
+```bash
+mapi admin tenants create acme --name "Acme Retail" --tier verified --residency eu \
+    --admin-email it@acme.example
+```
+
+From there the tenant admin creates projects and invites people
+([Administration](../guides/administration.md)). Check the platform with the
+[observability](observability.md) dashboards, and import the alerts before you let anyone in.
 
 !!! warning "Verified tenants cannot run until DNS enforcement is verified"
     `verified` (the default tier of new tenants, the private beta) and `public` tenants need

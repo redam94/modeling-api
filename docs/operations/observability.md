@@ -52,45 +52,60 @@ unless a token is set.
 
 ## The metric set
 
-| Metric | Type | Meaning |
-|---|---|---|
-| `mapi_runs_total{kind,state}` | counter | Runs that reached a terminal state |
-| `mapi_runs_active{state}` | gauge | Runs in each non-terminal state (set by the reconciler) |
-| `mapi_run_transitions_total{state}` | counter | Every state transition, by target state |
-| `mapi_dispatch_latency_seconds` | histogram | `QUEUED` until the executor accepted the submission |
-| `mapi_time_to_running_seconds` | histogram | `QUEUED` until the first event (`RUNNING`); M2 target p95 < 90 s |
-| `mapi_event_ingestion_lag_seconds` | histogram | Event timestamp until ingestion |
-| `mapi_events_ingested_total{result}` | counter | Ingest outcomes (`accepted`, `duplicate`, `bad_hmac`, ...) |
-| `mapi_finalize_outcomes_total{kind,outcome}` | counter | `succeeded`, `partial`, `integrity`, `infra` |
-| `mapi_integrity_failures_total{tenant_id}` | counter | Outputs that did not match the platform's record (a security signal) |
-| `mapi_sandbox_violations_total{reason}` | counter | Forged events, bad HMACs, execution-label mismatches |
-| `mapi_quota_rejections_total{scope,code}` | counter | `QUOTA_EXCEEDED` and `RATE_LIMITED` denials, by token, tenant or global level |
-| `mapi_executor_running_executions{executor}` | gauge | Runs holding a live execution on the executor, from the run table (every orchestrator reports the same fleet-wide value: aggregate with `max`). `MapiRunningExecutions70` alerts at 700, 70 % of Cloud Run's 1,000 per project and region |
-| `mapi_executor_submit_throttled_total{executor}` | counter | `429` answers from the executor backend to a submission (Cloud Run `jobs.run`), retried ones included. Recorded by the orchestrator. The API's own `429`s to tenants are not counted here |
-| `mapi_cost_micros_total{tenant_id}` | counter | Metered compute cost (currency micros) as ledger entries are written |
-| `mapi_global_spend_micros`, `mapi_global_spend_cap_micros` | gauge | Spend in the kill switches' cap window, and the cap |
-| `mapi_sse_clients` | gauge | Live event-stream subscribers on this process |
-| `mapi_http_requests_total{method,route,status}` | counter | Requests, labelled by route *template* (never the raw path) |
-| `mapi_http_request_duration_seconds{method,route}` | histogram | Request latency |
+Generated from `mapi_server.observability.metrics.Metrics`, the one registry every series is
+defined in, so this table cannot drift from what `/metrics` serves. Label cardinality is bounded
+on purpose: `tenant_id` is the only unbounded label, on the two counters that are meaningless
+without it, and HTTP series are labelled by route *template*, never the raw path.
+
+<!-- generated: metrics -->
+
+What to watch first:
+
+- **`mapi_time_to_running_seconds`**: the M2 target is p95 under 90 s.
+- **`mapi_integrity_failures_total`** and **`mapi_sandbox_violations_total`**: any increase is a
+  security signal, not a reliability one.
+- **`mapi_global_spend_micros`** against **`mapi_global_spend_cap_micros`**: the kill switch's
+  window.
+- **`mapi_runs_active{state="stalled"}`**: runs whose events went quiet (the executor's status,
+  not the silence, decides what happens to them).
+
+The security suite adds one more series from outside the server,
+`mapi_security_probe_unexpected{executor}`, through a textfile collector or a Pushgateway
+([Security suite](security-suite.md#run-it)).
 
 Every response carries `X-Request-Id`: the caller's own header when it sent one, otherwise the
 trace id. Quote it when you report a problem; it finds the log lines and the trace.
 
 ## Dashboards, alerts and runbooks
 
-Everything operators need is in `ops/` at the root of the repository:
+Everything operators need is in `ops/` at the root of the repository; `ops/README.md` explains
+how to import each one. The tables below are generated from those files.
 
-- `ops/dashboards/`: a Grafana dashboard and a Cloud Monitoring dashboard over the series
-  above.
-- `ops/alerts/`: Prometheus rules and Cloud Monitoring policies. They cover jobs.run 429s, any
-  integrity failure, a failed security probe, spend at 70 % and 90 % of the cap, Cloud Run
-  running executions at 70 % of the quota, a rising
-  `STALLED` rate, sustained quota rejections, slow time-to-`RUNNING` and a silent event path.
-- `ops/runbooks/`: incident response, a confirmed sandbox escape (kill switch, rotate keys,
-  quarantine, notify), stuck runs, database failover, and rotating the HMAC and signing keys.
+### Dashboards
 
-`ops/README.md` explains how to import each one. The thresholds are starting points for the
-private beta.
+A Grafana dashboard and a Cloud Monitoring dashboard over the same series:
+
+<!-- generated: dashboards -->
+
+### Alerts
+
+`ops/alerts/prometheus-rules.yml` (Prometheus rules, with recording rules such as
+`mapi:global_spend_ratio`) and `ops/alerts/cloud-monitoring-alerts.yaml` (the same policies for
+Cloud Monitoring). *page* wakes someone; *ticket* is for the next working hour. The thresholds
+are starting points for the private beta.
+
+<!-- generated: alerts -->
+
+### Runbooks
+
+Each alert names the runbook that resolves it:
+
+<!-- generated: runbooks -->
+
+The sandbox-escape runbook is the plan's incident response for a confirmed escape: turn off
+uploaded code with the [kill switch](../guides/administration.md#kill-switches), rotate the
+signing and HMAC keys (which invalidates every outstanding signed URL), quarantine the affected
+bundles and notify the tenants.
 
 ## Tests that guard the signals
 

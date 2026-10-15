@@ -2,7 +2,7 @@
 description: Tenants, projects, roles, API tokens and browser sign-in in the multi-tenant platform, and how every request is authorized.
 ---
 
-# Tenancy and authentication <span class="mapi-badge mapi-badge--soon">v0.3</span>
+# Tenancy and authentication <span class="mapi-badge">v0.3</span>
 
 From v0.3 one deployment serves many organisations. Each is a **tenant**; inside it, work is
 organised in **projects**; people and programs get **roles** in projects. Every request is
@@ -11,10 +11,13 @@ by one pure function that the API, the web app and the tests share. The contract
 `mapi_spec.tenancy` and `mapi_spec.tokens`; the endpoints are listed in
 [HTTP API: Multi-tenant API](../reference/http-api.md#multi-tenant-api).
 
-!!! note "v0.2 is single-tenant"
-    A local v0.2 install has one tenant and one project, both called `default`, and no
-    sign-in. Every row and storage key already carries the tenant and project, so the
-    multi-tenant release needs no data migration.
+!!! note "Coming from v0.2"
+    A v0.2 install had one tenant and one project, both called `default`, and no sign-in.
+    Every row and storage key already carried the tenant and project, so v0.3 needs no data
+    migration: your work is in `default/default`. `MAPI_PROFILE=single-tenant` keeps the old
+    credential-less behaviour. The practical side of this page (who does what, with
+    screenshots and a tested walkthrough) is the [Administration guide](../guides/administration.md);
+    signing in is [Authentication](../guides/authentication.md).
 
 ## Tenants and projects
 

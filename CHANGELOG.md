@@ -102,6 +102,17 @@ is tested against fakes, and the Terraform is validated and tested against mocke
 - **web**: the admin console has a **Cost** tab with cost by tenant per period and each
   tenant's share of spend. The global spend-cap card shows current spend against the cap on a
   meter that warns at 70% and 90%.
+- **docs**: the v0.3 site.
+  - New **Administration** and **Authentication** guides, each driven by a walkthrough that
+    `make e2e` runs against a dev stack (`docs/snippets/admin_tour.sh`, `auth_tour.sh`).
+  - Generated from the code at every build (`scripts/gen_docs_platform.py`): the roles,
+    token-scope and trust-tier matrices (`mapi_spec.tenancy.PERMISSIONS`), the metric set,
+    the alerts, dashboards and runbooks of `ops/`, and an index of every `MAPI_*` variable.
+    Pages embed generated tables with `<!-- generated: NAME -->`.
+  - The landing page tells the multi-tenant story, with screenshots of the new screens
+    (`make docs-screenshots-admin`); the security model shows what each executor enforces
+    and the threat model in plain terms; Deploying to Google Cloud starts with the
+    [verify M0] checklist and ends at the first tenant; the roadmap moves to M3.
 
 ### Changed
 - **devops**: `make dev` and compose run the servers in the `dev` profile by default

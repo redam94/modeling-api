@@ -112,7 +112,7 @@ keep comments. Secrets cannot be set this way: use `mapi login --with-token`. `-
     The client sends `MAPI_TOKEN` as a bearer token when one is set, and refuses to send it
     over plain HTTP to anything but a loopback address.
 
-### Sign in and choose a project <span class="mapi-badge mapi-badge--soon">v0.3</span>
+### Sign in and choose a project <span class="mapi-badge">v0.3</span> { #sign-in-and-choose-a-project }
 
 A multi-tenant API (v0.3) needs credentials and a project
 ([Tenancy and authentication](../concepts/tenancy-and-auth.md)).
@@ -148,7 +148,7 @@ override it for one command or one shell. An API token acts in its own project o
 --8<-- "cli_tenancy.sh:use"
 ```
 
-### Tokens, usage and cost <span class="mapi-badge mapi-badge--soon">v0.3</span>
+### Tokens, usage and cost <span class="mapi-badge">v0.3</span> { #tokens-usage-and-cost }
 
 ```bash
 --8<-- "cli_tenancy.sh:tokens"
@@ -168,7 +168,7 @@ server's `Retry-After`, then exponential back-off) and retried; `QUOTA_EXCEEDED`
 once with the reason, when the quota resets (`retry after 1h 30m`) and, with `--json`,
 `retry_after_seconds`.
 
-### Operators <span class="mapi-badge mapi-badge--soon">v0.3</span>
+### Operators <span class="mapi-badge">v0.3</span> { #operators }
 
 Platform operators manage tenants, quotas, kill switches and executors with `mapi admin`.
 Each change shows a before-and-after table and asks for confirmation (`--yes` skips it, for

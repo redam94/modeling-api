@@ -1,46 +1,96 @@
 ---
-description: What modeling-api protects against, which controls are enforced on a laptop today, and what production adds in later releases.
+description: What modeling-api protects against, which controls each executor isolation level enforces, the threat model in plain terms, and what is verified, what is not yet, and what comes later.
 ---
 
-# Security model <span class="mapi-badge">v0.2</span>
+# Security model <span class="mapi-badge">v0.3</span>
 
-modeling-api is built to run **models and data from people it does not trust**, eventually
-from the public internet. v0.2 is a single-tenant, local slice of that platform, but the
-controls that do not depend on the cloud are already in the code and tested, so the design is
-exercised from the first release. This page says what each control protects against and how
-much of it you get in each setting.
+modeling-api is built to run **models and data from people it does not trust**, from many
+organisations on one deployment. Every control that does not need a cloud is in the code and
+tested on a laptop; the cloud controls are written (Terraform, the Cloud Run Jobs executor,
+Cloud KMS, authenticated Pub/Sub) and tested against fakes, and a short list of cloud
+behaviours still waits for a real project. This page says what each control protects against,
+which ones a given executor enforces, and where the honest limits are today.
 
-!!! danger "v0.2 has no authentication"
-    The API, the web app and the object store listen on `127.0.0.1`, and Docker Compose
-    publishes its ports on `127.0.0.1` only. Anyone who can reach those ports can do anything.
-    Do not expose a v0.2 stack to a network you do not trust, and do not run untrusted plugin
-    code on it: local and compose runs are not a multi-tenant boundary.
+!!! danger "A local stack is not a security boundary"
+    `make dev` and Docker Compose run the `dev` profile: anyone who can reach the API can sign
+    in as any seeded account through the built-in development identity provider. Every port
+    listens on `127.0.0.1` only. Do not expose a local stack to a network you do not trust, and
+    do not run untrusted plugin code on it: the `local-process` and plain `docker` executors
+    are process isolation, not a multi-tenant boundary.
 
 ## What it protects
 
 | Asset | Threat | Main controls |
 |---|---|---|
+| Each tenant's data | Another tenant, or a bug, reads or changes it | PostgreSQL row-level security pinned per transaction and failing closed; storage keys built by the server from ids; roles checked at every request; operators never read tenant content |
 | The control plane | A hostile dataset, bundle or plot exploits a parser in the API | The API parses JSON and YAML only (a strict loader: no anchors or tags, size and depth caps). Arrays, zarr, netCDF, CSV and Parquet are opened only inside a run's sandbox |
-| Credentials and other runs | Model code reads or steals what the run holds | Supervisor/worker split; no secrets in the environment or arguments; a one-time bootstrap object; object-scoped, short-lived signed URLs |
+| Credentials and other runs | Model code reads or steals what the run holds | A fresh sandbox per run; supervisor/worker split; no secrets in the environment or arguments; a one-time bootstrap object; object-scoped, short-lived signed URLs |
 | Results | A run forges outputs, swaps an object later, or fakes progress | Outputs are claims checked against the store's own checksums and generations; write-once bundles; signed bundle manifests checked before every download link; HMAC-signed events |
-| The browser and the user's data | A malicious plot spec runs script in the app | A server-side sanitizer, then rendering only in a sandboxed iframe on a separate origin, with strict CSPs on both origins |
+| The bill | A leaked token, a runaway sweep or abuse runs up compute | vCPU-second quotas per token, tenant and platform; fair-share scheduling; a global spend cap and a kill switch for uploaded code |
+| The browser and the user's data | A malicious plot spec runs script in the app | A server-side sanitizer, then rendering only in a sandboxed iframe on a separate origin, with strict CSPs on both origins; sessions in `HttpOnly`, `SameSite=Strict` cookies with CSRF tokens |
 | The user's terminal and screen | Log lines or messages with escape codes, HTML or bidi tricks | Untrusted text is a separate field (`untrusted_text`), stripped of ANSI, control and bidi characters, and rendered as text only |
 | Long-term trust in a model | Pickle and other code-executing formats | Bundles are zarr zips plus JSON; native models are skops (allow-listed types) or xgboost JSON; pickle is refused on write and on read |
 
+## Threats, in plain terms
+
+The plan's threat model, as a user would ask about it. **Enforced** means in the code and
+covered by tests on every change; **[verify M0]** means the control is built but depends on a
+cloud behaviour not yet confirmed against a real Cloud Run Jobs execution (see
+[the checklist](../operations/gcp-deployment.md#before-you-start-the-verify-m0-checklist)).
+
+| If someone tries to… | What stops them | In v0.3 |
+|---|---|---|
+| Break out of the sandbox into the machine | A fresh microVM per run; the model code runs as its own non-root user with `no_new_privs`, on a read-only root filesystem | Built for Cloud Run Jobs; the uid split there is **[verify M0]**. Local executors are not boundaries |
+| Steal the run's credentials | Nothing secret in the environment or arguments; the run's instructions are read from a one-time object and deleted before model code starts; the only credential can get and delete that object, nothing else | **Enforced** (locally the storage emulator enforces the same permissions) |
+| Send your data out over the network | Deny-all egress, only Google's restricted APIs address, a VPC Service Controls perimeter | Terraform written and tested offline; **[verify M0]** |
+| Send your data out over DNS | A DNS response policy that answers nothing outside Google APIs | **[verify M0]**. Until it passes, `verified` and `public` tenants are not placed on Cloud Run at all |
+| Crash or take over the API with a crafted file | The API only parses JSON and YAML; everything else is opened inside a sandbox | **Enforced** |
+| Swap or replay a model's files | Outputs checked against the store's own hashes and generations, copied where runs cannot write, and signed; the signature is checked before every download link | **Enforced** (Cloud KMS signing tested against a fake) |
+| Fake progress or results | Only the supervisor writes events, each signed and numbered; the executor's own status decides whether a run is alive | **Enforced** |
+| Read another organisation's work | Row-level security on every table, failing closed; ids checked against the caller's tenant; a test reuses pooled connections across two tenants | **Enforced** |
+| Use a leaked token | Tokens are scoped, bound to one project, expire, can carry rate limits and budgets, are revoked at once, and never carry operator powers; failed uses are audited | **Enforced** |
+| Run up a huge bill, or starve everyone else | Quotas in vCPU-seconds per token, tenant and platform; interactive work ahead of batch; a global spend cap; a switch that stops all uploaded code | **Enforced** |
+| Run script in your browser through a plot | A sanitizer, then a sandboxed iframe on another origin with a strict CSP | **Enforced** |
+| Hijack the runner with a malicious package | The supervisor runs in its own environment (`python -I -S`); package uploads are checked for `.pth` and `sitecustomize` | Supervisor isolation **enforced**; uploaded packages arrive with the overlay pipeline (v0.5) |
+| Slip something into the supply chain | Hash-locked Python, digest-pinned images, a frozen JavaScript lockfile without install scripts, keyless CI identities | **Enforced** in the builds; signed-image enforcement (Binary Authorization) comes with public code upload |
+| Abuse webhooks or the MCP server | Address checks and signed payloads; curated tools with delimited untrusted text | Not applicable yet: webhooks arrive in v0.4, MCP later |
+
+The probes that check these rows as hostile code, executor by executor, are the
+[security suite](../operations/security-suite.md).
+
+## What each executor enforces
+
+Each executor declares its **isolation level** and whether it enforces egress and DNS. The
+dispatcher compares that with the tenant's [trust tier](../guides/administration.md#trust-tiers)
+before every run, in code: no tenant setting can lower the bar.
+
+| Executor | Isolation | Egress / DNS enforced | Tenants it may run | Security suite must show |
+|---|---|---|---|---|
+| `inproc` | `NONE` | No | Your own notebook only (never through the API) | — |
+| `local-process` | `PROCESS` | No | `internal`, `self-hosted-trusted`. Refuses to start under `MAPI_PROFILE=multi-tenant` | Platform probes BLOCKED; sandbox probes may be ALLOWED |
+| `docker` (runc) | `PROCESS` | Only with `MAPI_DOCKER_NETWORK=none` | `internal`, `self-hosted-trusted` | As above |
+| `docker-gvisor` | `GVISOR` when the supervisor can drop the worker to its own uid, else `PROCESS` | Only with `MAPI_DOCKER_NETWORK=none` (needs an HTTPS bootstrap URL, so not with the local shim) | Every tier once egress and DNS are enforced | Every probe BLOCKED |
+| `cloudrun-jobs` | `MICROVM` | Egress yes (`MAPI_CLOUDRUN_EGRESS_ENFORCED`); DNS only once `MAPI_CLOUDRUN_DNS_ENFORCED=true`, after the M0 DNS check | `internal`, `self-hosted-trusted`; `verified` and `public` once DNS is enforced | Every probe BLOCKED, run inside an execution (not wired up yet) |
+
+What every executor shares, whatever its isolation: the supervisor/worker protocol, the
+scrubbed worker environment, capped logs and outputs, HMAC-signed events, and verification of
+every output by the control plane. What only the stronger levels add is a boundary between the
+model code and the machine it runs on.
+
 ## Local development vs production
 
-| Control | `make dev` (v0.2) | Docker Compose (v0.2) | Production (v0.3 and later) |
+| Control | `make dev` | Docker Compose | Google Cloud (v0.3) |
 |---|---|---|---|
-| Authentication | None; `127.0.0.1` only | None; ports published on `127.0.0.1` only | OIDC for people, scoped API tokens with budgets for programs |
-| Tenancy | One tenant and project (`default`); every row and storage key already carries them | Same | Multiple tenants; PostgreSQL row-level security on every table |
+| Authentication | The development IdP: any seeded account, no password; `127.0.0.1` only | Same; ports published on `127.0.0.1` only | OIDC for people (Google or another provider), scoped API tokens with budgets for programs |
+| Tenancy | Multiple tenants and row-level security, exactly as in production | Same | Same, on Cloud SQL with separate database logins per role |
 | Run isolation | A separate worker process with a scrubbed environment, **as your own user** (`DEV_MODE_ISOLATION`) | `local-process`: as above, inside a hardened container. `docker` executor: one container per run, read-only root, `no-new-privileges`, the supervisor with only the capabilities the uid split needs and the worker as uid 10001 with none (`MAPI_REQUIRE_ISOLATION`) | A fresh Cloud Run Jobs microVM per run; the worker under its own uid with `no_new_privs`; read-only root |
 | Network egress from runs | Not restricted | `docker` executor: the GCS shim's network namespace, or an internal network containing only the shim | Deny-all egress, including DNS, inside a VPC Service Controls perimeter |
 | Object storage permissions | The GCS shim enforces per-principal permissions: runs' credentials can only get and delete their bootstrap object | Same | Cloud Storage IAM; the same layout and principals |
 | Bundle signatures | EC P-256 with a local key in `.local/keys/` | EC P-256 with one key on the `keys` volume, created by `migrate` and mounted read-only into `api` and `worker` | Cloud KMS, same signed bytes |
-| Event integrity | HMAC per event, read from the supervisor's stdout pipe | Same | HMAC per event, through Cloud Logging and Pub/Sub with OIDC push |
+| Event integrity | HMAC per event, read from the supervisor's stdout pipe | Same | HMAC per event, through Cloud Logging and Pub/Sub push with an OIDC token checked by the events service |
 | Web app CSP | The Vite **dev server does not send the app's CSP** (hot reload needs inline scripts); the plot sandbox's CSP is enforced | Enforced by nginx, with Trusted Types in report-only mode | Enforced |
 | Plot isolation | Separate origin (port 5174), `sandbox="allow-scripts"` | Separate origin (port 5174) | Separate domain (`plots.<domain>`) |
-| Quotas and cost limits | None | Worker memory, CPU and `/tmp` limits | Per-tenant and per-token vCPU-second quotas, priority classes, a global kill switch |
+| Quotas and cost limits | Tier defaults, quotas, the cost ledger and kill switches all apply | Same, plus worker memory, CPU and `/tmp` limits | Same, priced with the deployment's price table |
 
 ## How the controls work
 
@@ -120,22 +170,33 @@ escape sequences before printing.
 - This documentation site's OpenAPI explorer loads a vendored, hash-pinned Redoc bundle; it
   makes no request outside the site.
 
-!!! note "Known gaps in v0.2"
-    - The API's built-in `/docs` and `/redoc` pages (FastAPI's defaults) load Swagger UI and
-      Redoc from a public CDN. Use the [OpenAPI explorer](../reference/openapi.md) or
-      `/openapi.json` instead.
-    - The app's CSP is not enforced by the Vite dev server (see the table).
-    - Local and compose runs have no egress restriction unless you use the `docker` executor.
-    - Under the `local-process` executor, run code runs as the orchestrator's own uid, so it can
-      read the shim's control key and the bundle-signing key. The orchestrator is non-dumpable
-      and logs a warning at start-up, but run only trusted plugin code in this mode; see
-      [Docker Compose](../operations/docker.md#executor-choice-local-process-vs-docker).
+## Known gaps in v0.3
 
-## What production adds
+- **Cloud behaviours not yet verified.** Everything marked [verify M0] above, chiefly that the
+  DNS response policy applies to Cloud Run Jobs. Until it is confirmed, the executor declares
+  DNS as not enforced and shared tiers are not placed on it.
+- **The nightly security suite does not run in the cloud yet.** The probes run locally and
+  against gVisor; the base images do not ship them and Terraform defines no probe Job
+  ([Security suite](../operations/security-suite.md#where-the-probes-run)).
+- **Executor conformance reports are not stored**, so the admin console shows every executor
+  as *conformance not passed* and enabling an executor is not gated on a stored report
+  ([M2 verification](../operations/m2-verification.md#known-gaps-not-cloud-specific)).
+  Placement by trust tier is enforced regardless.
+- **Identity Platform's own tokens** are not accepted by the browser sign-in yet; use Google
+  or another OpenID provider ([Authentication](../guides/authentication.md#identity-platform)).
+- The API's built-in `/docs` and `/redoc` pages (FastAPI's defaults) load Swagger UI and Redoc
+  from a public CDN. Use the [OpenAPI explorer](../reference/openapi.md) or `/openapi.json`
+  instead.
+- The app's CSP is not enforced by the Vite dev server (see the table).
+- Under the `local-process` executor, run code runs as the orchestrator's own uid, so it can
+  read the shim's control key and the bundle-signing key. The orchestrator is non-dumpable and
+  logs a warning at start-up, but run only trusted plugin code in this mode; see
+  [Docker Compose](../operations/docker.md#executor-choice-local-process-vs-docker).
 
-[v0.3](../roadmap/cloud.md) moves runs to Cloud Run Jobs: a fresh microVM per run, a separate
-execution project with deny-all egress (DNS included) and VPC Service Controls, a bootstrap
-bucket the execution service account can only get from and delete in, Cloud KMS signatures,
-OIDC, scoped tokens, row-level security, quotas and a kill switch.
-[Public code upload](../roadmap/index.md#after-v04) comes only after a dedicated overlay
-build pipeline, abuse controls and an external penetration test.
+## What comes next
+
+[Public code upload](../roadmap/index.md#after-v04) (tenants uploading their own plugins) comes
+only after a dedicated overlay build pipeline with a curated package mirror, a separate
+execution project for public tenants, Binary Authorization on base images, abuse controls
+(verification before any code runs), a rehearsed kill-switch drill and an external penetration
+test, with the security suite green in the cloud for two weeks.
