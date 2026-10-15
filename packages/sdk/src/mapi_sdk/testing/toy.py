@@ -63,6 +63,15 @@ __all__ = [
 # ============================================================================ steps
 
 
+def _with_units(res: xr.DataArray, src: xr.DataArray, units: str | None) -> xr.DataArray:
+    """``res`` with ``src``'s attrs and ``units`` (dropped when None: the pipeline restores
+    the stage's units on inverted outputs)."""
+    res.attrs = {k: a for k, a in src.attrs.items() if k != "units"}
+    if units is not None:
+        res.attrs["units"] = units
+    return res
+
+
 class FxSettings(StepSettings):
     vars: list[str]
     table: str
@@ -111,14 +120,14 @@ class FxStep(Step[FxSettings, StepState]):
         if not present:
             return ds
         rates = self._rates(ds, s, ctx)
-        return ds.assign({v: ds[v] * rates for v in present})
+        return ds.assign({v: _with_units(ds[v] * rates, ds[v], s.to) for v in present})
 
     def inverse(self, ds: xr.Dataset, s: FxSettings, st: StepState, ctx: StepContext) -> xr.Dataset:
         present = [v for v in s.vars if v in ds]
         if not present:
             return ds
         rates = self._rates(ds, s, ctx)
-        return ds.assign({v: ds[v] / rates for v in present})
+        return ds.assign({v: _with_units(ds[v] / rates, ds[v], None) for v in present})
 
 
 class ResampleSettings(StepSettings):
@@ -213,12 +222,24 @@ class ScaleStep(Step[ScaleSettings, ScaleState]):
     def transform(
         self, ds: xr.Dataset, s: ScaleSettings, st: ScaleState, ctx: StepContext
     ) -> xr.Dataset:
-        return ds.assign({v: ds[v] / self._scale(v, ds, s, st, ctx) for v in s.vars if v in ds})
+        return ds.assign(
+            {
+                v: _with_units(ds[v] / self._scale(v, ds, s, st, ctx), ds[v], "1")
+                for v in s.vars
+                if v in ds
+            }
+        )
 
     def inverse(
         self, ds: xr.Dataset, s: ScaleSettings, st: ScaleState, ctx: StepContext
     ) -> xr.Dataset:
-        return ds.assign({v: ds[v] * self._scale(v, ds, s, st, ctx) for v in s.vars if v in ds})
+        return ds.assign(
+            {
+                v: _with_units(ds[v] * self._scale(v, ds, s, st, ctx), ds[v], None)
+                for v in s.vars
+                if v in ds
+            }
+        )
 
 
 class VarsSettings(StepSettings):

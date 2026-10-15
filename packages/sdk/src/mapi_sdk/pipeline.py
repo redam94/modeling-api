@@ -24,7 +24,7 @@ from mapi_spec.spec import ModelSpec
 from mapi_spec.validate import ResolvedSpec
 
 from mapi_sdk.context import ContextMark, extract_context, prepend_context
-from mapi_sdk.errors import StepError
+from mapi_sdk.errors import StepError, plugin_error
 from mapi_sdk.schema import infer_freq
 from mapi_sdk.steps import CancelToken, Step, StepContext, StepSettings, StepState
 
@@ -223,8 +223,13 @@ class Pipeline:
     def _call(ps: PipelineStep, what: str, fn: Callable[..., Any], *args: Any) -> Any:
         try:
             return fn(*args)
-        except MapiError:
-            raise
+        except MapiError as exc:
+            out = plugin_error(
+                exc, f"step {ps.id!r} ({ps.ref}) failed during {what}", fallback=StepError
+            )
+            if out is exc:
+                raise
+            raise out from exc
         except Exception as exc:
             raise StepError(
                 f"step {ps.id!r} ({ps.ref}) failed during {what}",

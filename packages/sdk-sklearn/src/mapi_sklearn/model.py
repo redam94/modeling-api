@@ -304,10 +304,12 @@ class SklearnModel[SettingsT: SklearnSettings](CustomModel[SettingsT]):
     outputs: ClassVar[Mapping[str, Mapping[str, Any]]] = {
         "y_hat": {
             "dims": [],
+            "dims_of": "y",  # plus the row dims (settings.rows)
             "description": "Prediction of the target over the row dims (settings.rows)",
         },
         "contributions": {
             "dims": ["component"],
+            "dims_of": "y",  # plus the row dims (settings.rows)
             "description": "Per-feature contributions (exact for linear estimators, "
             "counterfactual zeroing otherwise), in model space",
         },
@@ -561,6 +563,7 @@ class SklearnQuantileModel[SettingsT: QuantileSettings](SklearnModel[SettingsT])
     outputs: ClassVar[Mapping[str, Mapping[str, Any]]] = {
         "y_hat": {
             "dims": ["quantile"],
+            "dims_of": "y",  # plus the row dims (settings.rows)
             "description": "Conditional quantiles of the target over the row dims",
         }
     }
@@ -652,10 +655,12 @@ class SklearnBootstrapModel[SettingsT: BootstrapSettings](SklearnModel[SettingsT
     outputs: ClassVar[Mapping[str, Mapping[str, Any]]] = {
         "y_hat": {
             "dims": ["chain", "draw"],
+            "dims_of": "y",  # plus the row dims (settings.rows)
             "description": "Bootstrap draws of the prediction over the row dims",
         },
         "contributions": {
             "dims": ["chain", "draw", "component"],
+            "dims_of": "y",  # plus the row dims (settings.rows)
             "description": "Per-replicate feature contributions, in model space",
         },
     }
@@ -731,6 +736,7 @@ class SklearnConformalModel[SettingsT: ConformalSettings](SklearnModel[SettingsT
     outputs: ClassVar[Mapping[str, Mapping[str, Any]]] = {
         "y_hat": {
             "dims": ["bound"],
+            "dims_of": "y",  # plus the row dims (settings.rows)
             "description": "Split-conformal prediction interval (lower, upper) and point",
         }
     }
@@ -813,11 +819,13 @@ class SklearnClassifier[SettingsT: ClassifierSettings](SklearnModel[SettingsT]):
     outputs: ClassVar[Mapping[str, Mapping[str, Any]]] = {
         "y_hat": {
             "dims": [],
+            "dims_of": "y",  # plus the row dims (settings.rows)
             "units": "1",
             "description": "Probability that the target equals the positive class",
         },
         "contributions": {
             "dims": ["component"],
+            "dims_of": "y",  # plus the row dims (settings.rows)
             "description": "Counterfactual-zeroing contributions to the probability",
         },
     }

@@ -253,7 +253,7 @@ def test_quantiles_need_a_quantile_capable_estimator(
     with pytest.raises(MapiError) as err:
         fit_spec(spec, data, registry=reg, raw_schema=raw_schema)
     assert err.value.code is ErrorCode.SETTINGS_INVALID
-    assert "xgboost.XGBRegressor" in err.value.detail
+    assert "xgboost.XGBRegressor" in (err.value.untrusted_text or "")
 
 
 # ----------------------------------------------------------------------------- conformal
@@ -302,7 +302,9 @@ def test_conformal_calibration_too_small(
     )
     with pytest.raises(MapiError) as err:
         fit_spec(spec, data, registry=reg, raw_schema=raw_schema)
-    assert err.value.code is ErrorCode.SETTINGS_INVALID and "calibration" in err.value.detail
+    assert err.value.code is ErrorCode.SETTINGS_INVALID and "calibration" in (
+        err.value.untrusted_text or ""
+    )
 
 
 # ----------------------------------------------------------------------------- bootstrap
@@ -688,7 +690,9 @@ def test_classifier_errors(reg: Registry) -> None:
     spec, ds, schema = _classifier({"kind": "sklearn.Ridge"})
     with pytest.raises(MapiError) as err:
         fit_spec(spec, ds, registry=reg, raw_schema=schema)
-    assert err.value.code is ErrorCode.SETTINGS_INVALID and "classification" in err.value.detail
+    assert err.value.code is ErrorCode.SETTINGS_INVALID and "classification" in (
+        err.value.untrusted_text or ""
+    )
     spec, ds, schema = _classifier({"kind": "sklearn.LogisticRegression"}, {"positive_class": 7})
     with pytest.raises(MapiError) as err:
         fit_spec(spec, ds, registry=reg, raw_schema=schema)

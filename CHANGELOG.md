@@ -6,6 +6,14 @@ milestone releases are tagged on `main`.
 ## [Unreleased]
 - Repository scaffold: uv workspace, package skeletons, split Apache-2.0 / AGPLv3+commercial licensing.
 
+### Contract v0.1 (frozen)
+- `mapi_spec.CONTRACT_VERSION = "0.1"` names the contract the exported JSON Schemas describe; every
+  exported schema carries it as `x-mapi-contract-version`.
+- The contract is frozen for the v0.1.x line: `packages/spec/tests/snapshots/contract.json` pins a digest
+  of every exported schema and the drift test fails on any change. Additive changes (new optional
+  fields, new error codes) regenerate the snapshot (`MAPI_UPDATE_SNAPSHOTS=1`); breaking changes bump
+  `CONTRACT_VERSION` first.
+
 ### Added
 - **`mapi-spec`**: the pure-Pydantic contract layer.
   - DataSchema, DimSpec and VarSpec, with schema templates.
@@ -66,3 +74,13 @@ milestone releases are tagged on `main`.
 - The in-process executor no longer resolves a score request's side-table refs when the run payload already supplies those tables.
 - The contract kit's score requests name the spec's `score_policy: supplied` side tables, so models with supplied tables (E33's FX) pass the scoring checks.
 - The E33 and pymc-marketing fixtures use the corpus runner's fixture layout and run in `python -m mapi_conformance run`.
+
+### Fixed (M0 review: plots, conformance and tooling)
+- Plot sanitizer (Plotly): `updatemenus`/`sliders` method `args` are checked in the positional `[attr, value]` form and inside nested frame/trace objects, so external image sources, `href`/`url` paths, tile-map subplots and tile-map trace types can no longer hide there.
+- Plot sanitizer (Vega-Lite): `select.toggle` strings and `bind.legend` event filters are checked as expressions, `event['view']` is rejected like `event.view`, and `usermeta.embedOptions` is rejected.
+- `from_plotly` strips HTML from (and scans) the strings it moves into Arrow datasets, which the JSON sanitizer never decodes.
+- Plugin-originated error text stays out of trusted fields: `render_plots` and the step/model wrappers (`Pipeline`, harness fit/score/derive) move a plugin `MapiError`'s detail into `untrusted_text` and keep its code only when plugin code may raise it (`mapi_spec.errors.from_plugin_error`, `PLUGIN_ERROR_CODES`).
+- Contract kit, `check_step`: `effect_matches_output` also compares each dim's kind and frequency and each variable's units; the toy FX and scale steps now set the units they declare.
+- Contract kit, `check_model`: new `horizon_exceeds_fit`, `missing_future_covariate`, `recursive_unsupported`, `fast_score_matches_exact` (plugin `check_fast_score` hook, provided by `PyMCModel`), `plots_sanitize` and `outputs_match_manifest` checks; `extend_typed_errors` covers integer extend dims; `output_space_and_units` covers outputs that inherit the target implicitly.
+- `OutputDecl.dims_of` (additive) lets a manifest declare settings-dependent data dims; the sklearn models (and so `tabular.regressor`) and `mmm.pymc_marketing` use it, so their static output dims match what `score` returns.
+

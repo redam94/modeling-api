@@ -134,6 +134,22 @@ BENIGN_VL: list[dict[str, Any]] = [
         ],
         "params": [{"name": "brush", "select": {"type": "interval", "encodings": ["x"]}}],
     },
+    {  # interaction params with a toggle expression, a legend binding and usermeta
+        "data": {"name": "d"},
+        "mark": "point",
+        "encoding": {
+            "x": {"field": "a", "type": "quantitative"},
+            "color": {"field": "g", "type": "nominal"},
+        },
+        "params": [
+            {
+                "name": "pick",
+                "select": {"type": "point", "fields": ["g"], "toggle": "event.shiftKey"},
+                "bind": {"legend": "dblclick[event.altKey]"},
+            }
+        ],
+        "usermeta": {"note": "kept"},
+    },
     {
         "datasets": {"inline": [{"a": 1}, {"a": 2}]},
         "data": {"name": "inline"},
@@ -201,6 +217,26 @@ BENIGN_PLOTLY: list[dict[str, Any]] = [
     {
         "data": [{"type": "scattergeo", "lat": [1.0], "lon": [2.0]}],
         "layout": {"geo": {"scope": "europe"}},
+    },
+    {  # positional [attr, value] button arguments that are safe
+        "data": [{"type": "scatter", "x": [1, 2], "y": [1, 2]}],
+        "layout": {
+            "updatemenus": [
+                {
+                    "buttons": [
+                        {"method": "restyle", "label": "bars", "args": ["type", "bar"]},
+                        {"method": "relayout", "label": "t", "args": ["title.text", "Weekly"]},
+                        {"method": "animate", "label": "play", "args": [None, {"frame": {}}]},
+                        {
+                            "method": "relayout",
+                            "label": "logo",
+                            "args": ["images[0].source", "data:image/png;base64,iVBORw0KGgo="],
+                        },
+                    ]
+                }
+            ],
+            "sliders": [{"steps": [{"method": "animate", "label": "f0", "args": [["f0"], {}]}]}],
+        },
     },
 ]
 
@@ -433,6 +469,8 @@ def test_safe_expressions(expr: str) -> None:
         ("globalThis", "not allowed"),
         ("new Date()", "not allowed"),
         ("self", "not allowed"),
+        ("event['view']", "event.view"),
+        ('event["view"].window', "event.view"),
     ],
 )
 def test_unsafe_expressions(expr: str, fragment: str) -> None:

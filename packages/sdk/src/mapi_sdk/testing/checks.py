@@ -8,6 +8,7 @@ failure never hides the others.
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import json
 import math
@@ -32,18 +33,20 @@ from mapi_spec.capabilities import (
 from mapi_spec.effects import StepKind, apply_effect
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.loader import load_model_spec
-from mapi_spec.schema import DataSchema, DimPolicy
+from mapi_spec.schema import DataSchema, DimPolicy, DimSpec
 from mapi_spec.spec import AsOfSplit, ModelSpec, ScorePolicy, ScoreRequest, TimeHoldoutSplit
 
-from mapi_sdk._util import dtype_family
+from mapi_sdk._util import dtype_family, normalise_dataset
 from mapi_sdk.bundle import Bundle, assert_no_pickle
 from mapi_sdk.context import drop_context, extract_context, prepend_context
-from mapi_sdk.harness import fit_spec, score_bundle
+from mapi_sdk.coords import canonicalise_coords
+from mapi_sdk.harness import _var_sources, fit_spec, score_bundle
 from mapi_sdk.metrics import point_estimate
 from mapi_sdk.pipeline import Pipeline
 from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.schema import infer_schema
 from mapi_sdk.steps import Step, StepContext, StepSettings, StepState, states_equal
+from mapi_sdk.summarise import REP_DIMS
 from mapi_sdk.wire import read_datatree_zip, write_datatree_zip, write_zarr_zip
 
 __all__ = [
@@ -167,6 +170,49 @@ def _schema_shape(schema: DataSchema) -> dict[str, Any]:
             for n, v in schema.vars.items()
         },
     }
+
+
+#: dim kinds the output can reveal (an unlabelled ``index`` dim looks like any numeric one)
+_KIND_FAMILY = {"time": "time", "categorical": "categorical"}
+
+
+def _same_freq(a: str, b: str) -> bool:
+    try:
+        return bool(pd.tseries.frequencies.to_offset(a) == pd.tseries.frequencies.to_offset(b))
+    except ValueError:
+        return a == b
+
+
+def _schema_metadata_problems(
+    declared: DataSchema, actual: DataSchema, out: xr.Dataset
+) -> list[str]:
+    """Metadata the control plane takes from a SchemaEffect that the output contradicts.
+
+    Horizon generation, contiguity and ``max_extension`` checks use the declared ``freq``;
+    output units come from the declared ``units``. Compared where the output carries them:
+    a dim's kind family and inferred frequency, a variable's ``units`` (and ``role``) attrs.
+    """
+    problems: list[str] = []
+    for name, want in declared.dims.items():
+        got = actual.dims.get(name)
+        if got is None:
+            continue
+        wk, gk = _KIND_FAMILY.get(want.kind, "numeric"), _KIND_FAMILY.get(got.kind, "numeric")
+        if want.kind != "index" and wk != gk:  # positional dims may carry any labels
+            problems.append(f"dim {name!r}: declared kind {want.kind!r}, output is {got.kind!r}")
+        if want.freq and got.freq and not _same_freq(want.freq, got.freq):
+            problems.append(f"dim {name!r}: declared freq {want.freq!r}, output has {got.freq!r}")
+    for name, var in declared.vars.items():
+        if name not in out.data_vars:
+            continue
+        attrs = out[name].attrs
+        units = attrs.get("units")
+        if units is not None and units != var.units:
+            problems.append(f"var {name!r}: declared units {var.units!r}, output has {units!r}")
+        role = attrs.get("role")
+        if role is not None and role != var.role.value:
+            problems.append(f"var {name!r}: declared role {var.role.value!r}, output has {role!r}")
+    return problems
 
 
 def check_step(
@@ -297,7 +343,12 @@ def check_step(
         want, got = _schema_shape(expected), _schema_shape(actual)
         if want != got:
             raise AssertionError(f"declared effect gives {want} but the output is {got}")
-        return "output schema matches the declared SchemaEffect"
+        problems = _schema_metadata_problems(expected, actual, out)
+        if problems:
+            raise AssertionError(
+                "the declared effect disagrees with the output: " + "; ".join(problems)
+            )
+        return "output schema (names, dims, dtypes, freq, units) matches the declared SchemaEffect"
 
     def absent_target() -> str:
         targets = [t for t in in_schema.targets if t in ds]
@@ -431,6 +482,7 @@ def _request(
     mode: str = "predict",
     *,
     horizon_dim: str | None = None,
+    periods: int = 1,
     interventions: list[dict[str, Any]] | None = None,
     **output: Any,
 ) -> ScoreRequest:
@@ -447,7 +499,7 @@ def _request(
     if mode in ("evaluate", "filter"):
         doc["data"] = "dataset://contract/kit@v1"
     if horizon_dim is not None:
-        doc["horizon"] = {"dim": horizon_dim, "periods": 1}
+        doc["horizon"] = {"dim": horizon_dim, "periods": periods}
     if interventions:
         doc["interventions"] = interventions
     return ScoreRequest.model_validate(doc)
@@ -467,8 +519,12 @@ def check_model(
     checks: Sequence[str] | None = None,
 ) -> ContractReport:
     """Run the model contract checks: fit, bundle round trip, coordinate handling, typed
-    errors, context-window equivalence, evaluate path == score path, output space,
-    aggregation legality, additive contributions, no pickle and seed determinism."""
+    errors for every dim policy (unseen levels; gaps and out-of-range coords on datetime and
+    integer extend dims; horizons past ``max_extension``; forecasts missing a future-required
+    covariate; horizons longer than a target lag), unsupported modes, context-window
+    equivalence, evaluate path == score path, output space, aggregation legality, additive
+    contributions, no pickle, seed determinism, fast scoring == exact scoring within MCSE
+    (via the plugin's ``check_fast_score`` hook) and that the manifest's plots sanitize."""
     reg = (fixture.registry or default_registry()).copy()
     reg.register_model(plugin, replace=True)
     spec = fixture.model_spec()
@@ -696,16 +752,10 @@ def check_model(
                 )
         return "; ".join(notes)
 
-    def c_extend_errors() -> str:
-        tdim = raw_time_dim()
-        if tdim is None:
-            raise _Skip("no extend dim at the raw stage")
-        coords = data[tdim].values
-        if coords.dtype.kind != "M" or len(coords) < 4:
-            raise _Skip("extend checks need a datetime dim")
-        n = len(coords)
-
-        def shifted(values: np.ndarray, periods: int) -> np.ndarray:
+    def shift_labels(tdim: str, values: np.ndarray, periods: int) -> np.ndarray:
+        """``values`` (labels of raw extend dim ``tdim``) moved ``periods`` periods along."""
+        coords = np.asarray(data[tdim].values)
+        if coords.dtype.kind == "M":
             # calendar frequencies (MS, QS, ...) have no fixed step: shift by whole periods
             freq = raw_time_freq()
             if freq is not None:
@@ -714,14 +764,115 @@ def check_model(
                     [np.datetime64(pd.Timestamp(v) + periods * offset, "ns") for v in values]
                 )
             return np.asarray(values + (coords[1] - coords[0]) * periods)
+        diffs = np.diff(np.unique(coords))
+        step = diffs[diffs > 0].min() if diffs.size else 1
+        return np.asarray(values + step * periods, dtype=coords.dtype)
 
+    def extend_labels() -> tuple[str, np.ndarray]:
+        tdim = raw_time_dim()
+        if tdim is None:
+            raise _Skip("no extend dim at the raw stage")
+        coords = np.asarray(data[tdim].values)
+        if coords.dtype.kind not in "Miu":
+            raise _Skip(f"extend dim {tdim!r} has neither datetime nor integer labels")
+        if len(coords) < 4:
+            raise _Skip(f"extend dim {tdim!r} has fewer than 4 labels")
+        return tdim, coords
+
+    def c_extend_errors() -> str:
+        tdim, coords = extend_labels()
+        n = len(coords)
         gap = data.isel({tdim: slice(n // 2, None)}).assign_coords(
-            {tdim: shifted(coords[n // 2 :], n + 30)}
+            {tdim: shift_labels(tdim, coords[n // 2 :], n + 30)}
         )
         notes = [_expect_code(ErrorCode.NON_CONTIGUOUS_EXTENSION, lambda: score(_request(), gap))]
-        before = data.isel({tdim: slice(0, 3)}).assign_coords({tdim: shifted(coords[:3], -400)})
+        before = data.isel({tdim: slice(0, 3)}).assign_coords(
+            {tdim: shift_labels(tdim, coords[:3], -400)}
+        )
         notes.append(_expect_code(ErrorCode.COORD_NOT_ALLOWED, lambda: score(_request(), before)))
-        return "; ".join(notes)
+        return f"{tdim!r} ({coords.dtype}): " + "; ".join(notes)
+
+    def model_view() -> DataSchema | None:
+        """Model-stage schema overlaid with the model's input schema (as the CoordPlan sees)."""
+        rs = fit_once().resolved
+        final, inp = rs.stages.get(rs.model_stage), rs.model.input_schema
+        if final is None or inp is None:
+            return inp if final is None else final
+        return final.model_copy(
+            update={"dims": {**final.dims, **inp.dims}, "vars": {**final.vars, **inp.vars}}
+        )
+
+    def horizon_dim() -> tuple[str, DimSpec]:
+        """The (canonical) extend dim a forecast horizon runs along."""
+        if "forecast" not in caps.score_modes:
+            raise _Skip("the model does not forecast")
+        view = model_view()
+        dims = view.dims if view is not None else {}
+        split = spec.data.split
+        preferred = split.forecast_dim if split is not None else None
+        extend = [n for n, d in dims.items() if d.policy is DimPolicy.EXTEND]
+        if not extend:
+            raise _Skip("the model has no extend dim to forecast along")
+        name = preferred if preferred in extend else extend[0]
+        return name, dims[name]
+
+    def c_horizon() -> str:
+        hdim, d = horizon_dim()
+        if d.max_extension is None:
+            raise _Skip(f"extend dim {hdim!r} declares no max_extension")
+        limit = d.max_extension
+        over = _request("forecast", horizon_dim=hdim, periods=limit + 1)
+        note = _expect_code(ErrorCode.HORIZON_EXCEEDS_FIT, lambda: score(over, None))
+        try:  # the boundary itself must be accepted (other errors, e.g. covariates, are fine)
+            score(_request("forecast", horizon_dim=hdim, periods=limit), None)
+        except MapiError as exc:
+            if exc.code is ErrorCode.HORIZON_EXCEEDS_FIT:
+                raise AssertionError(
+                    f"a horizon of max_extension={limit} along {hdim!r} was rejected"
+                ) from exc
+        return f"{note} for {limit + 1} periods along {hdim!r}; {limit} accepted"
+
+    def c_future_covariates() -> str:
+        hdim, _ = horizon_dim()
+        stage = fit_once().resolved.stages.get("raw")
+        if stage is None:
+            raise _Skip("no raw stage schema")
+        view = model_view()
+        required = {n for n, v in stage.vars.items() if v.future_required}
+        if view is not None:
+            required |= {n for n, v in view.vars.items() if v.future_required and n in stage.vars}
+        required -= set(stage.targets)
+        names = [binding_dim(n) for n in sorted(required) if binding_dim(n) in data]
+        if not names:
+            raise _Skip("no future-required covariates")
+        tdim, _ = extend_labels()
+        w = window()
+        k = int(w.sizes[tdim])
+        # a contiguous future payload: the last k rows moved k periods ahead, targets dropped
+        future = w.assign_coords({tdim: shift_labels(tdim, np.asarray(w[tdim].values), k)})
+        targets = [binding_dim(t) for t in stage.targets]
+        future = future.drop_vars([t for t in targets if t in future])
+        req = _request("forecast", horizon_dim=hdim)
+        note = _expect_code(
+            ErrorCode.MISSING_FUTURE_COVARIATE, lambda: score(req, future.drop_vars(names[0]))
+        )
+        return f"forecast without {names[0]!r}: {note}"
+
+    def c_recursive() -> str:
+        hdim, _ = horizon_dim()
+        if "recursion" in caps.owns:
+            raise _Skip("the model owns recursion")
+        lags = [
+            st.context.min_lag if st.context.min_lag is not None else 1
+            for st in fit_once().resolved.steps
+            if st.depends_on_target and st.context is not None and st.context.along == hdim
+        ]
+        if not lags:
+            raise _Skip(f"no step lags the target along {hdim!r}")
+        periods = min(lags) + 1
+        req = _request("forecast", horizon_dim=hdim, periods=periods)
+        note = _expect_code(ErrorCode.RECURSIVE_UNSUPPORTED, lambda: score(req, None))
+        return f"{note} for a horizon of {periods} (minimum target lag {min(lags)})"
 
     def c_modes() -> str:
         unsupported = [
@@ -816,20 +967,27 @@ def check_model(
         tree = score(_request(), window(), return_full=True)
         space = json.loads(tree.attrs["output_space"])
         b = fit_once()
+        # the harness's own mapping: units_of, else the single target unless units are declared
+        sources = _var_sources(b.model, b.resolved.model.input_schema)
         notes = []
         for var, stage in space.items():
             decl = manifest.outputs.get(var)
-            if decl is None or decl.units_of is None:
-                continue
-            # a model owning inverse_units reports the units of its own input
-            sch = b.resolved.stages.get(b.model_stage if stage == "model-owned" else stage)
-            want = (
-                decl.units
-                if decl.units is not None
-                else sch.vars[decl.units_of].units
-                if sch is not None and decl.units_of in sch.vars
-                else None
-            )
+            if stage == "model-owned":
+                # a model owning inverse_units reports the units of its own input
+                if decl is None or decl.units_of is None:
+                    continue
+                src = decl.units_of
+                sch = b.resolved.stages.get(b.model_stage)
+                if decl.units is not None:
+                    want = decl.units
+                else:
+                    want = sch.vars[src].units if sch is not None and src in sch.vars else None
+            else:
+                src = sources.get(var)
+                if src is None:
+                    continue
+                sch = b.resolved.stages.get(stage)
+                want = sch.vars[src].units if sch is not None and src in sch.vars else None
             # outputs are reverse-bound: 'y' bound to 'revenue_local' comes back as the latter
             preds = tree["predictions"]
             name = binding_dim(var)
@@ -841,8 +999,35 @@ def check_model(
                 raise AssertionError(f"{var}: missing output_space attribute")
             notes.append(f"{var} in {stage} ({want})")
         if not notes:
-            raise _Skip("no outputs declare units_of")
+            raise _Skip("no outputs inherit the units of an input variable")
         return "; ".join(notes)
+
+    def c_outputs() -> str:
+        tree = score(_request(names="canonical"), window(), return_full=True)
+        node = tree["predictions"]
+        assert isinstance(node, xr.DataTree)
+        pred = node.to_dataset()
+        undeclared = sorted(str(v) for v in pred.data_vars if v not in manifest.outputs)
+        if undeclared:
+            raise AssertionError(
+                f"score returned {undeclared}, which the manifest's outputs do not declare "
+                f"(declared: {sorted(manifest.outputs)})"
+            )
+        rep_dims = set(REP_DIMS[rep])
+        schema = fit_once().resolved.model.input_schema
+        problems = []
+        for v in pred.data_vars:
+            decl = manifest.outputs[str(v)]
+            want = set(decl.full_dims(schema)) - rep_dims
+            got = {str(d) for d in pred[v].dims} - rep_dims
+            if want != got:
+                problems.append(f"{v}: declared dims {sorted(want)}, returned {sorted(got)}")
+        if problems:
+            raise AssertionError(
+                "returned predictions do not match the manifest (dims beyond the "
+                f"{rep.value} dims {sorted(rep_dims)}): " + "; ".join(problems)
+            )
+        return f"{sorted(str(v) for v in pred.data_vars)} declared with matching dims"
 
     def c_aggregation() -> str:
         b = fit_once()
@@ -875,6 +1060,70 @@ def check_model(
         xr.testing.assert_allclose(total, pred[target].transpose(*total.dims), rtol=1e-6)
         return f"contributions sum to {target!r}"
 
+    def model_stage_data() -> xr.Dataset:
+        """The fixture data run through the fitted pipeline, canonicalised to fit coords."""
+        b = fit_once()
+        raw = b.binding.apply(normalise_dataset(data), missing="ignore")
+        trace = b.pipeline(reg).transform(raw, b.states, side_tables=tables, replay=False)
+        rs = b.resolved
+        canon, _ = canonicalise_coords(
+            trace.data, b.fit_coords[rs.model_stage], rs.model.input_schema, pad_extend=False
+        )
+        return canon
+
+    def c_fast_score() -> str:
+        if not caps.fast_score:
+            raise _Skip("the model does not declare fast_score")
+        hook = getattr(plugin(), "check_fast_score", None)
+        if not callable(hook):
+            raise AssertionError(
+                "the manifest declares fast_score but the plugin has no "
+                "check_fast_score(fitted, ds, *, seed) hook comparing it with exact scoring"
+            )
+        detail = hook(fit_once().model, model_stage_data(), seed=spec.model.fit.seed or 0)
+        return str(detail or "fast scoring matches exact scoring within MCSE")
+
+    def c_plots() -> str:
+        refs = [str(r) for r in manifest.plots]
+        if not refs:
+            raise _Skip("the manifest lists no plots")
+        try:
+            from mapi_plots.recipes import render_plots
+        except ImportError:
+            raise _Skip("mapi-plots[recipes] is not installed") from None
+        b = fit_once()
+        trees = [b.to_tree()]
+        names = [m for m in b.metrics.values if not m.startswith("elpd_")] or None
+        with contextlib.suppress(MapiError):  # predictions + observed feed fit/PPC recipes
+            trees.append(score_on(b, _request(), window(), return_full=True, metrics=names))
+
+        def registry_for(ref: str) -> Registry | None:
+            try:
+                reg.plot(ref)
+            except MapiError:
+                return None  # fall back to the bundled recipes
+            return reg
+
+        rendered: list[str] = []
+        unsafe: list[str] = []
+        skipped: dict[str, str] = {}
+        for ref in refs:
+            for tree in trees:
+                out = render_plots(tree, [ref], registry=registry_for(ref))
+                bad = [i for i in out.issues if i.code is ErrorCode.PLOT_UNSAFE]
+                if bad:
+                    unsafe.append(f"{ref}: {bad[0].untrusted_text or bad[0].message}"[:500])
+                    break
+                if out.plots:
+                    rendered.append(ref)
+                    skipped.pop(ref, None)
+                    break
+                skipped[ref] = out.issues[0].message if out.issues else "nothing rendered"
+        if unsafe:
+            raise AssertionError("plots rejected by the sanitizer: " + "; ".join(unsafe))
+        note = f"rendered and sanitized {rendered}"
+        return note + (f"; not applicable here: {sorted(skipped)}" if skipped else "")
+
     def c_seed() -> str:
         if not caps.deterministic_given_seed:
             raise _Skip("the model does not claim seed determinism")
@@ -900,13 +1149,19 @@ def check_model(
         ("subset_scoring", c_subset),
         ("new_level_policies", c_new_levels),
         ("extend_typed_errors", c_extend_errors),
+        ("horizon_exceeds_fit", c_horizon),
+        ("missing_future_covariate", c_future_covariates),
+        ("recursive_unsupported", c_recursive),
         ("unsupported_mode", c_modes),
         ("context_window_equivalence", c_context_window),
         ("evaluate_path_equals_score_path", c_evaluate_path),
         ("output_space_and_units", c_output_space),
+        ("outputs_match_manifest", c_outputs),
         ("representation_aggregation", c_aggregation),
         ("additive_contributions", c_additive),
         ("seed_determinism", c_seed),
+        ("fast_score_matches_exact", c_fast_score),
+        ("plots_sanitize", c_plots),
     ]
     for name, fn in all_checks:
         if checks is not None and name not in checks:

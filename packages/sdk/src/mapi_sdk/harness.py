@@ -55,7 +55,7 @@ from mapi_sdk.coords import (
     horizon_frame,
     next_label,
 )
-from mapi_sdk.errors import SchemaValidationError, StepError
+from mapi_sdk.errors import SchemaValidationError, StepError, plugin_error
 from mapi_sdk.metrics import compute_metrics, elpd
 from mapi_sdk.models import PREDICTIONS, FitContext, FitOutput, Fitted, ModelPlugin, ScoreContext
 from mapi_sdk.pipeline import RAW, FitTrace, Pipeline, ReplayTrace
@@ -394,8 +394,11 @@ def _fit_from(
     )
     try:
         out = env.plugin.fit(model_ds, s, env.spec.model.fit, fctx)
-    except MapiError:
-        raise
+    except MapiError as exc:
+        err = plugin_error(exc, f"model {manifest.id!r} failed during fit")
+        if err is exc:
+            raise
+        raise err from exc
     except Exception as exc:
         raise MapiError(
             f"model {manifest.id!r} failed during fit",
@@ -546,8 +549,11 @@ def _fit_derived(
         env.hooks.check()
         try:
             result = derive(fitted, name, model_ds, ctx)
-        except MapiError:
-            raise
+        except MapiError as exc:
+            err = plugin_error(exc, f"model {model_id!r} failed while deriving {name!r}")
+            if err is exc:
+                raise
+            raise err from exc
         except NotImplementedError:
             raise MapiError(
                 f"model {model_id!r} declares derived quantity {name!r} but cannot compute it",
@@ -943,8 +949,11 @@ def score_bundle(
         )
         try:
             tree = plugin.score(bundle.model, canon, req, ctx)
-        except MapiError:
-            raise
+        except MapiError as exc:
+            err = plugin_error(exc, f"model {bundle.model.manifest.id!r} failed during score")
+            if err is exc:
+                raise
+            raise err from exc
         except Exception as exc:
             raise MapiError(
                 f"model {bundle.model.manifest.id!r} failed during score",

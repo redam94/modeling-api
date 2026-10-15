@@ -161,4 +161,12 @@ def test_tabular_regressor_passes_the_contract_kit(registry: Registry, data: xr.
         "evaluate_path_equals_score_path",
         "representation_aggregation",
         "seed_determinism",
+        "outputs_match_manifest",
+        "output_space_and_units",
     } <= ran
+    # the static manifest describes y_hat over the quantile and the row dims
+    rows = ["store", "sku", "time"]
+    y_hat = TabularRegressor.manifest().outputs["y_hat"]
+    assert y_hat.dims == ["quantile"] and y_hat.dims_of == "y"
+    schema = TabularRegressor.manifest().schema_template.resolve({"rows": rows})
+    assert set(y_hat.full_dims(schema)) == {"quantile", *rows}

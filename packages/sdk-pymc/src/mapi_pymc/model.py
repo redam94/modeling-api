@@ -347,6 +347,26 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
         return targets
 
     # ------------------------------------------------------------------ fast scoring
+    def check_fast_score(self, fitted: Fitted, ds: xr.Dataset, *, seed: int = 0) -> str:
+        """Contract-kit hook (``check_model``'s ``fast_score_matches_exact``): the frozen
+        predictor agrees with exact scoring on model-stage ``ds`` within MCSE.
+
+        Raises ``AssertionError`` when it does not (see :func:`mapi_pymc.testing.
+        check_fast_score`); returns a one-line summary otherwise.
+        """
+        from mapi_pymc.testing import check_fast_score
+
+        report = check_fast_score(self, fitted, ds, seed=seed)
+        if not report.max_z:
+            raise AssertionError(
+                "fast_score_spec.response_exprs name no output that exact scoring returns"
+            )
+        worst = ", ".join(f"{k}={v:.2f}" for k, v in sorted(report.max_z.items()))
+        return (
+            f"fast == exact within {report.n_sigma:g} MCSE over {report.samples} samples "
+            f"(max |z|: {worst})"
+        )
+
     def frozen_predictor(
         self,
         fitted: Fitted,

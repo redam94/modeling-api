@@ -95,6 +95,11 @@ class MyModel(CustomModel[ModelSettings]):
         return xr.DataTree.from_dict({PREDICTIONS: xr.Dataset({"y_hat": y_hat})})
 ```
 
+`outputs` lists every variable `score` returns with its dims (representation dims such as
+`chain`/`draw` or `quantile` may be left out). When the data dims depend on settings, add
+`"dims_of": "y"`: the output then also carries every dim of that input variable in the
+resolved schema (for example the sklearn models' `settings.rows`).
+
 `FitOutput.native` is for safe native formats only (skops, xgboost JSON, safetensors). Pickle
 is rejected when a bundle is written and when it is read.
 
@@ -120,10 +125,17 @@ schema effect matches the real output, that a missing target is tolerated, the i
 trip, context-window equivalence and every unseen-level policy.
 
 `check_model` fits the fixture and checks the bundle round trip (and that it has no pickle),
-shuffled and subset scoring, new-level policies, typed errors for gaps and out-of-range
-coordinates, unsupported modes, context-window equivalence, that the evaluation metrics are
-reproduced by the score path, output units, legal aggregation, additive contributions and seed
-determinism.
+shuffled and subset scoring, new-level policies, the typed errors of every dim policy (gaps and
+out-of-range coordinates on datetime and integer extend dims, `HORIZON_EXCEEDS_FIT` past
+`max_extension`, `MISSING_FUTURE_COVARIATE` for a forecast without a future-required variable,
+`RECURSIVE_UNSUPPORTED` for a horizon longer than a target lag), unsupported modes,
+context-window equivalence, that the evaluation metrics are reproduced by the score path,
+output units (including outputs that inherit the target's units), that every returned
+prediction is declared in `outputs` with matching dims, legal aggregation,
+additive contributions, seed determinism, that the manifest's `plots` render and pass the
+sanitizer, and — when the manifest declares `fast_score` — that fast scoring matches exact
+scoring within MCSE. That last check calls the plugin's
+`check_fast_score(fitted, ds, *, seed)` hook; `PyMCModel` provides it.
 
 A failed check raises `ContractViolation` with a readable report:
 

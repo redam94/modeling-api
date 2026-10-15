@@ -2,8 +2,12 @@
 
 Rejected: ``url`` data (anywhere, including lookups), ``href`` encodings and mark properties,
 ``image`` marks and ``url`` channels, custom format types, prototype-reaching keys and field
-paths, script/CSS URLs in strings and any expression outside the allow-listed subset (see
-:mod:`mapi_plots.sanitize.expr`). ``$schema`` is normalised to the pinned version.
+paths, script/CSS URLs in strings, ``usermeta.embedOptions`` (vega-embed would merge it over
+the renderer's options) and any expression outside the allow-listed subset (see
+:mod:`mapi_plots.sanitize.expr`). Expressions are found in ``expr``/``calculate``/``test``,
+``*Expr`` keys, string predicates, ``select.toggle`` and the ``[...]`` filters of event
+streams (``on``, ``clear``, ``translate``, ``zoom``, ``bind.legend``). ``$schema`` is
+normalised to the pinned version.
 """
 
 from __future__ import annotations
@@ -44,7 +48,10 @@ _ACCEPTED_SCHEMA = re.compile(
 _EXPR_KEYS = frozenset({"expr", "calculate", "test"})
 #: string predicates (``filter``, ``test`` and their logical compositions) are expressions
 _PREDICATE_KEYS = frozenset({"filter", "and", "or", "not"})
-_EVENT_KEYS = frozenset({"on", "clear", "translate", "zoom"})
+#: event-stream selectors whose ``[...]`` filters are expressions (``bind.legend`` included)
+_EVENT_KEYS = frozenset({"on", "clear", "translate", "zoom", "legend"})
+#: ``select.toggle``: a boolean or a Vega expression string
+_TOGGLE_KEY = "toggle"
 _FORMAT_TYPES = frozenset({"number", "time", "utc"})
 _BRACKETS = re.compile(r"\[([^\[\]]*)\]")
 
@@ -84,7 +91,7 @@ def _check_safety(spec: dict[str, Any], base: str, report: SanitizeReport) -> No
             return
         if isinstance(node, str):
             scan_string(node, ptr, report)
-            if _is_expr_key(key) or key in _PREDICATE_KEYS:
+            if _is_expr_key(key) or key in _PREDICATE_KEYS or key == _TOGGLE_KEY:
                 _check_expr(node, ptr, report)
             elif key in _EVENT_KEYS and "[" in node:
                 for inner in _BRACKETS.findall(node):
@@ -124,6 +131,13 @@ def _check_safety(spec: dict[str, Any], base: str, report: SanitizeReport) -> No
                 report.error(SanitizeRule.EXTERNAL_IMAGE, cptr, "image marks are not allowed")
             elif k == "customFormatTypes" and v is not False:
                 report.error(SanitizeRule.FORMAT_TYPE, cptr, "custom format types are disabled")
+            elif k == "usermeta" and isinstance(v, dict) and "embedOptions" in v:
+                # vega-embed merges usermeta.embedOptions over the renderer's own options
+                report.error(
+                    SanitizeRule.CONFIG,
+                    child_pointer(cptr, "embedOptions"),
+                    "usermeta.embedOptions is not allowed (it overrides the renderer's options)",
+                )
 
 
 def _schema_errors(spec: dict[str, Any], base: str, report: SanitizeReport) -> None:

@@ -215,6 +215,43 @@ def test_plotly_express_figures_pass_the_sanitizer() -> None:
             assert plot.kind == "plotly", name
 
 
+def test_from_plotly_strips_html_from_strings_moved_into_datasets() -> None:
+    """Text arrays become Arrow columns the JSON sanitizer never decodes; plotly.js still
+    renders their HTML, so the conversion strips it (sandbox side) like inline text."""
+    fig = go.Figure(
+        go.Scatter(
+            x=["<a href='https://evil.example/?q=1'>click</a>", "<b>ok</b>"],
+            y=[1, 2],
+            text=[
+                "<a href='https://evil.example/?q=1'>click</a>",
+                "<span style='background:url(https://evil.example/x)'>s</span>",
+            ],
+            hovertext=["<img src=x onerror=alert(1)>h", "<i>i</i>"],
+            hovertemplate=["%{y}<extra>a</extra>", "<a href='x'>b</a>"],
+            mode="markers+text",
+        )
+    )
+    plot = from_plotly(fig, id="p")
+    trace = plot.spec["data"][0]
+    assert trace["text"] == {"$ref": "trace0.text"}
+    frame = arrow_to_frame(plot.datasets["trace0"])
+    assert frame["text"].tolist() == ["click", "s"]
+    assert frame["x"].tolist() == ["click", "<b>ok</b>"]
+    assert frame["hovertext"].tolist() == ["h", "<i>i</i>"]
+    assert frame["hovertemplate"].tolist() == ["%{y}<extra>a</extra>", "b"]
+    for col in frame.columns:
+        for value in frame[col]:
+            assert not isinstance(value, str) or ("href" not in value and "url(" not in value)
+    # a script URL left as plain text is rejected just like an inline string
+    bad = go.Figure(go.Scatter(x=[1, 2], y=[1, 2], text=["javascript:alert(1)", "b"]))
+    with pytest.raises(SanitizeError) as info:
+        from_plotly(bad, id="bad")
+    assert info.value.issues[0].pointer.startswith("/datasets/trace0")
+    # sanitize=False leaves the strings alone
+    raw = from_plotly(fig, id="raw", sanitize=False)
+    assert "href" in arrow_to_frame(raw.datasets["trace0"])["text"][0]
+
+
 def test_from_plotly_rejects_unsafe_figures() -> None:
     fig = go.Figure(go.Scatter(x=[1], y=[1]))
     fig.update_layout(images=[{"source": "https://evil.example/x.png", "x": 0, "y": 0}])

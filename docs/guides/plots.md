@@ -124,7 +124,8 @@ plot = from_plotly(px.scatter_3d(df, x="tv", y="search", z="revenue"), id="my.su
   datasets, one per trace, and binds them with `{"$ref": "trace0.y"}`. The default plotly.py
   template is dropped (the renderer themes plots) unless `keep_template=True`.
 
-Both run the sanitizer and raise a `SanitizeError` if the chart breaks a rule.
+Both run the sanitizer and raise a `SanitizeError` if the chart breaks a rule. `from_plotly`
+also strips HTML from the strings it moves into datasets (see below).
 
 ## Role- and dim-bound templates
 
@@ -163,8 +164,14 @@ Plots run in an isolated iframe on a separate origin, but the server checks ever
 | Anything that does not match the pinned Vega-Lite v6.4.1 / plotly.js 4.1.1 schemas | unknown keys are where exploits hide |
 
 Plotly text keeps only `<b>`, `<i>`, `<br>`, `<sub>` and `<sup>` (plus `<extra>` in hover
-templates); everything else is stripped and reported as a change. Specs are capped in size,
-depth, node count and string length. See the [plots reference](../reference/plots.md) for the
+templates); everything else is stripped and reported as a change. The server never decodes
+Arrow, so text that `from_plotly` moves into a dataset (`text`, `hovertext`, category labels)
+is stripped and scanned on the sandbox side during conversion; the plot iframe must still
+treat dataset strings as untrusted and re-strip them before handing them to plotly.js. Vega
+renders dataset strings as text (and the iframe's tooltip handler escapes them). Method
+`args` of Plotly buttons and sliders are checked in both the `{attr: value}` and positional
+`[attr, value]` forms, and `usermeta.embedOptions` is rejected in Vega-Lite specs. Specs are
+capped in size, depth, node count and string length. See the [plots reference](../reference/plots.md) for the
 full rule list and error codes.
 
 ```python

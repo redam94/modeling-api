@@ -334,7 +334,7 @@ def test_parameters_over_new_levels_need_hier_effect(radon_data: xr.Dataset) -> 
     with pytest.raises(MapiError) as err:
         score_bundle(b, score_request(PREDICT), _payload(["county_1", "brand_new"]), registry=reg)
     assert err.value.code is ErrorCode.UNSEEN_LEVELS
-    assert "hier_effect" in str(err.value)
+    assert "hier_effect" in (err.value.untrusted_text or "")
 
 
 class _CountSettings(ModelSettings):

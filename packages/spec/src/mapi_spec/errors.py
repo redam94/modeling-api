@@ -9,6 +9,7 @@ carried in a separate ``untrusted_text`` field and never merged into ``detail``/
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
@@ -250,6 +251,8 @@ class MapiError(Exception):
         self.pointer = pointer
         self.untrusted_text = untrusted_text
         self.issues: list[Issue] = list(issues)
+        #: set by :func:`from_plugin_error` once plugin text has been moved out of ``detail``
+        self.platform_authored = False
 
     @property
     def status(self) -> int:
@@ -417,3 +420,68 @@ def error_from_problem(problem: Problem) -> MapiError:
         pointer=problem.errors[0].pointer if problem.errors else "",
     )
     return err
+
+
+# ---------------------------------------------------------------- errors raised by plugin code
+
+#: Codes that step, model and plot-recipe code may raise itself: spec, coordinate and
+#: capability problems, ``USER_CODE_ERROR`` and ``INTEGRITY_FAILURE`` (platform checks such
+#: as the no-pickle guard run inside plugin calls). Anything else (retryable infrastructure,
+#: sandbox, quota, auth, timeout, internal ...) is the platform's to assert and becomes
+#: ``USER_CODE_ERROR`` when plugin code raises it.
+PLUGIN_ERROR_CODES: frozenset[ErrorCode] = frozenset(
+    {c for c, info in ERROR_INFO.items() if info.category in ("spec", "coords", "capability")}
+    | {ErrorCode.USER_CODE_ERROR, ErrorCode.INTEGRITY_FAILURE}
+)
+
+_SAFE_POINTER = re.compile(r"^(?:/[^\x00-\x1f\x7f<>\"'`\\]{0,128}){0,32}$")
+
+
+def _join_untrusted(*parts: str | None) -> str | None:
+    text = "\n".join(p for p in parts if p)
+    return text[:8000] or None
+
+
+def _plugin_issue(issue: Issue) -> Issue:
+    code = issue.code if issue.code in PLUGIN_ERROR_CODES else ErrorCode.USER_CODE_ERROR
+    return issue.model_copy(
+        update={
+            "code": code,
+            "message": ERROR_INFO[code].title,
+            "pointer": issue.pointer if _SAFE_POINTER.match(issue.pointer or "") else "",
+            "untrusted_text": _join_untrusted(issue.message, issue.untrusted_text),
+        }
+    )
+
+
+def from_plugin_error(
+    exc: MapiError, message: str, *, fallback: type[MapiError] | None = None
+) -> MapiError:
+    """Re-issue a :class:`MapiError` raised by plugin (step, model, recipe) code (plan §9).
+
+    Every string the plugin chose (``detail``, issue messages) moves to ``untrusted_text``;
+    the new ``detail`` is ``message`` (platform-authored) plus the code's title. The code is
+    kept when it is in :data:`PLUGIN_ERROR_CODES` (the exception object is updated in place,
+    so its class and traceback survive), otherwise a ``fallback`` (default
+    :class:`UserCodeError`) carrying ``USER_CODE_ERROR`` is returned.
+    Pointers that are not plain JSON pointers are dropped. Idempotent.
+    """
+    if exc.platform_authored:
+        return exc
+    keep = exc.code in PLUGIN_ERROR_CODES
+    code = exc.code if keep else ErrorCode.USER_CODE_ERROR
+    detail = f"{message}: {ERROR_INFO[code].title}"[:2000]
+    untrusted = _join_untrusted(exc.detail, exc.untrusted_text)
+    pointer = exc.pointer if _SAFE_POINTER.match(exc.pointer or "") else ""
+    issues = [_plugin_issue(i) for i in exc.issues]
+    out: MapiError
+    if keep:
+        out = exc
+        out.args = (detail,)
+        out.detail, out.pointer, out.untrusted_text, out.issues = detail, pointer, untrusted, issues
+    else:
+        cls = fallback or UserCodeError
+        out = cls(detail, code=code, pointer=pointer, untrusted_text=untrusted, issues=issues)
+        out.__cause__ = exc
+    out.platform_authored = True
+    return out

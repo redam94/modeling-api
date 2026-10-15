@@ -877,7 +877,8 @@ def _plots(
             out = render_plots(tree, todo, registry=reg)
             rendered.update(p.id for p in out.plots)
             for issue in out.issues:
-                reasons.setdefault(str(issue.pointer or ""), issue.message)
+                why = issue.message + (f" ({issue.untrusted_text})" if issue.untrusted_text else "")
+                reasons.setdefault(str(issue.pointer or ""), why)
         missing = [i for i in ids if i not in rendered]
         st.passed, st.total = len(ids) - len(missing), len(ids)
         st.ok = not missing

@@ -33,6 +33,7 @@ from mapi_spec.schema import DimPolicy
 
 __all__ = [
     "API_VERSION",
+    "CONTRACT_VERSION",
     "SBC",
     "AnyDocument",
     "AsOfSplit",
@@ -66,6 +67,10 @@ __all__ = [
 ]
 
 API_VERSION = "mapi/v1"
+#: Version of the contract (documents, manifests, catalogs, errors, plot envelope) that the
+#: exported JSON Schemas describe. Frozen per release: additive changes keep it, breaking
+#: changes bump it (see ``packages/spec/tests/snapshots/contract.json``).
+CONTRACT_VERSION = "0.1"
 ApiVersion = Literal["mapi/v1"]
 
 MAX_PIPELINE_STEPS = 64

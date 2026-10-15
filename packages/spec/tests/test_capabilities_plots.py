@@ -258,3 +258,19 @@ def test_bindings_and_provenance() -> None:
         PlotProvenance.model_validate({"plugin": "p", "generated_at": PROV["generated_at"]}).source
         == "plugin"
     )
+
+
+def test_output_decl_dims_of_adds_the_input_variable_dims() -> None:
+    from mapi_spec.capabilities import OutputDecl
+    from mapi_spec.schema import DataSchema
+
+    schema = DataSchema.model_validate(
+        {
+            "dims": {"store": {"kind": "categorical"}, "week": {"kind": "time"}},
+            "vars": {"y": {"dims": ["store", "week"], "dtype": "float64", "role": "target"}},
+        }
+    )
+    decl = OutputDecl(dims=["quantile", "week"], dims_of="y")
+    assert decl.full_dims(schema) == ["quantile", "week", "store"]
+    assert decl.full_dims(None) == ["quantile", "week"]
+    assert OutputDecl(dims=["geo"]).full_dims(schema) == ["geo"]

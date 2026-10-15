@@ -22,6 +22,7 @@ from mapi_spec.errors import (
     UserCodeError,
     ValidationFailed,
     error_for_code,
+    from_plugin_error,
 )
 
 __all__ = [
@@ -37,6 +38,7 @@ __all__ = [
     "UserCodeError",
     "ValidationFailed",
     "WireFormatError",
+    "plugin_error",
     "raise_for_issues",
 ]
 
@@ -71,6 +73,25 @@ class RunCancelled(MapiError):
     """The run was cancelled cooperatively (checked between pipeline phases)."""
 
     default_code = ErrorCode.CANCELLED
+
+
+def plugin_error(
+    exc: MapiError, message: str, *, fallback: type[MapiError] | None = None
+) -> MapiError:
+    """The error to raise for ``exc``, a :class:`MapiError` raised by step or plugin code.
+
+    Plugin-chosen text moves to ``untrusted_text`` and ``message`` (platform-authored)
+    becomes the detail; codes plugin code may not assert become ``USER_CODE_ERROR`` (see
+    :func:`mapi_spec.errors.from_plugin_error`). A cancellation stays a
+    :class:`RunCancelled` with a platform message.
+    """
+    if exc.platform_authored:
+        return exc
+    if isinstance(exc, RunCancelled) or exc.code is ErrorCode.CANCELLED:
+        out = RunCancelled("the run was cancelled")
+        out.platform_authored = True
+        return out
+    return from_plugin_error(exc, message, fallback=fallback)
 
 
 def raise_for_issues(issues: Iterable[Issue], *, detail: str | None = None) -> None:

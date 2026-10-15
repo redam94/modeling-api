@@ -85,6 +85,7 @@ from mapi_spec.schema import (
 )
 from mapi_spec.spec import (
     API_VERSION,
+    CONTRACT_VERSION,
     SBC,
     AnyDocument,
     Backtest,
@@ -117,6 +118,7 @@ except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout wit
 
 __all__ = [
     "API_VERSION",
+    "CONTRACT_VERSION",
     "ERROR_INFO",
     "REPRESENTATION_RULES",
     "RESOURCE_CLASSES",

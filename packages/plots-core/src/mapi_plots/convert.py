@@ -7,7 +7,9 @@ Extra ``recipes`` only (needs altair, plotly, numpy, pandas and pyarrow).
   ``{"name": ...}``; named data (``alt.Data(name=...)``) is filled from ``datasets=``.
 * :func:`from_plotly` decodes plotly.py 6 typed arrays (``{dtype, bdata, shape}``) and inline
   data arrays into named Arrow datasets, one per trace (and array length), and binds them with
-  ``{"$ref": "<dataset>.<column>"}``.
+  ``{"$ref": "<dataset>.<column>"}``. String columns get the inline-text rules here (HTML
+  stripped to the Plotly allow-list, script/CSS URLs rejected) because the control-plane
+  sanitizer never decodes Arrow; the plot iframe must still re-strip dataset strings.
 
 Both run the result through the sanitizer unless ``sanitize=False``. Datasets are base64 Arrow
 IPC streams (:class:`~mapi_spec.plots.InlineArrow`); datetimes are stored as UTC
@@ -37,6 +39,8 @@ from mapi_spec.plots import (
 )
 
 from mapi_plots.sanitize import sanitize_plot
+from mapi_plots.sanitize._common import SanitizeReport, scan_string
+from mapi_plots.sanitize.html import ALLOWED_TAGS, HOVERTEMPLATE_TAGS, strip_html
 from mapi_plots.sanitize.plotly import PLOTLY_JS_VERSION, TYPED_ARRAY_DTYPES, plotly_structure
 from mapi_plots.sanitize.vegalite import VEGA_LITE_VERSION
 
@@ -415,6 +419,31 @@ class _PlotlyExtractor:
         return v
 
 
+def _sanitize_text_columns(datasets: Mapping[str, dict[str, Any]]) -> None:
+    """Apply the inline-text rules to string columns moved into Arrow datasets (in place).
+
+    The control-plane sanitizer never decodes Arrow, yet plotly.js renders the HTML subset
+    of every text-like value (``text``, ``hovertext``, category labels, ``%{customdata}``
+    in templates). Strings are therefore stripped to ``<b> <i> <br> <sub> <sup>`` (plus
+    ``<extra>`` in hover templates) and scanned for script/CSS URLs here, on the sandbox
+    side, before encoding. Raises :class:`SanitizeError` for unsafe values.
+    """
+    report = SanitizeReport()
+    for name, cols in datasets.items():
+        for path, values in cols.items():
+            if not isinstance(values, list) or not any(isinstance(v, str) for v in values):
+                continue
+            last = path.rsplit(".", 1)[-1]
+            allowed = HOVERTEMPLATE_TAGS if last.startswith("hovertemplate") else ALLOWED_TAGS
+            ptr = f"/datasets/{name}/{path}"
+            clean = [strip_html(v, allowed) if isinstance(v, str) else v for v in values]
+            for i, v in enumerate(clean):
+                if isinstance(v, str):
+                    scan_string(v, f"{ptr}/{i}", report)
+            cols[path] = clean
+    report.raise_if_errors()
+
+
 def _frame(cols: Mapping[str, Any]) -> pa.Table:
     arrays: dict[str, pa.Array] = {}
     for name, values in cols.items():
@@ -465,6 +494,8 @@ def from_plotly(
                 ex.trace(tr, f"frame{f}_trace{i}") if isinstance(tr, dict) else tr
                 for i, tr in enumerate(frame["data"])
             ]
+    if sanitize:
+        _sanitize_text_columns(ex.datasets)
     resolved_title = title or _plotly_title(spec) or id
     return _finish(
         id=id,
