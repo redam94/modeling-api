@@ -8,6 +8,9 @@ pinned plotly.js release (see ``scripts/vendor_schemas.py``). On top of that:
   ``layout.map``; legacy ``*mapbox``) are rejected;
 * every ``source`` string (``layout.images``, the ``image`` trace, relayout arguments in
   ``updatemenus``/``sliders``) must be a base64 raster ``data:`` URI;
+* method ``args``/``args2`` are checked in both the ``{attr: value}`` and the positional
+  ``[attr, value]`` form, including nested trace/frame objects, and any tile-map trace type
+  given as a value is rejected;
 * ``url``/``href``/``topojsonURL`` keys and network ``config`` options are rejected;
 * text is stripped to ``<b> <i> <br> <sub> <sup>`` (plus ``<extra>`` in hover templates);
 * data arrays may be inline lists, plotly.py 6 typed arrays (``{dtype, bdata, shape}``) or
@@ -573,6 +576,65 @@ def _scan(fig: dict[str, Any], base: str, report: SanitizeReport) -> None:
                 report.error(SanitizeRule.HREF, cptr, "href links are not allowed in plots")
             if segs & _TILE_LAYOUT and "." in k:
                 report.error(SanitizeRule.TILE_MAP, cptr, "tile-map subplots are not allowed")
+            if k in _ARGS_KEYS and isinstance(v, list):
+                _scan_args(v, cptr, report)
+
+
+#: ``updatemenus[].buttons[]`` / ``sliders[].steps[]`` method arguments. Their schema type is
+#: ``info_array`` (contents unchecked), and Plotly accepts the positional ``[attr, value]``
+#: form besides ``{attr: value}`` objects and whole trace/frame objects (``animate``).
+_ARGS_KEYS = frozenset({"args", "args2"})
+
+
+def _scan_args(node: Any, ptr: str, report: SanitizeReport) -> None:
+    """Apply the source/url/href/tile-map rules inside method arguments.
+
+    Dict keys are already covered by :func:`_scan` (which walks every node); this adds the
+    positional ``[attr, value, ...]`` form, bare ``map``/``mapbox`` keys and any tile-map
+    trace type given as a value (``["type", "scattermap"]``, ``{"type": [...]}``).
+    """
+    if report.full:
+        return
+    if isinstance(node, str):
+        if node in TILE_MAP_TRACES:
+            report.error(
+                SanitizeRule.TILE_MAP,
+                ptr,
+                f"tile-map traces ({node}) are not allowed; use scattergeo/choropleth",
+            )
+        return
+    if isinstance(node, dict):
+        for k, v in node.items():
+            cptr = child_pointer(ptr, k)
+            segs = path_segments(k)
+            seen_by_scan = bool(set(segs) & _TILE_LAYOUT) and "." in k
+            if not seen_by_scan and any(_is_tile_key(s) for s in segs):
+                report.error(SanitizeRule.TILE_MAP, cptr, "tile-map subplots are not allowed")
+            _scan_args(v, cptr, report)
+        return
+    if not isinstance(node, list):
+        return
+    if len(node) >= 2 and isinstance(node[0], str):
+        _check_attr_pair(node[0], node[1], child_pointer(ptr, 0), report)
+    for i, item in enumerate(node):
+        _scan_args(item, child_pointer(ptr, i), report)
+
+
+def _check_attr_pair(attr: str, value: Any, ptr: str, report: SanitizeReport) -> None:
+    """The key rules of :func:`_scan` for a positional ``[attr, value]`` argument pair."""
+    segs = path_segments(attr)
+    if "source" in segs and _has_unsafe_source(value):
+        report.error(
+            SanitizeRule.EXTERNAL_IMAGE,
+            ptr,
+            "image sources must be base64 raster data: URIs (png, jpeg, gif, webp)",
+        )
+    if set(segs) & {"url", "topojsonURL"}:
+        report.error(SanitizeRule.URL_DATA, ptr, "URLs are not allowed in plots")
+    if "href" in segs:
+        report.error(SanitizeRule.HREF, ptr, "href links are not allowed in plots")
+    if any(_is_tile_key(s) for s in segs):
+        report.error(SanitizeRule.TILE_MAP, ptr, "tile-map subplots are not allowed")
 
 
 def _has_unsafe_source(v: Any) -> bool:

@@ -202,6 +202,26 @@ BENIGN_PLOTLY: list[dict[str, Any]] = [
         "data": [{"type": "scattergeo", "lat": [1.0], "lon": [2.0]}],
         "layout": {"geo": {"scope": "europe"}},
     },
+    {  # positional [attr, value] button arguments that are safe
+        "data": [{"type": "scatter", "x": [1, 2], "y": [1, 2]}],
+        "layout": {
+            "updatemenus": [
+                {
+                    "buttons": [
+                        {"method": "restyle", "label": "bars", "args": ["type", "bar"]},
+                        {"method": "relayout", "label": "t", "args": ["title.text", "Weekly"]},
+                        {"method": "animate", "label": "play", "args": [None, {"frame": {}}]},
+                        {
+                            "method": "relayout",
+                            "label": "logo",
+                            "args": ["images[0].source", "data:image/png;base64,iVBORw0KGgo="],
+                        },
+                    ]
+                }
+            ],
+            "sliders": [{"steps": [{"method": "animate", "label": "f0", "args": [["f0"], {}]}]}],
+        },
+    },
 ]
 
 
