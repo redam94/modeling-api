@@ -355,3 +355,28 @@ def test_score_remote(
         "--url", URL, "score", str(req), "--remote", "@", "--model", "mdl_1", "--version", "2"
     )
     assert human.exit_code == 0 and "/summary" in human.stdout
+
+
+def test_check_remote_rejects_local_data(mapi: Invoke, tmp_path: Path) -> None:
+    spec = tmp_path / "spec.yaml"
+    assert mapi("new", "glm", "-o", str(spec)).exit_code == 0
+    res = mapi("--json", "check", str(spec), "--remote", "@", "--data", str(spec))
+    assert res.exit_code == 1
+    assert json.loads(res.stdout)["error"]["code"] == "SCHEMA_INVALID"
+
+
+def test_fit_remote_warns_about_pinned_side_tables(
+    mapi: Invoke, api: respx.MockRouter, example: Ex, tmp_path: Path
+) -> None:
+    spec = tmp_path / "spec.yaml"
+    assert mapi("new", "geo-mmm", "-o", str(spec)).exit_code == 0
+    hols = tmp_path / "holidays.zarr.zip"
+    hols.write_bytes(b"PK")
+    _remote_fit_routes(api, example, final_state="succeeded")
+    created = api.post(f"{V1}/datasets").respond(201, json=example(Dataset, name="holidays_eu"))
+    res = mapi("--url", URL, "fit", str(spec), "--side-table", f"holidays={hols}", "--remote", "@")
+    assert res.exit_code == 0, res.output
+    assert "pins a version" in res.stderr
+    assert json.loads(created.calls.last.request.content)["name"] == "holidays_eu"
+    unknown = mapi("--url", URL, "fit", str(spec), "--side-table", f"nope={hols}", "--remote", "@")
+    assert unknown.exit_code == 1 and "not declared" in unknown.stderr

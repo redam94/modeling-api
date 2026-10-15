@@ -28,7 +28,7 @@ def serve(
 ) -> None:
     """Start the local development stack (API, embedded Postgres, GCS shim).
 
-    Extra arguments are passed through to ``mapi-server dev``.
+    Extra arguments are passed through to "mapi-server dev".
     """
     out = state(ctx).output
     if importlib.util.find_spec(SERVER_MODULE) is None:

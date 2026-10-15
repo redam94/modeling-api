@@ -145,6 +145,9 @@ def _score_remote(
                 tree = datatree_from_bytes(dest.read_bytes())
         elif link is not None and xarray_available() and not out.json_mode:
             tree = datatree_from_bytes(api.download(link))
+        if dest is not None and link is None:
+            out.warn(f"the run produced no *.zarr.zip output; {dest} was not written")
+            dest = None
     if out.json_mode:
         out.emit_json(
             {"run": res.run, "outputs": res.outputs, "out": None if dest is None else str(dest)}
@@ -187,7 +190,7 @@ def score(
         float | None, typer.Option("--timeout", help="Give up after N seconds")
     ] = None,
 ) -> None:
-    """Score a fitted bundle locally, or a model version on the API (``--remote``)."""
+    """Score a fitted bundle locally, or a model version on the API (--remote)."""
     from mapi_cli.local import parse_assignments
 
     st = state(ctx)

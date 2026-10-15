@@ -163,6 +163,11 @@ def check(
     out = st.output
     text = spec_file.read_text(encoding="utf-8")
     if remote is not None:
+        if data is not None or schema is not None:
+            raise MapiError(
+                "--data/--schema are local options; with --remote pass --dataset <ref>",
+                code=ErrorCode.SCHEMA_INVALID,
+            )
         with st.client(remote) as api:
             res = api.specs.validate(text, dataset=dataset)
         stage_rows = [s.model_dump(mode="json") for s in res.stages]

@@ -1945,6 +1945,7 @@ name = "mapi-client"
 version = "0.1.0"
 source = { editable = "packages/client" }
 dependencies = [
+    { name = "google-crc32c" },
     { name = "httpx" },
     { name = "mapi-spec" },
 ]
@@ -1957,6 +1958,7 @@ xarray = [
 
 [package.metadata]
 requires-dist = [
+    { name = "google-crc32c", specifier = ">=1.5" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mapi-sdk", marker = "extra == 'xarray'", editable = "packages/sdk" },
     { name = "mapi-spec", editable = "packages/spec" },

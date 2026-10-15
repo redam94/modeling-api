@@ -106,7 +106,7 @@ def watch(
         int | None, typer.Option("--from", help="Resume after this event id")
     ] = None,
 ) -> None:
-    """Follow a run's live events until it ends (``--json``: one JSON event per line)."""
+    """Follow a run's live events until it ends (--json: one JSON event per line)."""
     st = state(ctx)
     out = st.output
     with st.client() as api:

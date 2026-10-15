@@ -18,6 +18,7 @@ from mapi_spec.api import Run
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
 from mapi_spec.loader import load_model_spec
+from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import ResourceClass
 from mapi_spec.spec import ModelSpec
 
@@ -86,10 +87,17 @@ def _fit_remote(
             code=ErrorCode.SCHEMA_INVALID,
         )
     with st.client(url) as api:
-        uploads = [(data, spec.data.dataset.name)] if data is not None else []
-        uploads += [(path, spec.data.side_tables[n].ref.name) for n, path in tables.items()]
-        for path, ds_name in uploads:
-            assert path is not None
+        uploads: list[tuple[Path, DatasetRef]] = []
+        if data is not None:
+            uploads.append((data, spec.data.dataset))
+        uploads += [(path, spec.data.side_tables[n].ref) for n, path in tables.items()]
+        for path, ref in uploads:
+            ds_name = ref.name
+            if not ref.is_latest:
+                out.warn(
+                    f"{ref} pins a version: the spec will not read the version uploaded now "
+                    "(use @latest to fit on new uploads)"
+                )
             out.info(f"uploading {path} as a new version of dataset {ds_name!r}")
             version = api.datasets.upload(path, dataset=ds_name)
             out.info(f"  → {version.ref} ({version.status.value})")
@@ -196,7 +204,7 @@ def fit(
         float | None, typer.Option("--timeout", help="(local) give up after N seconds")
     ] = None,
 ) -> None:
-    """Fit a spec locally (in-process) or on the API (``--remote``)."""
+    """Fit a spec locally (in-process) or on the API (--remote)."""
     from mapi_cli.local import parse_assignments
 
     st = state(ctx)

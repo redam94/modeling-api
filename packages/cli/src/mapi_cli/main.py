@@ -18,9 +18,17 @@ from mapi_cli.commands import spec as spec_cmd
 from mapi_cli.output import Output
 from mapi_cli.state import AppState
 
+HELP = (
+    "The modeling-api command line.\n\n"
+    "Local commands (new, check, fit, score, catalog, plugin, spec) need no server. Remote "
+    "commands (runs, datasets, --remote) use the API from --url, MAPI_URL or a profile in "
+    "~/.config/mapi/config.toml, with --token or MAPI_TOKEN. --json prints machine-readable "
+    "output on stdout."
+)
+
 app = typer.Typer(
     name="mapi",
-    help=__doc__,
+    help=HELP,
     no_args_is_help=True,
     rich_markup_mode=None,
     pretty_exceptions_enable=False,

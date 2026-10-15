@@ -14,9 +14,15 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
     for item in api.runs.stream_events(run.id):  # SSE, resumes with Last-Event-ID
         print(item)
     run = api.runs.wait(run.id, raise_on_failure=True)
-    result = api.models.score(model_id, 1, {"model": "model://default/eu-geo-mmm@v1",
-                                            "mode": "forecast",
-                                            "horizon": {"dim": "time", "periods": 8}})
+    result = api.models.score(
+        model_id,
+        1,
+        {
+            "model": "model://default/eu-geo-mmm@v1",
+            "mode": "forecast",
+            "horizon": {"dim": "time", "periods": 8},
+        },
+    )
     result.tree  # xr.DataTree with the `xarray` extra
 ```
 

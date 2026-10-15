@@ -9,6 +9,7 @@ authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
 dependencies = [
   "mapi-spec",
   "httpx>=0.27",
+  "google-crc32c>=1.5",  # fast CRC32C for verifying large transfers
 ]
 
 [project.optional-dependencies]
