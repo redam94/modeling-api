@@ -3,6 +3,7 @@ the dispatcher, and the cost ledger (metered attempts → ``Run.cost`` and ``/v1
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterator
 from datetime import timedelta
 
@@ -32,7 +33,7 @@ from mapi_spec.cost import DEFAULT_PRICE_TABLE, estimate_cost
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
 from prometheus_client.parser import text_string_to_metric_families
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 pytestmark = pytest.mark.integration
@@ -212,6 +213,23 @@ async def test_storage_quota_blocks_uploads_only(
     r = await client.post(f"/v1/datasets/{ds['id']}/uploads", json=body)
     assert r.status_code == 429 and "storage_bytes" in r.json()["detail"]
     assert (await client.get(f"/v1/datasets/{ds['id']}")).status_code == 200
+
+
+async def test_concurrent_uploads_cannot_overrun_the_storage_quota(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """Storage admission is serialized per tenant (the tenant row is locked until the upload
+    row commits), so concurrent intents cannot each pass against the same usage."""
+    ds = (await client.post("/v1/datasets", json={"name": "race"})).json()
+    await _policy(ctx, "tenant", "default", storage_bytes=1000)
+    body = {"filename": "a.csv", "content_type": "text/csv", "size_bytes": 800}
+    url = f"/v1/datasets/{ds['id']}/uploads"
+    for _ in range(3):  # the race is timing-dependent: try a few rounds
+        rs = await asyncio.gather(*[client.post(url, json=body) for _ in range(6)])
+        assert all(r.status_code in (201, 429) for r in rs), [r.text for r in rs]
+        async with ctx.db.session() as s:
+            total = (await s.execute(select(func.sum(m.Upload.size_bytes)))).scalar_one()
+        assert total == 800, total  # exactly one intent fits
 
 
 # ============================================================================ fair share

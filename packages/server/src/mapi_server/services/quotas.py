@@ -301,8 +301,15 @@ async def admit_storage(
     session: AsyncSession, system: AsyncSession, *, tenant_id: str, nbytes: int, now: datetime
 ) -> QuotaDecision:
     """May the tenant store ``nbytes`` more (an upload)? Reads and deletes are never
-    blocked: only demands for more storage are checked."""
-    tenant = await session.get(m.Tenant, tenant_id)
+    blocked: only demands for more storage are checked.
+
+    Like :func:`admit_run`, the tenant row is locked (``FOR UPDATE``) in the request's
+    tenant session, so concurrent uploads of one tenant are admitted one at a time: the lock
+    is held until the caller's ``uploads`` row commits in that same transaction.
+    """
+    tenant = (
+        await session.execute(select(m.Tenant).where(m.Tenant.id == tenant_id).with_for_update())
+    ).scalar_one_or_none()
     if tenant is None:
         return QuotaDecision.allow()
     level = (

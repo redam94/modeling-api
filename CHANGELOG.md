@@ -143,6 +143,9 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   fell back to broader `runs:create` tokens. `score:<model id>` now covers `:score` on that
   model and `score:*` on every model of the project (`RouteAccess.name_param`). The web
   tokens page, the CLI help and the docs say so.
+- **server**: concurrent uploads can no longer overrun the storage quota. Storage admission
+  now locks the tenant row like run admission does, so six concurrent 800-byte intents against
+  a 1000-byte quota admit exactly one.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
