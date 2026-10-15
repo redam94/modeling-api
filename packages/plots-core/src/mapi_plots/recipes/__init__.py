@@ -37,6 +37,7 @@ from mapi_plots.recipes._base import (
     named,
     recipe,
 )
+from mapi_plots.recipes.batch import RenderReport, render_plots
 from mapi_plots.recipes.comparison import model_comparison
 from mapi_plots.recipes.data import data_overview
 from mapi_plots.recipes.diagnostics import convergence, posterior_forest, ppc, prior_predictive
@@ -56,6 +57,7 @@ __all__ = [
     "RecipeDataError",
     "RecipeInput",
     "RecipeSettings",
+    "RenderReport",
     "all_recipes",
     "as_tree",
     "builtin_templates",
@@ -63,6 +65,7 @@ __all__ = [
     "infer_schema",
     "named",
     "recipe",
+    "render_plots",
     "render_template",
     "standard_recipes",
 ]
