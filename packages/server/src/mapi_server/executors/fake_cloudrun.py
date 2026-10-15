@@ -245,6 +245,7 @@ class FakeCloudRun:
         self._run_failures: deque[CloudRunError] = deque()
         self._lost_responses = 0
         self._hidden: Counter[str] = Counter()
+        self._lost: set[str] = set()
         self._api_failures: dict[str, deque[CloudRunError]] = {}
         # inspection
         self.run_job_calls: list[RunJobCall] = []
@@ -275,6 +276,17 @@ class FakeCloudRun:
     def lose_response(self, n: int = 1) -> None:
         """The next ``n`` ``jobs.run`` calls create the execution, then fail as unavailable."""
         self._lost_responses += n
+
+    def lose_execution(self, name: str) -> None:
+        """The execution's host dies: its tasks stop at once (no SIGTERM, no exit code) and
+        Cloud Run forgets it (``executions.get`` answers ``NotFound``; it is not listed)."""
+        ex = self._executions[name]
+        self._lost.add(name)
+        for t in ex.tasks:
+            if t.work is not None and not t.work.done():
+                t.killed = True
+                t.message = "the host was lost (fake)"
+                t.work.cancel()
 
     def hide_execution(self, name: str, calls: int = 1) -> None:
         """``executions.get`` answers ``NotFound`` for ``name`` for the next ``calls`` calls."""
@@ -422,6 +434,8 @@ class FakeCloudRun:
         if self._hidden[name] > 0:
             self._hidden[name] -= 1
             raise CloudRunNotFound(f"execution {name} not found (fake, injected)")
+        if name in self._lost:
+            raise CloudRunNotFound(f"execution {name} not found (fake, host lost)")
         ex = self._executions.get(name)
         if ex is None:
             raise CloudRunNotFound(f"execution {name} not found (fake)")
@@ -431,7 +445,11 @@ class FakeCloudRun:
         await self._api("list_executions")
         if job not in self.jobs:
             raise CloudRunNotFound(f"job {job} not found (fake)")
-        names = [n for n in reversed(self._order) if self._executions[n].job == job]
+        names = [
+            n
+            for n in reversed(self._order)
+            if self._executions[n].job == job and n not in self._lost
+        ]
         return [self._info(self._executions[n]) for n in names[:limit]]
 
     async def list_tasks(self, execution: str) -> list[TaskInfo]:

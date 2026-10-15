@@ -79,6 +79,10 @@ log = logging.getLogger(__name__)
 MAX_RETRY_AFTER_S = 64.0
 """A backend's ``Retry-After`` is honoured up to this long (one answer cannot park the queue)."""
 
+MAX_SUBMIT_LEASES = 10
+"""A single submit may keep its batch's leases alive for this many lease lengths; a submit
+that hangs longer lets them lapse, so the reconciler takes the runs over (adopt by nonce)."""
+
 
 def _rate_limited(error: Exception | None) -> bool:
     """Is ``error`` the backend's 429 (nothing was created, so the attempt is not lost)?"""
@@ -116,6 +120,7 @@ class Dispatcher:
         self._backoff_until = 0.0
         self._last_success: datetime | None = None
         self._reported = 0.0
+        self._submit_started = 0.0
 
     def _throttled(self, error: Exception | None) -> float | None:
         """Seconds to back off if ``error`` is the backend's 429 (``None`` otherwise)."""
@@ -382,9 +387,11 @@ class Dispatcher:
         # until its run is recorded, so the reconciler never takes a run this dispatcher is
         # still working on (a lease only lapses when the dispatcher itself is gone).
         pending = set(leased)
+        self._submit_started = time.monotonic()
         keeper = asyncio.create_task(self._keep_leased(pending))
         try:
             for run_id, attempt in leased:
+                self._submit_started = time.monotonic()
                 await self.bucket.acquire()
                 pause = self._backoff_until - time.monotonic()
                 if pause > 0:  # the backend answered 429: wait it out, then submit once
@@ -403,10 +410,18 @@ class Dispatcher:
         return len(leased)
 
     async def _keep_leased(self, pending: set[tuple[str, int]]) -> None:
-        """Extend the leases of ``pending`` runs every third of a lease until cancelled."""
+        """Extend the leases of ``pending`` runs every third of a lease until cancelled, as
+        long as the submit in flight has not been stuck for :data:`MAX_SUBMIT_LEASES`."""
         lease_s = self.ctx.settings.dispatch_lease_s
         while True:
             await asyncio.sleep(lease_s / 3)
+            if time.monotonic() - self._submit_started > MAX_SUBMIT_LEASES * lease_s:
+                log.error(
+                    "a submit has been stuck for %.0fs: letting %d lease(s) lapse",
+                    time.monotonic() - self._submit_started,
+                    len(pending),
+                )
+                continue
             for run_id, attempt in list(pending):
                 try:
                     async with self.ctx.db.session() as session:

@@ -96,7 +96,9 @@ nonce. When `MAPI_CLOUDRUN_MAX_429_RETRIES` answers in a row are exhausted the r
 to the queue for a new attempt, without using up one of its `MAPI_MAX_INFRA_RETRIES`: a
 throttling storm delays runs, it never fails them. While a dispatcher works through a batch it
 keeps extending the leases of the runs it has not submitted yet, so the reconciler never
-takes over a run whose submit is only slow.
+takes over a run whose submit is only slow. A single submit that hangs for more than ten lease
+lengths stops the renewals: the leases lapse and the reconciler adopts what `jobs.run` created
+(by nonce) or retries the attempt.
 
 ### Fan-out with `taskCount`
 
