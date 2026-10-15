@@ -493,6 +493,22 @@ export function usePlots(modelId: string, version: number) {
   });
 }
 
+/** Sanitized plots a succeeded run rendered (score fans, counterfactual bands). */
+export function useRunPlots(runId: string | undefined) {
+  return useQuery({
+    queryKey: ["runs", runId ?? "", "plots"],
+    queryFn: ({ signal }) =>
+      unwrap(
+        api.GET("/v1/runs/{run_id}/plots", {
+          params: { path: { run_id: runId ?? "" }, query: { limit: 200 } },
+          signal,
+        }),
+      ),
+    enabled: Boolean(runId),
+    staleTime: Infinity,
+  });
+}
+
 export function usePlot(modelId: string, version: number, plotId: string | null) {
   return useQuery({
     queryKey: qk.plot(modelId, version, plotId ?? ""),

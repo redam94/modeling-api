@@ -120,7 +120,7 @@ function OutputLink({ mvId }: { mvId: string }) {
   if (mv.isPending) return <span className="text-muted-foreground">Looking up the model version…</span>;
   if (!mv.data) return <Mono>{shortId(mvId)}</Mono>;
   return (
-    <Button asChild size="sm">
+    <Button asChild size="sm" className="h-auto min-h-8 max-w-full justify-start py-1.5 text-left whitespace-normal [overflow-wrap:anywhere]">
       <Link to="/models/$modelId/versions/$version" params={{ modelId: mv.data.model_id, version: String(mv.data.version) }}>
         <CheckCircle2 /> Inspect {mv.data.ref}
       </Link>
@@ -200,7 +200,7 @@ export function RunDetailPage() {
             </CardContent>
           </Card>
         </div>
-        <div className="grid content-start gap-5">
+        <div className="grid min-w-0 content-start gap-5">
           {r.output_model_version_id ? (
             <Card>
               <CardHeader>

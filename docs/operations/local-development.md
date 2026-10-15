@@ -11,6 +11,9 @@ make seed             # in another shell: load the E33 demo data and spec
 open http://127.0.0.1:5173
 ```
 
+[Your first model in the web app](../guides/first-model-in-the-ui.md) walks through fitting,
+inspecting and scoring the demo model from the browser.
+
 ## What `make dev` starts
 
 `scripts/dev.py` is a small process supervisor. It starts each service in dependency order and
@@ -34,7 +37,7 @@ flowchart LR
 | `gcs-shim` | `mapi-gcs-shim serve --host 127.0.0.1 --port 4443 --cors-origin <web origin> --root .local/gcs` | The port accepts connections |
 | `migrate` | `mapi-server migrate` (runs once) | It exits with status 0 |
 | `api` | `mapi-server api --host 127.0.0.1 --port 8000` | `GET /healthz` returns 2xx |
-| `worker` | `mapi-server worker` with `MAPI_EXECUTOR=local-process` | Started |
+| `worker` | `mapi-server worker` with `MAPI_EXECUTOR=local-process`: dispatcher, reconciler, event ingestion and the finalizer queue. Every run is a `mapi-runner` supervisor process that starts its own worker process. | Started |
 | `web` | `pnpm --filter @mapi/web dev --host 127.0.0.1 --port 5173 --strictPort` | The port accepts connections |
 | `plots` | `pnpm --filter @mapi/plot-sandbox dev --host 127.0.0.1 --port 5174 --strictPort` | The port accepts connections |
 
@@ -62,6 +65,19 @@ If any long-running service exits on its own, the supervisor stops the whole sta
 with a non-zero status. It never restarts anything silently: the log above the shutdown shows
 the reason.
 
+### The first start
+
+On its first start against a new environment the worker logs `no catalog for sha256:…:
+queued describe run`. The catalog (the steps, models and plot recipes installed in the
+runner, with their settings schemas and schema effects) is produced by a sandboxed
+`describe` run of the real runner and cached per `uv.lock` digest, so it is rebuilt only when
+the locked dependencies change. Until it is ready, spec validation reports the catalog as
+unavailable; it takes a few seconds.
+
+Runs use the same isolation as in production, minus what a laptop cannot do: the run event
+`DEV_MODE_ISOLATION` notes that the worker process runs as your user, without a uid split or
+`no_new_privs`.
+
 ## Everyday commands
 
 | Command | What it does |
@@ -73,14 +89,39 @@ the reason.
 | `make status` | Which services are up, and whether PostgreSQL is running |
 | `make migrate` | Apply database migrations once. It starts the embedded PostgreSQL if needed and stops it again afterwards. |
 | `make db-shell` | `psql` on the dev database (the embedded server or `DATABASE_URL`) |
-| `make seed` | Load the E33 demo datasets and the `eu-geo-mmm` spec through the HTTP API (`SIZE=full` for the large variant) |
+| `make seed` | Load the E33 demo datasets and the `eu-geo-mmm` spec through the HTTP API (`make seed SIZE=full` for the large variant) |
+| `make e2e` | The end-to-end suites against the running stack: `pytest -m e2e` (`tests/e2e`, through the Python client), then the Playwright `@e2e` suite (`apps/web/e2e`, through the browser) |
 | `make clean-local` | Delete `MAPI_DATA_DIR` (database, objects, supervisor state). It refuses while anything is running; `YES=1` skips the prompt. |
 | `uv run python scripts/dev.py env` | Print the resolved environment as `export` lines, for running a component by hand |
 
 `make seed` uses only the public API. It creates the datasets `eu_media_daily`, `fx_daily` and
 `holidays_eu`, uploads each table to the signed URL the API returns, waits for the sandboxed
 ingest runs, then creates the spec pointing at the new dataset versions. Running it again adds
-new dataset versions and a new spec revision. The datasets themselves are reused.
+new dataset versions and a new spec revision. The datasets themselves are reused. `SIZE` is
+only read from the make command line: some toolchains (conda's compilers) export a `SIZE`
+variable of their own.
+
+`uv run python scripts/seed.py --export demo/` writes the same tables, the E33 score payloads
+and the spec as files instead, for uploading through the web app.
+
+## End-to-end tests
+
+`make e2e` drives the M1 flow through the running stack: upload the E33 data, validate and
+fit the spec, follow the run over SSE, check the signed manifest and the bundle, score an
+8-week forecast, a new market, a weekly EUR plan and counterfactuals, and probe the security
+boundaries that are visible from outside (the bootstrap object is gone, forged events are
+refused, the plot iframe is an opaque origin). Start `make dev` first; both suites read the
+same `MAPI_*` variables, so export them in the shell that runs `make e2e` when you moved a
+port. The browser suite writes screenshots to `apps/web/e2e/screenshots/` (git-ignored).
+
+```bash
+export MAPI_API_URL=http://127.0.0.1:8010   # only if you moved the API
+make dev                                     # shell 1
+make e2e                                     # shell 2: about 5 minutes
+```
+
+The mocked Playwright smoke suite (`pnpm --filter @mapi/web test`) serves its own build on
+port 5173, so run it while `make dev` is stopped.
 
 ## Working on one component
 
@@ -125,8 +166,14 @@ and is ignored by git.
 .local/
 ├─ pg/                    PostgreSQL data directory (pgserver); log in pg/log
 ├─ gcs/                   GCS shim objects (buckets mapi-local-*)
+│  └─ _shim/keys/         the shim's principals: control.json (control plane), exec.json (runs)
+├─ keys/                  bundle-signing-p256.pem: signs bundle manifests (stands in for KMS)
+├─ executions/            per-run scratch of the local executor (removed when a run ends)
 └─ dev/supervisor.json    pid of the running supervisor and its services (make stop/status)
 ```
+
+Deleting `keys/` makes every registered model version unusable: their manifests no longer
+verify, so the API refuses to mint download links for them (`INTEGRITY_FAILURE`).
 
 ## Troubleshooting
 

@@ -26,6 +26,9 @@ body {
 #plot {
   width: 100%;
   min-height: 40px;
+  /* Composite specs (facets, concats) keep their own size: scroll rather than clip them
+     when the frame is narrower. */
+  overflow-x: auto;
 }
 
 #plot > .vega-embed {

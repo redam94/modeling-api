@@ -80,6 +80,9 @@ export function YamlEditor({
         const uri = monaco.Uri.parse(`file:///${path}`);
         const initial = valueRef.current;
         model = monaco.editor.getModel(uri) ?? monaco.editor.createModel(initial, "yaml", uri);
+        // Specs are LF. An empty model would otherwise take the OS default (CRLF on Windows),
+        // and every later edit would differ from the saved text by its line endings.
+        model.setEOL(monaco.editor.EndOfLineSequence.LF);
         if (model.getValue() !== initial) model.setValue(initial);
         const editor = monaco.editor.create(host.current, {
           model,
@@ -100,7 +103,8 @@ export function YamlEditor({
           links: false,
         });
         editorRef.current = editor;
-        editor.onDidChangeModelContent(() => callbacks.current.onChange?.(editor.getValue()));
+        const lf = monaco.editor.EndOfLinePreference.LF;
+        editor.onDidChangeModelContent(() => callbacks.current.onChange?.(editor.getModel()?.getValue(lf) ?? ""));
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => callbacks.current.onSave?.());
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => callbacks.current.onValidate?.());
         callbacks.current.onReady?.({

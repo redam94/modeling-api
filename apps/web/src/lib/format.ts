@@ -70,3 +70,11 @@ export function shortId(id: string | null | undefined, keep = 6): string {
   if (us > 0 && id.length > us + 1 + keep * 2) return `${id.slice(0, us + 1)}…${id.slice(-keep)}`;
   return id;
 }
+
+/** An ISO timestamp from a data table: the date alone at midnight UTC, else date and time. */
+export function formatTimestamp(iso: string): string {
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}(?::\d{2})?)(?:\.\d+)?Z$/.exec(iso);
+  if (!m) return iso;
+  const [, date, time] = m;
+  return time === "00:00" || time === "00:00:00" ? (date ?? iso) : `${date ?? ""} ${time ?? ""}`;
+}

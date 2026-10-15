@@ -5,9 +5,10 @@ import { stripAnsi } from "./ansi";
 import { ArtifactError, fetchArtifactBytes, fetchArtifactJson } from "./artifacts";
 import { crc32c, crc32cBase64 } from "./crc32c";
 import { detectDelimiter, guessColumn, parseCsv } from "./csv";
-import { formatBytes, formatDuration, shortId } from "./format";
+import { formatBytes, formatDuration, formatTimestamp, shortId } from "./format";
 import { formatPointer, parsePointer, pointerWithin } from "./pointer";
 import { isCancellable, isTerminal, nextResourceClass } from "./run-state";
+import { distinctOn, pivotStats } from "./summary";
 import { parsePreprocess, parsePreview, parseProfile, parseTreeIndex, ViewFormatError } from "./views";
 
 describe("stripAnsi", () => {
@@ -153,5 +154,50 @@ describe("view parsers", () => {
     });
     expect(p.steps[0]?.arrays[0]?.values).toEqual([[1, null, 3]]);
     expect(p.steps[0]?.arrays[1]?.values).toEqual([[1, 2]]);
+  });
+});
+
+describe("score summaries", () => {
+  const table = {
+    columns: [
+      { name: "stat", type: "Utf8" },
+      { name: "market", type: "Utf8" },
+      { name: "date", type: "Timestamp<MILLISECOND>" },
+      { name: "component", type: "Utf8" },
+      { name: "y_hat", type: "Float64" },
+    ],
+    rows: [
+      { stat: "mean", market: "NL", date: "2023-08-06", component: "tv", y_hat: 10 },
+      { stat: "mean", market: "NL", date: "2023-08-06", component: "search", y_hat: 10 },
+      { stat: "hdi_90_lower", market: "NL", date: "2023-08-06", component: "tv", y_hat: 8 },
+      { stat: "hdi_90_lower", market: "NL", date: "2023-08-06", component: "search", y_hat: 8 },
+    ],
+    totalRows: 4,
+    truncated: false,
+  };
+
+  it("pivots the stat column into one column per variable and stat", () => {
+    const out = pivotStats(table);
+    expect(out.columns.map((c) => c.name)).toEqual(["market", "date", "component", "y_hat_mean", "y_hat_hdi_90_lower"]);
+    expect(out.rows).toEqual([
+      { market: "NL", date: "2023-08-06", component: "tv", y_hat_mean: 10, y_hat_hdi_90_lower: 8 },
+      { market: "NL", date: "2023-08-06", component: "search", y_hat_mean: 10, y_hat_hdi_90_lower: 8 },
+    ]);
+    const plain = { ...table, columns: table.columns.filter((c) => c.name !== "stat") };
+    expect(pivotStats(plain)).toBe(plain);
+  });
+
+  it("drops rows a broadcast variable repeats", () => {
+    const rows = pivotStats(table).rows;
+    expect(distinctOn(rows, ["date", "market", "y_hat_mean", undefined])).toHaveLength(1);
+    expect(distinctOn(rows, ["component"])).toHaveLength(2);
+  });
+});
+
+describe("formatTimestamp", () => {
+  it("drops a midnight time and keeps others", () => {
+    expect(formatTimestamp("2023-08-06T00:00:00.000Z")).toBe("2023-08-06");
+    expect(formatTimestamp("2023-08-06T13:05:00Z")).toBe("2023-08-06 13:05:00");
+    expect(formatTimestamp("not a date")).toBe("not a date");
   });
 });

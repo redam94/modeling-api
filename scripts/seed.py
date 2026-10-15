@@ -14,6 +14,11 @@ the YAML changed.
 
     uv run python scripts/seed.py                    # API at $MAPI_API_URL (127.0.0.1:8000)
     uv run python scripts/seed.py --size full --timeout 1800
+    uv run python scripts/seed.py --export demo/     # only write the files (no API needed)
+
+``--export DIR`` writes the same tables plus the E33 score payloads (future spend, a new
+market, a weekly EUR plan, a window of past weeks) as ``.zarr.zip`` files and the spec as
+``eu-geo-mmm.yaml``, for uploading through the web app instead.
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ import time
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from importlib import resources
+from pathlib import Path
 from typing import Any, TypeVar
 
 import httpx
@@ -246,6 +252,50 @@ def fixture_tables(size: str) -> dict[str, bytes]:
     return out
 
 
+#: ``--export`` file name -> (E33 payload builder, description). See the fixture's
+#: score_requests.yaml for how each one is scored.
+EXPORT_PAYLOADS: dict[str, str] = {
+    "eu_media_future": "future",
+    "eu_media_future_fr": "future_new_market",
+    "eu_media_weekly_plan": "weekly_plan",
+    "eu_media_window": "window",
+}
+
+
+def export_files(dest: Path, size: str = "tiny") -> dict[str, Path]:
+    """Write the demo tables, the score payloads and the spec into ``dest``.
+
+    The spec refers to ``dataset://default/<name>@latest`` for each table, so uploading the
+    files as datasets of those names makes it valid as is. Returns ``{name: path}``.
+    """
+    from mapi_conformance.fixtures.e33 import data as e33
+    from mapi_sdk.wire import write_zarr_zip
+
+    dest.mkdir(parents=True, exist_ok=True)
+    out: dict[str, Path] = {}
+    tables = fixture_tables(size)
+    for _, (name, table) in DATASETS.items():
+        path = dest / f"{name}.zarr.zip"
+        path.write_bytes(tables[table])
+        out[name] = path
+    data, _ = e33.generate(seed=0, size=size)  # type: ignore[arg-type]
+    for name, payload in EXPORT_PAYLOADS.items():
+        ds = getattr(e33, f"payload_{payload}")(data, 0, size)
+        path = dest / f"{name}.zarr.zip"
+        blob = write_zarr_zip(ds)
+        assert blob is not None
+        path.write_bytes(blob)
+        out[name] = path
+    spec = dest / f"{SPEC_NAME}.yaml"
+    refs = {
+        ref: f"dataset://{dto.DEFAULT_PROJECT_ID}/{name}@latest"
+        for ref, (name, _) in DATASETS.items()
+    }
+    spec.write_text(spec_yaml(refs), encoding="utf-8")
+    out[SPEC_NAME] = spec
+    return out
+
+
 def seed(
     api: Api,
     tables: Mapping[str, bytes],
@@ -282,7 +332,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--api-url", default=None, help=f"default: ${ENV_API_URL} or 127.0.0.1")
     parser.add_argument("--size", choices=["tiny", "full"], default="tiny")
     parser.add_argument("--timeout", type=float, default=600.0, help="seconds per ingest")
+    parser.add_argument(
+        "--export",
+        type=Path,
+        metavar="DIR",
+        help="only write the demo files (tables, score payloads, spec) into DIR",
+    )
     args = parser.parse_args(argv)
+    if args.export is not None:
+        for name, path in export_files(args.export, args.size).items():
+            print(f"{name}: {path}")
+        return 0
     base = args.api_url or LocalDev.from_environ(os.environ).api_url
     with httpx.Client(base_url=base, timeout=60.0) as http:
         try:

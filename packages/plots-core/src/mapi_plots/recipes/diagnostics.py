@@ -311,7 +311,13 @@ def convergence(inp: RecipeInput, s: ConvergenceSettings) -> Figure:
     ).properties(width=s.width // 2, height=height, title="Effective sample size")
 
     top = diag.head(s.table_rows)
-    cells = []
+    # Left edge of each column as a fraction of the table width: the parameter label needs
+    # most of the room (band-scaled columns made long labels run into the numbers).
+    columns = {"parameter": 0.0, "R-hat": 0.5, "ESS bulk": 0.63, "ESS tail": 0.76, "status": 0.89}
+    cells = [
+        {"row": -1, "column": col, "x": x, "text": col, "status": "header"}
+        for col, x in columns.items()
+    ]
     for i, r in enumerate(top.itertuples(index=False)):
         for col, text in (
             ("parameter", str(r.parameter)),
@@ -320,22 +326,22 @@ def convergence(inp: RecipeInput, s: ConvergenceSettings) -> Figure:
             ("ESS tail", f"{r.ess_tail:.0f}" if np.isfinite(r.ess_tail) else "n/a"),
             ("status", str(r.status)),
         ):
-            cells.append({"row": i, "column": col, "text": text, "status": r.status})
-    table = (
-        alt.Chart(named("table"))
-        .mark_text(align="left", baseline="middle", fontSize=11)
-        .encode(
-            x=alt.X(
-                "column:N",
-                sort=["parameter", "R-hat", "ESS bulk", "ESS tail", "status"],
-                axis=alt.Axis(orient="top", title=None, labelAngle=0),
-            ),
-            y=alt.Y("row:O", axis=None),
-            text="text:N",
-            color=alt.Color("status:N", scale=status_scale, legend=None),
-        )
-        .properties(width=s.width, height=16 * max(1, len(top)), title="Worst parameters")
+            cells.append(
+                {"row": i, "column": col, "x": columns[col], "text": text, "status": r.status}
+            )
+    cell = alt.Chart(named("table")).encode(
+        x=alt.X("x:Q", axis=None, scale=alt.Scale(domain=[0, 1], nice=False)),
+        y=alt.Y("row:O", axis=None),
+        text="text:N",
     )
+    table = alt.layer(
+        cell.transform_filter(alt.FieldEqualPredicate(field="status", equal="header")).mark_text(
+            align="left", baseline="middle", fontSize=11, fontWeight="bold", color="#666"
+        ),
+        cell.transform_filter(alt.FieldOneOfPredicate(field="status", oneOf=["ok", "check"]))
+        .mark_text(align="left", baseline="middle", fontSize=11, limit=int(s.width * 0.48))
+        .encode(color=alt.Color("status:N", scale=status_scale, legend=None)),
+    ).properties(width=s.width, height=16 * (len(top) + 1), title="Worst parameters")
 
     trace_params = list(diag["parameter"].head(s.max_traces))
     trace_parts, rank_parts = [], []

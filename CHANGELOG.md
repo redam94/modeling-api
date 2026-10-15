@@ -92,6 +92,19 @@ milestone releases are tagged on `main`.
   listens at `MAPI_GCS_ENDPOINT`; the OpenAPI document publishes the run-event payload schemas.
 - **docs**: "CLI and Python client" and "Web app and plot sandbox" reference pages; the run
   protocol documents job payloads, object names and UI views.
+- **server**: `GET /v1/runs/{run_id}/plots` (`list_run_plots`) returns the plots a succeeded
+  run rendered, sanitized on every read; the client has `runs.plots()`.
+- **web**: the score form takes the input dataset and the spec's side tables (defaulting to the
+  versions the fit used), shows the score run's own plots and pivots the summary by statistic.
+- **devops**: `scripts/seed.py --export DIR` writes the E33 demo tables, score payloads and spec
+  as files for the web app.
+- **tests**: the M1 exit criterion end to end against the running stack: `tests/e2e`
+  (Python client: fit, SSE, signed manifest and bundle generations, the bundle read back with
+  the corpus' checks, five E33 score requests, bootstrap deletion, forged events) and
+  `apps/web/e2e/m1-flow.e2e.spec.ts` (the same flow in the browser, plots in the sandbox
+  iframe); a server test proves the finalizer refuses tampered output of the real runner.
+- **docs**: "Your first model in the web app" guide; the local-development page covers the
+  first start, `make e2e` and the state under `.local/`.
 
 ### Changed
 - **server**: the object store is `ShimObjectStore` built from the shim's `control` key file
@@ -110,6 +123,9 @@ milestone releases are tagged on `main`.
 - **devops**: `make dev` starts `mapi-gcs-shim serve --root …` with CORS and passes the resolved
   URLs to the Vite servers; compose mounts the shim volume read-only into `api` and `worker`
   (`MAPI_GCS_ROOT`) so they can load the principal keys.
+- **sdk**: zarr zips record their data-variable order (group attribute `_mapi_var_order`,
+  removed again on read).
+- **devops**: `make e2e` runs the browser `@e2e` suite (it ran the mocked smoke suite).
 
 ### Fixed
 - **spec**: static score validation binds dataset names to canonical names at every
@@ -117,6 +133,21 @@ milestone releases are tagged on `main`.
 - **server**: the dry-run and evaluate endpoints declare their `Run` response in OpenAPI.
 - **seed**: `make seed` ships E33's raw schema with the data, so the fit keeps
   `market: new_levels` and new-market scoring works.
+- **client**: the run event stream decodes the live `progress` and `log` frames (sent without
+  an id) as `RunLiveFrame`; it aborted on the first progress frame of a real fit.
+- **server**: model lineage records the side-table versions a fit read (it was always empty).
+- **sdk**: variables come back from a zarr zip in their written order; plot recipes that
+  default to the first variable chose a random one on a bundle read back from storage
+  (`mmm.response_curves` failed). The response-curve recipe also prefers variables with a
+  `channel` dim.
+- **plot-sandbox**: composite Vega-Lite specs (concat, facet) rendered at zero width; they now
+  keep their own size and scroll when wider than the frame.
+- **plots**: the convergence table's columns no longer overlap; the fan chart draws and
+  captions only the intervals a summary holds.
+- **web**: a spec opened right after "Save spec" no longer shows unsaved changes (the editor
+  used CRLF for models created empty on Windows user agents), so Fit is enabled; the run page's
+  result column no longer overflows; result tables show dates as dates.
+- **devops**: `make seed` ignores a `SIZE` exported by other toolchains (conda).
 
 ## [0.1.0] — M0: contract layer — 2026-10-15
 

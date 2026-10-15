@@ -80,7 +80,9 @@ export function prepareVegaLite(spec: JsonObject, datasets: PlotDatasets, theme:
   out.config = deepMerge(vegaConfig(theme), spec.config) as JsonObject;
   const isUnit = UNIT_KEYS.some((k) => k in spec);
   if (isUnit && spec.width === undefined) out.width = "container";
-  if (spec.autosize === undefined) out.autosize = { type: "fit-x", contains: "padding" };
+  // Vega-Lite only supports "fit" autosizing for single and layered views. On a composite
+  // (concat/facet/repeat) spec it computes a zero-width view, so those keep their own sizes.
+  if (spec.autosize === undefined) out.autosize = isUnit ? { type: "fit-x", contains: "padding" } : { type: "pad" };
   delete out.$schema;
   return out;
 }

@@ -7,7 +7,7 @@ import { STARTER_SPEC } from "@/features/editor/starter";
 import { initialMappings, toIngestMapping, validateMappings } from "./datasets/mapping";
 import { buildPipeline, schemaDelta } from "./editor/pipeline";
 import { missingnessHeatmap, quickChart, stateArrayPlot } from "./plots/builtin-specs";
-import { buildScoreRequest, defaultScoreForm, parseSel } from "./score/request";
+import { buildScoreRequest, defaultScoreForm, parseSel, sideTableOptions } from "./score/request";
 
 describe("buildPipeline", () => {
   it("joins the document with stages, resolved steps, split and issues", () => {
@@ -53,6 +53,25 @@ describe("score request", () => {
       output: { kind: "expected", summary: ["mean", "hdi_90"], draws: 0, units: "original", names: "dataset", vars: ["y_hat"] },
       seed: 7,
     });
+  });
+
+  it("sends the payload dataset and the non-empty side tables", () => {
+    const form = { ...defaultScoreForm(), data: " dataset://default/e33_future@v1 ", sideTables: { fx: "dataset://default/fx_daily@v1", holidays: " " } };
+    const out = buildScoreRequest(form, "model://default/eu-geo-mmm@v1");
+    expect("request" in out && out.request.data).toBe("dataset://default/e33_future@v1");
+    expect("request" in out && out.request.side_tables).toEqual({ fx: "dataset://default/fx_daily@v1" });
+    const bad = buildScoreRequest({ ...form, data: "file:///etc/passwd", sideTables: { fx: "nope" } }, "model://default/m@v1");
+    expect("problems" in bad && bad.problems.map((p) => p.field).sort()).toEqual(["data", "sideTables.fx"]);
+  });
+
+  it("lists the spec's side tables with their score policy", () => {
+    const doc = { data: { side_tables: { holidays: { ref: "dataset://shared/h@v3", score_policy: "pinned" }, fx: { ref: "dataset://default/fx@v1", score_policy: "supplied" }, junk: 3 } } };
+    expect(sideTableOptions(doc)).toEqual([
+      { name: "fx", policy: "supplied", ref: "dataset://default/fx@v1" },
+      { name: "holidays", policy: "pinned", ref: "dataset://shared/h@v3" },
+    ]);
+    expect(sideTableOptions(null)).toEqual([]);
+    expect(sideTableOptions({ data: { side_tables: [] } })).toEqual([]);
   });
 
   it("reports field problems instead of building a bad request", () => {

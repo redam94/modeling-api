@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import typer
-from mapi_client import Client, RunEnd, RunEventFrame, RunSnapshot
+from mapi_client import Client, RunEnd, RunEventFrame, RunLiveFrame, RunSnapshot
 from mapi_spec.api import Run
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
@@ -38,6 +38,8 @@ def follow_run(api: Client, out: Output, run: Run, *, title: str) -> Run:
                 final = item.run
             elif isinstance(item, RunEventFrame):
                 renderer.handle(item.event)
+            elif isinstance(item, RunLiveFrame):
+                renderer.handle(item)
             elif isinstance(item, RunEnd):
                 final = item.run
     return final

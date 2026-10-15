@@ -71,6 +71,9 @@ class _Curves:
     def __init__(self, inp: RecipeInput, s: ResponseCurveSettings) -> None:
         ds = inp.require(*CURVE_GROUPS)
         names = [n for n in map(str, ds.data_vars) if n not in (s.spend_var, s.current_var)]
+        if s.var is None:
+            # the response is the variable over channel x grid, not a per-geo scale beside it
+            names = [n for n in names if s.channel in ds[n].dims] or names
         self.var = pick_var(ds[names] if names else ds, s.var)
         da = ds[self.var]
         if s.channel not in da.dims:

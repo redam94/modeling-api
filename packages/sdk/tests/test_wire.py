@@ -404,4 +404,21 @@ def test_zarr_zip_opens_with_zarr_zipstore(tmp_path) -> None:  # type: ignore[no
         back = xr.open_zarr(store, zarr_format=3, consolidated=False, chunks=None).load()
     finally:
         store.close()
+    # plain zarr readers see the reserved variable-order attribute; ours remove it
+    assert back.attrs.pop(wire.VAR_ORDER_ATTR) == [str(v) for v in ds.data_vars]
     xr.testing.assert_identical(normalise_dataset(back.drop_encoding()), normalise_dataset(ds))
+
+
+def test_variable_order_survives_the_round_trip() -> None:
+    """zarr lists members in no fixed order; "first variable" defaults depend on it."""
+    names = ["contribution", "spend", "target_scale", "a_last", "current_spend"]
+    ds = xr.Dataset({n: ("x", np.arange(3.0)) for n in names}, attrs={"k": 1})
+    assert list(wire.read_zarr_zip(wire.write_zarr_zip(ds)).data_vars) == names
+    tree = xr.DataTree.from_dict({"/": xr.Dataset(), "/derived/curves": ds})
+    back = wire.read_datatree_zip(wire.write_datatree_zip(tree))
+    node = back["derived/curves"]
+    assert isinstance(node, xr.DataTree)
+    assert list(node.to_dataset().data_vars) == names and node.attrs == {"k": 1}
+    assert wire.VAR_ORDER_ATTR not in back.attrs
+    with pytest.raises(wire.WireFormatError, match="reserved"):
+        wire.write_zarr_zip(ds.assign_attrs({wire.VAR_ORDER_ATTR: ["x"]}))

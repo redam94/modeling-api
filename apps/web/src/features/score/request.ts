@@ -17,7 +17,11 @@ export interface ScoreForm {
   horizonDim: string;
   horizonPeriods: string;
   inputsStage: string;
+  /** Payload dataset (future inputs, new levels, the window to score); empty = none. */
+  data: string;
   scenario: string;
+  /** Side-table name → dataset reference; empty values are not sent. */
+  sideTables: Record<string, string>;
   interventions: InterventionRow[];
   output: {
     kind: "expected" | "predictive";
@@ -38,7 +42,9 @@ export function defaultScoreForm(): ScoreForm {
     horizonDim: "time",
     horizonPeriods: "8",
     inputsStage: "raw",
+    data: "",
     scenario: "",
+    sideTables: {},
     interventions: [],
     output: { kind: "expected", summary: ["mean", "hdi_90"], draws: "0", units: "original", names: "dataset", vars: "" },
     seed: "",
@@ -95,10 +101,22 @@ export function buildScoreRequest(form: ScoreForm, modelRef: string): { request:
     if (!Number.isInteger(n) || n < 1 || n > 100_000) problems.push({ field: "horizonPeriods", message: "Periods must be a whole number from 1." });
     else request.horizon = { dim: form.horizonDim, periods: n };
   }
+  if (form.data.trim()) {
+    if (!DATASET_REF_RE.test(form.data.trim())) problems.push({ field: "data", message: "Use a dataset reference like dataset://default/eu_media_future@v1." });
+    else request.data = form.data.trim();
+  }
   if (form.scenario.trim()) {
     if (!DATASET_REF_RE.test(form.scenario.trim())) problems.push({ field: "scenario", message: "Use a dataset reference like dataset://default/plan_2027h1@v1." });
     else request.scenario = form.scenario.trim();
   }
+  const sideTables: Record<string, string> = {};
+  for (const [name, ref] of Object.entries(form.sideTables)) {
+    const value = ref.trim();
+    if (!value) continue;
+    if (!DATASET_REF_RE.test(value)) problems.push({ field: `sideTables.${name}`, message: `Side table ${name}: use a dataset reference.` });
+    else sideTables[name] = value;
+  }
+  if (Object.keys(sideTables).length) request.side_tables = sideTables;
   const interventions: NonNullable<ScoreRequest["interventions"]> = [];
   form.interventions.forEach((row, i) => {
     if (!NAME_RE.test(row.var)) {
@@ -141,4 +159,28 @@ export function buildScoreRequest(form: ScoreForm, modelRef: string): { request:
     else request.seed = seed;
   }
   return problems.length ? { problems } : { request };
+}
+
+/** A side table the fitted spec declares, as the score form offers it. */
+export interface SideTableOption {
+  name: string;
+  /** `pinned` tables are replayed from the fit and cannot be supplied. */
+  policy: "pinned" | "latest" | "supplied";
+  /** The reference the spec used at fit time (the form's default for `supplied`). */
+  ref: string;
+}
+
+/** Side tables of a spec document (`data.side_tables`), tolerant of malformed input. */
+export function sideTableOptions(document: unknown): SideTableOption[] {
+  const data = (document as { data?: { side_tables?: unknown } } | null | undefined)?.data;
+  const tables = data?.side_tables;
+  if (typeof tables !== "object" || tables === null || Array.isArray(tables)) return [];
+  const out: SideTableOption[] = [];
+  for (const [name, raw] of Object.entries(tables as Record<string, unknown>)) {
+    if (typeof raw !== "object" || raw === null) continue;
+    const { ref, score_policy } = raw as { ref?: unknown; score_policy?: unknown };
+    const policy = score_policy === "pinned" || score_policy === "latest" ? score_policy : "supplied";
+    out.push({ name, policy, ref: typeof ref === "string" ? ref : "" });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
 }

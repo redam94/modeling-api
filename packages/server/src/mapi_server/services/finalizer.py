@@ -39,6 +39,7 @@ from mapi_spec.jobs import (
     FIT_SIDECARS,
     INGEST_DATA,
     INGEST_SCHEMA,
+    SIDE_TABLE_PREFIX,
     DescribeJob,
     MetricsSidecar,
 )
@@ -506,6 +507,23 @@ class Finalizer:
 
         return await self._commit(v, apply)
 
+    async def _side_table_shas(self, session: AsyncSession, run: m.Run) -> dict[str, str]:
+        """``{name: sha256}`` of the side-table versions the run read (lineage, plan §8.6)."""
+        out: dict[str, str] = {}
+        for key, ref in sorted((run.inputs or {}).items()):
+            if not key.startswith(SIDE_TABLE_PREFIX) or not isinstance(ref, dict):
+                continue
+            stored = m.DatasetVersion.objects[INGEST_DATA]
+            stmt = select(m.DatasetVersion).where(
+                m.DatasetVersion.tenant_id == run.tenant_id,
+                stored["bucket"].astext == str(ref.get("bucket")),
+                stored["name"].astext == str(ref.get("name")),
+            )
+            dv = (await session.execute(stmt)).scalars().first()
+            if dv is not None and dv.sha256:
+                out[key.removeprefix(SIDE_TABLE_PREFIX)] = dv.sha256
+        return out
+
     async def _data_hash(self, run: m.Run) -> str | None:
         if run.dataset_id is None or run.dataset_version is None:
             return None
@@ -553,6 +571,7 @@ class Finalizer:
             executor=run.executor,
             resource_class=run.resource_class,
             lib_versions=v.manifest.lib_versions,
+            side_tables=await self._side_table_shas(session, run),
         )
         artifacts = [
             ObjectRef(name=name, size=o.size, content_type=o.content_type, crc32c=o.crc32c)

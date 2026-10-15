@@ -23,7 +23,7 @@ from mapi_client.auth import BearerAuth, TokenProvider
 from mapi_client.config import ClientConfig, ConfigError, load_config
 from mapi_client.errors import TransportError, UnexpectedResponse, http_status_of, problem_of
 from mapi_client.pagination import AsyncPaginator, Paginator
-from mapi_client.sse import RunEnd, RunEventFrame, RunSnapshot, RunStreamItem
+from mapi_client.sse import RunEnd, RunEventFrame, RunLiveFrame, RunSnapshot, RunStreamItem
 
 __all__ = [
     "AsyncClient",
@@ -37,6 +37,7 @@ __all__ = [
     "RetryPolicy",
     "RunEnd",
     "RunEventFrame",
+    "RunLiveFrame",
     "RunSnapshot",
     "RunStreamItem",
     "ScoreResult",

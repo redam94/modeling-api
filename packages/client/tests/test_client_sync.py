@@ -288,6 +288,14 @@ def _sse(*frames: str) -> httpx.Response:
     )
 
 
+def _live(kind: str, seq: int) -> str:
+    data = (
+        f'{{"run_id":"run_01","attempt":1,"seq":{seq},"ts":"2026-10-15T00:00:00Z",'
+        f'"type":"{kind}","payload":{{"fraction":0.5}}}}'
+    )
+    return f"event: {kind}\ndata: {data}\n\n"
+
+
 def test_stream_resumes_with_last_event_id(
     client: Client, api: respx.MockRouter, example: Ex, sleeps: list[float]
 ) -> None:
@@ -306,6 +314,7 @@ def test_stream_resumes_with_last_event_id(
                 event(1),
                 ": keepalive\n\n",
                 event(2, "progress"),
+                _live("progress", 5),  # live frames carry no id and never move the cursor
             ),  # connection drops before 'end'
             _sse(
                 encode_sse("snapshot", run), event(2), event(3, "complete"), encode_sse("end", done)
@@ -318,6 +327,7 @@ def test_stream_resumes_with_last_event_id(
         "RunSnapshot",
         "RunEventFrame",
         "RunEventFrame",
+        "RunLiveFrame",
         "RunSnapshot",
         "RunEventFrame",
         "RunEnd",

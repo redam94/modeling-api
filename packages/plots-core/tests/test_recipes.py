@@ -205,6 +205,9 @@ def test_convergence_flags_the_disagreeing_chain(bundle: Any) -> None:
         "ESS tail",
         "status",
     }
+    header = table[table["status"] == "header"]
+    assert header["text"].tolist() == ["parameter", "R-hat", "ESS bulk", "ESS tail", "status"]
+    assert header["x"].is_monotonic_increasing and header["x"].iloc[1] >= 0.5
 
 
 def test_convergence_all_good_and_limits() -> None:
@@ -317,6 +320,14 @@ def test_fan_from_summary_and_explicit_split() -> None:
     assert pd.Timestamp(fan["split"].iloc[0]) == pd.Timestamp("2024-03-03")
     np.testing.assert_allclose(fan["hi_90"] - fan["lo_90"], 30.0, rtol=1e-5)
     assert "After it" in caption(plot)
+    assert "the shaded bands are the 50% and 90% intervals" in caption(plot)
+    # a summary with a 90% interval only: no empty 50% band layer, an honest caption
+    only90 = tree["summary"].to_dataset().sel(stat=["mean", "hdi_90_lower", "hdi_90_upper"])
+    plot = get_recipe("core.ppc_fan").render({"summary": only90}, point="mean")
+    only = frame(plot, "fan")
+    assert "lo_50" not in only.columns or only["lo_50"].isna().all()
+    assert "lo_50" not in json.dumps(plot.spec)
+    assert "the shaded band is the 90% interval." in caption(plot)
 
 
 def test_fan_split_from_attrs_and_no_facet() -> None:
@@ -587,6 +598,11 @@ def test_response_curves_with_per_channel_spend_grid() -> None:
     assert (c["lo"] == c["hi"]).all()
     with pytest.raises(RecipeDataError):
         get_recipe("mmm.response_curves").render({"response_curves": point}, channel="geo")
+    # per-geo scales next to the response are never mistaken for it, whatever the order
+    scaled = xr.Dataset({"target_scale": ("geo", [2.0, 3.0])}).merge(ds)
+    assert next(iter(scaled.data_vars)) == "target_scale"
+    again = frame(get_recipe("mmm.response_curves").render({"response_curves": scaled}), "curves")
+    assert again.loc[again.channel == "b", "spend"].max() == 80.0
 
 
 def test_marginal_cost_and_roi(bundle: Any) -> None:

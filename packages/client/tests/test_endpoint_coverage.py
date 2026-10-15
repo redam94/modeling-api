@@ -68,6 +68,7 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "get_run": lambda: c.get_run("run_1"),
     "run_events": lambda: c.list_run_events("run_1", None, None),
     "run_logs": lambda: c.run_logs("run_1", None, None),
+    "list_run_plots": lambda: c.list_run_plots("run_1", None, None),
     "cancel_run": lambda: c.cancel_run("run_1"),
     "resume_run": lambda: c.resume_run("run_1"),
     "retry_run": lambda: c.retry_run("run_1", RunRetry(), None),

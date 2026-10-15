@@ -1473,6 +1473,12 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "Page[LogLine]", 200, errors=_NF, paginated=True, query=(*_PAGE, "attempt", "stream"),
     ),
     EndpointDecl(
+        "GET", "/v1/runs/{run_id}/plots", "list_run_plots",
+        "Sanitized plots a finished run rendered (score/evaluate fans, counterfactuals)",
+        "Page[PlotSpec]", 200, errors=(*_NF, _E.INTEGRITY_FAILURE), paginated=True,
+        query=_PAGE,
+    ),
+    EndpointDecl(
         "POST", "/v1/runs/{run_id}:cancel", "cancel_run", "Request cancellation (idempotent)",
         "Run", 202, errors=(*_NF, _E.CONFLICT),
     ),
