@@ -122,6 +122,15 @@ def test_login_with_token_rejects_typos_and_bad_tokens(
     assert res.exit_code == 1 and "no token on stdin" in res.stderr
 
 
+def test_login_creates_a_new_named_profile(
+    mapi: Invoke, api: respx.MockRouter, example: Ex, isolated_env: Path
+) -> None:
+    api.get("http://127.0.0.1:8000/v1/me").respond(200, json=token_me(example))
+    res = mapi("--profile", "fresh", "login", "--with-token", input=TOKEN + "\n")
+    assert res.exit_code == 0, res.output
+    assert config_of(isolated_env)["profiles"]["fresh"] == {"token": TOKEN}
+
+
 def test_login_with_token_on_a_v02_server_warns(
     mapi: Invoke, api: respx.MockRouter, isolated_env: Path
 ) -> None:

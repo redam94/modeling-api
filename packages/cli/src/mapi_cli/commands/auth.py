@@ -37,7 +37,7 @@ from mapi_spec.tenancy import TokenPrincipal, UserPrincipal, parse_project_selec
 from mapi_spec.tokens import parse_token
 from rich.text import Text
 
-from mapi_cli.output import Output, safe
+from mapi_cli.output import Output, safe, strip_control
 from mapi_cli.state import AppState, cli_errors, state
 
 __all__ = ["binding_conflict", "login", "logout", "use", "whoami"]
@@ -46,10 +46,20 @@ __all__ = ["binding_conflict", "login", "logout", "use", "whoami"]
 # ------------------------------------------------------------------------------- helpers
 
 
-def _persist(st: AppState, values: dict[str, Any], *, unset: tuple[str, ...] = ()) -> str | None:
-    """Write settings into the target profile (created when missing). Returns its name."""
+def _persist(
+    st: AppState,
+    values: dict[str, Any],
+    *,
+    unset: tuple[str, ...] = (),
+    create: bool = False,
+) -> str | None:
+    """Write settings into the target profile. Returns its name. ``create`` also creates a
+    named profile that does not exist yet (``mapi --profile new login``)."""
     profile = st.target_profile()
-    if values or unset:
+    missing = profile is not None and profile not in read_config_file(st.config_file).get(
+        "profiles", {}
+    )
+    if values or unset or (create and missing):
         update_profile(st.config_file, profile, set_values=values, unset=unset)
     return profile
 
@@ -149,7 +159,7 @@ def login(
     if with_token:
         _login_token(st, settings, verify=verify)
         return
-    profile = _persist(st, settings)
+    profile = _persist(st, settings, create=True)
     cfg = st.config()
     if cfg.token is not None:
         where = "MAPI_TOKEN" if cfg.sources.get("token") == f"env:{ENV_TOKEN}" else "the profile"
@@ -196,7 +206,7 @@ def login(
 def _login_token(st: AppState, settings: dict[str, Any], *, verify: bool) -> None:
     out = st.output
     token = str(parse_token(_read_token_input()))  # rejects typos without echoing them
-    _persist(st, settings)
+    _persist(st, settings, create=True)
     loaded = st.config()
     cfg = loaded.with_overrides(token=token)
     me = None
@@ -234,7 +244,7 @@ def _report_login(
     if out.json_mode:
         out.emit_json(doc)
         return
-    who = doc["who"] or "(identity not reported)"
+    who = strip_control(str(doc["who"] or "(identity not reported)"))
     out.success(f"Logged in to {cfg.base_url} as {who}")
     out.kv(
         [
