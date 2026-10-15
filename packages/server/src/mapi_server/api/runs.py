@@ -223,7 +223,8 @@ async def sse_stream(
     async with ctx.hub.subscribe(run_id) as sub:
         async with ctx.db.session() as session:
             run = await load_run(session, None, run_id)
-            view = await run_view(session, run)
+            first_progress = await session.get(m.RunProgress, run_id)
+            view = run_dto(run, first_progress)
             last_log = (
                 await session.execute(
                     select(m.RunLog.attempt, m.RunLog.seq)
@@ -233,7 +234,11 @@ async def sse_stream(
                 )
             ).first()
         log_cursor: tuple[int, int] = (last_log[0], last_log[1]) if last_log else (0, -1)
-        progress_key = (view.attempt, view.progress.seq) if view.progress is not None else (0, -1)
+        # keyed by the progress row's own attempt: after an infra retry the row can still
+        # hold the previous attempt's (higher) seq, which must not hold back the new one
+        progress_key = (
+            (first_progress.attempt, first_progress.seq) if first_progress is not None else (0, -1)
+        )
         sent_state = view.state
         yield _frame(SseEventName.SNAPSHOT, view.model_dump_json(), retry=SSE_RETRY_MS)
         last_write = time.monotonic()
