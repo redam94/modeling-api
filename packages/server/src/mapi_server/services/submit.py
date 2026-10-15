@@ -45,7 +45,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
-from mapi_server.services.bundles import verified_bundle_object
+from mapi_server.services.bundles import verified_bundle_object, verify_bundle_inputs
 from mapi_server.services.runs import Scope, apply_transition, create_run
 from mapi_server.services.runspec import StoredRef
 from mapi_server.services.specs import (
@@ -351,6 +351,9 @@ async def submit_retry(
     """A *new* run from a failed one (same resolved payload and pinned inputs)."""
     if old.state != RunState.FAILED.value:
         raise Conflict(f"only failed runs can be retried (run is {old.state})")
+    if old.model_version_id is not None:  # its pinned bundle inputs must still verify
+        mv = await _ready_model_version(session, ctx.scope, old.model_version_id)
+        await verify_bundle_inputs(ctx.store, ctx.signer, mv, old.inputs)
     payload = copy.deepcopy(old.payload)
     if body.seed is not None:
         if old.kind == RunKind.FIT.value and isinstance(payload.get("model"), dict):

@@ -4,7 +4,9 @@ Per run, in order — each step durable before the next:
 
 1. **lease**: ``QUEUED → DISPATCHING`` under ``FOR UPDATE SKIP LOCKED`` (many dispatchers
    may run), and write the **intent row** ``(run, attempt, nonce, hmac_key)``; commit;
-2. write the :class:`~mapi_spec.run.RunSpec` to ``bootstrap/<nonce>`` (write-once);
+2. re-verify any bundle inputs against the model version's signed manifest (plan §8.6:
+   the signature is checked whenever URLs are minted), then write the
+   :class:`~mapi_spec.run.RunSpec` to ``bootstrap/<nonce>`` (write-once);
 3. ``executor.submit(RunSubmit, nonce)`` — rate-limited by a token bucket;
 4. record the handle and apply ``submitted`` (``DISPATCHING → PROVISIONING``).
 
@@ -34,6 +36,7 @@ from sqlalchemy import select
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.executors import check_placement
+from mapi_server.services.bundles import BundleIntegrityError, verify_bundle_inputs
 from mapi_server.services.runs import apply_transition, now
 from mapi_server.services.runspec import build_runspec
 
@@ -175,6 +178,8 @@ class Dispatcher:
         handle: Handle | None = None
         error: Exception | None = None
         try:
+            if run.model_version_id is not None:
+                await self._verify_bundles(run)
             runspec = await build_runspec(
                 ctx.store, run=run, attempt=att, runs_bucket=ctx.buckets.runs
             )
@@ -202,6 +207,14 @@ class Dispatcher:
             with contextlib.suppress(Exception):
                 handle = await self.executor.adopt(att.nonce)
         await self._record(run_id, attempt_no, att.nonce, handle, error)
+
+    async def _verify_bundles(self, run: m.Run) -> None:
+        async with self.ctx.db.session() as session:
+            mv = await session.get(m.ModelVersion, run.model_version_id)
+            if mv is None or mv.tenant_id != run.tenant_id or mv.project_id != run.project_id:
+                raise BundleIntegrityError("the run's model version no longer exists")
+            session.expunge(mv)
+        await verify_bundle_inputs(self.ctx.store, self.ctx.signer, mv, run.inputs)
 
     async def _record(
         self,
@@ -234,11 +247,18 @@ class Dispatcher:
             if run.state != RunState.DISPATCHING.value or run.attempt != attempt_no:
                 return
             detail = "the executor did not accept the execution"
-            if isinstance(error, MapiError):
+            code = ErrorCode.INFRA_ERROR
+            if isinstance(error, BundleIntegrityError):
+                # no URLs were minted; a bundle that fails verification never will verify
+                detail = f"the model bundle failed verification: {error.detail}"
+                code = ErrorCode.INTEGRITY_FAILURE
+                log.error("run %s/%s: %s", run_id, attempt_no, detail)
+            elif isinstance(error, MapiError):
                 detail = f"{detail}: {error.detail}"
             elif error is not None:
                 detail = f"{detail}: {type(error).__name__}"
-            permanent = isinstance(error, NotFound)  # an input object is gone: no retry
+            # an input object is gone, or the bundle does not verify: no retry
+            permanent = isinstance(error, NotFound | BundleIntegrityError)
             if not permanent and run.infra_retries < ctx.settings.max_infra_retries:
                 run.infra_retries += 1
                 await apply_transition(session, run, RunTrigger.INFRA_RETRY, Actor.DISPATCHER)
@@ -248,7 +268,7 @@ class Dispatcher:
                     run,
                     RunTrigger.FAIL_INFRA,
                     Actor.DISPATCHER,
-                    problem=Problem.from_code(ErrorCode.INFRA_ERROR, detail[:2000]),
+                    problem=Problem.from_code(code, detail[:2000]),
                 )
         with contextlib.suppress(Exception):
             await ctx.store.delete(ctx.buckets.bootstrap, bootstrap_key(nonce))

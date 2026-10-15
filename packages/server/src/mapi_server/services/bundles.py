@@ -4,15 +4,25 @@ Before any URL to a bundle object is handed out — to a client or to a score ru
 model version's signed :class:`~mapi_spec.run.BundleManifest` must verify, its identity must
 match the registry row, and the object's live metadata must match the signed generation,
 size and CRC32C. Links are generation-pinned and short-lived (``ARTIFACT_LINK_TTL``).
+:func:`verify_bundle_inputs` re-runs that check for a run's pinned bundle inputs at every
+point URLs are minted for them (dispatch and retry, not only submission).
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import timedelta
-from typing import Any
+from typing import Any, Final
 
 from mapi_spec.api import ARTIFACT_LINK_TTL, ArtifactLink
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.jobs import (
+    BUNDLE_MANIFEST_OUTPUT,
+    FIT_BUNDLE,
+    INPUT_BUNDLE,
+    INPUT_BUNDLE_MANIFEST,
+    INPUT_PLOTS,
+)
 from mapi_spec.run import BundleManifest, BundleObject
 from mapi_spec.storage import NotFound, ObjectStore
 from pydantic import ValidationError
@@ -21,7 +31,21 @@ from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
 from mapi_server.services.signing import BundleSigner
 
-__all__ = ["BundleIntegrityError", "artifact_link", "verified_bundle_object", "verified_manifest"]
+__all__ = [
+    "BUNDLE_INPUT_OBJECTS",
+    "BundleIntegrityError",
+    "artifact_link",
+    "verified_bundle_object",
+    "verified_manifest",
+    "verify_bundle_inputs",
+]
+
+BUNDLE_INPUT_OBJECTS: Final[Mapping[str, str]] = {
+    INPUT_BUNDLE: FIT_BUNDLE,
+    INPUT_BUNDLE_MANIFEST: BUNDLE_MANIFEST_OUTPUT,
+    INPUT_PLOTS: "plots.json",
+}
+"""Run input name → the bundle object it must be (as recorded in the signed manifest)."""
 
 
 class BundleIntegrityError(MapiError):
@@ -61,6 +85,27 @@ async def verified_bundle_object(
     if meta.size != obj.size or meta.crc32c != obj.crc32c or meta.generation != obj.generation:
         raise BundleIntegrityError(f"bundle object {name!r} does not match its signed manifest")
     return obj
+
+
+async def verify_bundle_inputs(
+    store: ObjectStore, signer: BundleSigner, mv: m.ModelVersion, inputs: Mapping[str, Any]
+) -> None:
+    """Raise :class:`BundleIntegrityError` unless every bundle input of a run is exactly the
+    object the model version's signed manifest records (bucket, key and generation), and that
+    object still matches it in storage."""
+    for input_name, object_name in BUNDLE_INPUT_OBJECTS.items():
+        ref = inputs.get(input_name)
+        if ref is None:
+            continue
+        obj = await verified_bundle_object(store, signer, mv, object_name)
+        try:
+            pinned = stored_ref(ref)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise BundleIntegrityError(f"run input {input_name!r} is malformed") from exc
+        if pinned != (obj.bucket, obj.key, obj.generation):
+            raise BundleIntegrityError(
+                f"run input {input_name!r} does not match the signed bundle manifest"
+            )
 
 
 async def artifact_link(
