@@ -200,7 +200,7 @@ Idempotent calls (`GET`s, and `POST`s with an idempotency key) are retried on 50
 504 and connection errors, honouring `Retry-After` (`ClientConfig.max_retries`, default 2).
 `429` answers are handled as described in [Quotas and rate limits](#quotas-and-rate-limits).
 
-## Projects, tokens and usage <span class="mapi-badge mapi-badge--soon">v0.3</span>
+## Projects, tokens and usage <span class="mapi-badge">v0.3</span> { #projects-tokens-and-usage }
 
 On a multi-tenant API the client needs credentials and a project
 ([Tenancy and authentication](../concepts/tenancy-and-auth.md)). Credentials come from an

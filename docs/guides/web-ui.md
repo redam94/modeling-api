@@ -2,7 +2,7 @@
 description: Every page of the Expert web app - datasets, the spec editor, runs, the model inspector, scoring, the catalog and settings - and what each control does.
 ---
 
-# The Expert web app <span class="mapi-badge">v0.2</span>
+# The Expert web app <span class="mapi-badge">v0.3</span>
 
 The web app is the Expert-mode front end of the platform: data scientists upload data, write
 and validate specs, fit them, inspect the fitted models and score them, all against the same
@@ -22,7 +22,8 @@ This page walks through every page in navigation order. The screenshots come fro
 
 | Element | What it does |
 |---|---|
-| Sidebar | Home, Datasets, Build, Runs, Models, Score and Catalog; Settings at the bottom. **Collapse** (++cmd+b++) narrows it to icons. |
+| Project switcher | The tenant and project everything on the page acts in, with your role there; switch, create a project (tenant admins) or open its members. See [Authentication](authentication.md#browser-sign-in). |
+| Sidebar | Home, Datasets, Build, Runs, Models, Score and Catalog; under **Project**, Usage, Members and Tokens; under **Platform**, Admin (operators only); Settings at the bottom. **Collapse** (++cmd+b++) narrows it to icons. |
 | **Jump to…** (++cmd+k++ or ++slash++) | A command palette: go to any page, start a new spec, switch the theme, or paste an id (`run_…`, `mdl_…`, `ds_…`, `spc_…`) to open it. |
 | **API connected** | Polls `GET /readyz`: green when PostgreSQL, the object store and the catalog are ready, amber (*API degraded*) or red (*API unreachable*) otherwise. It links to **Settings**, which shows each check. |
 | **Guided / Expert** | The persona switch (remembered in this browser). |
@@ -284,6 +285,18 @@ versions, and the latency of each readiness check.
 The six tasks an analyst will follow in v0.4: choose a template, answer questions about the
 data, enter beliefs as ROI ranges, run, read the report and scorecard, try what-if scenarios.
 Today the page explains them and links back to Expert mode.
+
+## Usage, Members, Tokens and Admin <span class="mapi-badge">v0.3</span> { #team-pages }
+
+The pages for running the platform for several people and organisations are described, with
+screenshots, in the [Administration guide](administration.md):
+
+| Page | Who sees it | What it is for |
+|---|---|---|
+| **Usage** | Everyone in the project; **Organisation** needs a tenant-wide admin | [Cost and quota use](administration.md#cost-and-usage) for a UTC day or month |
+| **Members** | Everyone; changes need an admin | [Who has which role](administration.md#projects-and-members), invitations |
+| **Tokens** | Everyone (their own); admins see everyone's | [API tokens](administration.md#api-tokens): create, list, revoke |
+| **Admin** | Platform operators | [Tenants](administration.md#tenants), [quotas](administration.md#quotas), [kill switches](administration.md#kill-switches), [executors](administration.md#executors) and the [audit log](administration.md#audit-log) |
 
 ## Where next
 
