@@ -89,3 +89,9 @@ name = "Contracts are pure Pydantic"
 type = "forbidden"
 source_modules = ["mapi_spec"]
 forbidden_modules = ["numpy", "xarray", "pandas"]
+
+[[tool.importlinter.contracts]]
+name = "Plot sanitizer and templates are JSON-only (control-plane safe)"
+type = "forbidden"
+source_modules = ["mapi_plots.sanitize", "mapi_plots.templates", "mapi_plots._testing"]
+forbidden_modules = ["numpy", "xarray", "pandas", "altair", "plotly", "pyarrow", "mapi_sdk"]

@@ -1711,12 +1711,14 @@ name = "mapi-plots"
 version = "0.0.0"
 source = { editable = "packages/plots-core" }
 dependencies = [
+    { name = "jsonschema" },
     { name = "mapi-spec" },
 ]
 
 [package.optional-dependencies]
 recipes = [
     { name = "altair" },
+    { name = "numpy" },
     { name = "pandas" },
     { name = "plotly" },
     { name = "pyarrow" },
@@ -1726,7 +1728,9 @@ recipes = [
 [package.metadata]
 requires-dist = [
     { name = "altair", marker = "extra == 'recipes'", specifier = ">=5.4" },
+    { name = "jsonschema", specifier = ">=4.23" },
     { name = "mapi-spec", editable = "packages/spec" },
+    { name = "numpy", marker = "extra == 'recipes'", specifier = ">=2.0" },
     { name = "pandas", marker = "extra == 'recipes'", specifier = ">=2.2" },
     { name = "plotly", marker = "extra == 'recipes'", specifier = ">=6.0" },
     { name = "pyarrow", marker = "extra == 'recipes'", specifier = ">=17" },
