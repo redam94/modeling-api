@@ -36,6 +36,7 @@ from mapi_spec.api import (
     RunEventView,
     RunRetry,
     ScoreCall,
+    ScoreCallResult,
     SpecCreate,
     SpecDoc,
     SpecRevision,
@@ -59,6 +60,7 @@ from mapi_client._common import (
     ScoreResult,
     as_run_create,
     as_score_request,
+    call_timeout,
     dataset_version_error,
     events_page_with_cursor,
     http_timeout,
@@ -168,6 +170,7 @@ class AsyncClient:
                     params=dict(call.params) or None,
                     json=call.json,
                     headers=dict(call.headers),
+                    timeout=call_timeout(self.config, call.server_wait),
                 )
             except httpx.TransportError as exc:
                 if self._retry.should_retry(call, attempt, None):
@@ -689,12 +692,22 @@ class AsyncModels(_Resource):
         while True:
             remaining = None if deadline is None else deadline - time.monotonic()
             this_wait = wait if remaining is None else max(0, min(wait, int(remaining)))
-            res = await self._c.send(
-                calls.score_model(model_id, version, body, wait=this_wait, idempotency_key=key)
-            )
-            if res.done or res.run.state.terminal:
+            res: ScoreCallResult | None
+            try:
+                res = await self._c.send(
+                    calls.score_model(model_id, version, body, wait=this_wait, idempotency_key=key)
+                )
+            except TransportError as exc:
+                # No answer within wait + timeout: the run is still going. Replaying the
+                # same Idempotency-Key is safe (no second run); anything else is a failure.
+                if not isinstance(exc.__cause__, httpx.ReadTimeout):
+                    raise
+                res = None
+            if res is not None and (res.done or res.run.state.terminal):
                 break
             if deadline is not None and time.monotonic() >= deadline:
+                if res is None:
+                    raise TimeoutError(f"score request {key} is still running after {timeout} s")
                 raise TimeoutError(f"score run {res.run.id} is still {res.run.state.value}")
             if this_wait < 1:
                 await self._c._sleep(poll_interval)

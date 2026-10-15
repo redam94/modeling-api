@@ -49,6 +49,9 @@ class Call[T]:
     headers: Mapping[str, str] = field(default_factory=dict)
     retry_safe: bool = False
     """The operation is idempotent by definition (e.g. ``:cancel``) without a key."""
+    server_wait: float | None = None
+    """Seconds the server may hold the response (``Prefer: wait``); the read timeout of
+    this request is extended by it, so a long-poll is not cut by the client's own timeout."""
 
     @property
     def idempotent(self) -> bool:

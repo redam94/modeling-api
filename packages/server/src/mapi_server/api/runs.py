@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Annotated
 
 from fastapi import APIRouter, Header, Path, Query, Request, status
@@ -515,8 +515,19 @@ async def retry_run(
     return await render_run(session, run.id, 201)
 
 
-async def wait_terminal(ctx: ServerContext, run_id: str, timeout: float) -> m.Run:
-    """Wait (via notifications, with polling) until the run is terminal or ``timeout``."""
+async def wait_terminal(
+    ctx: ServerContext,
+    run_id: str,
+    timeout: float,
+    *,
+    disconnected: Callable[[], Awaitable[bool]] | None = None,
+) -> m.Run:
+    """Wait (via notifications, with polling) until the run is terminal or ``timeout``.
+
+    ``disconnected`` (``Request.is_disconnected``) is checked on every wake-up, at least
+    every ``sse_poll_s``: a client that gave up does not keep a waiter and a notification
+    subscription alive for the rest of its ``Prefer: wait``.
+    """
     deadline = time.monotonic() + timeout
     async with ctx.hub.subscribe(run_id) as sub:
         while True:
@@ -524,6 +535,8 @@ async def wait_terminal(ctx: ServerContext, run_id: str, timeout: float) -> m.Ru
                 run = await load_run(session, None, run_id)
             remaining = deadline - time.monotonic()
             if RunState(run.state).terminal or remaining <= 0:
+                return run
+            if disconnected is not None and await disconnected():
                 return run
             await sub.wait(min(remaining, ctx.settings.sse_poll_s))
             await asyncio.sleep(0)

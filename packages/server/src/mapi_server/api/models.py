@@ -306,7 +306,7 @@ async def score_model(
     wait = parse_prefer_wait(prefer)
     headers: dict[str, str] = {}
     if wait:
-        await wait_terminal(ctx, run_id, float(wait))
+        await wait_terminal(ctx, run_id, float(wait), disconnected=request.is_disconnected)
         headers[PREFERENCE_APPLIED_HEADER] = f"wait={wait}"
     result = await _score_result(ctx, run_id)
     return JSONResponse(

@@ -40,6 +40,7 @@ __all__ = [
     "ScoreResult",
     "as_run_create",
     "as_score_request",
+    "call_timeout",
     "dataset_version_error",
     "events_page_with_cursor",
     "http_timeout",
@@ -55,6 +56,14 @@ USER_AGENT: Final = f"mapi-client/{__version__}"
 
 def http_timeout(cfg: ClientConfig) -> httpx.Timeout:
     return httpx.Timeout(cfg.timeout)
+
+
+def call_timeout(cfg: ClientConfig, server_wait: float | None) -> httpx.Timeout:
+    """Timeout of one API call: the client's, with the read timeout extended by the time
+    the server may legitimately hold the response (``Prefer: wait``)."""
+    if not server_wait:
+        return http_timeout(cfg)
+    return httpx.Timeout(cfg.timeout, read=cfg.timeout + server_wait)
 
 
 def sse_timeout(cfg: ClientConfig) -> httpx.Timeout:
