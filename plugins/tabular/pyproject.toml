@@ -1,0 +1,23 @@
+[project]
+name = "mapi-plugin-tabular"
+version = "0.0.0"
+description = "Tabular ML model plugins"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
+dependencies = [
+  "mapi-sklearn",
+  "mapi-steps",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mapi_plugin_tabular"]
+
+[tool.uv.sources]
+mapi-sklearn = { workspace = true }
+mapi-steps = { workspace = true }

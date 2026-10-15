@@ -1,0 +1,24 @@
+[project]
+name = "mapi-pymc"
+version = "0.0.0"
+description = "PyMC model base classes for modeling-api"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
+dependencies = [
+  "mapi-sdk",
+  "pymc>=6.3",
+  "arviz>=1.0",
+  "nutpie>=0.16",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mapi_pymc"]
+
+[tool.uv.sources]
+mapi-sdk = { workspace = true }

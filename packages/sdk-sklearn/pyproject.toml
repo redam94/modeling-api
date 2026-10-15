@@ -1,0 +1,24 @@
+[project]
+name = "mapi-sklearn"
+version = "0.0.0"
+description = "scikit-learn / xgboost model base classes for modeling-api"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
+dependencies = [
+  "mapi-sdk",
+  "scikit-learn>=1.6",
+  "skops>=0.11",
+  "xgboost>=3.0",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mapi_sklearn"]
+
+[tool.uv.sources]
+mapi-sdk = { workspace = true }

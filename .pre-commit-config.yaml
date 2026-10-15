@@ -1,0 +1,18 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff-format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+      - id: no-plans
+        name: plans are never committed
+        entry: bash -c 'if git diff --cached --name-only | grep -E "^(plans/|docs/architecture-plan.md)"; then echo "plan files must not be committed"; exit 1; fi'
+        language: system
+        pass_filenames: false
