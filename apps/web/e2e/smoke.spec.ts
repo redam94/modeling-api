@@ -103,6 +103,43 @@ test("spec editor validates live and shows the pipeline with its split", async (
   await expect(pipeline.getByText("Keeps a 6-step tail along time", { exact: false })).toBeVisible();
 });
 
+async function typeInEditor(page: import("@playwright/test").Page, text: string) {
+  const editor = page.getByTestId("yaml-editor");
+  await expect(editor.locator(".view-lines")).toContainText("apiVersion: mapi/v1", { timeout: 20_000 });
+  await editor.locator(".view-line").first().click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type(text);
+  await expect(editor.locator(".view-lines")).toContainText(text);
+}
+
+test("spec editor keeps unsaved edits when a newer revision appears", async ({ page }) => {
+  await page.goto(`/build/${SPEC}`);
+  // The revision being edited is pinned in the URL once the latest one is known.
+  await expect(page).toHaveURL(/[?&]rev=2\b/);
+  await typeInEditor(page, "# MY UNSAVED EDIT");
+  await expect(page.getByText("unsaved changes", { exact: true })).toBeVisible();
+  // Another tab (or the CLI) saves r3.
+  const status = await page.evaluate(async (spec) => {
+    const res = await fetch(`http://127.0.0.1:8000/v1/specs/${spec}/revisions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ yaml: "apiVersion: mapi/v1\nkind: ModelSpec\n", parent_revision: 2 }),
+    });
+    return res.status;
+  }, SPEC);
+  expect(status).toBe(201);
+  // Let the spec query go stale (staleTime 10 s), then refocus the window to refetch it.
+  await page.waitForTimeout(10_500);
+  await page.evaluate(() => {
+    // TanStack Query's focusManager listens for `visibilitychange` on window.
+    window.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect(page.getByRole("status").filter({ hasText: "r3" })).toBeVisible();
+  await expect(page.getByTestId("yaml-editor").locator(".view-lines")).toContainText("# MY UNSAVED EDIT");
+  await expect(page.getByText("unsaved changes", { exact: true })).toBeVisible();
+});
+
 test("a CSV is previewed locally, mapped, uploaded to the signed URL and ingested", async ({ page }) => {
   await page.goto("/datasets/ds_01jaf3a1b2c3d4e5f6g7h8j9k0?upload=true");
   const csv = "date,market,revenue,spend\n2026-01-01,de,10.5,3\n2026-01-02,de,11,4\n";

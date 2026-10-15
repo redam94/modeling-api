@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, FlaskConical, GitCompare, Play, Save, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, FlaskConical, GitCompare, History, Play, Save, ShieldCheck, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { parse as parseYaml } from "yaml";
 
@@ -25,6 +25,7 @@ import { DiffView } from "@/features/editor/diff-view";
 import { setSpecSchema } from "@/features/editor/monaco-setup";
 import { buildPipeline } from "@/features/editor/pipeline";
 import { PipelineCards } from "@/features/editor/pipeline-cards";
+import { shouldLoadRevision } from "@/features/editor/revision-sync";
 import { STARTER_SPEC } from "@/features/editor/starter";
 import { YamlEditor, type YamlEditorHandle } from "@/features/editor/yaml-editor";
 import { env } from "@/env";
@@ -97,20 +98,50 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
 
   const [text, setText] = useState(specId ? "" : STARTER_SPEC);
   const [base, setBase] = useState(specId ? "" : "");
+  /** The revision `base` (and so the editor text) came from; null until one is loaded. */
+  const [baseRev, setBaseRev] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [compare, setCompare] = useState<{ a: number; b: number } | null>(null);
   const editor = useRef<YamlEditorHandle | null>(null);
   const loadedKey = useRef<string | null>(null);
+  const dirty = text !== base;
+  const latest = spec.data?.latest_revision;
 
-  // Load the selected revision into the editor once per (spec, revision).
+  // Pin the revision being edited into the URL once the latest is known, so a later refetch
+  // that sees a newer latest revision cannot change what the editor shows.
+  useEffect(() => {
+    if (specId && revision === undefined && latest !== undefined) {
+      void navigate({ to: "/build/$specId", params: { specId }, search: { rev: latest }, replace: true });
+    }
+  }, [specId, revision, latest, navigate]);
+
+  // Load the selected revision into the editor once per (spec, revision), and never over
+  // unsaved edits unless the user asked for that revision explicitly.
   useEffect(() => {
     if (!loaded.data) return;
     const key = `${loaded.data.spec_id}@${loaded.data.revision}`;
-    if (loadedKey.current === key) return;
+    if (!shouldLoadRevision(key, loadedKey.current, dirty)) return;
     loadedKey.current = key;
     setText(loaded.data.yaml);
     setBase(loaded.data.yaml);
-  }, [loaded.data]);
+    setBaseRev(loaded.data.revision);
+  }, [loaded.data, dirty]);
+
+  /** Load revision `r` on request, discarding unsaved edits only after the user agrees. */
+  const openRevision = (r: number) => {
+    if (!specId) return;
+    if (dirty && !window.confirm(`Discard your unsaved changes and load r${r}?`)) return;
+    loadedKey.current = null;
+    setCompare(null);
+    if (r === loaded.data?.revision) {
+      loadedKey.current = `${loaded.data.spec_id}@${r}`;
+      setText(loaded.data.yaml);
+      setBase(loaded.data.yaml);
+      setBaseRev(r);
+      return;
+    }
+    void navigate({ to: "/build/$specId", params: { specId }, search: { rev: r } });
+  };
 
   const { state: validation, validating, validateNow } = useLiveValidation(text);
   const allIssues = useMemo(
@@ -133,9 +164,10 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
   const createRun = useCreateRun();
   const fitKey = useRef(newIdempotencyKey());
 
-  const dirty = text !== base;
-  const latest = spec.data?.latest_revision;
-  const viewingOld = specId !== null && selectedRev !== undefined && latest !== undefined && selectedRev !== latest;
+  const editingRev = baseRev ?? selectedRev;
+  const viewingOld = specId !== null && editingRev !== undefined && latest !== undefined && editingRev < latest;
+  // Selected in the URL (history navigation) while the editor still holds edits of another one.
+  const heldBack = dirty && loaded.data !== undefined && baseRev !== null && loaded.data.revision !== baseRev;
   const valid = validation.response?.valid ?? false;
   const errorCount = allIssues.filter((i) => (i.severity ?? "error") === "error").length;
   const saving = createSpec.isPending || createRevision.isPending;
@@ -162,6 +194,7 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
           toast.success(`Saved revision ${r.revision}`, r.valid ? "Static validation passed." : "Saved with validation issues.");
           loadedKey.current = `${r.spec_id}@${r.revision}`;
           setBase(text);
+          setBaseRev(r.revision);
           setMessage("");
           void navigate({ to: "/build/$specId", params: { specId: r.spec_id }, search: { rev: r.revision } });
         },
@@ -179,7 +212,9 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
     editor.current?.reveal(range);
   };
 
-  const canRun = specId !== null && selectedRev !== undefined && !dirty;
+  // Runs use the revision whose text is on screen, and only when it is saved as shown.
+  const runRev = !dirty && baseRev !== null ? baseRev : undefined;
+  const canRun = specId !== null && runRev !== undefined;
 
   if (specId && (spec.isError || loaded.isError)) {
     return <ErrorNotice error={spec.error ?? loaded.error} title="This spec could not be loaded" />;
@@ -192,7 +227,7 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
         meta={
           <>
             {spec.data ? <Mono>{spec.data.ref}</Mono> : <span>Not saved yet</span>}
-            {selectedRev ? <Badge variant="outline">r{selectedRev}{viewingOld ? ` of ${latest}` : ""}</Badge> : null}
+            {editingRev ? <Badge variant="outline">r{editingRev}{viewingOld ? ` of ${latest}` : ""}</Badge> : null}
             {dirty ? <Badge variant="warning">unsaved changes</Badge> : null}
             {validating ? (
               <span className="inline-flex items-center gap-1"><Spinner className="size-3" /> validating</span>
@@ -229,9 +264,9 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
               title={canRun ? "Run a sandboxed dry-run of this revision" : "Save first"}
               onClick={() =>
                 specId &&
-                selectedRev !== undefined &&
+                runRev !== undefined &&
                 dryRun.mutate(
-                  { specId, revision: selectedRev },
+                  { specId, revision: runRev },
                   {
                     onSuccess: (r) => void navigate({ to: "/runs/$runId", params: { runId: r.id } }),
                     onError: (e) => toast.error("Dry-run failed to start", errorMessage(e)),
@@ -246,9 +281,9 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
               title={!canRun ? "Save first" : !valid ? "Fix the errors first" : "Fit this revision"}
               onClick={() =>
                 specId &&
-                selectedRev !== undefined &&
+                runRev !== undefined &&
                 createRun.mutate(
-                  { key: fitKey.current, body: { kind: "fit", spec_id: specId, revision: selectedRev } },
+                  { key: fitKey.current, body: { kind: "fit", spec_id: specId, revision: runRev } },
                   {
                     onSuccess: (r) => {
                       fitKey.current = newIdempotencyKey();
@@ -267,6 +302,23 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_26rem]">
         <div className="grid min-w-0 content-start gap-3">
+          {specId && !compare && heldBack && loaded.data ? (
+            <RevisionBanner
+              text={`r${loaded.data.revision} is selected, but the editor still holds your unsaved changes to r${baseRev}.`}
+              action={`Load r${loaded.data.revision}`}
+              onAction={() => loaded.data && openRevision(loaded.data.revision)}
+            />
+          ) : specId && !compare && viewingOld && latest !== undefined && baseRev !== null ? (
+            <RevisionBanner
+              text={
+                dirty
+                  ? `A newer revision r${latest} exists. Your unsaved changes are based on r${baseRev}; keep editing, or load r${latest}.`
+                  : `You are viewing r${baseRev}. The latest revision is r${latest}.`
+              }
+              action={`Load r${latest}`}
+              onAction={() => openRevision(latest)}
+            />
+          ) : null}
           {compare && specId ? (
             <RevisionDiff specId={specId} a={compare.a} b={compare.b} onClose={() => setCompare(null)} />
           ) : specId && loaded.isPending ? (
@@ -312,13 +364,8 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
               {specId ? (
                 <RevisionList
                   revisions={revisions.data?.items ?? []}
-                  current={selectedRev}
-                  onOpen={(r) => {
-                    if (dirty && !window.confirm("Discard unsaved changes?")) return;
-                    loadedKey.current = null;
-                    setCompare(null);
-                    void navigate({ to: "/build/$specId", params: { specId }, search: { rev: r } });
-                  }}
+                  current={editingRev}
+                  onOpen={openRevision}
                   onCompare={(a, b) => setCompare({ a, b })}
                 />
               ) : null}
@@ -327,6 +374,18 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
         </aside>
       </div>
     </>
+  );
+}
+
+function RevisionBanner({ text, action, onAction }: { text: string; action: string; onAction: () => void }) {
+  return (
+    <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/40 bg-warning/8 px-3 py-2 text-[13px]">
+      <History className="size-4 shrink-0 text-warning" aria-hidden />
+      <span className="min-w-0 flex-1">{text}</span>
+      <Button size="sm" variant="outline" onClick={onAction}>
+        {action}
+      </Button>
+    </div>
   );
 }
 
