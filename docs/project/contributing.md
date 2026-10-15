@@ -18,7 +18,11 @@ make help             # every developer entry point
 | `make typecheck` | mypy over every type-checked package |
 | `make conformance` | The conformance corpus at size `tiny` (`FIXTURE=e33` for one) |
 | `make docs-serve` | This site with live reload |
-| `make docs-build` | Regenerate the catalog pages and build the site strictly |
+| `make docs-build` | Regenerate the generated reference pages and build the site strictly |
+| `make docs-test` | Run every documentation snippet and the docs checks |
+| `make dev` | The whole stack locally without Docker ([Local, without Docker](../operations/local-development.md)) |
+| `make docker-build` / `make compose-up` | Build the images / run the compose stack ([Docker Compose](../operations/docker.md)) |
+| `make release-check` | Version consistency, changelog entry, no plan files, pinned images |
 
 ## Branching model
 
@@ -91,9 +95,18 @@ The site is MkDocs Material (`mkdocs.yml` at the repository root, pages in `docs
 - **Every Python example is executed.** Examples live in `docs/snippets/*.py`, are included in
   pages with `--8<-- "file.py:section"`, and `conformance/tests/test_docs_snippets.py` runs each
   file. Add a section with `# --8<-- [start:name]` / `# --8<-- [end:name]`.
-- **Catalog pages are generated.** `scripts/gen_docs_catalog.py` writes the steps, models, plot
-  recipes, spec schema and error-code pages into `docs/reference/generated/` (git-ignored); an
-  MkDocs hook runs it before every build.
-- `make docs-build` must pass (`mkdocs build --strict`).
+- **Platform examples run against a live stack.** The client, HTTP and remote-CLI walkthroughs
+  (`docs/snippets/client_tour.py`, `http_tour.sh`, `cli_remote.sh`) run under `make e2e`; the
+  local CLI walkthrough (`cli_local.sh`) runs in the default suite
+  (`conformance/tests/test_docs_platform.py`). Shell snippets use the same section markers.
+- **Reference pages are generated.** `scripts/gen_docs_catalog.py` writes the steps, models,
+  plot recipes, spec schema and error-code pages, and `scripts/gen_docs_reference.py` the CLI
+  reference, the server settings and a copy of `apps/web/openapi.json`, into
+  `docs/reference/generated/` (git-ignored); an MkDocs hook runs both before every build.
+- **New `MAPI_*` variables go into the configuration reference**
+  (`docs/operations/configuration.md`); a test scans the source tree for them.
+- **Screenshots** live in `docs/assets/screenshots/` (at most 300 KB each, each used by a page).
+  `make docs-screenshots` recaptures them from a running, seeded stack.
+- `make docs-build` must pass (`mkdocs build --strict`, with anchor validation).
 - Write for two readers: an analyst who wants to know what a feature does for them, and a data
   scientist who wants to know exactly how it works.

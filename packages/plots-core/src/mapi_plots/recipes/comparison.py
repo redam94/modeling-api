@@ -10,6 +10,7 @@ import pandas as pd
 import xarray as xr
 from pydantic import Field
 
+from mapi_plots.palette import REFERENCE
 from mapi_plots.recipes import _stats
 from mapi_plots.recipes._base import (
     Figure,
@@ -121,7 +122,7 @@ def model_comparison(inp: RecipeInput, s: ComparisonSettings) -> Figure:
                 alt.Tooltip("se:Q", format=".1f"),
             ],
         ),
-        base.mark_rule(strokeDash=[4, 4], color="#999").encode(x=alt.datum(float(best["elpd"]))),
+        base.mark_rule(strokeDash=[4, 4], color=REFERENCE).encode(x=alt.datum(float(best["elpd"]))),
         data=named("comparison"),
     ).properties(width=s.width // 2, height=28 * len(frame), title="Predictive accuracy")
     right = alt.layer(
@@ -137,7 +138,7 @@ def model_comparison(inp: RecipeInput, s: ComparisonSettings) -> Figure:
                 alt.Tooltip("dse:Q", format=".1f"),
             ],
         ),
-        base.mark_rule(color="#999").encode(x=alt.datum(0)),
+        base.mark_rule(color=REFERENCE).encode(x=alt.datum(0)),
         data=named("comparison"),
     ).properties(width=s.width // 2, height=28 * len(frame), title="Relative to the best")
     chart = alt.hconcat(left, right)

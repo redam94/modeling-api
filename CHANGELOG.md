@@ -5,6 +5,307 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.2.0] — M1: local vertical slice — 2026-10-15
+
+The platform now runs end to end on one machine. From the Expert web app (or the CLI, the Python
+client or plain HTTP) you can upload data, write and validate a spec, fit an E33-style
+hierarchical geo MMM, inspect it, and score it: an 8-week forecast, a new market, a weekly EUR
+plan and counterfactuals. Real Cloud Run and multi-tenancy come in M2 (v0.3.0). In summary:
+
+- **server** (`mapi-server`): a single-tenant FastAPI control plane on PostgreSQL with
+  procrastinate. It includes a dispatcher, a level-triggered reconciler, a metadata-only
+  finalizer with signed bundle manifests, HMAC-verified run events, SSE with resume, and
+  `local-process` and `docker` executors. It never imports plugin code or array libraries.
+- **runner** (`mapi-runner`): a trusted supervisor and an untrusted worker harness for ingest,
+  describe, validate, fit, score, evaluate, derive and render runs. It produces signed events,
+  checkpoints, partial manifests and the `ui/` views the web app reads.
+- **gcs-shim** (`mapi-gcs-shim`): a local Cloud Storage emulator. It provides generations,
+  server-side CRC32C/MD5, V4 signed URLs and POST policies, per-principal permissions and a
+  write-once bundles bucket.
+- **web** and **plot-sandbox**: the Expert web app (YAML editor with live validation, runs with
+  live progress and logs, model inspection, scoring) and a separate-origin, CSP-locked plot
+  renderer.
+- **client** and **cli**: a typed sync/async Python client for every v1 endpoint, and `mapi`
+  for local and remote work.
+- **devops**: `make dev` (the whole stack without Docker), digest-pinned images, docker
+  compose, `make seed`, `make e2e` and `make release-check`.
+- **conformance**: the corpus also runs through the live stack (`run --stack URL`), and a
+  sklearn conformal fixture is added (7 fixtures in all).
+- **docs**: a 10-minute quickstart, guides to the web app, CLI, client and HTTP API, a
+  deployment section, an architecture overview and a security model.
+
+Every workspace package and both web apps are versioned 0.2.0. Contract v0.1 gains only
+additive changes.
+
+### Added
+- **spec**: the M1 shared contracts, so the API, runner, executors, GCS shim, web app and plot
+  sandbox can be built in parallel against one source of truth:
+  - `mapi_spec.run`: the run state machine (`RunState`, `RunTrigger`, a pure `transition()` with
+    owners, failure classes and attempt bumps), the `RunSpec` bootstrap object, typed event payloads,
+    canonical HMAC-SHA256 event signing, the `{"mapi_event": …}` stdout format, `OutputManifest`
+    with metadata-only verification, the signed `BundleManifest`, `RunnerEnv` and exit codes.
+  - `mapi_spec.storage`: `ObjectMeta`, the async `ObjectStore` protocol, signed GET/PUT and POST
+    policy shapes, GCS-style CRC32C/MD5 helpers, storage errors and the bucket/key naming scheme.
+  - `mapi_spec.api`: REST DTOs for the v1 surface (each with examples), SSE/`Prefer`/idempotency
+    helpers and `M1_ENDPOINTS`, the machine-readable endpoint table.
+  - `mapi_spec.localdev`: local ports, origins and environment variable names.
+- **spec** (additive, contract v0.1): `RunKind` gains the fan-out parents (`sweep`, `backtest`,
+  `sbc`, `campaign`); `RunEventType` gains `checkpoint` and `metric`; `RunEvent.ts` must be
+  timezone-aware and is normalised to UTC; `PlotSpec` carries a schema example. The new schemas
+  join `export_schemas()` and the contract snapshot.
+- **docs**: the "HTTP API (v1)" and "Run protocol" reference pages
+  (`docs/reference/http-api.md`, `docs/reference/run-protocol.md`).
+- **gcs-shim**: `mapi-gcs-shim`, a local Cloud Storage emulator. It serves the GCS JSON-API
+  subset the platform uses, with generation and metageneration preconditions, plus V4 signed
+  GET (with `Range`) and PUT URLs and V4 POST policies (key prefix and size range). It adds
+  IAM-lite principals (`control`, and `exec` with bootstrap get and delete only), a write-once
+  bundles bucket, lifecycle sweeps, and server-computed CRC32C and MD5 on a crash-safe
+  filesystem backend. `ShimObjectStore` and the import-guarded `GcsObjectStore` implement
+  `mapi_spec.storage.ObjectStore`, and a `pytest11` plugin provides the `gcs_shim` fixture.
+  See `docs/reference/gcs-shim.md`.
+- **runner**: `mapi-runner`, the sandboxed run harness. A trusted supervisor reads and deletes
+  the bootstrap object, starts the untrusted worker with a scrubbed environment (uid 10001 and
+  no-new-privs as root, dev mode otherwise), signs every stdout event, caps logs, events,
+  scratch and outputs, handles SIGTERM/deadline with partial manifests from checkpoints, and
+  uploads outputs plus a signed `OutputManifest`. The worker runs `ingest` (CSV/Parquet with a
+  column mapping or the MFF preset, zarr zip, netCDF), `describe`, `validate` (dry run), `fit`
+  (bundle, sidecars, plots, `ui/` views, checkpoints), `score`, `evaluate`, `derive` and
+  `render` through the SDK harness. See `docs/reference/runner.md`.
+- **server**: the M1 control plane (`mapi-server api|worker|migrate|dev`): FastAPI `/v1` API
+  covering every `M1_ENDPOINTS` row plus `/v1/me`, spec diff, `ui/` redirects and `:evaluate`;
+  SQLAlchemy 2 + Alembic schema (every row carries `tenant_id`/`project_id`) with procrastinate
+  on the same Postgres; dispatcher (token bucket, intent row before submit), level-triggered
+  reconciler (executor status is the liveness source of truth, STALLED is a warning, orphan
+  adoption by nonce), metadata-only finalizer with server-side copy and EC P-256 signed bundle
+  manifests verified at URL minting; HMAC-verified event ingestion from the executor pipe and
+  `POST /internal/events`; SSE with `Last-Event-ID` resume over one LISTEN connection per
+  process; `local-process` and `docker`/`docker-gvisor` executors; OpenAPI 3.1 export
+  (`python -m mapi_server.openapi`).
+- **web**: `apps/web`, the Expert-mode web app (React 19, TanStack Router/Query/Table, Tailwind +
+  shadcn/ui, Monaco + monaco-yaml with live `:validate` diagnostics, SSE run progress per chain,
+  dataset upload via signed URLs, model inspection, scoring) and the Guided-mode shell; a pnpm
+  workspace at the repo root.
+- **plot-sandbox**: `apps/plot-sandbox`, the separate-origin Vega-Lite/Plotly renderer with a
+  strict CSP and a validated `postMessage` protocol.
+- **devops**: containers, local orchestration and developer tooling for M1:
+  - `images/`: `base-bayes` (with a `worker` target), `base-ml` (no PyMC), `base-forecast`,
+    `server` (control plane only, checked with import-linter and package assertions at build
+    time), `gcs-shim` and `web` (nginx serving the app and the plot sandbox on separate origins
+    with strict CSPs). All are digest-pinned, run as non-root with a read-only root filesystem,
+    and have health checks. The runner images bake the catalog JSON and a warmed PyTensor/Numba
+    cache.
+  - `docker-compose.yml` (postgres 16, gcs-shim, migrate, api, worker with the local-process
+    executor, web, plot-sandbox), `compose.override.example.yml` and `.env.example`, which
+    documents every `MAPI_*` variable.
+  - `scripts/dev.py` (`make dev`): runs the whole stack without Docker (pgserver PostgreSQL, GCS
+    shim, migrations, api, worker and both Vite servers) with readiness probes, prefixed logs and
+    clean process-group shutdown. Also `stop`, `status`, `migrate`, `db-shell` and `clean`.
+  - New make targets: `dev`/`run`, `stop`, `status`, `migrate`, `db-shell`, `seed` (the E33 demo
+    through the API), `clean-local`, `docker-build`, `docker-pin`, `compose-up/down/logs`,
+    `web-build`, `web-test`, `test-all`, `e2e` and `release-check`.
+  - CI: a web job, a build-only docker job for every image, and digest-pin and compose checks.
+  - Docs: "Local development" and "Containers and docker compose" (Operations), and
+    `deploy/README.md`.
+- **client**: `mapi-client`, the typed Python client (`Client`, `AsyncClient`) for every
+  `M1_ENDPOINTS` row: DTO-typed resources, RFC 7807 errors as `MapiError` subclasses,
+  idempotency keys and safe retries, lazy pagination, SSE with `Last-Event-ID` resume, dataset
+  upload through signed URLs, `Prefer: wait` scoring, CRC32C-checked transfers without the API
+  token. See `docs/reference/cli.md`.
+- **cli**: `mapi` (`new`, `check`, `fit`, `score` locally or `--remote`, `runs`, `datasets`,
+  `catalog`, `plugin init|test`, `spec upgrade`, `serve`, `config`), with `--json` output and
+  ANSI-stripped untrusted text.
+- **spec**: `mapi_spec.jobs`, the run job contract shared by the dispatcher and the runner
+  (`IngestJob`, `DescribeJob`, `ScoreJob`, `EvaluateJob`, `DeriveJob`, `RenderJob`, input and
+  output object names, `MetricsSidecar`, `DATASET_SCHEMA_ATTR`), and `mapi_spec.views`, the UI
+  views the web app reads (`mapi.preview/v1`, `mapi.profile/v1`, `mapi.tree-index/v1`).
+- **gcs-shim**: CORS for the web origin (`--cors-origin`, default `$MAPI_WEB_ORIGIN`) so browsers
+  can use signed URLs, and a `wrap` hook on `ShimServer`.
+- **server**: `mapi-server dev` (and so `mapi serve`) starts an embedded GCS shim when nothing
+  listens at `MAPI_GCS_ENDPOINT`; the OpenAPI document publishes the run-event payload schemas.
+- **docs**: "CLI and Python client" and "Web app and plot sandbox" reference pages; the run
+  protocol documents job payloads, object names and UI views.
+- **server**: `GET /v1/runs/{run_id}/plots` (`list_run_plots`) returns the plots a succeeded
+  run rendered, sanitized on every read; the client has `runs.plots()`.
+- **web**: the score form takes the input dataset and the spec's side tables (defaulting to the
+  versions the fit used), shows the score run's own plots and pivots the summary by statistic.
+- **devops**: `scripts/seed.py --export DIR` writes the E33 demo tables, score payloads and spec
+  as files for the web app.
+- **tests**: the M1 exit criterion end to end against the running stack: `tests/e2e`
+  (Python client: fit, SSE, signed manifest and bundle generations, the bundle read back with
+  the corpus' checks, five E33 score requests, bootstrap deletion, forged events) and
+  `apps/web/e2e/m1-flow.e2e.spec.ts` (the same flow in the browser, plots in the sandbox
+  iframe); a server test proves the finalizer refuses tampered output of the real runner.
+- **docs**: "Your first model in the web app" guide; the local-development page covers the
+  first start, `make e2e` and the state under `.local/`.
+- **docs**: the M1 documentation set. A landing page with screenshots of the running platform
+  (`docs/assets/screenshots/`, captured by `scripts/docs_screenshots.mjs` and shrunk by
+  `scripts/optimise_screenshots.py`, `make docs-screenshots`); a validated "zero to first
+  model in 10 minutes" quickstart; guides to every page of the Expert web app, the CLI, the
+  Python client and the HTTP API; an OpenAPI explorer page (a vendored, hash-pinned Redoc
+  bundle over the committed `openapi.json`, `scripts/vendor_redoc.py`); a Deployment section
+  (local, Docker Compose, container images, a configuration reference naming every `MAPI_*`
+  variable, troubleshooting); an architecture overview and a security model; an updated
+  roadmap (M2 cloud and multi-tenant, M3 Guided mode). `scripts/gen_docs_reference.py` (run by
+  `make docs-build` and the MkDocs hook) generates the CLI reference from the Typer app, the
+  server settings table from `Settings`, and copies the OpenAPI document.
+  `conformance/tests/test_docs_platform.py` runs the CLI walkthrough, checks the generated
+  pages, the configuration reference, the Redoc pin and the screenshots, and (under `make e2e`)
+  runs the client, HTTP and remote-CLI walkthroughs against the live stack.
+
+### Changed
+- **docs**: anchors are validated in strict builds; mermaid is pinned to 11.17.2 instead of
+  Material's moving `mermaid@11`.
+- **server**: the object store is `ShimObjectStore` built from the shim's `control` key file
+  (`MAPI_GCS_ROOT`, default `$MAPI_DATA_DIR/gcs`, or `MAPI_GCS_KEY_FILE`); local executions get
+  the `exec` token from the same directory unless `MAPI_EXEC_TOKEN` is set. RunSpec payloads and
+  input names follow `mapi_spec.jobs` (score data under `dataset`, side tables under
+  `side.<name>`, `bundle.manifest` passed to score runs); `evaluate`/`derive` default to the fit
+  dataset and `render` gets the bundle's `plots.json`. `metrics.json` is read as
+  `MetricsSidecar`.
+- **runner**: fit writes `coords.json` and ingest writes `summary.json` (the control plane's
+  CoordPlan metadata); `preview.json`, `profile.json` and `ui/tree_index.json` follow
+  `mapi_spec.views`. The runner tests run against the real GCS shim.
+- **web**: `openapi.json` and `schema.d.ts` are generated from the real server
+  (`apps/web/scripts/gen_openapi.py`, checked in CI); the `@e2e` specs can reuse a running
+  stack on any ports.
+- **devops**: `make dev` starts `mapi-gcs-shim serve --root …` with CORS and passes the resolved
+  URLs to the Vite servers; compose mounts the shim volume read-only into `api` and `worker`
+  (`MAPI_GCS_ROOT`) so they can load the principal keys.
+- **sdk**: zarr zips record their data-variable order (group attribute `_mapi_var_order`,
+  removed again on read).
+- **devops**: `make e2e` runs the browser `@e2e` suite (it ran the mocked smoke suite).
+
+### Fixed
+- **spec**: static score validation binds dataset names to canonical names at every
+  `inputs_stage`, as the runtime does (a weekly EUR plan entering at `weekly` was refused).
+- **server**: the dry-run and evaluate endpoints declare their `Run` response in OpenAPI.
+- **seed**: `make seed` ships E33's raw schema with the data, so the fit keeps
+  `market: new_levels` and new-market scoring works.
+- **client**: the run event stream decodes the live `progress` and `log` frames (sent without
+  an id) as `RunLiveFrame`; it aborted on the first progress frame of a real fit.
+- **server**: model lineage records the side-table versions a fit read (it was always empty).
+- **sdk**: variables come back from a zarr zip in their written order; plot recipes that
+  default to the first variable chose a random one on a bundle read back from storage
+  (`mmm.response_curves` failed). The response-curve recipe also prefers variables with a
+  `channel` dim.
+- **plot-sandbox**: composite Vega-Lite specs (concat, facet) rendered at zero width; they now
+  keep their own size and scroll when wider than the frame.
+- **plots**: the convergence table's columns no longer overlap; the fan chart draws and
+  captions only the intervals a summary holds.
+- **web**: a spec opened right after "Save spec" no longer shows unsaved changes (the editor
+  used CRLF for models created empty on Windows user agents), so Fit is enabled; the run page's
+  result column no longer overflows; result tables show dates as dates.
+- **devops**: `make seed` ignores a `SIZE` exported by other toolchains (conda).
+- **devops**: the compose `api` and `worker` containers start. The `mapi/server` and
+  `mapi/worker` images bake `uv.lock` and set `MAPI_UV_LOCK_PATH`, so both resolve the same
+  image digest. Before, neither could resolve one and both failed at start-up.
+- **devops**: compose keeps the bundle-signing key on a `keys` volume that `migrate` writes and
+  `api`/`worker` mount read-only (`MAPI_SIGNING_KEY_PATH`, `MAPI_SIGNING_KEY_CREATE=false`).
+  Each container used to mint its own key on its tmpfs, so the API rejected every bundle the
+  worker signed, and a restart orphaned every model. `mapi-server migrate` now creates the key,
+  and concurrent first starts converge on one key.
+- **server**: `mapi-server api|worker|dev` make themselves non-dumpable on Linux, so
+  local-process runs (same uid) cannot read their environment or memory. The worker's start-up
+  warning and the operations docs state what such runs can still read.
+- **server**: a `Prefer: wait` long-poll stops waiting when its client disconnects.
+- **client**: `models.score()` extends the read timeout of each long-poll by its `wait` and
+  treats a read timeout as "still running", so scores slower than about 90 s no longer raise
+  `TransportError`. `stream_events()` counts only connections that deliver nothing towards
+  `max_reconnects`, so it follows long fits behind proxies that cut connections.
+- **cli**: run progress and state messages are never parsed as rich markup (no terminal
+  hyperlink injection, no `MarkupError` aborting `mapi fit`).
+- **devops**: `.env.example` documents every `mapi-server` setting, and the devops test now
+  derives the list from `Settings`.
+
+### Fixed (M1 review: spec, runner, shim and plots)
+- **runner**: fit runs write `ui/preprocess.json` (`mapi_spec.views.PreprocessView`,
+  `mapi.preprocess/v1`): each step's resolved plugin, learned JSON and small numeric state
+  arrays, so the web app's Preprocessing tab is no longer empty.
+- **runner**: an `INFRA_ERROR` reported by the worker fails the run as a user error. Only
+  failures the supervisor sees itself are retried automatically as infrastructure failures.
+- **runner**: every string the worker sends has ANSI, control and bidi characters stripped. The
+  CLI's `strip_control` also removes the bidi ranges.
+- **server**, **gcs-shim**: the artifacts upload policy is create-only
+  (`post_policy(create_only=True)` signs `x-goog-if-generation-match: 0`, and the shim answers
+  412 for an existing key).
+- **plots**: recipes draw from `mapi_plots.palette`, whose dark variants keep at least 3:1
+  contrast, and the plot sandbox swaps them in dark mode. The decomposition legend is titled
+  "component" when baseline or controls join the channels. Faceted fans and MMM curves give
+  each panel its own axes, in coordinate order.
+- **conformance**: new `sklearn_store_demand` fixture. Fixtures not yet ported are listed in
+  `DEFERRED` with reasons (`list --deferred`). `run --stack URL` drives fixtures through the API.
+
+### Fixed (M1 review: server)
+- `GET /v1/runs/{id}/plots` and score results are scoped to the caller's tenant and project.
+- Runner JSON is parsed with a nesting limit, and deep nesting is reported as
+  `INTEGRITY_FAILURE`.
+- Bundle inputs are verified again at dispatch and on `:retry`.
+- The API refuses unexpected `Host` headers (`MAPI_ALLOWED_HOSTS`), nginx answers only
+  `MAPI_WEB_SERVER_NAMES` and the GCS shim checks hosts too, which guards against DNS
+  rebinding.
+- Ingest and spec validation enforce the per-resource-class data caps (`PAYLOAD_TOO_LARGE`).
+- An omitted fit seed is pinned to `0` at submission, so lineage records the seed actually
+  used.
+- Run lifecycle:
+  - A cancelled checkpointed fit ends `PARTIAL` and can be resumed (new
+    `CANCELLING --complete--> FINALIZING` edge).
+  - `:cancel` on a finalizing run is a no-op.
+  - A run stopped at its deadline fails as `TIMEOUT` or finalizes as `PARTIAL`.
+  - An exit counts only after its event backlog is ingested.
+  - A restarted reconciler re-adopts live executions.
+  - Stalled finalize jobs are re-queued.
+  - Executor cancels no longer block the reconcile pass.
+- SSE reads the run state before its events, and a run never shows another attempt's progress.
+- Docker executor:
+  - Each plugin namespace gets its own versioned `mapi/base-*` image (`MAPI_DOCKER_IMAGES`).
+  - Run containers join the shim's network namespace; `none` is refused.
+  - The supervisor and the worker run under separate uids (10001 for the worker), and
+    `MAPI_REQUIRE_ISOLATION=1` fails a run closed rather than falling back to dev mode.
+- The import-linter contract also forbids plugin packages, plot recipes and columnar libraries
+  in `mapi_server`.
+- Docs: invalid submissions are refused without a run, and `REJECTED` is reserved.
+
+### Fixed (M1 review: web)
+- Plots:
+  - The plot host accepts a sandbox `exported` reply only for an export the app requested.
+  - Downloading a score output saves a checksum-verified file instead of leaving the app.
+- Run pages:
+  - Live `progress` and `log` SSE frames, which the server sends without an id, are delivered.
+  - The live log view follows the tail.
+- Performance: Monaco and Arrow are no longer in first paint, and routes are lazy-loaded. A
+  build-time budget keeps first-paint JavaScript under 640 KiB (it was 4.26 MB; now about
+  515 KB).
+- Spec editor:
+  - It never replaces unsaved edits when a newer revision appears.
+  - Save sends the revision the text came from as `parent_revision`.
+- Accessibility:
+  - No sideways scroll at phone width, and the compact nav shows every page.
+  - Status colours and form borders meet WCAG AA.
+  - Score form errors are marked on their fields and announced.
+- The Score page resets its form and results when the version changes, and shows a loading
+  state while the version loads.
+
+### Fixed (integration)
+- **tests**: a devops docstring no longer names a fake `MAPI_` variable that the configuration
+  reference test picked up.
+- **web**: `openapi.json` and `schema.d.ts` are regenerated (the cancel endpoint documents the
+  finalizing no-op).
+- **docs**: pages written before the review fixes landed now describe the shared compose
+  signing key, `ui/preprocess.json`, the docker executor's network and images, and the new
+  `MAPI_ALLOWED_HOSTS`, `MAPI_WEB_SERVER_NAMES`, `MAPI_DOCKER_IMAGES`,
+  `MAPI_SIGNING_KEY_CREATE` and `MAPI_REQUIRE_ISOLATION` settings.
+
+### Known gaps
+- The docker executor, the compose stack and the new compose smoke test have not run against
+  a real Docker daemon yet.
+- Under the `local-process` executor, run code shares the orchestrator's uid and can read its
+  key files. The uid split is M2.
+- `MAPI_PROFILE` means a config profile to the CLI and client, but the deployment profile to
+  the server.
+- The API's built-in `/docs` and `/redoc` pages load assets from a public CDN.
+- Conformance fixtures E13, E84-lite, E82-slim and E45 are deferred: they need new plugins or
+  run kinds.
+
 ## [0.1.0] — M0: contract layer — 2026-10-15
 
 First milestone release: the typed contract layer and the in-process xarray runtime, with no

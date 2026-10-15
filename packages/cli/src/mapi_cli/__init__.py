@@ -1,3 +1,8 @@
 """The `mapi` command line."""
 
-__version__ = "0.1.0"
+from importlib import metadata as _metadata
+
+try:
+    __version__ = _metadata.version("mapi-cli")
+except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
+    __version__ = "0.2.0"

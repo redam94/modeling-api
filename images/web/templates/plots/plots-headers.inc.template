@@ -1,0 +1,10 @@
+# Security headers of the plot sandbox origin (plan §10.3): nothing but its own scripts,
+# styles and images; data only from its own /topojson/; framed only by the app origin.
+# Origins are listed explicitly next to 'self' because the sandboxed document's own origin is
+# opaque. Inline styles are needed by Vega and the Plotly strict bundle; no 'unsafe-eval'.
+add_header Content-Security-Policy "default-src 'none'; script-src 'self' ${MAPI_PLOTS_ORIGIN}; style-src 'self' ${MAPI_PLOTS_ORIGIN} 'unsafe-inline'; img-src 'self' ${MAPI_PLOTS_ORIGIN} data: blob:; font-src 'self' ${MAPI_PLOTS_ORIGIN} data:; connect-src ${MAPI_PLOTS_ORIGIN}/topojson/; frame-ancestors ${MAPI_WEB_ORIGIN}; base-uri 'none'; form-action 'none'; object-src 'none'" always;
+add_header Access-Control-Allow-Origin "*" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "no-referrer" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()" always;
+add_header Cross-Origin-Resource-Policy "cross-origin" always;

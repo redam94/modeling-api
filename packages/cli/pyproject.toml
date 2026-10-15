@@ -1,17 +1,22 @@
 [project]
 name = "mapi-cli"
-version = "0.1.0"
+version = "0.2.0"
 description = "The `mapi` command line"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
 dependencies = [
+  "mapi-spec",
   "mapi-sdk",
-  "mapi-client",
+  "mapi-client[xarray]",
   "typer>=0.12",
   "rich>=13",
 ]
+
+[project.optional-dependencies]
+# `mapi new --with-data` writes the conformance fixtures' tiny sample datasets
+samples = ["mapi-conformance"]
 
 [project.scripts]
 mapi = "mapi_cli.main:app"
@@ -24,5 +29,7 @@ build-backend = "hatchling.build"
 packages = ["src/mapi_cli"]
 
 [tool.uv.sources]
+mapi-spec = { workspace = true }
 mapi-sdk = { workspace = true }
 mapi-client = { workspace = true }
+mapi-conformance = { workspace = true }

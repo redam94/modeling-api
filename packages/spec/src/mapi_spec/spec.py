@@ -34,6 +34,7 @@ from mapi_spec.schema import DimPolicy
 __all__ = [
     "API_VERSION",
     "CONTRACT_VERSION",
+    "DEFAULT_FIT_SEED",
     "SBC",
     "AnyDocument",
     "AsOfSplit",
@@ -322,6 +323,10 @@ class KeepConfig(StrictModel):
 
 class Checkpoint(StrictModel):
     every_draws: int = Field(..., ge=1, le=1_000_000)
+
+
+DEFAULT_FIT_SEED = 0
+"""The seed a fit uses when ``model.fit.seed`` is omitted (the runner's ``seed or 0``)."""
 
 
 class FitConfig(StrictModel):

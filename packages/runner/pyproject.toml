@@ -1,16 +1,29 @@
 [project]
 name = "mapi-runner"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sandboxed run harness (supervisor + worker) for modeling-api"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "AGPL-3.0-only OR LicenseRef-mapi-commercial"
 authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
+# The supervisor needs only mapi-spec + httpx; the worker side needs the SDK, recipes and the
+# array stack. Plugins (mapi-pymc, mapi-sklearn, mapi-plugin-*) come from the base image.
+# Optional static rendering (``render`` runs): vl-convert-python and kaleido in the image.
 dependencies = [
+  "mapi-spec",
   "mapi-sdk",
   "mapi-plots[recipes]",
   "httpx>=0.27",
+  "numpy>=2.0",
+  "pandas>=2.2",
+  "pyarrow>=17",
+  "xarray>=2025.1",
 ]
+
+[dependency-groups]
+# Test-only: the local GCS emulator (pytest fixtures) and the conformance fixtures the
+# end-to-end tests ingest, fit and score. Never runtime dependencies of the runner image.
+test = ["mapi-gcs-shim", "mapi-conformance"]
 
 [project.scripts]
 mapi-runner = "mapi_runner.__main__:main"
@@ -23,5 +36,8 @@ build-backend = "hatchling.build"
 packages = ["src/mapi_runner"]
 
 [tool.uv.sources]
+mapi-spec = { workspace = true }
+mapi-gcs-shim = { workspace = true }
+mapi-conformance = { workspace = true }
 mapi-sdk = { workspace = true }
 mapi-plots = { workspace = true }

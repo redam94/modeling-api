@@ -1,21 +1,30 @@
 [project]
 name = "mapi-gcs-shim"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local Google Cloud Storage emulator for modeling-api dev and tests"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
 dependencies = [
+  "mapi-spec",
   "starlette>=0.40",
   "uvicorn>=0.30",
   "google-crc32c>=1.5",
   "pydantic>=2.9",
   "httpx>=0.27",
+  "anyio>=4.4",
 ]
+
+[project.optional-dependencies]
+# Real Google Cloud Storage driver (GcsObjectStore). Import-guarded: not needed for the shim.
+gcp = ["google-cloud-storage>=2.18"]
 
 [project.scripts]
 mapi-gcs-shim = "mapi_gcs_shim.__main__:main"
+
+[project.entry-points.pytest11]
+mapi_gcs_shim = "mapi_gcs_shim.pytest_plugin"
 
 [build-system]
 requires = ["hatchling>=1.25"]
@@ -23,3 +32,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mapi_gcs_shim"]
+
+[tool.uv.sources]
+mapi-spec = { workspace = true }

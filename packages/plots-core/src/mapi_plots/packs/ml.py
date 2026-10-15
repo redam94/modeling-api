@@ -21,6 +21,7 @@ import pandas as pd
 import xarray as xr
 from pydantic import Field
 
+from mapi_plots.palette import NEGATIVE, POSITIVE, STRONG
 from mapi_plots.recipes._base import (
     Figure,
     Recipe,
@@ -111,16 +112,16 @@ def feature_importance(inp: RecipeInput, s: FeatureImportanceSettings) -> Figure
             x=alt.X("value:Q", title=title),
             y=y,
             color=(
-                alt.condition("datum.value < 0", alt.value("#d62728"), alt.value("#1f77b4"))
+                alt.condition("datum.value < 0", alt.value(NEGATIVE), alt.value(POSITIVE))
                 if kind == "coefficient"
-                else alt.value("#1f77b4")
+                else alt.value(POSITIVE)
             ),
             tooltip=["feature:N", alt.Tooltip("value:Q", format=".4g")],
         )
     ]
     if "lo" in frame:
         layers.append(
-            alt.Chart().mark_rule(color="#555").encode(x="lo:Q", x2="hi:Q", y=y),
+            alt.Chart().mark_rule(color=STRONG).encode(x="lo:Q", x2="hi:Q", y=y),
         )
     chart = alt.layer(*layers, data=named("features")).properties(
         width=s.width, height=max(60, 18 * len(frame))

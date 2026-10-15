@@ -1,0 +1,29 @@
+[project]
+name = "{{dist}}"
+version = "0.1.0"
+description = "A modeling-api model plugin"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "mapi-sdk>={{sdk_version}}",
+  "numpy>=2.0",
+  "xarray>=2025.1",
+]
+
+[project.optional-dependencies]
+test = ["mapi-sdk[testing]>={{sdk_version}}", "pytest>=8.3"]
+
+# runner images discover plugins through this entry point group
+[project.entry-points."mapi.models"]
+{{module}} = "{{module}}:PLUGINS"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{{module}}"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["mapi_contract: mapi contract-kit checks"]

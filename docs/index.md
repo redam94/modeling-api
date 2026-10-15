@@ -18,20 +18,63 @@ in a small YAML spec or a few lines of Python. The platform checks your data, le
 preprocessing step on the training data only, and replays exactly that work whenever you
 forecast, add a new market or ask "what if".</p>
 
-[Get started](getting-started/index.md){ .md-button .md-button--primary }
-[Port a model in 15 minutes](guides/port-a-model.md){ .md-button }
-[How it works](concepts/index.md){ .md-button }
+[Quickstart: 10 minutes](getting-started/quickstart.md){ .md-button .md-button--primary }
+[Get started](getting-started/index.md){ .md-button }
+[How it works](concepts/architecture.md){ .md-button }
 
 </div>
 ![modeling-api logo: a labelled data cube](assets/logo.svg)
 </div>
 
-!!! info "Where the project is today: v0.1, the contract layer"
-    Everything on this site marked as available runs today, in your own Python process:
-    the spec and data contracts, the xarray runtime, 28 built-in steps, the PyMC and
-    scikit-learn base classes, 11 built-in model plugins, the plot recipes and sanitizer, and a
-    conformance corpus that keeps all of it honest. The hosted platform (HTTP API, web UI and
-    sandboxed cloud runs) comes next. See the [roadmap](roadmap/index.md).
+!!! info "Where the project is today: v0.2, the platform runs end to end on your laptop"
+    `make install && make dev && make seed` starts the whole platform locally, without Docker:
+    an HTTP API with an OpenAPI document, a job queue, a sandboxed runner, an object store
+    that behaves like Google Cloud Storage, the web app and an isolated plot sandbox. From the
+    browser, the [CLI](guides/cli.md), the [Python client](guides/python-client.md) or plain
+    [HTTP](guides/http-api.md), you upload data, validate a spec as you type, fit it, follow
+    the sampler live, inspect a signed model and score forecasts, new markets and what-ifs.
+    The v0.1 contract layer (specs, 28 steps, 11 model plugins, plots, conformance corpus)
+    still runs in your own Python process too. Cloud execution and multiple tenants come next:
+    see the [roadmap](roadmap/index.md).
+
+## See it run
+
+These are screenshots of the [quickstart](getting-started/quickstart.md), taken from a fresh
+`make dev` stack: the E33 geo marketing-mix demo, fitted and scored from the browser.
+
+<div class="mapi-shots" markdown>
+
+<figure markdown>
+[![The home dashboard](assets/screenshots/dashboard.png){ .mapi-shot loading=lazy }](guides/web-ui.md#home)
+<figcaption>Home: what is running, what needs attention, recent runs and models.</figcaption>
+</figure>
+
+<figure markdown>
+[![The spec editor with live validation and the pipeline](assets/screenshots/editor.png){ .mapi-shot loading=lazy }](guides/web-ui.md#build)
+<figcaption>Build: YAML with live validation, and the schema after every pipeline step.</figcaption>
+</figure>
+
+<figure markdown>
+[![A fit run while the sampler draws](assets/screenshots/run-progress.png){ .mapi-shot loading=lazy }](guides/web-ui.md#run-detail)
+<figcaption>Runs: the sampler's own progress, streamed live from the sandbox.</figcaption>
+</figure>
+
+<figure markdown>
+[![The sanity scorecard of a fitted model](assets/screenshots/scorecard.png){ .mapi-shot loading=lazy }](guides/web-ui.md#overview)
+<figcaption>Inspect: a scorecard of convergence and holdout checks, each with a next step.</figcaption>
+</figure>
+
+<figure markdown>
+[![Revenue decomposed into baseline and channels](assets/screenshots/decomposition.png){ .mapi-shot loading=lazy }](guides/web-ui.md#plots)
+<figcaption>Plots: rendered in a sandboxed iframe on a separate origin.</figcaption>
+</figure>
+
+<figure markdown>
+[![An 8-week forecast per market](assets/screenshots/score-forecast.png){ .mapi-shot loading=lazy }](guides/web-ui.md#score)
+<figcaption>Score: an 8-week forecast with the fitted preprocessing replayed exactly.</figcaption>
+</figure>
+
+</div>
 
 ## Why labelled, multi-dimensional models?
 
@@ -168,18 +211,19 @@ flowchart LR
     ("which column is revenue?"), enter priors as ROI ranges, and get a report with a sanity
     scorecard, plain-language captions on every plot and instant what-if sliders.
 
-    Every plot recipe already ships a `caption_plain` and a `persona`, and every model setting
-    an `x-ui-level`. The Guided UI arrives in [v0.4](roadmap/guided-ui.md).
+    Every plot recipe already ships a `caption_plain` and a `persona`, every model setting an
+    `x-ui-level`, and every scorecard item a plain-language message. The Guided UI arrives in
+    [v0.4](roadmap/guided-ui.md).
 
 -   :material-code-braces:{ .lg .middle } **Expert: data scientists**
 
     ---
 
-    Write specs and plugins, inspect posteriors and preprocessing state, run backtests,
-    compare models, and pull any bundle into a notebook. Everything in this documentation
-    works in Python today.
+    Write specs and plugins, inspect posteriors and preprocessing state, and pull any bundle
+    into a notebook. The Expert web app, the `mapi` CLI and the Python client work today, and
+    so does everything in plain Python.
 
-    [:octicons-arrow-right-24: Your first model](getting-started/first-model.md)
+    [:octicons-arrow-right-24: The Expert web app](guides/web-ui.md)
 
 -   :material-puzzle-outline:{ .lg .middle } **Plugin authors**
 
@@ -194,15 +238,37 @@ flowchart LR
 
     ---
 
-    Stable `ScoreRequest` documents, endpoints, typed clients, webhooks and MCP tools for
-    agents. The request format is fixed today; the HTTP API arrives in
-    [v0.2](roadmap/platform-api.md).
+    A versioned HTTP API with an OpenAPI 3.1 document, RFC 7807 errors, idempotency keys and
+    server-sent events, plus a typed Python client. Endpoints, webhooks and MCP tools follow
+    in [v0.4](roadmap/guided-ui.md).
+
+    [:octicons-arrow-right-24: HTTP API guide](guides/http-api.md)
 
 </div>
 
-## What you get in v0.1
+## What you get in v0.2
 
 <div class="grid cards" markdown>
+
+-   :material-monitor-dashboard: **The Expert web app**
+
+    Datasets, a YAML editor with live validation, live runs, a model inspector and scoring,
+    with every plot in a sandboxed iframe. [:octicons-arrow-right-24: Web app guide](guides/web-ui.md)
+
+-   :material-api: **An HTTP API and its clients**
+
+    `/v1` with OpenAPI 3.1, RFC 7807 errors, idempotency and SSE; the `mapi` CLI and a typed
+    Python client. [:octicons-arrow-right-24: HTTP API](guides/http-api.md)
+
+-   :material-shield-lock-outline: **Sandboxed, verified runs**
+
+    A supervisor and worker per run, HMAC-signed events, outputs checked against the store's
+    own checksums and a signed manifest. [:octicons-arrow-right-24: Security model](concepts/security.md)
+
+-   :material-laptop: **Runs on a laptop**
+
+    `make dev` without Docker (embedded PostgreSQL, a Cloud Storage emulator), or the same
+    stack in containers. [:octicons-arrow-right-24: Deployment](operations/index.md)
 
 -   :material-cube-outline: **Labelled data contract**
 
@@ -261,8 +327,8 @@ production, and makes different trade-offs.
 
 ## A taste
 
-The [getting-started guide](getting-started/first-model.md) builds this end to end; every
-snippet on this site is executed by the test suite.
+The same model in plain Python, without any server. The [Python guide](getting-started/first-model.md)
+builds it end to end; every snippet on this site is executed by the test suite.
 
 ```python
 --8<-- "quickstart.py:fit"
@@ -274,12 +340,13 @@ snippet on this site is executed by the test suite.
 
 <div class="grid cards" markdown>
 
--   **Next: install and fit your first model**
+-   **Next: run the platform and fit your first model**
 
-    [:octicons-arrow-right-24: Getting started](getting-started/index.md)
+    [:octicons-arrow-right-24: Quickstart](getting-started/quickstart.md)
 
 -   **Understand the moving parts**
 
-    [:octicons-arrow-right-24: Concepts](concepts/index.md)
+    [:octicons-arrow-right-24: Architecture](concepts/architecture.md) ·
+    [Concepts](concepts/index.md)
 
 </div>

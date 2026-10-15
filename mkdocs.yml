@@ -42,6 +42,11 @@ theme:
 extra_css:
   - stylesheets/extra.css
 
+# Material loads `mermaid@11` (a moving tag) from unpkg unless mermaid is already present;
+# pin an exact release instead.
+extra_javascript:
+  - https://unpkg.com/mermaid@11.17.2/dist/mermaid.min.js
+
 hooks:
   - scripts/mkdocs_hooks.py
 
@@ -58,6 +63,7 @@ plugins:
             - packages/sdk-sklearn/src
             - packages/steps-core/src
             - packages/plots-core/src
+            - packages/runner/src
           options:
             docstring_style: google
             docstring_options:
@@ -115,10 +121,13 @@ nav:
   - Home: index.md
   - Getting started:
       - getting-started/index.md
-      - Your first model: getting-started/first-model.md
+      - "Quickstart: zero to first model": getting-started/quickstart.md
+      - Your first model in Python: getting-started/first-model.md
       - Runs and executors: getting-started/executor.md
   - Concepts:
       - concepts/index.md
+      - Architecture overview: concepts/architecture.md
+      - Security model: concepts/security.md
       - Labelled data: concepts/labelled-data.md
       - Pipelines and stages: concepts/pipelines.md
       - Representations and summaries: concepts/representations.md
@@ -126,14 +135,21 @@ nav:
       - Coord plans and typed errors: concepts/coord-plans.md
       - Capabilities and manifests: concepts/capabilities.md
   - Guides:
-      - Port a model in 15 minutes: guides/port-a-model.md
-      - Write a step or model plugin: guides/plugins.md
-      - Bring a PyMC model: guides/pymc.md
-      - Tabular models (scikit-learn, xgboost): guides/sklearn.md
-      - Marketing-mix models: guides/mmm.md
-      - Forecasting and sequential models: guides/time-series.md
-      - Plots, recipes and templates: guides/plots.md
-      - Conformance corpus: guides/conformance.md
+      - Using the platform:
+          - The Expert web app: guides/web-ui.md
+          - Your first model in the web app: guides/first-model-in-the-ui.md
+          - The command line: guides/cli.md
+          - The Python client: guides/python-client.md
+          - The HTTP API: guides/http-api.md
+      - Modelling:
+          - Port a model in 15 minutes: guides/port-a-model.md
+          - Write a step or model plugin: guides/plugins.md
+          - Bring a PyMC model: guides/pymc.md
+          - Tabular models (scikit-learn, xgboost): guides/sklearn.md
+          - Marketing-mix models: guides/mmm.md
+          - Forecasting and sequential models: guides/time-series.md
+          - Plots, recipes and templates: guides/plots.md
+          - Conformance corpus: guides/conformance.md
   - Reference:
       - Spec format: reference/spec-format.md
       - Spec schema: reference/generated/spec-schema.md
@@ -145,6 +161,15 @@ nav:
       - Plots and the sanitizer: reference/plots.md
       - Plot recipes catalog: reference/generated/plots-catalog.md
       - Error codes: reference/generated/error-codes.md
+      - HTTP API (v1): reference/http-api.md
+      - OpenAPI explorer: reference/openapi.md
+      - Run protocol: reference/run-protocol.md
+      - GCS shim: reference/gcs-shim.md
+      - Runner: reference/runner.md
+      - CLI and Python client: reference/cli.md
+      - CLI reference: reference/generated/cli-reference.md
+      - Server settings: reference/generated/server-settings.md
+      - Web app and plot sandbox: reference/web-app.md
       - API reference:
           - reference/api/index.md
           - mapi_spec: reference/api/spec.md
@@ -153,12 +178,23 @@ nav:
           - mapi_sklearn: reference/api/sklearn.md
           - mapi_steps: reference/api/steps.md
           - mapi_plots: reference/api/plots.md
+          - mapi_runner: reference/api/runner.md
+  - Deployment:
+      - operations/index.md
+      - Local, without Docker: operations/local-development.md
+      - Docker Compose: operations/docker.md
+      - Container images: operations/images.md
+      - Configuration reference: operations/configuration.md
+      - Troubleshooting: operations/troubleshooting.md
   - Roadmap:
       - roadmap/index.md
-      - Platform API (v0.2): roadmap/platform-api.md
-      - Cloud execution (v0.3): roadmap/cloud.md
-      - Guided UI and integrations (v0.4): roadmap/guided-ui.md
+      - The local platform (v0.2): roadmap/platform-api.md
+      - Cloud and multi-tenant (v0.3): roadmap/cloud.md
+      - Guided mode and integrations (v0.4): roadmap/guided-ui.md
   - Project:
       - Licensing: project/licensing.md
       - Contributing: project/contributing.md
       - Changelog: project/changelog.md
+
+validation:
+  anchors: warn

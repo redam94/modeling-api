@@ -1,0 +1,18 @@
+# Plan section 6.2 with conformal intervals: direct forecasts, pooled new stores, intervals
+# that are never aggregated, and the typed errors of the store-demand contract.
+- name: forecast_with_new_store
+  request: {mode: forecast, horizon: {dim: time, periods: 4}, output: {summary: [point, interval]}}
+  payload: future
+  expect: {vars: [y_hat], sizes: {week: 4}, issues: [UNSEEN_LEVELS]}
+- name: intervals_are_not_summed
+  request: {mode: forecast, horizon: {dim: time, periods: 4}, output: {aggregate: {over: [store_id]}}}
+  payload: future
+  expect_error: CAPABILITY_UNSUPPORTED
+- name: unseen_sku
+  request: {mode: predict}
+  payload: new_sku
+  expect_error: UNSEEN_LEVELS
+- name: missing_future_promo
+  request: {mode: forecast, horizon: {dim: time, periods: 4}}
+  payload: future_without_promo
+  expect_error: MISSING_FUTURE_COVARIATE

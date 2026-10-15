@@ -2,7 +2,7 @@
 # it exists to install every workspace member plus shared developer tooling with `uv sync`.
 [project]
 name = "modeling-api"
-version = "0.1.0"
+version = "0.2.0"
 requires-python = ">=3.12"
 dependencies = [
   "mapi-spec", "mapi-sdk", "mapi-pymc", "mapi-sklearn", "mapi-steps", "mapi-plots[recipes]",
@@ -60,7 +60,7 @@ plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers --import-mode=importlib -m 'not docker and not cloud and not e2e'"
-testpaths = ["packages", "plugins", "conformance"]
+testpaths = ["packages", "plugins", "conformance", "tests"]
 markers = [
   "unit: fast isolated tests",
   "integration: touches Postgres, the GCS shim, or subprocesses",
@@ -75,14 +75,19 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.importlinter]
-root_packages = ["mapi_server", "mapi_spec", "mapi_plots"]
+root_packages = ["mapi_server", "mapi_spec", "mapi_plots", "mapi_runner"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "Control plane never imports plugin/runtime code or array libraries"
 type = "forbidden"
 source_modules = ["mapi_server"]
-forbidden_modules = ["mapi_sdk", "mapi_runner", "mapi_pymc", "mapi_sklearn", "mapi_steps", "numpy", "xarray"]
+forbidden_modules = [
+  "mapi_sdk", "mapi_runner", "mapi_pymc", "mapi_sklearn", "mapi_steps",
+  "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular",
+  "mapi_plots.recipes", "mapi_plots.packs",
+  "numpy", "xarray", "pandas", "pyarrow", "zarr",
+]
 
 [[tool.importlinter.contracts]]
 name = "Contracts are pure Pydantic"
@@ -95,3 +100,17 @@ name = "Plot sanitizer and templates are JSON-only (control-plane safe)"
 type = "forbidden"
 source_modules = ["mapi_plots.sanitize", "mapi_plots.templates", "mapi_plots._testing"]
 forbidden_modules = ["numpy", "xarray", "pandas", "altair", "plotly", "pyarrow", "mapi_sdk"]
+
+[[tool.importlinter.contracts]]
+name = "Runner supervisor never imports plugin code, the SDK or array libraries"
+type = "forbidden"
+source_modules = [
+  "mapi_runner.supervisor", "mapi_runner.__main__", "mapi_runner.bootstrap",
+  "mapi_runner.channel", "mapi_runner.events", "mapi_runner.jobs", "mapi_runner.outputs",
+  "mapi_runner.sandbox", "mapi_runner.transfer", "mapi_runner._text",
+]
+forbidden_modules = [
+  "mapi_runner.worker", "mapi_runner.testing", "mapi_sdk", "mapi_pymc", "mapi_sklearn",
+  "mapi_steps", "mapi_plots", "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular",
+  "numpy", "xarray", "pandas",
+]

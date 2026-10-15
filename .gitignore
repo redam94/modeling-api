@@ -24,6 +24,7 @@ apps/*/dist/
 .pnpm-store/
 playwright-report/
 test-results/
+apps/web/e2e/screenshots/
 
 # --- Local state ---
 .local/
@@ -43,3 +44,6 @@ docs/reference/generated/
 *.tfstate
 *.tfstate.*
 *.tfplan
+
+# --- Local compose overrides (see compose.override.example.yml) ---
+compose.override.yml

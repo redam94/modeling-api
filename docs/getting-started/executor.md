@@ -3,7 +3,8 @@
 `fit_spec` and `score_bundle` are plain functions. The platform does the same work as
 **runs**: JSON-only submissions handed to an **executor**, which reports progress as events and
 returns a status that is the source of truth. The in-process executor implements that protocol
-inside your Python process, so notebooks, tests and the hosted platform share one code path.
+inside your Python process, so notebooks, tests and the platform's `local-process` and
+`docker` executors share one code path.
 
 ```mermaid
 sequenceDiagram
@@ -70,7 +71,7 @@ untrusted code to an executor that is not strong enough.
 | Executor | Isolation | For | Status |
 |---|---|---|---|
 | `InprocExecutor` | `NONE` | Notebooks, tests, your own trusted code | <span class="mapi-badge">available</span> |
-| Local process / Docker | `PROCESS` / `GVISOR` | Local platform, CI | <span class="mapi-badge mapi-badge--soon">v0.2</span> |
+| Local process / Docker | `PROCESS` / `GVISOR` | Local platform, CI | <span class="mapi-badge">v0.2</span> |
 | Cloud Run Jobs (gen2) | `MICROVM` | Hosted runs, one fresh sandbox per run | <span class="mapi-badge mapi-badge--soon">v0.3</span> |
 
 !!! warning "Never run untrusted code in-process"

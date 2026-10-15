@@ -1,6 +1,6 @@
 [project]
 name = "mapi-client"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python client for modeling-api"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -9,7 +9,12 @@ authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
 dependencies = [
   "mapi-spec",
   "httpx>=0.27",
+  "google-crc32c>=1.5",  # fast CRC32C for verifying large transfers
 ]
+
+[project.optional-dependencies]
+# xr.Dataset uploads and xr.DataTree score results (validated zarr-zip IO from the SDK)
+xarray = ["mapi-sdk", "xarray>=2025.1"]
 
 [build-system]
 requires = ["hatchling>=1.25"]
@@ -20,3 +25,4 @@ packages = ["src/mapi_client"]
 
 [tool.uv.sources]
 mapi-spec = { workspace = true }
+mapi-sdk = { workspace = true }
