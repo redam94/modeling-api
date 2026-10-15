@@ -81,7 +81,15 @@ python -m mapi_spec export-schemas ./schemas    # modelspec.json, scorerequest.j
 | `executor` | the `Executor` protocol, `RunSubmit`, `Handle`, `ExecStatus`, `ExecutorCaps`, `Isolation`, `RunKind`, `RunEvent` |
 | `run` | run protocol (M1): `RunState` + `transition()`, `RunSpec` bootstrap, event payloads and HMAC signing, stdout wire format, `OutputManifest`/`BundleManifest`, `RunnerEnv`, `RunnerExit` |
 | `storage` | `ObjectMeta`, the async `ObjectStore` protocol, signed URL shapes, CRC32C/MD5 helpers, bucket and key naming |
-| `api` | REST DTOs for `/v1` (`Page[T]`, `Run`, `RunCreate`, `ModelVersion`, ...), SSE/`Prefer`/idempotency helpers, `M1_ENDPOINTS` |
+| `api` | REST DTOs for `/v1` (`Page[T]`, `Run`, `RunCreate`, `ModelVersion`, `Me`, `UsageReport`, ...), SSE/`Prefer`/idempotency helpers, `M1_ENDPOINTS` + `M2_ENDPOINTS` (= `ENDPOINTS`), `ROUTE_ACCESS` (scope and permission of every operation) |
+| `tenancy` | `Tenant`, `Project`, `TrustTier` and placement, data residency, `ProjectRole`, the `PERMISSIONS` matrix and `can()`, `Membership`, principals, `AuthContext`, `X-Mapi-Project` resolution |
+| `tokens` | `mapi_<prefix>_<secret><checksum>` tokens: generate, parse, peppered hashing, scopes and `scope_allows()`, `TokenCreate`/`TokenCreated`/`ApiToken` |
+| `auth` | BFF OIDC helpers (PKCE S256, login transaction, safe `return_to`, `__Host-` cookies, `SessionInfo`), the Pub/Sub push envelope and its OIDC claims check |
+| `quotas` | token/tenant/global `QuotaPolicy`, `evaluate_quota()` → `QuotaDecision` (`QUOTA_EXCEEDED`, `RATE_LIMITED`), priority classes, fair-share `plan_leases()`, 429 back-off |
+| `cost` | versioned `PriceTable` (integer nanos), `estimate_cost()`, `CostLedgerEntry`, `summarize_ledger()`, `RunCost` |
+| `audit` | `AuditEvent` with keyed IP/user-agent fingerprints, `AuditAction`, `make_audit_event()` |
+| `admin` | `KillSwitches` and `kill_switch_decision()`, `ExecutorHealth` |
+| `conformance_executor` | the executor conformance suite as data (`EXECUTOR_CONFORMANCE`), `check_expectation()`, `ConformanceReport` |
 | `localdev` | local ports, origins and environment variable names (`LocalDev`) |
 | `jsonschema_export` | `export_schemas()` (JSON Schema 2020-12 for every document, run-protocol model and REST DTO) |
 | `examples` | the plan's example documents (E33 geo MMM, xgboost store demand, score request) |
