@@ -10,12 +10,18 @@ import pytest
 import xarray as xr
 from mapi_conformance.fixtures.xgb_store_demand import data as xgb
 from mapi_runner.worker.ingest import missingness_grid, preview, profile
-from mapi_runner.worker.views import tree_index
+from mapi_runner.worker.views import preprocess_view, tree_index
+from mapi_sdk.steps import StepState
+from mapi_spec.effects import StepKind
+from mapi_spec.validate import ResolvedStep
 from mapi_spec.views import (
     MAX_GRID_COORDS,
+    MAX_STATE_ARRAY_CELLS,
+    PREPROCESS_FORMAT,
     PREVIEW_FORMAT,
     PROFILE_FORMAT,
     TREE_INDEX_FORMAT,
+    PreprocessView,
     PreviewView,
     ProfileView,
     TreeIndexView,
@@ -85,3 +91,78 @@ def test_tree_index_lists_groups_coords_and_vars_without_arrays() -> None:
     assert post.dims == {"chain": 2, "draw": 3, "geo": 2}
     assert post.coords["geo"].values == ["a", "b"]
     assert post.vars["beta"].shape == [2, 3, 2] and post.vars["beta"].units == "EUR"
+
+
+def _step(sid: str, use: str, kind: StepKind, *, stateful: bool) -> ResolvedStep:
+    return ResolvedStep(
+        id=sid,
+        use=f"{use}@^1",
+        resolved=f"{use}@1.0.0",
+        kind=kind,
+        stateful=stateful,
+        invertible=False,
+        depends_on_target=False,
+        input_stage="raw",
+    )
+
+
+class _OriginState(StepState):
+    origin: str | None = None
+
+
+def test_preprocess_view_lists_every_step_with_learned_state_and_small_arrays() -> None:
+    scale = xr.DataArray(
+        [[120.1, 340.2], [98.4, np.nan], [77.0, 150.3]],
+        dims=("geo", "channel"),
+        coords={"geo": ["de", "fr", "it"], "channel": ["search", "tv"]},
+        attrs={"units": "EUR"},
+    )
+    big = xr.DataArray(np.zeros(MAX_STATE_ARRAY_CELLS + 1), dims=("t",))
+    cube = xr.DataArray(np.zeros((2, 2, 2)), dims=("a", "b", "c"))
+    steps = [
+        _step("weekly", "core.resample", StepKind.RESHAPE, stateful=False),
+        _step("scale", "core.mean_scale", StepKind.VALUE, stateful=True),
+        _step("season", "core.fourier", StepKind.FEATURE, stateful=True),
+    ]
+    states = {
+        "weekly": StepState(step_id="weekly"),
+        "scale": StepState(
+            step_id="scale",
+            settings_hash="h",
+            arrays=xr.Dataset(
+                {
+                    "scale__spend": scale,
+                    "level": xr.DataArray(2.5),
+                    "too_big": big,
+                    "cube": cube,
+                }
+            ),
+        ),
+        "season": _OriginState(step_id="season", learned={"period": 52.18}, origin="2024-01-07"),
+    }
+    raw = preprocess_view(steps, states)
+    view = PreprocessView.model_validate(json.loads(json.dumps(raw, allow_nan=False)))
+    assert view.format == PREPROCESS_FORMAT
+    assert [s.id for s in view.steps] == ["weekly", "scale", "season"]
+    weekly, sc, season = view.steps
+    assert weekly.use == "core.resample@1.0.0" and weekly.kind == "reshape"
+    assert not weekly.stateful and weekly.arrays == [] and weekly.learned == {}
+    assert sc.stateful and sc.kind == "value"
+    arrays = {a.name: a for a in sc.arrays}
+    heat = arrays["scale__spend"]
+    assert heat.dims == ["geo", "channel"]
+    assert heat.coords == {"geo": ["de", "fr", "it"], "channel": ["search", "tv"]}
+    assert heat.values == [[120.1, 340.2], [98.4, None], [77.0, 150.3]]
+    assert heat.units == "EUR"
+    assert arrays["level"].dims == [] and arrays["level"].values == [2.5]
+    assert sorted(sc.omitted) == ["cube", "too_big"]
+    assert season.learned == {"period": 52.18, "origin": "2024-01-07"}
+
+
+def test_preprocess_view_caps_learned_json() -> None:
+    steps = [_step("enc", "core.encode_levels", StepKind.FEATURE, stateful=True)]
+    levels = {f"level_{i}": "x" * 100 for i in range(2000)}
+    raw = preprocess_view(steps, {"enc": StepState(learned={"small": 1, "levels": levels})})
+    step = PreprocessView.model_validate(raw).steps[0]
+    assert step.learned == {"small": 1} and step.learned_truncated
+    assert len(json.dumps(raw)) < 64 * 1024

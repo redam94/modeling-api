@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import re
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -347,6 +349,26 @@ def test_fan_split_from_attrs_and_no_facet() -> None:
     assert frame(plot, "fan")["split"].iloc[0] == 3
 
 
+def test_faceted_fan_gives_every_panel_its_own_date_axis_in_coordinate_order() -> None:
+    """With 3 geos and 2 columns, a shared x axis floats under the empty cell and the top
+    row has no date labels; each panel gets its own axis, panels keep the coordinate order
+    and there are never more columns than panels."""
+    plot = get_recipe("core.ppc_fan").render(ex.score_tree(), columns=2)
+    spec = plot.spec
+    assert spec["resolve"]["axis"]["x"] == "independent"
+    assert spec["resolve"]["scale"]["y"] == "independent"
+    assert spec["facet"]["sort"] == ex.GEOS != sorted(ex.GEOS)
+    assert spec["columns"] == 2
+    wide = get_recipe("core.ppc_fan").render(ex.score_tree(), columns=8)
+    assert wide.spec["columns"] == len(ex.GEOS)
+
+
+def test_faceted_response_curves_give_every_panel_its_own_axes(bundle: Any) -> None:
+    plot = get_recipe("mmm.response_curves").render(bundle, facet=True)
+    assert plot.spec["resolve"]["axis"] == {"x": "independent", "y": "independent"}
+    assert plot.spec["columns"] == len(ex.CHANNELS)
+
+
 def test_fan_errors() -> None:
     summary = ex.score_tree(with_draws=False)["summary"].to_dataset()
     with pytest.raises(RecipeDataError, match="cannot be added up"):
@@ -456,6 +478,32 @@ def test_decomposition_point_estimates_and_vars() -> None:
     assert "uncertain" in caption(
         get_recipe("core.decomposition").render({"contributions": unsure})
     )
+
+
+def _legend_title(plot: PlotSpec) -> str:
+    area = plot.spec["vconcat"][0]
+    return str(area["encoding"]["color"]["title"])
+
+
+def test_decomposition_legend_is_not_titled_channel_when_baseline_and_controls_join() -> None:
+    weeks = pd.date_range("2024-01-07", periods=4, freq="W")
+    ds = xr.Dataset(
+        {
+            "channel_contribution": (("week", "channel"), np.ones((4, 2))),
+            "baseline": ("week", np.full(4, 5.0)),
+            "holiday": ("week", np.zeros(4)),
+        },
+        coords={"week": weeks, "channel": ["tv", "search"]},
+    )
+    for rid in ("mmm.decomposition", "core.decomposition"):
+        plot = get_recipe(rid).render({"contributions": ds})
+        assert set(frame(plot, "totals")["component"]) == {"tv", "search", "baseline", "holiday"}
+        assert _legend_title(plot) == "component", rid
+    assert get_recipe("mmm.decomposition").title == "Contribution by component"
+    only = get_recipe("mmm.decomposition").render(
+        {"contributions": ds}, vars=["channel_contribution"]
+    )
+    assert _legend_title(only) == "channel"  # every component is a channel
 
 
 # --------------------------------------------------------------------------- comparison
@@ -709,3 +757,63 @@ def test_feature_importance_needs_a_known_group() -> None:
         render(ex.score_tree())
     with pytest.raises(RecipeDataError):
         render(ex.feature_importance_tree(), source="importance", feature_dim="column")
+
+
+# ------------------------------------------------------------------------------ colours
+
+_COLOUR = re.compile(r"^(#[0-9a-fA-F]{3,8}|white|black|red|blue|green|gray|grey|orange)$")
+_LIGHT_CARD, _DARK_CARD = "#ffffff", "#1b212d"
+
+
+def _colours(node: Any, out: set[str]) -> set[str]:
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k not in ("data", "datasets"):
+                _colours(v, out)
+    elif isinstance(node, list):
+        for v in node:
+            _colours(v, out)
+    elif isinstance(node, str) and _COLOUR.match(node):
+        out.add(node.lower())
+    return out
+
+
+def _luminance(hex_colour: str) -> float:
+    h = hex_colour.lstrip("#")
+    rgb = [int(h[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+    lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb]
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+
+def _contrast(a: str, b: str) -> float:
+    hi, lo = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def test_recipes_use_only_palette_colours_and_every_one_has_a_dark_variant() -> None:
+    """Explicit mark colours override any theme config, so recipes draw only palette colours,
+    which the plot sandbox swaps for their dark variants in dark mode (no black dots on the
+    dark card)."""
+    from mapi_plots.palette import PALETTE, dark_variants
+
+    used: set[str] = set()
+    for recipe_id, (data, options) in EXAMPLES.items():
+        _colours(get_recipe(recipe_id).render(data, **options).spec, used)
+    variants = dark_variants()
+    assert used, "the recipes use no explicit colours at all?"
+    assert used <= set(variants), sorted(used - set(variants))
+    for role, swatch in PALETTE.items():
+        assert variants[swatch.light] == swatch.dark, role
+        if swatch.legible:  # strokes, dots and text: WCAG 3:1 for graphics on both cards
+            assert _contrast(swatch.light, _LIGHT_CARD) >= 3.0, role
+            assert _contrast(swatch.dark, _DARK_CARD) >= 3.0, role
+
+
+def test_the_plot_sandbox_mirrors_the_dark_variants() -> None:
+    from mapi_plots.palette import dark_variants
+
+    ts = Path(__file__).parents[3] / "apps" / "plot-sandbox" / "src" / "recipe-palette.ts"
+    if not ts.parent.is_dir():
+        pytest.skip("the plot sandbox sources are not in this checkout")
+    pairs = dict(re.findall(r'"(#[0-9a-f]{6})":\s*"(#[0-9a-f]{6})"', ts.read_text()))
+    assert pairs == dark_variants()

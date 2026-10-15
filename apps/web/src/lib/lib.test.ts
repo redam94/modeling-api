@@ -154,6 +154,29 @@ describe("view parsers", () => {
     });
     expect(p.steps[0]?.arrays[0]?.values).toEqual([[1, null, 3]]);
     expect(p.steps[0]?.arrays[1]?.values).toEqual([[1, 2]]);
+    expect(p.steps[0]?.omitted).toEqual([]);
+  });
+
+  it("keeps the runner's omitted arrays, truncation flag and units", () => {
+    const p = parsePreprocess({
+      format: "mapi.preprocess/v1",
+      steps: [
+        {
+          id: "lags",
+          use: "core.lag_tensor@1.0.0",
+          kind: "feature",
+          stateful: false,
+          learned: { l_max: 4 },
+          learned_truncated: true,
+          arrays: [{ name: "level", dims: [], coords: {}, values: [2.5], units: "EUR" }],
+          omitted: ["window", 7],
+        },
+      ],
+    });
+    const s = p.steps[0];
+    expect(s?.omitted).toEqual(["window"]);
+    expect(s?.learnedTruncated).toBe(true);
+    expect(s?.arrays[0]).toMatchObject({ name: "level", dims: [], values: [[2.5]], units: "EUR" });
   });
 });
 

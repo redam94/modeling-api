@@ -24,11 +24,13 @@ from rich.text import Text
 __all__ = ["Output", "safe", "strip_control", "to_jsonable"]
 
 _ANSI: Final = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[@-Z\\-_])")
-_CONTROL: Final = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
+# C0/C1 controls (not TAB/LF) and the bidi embeddings, overrides and isolates (text spoofing)
+_CONTROL: Final = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]")
 
 
 def strip_control(text: str) -> str:
-    """Remove ANSI escape sequences and control characters (newlines and tabs are kept)."""
+    """Remove ANSI escape sequences, control characters and bidi overrides (newlines and
+    tabs are kept)."""
     return _CONTROL.sub("", _ANSI.sub("", text))
 
 

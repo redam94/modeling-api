@@ -2,9 +2,8 @@
  * Shapes of the precomputed UI views the runner writes next to datasets and bundles
  * (`preview.json`, `profile.json`, `ui/tree_index.json`, `ui/preprocess.json`).
  *
- * `preview.json`, `profile.json` and `ui/tree_index.json` are defined in `mapi_spec.views`
- * (the runner validates what it writes against those models); `ui/preprocess.json` is still a
- * web-side proposal the runner does not write yet. Every parser validates defensively, so an
+ * All four are defined in `mapi_spec.views` (the runner validates what it writes against those
+ * models; `ui/preprocess.json` is `PreprocessView`). Every parser validates defensively, so an
  * unknown or malformed view degrades to "not available" instead of breaking the page. Each
  * view carries a `format` tag.
  */
@@ -195,8 +194,9 @@ export interface StateArray {
   name: string;
   dims: string[];
   coords: Record<string, Scalar[]>;
-  /** Row-major values; 1-D arrays have one row. */
+  /** Row-major values; 0-D and 1-D arrays have one row. */
   values: (number | null)[][];
+  units?: string;
 }
 
 export interface StepStateView {
@@ -205,7 +205,11 @@ export interface StepStateView {
   kind: string;
   stateful: boolean;
   learned: Record<string, unknown>;
+  /** The runner dropped some learned keys to keep the view small. */
+  learnedTruncated: boolean;
   arrays: StateArray[];
+  /** State arrays the runner did not inline (more than 2-D, non-numeric or too large). */
+  omitted: string[];
 }
 
 export interface PreprocessView {
@@ -231,7 +235,7 @@ export function parsePreprocess(raw: unknown): PreprocessView {
               if (Array.isArray(c)) coords[d] = c.filter(isScalar);
             }
           }
-          return [{ name: a.name, dims, coords, values }];
+          return [{ name: a.name, dims, coords, values, ...(isStr(a.units) ? { units: a.units } : {}) }];
         })
       : [];
     return {
@@ -240,7 +244,9 @@ export function parsePreprocess(raw: unknown): PreprocessView {
       kind: isStr(s.kind) ? s.kind : "",
       stateful: s.stateful === true,
       learned: isObj(s.learned) ? s.learned : {},
+      learnedTruncated: s.learned_truncated === true,
       arrays,
+      omitted: Array.isArray(s.omitted) ? s.omitted.filter(isStr) : [],
     };
   });
   return { format: VIEW_FORMATS.preprocess, steps };

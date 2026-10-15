@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { deepMerge, preparePlotly, prepareVegaLite, resolvePlotlyRefs, SpecError } from "./prepare";
 import type { JsonObject } from "./protocol";
+import { contrast, DARK_VARIANTS, NON_TEXT_FILLS } from "./recipe-palette";
 
 const datasets = {
   contrib: [
@@ -68,6 +69,43 @@ describe("prepareVegaLite", () => {
     expect(out.width).toBe(300);
     expect(Object.keys(out.datasets as object).sort()).toEqual(["contrib", "inline"]);
     expect((out.config as Record<string, Record<string, unknown>>).axis?.labelFontSize).toBe(20);
+  });
+});
+
+describe("recipe colours in dark mode", () => {
+  const recipe: JsonObject = {
+    data: { name: "fan" },
+    layer: [
+      { mark: { type: "area", color: "#3366cc", opacity: 0.3 } },
+      { mark: { type: "circle", color: "#1B2333" } },
+      { mark: { type: "rule", color: "#c62828" } },
+      { mark: "bar", encoding: { color: { field: "k", scale: { range: ["#6b7685", "#c45a00"] } } } },
+    ],
+  };
+  const sets = { fan: [{ k: "#1b2333", label: "#3366cc" }] };
+
+  it("swaps every palette colour for its dark variant, case-insensitively", () => {
+    const out = prepareVegaLite(recipe, sets, "dark");
+    const layers = out.layer as JsonObject[];
+    expect((layers[0]!.mark as JsonObject).color).toBe("#6fa8f0");
+    expect((layers[1]!.mark as JsonObject).color).toBe("#e3e7ee");
+    expect((layers[2]!.mark as JsonObject).color).toBe("#ff7b72");
+    expect(JSON.stringify(layers[3])).toContain('["#97a6b6","#f0a35e"]');
+    expect(out.datasets).toEqual(sets); // data is never rewritten
+  });
+
+  it("keeps the light palette in light mode and leaves other colours alone", () => {
+    const out = prepareVegaLite(recipe, sets, "light");
+    expect(((out.layer as JsonObject[])[1]!.mark as JsonObject).color).toBe("#1B2333");
+    const custom = prepareVegaLite({ mark: { type: "bar", color: "#123456" } }, {}, "dark");
+    expect((custom.mark as JsonObject).color).toBe("#123456");
+  });
+
+  it("gives every dark variant at least 3:1 contrast on the dark card", () => {
+    for (const [light, dark] of Object.entries(DARK_VARIANTS)) {
+      if (NON_TEXT_FILLS.has(light)) continue;
+      expect(contrast(dark, "#1b212d"), `${light} -> ${dark}`).toBeGreaterThanOrEqual(3);
+    }
   });
 });
 

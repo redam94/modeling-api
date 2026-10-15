@@ -150,9 +150,15 @@ class ShimGcs:
             lambda s: s.sign_put(bucket, name, expires_in=timedelta(hours=1), max_bytes=max_bytes)
         )
 
-    def post_policy(self, bucket: str, prefix: str, *, max_bytes: int = 1 << 30) -> PostPolicy:
+    def post_policy(
+        self, bucket: str, prefix: str, *, max_bytes: int = 1 << 30, create_only: bool = False
+    ) -> PostPolicy:
         return self._call(
             lambda s: s.post_policy(
-                bucket, prefix, expires_in=timedelta(hours=1), max_bytes=max_bytes
+                bucket,
+                prefix,
+                expires_in=timedelta(hours=1),
+                max_bytes=max_bytes,
+                create_only=create_only,
             )
         )

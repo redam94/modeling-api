@@ -368,11 +368,15 @@ class CorpusReport:
 
     def table(self) -> str:
         """A fixed-width summary table (one row per fixture)."""
-        head = ["fixture", "model", *STEPS[1:], "metrics", "time", "result"]
+        # stack-mode reports (mapi_conformance.stack) add an "ingest" step
+        steps = (["ingest"] if any(f.step("ingest") for f in self.fixtures) else []) + list(
+            STEPS[1:]
+        )
+        head = ["fixture", "model", *steps, "metrics", "time", "result"]
         rows: list[list[str]] = []
         for f in self.fixtures:
             cells = [f.fixture, f.model or "-"]
-            for name in STEPS[1:]:
+            for name in steps:
                 s = f.step(name)
                 cells.append("-" if s is None else s.cell)
             cells.append(_fmt_metrics(f.metrics))

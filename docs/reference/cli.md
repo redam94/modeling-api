@@ -96,7 +96,7 @@ mapi config show
   line). Errors become `{"error": {...}}` with exit status 1; usage errors exit 2.
 - Local `fit` and `score` run plugins in-process (isolation `NONE`): use them only with code
   and data you trust. Server, plugin and log text is printed with ANSI and control sequences
-  removed.
+  and bidi overrides removed.
 
 ### `mapi serve`
 

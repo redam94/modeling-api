@@ -26,7 +26,9 @@ __all__ = [
     "flooding_registry",
     "forging_registry",
     "garbage_channel_registry",
+    "infra_claiming_registry",
     "sleeping_registry",
+    "spoofing_registry",
     "symlink_output_registry",
 ]
 
@@ -100,6 +102,92 @@ def garbage_channel_registry() -> Any:
 def crashing_registry() -> Any:
     """Dies without reporting anything."""
     os._exit(7)
+
+
+def infra_claiming_registry() -> Any:
+    """Fails claiming a platform fault (``INFRA_ERROR``), hoping to be retried for free."""
+    from mapi_spec.errors import InfraError
+
+    raise InfraError("the cloud is down, please run me again")
+
+
+SPOOF: str = "safe\u202etxt.exe\u202c \x1b[31mred\x1b[0m\x07 \u2066iso\u2069"
+"""Untrusted text with a bidi override, an isolate, ANSI colour and a control character."""
+
+
+def _channel() -> socket.socket | None:
+    for fd in range(3, 64):
+        try:
+            mode = os.fstat(fd).st_mode
+        except OSError:
+            continue
+        if stat.S_ISSOCK(mode):
+            return socket.socket(fileno=os.dup(fd))
+    return None
+
+
+def spoofing_registry() -> Any:
+    """Puts bidi overrides and escapes in every worker-authored text field, then fails."""
+    from mapi_spec.capabilities import Diagnostic
+    from mapi_spec.errors import ErrorCode, Issue, UserCodeError
+    from mapi_spec.run import (
+        MetricPayload,
+        ProgressPayload,
+        RunnerPhase,
+        StatePayload,
+        WarningPayload,
+    )
+
+    from mapi_runner.channel import (
+        DiagnosticMessage,
+        MetricMessage,
+        ProgressMessage,
+        StateMessage,
+        WarningMessage,
+        send_frame,
+    )
+
+    sock = _channel()
+    assert sock is not None
+    send_frame(sock, StateMessage(payload=StatePayload(phase=RunnerPhase.FIT, message=SPOOF)))
+    send_frame(
+        sock,
+        ProgressMessage(
+            payload=ProgressPayload(phase=RunnerPhase.FIT, fraction=0.5, message=SPOOF)
+        ),
+    )
+    send_frame(
+        sock,
+        WarningMessage(
+            payload=WarningPayload(code="SPOOF", message=SPOOF, untrusted_text=SPOOF + "\n2")
+        ),
+    )
+    send_frame(
+        sock,
+        DiagnosticMessage(
+            payload=Diagnostic(
+                code="SPOOF",
+                message_expert=SPOOF,
+                message_plain=SPOOF,
+                suggested_action=SPOOF,
+                coords={"geo": SPOOF},
+            )
+        ),
+    )
+    send_frame(sock, MetricMessage(payload=MetricPayload(name="mape", value=1.0, labels={})))
+    sock.close()
+    raise UserCodeError(
+        SPOOF,
+        untrusted_text=SPOOF + "\nline 2",
+        issues=[
+            Issue(
+                code=ErrorCode.SCHEMA_INVALID,
+                message=SPOOF,
+                suggested_action=SPOOF,
+                untrusted_text=SPOOF,
+            )
+        ],
+    )
 
 
 def sleeping_registry() -> Any:

@@ -339,3 +339,9 @@ def test_untrusted_text_is_sanitised() -> None:
     assert strip_control(evil) == "okredlink [bold]x[/bold]"
     assert safe(evil).plain == "okredlink [bold]x[/bold]"  # markup is not interpreted
     assert json.dumps(strip_control("a\tb\nc")) == '"a\\tb\\nc"'
+
+
+def test_bidi_overrides_are_stripped_from_untrusted_text() -> None:
+    spoof = "invoice\u202egpj.exe\u202c and \u2066isolated\u2069 \u200fok"
+    assert strip_control(spoof) == "invoicegpj.exe and isolated \u200fok"
+    assert safe(spoof).plain == "invoicegpj.exe and isolated \u200fok"

@@ -481,6 +481,7 @@ class ShimObjectStore:
         expires_in: timedelta,
         max_bytes: int,
         min_bytes: int = 0,
+        create_only: bool = False,
     ) -> PostPolicy:
         check_ttl(expires_in)
         check_object_name(prefix)
@@ -496,6 +497,7 @@ class ShimObjectStore:
             expires_in=expires_in,
             sign=hmac_policy_signer(self._identity.secret),
             now=now,
+            if_generation_match=0 if create_only else None,
         )
         return PostPolicy(
             url=f"{self.public_endpoint}/{_b(bucket)}",
@@ -503,6 +505,7 @@ class ShimObjectStore:
             fields=fields,
             content_length_range=(min_bytes, max_bytes),
             expires_at=expires_at,
+            create_only=create_only,
         )
 
     # ---------------------------------------------------------------- extras (not protocol)

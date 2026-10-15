@@ -126,7 +126,7 @@ per-execution values are `MAPI_RUN_ID` and `MAPI_NONCE`.
 | `tenant_id`, `project_id` | Always present (`default` in M1) |
 | `spec`, `spec_hash`, `catalog_digest` | The *resolved* spec JSON (`use:` ranges pinned), its canonical hash, and the catalog snapshot it was resolved against |
 | `inputs` | `name → SignedGet{url, expires_at, generation, size, crc32c, md5_hash?}`. Well-known names are `dataset` and `bundle`. URLs are pinned to a generation and support HTTP `Range`. The runner checks size and CRC32C after download and exits `13 INTEGRITY_ERROR` on a mismatch. |
-| `outputs` | `name → SignedPut \| PostPolicy`. `manifest` is a required write-once **signed PUT** for `{prefix}manifest.json`. `artifacts` is a **V4 POST policy** on the attempt prefix with a `content_length_range`. `checkpoints` is a POST policy on `checkpoint_prefix`, present only for checkpointable runs. |
+| `outputs` | `name → SignedPut \| PostPolicy`. `manifest` is a required write-once **signed PUT** for `{prefix}manifest.json`. `artifacts` is a **create-only V4 POST policy** on the attempt prefix with a `content_length_range`: it cannot replace an existing object, so it can't overwrite the manifest or swap an output after it was written. `checkpoints` is a POST policy on `checkpoint_prefix`, present only for checkpointable runs. |
 | `resume` | Checkpoint objects from the previous attempt, as `SignedGet`s |
 | `checkpoint_prefix` | `{attempt prefix}checkpoints/`, or `null` |
 | `hmac_key` | Base64 encoding of at least 32 random bytes; the per-run event HMAC key (`new_hmac_key()`). Never logged: `RunSpec.redacted()` blanks it, together with every URL. |
@@ -223,7 +223,7 @@ for example `1` from a crashed supervisor, is `infra`.
 | 2 | `CONFIG_ERROR` | infra: bad environment, bootstrap missing or invalid |
 | 10 | `USER_ERROR` | user: plugin or user code raised, or produced invalid output |
 | 11 | `RESOURCE_EXHAUSTED` | resource_exhausted: `MemoryError` or scratch budget exceeded |
-| 12 | `INFRA_ERROR` | infra: uploads or downloads failed after retries |
+| 12 | `INFRA_ERROR` | infra: the supervisor's uploads or downloads failed after retries (a worker-reported `INFRA_ERROR` exits `10`) |
 | 13 | `INTEGRITY_ERROR` | integrity: an input did not match its size or CRC32C |
 | 14 | `TIMEOUT` | timeout: deadline reached with no checkpoint to flush |
 | 15 | `SANDBOX_VIOLATION` | sandbox: log flood, output caps exceeded, forged or oversized events |
@@ -329,6 +329,7 @@ and each carries a `format` tag:
 | `preview.json` | `mapi.preview/v1` | `PreviewView`: dim columns then variable columns, the first rows, `total_rows` |
 | `profile.json` | `mapi.profile/v1` | `ProfileView`: per-variable statistics and a missingness grid along the time-like dim (at most 1,000 binned columns) |
 | `ui/tree_index.json` | `mapi.tree-index/v1` | `TreeIndexView`: every DataTree node's dims, coordinates (values for small ones), variables and scalar attributes; no arrays |
+| `ui/preprocess.json` | `mapi.preprocess/v1` | `PreprocessView`: every pipeline step in order (`id`, resolved `use`, `kind`, `stateful`), its learned JSON (capped at 16 KB, `learned_truncated`) and its numeric state arrays of at most two dims and 10,000 cells with their labels; larger arrays are named in `omitted` |
 
 ## Storage layout
 

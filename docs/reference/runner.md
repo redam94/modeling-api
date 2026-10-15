@@ -69,6 +69,9 @@ image only and never carry secrets:
 - **Logs are capped.** ANSI escapes, control characters and bidi overrides are stripped.
   Lines are cut at `limits.log_line_bytes` (4 KB) and flagged `truncated`. More than
   `limits.log_total_bytes` (20 MB) of worker output is `SANDBOX_VIOLATION (log_flood)`.
+- **Worker text is cleaned.** The same stripping applies to every other string the worker
+  sends: state and progress messages, warnings, diagnostics, metric labels, and error and
+  issue messages. Line breaks become spaces, except in `untrusted_text`.
 - **Progress is coalesced.** At most one `progress` event is sent per
   `limits.progress_interval_s` (2 s), and the newest value wins.
 - **Outputs are uploaded only from regular files.** The supervisor opens each file with
@@ -111,7 +114,7 @@ from them.
 | `2` | Bad environment, missing or invalid bootstrap, or unusable `outputs` (no events when the RunSpec could not be read) |
 | `10` | The worker reported a user, spec or data error, crashed, or exited without a result |
 | `11` | Out of memory (`MemoryError`, or the worker was killed by SIGKILL) or the scratch budget was exceeded |
-| `12` | Uploads failed after retries, or the worker reported an infrastructure error |
+| `12` | The supervisor's own uploads or downloads failed after retries |
 | `13` | An input did not match its size, CRC32C or MD5, or a bundle did not match its manifest |
 | `14` | The deadline was reached without a checkpoint |
 | `15` | Sandbox violation: log flood, malformed messages, unsafe outputs, oversized events or output caps |
@@ -121,9 +124,11 @@ from them.
 A failure is always reported in an `error` event whose `message` is written by the
 supervisor. Text that comes from the worker or a plugin goes in `untrusted_text`. Typed
 issues reported by the worker, such as `MISSING_FUTURE_COVARIATE`, are also emitted as
-`diagnostic` events. The supervisor accepts only four failure classes from the worker:
-`resource_exhausted`, `integrity`, `infra` and `sandbox`. Any other failure the worker
-reports becomes `user`.
+`diagnostic` events. The supervisor accepts only three failure classes from the worker:
+`resource_exhausted`, `integrity` and `sandbox`. A worker that reports `INFRA_ERROR` (for
+example a failed input download) fails the run as `user`: the `infra` exit makes the
+platform retry the whole run automatically, so only failures the supervisor observes itself
+may use it. Any other failure the worker reports becomes `user`.
 
 ## What `RunSpec.spec` holds, per kind
 
@@ -139,7 +144,7 @@ uploads may carry), and otherwise it is inferred.
 | `ingest` | `IngestMapping`, or `IngestJob` (`{"mapping": …}` or `{"preset": "mff", "mff": {…}}`, plus the informational `dataset` and `source`) | `upload` | `data.zarr.zip`, `schema.json`, `summary.json` (`DataSummary`), `profile.json` (`mapi.profile/v1`, plus `sha256` and `size_bytes` of the data), `preview.json` (`mapi.preview/v1`) |
 | `describe` | `DescribeJob` (`{"image_digest": …?}`) | none | `catalog.json` (`Catalog`), `describe.json` (`catalog_digest`, versions) |
 | `validate` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `validation.json` (`ValidateResponse` with the stages resolved by a dry run) |
-| `fit` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `bundle.zarr.zip`, `bundle.manifest.json`, `diagnostics.json`, `plots.json`, `metrics.json`, `coords.json` (`{stage: {dim: CoordSummary}}`), `evaluation/…`, `ui/thin.zarr.zip`, `ui/summaries.json`, `ui/tree_index.json` (`mapi.tree-index/v1`), `ui/grids/*.arrow`, `ui/plotdata/*.arrow` |
+| `fit` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `bundle.zarr.zip`, `bundle.manifest.json`, `diagnostics.json`, `plots.json`, `metrics.json`, `coords.json` (`{stage: {dim: CoordSummary}}`), `evaluation/…`, `ui/thin.zarr.zip`, `ui/summaries.json`, `ui/tree_index.json` (`mapi.tree-index/v1`), `ui/preprocess.json` (`mapi.preprocess/v1`), `ui/grids/*.arrow`, `ui/plotdata/*.arrow` |
 | `score` | a `ScoreRequest`, or `{"request": …, "plots": […], "max_draws": n}` | `bundle`, optional `bundle.manifest`, `dataset` (payload), `scenario`, `side.<name>` | `score.zarr.zip`, `result.json`, `ui/summary.arrow`, `plots.json` |
 | `evaluate` | `{"request": …?, "metrics": […]?}` | `bundle`, `dataset`, `side.<name>` | the score outputs plus `metrics.json` |
 | `derive` | `{"names": […], "draws": n?, "data": "dataset://…"?}` | `bundle`, `dataset`, `side.<name>` | `derived.zarr.zip`, `ui/grids/<name>.arrow`, `result.json` |

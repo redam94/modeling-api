@@ -23,7 +23,7 @@ from mapi_spec.run import (
     RunState,
     RunTrigger,
 )
-from mapi_spec.storage import NotFound, bootstrap_key
+from mapi_spec.storage import NotFound, PostPolicy, bootstrap_key
 from sqlalchemy import select, update
 
 
@@ -90,6 +90,9 @@ async def test_dispatch_writes_intent_row_and_bootstrap_before_submit(
     assert spec.run_id == run_id and spec.nonce == nonce and spec.hmac_key == att.hmac_key
     assert set(spec.inputs) == {"dataset"} and set(spec.outputs) == {"manifest", "artifacts"}
     assert spec.outputs["manifest"].name == f"t/default/runs/{run_id}/a1/manifest.json"  # type: ignore[union-attr]
+    artifacts = spec.outputs["artifacts"]
+    assert isinstance(artifacts, PostPolicy) and artifacts.create_only  # no overwrites
+    assert artifacts.fields["x-goog-if-generation-match"] == "0"
     assert spec.spec["model"]["use"] == "ts.hsgp_trend@1.0.0"  # type: ignore[index]
     assert await dispatcher.dispatch_once() == 0  # nothing left to lease
 

@@ -4,6 +4,8 @@
   of the bundle thinning index (a ``sample`` dim), so the browser never needs the full trace;
 * ``ui/summaries.json`` - per-parameter summaries (mean, sd, 90% HDI, R-hat, bulk ESS);
 * ``ui/tree_index.json`` - the bundle tree's structure (groups, dims, variables, attrs);
+* ``ui/preprocess.json`` - each pipeline step's learned state: JSON scalars and small 0-2-D
+  numeric arrays with their labels (the Inspect tab's ``scale(geo, channel)`` heatmap);
 * ``ui/grids/<name>.arrow`` - fit-cached derived quantities (response-curve grids per draw)
   as tidy Arrow tables for instant what-if sliders;
 * ``ui/plotdata/<plot>.<dataset>.arrow`` - large inline plot datasets moved out of
@@ -13,7 +15,9 @@
 from __future__ import annotations
 
 import base64
+import json
 import math
+from collections.abc import Mapping, Sequence
 from typing import Any, Final
 
 import numpy as np
@@ -21,11 +25,19 @@ import xarray as xr
 from mapi_plots.recipes._stats import ess_bulk, rhat
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.errors import PayloadLimitError
+from mapi_sdk.steps import StepState
 from mapi_sdk.summarise import hdi, select_draws
 from mapi_sdk.wire import to_arrow_table, write_arrow_ipc, write_datatree_zip
 from mapi_spec.storage import crc32c, crc32c_to_base64
+from mapi_spec.validate import ResolvedStep
 from mapi_spec.views import (
+    MAX_LEARNED_BYTES,
+    MAX_STATE_ARRAY_CELLS,
+    MAX_STATE_ARRAYS,
     MAX_TREE_COORD_VALUES,
+    PreprocessView,
+    StateArrayView,
+    StepStateView,
     TreeCoord,
     TreeGroup,
     TreeIndexView,
@@ -35,7 +47,7 @@ from mapi_spec.views import (
 
 from mapi_runner.worker.context import WorkerContext
 
-__all__ = ["externalize_plot_data", "tree_index", "write_ui_views"]
+__all__ = ["externalize_plot_data", "preprocess_view", "tree_index", "write_ui_views"]
 
 INLINE_LIMIT: Final = 64 * 1024
 """Inline plot datasets above this many base64 characters move to ``ui/plotdata``."""
@@ -68,6 +80,8 @@ def write_ui_views(ctx: WorkerContext, bundle: Bundle) -> list[str]:
     written.append("ui/summaries.json")
     ctx.write_json("ui/tree_index.json", tree_index(bundle.to_tree()))
     written.append("ui/tree_index.json")
+    ctx.write_json("ui/preprocess.json", preprocess_view(bundle.resolved.steps, bundle.states))
+    written.append("ui/preprocess.json")
     for name, derived in sorted(bundle.model.derived.items()):
         try:
             data = write_arrow_ipc(to_arrow_table(derived))
@@ -192,6 +206,106 @@ def tree_index(tree: xr.DataTree) -> dict[str, Any]:
             },
         )
     return TreeIndexView(groups=groups).model_dump(mode="json")
+
+
+_STATE_BOOKKEEPING: Final = frozenset(
+    {"step_id", "step_type", "step_version", "settings_hash", "learned", "context_need"}
+)
+
+
+def _learned(state: StepState) -> tuple[dict[str, Any], bool]:
+    """``learned`` plus any subclass JSON fields, capped at :data:`MAX_LEARNED_BYTES`."""
+    payload = state.json_payload()
+    merged: dict[str, Any] = dict(payload.get("learned") or {})
+    merged.update({k: v for k, v in payload.items() if k not in _STATE_BOOKKEEPING})
+    out: dict[str, Any] = {}
+    used = 2
+    truncated = False
+    for key, value in merged.items():
+        try:
+            size = len(json.dumps({str(key)[:256]: value}, allow_nan=False)) + 1
+        except (TypeError, ValueError):
+            truncated = True
+            continue
+        if used + size > MAX_LEARNED_BYTES:
+            truncated = True
+            continue
+        out[str(key)[:256]] = value
+        used += size
+    return out, truncated
+
+
+def _float(x: Any) -> float | None:
+    f = float(x)
+    return f if math.isfinite(f) else None
+
+
+def _state_array(name: str, da: xr.DataArray) -> StateArrayView | None:
+    """A small numeric array of at most two dims, or ``None`` when it must be omitted."""
+    if da.ndim > 2 or da.size > MAX_STATE_ARRAY_CELLS:
+        return None
+    if not (np.issubdtype(da.dtype, np.number) or np.issubdtype(da.dtype, np.bool_)):
+        return None
+    if np.issubdtype(da.dtype, np.complexfloating):
+        return None
+    values = np.asarray(da.values, dtype=float)
+    dims = [str(d) for d in da.dims]
+    coords: dict[str, list[ViewScalar]] = {}
+    for d in dims:
+        if d in da.coords and da[d].ndim == 1:
+            labels = _coord_values(np.asarray(da[d].values))
+            if labels is not None:
+                coords[d] = labels
+    body: list[float | None] | list[list[float | None]]
+    if values.ndim == 2:
+        body = [[_float(x) for x in row] for row in values]
+    else:
+        body = [_float(x) for x in values.reshape(-1)]
+    units = da.attrs.get("units")
+    return StateArrayView(
+        name=name[:256],
+        dims=dims,
+        coords=coords,
+        values=body,
+        units=units[:256] if isinstance(units, str) else None,
+    )
+
+
+def preprocess_view(
+    steps: Sequence[ResolvedStep], states: Mapping[str, StepState]
+) -> dict[str, Any]:
+    """``ui/preprocess.json`` (:class:`~mapi_spec.views.PreprocessView`): every pipeline step
+    in order with its learned JSON state and its small (0-2-D, numeric) state arrays; larger
+    or higher-dimensional arrays are named in ``omitted`` (they stay in the bundle)."""
+    views: list[StepStateView] = []
+    for step in steps:
+        st = states.get(step.id)
+        learned: dict[str, Any] = {}
+        truncated = False
+        arrays: list[StateArrayView] = []
+        omitted: list[str] = []
+        if st is not None:
+            learned, truncated = _learned(st)
+            if st.arrays is not None:
+                for var in sorted(map(str, st.arrays.data_vars)):
+                    arr = _state_array(var, st.arrays[var])
+                    if arr is None or len(arrays) >= MAX_STATE_ARRAYS:
+                        omitted.append(var[:256])
+                    else:
+                        arrays.append(arr)
+        views.append(
+            StepStateView(
+                id=step.id,
+                use=step.resolved,
+                kind=step.kind.value,
+                stateful=step.stateful,
+                learned=learned,
+                learned_truncated=truncated,
+                arrays=arrays,
+                omitted=omitted[:1024],
+            )
+        )
+    return PreprocessView(steps=views).model_dump(mode="json")
 
 
 def externalize_plot_data(

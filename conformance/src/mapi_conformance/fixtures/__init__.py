@@ -19,7 +19,9 @@ A fixture ``fixtures/<id>/`` holds:
     ``check_score(name, tree, bundle, data)`` and ``check_evaluate(tree, bundle, data)``
     raising ``AssertionError`` on failure.
 
-Register a fixture by listing its id below.
+Register a fixture by listing its id below. Plan §13 corpus entries that are not ported yet
+are listed in :data:`DEFERRED` with the reason, so the gap is explicit (a test keeps the
+plan's list, the fixtures and the deferrals in step).
 """
 
 FIXTURES: list[str] = [
@@ -27,6 +29,29 @@ FIXTURES: list[str] = [
     "c08",
     "e24",
     "xgb_store_demand",
+    "sklearn_store_demand",
     "e33",
     "pymc_marketing",
 ]
+
+DEFERRED: dict[str, str] = {
+    "E13": (
+        "state-space model on pymc_extras: needs a state-space plugin with the 'filter' score "
+        "mode and loo_valid=False, which no built-in plugin provides in M1 (vetted-plugin "
+        "ports, M4)"
+    ),
+    "E84-lite": (
+        "margarine choice panel: needs a discrete-choice plugin (long, ragged hh -> trip, "
+        "bounded 'simulate', last_per_group split); the choice pack lands with the vetted "
+        "plugins (M4)"
+    ),
+    "E82-slim": (
+        "GP Bayesian optimisation: needs the 'recommend' mode and plugin-owned Campaign runs, "
+        "which the plan schedules with Campaign loops (M6)"
+    ),
+    "E45": (
+        "not ported: no built-in M1 plugin implements its model, so it waits for the "
+        "vetted-plugin ports (M4)"
+    ),
+}
+"""Plan §13 corpus entries without a fixture yet, with why and until when."""

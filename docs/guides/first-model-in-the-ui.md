@@ -125,7 +125,7 @@ actual weekly EUR revenue.
 
 ![Decomposition of revenue into baseline and channels](../assets/first-model/plot-decomposition.png)
 
-**Contribution by channel** splits revenue over time into the baseline, each channel,
+**Contribution by component** splits revenue over time into the baseline, each channel,
 seasonality and holidays, in EUR, with the totals and their uncertainty below.
 **Response curves** shows what an extra euro of spend returns per channel, and **Sampler
 convergence** has the trace and rank plots behind the scorecard. **Provenance** shows the

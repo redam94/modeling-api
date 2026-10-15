@@ -20,6 +20,7 @@ import pandas as pd
 from mapi_spec.capabilities import Representation
 from pydantic import Field
 
+from mapi_plots.palette import OBSERVED, REFERENCE
 from mapi_plots.recipes import _stats
 from mapi_plots.recipes._base import (
     Figure,
@@ -29,6 +30,7 @@ from mapi_plots.recipes._base import (
     RecipeSettings,
     named,
     recipe,
+    wrap_facet,
 )
 from mapi_plots.recipes._util import (
     SAMPLE,
@@ -129,7 +131,9 @@ def _band_rows(
     return pd.concat(parts, ignore_index=True)
 
 
-def _curve_chart(name: str, y_title: str, s: ResponseCurveSettings, current: bool) -> Any:
+def _curve_chart(
+    name: str, y_title: str, s: ResponseCurveSettings, current: bool, channels: list[str]
+) -> Any:
     base = alt.Chart()
     layers: list[Any] = [
         base.mark_area(opacity=0.2).encode(
@@ -153,7 +157,7 @@ def _curve_chart(name: str, y_title: str, s: ResponseCurveSettings, current: boo
         # current spend is stored on every row of its channel, so one dataset serves all
         # layers and the chart can still be faceted
         layers.append(
-            base.mark_point(filled=True, size=80, shape="diamond", color="#111").encode(
+            base.mark_point(filled=True, size=80, shape="diamond", color=OBSERVED).encode(
                 x="mean(current_spend):Q",
                 y="mean(current_value):Q",
                 detail="channel:N",
@@ -162,8 +166,13 @@ def _curve_chart(name: str, y_title: str, s: ResponseCurveSettings, current: boo
         )
     layer = alt.layer(*layers)
     if s.facet:
-        return layer.properties(width=s.width // 2, height=s.height).facet(
-            facet=alt.Facet("channel:N"), columns=3, data=named(name)
+        return wrap_facet(
+            layer.properties(width=s.width // 2, height=s.height),
+            "channel",
+            channels,
+            columns=3,
+            title="channel",
+            data=named(name),
         )
     return alt.layer(*layers, data=named(name)).properties(width=s.width, height=s.height)
 
@@ -206,7 +215,7 @@ def response_curves(inp: RecipeInput, s: ResponseCurveSettings) -> Figure:
     curves = _band_rows(c.channels, c.spend, c.values(), s.hdi_prob)
     current = _current_rows(c, curves, "point")
     datasets = {"curves": _with_current(curves, current)}
-    chart = _curve_chart("curves", c.var, s, current is not None)
+    chart = _curve_chart("curves", c.var, s, current is not None, list(map(str, c.channels)))
     caption = (
         f"Each curve shows the expected {c.var} for a level of spend per channel, with the "
         f"{pct(s.hdi_prob)} interval shaded. Steeper curves return more per extra unit of "
@@ -263,7 +272,7 @@ def marginal_cost(inp: RecipeInput, s: MarginalCostSettings) -> Figure:
     label = "cost per extra unit" if s.metric == "cost" else "return per extra unit spent"
     current = _current_rows(c, rows, "point")
     datasets = {"marginal": _with_current(rows, current)}
-    chart = _curve_chart("marginal", label, s, current is not None)
+    chart = _curve_chart("marginal", label, s, current is not None, list(map(str, c.channels)))
     caption = (
         f"The {label} of {c.var} at each spend level per channel ({pct(s.hdi_prob)} interval "
         "shaded)."
@@ -375,7 +384,7 @@ def budget_plans(inp: RecipeInput, s: BudgetPlanSettings) -> Figure:
         data=named("outcomes"),
     ).properties(width=s.width // 2, height=26 * len(summary), title="Expected outcome")
     delta = alt.layer(
-        obase.mark_rule(color="#999").encode(x=alt.datum(0)),
+        obase.mark_rule(color=REFERENCE).encode(x=alt.datum(0)),
         obase.mark_rule().encode(
             x=alt.X("delta_lo:Q", title=f"change vs {ref}"),
             x2="delta_hi:Q",
@@ -417,7 +426,7 @@ class MMMDecompositionSettings(DecompositionSettings):
 
 @recipe(
     "mmm.decomposition",
-    title="Contribution by channel",
+    title="Contribution by component",
     settings=MMMDecompositionSettings,
     persona="both",
     requires_groups=["contributions"],

@@ -5,7 +5,8 @@ Outputs (relative to the attempt prefix)::
     bundle.zarr.zip  bundle.manifest.json  diagnostics.json  plots.json  metrics.json
     coords.json
     evaluation/{bundle.zarr.zip, manifest.json, diagnostics.json, plots.json, metrics.json}
-    ui/{thin.zarr.zip, summaries.json, tree_index.json, grids/*.arrow, plotdata/*.arrow}
+    ui/{thin.zarr.zip, summaries.json, tree_index.json, preprocess.json, grids/*.arrow,
+        plotdata/*.arrow}
 
 The SDK names the bundle's own manifest ``manifest.json``; at the top level that name is the
 runner's output manifest, so it is uploaded as ``bundle.manifest.json``.

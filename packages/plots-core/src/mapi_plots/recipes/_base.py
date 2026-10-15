@@ -38,6 +38,7 @@ __all__ = [
     "as_tree",
     "named",
     "recipe",
+    "wrap_facet",
 ]
 
 Persona = Literal["guided", "expert", "both"]
@@ -48,6 +49,31 @@ def named(name: str) -> Any:
     """``alt.Data(name=...)``: a reference to one of the figure's named datasets."""
     data_cls: Any = alt.Data  # altair's generated classes are untyped
     return data_cls(name=name)
+
+
+def wrap_facet(
+    layer: Any,
+    field: str,
+    levels: Iterable[Any],
+    *,
+    columns: int,
+    title: str | None = None,
+    data: Any = None,
+    independent_y: bool = False,
+) -> Any:
+    """``layer`` wrapped into one panel per level of ``field``, in the given order.
+
+    Every panel draws its own x axis (and y axis): with a shared axis, Vega-Lite puts the
+    x axis only under the bottom row, so the top row has no labels and, when the last row
+    is short, the axis floats under an empty cell. There are never more columns than panels.
+    """
+    order = [str(v) for v in dict.fromkeys(levels)]
+    kw: dict[str, Any] = {} if data is None else {"data": data}
+    facet = alt.Facet(f"{field}:N", title=title, sort=order)
+    chart = layer.facet(facet=facet, columns=max(1, min(columns, len(order))), **kw)
+    if independent_y:
+        chart = chart.resolve_scale(y="independent")
+    return chart.resolve_axis(x="independent", y="independent")
 
 
 class RecipeDataError(MapiError):

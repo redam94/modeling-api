@@ -3,6 +3,7 @@
  * injection, Plotly `$ref` resolution, theme merging.
  */
 import type { JsonObject, JsonValue, PlotDatasets, Row, Scalar, Theme } from "./protocol";
+import { themeRecipeColours } from "./recipe-palette";
 import { plotlyLayout, vegaConfig } from "./theme";
 
 export class SpecError extends Error {
@@ -72,8 +73,10 @@ export function preparePlotly(spec: JsonObject, datasets: PlotDatasets, theme: T
 
 const UNIT_KEYS = ["mark", "layer"];
 
-/** Inject named datasets and theme config into a Vega-Lite spec. */
+/** Inject named datasets and theme config (and theme the recipe palette) into a Vega-Lite spec. */
 export function prepareVegaLite(spec: JsonObject, datasets: PlotDatasets, theme: Theme): JsonObject {
+  // explicit recipe colours beat any config, so they are swapped for their theme variants
+  spec = themeRecipeColours(spec, theme) as JsonObject;
   const out: JsonObject = { ...spec };
   const inline = isObject(spec.datasets) ? (spec.datasets) : {};
   out.datasets = { ...inline, ...(datasets as unknown as JsonObject) };

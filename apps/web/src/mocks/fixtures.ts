@@ -413,6 +413,8 @@ export const preprocessView = {
       kind: "value",
       stateful: true,
       learned: { over: ["time"] },
+      learned_truncated: false,
+      omitted: [],
       arrays: [
         {
           name: "scale",

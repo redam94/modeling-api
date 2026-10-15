@@ -46,7 +46,7 @@ from mapi_spec.jobs import DATASET_SCHEMA_ATTR
 from mapi_spec.localdev import LocalDev
 from mapi_spec.run import BundleManifest, sign_event
 from mapi_spec.storage import bundle_prefix
-from mapi_spec.views import TreeIndexView
+from mapi_spec.views import PreprocessView, TreeIndexView
 
 pytestmark = [pytest.mark.e2e, pytest.mark.integration, pytest.mark.slow]
 
@@ -391,6 +391,11 @@ def test_ui_views_redirect_to_signed_urls(api: Client, stack: Stack, fit: FitRes
             path.replace("tree_index.json", "summaries.json"), follow_redirects=True
         )
         assert summaries.status_code == 200 and summaries.json()
+        pre = http.get(path.replace("tree_index.json", "preprocess.json"), follow_redirects=True)
+        assert pre.status_code == 200, pre.text
+        steps = {s.id: s for s in PreprocessView.model_validate_json(pre.content).steps}
+        assert steps["scale_spend"].stateful
+        assert any(len(a.dims) == 2 for a in steps["scale_spend"].arrays)
         missing = http.get(path.replace("tree_index.json", "nope.json"), follow_redirects=False)
         assert missing.status_code == 404
 

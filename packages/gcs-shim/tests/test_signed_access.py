@@ -351,6 +351,43 @@ async def test_post_policy_upload_and_violations(
         assert r.status_code == 204 and r.headers["location"].endswith(f"/{runs}/{PREFIX}s")
 
 
+async def test_create_only_post_policy_refuses_overwrites(
+    gcs_shim: ShimServer, http: httpx.AsyncClient
+) -> None:
+    """A create-only policy cannot replace an object, even when its signer could delete one
+    (the control principal), so it can't overwrite a write-once manifest or a verified
+    output. A plain policy from the same signer still overwrites (GCS semantics)."""
+    runs = gcs_shim.buckets.runs
+    async with gcs_shim.store() as store:
+        once = await store.post_policy(
+            runs, PREFIX, expires_in=MIN5, max_bytes=100, create_only=True
+        )
+        assert once.create_only and once.fields["x-goog-if-generation-match"] == "0"
+        res = await upload_post_policy(http, once, PREFIX + "out.json", b"first")
+        assert res.generation is not None
+        with pytest.raises(PreconditionFailed):
+            await upload_post_policy(http, once, PREFIX + "out.json", b"second")
+        assert await store.get(runs, PREFIX + "out.json") == b"first"
+
+        put = await store.sign_put(runs, PREFIX + "manifest.json", expires_in=MIN5)
+        await upload_signed_put(http, put, b"{}")
+        with pytest.raises(PreconditionFailed):
+            await upload_post_policy(http, once, PREFIX + "manifest.json", b"forged")
+        assert await store.get(runs, PREFIX + "manifest.json") == b"{}"
+
+        # the precondition is part of the signed policy: dropping it from the form fails
+        fields = {k: v for k, v in once.fields.items() if k != "x-goog-if-generation-match"}
+        r = await http.post(
+            once.url, data={"key": PREFIX + "z", **fields}, files={"file": ("z", b"zz")}
+        )
+        assert r.status_code == 403 and _xml_code(r) == "InvalidPolicyDocument"
+
+        plain = await store.post_policy(runs, PREFIX, expires_in=MIN5, max_bytes=100)
+        assert not plain.create_only and "x-goog-if-generation-match" not in plain.fields
+        await upload_post_policy(http, plain, PREFIX + "out.json", b"third")
+        assert await store.get(runs, PREFIX + "out.json") == b"third"
+
+
 async def test_post_policy_expiry(gcs_shim: ShimServer, http: httpx.AsyncClient) -> None:
     past = datetime.now(UTC) - timedelta(hours=2)
     async with gcs_shim.store(clock=lambda: past) as store:
