@@ -35,6 +35,42 @@ __all__ = [
 
 ENTRY_POINT_GROUPS = ("mapi.steps", "mapi.models", "mapi.plots")
 
+BUILTIN_NAMESPACES: frozenset[str] = frozenset({"core", "mmm", "ml", "sklearn", "ts", "tabular"})
+"""Id namespaces of the built-in (T0) plugins; other distributions never register in them."""
+BUILTIN_DISTRIBUTIONS: frozenset[str] = frozenset(
+    {
+        "mapi-sdk",
+        "mapi-steps",
+        "mapi-plots",
+        "mapi-pymc",
+        "mapi-sklearn",
+        "mapi-plugin-mmm",
+        "mapi-plugin-ts",
+        "mapi-plugin-tabular",
+        "mapi-conformance",
+    }
+)
+
+
+def _flatten(obj: Any) -> list[Any]:
+    """The steps/models/plot recipes an entry point exported (lists are flattened)."""
+    if isinstance(obj, type) or hasattr(obj, "catalog_entry"):
+        return [obj]
+    if isinstance(obj, Iterable) and not isinstance(obj, str | bytes):
+        return [item for o in obj for item in _flatten(o)]
+    return [obj]
+
+
+def _plugin_id(obj: Any) -> str | None:
+    pid = getattr(obj, "id", None)
+    if isinstance(pid, str):
+        return pid
+    entry = getattr(obj, "catalog_entry", None)
+    if callable(entry):
+        eid = getattr(entry(), "id", None)
+        return eid if isinstance(eid, str) else None
+    return None
+
 
 @runtime_checkable
 class PlotRecipe(Protocol):
@@ -130,15 +166,24 @@ class Registry:
     def load_entry_points(
         self, groups: Iterable[str] = ENTRY_POINT_GROUPS, *, strict: bool = False
     ) -> list[str]:
-        """Load and register every entry point in ``groups``; return the errors."""
+        """Load and register every entry point in ``groups``; return the errors.
+
+        Nothing an entry point exports may replace what is already registered (the first
+        registration wins, whatever the iteration order of installed distributions), and
+        ids in the built-in namespaces (:data:`BUILTIN_NAMESPACES`) are only accepted from
+        the built-in distributions. Collisions are reported in ``load_errors`` (raised
+        with ``strict``).
+        """
         errors: list[str] = []
         for group in groups:
             for ep in importlib.metadata.entry_points(group=group):
+                dist = getattr(getattr(ep, "dist", None), "name", None)
                 try:
                     obj = ep.load()
                     if callable(obj) and not isinstance(obj, type):
                         obj = obj()
-                    self.register(obj, replace=True)
+                    for item in _flatten(obj):
+                        self._register_entry(item, dist)
                 except Exception as exc:  # report and keep going: one bad plugin
                     msg = f"{group}:{ep.name}: {type(exc).__name__}: {exc}"
                     if strict:
@@ -146,6 +191,16 @@ class Registry:
                     errors.append(msg)
         self.load_errors += errors
         return errors
+
+    def _register_entry(self, obj: Any, dist: str | None) -> None:
+        pid = _plugin_id(obj)
+        namespace = pid.split(".", 1)[0] if pid and "." in pid else None
+        if namespace in BUILTIN_NAMESPACES and dist not in BUILTIN_DISTRIBUTIONS:
+            raise ValueError(
+                f"{pid!r} is in the reserved {namespace!r} namespace of the built-in plugins "
+                f"(exported by {dist or 'an unknown distribution'!r})"
+            )
+        self.register(obj, replace=False)
 
     # ------------------------------------------------------------------- lookup
     def step(self, ref: str | UseRef) -> type[Step[Any, Any]]:
