@@ -1,21 +1,29 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { createRootRouteWithContext, createRoute, createRouter, Link } from "@tanstack/react-router";
+import { createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Link } from "@tanstack/react-router";
 
 import type { RunKind, RunState } from "@/api/types";
 import { EmptyState } from "@/components/common";
 import { AppShell } from "@/components/shell/app-shell";
-import { RUN_STATES } from "@/lib/run-state";
-import { BuildPage } from "@/routes/build";
-import { CatalogPage } from "@/routes/catalog";
-import { DatasetDetailPage, DatasetsPage } from "@/routes/datasets";
-import { GuidedPage } from "@/routes/guided";
+import { RUN_KINDS, RUN_STATES } from "@/lib/run-state";
 import { HomePage } from "@/routes/home";
-import { ModelPage, ModelsPage, ModelVersionPage } from "@/routes/models";
-import { RunDetailPage } from "@/routes/run-detail";
-import { RUN_KINDS, RunsPage } from "@/routes/runs";
-import { ScorePage } from "@/routes/score";
-import { SettingsPage } from "@/routes/settings";
-import { NewSpecPage, SpecEditorPage } from "@/routes/spec-editor";
+
+/*
+ * Every page except Home is a lazy route: its module (and what only it needs, such as Monaco
+ * on the spec editor or Apache Arrow on Score and Inspect) loads on navigation or on link
+ * intent, never on first paint. `bundle-budget.ts` fails the build if that regresses.
+ */
+const page = {
+  build: () => import("@/routes/build"),
+  catalog: () => import("@/routes/catalog"),
+  datasets: () => import("@/routes/datasets"),
+  guided: () => import("@/routes/guided"),
+  models: () => import("@/routes/models"),
+  runDetail: () => import("@/routes/run-detail"),
+  runs: () => import("@/routes/runs"),
+  score: () => import("@/routes/score"),
+  settings: () => import("@/routes/settings"),
+  specEditor: () => import("@/routes/spec-editor"),
+};
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -56,51 +64,51 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: HomePage });
 
-const datasetsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/datasets", component: DatasetsPage });
+const datasetsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/datasets", component: lazyRouteComponent(page.datasets, "DatasetsPage") });
 
 const datasetRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/datasets/$datasetId",
-  component: DatasetDetailPage,
+  component: lazyRouteComponent(page.datasets, "DatasetDetailPage"),
   validateSearch: (s: Record<string, unknown>): { version?: number | undefined; upload?: boolean | undefined } => ({
     version: positiveInt(s.version),
     upload: s.upload === true || s.upload === "true" ? true : undefined,
   }),
 });
 
-const buildRoute = createRoute({ getParentRoute: () => rootRoute, path: "/build", component: BuildPage });
+const buildRoute = createRoute({ getParentRoute: () => rootRoute, path: "/build", component: lazyRouteComponent(page.build, "BuildPage") });
 
-const newSpecRoute = createRoute({ getParentRoute: () => rootRoute, path: "/build/new", component: NewSpecPage });
+const newSpecRoute = createRoute({ getParentRoute: () => rootRoute, path: "/build/new", component: lazyRouteComponent(page.specEditor, "NewSpecPage") });
 
 const specRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/build/$specId",
-  component: SpecEditorPage,
+  component: lazyRouteComponent(page.specEditor, "SpecEditorPage"),
   validateSearch: (s: Record<string, unknown>): { rev?: number | undefined } => ({ rev: positiveInt(s.rev) }),
 });
 
 const runsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/runs",
-  component: RunsPage,
+  component: lazyRouteComponent(page.runs, "RunsPage"),
   validateSearch: (s: Record<string, unknown>): { state?: RunState | undefined; kind?: RunKind | undefined } => ({
     state: oneOf(s.state, RUN_STATES),
     kind: oneOf(s.kind, RUN_KINDS),
   }),
 });
 
-const runRoute = createRoute({ getParentRoute: () => rootRoute, path: "/runs/$runId", component: RunDetailPage });
+const runRoute = createRoute({ getParentRoute: () => rootRoute, path: "/runs/$runId", component: lazyRouteComponent(page.runDetail, "RunDetailPage") });
 
-const modelsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models", component: ModelsPage });
+const modelsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models", component: lazyRouteComponent(page.models, "ModelsPage") });
 
-const modelRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models/$modelId", component: ModelPage });
+const modelRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models/$modelId", component: lazyRouteComponent(page.models, "ModelPage") });
 
 const INSPECT_TABS = ["diagnostics", "plots", "tree", "preprocess", "provenance"] as const;
 
 const modelVersionRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/models/$modelId/versions/$version",
-  component: ModelVersionPage,
+  component: lazyRouteComponent(page.models, "ModelVersionPage"),
   validateSearch: (s: Record<string, unknown>): { tab?: (typeof INSPECT_TABS)[number] | undefined } => ({
     tab: oneOf(s.tab, INSPECT_TABS),
   }),
@@ -109,7 +117,7 @@ const modelVersionRoute = createRoute({
 const scoreRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/score",
-  component: ScorePage,
+  component: lazyRouteComponent(page.score, "ScorePage"),
   validateSearch: (s: Record<string, unknown>): { model?: string | undefined; version?: number | undefined } => ({
     model: idParam(s.model),
     version: positiveInt(s.version),
@@ -119,15 +127,15 @@ const scoreRoute = createRoute({
 const catalogRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/catalog",
-  component: CatalogPage,
+  component: lazyRouteComponent(page.catalog, "CatalogPage"),
   validateSearch: (s: Record<string, unknown>): { tab?: "steps" | "plots" | undefined } => ({
     tab: oneOf(s.tab, ["steps", "plots"] as const),
   }),
 });
 
-const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/settings", component: SettingsPage });
+const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/settings", component: lazyRouteComponent(page.settings, "SettingsPage") });
 
-const guidedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guided", component: GuidedPage });
+const guidedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guided", component: lazyRouteComponent(page.guided, "GuidedPage") });
 
 export const routeTree = rootRoute.addChildren([
   homeRoute,

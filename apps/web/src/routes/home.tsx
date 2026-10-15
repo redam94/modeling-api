@@ -8,9 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, Progress } from "@/components/ui/primitives";
 import { phaseLabel } from "@/features/runs/progress-panel";
 import { relativeTime, shortId } from "@/lib/format";
-import { isTerminal } from "@/lib/run-state";
+import { isTerminal, runSubject } from "@/lib/run-state";
 
-import { runSubject } from "./runs";
 
 function ActiveRun({ run }: { run: Run }) {
   const p = run.progress;

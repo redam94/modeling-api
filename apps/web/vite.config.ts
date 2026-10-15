@@ -3,10 +3,20 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 
+import { bundleBudget } from "./bundle-budget";
 import { buildAppCsp, type AppCspOptions } from "./csp";
 
 const HOST = "127.0.0.1";
 const PORT = 5173;
+
+/**
+ * What every page may download before first paint: the entry chunk and its static imports.
+ * Monaco, monaco-yaml and Arrow load only on the pages that use them (lazy routes + import()).
+ */
+const ENTRY_BUDGET = {
+  maxEntryBytes: 640 * 1024,
+  forbidden: [/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:monaco-editor|monaco-yaml|apache-arrow)\//],
+};
 
 function cspMeta(opts: AppCspOptions): Plugin {
   return {
@@ -31,7 +41,7 @@ export default defineConfig(({ mode }) => {
     "Referrer-Policy": "strict-origin-when-cross-origin",
   };
   return {
-    plugins: [react(), tailwindcss(), cspMeta(csp)],
+    plugins: [react(), tailwindcss(), cspMeta(csp), bundleBudget(ENTRY_BUDGET)],
     resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
     // `--mode mock` serves the MSW service worker (mock-public/) and enables the mocks;
     // production builds never contain it.
@@ -42,17 +52,6 @@ export default defineConfig(({ mode }) => {
       target: "es2022",
       sourcemap: false,
       chunkSizeWarningLimit: 4096,
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (id.includes("node_modules/monaco-editor") || id.includes("node_modules/monaco-yaml")) {
-              return "monaco";
-            }
-            if (id.includes("node_modules/apache-arrow")) return "arrow";
-            return undefined;
-          },
-        },
-      },
     },
     worker: { format: "es" },
     test: {
