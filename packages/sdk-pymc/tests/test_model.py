@@ -342,7 +342,7 @@ class _CountSettings(ModelSettings):
 
 
 class _Counts(PyMCModel[_CountSettings]):
-    """Poisson counts: no inverse CDF, so predictive noise uses the seeded sampler stream."""
+    """Poisson counts: no symbolic inverse CDF, so predictive noise uses a numeric one."""
 
     id = "test.counts"
     version = "1.0.0"
@@ -388,13 +388,86 @@ def test_distributions_without_icdf_fall_back_to_seeded_noise() -> None:
     )
     a = _pred(score_bundle(b, req, None, registry=reg, return_full=True))["y"]
     again = _pred(score_bundle(b, req, None, registry=reg, return_full=True))["y"]
-    assert a.attrs["noise"] == "seeded_stream"
+    assert a.attrs["noise"] == "crn_ppf"  # frozen uniforms through the Poisson ppf
     xr.testing.assert_identical(a, again)
     with pytest.raises(MapiError) as err:
         score_bundle(
             b, score_request("mode: predict\noutput: {kind: expected}\n"), None, registry=reg
         )
     assert err.value.code in (ErrorCode.CAPABILITY_UNSUPPORTED, ErrorCode.SCHEMA_INVALID)
+
+
+class _CountsX(PyMCModel[_CountSettings]):
+    """Poisson counts with a covariate: CRN must keep untouched cells' noise identical."""
+
+    id = "test.counts_x"
+    version = "1.0.0"
+    Settings = _CountSettings
+    schema_template: ClassVar[dict[str, Any]] = {
+        "template": {
+            "dims": {"obs": {"kind": "integer", "policy": "extend"}},
+            "vars": {
+                "y": {"dims": ["obs"], "dtype": "float64", "role": "target"},
+                "x": {"dims": ["obs"], "dtype": "float64"},
+            },
+        }
+    }
+    outputs: ClassVar[dict[str, Any]] = {"y": {"dims": ["obs"], "units_of": "y"}}
+    expected: ClassVar[dict[str, str]] = {"y": "mu"}
+    default_engine = "map"
+    pad_extend = False
+
+    def build(self, ds: xr.Dataset, s: _CountSettings, ctx: BuildContext) -> pm.Model:
+        with pm.Model(coords=ctx.coords()) as model:
+            a = pm.Normal("a", 1.5, 1.0)
+            b = pm.Normal("b", 0.0, 1.0)
+            mu = pm.Deterministic("mu", pm.math.exp(a + b * ctx.data("x")), dims="obs")
+            pm.Poisson("y", mu, observed=ctx.observed("y", dims=["obs"]), dims="obs")
+        return model
+
+
+def test_discrete_counterfactual_noise_is_common_in_untouched_cells() -> None:
+    """Poisson has no symbolic inverse CDF: frozen uniforms go through a numeric one, so
+    changing one cell's mean never reshuffles the noise of the others."""
+    reg = _registry_with(_CountsX)
+    n = 12
+    rng = np.random.default_rng(0)
+    x = rng.uniform(0, 1, n)
+    data = xr.Dataset(
+        {"y": ("obs", rng.poisson(np.exp(1.5 + 0.5 * x)).astype(float)), "x": ("obs", x)},
+        coords={"obs": np.arange(n)},
+    )
+    spec = load_model_spec(
+        RADON_SPEC_YAML.replace("examples.radon", "test.counts_x")
+        .replace("keep: {log_likelihood: true, posterior_predictive: {thin: 5}},", "")
+        .replace("prior_predictive: {draws: 40}", "engine: map")
+        .replace("engine: pymc,", "")
+        .replace("evaluate: {metrics: [elpd_loo]}", "")
+    )
+    schema = DataSchema.model_validate(
+        {
+            "dims": {"obs": {"kind": "integer", "policy": "extend"}},
+            "vars": {
+                "y": {"dims": ["obs"], "dtype": "float64", "role": "target"},
+                "x": {"dims": ["obs"], "dtype": "float64"},
+            },
+        }
+    )
+    b = fit_spec(spec, data, registry=reg, raw_schema=schema)
+    cf = score_request(
+        "mode: counterfactual\ninterventions: [{var: x, sel: {obs: [0]}, set: 3.0}]\n"
+        "output: {kind: predictive}\n"
+    )
+    tree = score_bundle(b, cf, data.drop_vars("y"), registry=reg, return_full=True)
+    scen = _pred(tree)["y"]
+    delta = _pred(tree, "delta/predictions")["y"]
+    assert scen.attrs["noise"] == "crn_ppf"
+    assert float(abs(delta.sel(obs=slice(1, None))).max()) == 0.0
+    assert float(delta.sel(obs=0).min()) > 0  # a much larger mean in the changed cell
+    # still integer-valued Poisson draws, reproducible for a seed
+    assert bool((scen == np.round(scen)).all()) and bool((scen >= 0).all())
+    again = _pred(score_bundle(b, cf, data.drop_vars("y"), registry=reg, return_full=True))["y"]
+    xr.testing.assert_identical(scen, again)
 
 
 def test_manifest_declares_fast_score_and_defaults() -> None:
