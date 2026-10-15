@@ -19,27 +19,34 @@ from __future__ import annotations
 
 import json
 import re
-import secrets
-import time
 from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import StrEnum
-from typing import Annotated, Any, Final, Generic, Literal, TypeVar
+from typing import Any, Final, Generic, Literal, TypeVar
 
 from pydantic import (
     AwareDatetime,
     BaseModel,
-    ConfigDict,
     Field,
     JsonValue,
     field_validator,
     model_validator,
 )
 
-from mapi_spec._types import Duration, LabelKey, LabelValue, MetricName, Slug, StrictModel
+from mapi_spec._dto import (
+    Id,
+    RequestModel,
+    ResponseModel,
+    Sha256,
+    TenantId,
+    dto_examples,
+    new_id,
+)
+from mapi_spec._types import Duration, LabelKey, LabelValue, MetricName, Slug
 from mapi_spec.capabilities import Capabilities, Diagnostic
 from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
 from mapi_spec.coords import DataSummary
+from mapi_spec.cost import RunCost
 from mapi_spec.errors import ErrorCode, Issue, Problem
 from mapi_spec.executor import RunEventType, RunKind
 from mapi_spec.plots import PlotSpec
@@ -47,7 +54,8 @@ from mapi_spec.resources import ResourceClass
 from mapi_spec.run import BundleManifest, ChainProgress, FailureClass, RunnerPhase, RunState
 from mapi_spec.schema import DataSchema, DimSpec, Role
 from mapi_spec.spec import CONTRACT_VERSION, DocumentKind, ScoreRequest
-from mapi_spec.storage import SEGMENT_RE, Crc32c, SignedPut
+from mapi_spec.storage import Crc32c, SignedPut
+from mapi_spec.tenancy import Project
 from mapi_spec.validate import ResolvedSpec
 
 __all__ = [
@@ -141,44 +149,12 @@ SSE_RETRY_MS: Final = 3000
 SSE_HEARTBEAT: Final = ": keepalive\n\n"
 """Comment frame sent every :data:`SSE_HEARTBEAT_SECONDS` when no event was sent."""
 
-Id = Annotated[str, Field(pattern=SEGMENT_RE, examples=["run_01jaf3q2x8m9v7k5h4g3f2e1d0"])]
-TenantId = Annotated[str, Field(pattern=r"^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$")]
-Sha256 = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
-
-_CROCKFORD = "0123456789abcdefghjkmnpqrstvwxyz"
-
-
-def new_id(prefix: str) -> str:
-    """A time-sortable id ``<prefix>_<26 Crockford base32 chars>`` (ULID layout, lowercase).
-
-    The first 10 characters encode the millisecond timestamp, so ids sort by creation time
-    (cursor pagination relies on it); the last 16 are 80 random bits.
-    """
-    if not re.match(r"^[a-z]{2,8}$", prefix):
-        raise ValueError("id prefixes are 2-8 lowercase letters")
-    value = (int(time.time() * 1000) << 80) | int.from_bytes(secrets.token_bytes(10), "big")
-    chars = []
-    for _ in range(26):
-        chars.append(_CROCKFORD[value & 31])
-        value >>= 5
-    return f"{prefix}_{''.join(reversed(chars))}"
-
 
 # ======================================================================================= bases
 
-
-class _Request(StrictModel):
-    """Request bodies: unknown fields are rejected."""
-
-
-class _Response(BaseModel):
-    """Response bodies: frozen; unknown fields are ignored by (older) clients."""
-
-    model_config = ConfigDict(extra="ignore", frozen=True, populate_by_name=True)
-
-
-def _examples(*items: dict[str, Any]) -> ConfigDict:
-    return ConfigDict(json_schema_extra={"examples": list(items)})
+_Request = RequestModel
+_Response = ResponseModel
+_examples = dto_examples
 
 
 _TS = "2026-10-15T09:30:00Z"
@@ -282,28 +258,6 @@ class Health(_Response):
                 "postgres": {"status": "ok", "latency_ms": 1.2},
                 "object_store": {"status": "ok", "latency_ms": 3.4},
             },
-        }
-    )
-
-
-# ====================================================================================== projects
-
-
-class Project(_Response):
-    """A workspace inside a tenant (M1: only ``default``)."""
-
-    id: TenantId
-    tenant_id: TenantId
-    name: str = Field(..., max_length=200)
-    description: str | None = Field(None, max_length=4000)
-    created_at: AwareDatetime
-
-    model_config = _examples(
-        {
-            "id": "default",
-            "tenant_id": "default",
-            "name": "Default project",
-            "created_at": _TS,
         }
     )
 
@@ -779,19 +733,6 @@ class ProgressSnapshot(_Response):
             ],
             "updated_at": _TS,
         }
-    )
-
-
-class RunCost(_Response):
-    """Cost fields (placeholders in M1: always ``None``; populated by the M2 ledger)."""
-
-    vcpu_seconds: float | None = None
-    gib_seconds: float | None = None
-    usd: float | None = None
-    estimated: bool = True
-
-    model_config = _examples(
-        {"vcpu_seconds": None, "gib_seconds": None, "usd": None, "estimated": True}
     )
 
 
