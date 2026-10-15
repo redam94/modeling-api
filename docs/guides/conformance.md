@@ -26,6 +26,7 @@ python -m mapi_conformance run --size full --json corpus.json
 make conformance                                       # the same as `run` at size tiny
 make conformance FIXTURE=e33                           # one fixture
 make conformance-full                                  # every fixture at size full
+python -m mapi_conformance list --deferred             # plus the plan fixtures not ported yet
 ```
 
 The runner prints one row per fixture and exits non-zero if any step failed:
@@ -44,6 +45,28 @@ pymc_marketing    mmm.pymc_marketing@1.0.0        ok        ok   ok 4/4  ok     
 `--size tiny` (the default, used by `pytest -m conformance`) keeps data small and MCMC
 short; `--size full` uses the spec's own fit settings and larger data.
 
+### Through a running stack
+
+The default runner skips the control plane. `--stack` drives the same fixtures through the
+API of a running stack (`make dev`), as a user does: spec → **ingest** → fit → score.
+
+1. The data, side tables and score payloads are uploaded as dataset versions (signed PUT,
+   then a sandboxed ingest run).
+2. The spec, pointed at the uploads, is validated, created and fitted through the
+   dispatcher, the runner and FINALIZING.
+3. Every score request runs against the registered model. An expected typed error may come
+   from the failed run or from the API refusing the request up front.
+4. The holdout metrics and stored plots are checked on the model version.
+5. The bundle is downloaded through signed URLs with every hash verified, and goes through
+   the fixture's `check_fit`.
+
+```bash
+python -m mapi_conformance run --stack http://127.0.0.1:8000 --fixture e33 --fixture xgb_store_demand
+uv run pytest -m e2e tests/e2e/test_corpus_stack.py   # E33, xgboost and sklearn (`make e2e`)
+```
+
+The contract kit does not run in this mode; it needs the plugin in-process.
+
 ## The fixtures
 
 | Fixture | Model | Exercises |
@@ -52,8 +75,22 @@ short; `--size full` uses the spec's own fit settings and larger data.
 | `c08` | `ts.hsgp_trend` | sentinel codes, `max_extension` from anticipated coords, `HORIZON_EXCEEDS_FIT`, contiguity |
 | `e24` | `ts.gaussian_hmm` | padded + mask, terminal state, forecast and filter, relabelling, invalid LOO |
 | `xgb_store_demand` | `tabular.regressor` | pooled new stores, quantile aggregation refused, future-required covariates |
+| `sklearn_store_demand` | `sklearn.tabular_conformal` | the same panel with plain scikit-learn (histogram boosting, skops): split-conformal intervals, interval aggregation refused, pooled new stores |
 | `e33` | `mmm.hierarchical_geo` | FX (`supplied`) and holiday (`pinned`) side tables, split after `resample`, per-market lag context, new market from the hyperprior, weekly EUR plan via `inputs_stage`, CRN counterfactual (intervention and baseline-vs-scenario), derived quantities in EUR |
 | `pymc_marketing` | `mmm.pymc_marketing` | a model that `owns` scaling, carry-over and units; a scoring window equals the same weeks of the full series |
+
+### Deferred
+
+The plan's corpus also lists fixtures that need plugins or run kinds that do not exist yet.
+They are listed in `mapi_conformance.fixtures.DEFERRED` with the reason, and a test keeps the
+plan's list, the fixtures and the deferrals in step:
+
+| Plan fixture | Waits for |
+|---|---|
+| E13 state-space | a state-space plugin with the `filter` mode (vetted plugins, M4) |
+| E84-lite choice panel | a discrete-choice plugin (M4) |
+| E82-slim GP Bayesian optimisation | the `recommend` mode and Campaign runs (M6) |
+| E45 | a plugin for its model (vetted plugins, M4) |
 
 ## Porting time
 
@@ -67,6 +104,7 @@ from commit timestamps; record it here when a fixture is ported or re-ported.
 | `c08` | not measured yet | – |
 | `e24` | not measured yet | – |
 | `xgb_store_demand` | not measured yet | – |
+| `sklearn_store_demand` | not measured yet | – |
 | `e33` | not measured yet | – |
 | `pymc_marketing` | not measured yet | – |
 

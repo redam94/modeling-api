@@ -2037,6 +2037,7 @@ name = "mapi-conformance"
 version = "0.1.0"
 source = { editable = "conformance" }
 dependencies = [
+    { name = "mapi-client", extra = ["xarray"] },
     { name = "mapi-plots", extra = ["recipes"] },
     { name = "mapi-plugin-mmm" },
     { name = "mapi-plugin-tabular" },
@@ -2049,6 +2050,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "mapi-client", extras = ["xarray"], editable = "packages/client" },
     { name = "mapi-plots", extras = ["recipes"], editable = "packages/plots-core" },
     { name = "mapi-plugin-mmm", editable = "plugins/mmm" },
     { name = "mapi-plugin-tabular", editable = "plugins/tabular" },

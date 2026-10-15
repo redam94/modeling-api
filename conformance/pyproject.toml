@@ -15,6 +15,7 @@ dependencies = [
   "mapi-plugin-mmm",
   "mapi-plugin-ts",
   "mapi-plugin-tabular",
+  "mapi-client[xarray]",  # stack mode: the corpus through a running stack's API
 ]
 
 [build-system]
@@ -33,3 +34,4 @@ mapi-plots = { workspace = true }
 mapi-plugin-mmm = { workspace = true }
 mapi-plugin-ts = { workspace = true }
 mapi-plugin-tabular = { workspace = true }
+mapi-client = { workspace = true }

@@ -151,3 +151,40 @@ def test_cli_list_and_run(tmp_path: Path, capsys: pytest.CaptureFixture[str]) ->
     assert doc["ok"] and doc["fixtures"][0]["model"] == "tabular.regressor@1.0.0"
     with pytest.raises(SystemExit):
         main(["run", "--fixture", "not_a_fixture"])
+
+
+# ------------------------------------------------------------------ plan §13 coverage
+
+PLAN_CORPUS = {
+    "E33": "e33",
+    "E02": "e02",
+    "C08": "c08",
+    "E24": "e24",
+    "E13": None,
+    "E84-lite": None,
+    "E82-slim": None,
+    "E45": None,
+    "pymc-marketing": "pymc_marketing",
+    "sklearn": "sklearn_store_demand",
+    "xgboost": "xgb_store_demand",
+}
+"""Plan §13's corpus -> the fixture id that covers it (``None``: explicitly deferred)."""
+
+
+def test_every_plan_fixture_is_registered_or_explicitly_deferred() -> None:
+    from mapi_conformance.fixtures import DEFERRED
+
+    for name, fixture_id in PLAN_CORPUS.items():
+        if fixture_id is None:
+            assert name in DEFERRED, f"{name} is neither a fixture nor deferred"
+            assert len(DEFERRED[name]) > 40, f"{name}: say why it is deferred and until when"
+        else:
+            assert fixture_id in FIXTURES, name
+    assert set(DEFERRED) <= set(PLAN_CORPUS), "a deferral for something the plan does not list"
+    assert not set(DEFERRED) & set(FIXTURES)
+
+
+def test_cli_list_shows_the_deferred_fixtures(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["list", "--deferred"]) == 0
+    out = capsys.readouterr().out
+    assert "E13" in out and "deferred" in out
