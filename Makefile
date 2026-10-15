@@ -187,8 +187,9 @@ _env-check:
 
 ## ---------------------------------------------------------------- docs
 .PHONY: docs-catalog
-docs-catalog: ## Regenerate the catalog reference pages (steps, models, plots, spec schema, errors)
+docs-catalog: ## Regenerate the generated reference pages (catalogs, errors, CLI, settings, OpenAPI)
 	$(UV) run python scripts/gen_docs_catalog.py
+	$(UV) run python scripts/gen_docs_reference.py
 
 .PHONY: docs-serve
 docs-serve: docs-catalog ## Serve the documentation site with live reload
@@ -200,7 +201,12 @@ docs-build: docs-catalog ## Build the documentation site into ./site (strict)
 
 .PHONY: docs-test
 docs-test: ## Run every documentation snippet and check every include
-	$(UV) run pytest -q conformance/tests/test_docs_snippets.py
+	$(UV) run pytest -q conformance/tests/test_docs_snippets.py conformance/tests/test_docs_platform.py
+
+.PHONY: docs-screenshots
+docs-screenshots: ## Recapture docs/assets/screenshots from a running, seeded stack (see the script)
+	node scripts/docs_screenshots.mjs .local/screenshots
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots docs/assets/screenshots
 
 ## ---------------------------------------------------------------- release
 .PHONY: release-check
