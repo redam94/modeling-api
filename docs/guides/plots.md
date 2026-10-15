@@ -80,6 +80,9 @@ Every plot carries:
 
 The **marketing-mix pack** (`mmm.*`) adds response curves with current spend marked, marginal
 cost (or marginal ROI) per channel, a budget-plan comparison and a channel decomposition.
+The **tabular pack** (`ml.*`) adds `ml.feature_importance`: ranked tree importances, or signed
+coefficients for linear estimators, read from the groups the scikit-learn and xgboost plugins
+store in their bundles.
 
 <div class="grid" markdown>
 

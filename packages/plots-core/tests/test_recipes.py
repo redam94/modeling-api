@@ -14,6 +14,7 @@ pytest.importorskip("altair")
 
 from mapi_plots import examples as ex  # noqa: E402
 from mapi_plots.convert import arrow_to_frame  # noqa: E402
+from mapi_plots.packs.ml import ml_recipes  # noqa: E402
 from mapi_plots.packs.mmm import mmm_recipes  # noqa: E402
 from mapi_plots.recipes import (  # noqa: E402
     Recipe,
@@ -45,6 +46,7 @@ PLAN_IDS = {
     "mmm.response_curves",
     "mmm.marginal_cost",
     "mmm.budget_plans",
+    "ml.feature_importance",
 }
 EXAMPLES = ex.example_inputs()
 
@@ -81,7 +83,8 @@ def test_catalog_covers_the_plan() -> None:
     assert ids >= PLAN_IDS
     assert len(ids) == len(all_recipes())
     assert set(EXAMPLES) == ids
-    assert {r.id for r in standard_recipes()} | {r.id for r in mmm_recipes()} == ids
+    packs = {r.id for r in mmm_recipes()} | {r.id for r in ml_recipes()}
+    assert {r.id for r in standard_recipes()} | packs == ids
     catalog = Catalog(plots=[r.catalog_entry() for r in all_recipes()])
     assert catalog.resolve_plot("core.ppc_fan@^1") is not None
     entry = get_recipe("core.convergence").catalog_entry()
@@ -625,7 +628,7 @@ def test_entry_points_and_sdk_registry() -> None:
     eps = {
         ep.name: ep for ep in entry_points(group="mapi.plots") if ep.value.startswith("mapi_plots")
     }
-    assert {"core", "mmm"} <= set(eps)
+    assert {"core", "mmm", "ml"} <= set(eps)
     loaded = eps["core"].load()()
     assert [r.id for r in loaded] == [r.id for r in standard_recipes()]
     registry_mod = pytest.importorskip("mapi_sdk.registry")
@@ -635,3 +638,33 @@ def test_entry_points_and_sdk_registry() -> None:
     assert reg.plot("core.ppc_fan@^1") is get_recipe("core.ppc_fan")
     assert isinstance(reg.plot("mmm.budget_plans"), registry_mod.PlotRecipe)
     assert {p.id for p in reg.catalog().plots} >= PLAN_IDS
+
+
+# ------------------------------------------------------------------------------ ml pack
+
+
+def test_feature_importance_ranks_importances_and_falls_back_to_coefficients() -> None:
+    tree = ex.feature_importance_tree()
+    render = get_recipe("ml.feature_importance").render
+    imp = frame(render(tree), "features")
+    assert imp["feature"].iloc[0] == "price"
+    assert imp["value"].is_monotonic_decreasing
+    assert "42%" in caption(render(tree))
+    top2 = frame(render(tree, top=2), "features")
+    assert len(top2) == 2 and "top 2 of 5" in caption(render(tree, top=2))
+    coef = render(tree, source="coefficients")
+    cf = frame(coef, "features")
+    # ranked by |coefficient|, signed values and the per-quantile-model range are kept
+    assert cf["feature"].iloc[0] == "price" and cf["value"].iloc[0] == pytest.approx(-1.5)
+    assert cf["lo"].iloc[0] == pytest.approx(-1.8) and cf["hi"].iloc[0] == pytest.approx(-1.2)
+    assert "lowers" in caption(coef)
+    only_coef = {"coefficients": tree["model/coefficients"].to_dataset()}
+    assert frame(render(only_coef), "features")["feature"].iloc[0] == "price"
+
+
+def test_feature_importance_needs_a_known_group() -> None:
+    render = get_recipe("ml.feature_importance").render
+    with pytest.raises(RecipeDataError):
+        render(ex.score_tree())
+    with pytest.raises(RecipeDataError):
+        render(ex.feature_importance_tree(), source="importance", feature_dim="column")
