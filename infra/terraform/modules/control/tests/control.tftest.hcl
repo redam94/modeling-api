@@ -183,6 +183,22 @@ run "with_load_balancer" {
     condition     = google_compute_ssl_policy.lb[0].min_tls_version == "TLS_1_2"
     error_message = "TLS 1.2 or newer."
   }
+
+  assert {
+    condition = length(flatten([
+      for pm in google_compute_url_map.lb[0].path_matcher : [
+        for pr in pm.path_rule : [for p in pr.paths : p if startswith(p, "/internal")]
+      ]
+    ])) == 0
+    error_message = "The load balancer never routes /internal/* (Pub/Sub push only reaches the events service)."
+  }
+
+  assert {
+    condition = toset(flatten([
+      for pm in google_compute_url_map.lb[0].path_matcher : [for pr in pm.path_rule : pr.paths]
+    ])) == toset(["/v1", "/v1/*", "/auth/*", "/healthz", "/readyz"])
+    error_message = "Only the API's public prefixes are routed to it."
+  }
 }
 
 run "plot_sandbox_needs_its_own_host" {
