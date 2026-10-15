@@ -6,6 +6,7 @@
  * last, still-open page began and re-reads from there on the next poll: at most one partial
  * page is fetched twice, and every older page is fetched exactly once.
  */
+import { ApiError } from "./client";
 import type { LogLine, Page } from "./types";
 
 export type LogPageFetcher = (cursor: string | null) => Promise<Page<LogLine>>;
@@ -54,4 +55,31 @@ export async function advanceLogTail(
     behind,
     dropped: prev.dropped + excess,
   };
+}
+
+/**
+ * Poll cadence for a live tail. Every authenticated request counts against the tenant's
+ * `requests_per_minute`, shared by all of its members (60/min on the public tier), so a
+ * tail fetches one page per tick and never polls faster than {@link LOG_POLL_MS.behind}.
+ */
+export const LOG_POLL_MS = {
+  /** Newer pages exist: fetch the next one (≤ 30 requests/min). */
+  behind: 2000,
+  /** Caught up: look for new lines (12 requests/min). */
+  idle: 5000,
+  /** A failure without `Retry-After` (network, 5xx). */
+  error: 15_000,
+  /** 429 without `Retry-After`: wait out a whole rate window. */
+  rateLimited: 60_000,
+} as const;
+
+/** Milliseconds until the next poll of a log tail, or `false` to stop polling. */
+export function logPollDelay(s: { live: boolean; behind: boolean; error: unknown }): number | false {
+  if (!s.live) return false;
+  if (s.error instanceof ApiError && (s.error.status === 429 || s.error.status === 503)) {
+    if (s.error.retryAfter != null) return Math.max(s.error.retryAfter * 1000, LOG_POLL_MS.behind);
+    return s.error.status === 429 ? LOG_POLL_MS.rateLimited : LOG_POLL_MS.error;
+  }
+  if (s.error) return LOG_POLL_MS.error;
+  return s.behind ? LOG_POLL_MS.behind : LOG_POLL_MS.idle;
 }

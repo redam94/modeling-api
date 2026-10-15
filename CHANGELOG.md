@@ -120,6 +120,9 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   - Memory under an hour is shown in GiB-seconds.
   - A finished run without output no longer says "yet".
   - The project switcher no longer truncates names on wide screens.
+- **web**: a live log tail no longer trips the tenant's rate limit. Before, it sent up to 10
+  requests every 500 ms while catching up. It now fetches one page per poll, at least 2 s
+  apart (5 s once caught up), and waits out `Retry-After` on 429.
 - **security**: the docker and gVisor probe container gets the suite through a read-only
   mount; before, every isolation probe ended in ERROR on a host with Docker.
   - `--executor cloud` refuses to run outside a Cloud Run Jobs execution.

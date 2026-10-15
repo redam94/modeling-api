@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { advanceLogTail, EMPTY_LOG_TAIL, type LogPageFetcher } from "./logs";
+import { ApiError } from "./client";
+import { advanceLogTail, EMPTY_LOG_TAIL, LOG_POLL_MS, logPollDelay, type LogPageFetcher } from "./logs";
 import type { LogLine, Page } from "./types";
 
 /** A server like `GET /v1/runs/{id}/logs`: oldest first, opaque cursor after the last line. */
@@ -70,5 +71,36 @@ describe("advanceLogTail", () => {
     const again = await advanceLogTail(first, srv.fetchPage, { maxPages: 10, maxLines: 10_000 });
     expect(seqs(again.items)).toEqual(seqs(first.items));
     expect(srv.requests).toEqual([null, null]); // the only page is still open: re-read from its start
+  });
+});
+
+describe("logPollDelay", () => {
+  const PUBLIC_TIER_RPM = 60; // the smallest tier's requests_per_minute (mapi_spec.quotas)
+
+  it("does not poll a finished run", () => {
+    expect(logPollDelay({ live: false, behind: true, error: null })).toBe(false);
+  });
+
+  it("catches up one page every couple of seconds, not in a burst", () => {
+    const behind = logPollDelay({ live: true, behind: true, error: null });
+    expect(behind).toBeGreaterThanOrEqual(2000);
+    // One page per tick: a catching-up tail alone stays well inside the public tier's budget.
+    expect(60_000 / Number(behind)).toBeLessThanOrEqual(PUBLIC_TIER_RPM / 2);
+    const idle = logPollDelay({ live: true, behind: false, error: null });
+    expect(idle).toBeGreaterThanOrEqual(Number(behind));
+  });
+
+  it("waits out Retry-After on 429 RATE_LIMITED", () => {
+    const err = new ApiError(429, null, "rate limited", 37);
+    expect(logPollDelay({ live: true, behind: true, error: err })).toBe(37_000);
+    // Never sooner than the normal cadence, even for a tiny Retry-After.
+    expect(logPollDelay({ live: true, behind: true, error: new ApiError(429, null, "x", 0) })).toBe(LOG_POLL_MS.behind);
+    // No header: back off for a whole rate window.
+    expect(logPollDelay({ live: true, behind: true, error: new ApiError(429, null, "x") })).toBe(60_000);
+  });
+
+  it("backs off on other failures instead of hammering", () => {
+    expect(logPollDelay({ live: true, behind: true, error: new ApiError(503, null, "x", 5) })).toBe(5_000);
+    expect(logPollDelay({ live: true, behind: true, error: new TypeError("network") })).toBe(LOG_POLL_MS.error);
   });
 });
