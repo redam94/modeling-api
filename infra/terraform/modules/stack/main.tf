@@ -65,8 +65,7 @@ module "control" {
     web    = lookup(var.images, "web", null)
   }
 
-  buckets                = module.data.bucket_names
-  bootstrap_url_template = module.data.bootstrap_url_template
+  buckets = module.data.bucket_names
   exec_pools = {
     for pool, m in module.exec : pool => merge(m.inventory, { public = var.exec_pools[pool].public })
   }
@@ -84,6 +83,8 @@ module "control" {
   services          = lookup(var.control, "services", {})
   pubsub            = lookup(var.control, "pubsub", {})
   extra_env         = lookup(var.control, "extra_env", {})
+  dispatch_pool     = lookup(var.control, "dispatch_pool", null)
+  kms_key_version   = lookup(var.control, "kms_key_version", 1)
   events_args       = lookup(var.control, "events_args", ["api", "--host", "0.0.0.0", "--port", "8080"])
 
   depends_on = [google_project_service.this]

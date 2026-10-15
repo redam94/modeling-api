@@ -3,12 +3,19 @@
 # Terraform state, a plan file or a Cloud Run revision spec (services reference secrets by
 # name). Secrets are replicated only in the control region (data residency).
 #
-#   db-url-app            API + events: pooled connection (transaction mode)
-#   db-url-app-direct     API: direct connection for its single LISTEN connection (SSE fan-out)
-#   db-url-orchestrator   orchestrator: direct (procrastinate LISTEN, advisory locks)
+#   db-url-app            mapi_app (row-level security), pooled (transaction mode):
+#                         MAPI_DATABASE_APP_URL of api, events and orchestrator
+#   db-url-app-direct     mapi_app, direct: MAPI_DATABASE_URL of api and events (their LISTEN
+#                         connection for SSE fan-out)
+#   db-url-orchestrator   mapi_orchestrator (the platform role, MAPI_DB_SYSTEM_ROLE), direct:
+#                         MAPI_DATABASE_SYSTEM_URL of api and events (sign-in lookups,
+#                         operator routes, pushed events) and the orchestrator's own URL
+#                         (procrastinate LISTEN, advisory locks)
 #   db-url-migrate        migrate job: direct, schema owner
-#   token-pepper          HMAC pepper for API token hashes (mapi_spec.tokens.hash_token)
-#   session-secret        BFF session cookie key
+#   server-secret         MAPI_SERVER_SECRET: the root of the API-token pepper and the audit
+#                         fingerprint key (mapi_server.services.secrets); shared by every
+#                         process, rotating it invalidates every API token
+#   metrics-token         MAPI_METRICS_TOKEN: the bearer Prometheus presents on GET /metrics
 #   oidc-client-secret    OAuth client secret (only when oidc.client_secret_version > 0)
 
 locals {
@@ -17,19 +24,19 @@ locals {
     "db-url-app-direct",
     "db-url-orchestrator",
     "db-url-migrate",
-    "token-pepper",
-    "session-secret",
+    "server-secret",
+    "metrics-token",
     "oidc-client-secret",
   ])
 
   # Which workload may read which secret.
   secret_access = {
-    "db-url-app"          = ["api", "events"]
-    "db-url-app-direct"   = ["api"]
-    "db-url-orchestrator" = ["orchestrator"]
+    "db-url-app"          = ["api", "events", "orchestrator"]
+    "db-url-app-direct"   = ["api", "events"]
+    "db-url-orchestrator" = ["api", "events", "orchestrator"]
     "db-url-migrate"      = ["migrate"]
-    "token-pepper"        = ["api"]
-    "session-secret"      = ["api"]
+    "server-secret"       = ["api", "events", "orchestrator", "migrate"]
+    "metrics-token"       = ["api", "events", "orchestrator"]
     "oidc-client-secret"  = ["api"]
   }
 
@@ -94,24 +101,24 @@ resource "google_secret_manager_secret_version" "db_url" {
 
 # ---------------------------------------------------------------------- generated app secrets
 
-ephemeral "random_bytes" "token_pepper" {
+ephemeral "random_bytes" "server_secret" {
   length = 32
 }
 
-ephemeral "random_bytes" "session_secret" {
-  length = 64
+ephemeral "random_bytes" "metrics_token" {
+  length = 32
 }
 
-resource "google_secret_manager_secret_version" "token_pepper" {
-  secret                 = google_secret_manager_secret.this["token-pepper"].id
-  secret_data_wo         = ephemeral.random_bytes.token_pepper.base64
-  secret_data_wo_version = var.secret_versions.token_pepper
+resource "google_secret_manager_secret_version" "server_secret" {
+  secret                 = google_secret_manager_secret.this["server-secret"].id
+  secret_data_wo         = ephemeral.random_bytes.server_secret.hex
+  secret_data_wo_version = var.secret_versions.server_secret
 }
 
-resource "google_secret_manager_secret_version" "session_secret" {
-  secret                 = google_secret_manager_secret.this["session-secret"].id
-  secret_data_wo         = ephemeral.random_bytes.session_secret.base64
-  secret_data_wo_version = var.secret_versions.session_secret
+resource "google_secret_manager_secret_version" "metrics_token" {
+  secret                 = google_secret_manager_secret.this["metrics-token"].id
+  secret_data_wo         = ephemeral.random_bytes.metrics_token.hex
+  secret_data_wo_version = var.secret_versions.metrics_token
 }
 
 # ------------------------------------------------------------------------------ OAuth client

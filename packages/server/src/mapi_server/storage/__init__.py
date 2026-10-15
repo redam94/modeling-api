@@ -2,7 +2,9 @@
 
 The server talks to storage only through :class:`mapi_spec.storage.ObjectStore`. The
 default implementation is ``ShimObjectStore`` from ``mapi_gcs_shim`` (the local GCS
-emulator); :class:`MemoryObjectStore` is an in-process implementation for tests.
+emulator); ``GcsObjectStore`` is real Cloud Storage (``MAPI_OBJECT_STORE=gcs``: URLs signed
+keylessly with IAM ``signBlob`` as ``MAPI_URL_SIGNER``); :class:`MemoryObjectStore` is an
+in-process implementation for tests.
 """
 
 from __future__ import annotations
@@ -46,10 +48,26 @@ def _shim_store(settings: Settings) -> ObjectStore:
     )
 
 
+def _gcs_store(settings: Settings) -> ObjectStore:
+    """``GcsObjectStore`` with the Cloud Run wiring: application-default credentials for the
+    storage client and the IAM token, URLs signed as ``MAPI_URL_SIGNER``."""
+    from mapi_gcs_shim.gcs import GcsObjectStore
+
+    assert settings.url_signer is not None  # enforced by Settings
+    store: ObjectStore = GcsObjectStore.for_cloud_run(
+        service_account_email=settings.url_signer,
+        uploader_service_account_email=settings.url_uploader,
+        project=settings.gcp_project,
+    )
+    return store
+
+
 def build_object_store(settings: Settings) -> ObjectStore:
     """The configured :class:`ObjectStore` (``MAPI_OBJECT_STORE``)."""
     if settings.object_store is ObjectStoreKind.MEMORY:
         return MemoryObjectStore(
             base_url=settings.gcs_endpoint, buckets=settings.buckets.all().values()
         )
+    if settings.object_store is ObjectStoreKind.GCS:
+        return _gcs_store(settings)
     return _shim_store(settings)

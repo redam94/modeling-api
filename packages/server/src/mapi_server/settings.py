@@ -113,6 +113,7 @@ class SignerKind(StrEnum):
 class ObjectStoreKind(StrEnum):
     SHIM = "shim"  # mapi_gcs_shim.ShimObjectStore against MAPI_GCS_ENDPOINT
     MEMORY = "memory"  # in-process store (tests; signed URLs only work through its ASGI app)
+    GCS = "gcs"  # real Cloud Storage (mapi_gcs_shim.GcsObjectStore; the `gcp` extra)
 
 
 def local_image_digest(lock_path: Path) -> str:
@@ -193,6 +194,19 @@ class Settings(BaseSettings):
         None,
         description="Base URL put into signed URLs when executions/browsers reach the shim "
         "under another host name (default: gcs_endpoint)",
+    )
+    gcp_project: str | None = Field(
+        None, description="Google Cloud project of the Cloud Storage client (MAPI_OBJECT_STORE=gcs)"
+    )
+    url_signer: str | None = Field(
+        None,
+        description="Service account that signs Cloud Storage URLs through IAM signBlob "
+        "(keyless; required with MAPI_OBJECT_STORE=gcs)",
+    )
+    url_uploader: str | None = Field(
+        None,
+        description="Service account that signs create-only upload policies (objects.create, "
+        "no delete); default: url_signer",
     )
     gcs_root: Path | None = Field(
         None, description="The GCS shim's state directory (default: data_dir/gcs)"
@@ -500,6 +514,8 @@ class Settings(BaseSettings):
             )
         if self.signer is SignerKind.KMS and not self.kms_key_version:
             raise ValueError("MAPI_SIGNER=kms needs MAPI_KMS_KEY_VERSION")
+        if self.object_store is ObjectStoreKind.GCS and not self.url_signer:
+            raise ValueError("MAPI_OBJECT_STORE=gcs needs MAPI_URL_SIGNER (the signBlob account)")
         weak = [a for a in self.oidc_algorithms if a.upper().startswith("HS") or a == "none"]
         if weak:
             raise ValueError("oidc_algorithms must be asymmetric (RS*, ES*, PS* or EdDSA)")

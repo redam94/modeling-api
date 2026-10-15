@@ -61,8 +61,9 @@ and `gcloud storage buckets get-iam-policy gs://mapi-<env>-<bucket>`.
 
 ## Secrets and signing
 
-- **No secret in Terraform state or plans.** Database passwords, the token pepper and the
-  session key come from ephemeral resources; the OAuth client secret is an ephemeral variable;
+- **No secret in Terraform state or plans.** Database passwords, the server's root secret (the
+  API-token pepper and audit key derive from it) and the metrics scrape token come from
+  ephemeral resources; the OAuth client secret is an ephemeral variable;
   all are written with write-only arguments (`password_wo`, `secret_data_wo`). Cloud Run
   revisions reference secrets by name, never by value.
 - **Secrets replicated in one region** (the control region), for data residency.

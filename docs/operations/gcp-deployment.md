@@ -279,36 +279,44 @@ terraform destroy
 ## Environment of the Cloud Run workloads
 
 This is the deployment contract between Terraform (`modules/control/locals.tf`) and
-`mapi-server`. Plain values:
+`mapi-server`. Every name is a `mapi-server` setting (see the
+[configuration reference](configuration.md)); `tests/infra` fails if Terraform sets one the
+server does not read. Plain values:
 
 | Variable | Workloads | Value |
 |---|---|---|
 | `MAPI_ENV` | all | Environment name; buckets are `mapi-{env}-*` |
 | `MAPI_PROFILE` | all | `multi-tenant` (the local-process executor refuses it) |
-| `MAPI_OBJECT_STORE` | all | `gcs` |
-| `MAPI_GCP_PROJECT`, `MAPI_GCP_REGION` | all | Control project and region |
-| `MAPI_API_URL`, `MAPI_WEB_ORIGIN`, `MAPI_PLOTS_ORIGIN` | all, web | Public origins (the API shares the app origin behind the load balancer) |
-| `MAPI_KMS_KEY` | all | KMS key that signs bundle manifests (EC P-256) |
+| `MAPI_OBJECT_STORE` | all | `gcs`: real Cloud Storage, URLs signed keylessly |
+| `MAPI_GCP_PROJECT` | all | Project of the Cloud Storage client |
 | `MAPI_URL_SIGNER` | all | Service account whose `signBlob` signs URLs (no key file exists) |
+| `MAPI_SIGNER`, `MAPI_KMS_KEY_VERSION` | all | `kms` and `…/cryptoKeyVersions/<control.kms_key_version>` of the EC P-256 key that signs bundle manifests |
+| `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE` | all | `mapi_app` (row-level security) and `mapi_orchestrator` (the platform role) |
+| `MAPI_API_URL`, `MAPI_WEB_ORIGIN`, `MAPI_PLOTS_ORIGIN` | all, web | Public origins (the API shares the app origin behind the load balancer) |
 | `MAPI_DATA_DIR` | all | `/tmp/mapi` (in-memory scratch) |
 | `MAPI_ALLOWED_HOSTS` | api, events | Host names the service answers |
 | `MAPI_OIDC_ISSUER`, `MAPI_OIDC_CLIENT_ID` | api | Browser sign-in |
-| `MAPI_PUSH_AUDIENCE`, `MAPI_PUSH_SERVICE_ACCOUNT`, `MAPI_PUSH_SUBSCRIPTION` | events | What a valid Pub/Sub push token must say |
+| `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT`, `MAPI_PUBSUB_PUSH_SUBSCRIPTIONS` | events | What a valid Pub/Sub push token must say, and the one subscription allowed to push |
 | `MAPI_EXECUTOR` | orchestrator | `cloudrun-jobs` |
-| `MAPI_BOOTSTRAP_URL` | orchestrator, Jobs | `gs://mapi-{env}-bootstrap/{nonce}` |
-| `MAPI_CLOUDRUN_POOLS` | orchestrator | JSON: per pool, its project, region, classes, whether it hosts public tenants, and the Job name per base and class |
+| `MAPI_CLOUDRUN_PROJECT`, `MAPI_CLOUDRUN_REGION` | orchestrator | The exec pool it dispatches to (`control.dispatch_pool`, default the first non-public pool); its Jobs follow the default `mapi-{env}-{base}-{class}` names |
+| `MAPI_BOOTSTRAP_URL` | Jobs | `gs://mapi-{env}-bootstrap/{nonce}` (set on each Job, read by the runner) |
 
 From Secret Manager (references, resolved when a revision starts):
 
 | Variable | Workloads | Secret |
 |---|---|---|
-| `MAPI_DATABASE_URL` | api, events | `db-url-app`: role `mapi_app` through the pooler (transaction mode) |
-| `MAPI_DATABASE_LISTEN_URL` | api | `db-url-app-direct`: direct connection for the LISTEN that feeds SSE |
-| `MAPI_DATABASE_URL` | orchestrator | `db-url-orchestrator`: role `mapi_orchestrator`, direct (procrastinate needs LISTEN) |
+| `MAPI_DATABASE_URL` | api, events | `db-url-app-direct`: `mapi_app`, direct (the LISTEN that feeds SSE) |
+| `MAPI_DATABASE_APP_URL` | api, events, orchestrator | `db-url-app`: `mapi_app` through the pooler (transaction mode); tenant sessions |
+| `MAPI_DATABASE_SYSTEM_URL` | api, events, orchestrator | `db-url-orchestrator`: `mapi_orchestrator`, direct; sign-in lookups, operator routes, pushed events, the orchestrator's loops |
+| `MAPI_DATABASE_URL` | orchestrator | `db-url-orchestrator` (procrastinate needs LISTEN) |
 | `MAPI_DATABASE_URL` | migrate | `db-url-migrate`: role `mapi_migrate` (schema owner), direct |
-| `MAPI_TOKEN_PEPPER` | api | HMAC pepper of API token hashes |
-| `MAPI_SESSION_SECRET` | api | Session cookie key |
+| `MAPI_SERVER_SECRET` | all | The root of the API-token pepper and the audit fingerprint key; rotating it (`control.secret_versions.server_secret`) invalidates every API token |
+| `MAPI_METRICS_TOKEN` | api, events, orchestrator | The bearer Prometheus presents on `GET /metrics` (the multi-tenant profile refuses scrapes without it) |
 | `MAPI_OIDC_CLIENT_SECRET` | api | Only once a client secret version exists |
+
+One orchestrator serves one exec pool. A second pool (for example a separate project for
+public tenants) needs its own orchestrator with `control.dispatch_pool` and
+`MAPI_CLOUDRUN_PROJECT` pointing at it; placing tenants across pools by tier is part of M5.
 
 Each workload can get extra plain variables through `control.extra_env` in the environment's
 `main.tf`; secrets never go there.

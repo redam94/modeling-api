@@ -90,7 +90,7 @@ variable "security_policy" {
 }
 
 variable "control" {
-  description = "Settings passed to modules/control (database, services, network, pubsub, kms, identity_platform, secret_versions, oidc, extra_env, events_args); see that module's variables."
+  description = "Settings passed to modules/control (database, services, network, pubsub, kms, kms_key_version, identity_platform, secret_versions, oidc, extra_env, events_args, dispatch_pool); see that module's variables."
   type        = any
   default     = {}
 }

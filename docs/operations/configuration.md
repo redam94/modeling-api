@@ -110,7 +110,10 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MAPI_OBJECT_STORE` | `shim` | `shim` (the GCS shim at `MAPI_GCS_ENDPOINT`) or `memory` (tests only) |
+| `MAPI_OBJECT_STORE` | `shim` | `shim` (the GCS shim at `MAPI_GCS_ENDPOINT`), `gcs` (real Cloud Storage; needs the `gcp` extra and `MAPI_URL_SIGNER`) or `memory` (tests only) |
+| `MAPI_GCP_PROJECT` | unset | With `gcs`: the project of the Cloud Storage client (default: the environment's) |
+| `MAPI_URL_SIGNER` | unset | With `gcs`: the service account that signs URLs through IAM `signBlob`, so no key file exists anywhere |
+| `MAPI_URL_UPLOADER` | `MAPI_URL_SIGNER` | With `gcs`: the account that signs create-only upload policies (it may create objects, never delete them) |
 | `MAPI_GCS_PUBLIC_ENDPOINT` | `MAPI_GCS_ENDPOINT` | The base URL put into signed URLs, when browsers or containers reach the shim under another host name |
 | `MAPI_GCS_ROOT` | `$MAPI_DATA_DIR/gcs` | The shim's state directory; the server reads the principals' key files under `_shim/keys/` |
 | `MAPI_GCS_KEY_FILE` | `$MAPI_GCS_ROOT/_shim/keys/control.json` | Key file of the control plane's principal |

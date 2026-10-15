@@ -119,8 +119,8 @@ resource "google_cloud_run_v2_service" "api" {
 
   depends_on = [
     google_secret_manager_secret_version.db_url,
-    google_secret_manager_secret_version.token_pepper,
-    google_secret_manager_secret_version.session_secret,
+    google_secret_manager_secret_version.server_secret,
+    google_secret_manager_secret_version.metrics_token,
     google_secret_manager_secret_version.oidc_client_secret,
     google_secret_manager_secret_iam_member.access,
   ]
@@ -211,8 +211,8 @@ resource "google_cloud_run_v2_service" "events" {
 
   depends_on = [
     google_secret_manager_secret_version.db_url,
-    google_secret_manager_secret_version.token_pepper,
-    google_secret_manager_secret_version.session_secret,
+    google_secret_manager_secret_version.server_secret,
+    google_secret_manager_secret_version.metrics_token,
     google_secret_manager_secret_version.oidc_client_secret,
     google_secret_manager_secret_iam_member.access,
   ]
@@ -355,8 +355,8 @@ resource "google_cloud_run_v2_worker_pool" "orchestrator" {
 
   depends_on = [
     google_secret_manager_secret_version.db_url,
-    google_secret_manager_secret_version.token_pepper,
-    google_secret_manager_secret_version.session_secret,
+    google_secret_manager_secret_version.server_secret,
+    google_secret_manager_secret_version.metrics_token,
     google_secret_manager_secret_version.oidc_client_secret,
     google_secret_manager_secret_iam_member.access,
   ]
@@ -435,8 +435,8 @@ resource "google_cloud_run_v2_job" "migrate" {
 
   depends_on = [
     google_secret_manager_secret_version.db_url,
-    google_secret_manager_secret_version.token_pepper,
-    google_secret_manager_secret_version.session_secret,
+    google_secret_manager_secret_version.server_secret,
+    google_secret_manager_secret_version.metrics_token,
     google_secret_manager_secret_version.oidc_client_secret,
     google_secret_manager_secret_iam_member.access,
   ]
