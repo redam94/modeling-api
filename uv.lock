@@ -1820,6 +1820,7 @@ version = "0.0.0"
 source = { editable = "packages/sdk" }
 dependencies = [
     { name = "google-crc32c" },
+    { name = "jsonschema" },
     { name = "mapi-spec" },
     { name = "numpy" },
     { name = "pandas" },
@@ -1828,13 +1829,26 @@ dependencies = [
     { name = "zarr" },
 ]
 
+[package.optional-dependencies]
+loo = [
+    { name = "arviz" },
+]
+testing = [
+    { name = "hypothesis" },
+    { name = "pytest" },
+]
+
 [package.metadata]
 requires-dist = [
+    { name = "arviz", marker = "extra == 'loo'", specifier = ">=1.0" },
     { name = "google-crc32c", specifier = ">=1.5" },
+    { name = "hypothesis", marker = "extra == 'testing'", specifier = ">=6.112" },
+    { name = "jsonschema", specifier = ">=4.23" },
     { name = "mapi-spec", editable = "packages/spec" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "pyarrow", specifier = ">=17" },
+    { name = "pytest", marker = "extra == 'testing'", specifier = ">=8.3" },
     { name = "xarray", specifier = ">=2025.1" },
     { name = "zarr", specifier = ">=3.0" },
 ]

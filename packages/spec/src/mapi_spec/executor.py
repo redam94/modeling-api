@@ -1,0 +1,163 @@
+"""Executor protocol shapes (plan §8.4), shared by the control plane and the runtimes.
+
+The control plane drives every backend (in-process, local process, docker, Cloud Run Jobs,
+...) through one :class:`Executor` protocol. Identifiers travel in the environment only; the
+executor's status API is the liveness source of truth and events are advisory progress.
+These are pure Pydantic shapes: no numpy, xarray or plugin code.
+"""
+
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
+from datetime import datetime
+from enum import IntEnum, StrEnum
+from typing import Protocol, runtime_checkable
+
+from pydantic import Field, JsonValue
+
+from mapi_spec._types import Duration, LabelKey, LabelValue, StrictModel
+from mapi_spec.errors import Problem
+from mapi_spec.resources import ResourceClass
+
+__all__ = [
+    "ExecState",
+    "ExecStatus",
+    "Executor",
+    "ExecutorCaps",
+    "Handle",
+    "Isolation",
+    "RunEvent",
+    "RunEventType",
+    "RunKind",
+    "RunSubmit",
+]
+
+_RUN_ID = r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$"
+
+
+class Isolation(IntEnum):
+    """How strongly a backend isolates a run (ordered: higher is stronger)."""
+
+    NONE = 0
+    PROCESS = 1
+    GVISOR = 2
+    MICROVM = 3
+    DEDICATED_VM = 4
+
+
+class ExecutorCaps(StrictModel):
+    """What an executor can do; placement rules are enforced against these."""
+
+    isolation: Isolation
+    egress_enforced: bool = False
+    dns_enforced: bool = False
+    max_runtime: Duration = Field(default_factory=lambda: Duration(3600))
+    classes: list[ResourceClass] = Field(default_factory=lambda: [ResourceClass.S])
+    max_tasks: int = Field(1, ge=1)
+    gpus: tuple[str, ...] = ()
+    regions: tuple[str, ...] = ()
+    checkpoint_storage: bool = False
+
+    def allows_public_tenants(self) -> bool:
+        """Public tenants need isolation >= gVisor with egress and DNS enforced."""
+        return self.isolation >= Isolation.GVISOR and self.egress_enforced and self.dns_enforced
+
+
+class RunKind(StrEnum):
+    INGEST = "ingest"
+    DESCRIBE = "describe"
+    VALIDATE = "validate"
+    FIT = "fit"
+    SCORE = "score"
+    EVALUATE = "evaluate"
+    DERIVE = "derive"
+    RENDER = "render"
+    OPTIMIZE = "optimize"
+
+
+class RunSubmit(StrictModel):
+    """One attempt of a run, as handed to an executor (JSON only)."""
+
+    run_id: str = Field(..., pattern=_RUN_ID)
+    attempt: int = Field(1, ge=1)
+    kind: RunKind
+    resource_class: ResourceClass = ResourceClass.S
+    timeout: Duration = Field(default_factory=lambda: Duration(1800))
+    task_count: int = Field(1, ge=1, le=10_000)
+    labels: dict[LabelKey, LabelValue] = Field(default_factory=dict, max_length=64)
+    payload: dict[str, JsonValue] = Field(default_factory=dict)
+
+
+class Handle(StrictModel):
+    """Executor-side identity of a submitted attempt."""
+
+    executor: str
+    run_id: str = Field(..., pattern=_RUN_ID)
+    attempt: int = Field(1, ge=1)
+    nonce: str = Field(..., min_length=8, max_length=128)
+    external_id: str | None = None
+
+
+class ExecState(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    UNKNOWN = "unknown"
+
+    @property
+    def terminal(self) -> bool:
+        return self in (ExecState.SUCCEEDED, ExecState.FAILED, ExecState.CANCELLED)
+
+
+class ExecStatus(StrictModel):
+    """Executor-reported status of an attempt (the liveness source of truth)."""
+
+    state: ExecState
+    exit_code: int | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    message: str | None = Field(None, max_length=2000)
+    problem: Problem | None = None
+
+
+class RunEventType(StrEnum):
+    STATE = "state"
+    PROGRESS = "progress"
+    LOG = "log"
+    DIAGNOSTIC = "diagnostic"
+    WARNING = "warning"
+    COMPLETE = "complete"
+    ERROR = "error"
+
+
+class RunEvent(StrictModel):
+    """One progress event; ``(run_id, attempt, seq)`` is the dedupe key."""
+
+    run_id: str = Field(..., pattern=_RUN_ID)
+    attempt: int = Field(1, ge=1)
+    seq: int = Field(..., ge=0)
+    type: RunEventType
+    ts: datetime
+    payload: dict[str, JsonValue] = Field(default_factory=dict)
+    hmac: str | None = Field(None, max_length=128)
+
+
+@runtime_checkable
+class Executor(Protocol):
+    """A backend driver. Identifiers reach the run through the environment only."""
+
+    name: str
+
+    def caps(self) -> ExecutorCaps: ...
+
+    async def submit(self, rs: RunSubmit, nonce: str) -> Handle: ...
+
+    async def adopt(self, nonce: str) -> Handle | None: ...
+
+    async def status(self, h: Handle) -> ExecStatus: ...
+
+    async def cancel(self, h: Handle) -> None: ...
+
+    def event_source(self) -> AsyncIterator[RunEvent]: ...

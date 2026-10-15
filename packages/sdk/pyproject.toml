@@ -14,7 +14,15 @@ dependencies = [
   "zarr>=3.0",
   "pyarrow>=17",
   "google-crc32c>=1.5",
+  "jsonschema>=4.23",
 ]
+
+[project.optional-dependencies]
+testing = ["pytest>=8.3", "hypothesis>=6.112"]
+loo = ["arviz>=1.0"]
+
+[project.entry-points.pytest11]
+mapi_sdk = "mapi_sdk.testing.plugin"
 
 [build-system]
 requires = ["hatchling>=1.25"]
