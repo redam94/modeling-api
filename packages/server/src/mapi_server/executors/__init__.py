@@ -15,6 +15,7 @@ import os
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import Executor, ExecutorCaps
 from mapi_spec.resources import ResourceClass
+from mapi_spec.tenancy import TIER_PLACEMENT, TrustTier, placement_allows
 
 from mapi_server.executors.docker import DockerExecutor, docker_available
 from mapi_server.executors.local_process import ExecutorRefused, LocalProcessExecutor
@@ -41,12 +42,35 @@ class PlacementRefused(MapiError):
     default_code = ErrorCode.FORBIDDEN
 
 
-def check_placement(caps: ExecutorCaps, *, trust_tier: str, resource_class: ResourceClass) -> None:
-    """Public tenants need isolation >= gVisor with egress and DNS enforced (plan §8.4)."""
-    if trust_tier == "public" and not caps.allows_public_tenants():
-        raise PlacementRefused(
-            "public tenants require an executor with isolation >= gVisor and enforced egress/DNS"
-        )
+def check_placement(
+    caps: ExecutorCaps,
+    *,
+    trust_tier: str,
+    resource_class: ResourceClass,
+    residency: str | None = None,
+) -> None:
+    """Enforce :data:`mapi_spec.tenancy.TIER_PLACEMENT` in code (plan §8.4): shared tiers
+    (``verified``, ``public``) need isolation >= gVisor with egress and DNS enforced. Data
+    residency is checked against executors that declare regions (local executors have none).
+    """
+    try:
+        tier = TrustTier(trust_tier)
+    except ValueError:
+        tier = TrustTier.PUBLIC  # unknown tiers get the strictest placement
+    region = caps.regions[0] if caps.regions else None
+    if not placement_allows(
+        tier, caps, residency=residency if caps.regions else None, region=region
+    ):
+        req = TIER_PLACEMENT[tier]
+        if caps.isolation < req.min_isolation or (
+            req.egress_enforced and not (caps.egress_enforced and caps.dns_enforced)
+        ):
+            raise PlacementRefused(
+                f"{tier.value} tenants require an executor with isolation >= "
+                f"{req.min_isolation.name.lower()}"
+                + (" and enforced egress/DNS" if req.egress_enforced else "")
+            )
+        raise PlacementRefused(f"the executor's regions do not satisfy residency {residency}")
     if resource_class not in caps.classes:
         raise PlacementRefused(f"the executor does not offer resource class {resource_class.value}")
 

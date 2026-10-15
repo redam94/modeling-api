@@ -8,8 +8,9 @@ import sys
 
 import httpx
 from mapi_server.app import openapi_document
+from mapi_server.auth.identity import LOCAL_USER_ID
 from mapi_server.context import ServerContext
-from mapi_spec.api import M1_ENDPOINTS, Health, Page, Project
+from mapi_spec.api import ENDPOINTS, Health, Me, Page, Project
 from mapi_spec.errors import PROBLEM_CONTENT_TYPE, Problem
 
 
@@ -77,14 +78,12 @@ async def test_readyz_fails_when_storage_is_down(
 
 
 async def test_me_and_projects(client: httpx.AsyncClient) -> None:
-    me = (await client.get("/v1/me")).json()
-    assert me == {
-        "subject": "local",
-        "tenant_id": "default",
-        "project_ids": ["default"],
-        "auth": "none",
-        "scopes": [],
-    }
+    me = Me.model_validate((await client.get("/v1/me")).json())
+    # single-tenant profile: credential-less loopback requests act as the local administrator
+    assert me.principal.id == LOCAL_USER_ID and me.operator and me.token is None
+    assert [t.tenant.id for t in me.tenants] == ["default"]
+    assert me.tenants[0].role == "admin"
+    assert [(p.project_id, p.role) for p in me.tenants[0].projects] == [("default", "admin")]
     page = Page[Project].model_validate((await client.get("/v1/projects")).json())
     assert [p.id for p in page.items] == ["default"]
     assert page.next_cursor is None
@@ -154,8 +153,8 @@ async def test_schemas(client: httpx.AsyncClient) -> None:
     assert (await client.get("/v1/schemas/nope.json")).status_code == 404
 
 
-def test_route_table_covers_every_m1_endpoint() -> None:
-    """Every row of ``mapi_spec.api.M1_ENDPOINTS`` is served with its operation id."""
+def test_route_table_covers_every_endpoint() -> None:
+    """Every row of ``mapi_spec.api.ENDPOINTS`` (M1 + M2) is served with its operation id."""
     doc = openapi_document()
     served = {
         (method.upper(), path, op.get("operationId"))
@@ -165,7 +164,7 @@ def test_route_table_covers_every_m1_endpoint() -> None:
     }
     missing = [
         f"{e.method} {e.path} ({e.operation_id})"
-        for e in M1_ENDPOINTS
+        for e in ENDPOINTS
         if (e.method, e.path, e.operation_id) not in served
     ]
     assert not missing, missing
@@ -180,7 +179,7 @@ def test_openapi_document_is_31_and_names_operations() -> None:
         for op in path.values()
         if isinstance(op, dict) and "operationId" in op
     }
-    assert {e.operation_id for e in M1_ENDPOINTS} <= ops
+    assert {e.operation_id for e in ENDPOINTS} <= ops
     assert "PlotSpec" in doc["components"]["schemas"]
 
 

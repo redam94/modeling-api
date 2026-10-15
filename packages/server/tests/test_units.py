@@ -190,6 +190,7 @@ def test_build_context_refuses_to_mint_a_key_when_creation_is_off(tmp_path: Path
     """Compose: api and worker must load the key ``migrate`` created on the shared volume;
     silently minting a private one would make every bundle unverifiable."""
     from mapi_server.app import build_context
+    from mapi_server.services.secrets import load_server_secrets
 
     settings = Settings(
         database_url="postgresql://mapi@127.0.0.1:1/mapi",
@@ -197,11 +198,16 @@ def test_build_context_refuses_to_mint_a_key_when_creation_is_off(tmp_path: Path
         image_digest="sha256:" + "0" * 64,
         signing_key_path=tmp_path / "keys" / "bundle-signing-p256.pem",
         signing_key_create=False,
+        data_dir=tmp_path,
     )
     with pytest.raises(RuntimeError, match="mapi-server migrate"):
         build_context(settings)
     assert not settings.key_path.exists()
     BundleSigner.from_file(settings.key_path)  # what migrate does
+    with pytest.raises(RuntimeError, match="mapi-server migrate"):
+        build_context(settings)  # the server secret (token pepper) is not minted either
+    assert not settings.secret_path.exists()
+    load_server_secrets(settings, create=True)  # what migrate does
     assert build_context(settings).signer.key_id == BundleSigner.from_file(settings.key_path).key_id
 
 

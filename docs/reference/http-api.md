@@ -439,7 +439,7 @@ These routes are not versioned and live at the root, next to the web app.
 |---|---|---|---|---|---|
 | `GET /auth/login` | Start sign-in. Redirects to the identity provider with `response_type=code`, a PKCE `code_challenge` (S256), `state` and `nonce`. `?return_to=` must be a same-origin path; anything else becomes `/`. | — | — | 302 | — |
 | `GET /auth/callback` | Check `state`, exchange the code with the PKCE verifier, verify the ID token (issuer, audience, `nonce`, expiry), set the session cookie and redirect to `return_to` | — | — | 302 | `UNAUTHENTICATED` |
-| `POST /auth/logout` | End the session and clear the cookie. Works without a valid session. | — | — | 204 | — |
+| `POST /auth/logout` | End the session and clear the cookies. Works without a valid session; with one it needs `X-CSRF-Token`. | — | — | 204 | — |
 | `GET /auth/session` | Whether the browser is signed in, as whom and until when. `authenticated: false` is a 200, not a 401. | — | `SessionInfo` | 200 | — |
 
 The login transaction (state, nonce, PKCE verifier) is held by the server for 10 minutes and
@@ -448,6 +448,13 @@ provider's redirect back is a cross-site navigation that would drop a `Strict` c
 expire after 2 hours idle or 12 hours in total. Every state-changing API route takes JSON,
 which a cross-site form cannot send without a CORS preflight, and the session cookie is
 `SameSite=Strict`, so cross-site requests never carry it.
+
+On top of that, every **cookie-authenticated** `POST`, `PUT`, `PATCH` and `DELETE` (including
+`POST /auth/logout` when a session is live) must echo the session's CSRF token in an
+`X-CSRF-Token` header, and is refused (`403 FORBIDDEN`) when its `Origin` is neither the web
+app nor the API or it says `Sec-Fetch-Site: cross-site`. The web app reads the token from the
+`__Host-mapi_csrf` cookie (readable, `SameSite=Strict`) or from the `X-CSRF-Token` header of
+`GET /auth/session`. Requests with an API token need no CSRF token.
 
 #### Internal
 

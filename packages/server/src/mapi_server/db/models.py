@@ -31,15 +31,26 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 __all__ = [
+    "GLOBAL_TABLES",
+    "TENANT_TABLES",
+    "ApiToken",
+    "AuditEvent",
     "Base",
     "Catalog",
+    "CostLedgerEntry",
     "Dataset",
     "DatasetVersion",
+    "ExecutorReport",
     "IdempotencyKey",
+    "LoginTransactionRow",
+    "Membership",
     "Model",
     "ModelVersion",
+    "PlatformSetting",
     "Plot",
     "Project",
+    "QuotaPolicy",
+    "RateCounter",
     "Run",
     "RunAttempt",
     "RunEvent",
@@ -49,7 +60,47 @@ __all__ = [
     "SpecRevision",
     "Tenant",
     "Upload",
+    "User",
+    "WebSession",
 ]
+
+TENANT_TABLES: tuple[str, ...] = (
+    "projects",
+    "memberships",
+    "api_tokens",
+    "datasets",
+    "uploads",
+    "dataset_versions",
+    "specs",
+    "spec_revisions",
+    "runs",
+    "run_attempts",
+    "run_progress",
+    "run_events",
+    "run_logs",
+    "models",
+    "model_versions",
+    "plots",
+    "idempotency_keys",
+    "audit_events",
+    "cost_ledger",
+)
+"""Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
+(``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
+their policy in a migration (``test_rls`` checks every table with a ``tenant_id``)."""
+
+GLOBAL_TABLES: tuple[str, ...] = (
+    "users",
+    "web_sessions",
+    "login_transactions",
+    "quota_policies",
+    "platform_settings",
+    "rate_counters",
+    "executor_reports",
+    "catalogs",
+)
+"""Platform tables without a tenant: only the platform role writes them; the request-path
+role may read ``catalogs``, ``quota_policies`` and ``platform_settings``."""
 
 NAMING = {
     "ix": "ix_%(column_0_label)s",
@@ -92,12 +143,17 @@ class Tenant(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     trust_tier: Mapped[str] = mapped_column(String(32), default="internal")
+    status: Mapped[str] = mapped_column(String(16), default="active", server_default="active")
+    status_reason: Mapped[str | None] = mapped_column(String(500))
+    data_residency: Mapped[str] = mapped_column(String(32), default="us", server_default="us")
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime | None] = mapped_column()
 
     __table_args__ = (
         CheckConstraint(
             "trust_tier in ('internal','verified','public','self-hosted-trusted')", name="tier"
         ),
+        CheckConstraint("status in ('active','suspended','deleting')", name="status"),
     )
 
 
@@ -115,6 +171,136 @@ class Project(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
 
     __table_args__ = (CheckConstraint("project_id = id", name="project_id_is_id"),)
+
+
+class User(Base):
+    """A person. ``(issuer, subject)`` is the identity once they signed in; an *invited*
+    user has only an ``email`` until the first sign-in with that verified address claims it.
+    Global (no tenant): only the platform role reads it."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    issuer: Mapped[str | None] = mapped_column(String(512))
+    subject: Mapped[str | None] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(320))
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    name: Mapped[str | None] = mapped_column(String(200))
+    operator: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(16), default="active")
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    last_login_at: Mapped[datetime | None] = mapped_column()
+
+    __table_args__ = (
+        CheckConstraint("status in ('active','invited','disabled')", name="status"),
+        UniqueConstraint("issuer", "subject"),
+        Index(
+            "uq_users_invited_email",
+            text("lower(email)"),
+            unique=True,
+            postgresql_where=text("issuer IS NULL"),
+        ),
+    )
+
+
+class Membership(Base):
+    """A role grant; ``project_id`` NULL = tenant-wide. ``email``/``display_name`` are copied
+    from the user so tenant-scoped reads never touch the global ``users`` table."""
+
+    __tablename__ = "memberships"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"))
+    project_id: Mapped[str | None] = mapped_column(String(64))
+    principal_id: Mapped[str] = mapped_column(String(64))
+    principal_kind: Mapped[str] = mapped_column(String(32), default="user")
+    role: Mapped[str] = mapped_column(String(16))
+    email: Mapped[str | None] = mapped_column(String(320))
+    display_name: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    created_by: Mapped[str | None] = mapped_column(String(64))
+
+    __table_args__ = (
+        CheckConstraint("role in ('viewer','editor','runner','admin')", name="role"),
+        CheckConstraint("principal_kind in ('user','service_account')", name="principal_kind"),
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        Index(
+            "uq_memberships_grant",
+            "tenant_id",
+            text("coalesce(project_id, '')"),
+            "principal_id",
+            unique=True,
+        ),
+        Index("ix_memberships_principal", "principal_id"),
+    )
+
+
+class ApiToken(Base):
+    """An API token. Only ``secret_hash`` (HMAC-SHA256 under the server pepper) is stored."""
+
+    __tablename__ = "api_tokens"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    project_id: Mapped[str] = mapped_column(String(64))
+    owner_id: Mapped[str] = mapped_column(String(64))
+    owner_kind: Mapped[str] = mapped_column(String(32), default="user")
+    name: Mapped[str] = mapped_column(String(100))
+    prefix: Mapped[str] = mapped_column(String(8), unique=True)
+    secret_hash: Mapped[str] = mapped_column(String(80))
+    scopes: Mapped[list[Any]] = mapped_column()
+    rate_limit_per_minute: Mapped[int | None] = mapped_column(Integer)
+    vcpu_seconds_budget: Mapped[float | None] = mapped_column(Float)
+    budget_period: Mapped[str] = mapped_column(String(8), default="month")
+    created_at: Mapped[datetime] = mapped_column()
+    expires_at: Mapped[datetime] = mapped_column()
+    last_used_at: Mapped[datetime | None] = mapped_column()
+    revoked_at: Mapped[datetime | None] = mapped_column()
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("budget_period in ('day','month')", name="budget_period"),
+        Index("ix_api_tokens_owner", "tenant_id", "project_id", "owner_id"),
+    )
+
+
+class WebSession(Base):
+    """A browser session (BFF). ``id`` is the SHA-256 of the cookie value, never the value."""
+
+    __tablename__ = "web_sessions"
+
+    id: Mapped[str] = mapped_column(String(71), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    csrf_token: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column()
+    last_seen_at: Mapped[datetime] = mapped_column()
+    expires_at: Mapped[datetime] = mapped_column()
+    ip_hash: Mapped[str | None] = mapped_column(String(64))
+    user_agent_hash: Mapped[str | None] = mapped_column(String(64))
+
+    __table_args__ = (Index("ix_web_sessions_user", "user_id"),)
+
+
+class LoginTransactionRow(Base):
+    """A pending OIDC sign-in between ``/auth/login`` and ``/auth/callback`` (single use).
+    ``id`` is the SHA-256 of the login cookie value."""
+
+    __tablename__ = "login_transactions"
+
+    id: Mapped[str] = mapped_column(String(71), primary_key=True)
+    state: Mapped[str] = mapped_column(String(128))
+    nonce: Mapped[str] = mapped_column(String(128))
+    code_verifier: Mapped[str] = mapped_column(String(128))
+    return_to: Mapped[str] = mapped_column(String(2048))
+    created_at: Mapped[datetime] = mapped_column()
 
 
 # ====================================================================== datasets
@@ -261,6 +447,14 @@ class Run(_Scoped, Base):
     last_event_at: Mapped[datetime | None] = mapped_column()
     lease_owner: Mapped[str | None] = mapped_column(String(128))
     lease_expires_at: Mapped[datetime | None] = mapped_column()
+    priority: Mapped[str] = mapped_column(String(16), default="batch", server_default="batch")
+    task_count: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    token_id: Mapped[str | None] = mapped_column(String(64))
+    created_by: Mapped[str | None] = mapped_column(String(64))
+    untrusted_code: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
+    estimate: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # CostEstimate at submit
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
     queued_at: Mapped[datetime | None] = mapped_column()
     started_at: Mapped[datetime | None] = mapped_column()
@@ -271,6 +465,9 @@ class Run(_Scoped, Base):
         Index("ix_runs_scope_id", "tenant_id", "project_id", "id"),
         Index("ix_runs_state", "state", "queued_at"),
         Index("ix_runs_spec", "spec_id"),
+        Index("ix_runs_tenant_state", "tenant_id", "state"),
+        CheckConstraint("priority in ('interactive','batch')", name="priority"),
+        CheckConstraint("task_count >= 1", name="task_count"),
     )
 
 
@@ -465,3 +662,130 @@ class IdempotencyKey(Base):
             ondelete="CASCADE",
         ),
     )
+
+
+# ===================================================================== accounting (M2)
+
+
+class AuditEvent(Base):
+    """Append-only audit rows (:class:`mapi_spec.audit.AuditEvent`). ``tenant_id`` NULL =
+    a platform-level action (visible to operators only)."""
+
+    __tablename__ = "audit_events"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    ts: Mapped[datetime] = mapped_column()
+    tenant_id: Mapped[str | None] = mapped_column(String(64))
+    project_id: Mapped[str | None] = mapped_column(String(64))
+    actor_kind: Mapped[str | None] = mapped_column(String(32))
+    actor_id: Mapped[str | None] = mapped_column(String(128))
+    token_id: Mapped[str | None] = mapped_column(String(64))
+    operator: Mapped[bool] = mapped_column(Boolean, default=False)
+    action: Mapped[str] = mapped_column(String(64))
+    resource_kind: Mapped[str] = mapped_column(String(32))
+    resource_id: Mapped[str | None] = mapped_column(String(256))
+    outcome: Mapped[str] = mapped_column(String(16))
+    code: Mapped[str | None] = mapped_column(String(64))
+    ip_hash: Mapped[str | None] = mapped_column(String(64))
+    user_agent_hash: Mapped[str | None] = mapped_column(String(64))
+    request_id: Mapped[str | None] = mapped_column(String(128))
+    details: Mapped[dict[str, Any]] = mapped_column(default=dict)
+
+    __table_args__ = (
+        Index("ix_audit_events_tenant_ts", "tenant_id", "ts"),
+        Index("ix_audit_events_ts", "ts"),
+    )
+
+
+class CostLedgerEntry(Base):
+    """Append-only cost ledger (:class:`mapi_spec.cost.CostLedgerEntry`): one ``actual`` row
+    per metered attempt (unique), plus operator ``adjustment`` rows."""
+
+    __tablename__ = "cost_ledger"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    project_id: Mapped[str] = mapped_column(String(64))
+    run_id: Mapped[str] = mapped_column(String(64))
+    attempt: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(16), default="actual")
+    resource_class: Mapped[str] = mapped_column(String(4))
+    executor: Mapped[str | None] = mapped_column(String(64))
+    token_id: Mapped[str | None] = mapped_column(String(64))
+    task_count: Mapped[int] = mapped_column(Integer, default=1)
+    wall_seconds: Mapped[float] = mapped_column(Float)
+    vcpu_seconds: Mapped[float] = mapped_column(Float)
+    gib_seconds: Mapped[float] = mapped_column(Float)
+    price_version: Mapped[str] = mapped_column(String(64))
+    amount_micros: Mapped[int] = mapped_column(BigInteger)
+    currency: Mapped[str] = mapped_column(String(3))
+    recorded_at: Mapped[datetime] = mapped_column()
+    note: Mapped[str | None] = mapped_column(String(500))
+
+    __table_args__ = (
+        CheckConstraint("kind in ('actual','adjustment')", name="kind"),
+        Index(
+            "uq_cost_ledger_actual",
+            "run_id",
+            "attempt",
+            unique=True,
+            postgresql_where=text("kind = 'actual'"),
+        ),
+        Index("ix_cost_ledger_tenant_time", "tenant_id", "recorded_at"),
+        Index("ix_cost_ledger_project_time", "tenant_id", "project_id", "recorded_at"),
+        Index("ix_cost_ledger_token_time", "token_id", "recorded_at"),
+        Index("ix_cost_ledger_time", "recorded_at"),
+    )
+
+
+class QuotaPolicy(Base):
+    """Operator-set quota policies (``scope``, ``subject_id``); tier defaults apply when no
+    tenant row exists. Platform table: read-only for the request-path role."""
+
+    __tablename__ = "quota_policies"
+
+    scope: Mapped[str] = mapped_column(String(16), primary_key=True)
+    subject_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    limits: Mapped[dict[str, Any]] = mapped_column()
+    note: Mapped[str | None] = mapped_column(String(500))
+    updated_at: Mapped[datetime] = mapped_column()
+    updated_by: Mapped[str | None] = mapped_column(String(64))
+
+    __table_args__ = (CheckConstraint("scope in ('token','tenant','global')", name="scope"),)
+
+
+class PlatformSetting(Base):
+    """Platform-wide documents (``kill_switches``). Read-only for the request-path role."""
+
+    __tablename__ = "platform_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[dict[str, Any]] = mapped_column()
+    updated_at: Mapped[datetime] = mapped_column()
+
+
+class RateCounter(Base):
+    """Fixed-window request counters (``subject`` = ``token:<id>``, ``tenant:<id>``, ``*``)."""
+
+    __tablename__ = "rate_counters"
+
+    subject: Mapped[str] = mapped_column(String(96), primary_key=True)
+    window_start: Mapped[datetime] = mapped_column(primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class ExecutorReport(Base):
+    """What each orchestrator last reported about its executor (admin console)."""
+
+    __tablename__ = "executor_reports"
+
+    name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    caps: Mapped[dict[str, Any]] = mapped_column()
+    submits_last_minute: Mapped[int] = mapped_column(Integer, default=0)
+    submit_rate_limit_per_minute: Mapped[int | None] = mapped_column(Integer)
+    throttled_last_hour: Mapped[int] = mapped_column(Integer, default=0)
+    last_success_at: Mapped[datetime | None] = mapped_column()
+    reported_by: Mapped[str | None] = mapped_column(String(128))
+    checked_at: Mapped[datetime] = mapped_column()
+    message: Mapped[str | None] = mapped_column(String(500))

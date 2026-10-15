@@ -27,7 +27,7 @@ Without `DATABASE_URL` an embedded PostgreSQL 16 (`pgserver`) starts under
 |---|---|---|
 | `DATABASE_URL` / `MAPI_DATABASE_URL` | embedded pgserver | any `postgresql://` URL |
 | `MAPI_ENV` | `local` | bucket names `mapi-{env}-*` |
-| `MAPI_PROFILE` | `single-tenant` | `multi-tenant` refuses the local-process executor |
+| `MAPI_PROFILE` | `single-tenant` | `multi-tenant` (credentials required; refuses the local-process executor) or `dev` (multi-tenant + the offline development IdP) |
 | `MAPI_DATA_DIR` | `.local` | embedded Postgres, signing key, execution work dirs |
 | `MAPI_OBJECT_STORE` | `shim` | `shim` (GCS emulator) or `memory` (tests) |
 | `MAPI_GCS_ENDPOINT` | `http://127.0.0.1:4443` | GCS shim base URL (also the bootstrap URL base) |
@@ -40,16 +40,26 @@ Without `DATABASE_URL` an embedded PostgreSQL 16 (`pgserver`) starts under
 | `MAPI_UV_LOCK_PATH` | `uv.lock` above the working directory | lock whose sha256 is the image digest (the images set `/opt/mapi/uv.lock`) |
 | `MAPI_SIGNING_KEY_PATH` | `$MAPI_DATA_DIR/keys/bundle-signing-p256.pem` | bundle manifest key (KMS emulation); api and worker must share it |
 | `MAPI_SIGNING_KEY_CREATE` | `true` | create the key if missing; `migrate` always creates it, compose turns this off for api/worker |
-| `MAPI_INTERNAL_TOKEN` | — | bearer required by `POST /internal/events` when set |
+| `MAPI_INTERNAL_TOKEN` | — | bearer required by `POST /internal/events` when set (Pub/Sub OIDC: `MAPI_PUBSUB_AUDIENCE`, `MAPI_PUBSUB_SERVICE_ACCOUNT`) |
+| `MAPI_OIDC_ISSUER`, `MAPI_OIDC_CLIENT_ID`, `MAPI_OIDC_CLIENT_SECRET` | — | browser sign-in (BFF, Authorization Code + PKCE) |
+| `MAPI_OPERATOR_EMAILS` | — | verified e-mails that sign in as platform operators |
+| `MAPI_SERVER_SECRET` | file next to the signing key | root of the API-token pepper and audit fingerprints |
+| `MAPI_DATABASE_APP_URL`, `MAPI_DATABASE_SYSTEM_URL` | `DATABASE_URL` + `role=` | logins of the RLS-bound request role and the platform role |
+
+Every variable, and how to run multi-tenant: `docs/operations/configuration.md` and
+`docs/operations/authentication.md`.
 
 ## Layout
 
 | Module | Role |
 |---|---|
 | `mapi_server.app` | app factory, service container lifecycle |
-| `mapi_server.api.*` | routers: meta/catalog, datasets, specs, runs (SSE), models/plots, internal |
+| `mapi_server.auth` | per-request authentication and authorization (`ROUTE_ACCESS`, tokens, sessions, CSRF, rate limits), identities, OIDC relying party |
+| `mapi_server.devidp` | the offline OpenID provider of the `dev` profile |
+| `mapi_server.services.tenancy`, `.quotas`, `.cost`, `.audit` | memberships, quota admission and kill switches, the cost ledger, the audit log |
+| `mapi_server.api.*` | routers: meta/catalog, auth (BFF), tenancy, tokens, usage, admin, datasets, specs, runs (SSE), models/plots, internal |
 | `mapi_server.services.runs` | the only writer of `runs.state` (via `mapi_spec.run.transition`) |
-| `mapi_server.services.dispatcher` | lease → intent row → bootstrap RunSpec → `executor.submit` |
+| `mapi_server.services.dispatcher` | fair-share lease (priority classes, caps, kill switches) → intent row → bootstrap RunSpec → `executor.submit` |
 | `mapi_server.services.reconciler` | level-triggered liveness, exit classification, cancel, retries |
 | `mapi_server.services.finalizer` | metadata-only verification, server-side copy, signed manifests |
 | `mapi_server.services.events` | HMAC verification, `(run, attempt, seq)` dedupe, progress upsert |
@@ -80,6 +90,17 @@ score-time CoordPlan checks) and `ui/*`; `ingest` → `data.zarr.zip`, `schema.j
 shim's `control` principal, loading its key file from `MAPI_GCS_ROOT` (default
 `$MAPI_DATA_DIR/gcs`) or `MAPI_GCS_KEY_FILE`; local executions get the `exec` token from the
 same directory unless `MAPI_EXEC_TOKEN` is set. Start the shim first (`make dev` does).
+
+## Tenancy and row-level security
+
+Request handlers use a **tenant session** (`Database.tenant_session`, role `mapi_app`): every
+transaction is pinned with `set_config('app.tenant_id', …, true)` and every tenant table has
+`FORCE ROW LEVEL SECURITY` with a fail-closed policy (migration `0003_tenancy`). The
+dispatcher, reconciler, finalizer, events service, authentication lookups and operator
+endpoints use `Database.session()` (role `mapi_system`, `BYPASSRLS`). A new tenant table
+must be added to `db.models.TENANT_TABLES` and get its policy in a migration; a new route
+must have an entry in `mapi_spec.api.ROUTE_ACCESS` (or `auth.request.SERVER_ROUTE_ACCESS`)
+or the app refuses to start.
 
 ## Tests
 

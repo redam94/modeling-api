@@ -14,7 +14,6 @@ from urllib.parse import urlsplit, urlunsplit
 import httpx
 import psycopg
 import pytest
-from sqlalchemy import text
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -29,6 +28,17 @@ from mapi_server_testkit.builders import CATALOG, EXEC_TOKEN
 IMAGE_DIGEST = "sha256:" + "ab" * 32
 
 APP_TABLES = (
+    "audit_events",
+    "cost_ledger",
+    "quota_policies",
+    "platform_settings",
+    "rate_counters",
+    "executor_reports",
+    "web_sessions",
+    "login_transactions",
+    "api_tokens",
+    "memberships",
+    "users",
     "plots",
     "model_versions",
     "models",
@@ -114,8 +124,9 @@ def make_store(settings: Settings) -> MemoryObjectStore:
 
 
 async def _truncate(ctx: ServerContext) -> None:
-    async with ctx.db.session() as s:
-        await s.execute(text(f"TRUNCATE {', '.join(APP_TABLES)} RESTART IDENTITY CASCADE"))
+    # as the owner (the runtime roles may not RESTART IDENTITY the owner's sequences)
+    async with await psycopg.AsyncConnection.connect(ctx.db.url, autocommit=True) as conn:
+        await conn.execute(f"TRUNCATE {', '.join(APP_TABLES)} RESTART IDENTITY CASCADE")
 
 
 @pytest.fixture

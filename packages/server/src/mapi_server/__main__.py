@@ -49,13 +49,16 @@ def cmd_migrate(settings: Settings) -> int:
     """
     from mapi_server.db import resolve_database_url
     from mapi_server.db.migrate import upgrade
+    from mapi_server.services.secrets import load_server_secrets
     from mapi_server.services.signing import BundleSigner
 
     url = resolve_database_url(settings)
-    upgrade(url)
+    upgrade(url, app_role=settings.db_app_role, system_role=settings.db_system_role)
     log.info("database is at the latest migration")
     signer = BundleSigner.from_file(settings.key_path, create=True)
     log.info("bundle-signing key %s at %s", signer.key_id, settings.key_path)
+    load_server_secrets(settings, create=True)  # token pepper and audit key; shared by all
+    log.info("server secret ready (%s)", "environment" if settings.server_secret else "file")
     return 0
 
 

@@ -16,6 +16,7 @@ from typing import Any
 from mapi_spec._types import Duration
 from mapi_spec.api import ProgressSnapshot, RunCost, new_id
 from mapi_spec.api import Run as RunDTO
+from mapi_spec.audit import AuditAction, AuditOutcome, make_audit_event
 from mapi_spec.errors import ErrorCode, Problem
 from mapi_spec.executor import RunEventType, RunKind
 from mapi_spec.resources import ResourceClass
@@ -27,11 +28,14 @@ from mapi_spec.run import (
     TransitionRule,
     transition,
 )
+from mapi_spec.tenancy import PrincipalKind, ResourceKind
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
+from mapi_server.services.audit import add_audit
+from mapi_server.services.cost import bill_attempts, fold_cost
 from mapi_server.services.notify import notify_run
 
 __all__ = [
@@ -72,7 +76,9 @@ def progress_dto(p: m.RunProgress | None) -> ProgressSnapshot | None:
     )
 
 
-def run_dto(run: m.Run, progress: m.RunProgress | None = None) -> RunDTO:
+def run_dto(
+    run: m.Run, progress: m.RunProgress | None = None, *, cost: RunCost | None = None
+) -> RunDTO:
     return RunDTO(
         id=run.id,
         tenant_id=run.tenant_id,
@@ -98,7 +104,7 @@ def run_dto(run: m.Run, progress: m.RunProgress | None = None) -> RunDTO:
         and progress.attempt == run.attempt  # never a previous attempt's progress
         and not RunState(run.state).terminal
         else None,
-        cost=RunCost(),
+        cost=cost if cost is not None else _estimate_only(run),
         labels=run.labels,
         created_at=run.created_at,
         queued_at=run.queued_at,
@@ -106,6 +112,10 @@ def run_dto(run: m.Run, progress: m.RunProgress | None = None) -> RunDTO:
         finished_at=run.finished_at,
         updated_at=run.updated_at,
     )
+
+
+def _estimate_only(run: m.Run) -> RunCost:
+    return fold_cost((), run.estimate)
 
 
 async def load_run(
@@ -209,6 +219,27 @@ async def apply_transition(
         run.queued_at = ts
     if rule.target is RunState.RUNNING and run.started_at is None:
         run.started_at = ts
+    if rule.failure_class is FailureClass.INTEGRITY:
+        # outputs did not match what the platform recorded: a security signal
+        await add_audit(
+            session,
+            [
+                make_audit_event(
+                    action=AuditAction.RUN_INTEGRITY_FAILURE,
+                    resource_kind=ResourceKind.RUN,
+                    outcome=AuditOutcome.ERROR,
+                    ts=ts,
+                    fingerprint_key=b"",  # no client data to fingerprint
+                    tenant_id=run.tenant_id,
+                    project_id=run.project_id,
+                    actor_kind=PrincipalKind.SERVICE,
+                    actor_id=f"svc_{actor.value}",
+                    resource_id=run.id,
+                    code=ErrorCode.INTEGRITY_FAILURE,
+                    details={"attempt": run.attempt},
+                )
+            ],
+        )
     if rule.failure_class is not None:
         run.failure_class = rule.failure_class.value
         run.problem = (
@@ -227,6 +258,9 @@ async def apply_transition(
         if rule.target is not RunState.SUCCEEDED:
             await _ingest_failed(session, run)
     await session.flush()
+    if rule.target.terminal or rule.new_attempt or rule.target is RunState.FINALIZING:
+        # an attempt's execution is over: meter it into the cost ledger (idempotent)
+        await bill_attempts(session, run)
     await notify_run(session, run.id, "run")
     return rule
 

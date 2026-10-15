@@ -25,37 +25,56 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mapi_server.context import ServerContext
+from mapi_server.auth.request import RequestAuth, authenticate
+from mapi_server.context import NoProjectScope, ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.runs import Scope, now
 
 __all__ = [
+    "Auth",
     "Ctx",
     "Idempotency",
     "IdempotencyKeyHeader",
     "Limit",
     "Replay",
     "Session",
+    "SystemSession",
     "decode_cursor",
     "encode_cursor",
     "get_ctx",
 ]
 
 
-def get_ctx(request: Request) -> ServerContext:
-    ctx: ServerContext = request.app.state.ctx
-    return ctx
+Auth = Annotated[RequestAuth, Depends(authenticate)]
+
+
+def get_ctx(request: Request, auth: Auth) -> ServerContext:
+    """The service container bound to this request's caller (``ctx.scope``, ``ctx.request``)."""
+    base: ServerContext = request.app.state.ctx
+    return base.for_request(auth)
 
 
 Ctx = Annotated[ServerContext, Depends(get_ctx)]
 
 
 async def _session(ctx: Ctx) -> AsyncIterator[AsyncSession]:
+    """A tenant session (row-level security) pinned to the request's tenant."""
+    tenant = ctx.request.tenant_id if ctx.request is not None else None
+    if tenant is None:
+        raise NoProjectScope("this route has no tenant; use SystemSession explicitly")
+    async with ctx.db.tenant_session(tenant) as session:
+        yield session
+
+
+async def _system_session(ctx: Ctx) -> AsyncIterator[AsyncSession]:
+    """A platform-role session (bypasses row-level security): identity and operator routes
+    only, always with explicit filters."""
     async with ctx.db.session() as session:
         yield session
 
 
 Session = Annotated[AsyncSession, Depends(_session)]
+SystemSession = Annotated[AsyncSession, Depends(_system_session)]
 Limit = Annotated[int, Query(ge=1, le=PAGE_LIMIT_MAX)]
 IdempotencyKeyHeader = Annotated[str | None, Header(alias=IDEMPOTENCY_KEY_HEADER, max_length=255)]
 

@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+import httpx
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.routing import APIRoute
 from mapi_spec.api import IDEMPOTENCY_KEY_HEADER, LAST_EVENT_ID_HEADER, PREFER_HEADER
 from mapi_spec.capabilities import Diagnostic
+from mapi_spec.errors import MapiError
 from mapi_spec.run import (
     CheckpointPayload,
     CompletePayload,
@@ -24,25 +27,49 @@ from mapi_spec.run import (
 )
 from mapi_spec.spec import CONTRACT_VERSION
 from mapi_spec.storage import ObjectStore
+from mapi_spec.tenancy import PROJECT_HEADER
 from pydantic import BaseModel
 from pydantic.json_schema import models_json_schema
-from sqlalchemy.dialects.postgresql import insert
 
 import mapi_server
-from mapi_server.api import datasets, internal, meta, models, runs, specs
+from mapi_server.api import (
+    admin,
+    datasets,
+    internal,
+    meta,
+    models,
+    runs,
+    specs,
+    tenancy,
+    tokens,
+    usage,
+)
+from mapi_server.api import auth as auth_routes
+from mapi_server.auth.oidc import HttpOidcProvider, JwksCache, OidcClient
+from mapi_server.auth.request import CSRF_HEADER, access_for, authenticate
 from mapi_server.context import FinalizeQueue, ServerContext
 from mapi_server.db import Database, resolve_database_url
-from mapi_server.db import models as m
+from mapi_server.devidp import DevIdP, mount_devidp
 from mapi_server.errors import install_error_handlers
 from mapi_server.services.catalog import CatalogService
+from mapi_server.services.cost import PRICE_TABLE_INFO_KEY, load_price_table
 from mapi_server.services.notify import NotificationHub
+from mapi_server.services.secrets import ServerSecrets, load_server_secrets
 from mapi_server.services.signing import BundleSigner
+from mapi_server.services.tenancy import (
+    ensure_local_admin,
+    ensure_platform_tenant,
+    invite_admins,
+    seed_dev_accounts,
+)
 from mapi_server.settings import Settings
 from mapi_server.storage import build_object_store
 
 __all__ = [
     "EVENT_PAYLOAD_MODELS",
     "build_context",
+    "build_oidc",
+    "check_route_access",
     "create_app",
     "ensure_scope",
     "load_signer",
@@ -91,6 +118,47 @@ def load_signer(settings: Settings) -> BundleSigner:
         ) from None
 
 
+def build_oidc(settings: Settings, devidp: DevIdP | None) -> OidcClient | None:
+    """The relying party for ``/auth/*``: the dev IdP, a configured issuer, or none."""
+    if devidp is not None:
+        return OidcClient(
+            devidp,
+            client_id=devidp.client_id,
+            redirect_uri=settings.redirect_uri(),
+            algorithms=("RS256",),
+            allow_http=True,
+        )
+    if settings.oidc_issuer and settings.oidc_client_id:
+        return OidcClient(
+            HttpOidcProvider(
+                settings.oidc_issuer,
+                client_secret=settings.oidc_client_secret,
+                discovery_url=settings.oidc_discovery_url,
+            ),
+            client_id=settings.oidc_client_id,
+            redirect_uri=settings.redirect_uri(),
+            algorithms=settings.oidc_algorithms,
+            extra_params=settings.oidc_extra_params,
+        )
+    return None
+
+
+def build_push_jwks(settings: Settings) -> JwksCache | None:
+    """Google's JWKS (cached) when Pub/Sub push authentication is configured."""
+    if not settings.pubsub_audience:
+        return None
+    url = settings.google_jwks_url
+
+    async def fetch() -> Mapping[str, Any]:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            doc: Mapping[str, Any] = r.json()
+            return doc
+
+    return JwksCache(fetch)
+
+
 def build_context(
     settings: Settings,
     *,
@@ -98,12 +166,24 @@ def build_context(
     signer: BundleSigner | None = None,
     queue: FinalizeQueue | None = None,
     database_url: str | None = None,
+    secrets: ServerSecrets | None = None,
 ) -> ServerContext:
-    """Wire the process-wide services (no I/O besides starting an embedded Postgres)."""
+    """Wire the process-wide services (no I/O besides starting an embedded Postgres and
+    creating missing key files)."""
     signer = signer or load_signer(settings)
     url = database_url or resolve_database_url(settings)
-    db = Database(url, pool_size=settings.db_pool_size, echo=settings.db_echo)
+    price_table = load_price_table(settings.price_table_path)
+    db = Database.from_settings(settings, url, session_info={PRICE_TABLE_INFO_KEY: price_table})
     owned_store = store is None
+    devidp = (
+        DevIdP(
+            users=settings.devidp_users,
+            base_url=settings.api_url,
+            redirect_uri=settings.redirect_uri(),
+        )
+        if settings.devidp_enabled
+        else None
+    )
     ctx = ServerContext(
         settings=settings,
         db=db,
@@ -114,39 +194,42 @@ def build_context(
         signer=signer,
         hub=NotificationHub(db.url),
         queue=queue,
+        secrets=secrets or load_server_secrets(settings),
+        price_table=price_table,
+        devidp=devidp,
+        oidc=build_oidc(settings, devidp),
+        push_jwks=build_push_jwks(settings),
     )
     aclose = getattr(ctx.store, "aclose", None)
     if owned_store and callable(aclose):
         ctx.on_shutdown.append(aclose)
+    provider_close = getattr(getattr(ctx.oidc, "provider", None), "aclose", None)
+    if callable(provider_close):
+        ctx.on_shutdown.append(provider_close)
     return ctx
 
 
 async def ensure_scope(ctx: ServerContext) -> None:
-    """Create the single M1 tenant and project if they do not exist (idempotent)."""
-    sc = ctx.scope
+    """Provision the platform tenant/project (and, by profile, invited accounts)."""
+    sc = ctx.platform_scope
+    settings = ctx.settings
     async with ctx.db.session() as s:
-        await s.execute(
-            insert(m.Tenant)
-            .values(id=sc.tenant_id, name=sc.tenant_id.capitalize(), trust_tier="internal")
-            .on_conflict_do_nothing()
-        )
-        await s.execute(
-            insert(m.Project)
-            .values(
-                tenant_id=sc.tenant_id,
-                id=sc.project_id,
-                project_id=sc.project_id,
-                name=f"{sc.project_id.capitalize()} project",
+        await ensure_platform_tenant(s, sc.tenant_id, sc.project_id)
+        if not settings.multi_tenant:
+            await ensure_local_admin(s, sc.tenant_id)
+        if settings.devidp_enabled:
+            await seed_dev_accounts(
+                s, settings.devidp_users, tenant_id=sc.tenant_id, project_id=sc.project_id
             )
-            .on_conflict_do_nothing()
-        )
+        if settings.default_tenant_admins:
+            await invite_admins(s, settings.default_tenant_admins, tenant_id=sc.tenant_id)
 
 
 async def startup(ctx: ServerContext, *, listen: bool = True) -> None:
     await ensure_scope(ctx)
     async with ctx.db.session() as s:
         await ctx.catalogs.load_file(
-            s, tenant_id=ctx.scope.tenant_id, project_id=ctx.scope.project_id
+            s, tenant_id=ctx.platform_scope.tenant_id, project_id=ctx.platform_scope.project_id
         )
     if listen:
         await ctx.hub.start()
@@ -187,16 +270,26 @@ def create_app(
         summary="Typed xarray modelling runtime: control plane API (v1)",
         description=(
             f"Contract version {CONTRACT_VERSION}. Errors are RFC 7807 problem documents "
-            "(`application/problem+json`) with stable `code`s. M1 is single-tenant and "
-            "unauthenticated (listens on 127.0.0.1)."
+            "(`application/problem+json`) with stable `code`s. Programs authenticate with "
+            "`Authorization: Bearer mapi_…` API tokens, browsers with the BFF session "
+            f"(`/auth/login`); project-scoped routes act in the project named by the "
+            f"`{PROJECT_HEADER}: <tenant>/<project>` header (or the token's project). The "
+            "single-tenant profile accepts credential-less requests on loopback as the "
+            "local administrator."
         ),
         lifespan=lifespan,
+        dependencies=[Depends(authenticate)],
         openapi_tags=[
             {"name": n}
             for n in (
                 "health",
                 "identity",
+                "auth",
+                "tenants",
                 "projects",
+                "tokens",
+                "usage",
+                "admin",
                 "catalog",
                 "datasets",
                 "specs",
@@ -222,21 +315,28 @@ def create_app(
         CORSMiddleware,
         allow_origins=[settings.web_origin.rstrip("/")],
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=[
             "Content-Type",
             "Authorization",
             IDEMPOTENCY_KEY_HEADER,
             LAST_EVENT_ID_HEADER,
             PREFER_HEADER,
+            PROJECT_HEADER,
+            CSRF_HEADER,
         ],
-        expose_headers=["Preference-Applied", "Location"],
+        expose_headers=["Preference-Applied", "Location", "Retry-After", CSRF_HEADER],
     )
     # Outermost: DNS rebinding makes a hostile page same-origin with 127.0.0.1, so CORS never
     # applies; the Host header is the only tell (plan §9). 400 for any unexpected host.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts())
     for router in (
         meta.router,
+        auth_routes.router,
+        tenancy.router,
+        tokens.router,
+        usage.router,
+        admin.router,
         datasets.router,
         specs.router,
         runs.router,
@@ -245,7 +345,25 @@ def create_app(
         internal.router,
     ):
         app.include_router(router)
+    if settings.devidp_enabled:
+        mount_devidp(app, settings)
+    check_route_access(app)
     return app
+
+
+def check_route_access(app: FastAPI) -> None:
+    """Every route must have an access rule (fail closed at start-up, not per request)."""
+    missing = []
+    for route in app.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        op = route.operation_id or route.name
+        try:
+            access_for(op)
+        except MapiError:
+            missing.append(f"{sorted(route.methods or ())} {route.path} ({op})")
+    if missing:
+        raise RuntimeError(f"routes without an access rule: {missing}")
 
 
 def openapi_document(settings: Settings | None = None) -> dict[str, Any]:
