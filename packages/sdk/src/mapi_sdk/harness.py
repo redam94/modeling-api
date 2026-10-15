@@ -63,15 +63,31 @@ MAX_SMEAR_RESIDUALS = 200
 
 @dataclass(slots=True)
 class FitHooks:
-    """Optional callbacks for progress, logging and cooperative cancellation."""
+    """Optional callbacks for progress, logging and cooperative cancellation.
+
+    ``checkpoint_sink`` is handed to the model's :class:`~mapi_sdk.models.FitContext` so
+    engines with segmented sampling can checkpoint (and resume) long fits.
+    """
 
     log: Callable[[str], None] | None = None
     on_progress: Callable[[float, str], None] | None = None
     cancel: CancelToken | None = None
+    checkpoint_sink: Any | None = None
 
     def progress(self, fraction: float, message: str) -> None:
         if self.on_progress is not None:
             self.on_progress(fraction, message)
+
+    def window(self, lo: float, hi: float) -> Callable[[float, str], None] | None:
+        """A progress callback mapping a sub-task's ``[0, 1]`` onto ``[lo, hi]``."""
+        if self.on_progress is None:
+            return None
+        report = self.on_progress
+
+        def scaled(fraction: float, message: str) -> None:
+            report(lo + (hi - lo) * min(max(fraction, 0.0), 1.0), message)
+
+        return scaled
 
     def check(self) -> None:
         if self.cancel is not None:
@@ -208,7 +224,7 @@ def fit_spec(
     split = spec.data.split
     split_stage = resolved.split_stage or RAW
     if split is None:
-        bundle = _fit_from(env, None, raw, start=RAW, role="production")
+        bundle = _fit_from(env, None, raw, start=RAW, role="production", progress=(0.05, 0.95))
         bundle.metrics = MetricsReport(
             skipped={
                 m: "no data.split is declared"
@@ -233,13 +249,17 @@ def fit_spec(
     hooks.check()
     sr = split_dataset(prefix.data, split, schema=resolved.stages.get(split_stage), seed=env.seed)
     hooks.progress(0.15, "split the data")
-    evaluation = _fit_from(env, prefix, sr.train, start=split_stage, role="evaluation")
+    evaluation = _fit_from(
+        env, prefix, sr.train, start=split_stage, role="evaluation", progress=(0.15, 0.45)
+    )
     hooks.progress(0.45, "fitted on the training data")
     metrics = _evaluate(env, evaluation, sr, split_stage)
     hooks.progress(0.55, "evaluated the holdout through the score path")
 
     if spec.model.fit.mode is FitMode.EVALUATE_THEN_REFIT:
-        production = _fit_from(env, prefix, prefix.data, start=split_stage, role="production")
+        production = _fit_from(
+            env, prefix, prefix.data, start=split_stage, role="production", progress=(0.55, 0.95)
+        )
         metrics.evaluation_bundle = evaluation.bundle_id
         production.manifest.lineage = {
             "evaluation_bundle": evaluation.bundle_id,
@@ -277,6 +297,7 @@ def _fit_from(
     *,
     start: str,
     role: Literal["production", "evaluation"],
+    progress: tuple[float, float] = (0.0, 1.0),
 ) -> Bundle:
     hooks = env.hooks
     rest = env.pipeline.fit(
@@ -309,8 +330,9 @@ def _fit_from(
         policies=rs.model.effective_policies,
         coords={str(d): np.asarray(model_coords[d].values) for d in model_coords.coords},
         log=hooks.log,
-        on_progress=None,
+        on_progress=hooks.window(*progress),
         cancel=hooks.cancel,
+        checkpoint_sink=hooks.checkpoint_sink,
     )
     try:
         out = env.plugin.fit(model_ds, s, env.spec.model.fit, fctx)

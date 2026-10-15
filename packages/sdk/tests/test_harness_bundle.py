@@ -62,6 +62,42 @@ def test_evaluate_then_refit_links_evaluation(
     assert bundle.side_tables.keys() == {"fx"}
 
 
+def test_model_progress_is_windowed_and_checkpoint_sink_is_passed(
+    registry: Registry, e33_spec: Callable[..., ModelSpec], panel: tuple[xr.Dataset, xr.Dataset]
+) -> None:
+    from mapi_sdk.models import FitContext, FitOutput
+    from mapi_sdk.testing import toy
+    from mapi_spec.spec import FitConfig
+
+    seen: list[Any] = []
+
+    class _Reporting(toy.BayesLinearModel):
+        id = "test.reporting"
+
+        def fit(self, ds: xr.Dataset, s: Any, cfg: FitConfig, ctx: FitContext) -> FitOutput:
+            seen.append(ctx.checkpoint_sink)
+            ctx.progress(0.5, "half way through the model fit")
+            return super().fit(ds, s, cfg, ctx)
+
+    reg = registry.copy()
+    reg.register_model(_Reporting)
+    sink = object()
+    events: list[tuple[float, str]] = []
+    data, fx = panel
+    fit_spec(
+        e33_spec(model="test.reporting@^1"),
+        data,
+        {"fx": fx},
+        reg,
+        hooks=FitHooks(on_progress=lambda f, m: events.append((f, m)), checkpoint_sink=sink),
+    )
+    halfway = [f for f, m in events if m == "half way through the model fit"]
+    assert halfway == pytest.approx([0.30, 0.75])  # evaluation fit, then the production refit
+    assert seen == [sink, sink]
+    fractions = [f for f, _ in events]
+    assert fractions == sorted(fractions)
+
+
 def test_train_only_and_no_split(
     registry: Registry, e33_spec: Callable[..., ModelSpec], panel: tuple[xr.Dataset, xr.Dataset]
 ) -> None:
