@@ -38,9 +38,15 @@ milestone releases are tagged on `main`.
 - Cross-package conformance suites:
   - the plan's xgboost spec through real steps, models and plots;
   - an E33-shaped `core.*` pipeline in front of a PyMC model.
+- **`mapi-plugin-ts`**: `ts.hsgp_trend` (C08: HSGP trend + seasonality whose domain comes from the anticipated coords; `HORIZON_EXCEEDS_FIT` past `max_extension`; sentinel months left out of the likelihood) and `ts.gaussian_hmm` (E24: forward-algorithm HMM over padded tracks with a `terminal_state` group, forecast and filter modes, relabelling postprocess, LOO declared invalid).
+- **`mapi-plugin-tabular`**: `tabular.hierarchical_glm` (E02: partially pooled GLM in long layout, hyperprior new groups, group-level covariates, four families) and `tabular.regressor` (plan §6.2 store demand: quantile regression restricted to the registry's quantile-capable estimators).
+- **`mapi-conformance`**: the corpus runner `python -m mapi_conformance run [--size tiny|full] [--fixture id]` (validate, fit, score requests, evaluate, contract kit, plots, expectations; summary table and JSON) with the `e02`, `c08`, `e24` and `xgb_store_demand` fixtures; `pytest -m conformance` and `make conformance`.
 - Docs: spec format, SDK, built-in steps and plots references; guides for plugins, PyMC, tabular models and plots.
+- Docs: built-in models reference, forecasting and sequential models guide, conformance corpus guide.
 
 ### Fixed (integration)
 - The plan's xgboost example names the real quantile plugin (`sklearn.tabular_quantiles`). A new `ml.feature_importance` recipe covers its plot list.
 - `core.fit_vs_actual` and `core.residuals_over_time` compare quantile and interval summaries cell by cell instead of refusing them.
 - The contract kit flags step settings whose defaults are missing from the exported JSON Schema (`default_factory`), and finds reverse-bound outputs when checking units.
+- Score outputs that declare their own `units` (e.g. state probabilities) no longer go through the target's inverse transforms.
+- The contract kit runs its shuffled, subset and new-level checks on long layouts (index variables are remapped) and shifts calendar-frequency time coords by whole periods.

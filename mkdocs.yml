@@ -19,8 +19,11 @@ nav:
       - Bring a PyMC model: guides/pymc.md
       - Tabular models (scikit-learn, xgboost): guides/sklearn.md
       - Plots, recipes and templates: guides/plots.md
+      - Forecasting and sequential models: guides/time-series.md
+      - Conformance corpus: guides/conformance.md
   - Reference:
       - Spec format: reference/spec-format.md
       - Python SDK: reference/sdk.md
       - Built-in steps: reference/steps.md
+      - Built-in models: reference/models.md
       - Plots and the sanitizer: reference/plots.md
