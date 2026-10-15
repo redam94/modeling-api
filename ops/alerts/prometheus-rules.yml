@@ -22,8 +22,11 @@ groups:
         expr: sum by (reason) (rate(mapi_sandbox_violations_total[5m]))
       - record: mapi:quota_rejections:rate5m
         expr: sum by (scope, code) (rate(mapi_quota_rejections_total[5m]))
-      - record: mapi:jobs_run_429:rate5m
-        expr: sum(rate(mapi_http_requests_total{route="/v1/runs", method="POST", status="429"}[5m]))
+      # 429s from the executor backend (Cloud Run jobs.run), counted where they happen. Not
+      # the API's own 429s to tenants: submission is asynchronous, so a backend throttle
+      # never reaches POST /v1/runs (tenant quota rejections are mapi_quota_rejections_total).
+      - record: mapi:executor_submit_throttled:rate5m
+        expr: sum by (executor) (rate(mapi_executor_submit_throttled_total[5m]))
       # Runs that have been STALLED across the fleet (a gauge sampled each reconcile pass).
       - record: mapi:runs_stalled
         expr: sum(mapi_runs_active{state="stalled"})
@@ -92,12 +95,13 @@ groups:
   - name: mapi.saturation
     rules:
       - alert: MapiJobsRun429
-        # 429s from jobs.run / the dispatcher token bucket (plan §8.3: 429s raise an alarm).
-        expr: mapi:jobs_run_429:rate5m > 0.1
+        # Cloud Run answered 429 to jobs.run, sustained (plan §8.3: 429s raise an alarm).
+        # Every answer counts, also the ones the executor absorbed with its retries.
+        expr: mapi:executor_submit_throttled:rate5m > 0
         for: 5m
         labels: { severity: ticket, team: platform-ops }
         annotations:
-          summary: "429s on jobs.run ({{ $value | printf \"%.2f\" }}/s)"
+          summary: "429s on jobs.run from {{ $labels.executor }} ({{ $value | printf \"%.3f\" }}/s)"
           description: >
             The run-submission path is being throttled. Check the per-region jobs.run rate
             (180/min) and per-tenant fan-out; shard across exec projects at 70% (§8.8).

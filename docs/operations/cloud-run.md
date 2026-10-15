@@ -91,7 +91,8 @@ the quota between orchestrator replicas). A `429` answer means nothing was creat
 executor puts every submitter into a shared cool-down (exponential back-off from
 `MAPI_CLOUDRUN_BACKOFF_BASE_S`, at least the server's `Retry-After`), counts the answer as an
 alarm (`ALARM cloudrun-jobs: jobs.run answered 429` in the log, `throttled_last_hour` in the
-executor health) and retries the same nonce.
+executor health, `mapi_executor_submit_throttled_total{executor}` at `/metrics`, which the
+`MapiJobsRun429` alert watches) and retries the same nonce.
 
 ### Fan-out with `taskCount`
 

@@ -74,6 +74,7 @@ from mapi_spec.quotas import JOBS_RUN_PER_MINUTE, backoff_seconds
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import ENV_NONCE, ENV_RUN_ID, RunnerExit
 
+from mapi_server.observability import metrics as obs_metrics
 from mapi_server.ratelimit import TokenBucket, WindowCounter
 
 __all__ = [
@@ -542,6 +543,7 @@ class CloudRunJobsExecutor:
             except CloudRunRateLimited as exc:
                 throttled += 1
                 self.throttled.record()
+                obs_metrics.record_executor_throttled(self.name)
                 delay = backoff_seconds(
                     throttled,
                     base=self._backoff_base,

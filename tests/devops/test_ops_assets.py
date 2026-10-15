@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -140,6 +141,51 @@ def test_cloud_monitoring_alerts_parse_as_yaml() -> None:
     for p in policies:
         assert p["displayName"].startswith("mapi —")
         assert p["conditions"], f"{p['displayName']} has no conditions"
+
+
+def _rules() -> dict[str, dict[str, object]]:
+    yaml = pytest.importorskip("yaml")
+    doc = yaml.safe_load((OPS / "alerts" / "prometheus-rules.yml").read_text())
+    out: dict[str, dict[str, object]] = {}
+    for group in doc["groups"]:
+        for rule in group["rules"]:
+            out[str(rule.get("alert") or rule.get("record"))] = rule
+    return out
+
+
+def _policies() -> dict[str, Any]:
+    yaml = pytest.importorskip("yaml")
+    text = (OPS / "alerts" / "cloud-monitoring-alerts.yaml").read_text()
+    return {p["displayName"]: p for p in yaml.safe_load_all(text) if p}
+
+
+def _resolved(rules: dict[str, dict[str, object]], alert: str) -> str:
+    """The alert's expression plus the recording rules it uses."""
+    expr = str(rules[alert]["expr"])
+    used = [str(r["expr"]) for name, r in rules.items() if "record" in r and name in expr]
+    return " ".join([expr, *used])
+
+
+def _filters(policy: Any) -> str:
+    return " ".join(
+        str(c.get("conditionThreshold", {}).get("filter", "")) for c in policy["conditions"]
+    )
+
+
+def test_jobs_run_429_alarm_watches_the_backend_not_tenant_429s() -> None:
+    """Plan §8.3: 429s from Cloud Run on jobs.run raise an alarm. The API's own 429s to
+    tenants (QUOTA_EXCEEDED / RATE_LIMITED on POST /v1/runs) are another signal: submission
+    is asynchronous, so a backend throttle never shows up as an API 429."""
+    resolved = _resolved(_rules(), "MapiJobsRun429")
+    assert "mapi_executor_submit_throttled_total" in resolved
+    assert "mapi_http_requests_total" not in resolved
+    filters = _filters(_policies()["mapi — jobs.run 429 throttling"])
+    # Cloud Run jobs export no request_count; Admin API calls are serviceruntime metrics
+    assert "run.googleapis.com/job/request_count" not in filters
+    assert 'metric.type = "serviceruntime.googleapis.com/api/request_count"' in filters
+    assert 'resource.labels.service = "run.googleapis.com"' in filters
+    assert "metric.labels.response_code = 429" in filters
+    assert "response_code_class" not in filters
 
 
 def test_runbook_links_resolve() -> None:

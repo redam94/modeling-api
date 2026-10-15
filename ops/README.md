@@ -36,6 +36,7 @@ ops/
 | `mapi_integrity_failures_total{tenant_id}` | counter | Output-integrity failures (security signal) |
 | `mapi_sandbox_violations_total{reason}` | counter | Forged events / HMAC / identity mismatch |
 | `mapi_quota_rejections_total{scope,code}` | counter | QUOTA_EXCEEDED / RATE_LIMITED denials |
+| `mapi_executor_submit_throttled_total{executor}` | counter | 429s from the executor backend (Cloud Run jobs.run), retried ones included; orchestrator |
 | `mapi_cost_micros_total{tenant_id}` | counter | Billed compute cost in currency micros |
 | `mapi_global_spend_micros` / `mapi_global_spend_cap_micros` | gauge | Spend vs the global cap |
 | `mapi_sse_clients` | gauge | Live SSE subscribers on this process |
@@ -48,8 +49,10 @@ Two series referenced by the alerts are produced outside the server process:
   (`python -m mapi_security run`, `security/README.md`) pushes this to a Pushgateway; a
   non-zero value means a probe's outcome disagreed with the expected matrix on an enforcing
   executor.
-- `run.googleapis.com/job/request_count{response_code_class="4xx"}` — Cloud Run's own metric
-  for jobs.run 429s, used by the Cloud Monitoring alert.
+- `serviceruntime.googleapis.com/api/request_count` (resource `consumed_api`, service
+  `run.googleapis.com`, method `…RunJob`, `response_code=429`) — GCP's own count of the
+  Admin API's 429s to jobs.run, used by the Cloud Monitoring alert next to the server's
+  `mapi_executor_submit_throttled_total`.
 
 ## Applying
 

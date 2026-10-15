@@ -434,7 +434,7 @@ async def test_cloud_run_throttling_reaches_the_admin_console(
     assert "429" in health["message"]
 
 
-def test_dispatcher_backs_off_on_a_cloud_run_429(ctx: ServerContext) -> None:
+def test_dispatcher_backs_off_on_a_cloud_run_429(ctx: ServerContext, metrics: Metrics) -> None:
     """A jobs.run 429 the executor could not absorb (``CloudRunRateLimited``) puts the
     dispatcher into back-off, honouring Retry-After, and counts toward its health."""
     from mapi_server.executors.cloudrun import CloudRunError, CloudRunRateLimited
@@ -445,6 +445,22 @@ def test_dispatcher_backs_off_on_a_cloud_run_429(ctx: ServerContext) -> None:
     first = dispatcher._throttled(CloudRunRateLimited("429"))
     second = dispatcher._throttled(CloudRunRateLimited("429"))
     assert first is not None and second is not None and second >= first
+    # the backend-throttle alarm counts them (an executor without its own health report)
+    assert _sample("mapi_executor_submit_throttled_total", executor="fake") == 3
+
+
+def test_self_reporting_executors_are_not_counted_twice(
+    ctx: ServerContext, metrics: Metrics
+) -> None:
+    """cloudrun-jobs counts every 429 itself (retries included): the one it finally raises
+    to the dispatcher is not counted again."""
+    from mapi_server.executors.cloudrun import CloudRunJobsExecutor, CloudRunRateLimited
+    from mapi_server.executors.fake_cloudrun import FakeCloudRun
+    from mapi_server_testkit.conformance import INVENTORY
+
+    executor = CloudRunJobsExecutor(FakeCloudRun.for_inventory(INVENTORY), INVENTORY)
+    assert Dispatcher(ctx, executor)._throttled(CloudRunRateLimited("429")) is not None
+    assert _sample("mapi_executor_submit_throttled_total", executor="cloudrun-jobs") == 0
 
 
 async def test_runs_admitted_under_looser_limits_wait_at_dispatch(

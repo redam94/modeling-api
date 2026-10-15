@@ -234,6 +234,28 @@ async def test_429_backs_off_exponentially_and_raises_the_alarm() -> None:
     await fake.wait_idle()
 
 
+async def test_every_jobs_run_429_is_exported_for_the_alarm() -> None:
+    """Plan §8.3: 429s on jobs.run raise an alarm. The alert keys on this counter (the API's
+    own 429s to tenants are a different signal), so each throttled RunJob call counts,
+    including the ones the executor absorbed with its retries."""
+    from mapi_server.observability import metrics as obs_metrics
+
+    previous = obs_metrics.METRICS
+    fresh = obs_metrics.Metrics()
+    obs_metrics.set_metrics(fresh)
+    try:
+        fake = FakeCloudRun.for_inventory(INV)
+        fake.rate_limit(2)
+        clock = FakeClock()
+        ex = _executor(fake, clock=clock, sleep=clock.sleep)
+        await ex.submit(_rs(), NONCE)
+        text = fresh.render().decode()
+        assert 'mapi_executor_submit_throttled_total{executor="cloudrun-jobs"} 2.0' in text
+        await fake.wait_idle()
+    finally:
+        obs_metrics.set_metrics(previous)
+
+
 async def test_retry_after_is_honoured_and_retries_are_capped() -> None:
     fake = FakeCloudRun.for_inventory(INV)
     fake.rate_limit(1, retry_after=7.5)

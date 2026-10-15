@@ -9,14 +9,16 @@
 #   * prometheus.googleapis.com/mapi_*   — the /metrics series, scraped by Managed Service
 #     for Prometheus (GMP) from the API and worker (the names below use the PromQL dialect
 #     via a prometheusQueryLanguageCondition).
-#   * run.googleapis.com/*               — Cloud Run Jobs quota/usage, native to GCP, used for
-#     the jobs.run 429 alert the control plane cannot see itself.
+#   * serviceruntime.googleapis.com/api/request_count (resource consumed_api) — the Cloud Run
+#     Admin API's own count of RunJob calls by response code, native to GCP, for the jobs.run
+#     429 alert. (Cloud Run *jobs* export no request_count; that metric is for services.)
 #
 # Replace ${PROJECT_ID} and the notification channel ids before applying.
 
 ---
-# 429s on jobs.run: Cloud Run reports request_count with response_code_class; alert when the
-# Admin API throttles run submissions (plan §8.3 — 429s raise an alarm).
+# 429s on jobs.run: the Admin API's RunJob calls answered 429 (plan §8.3 — 429s raise an
+# alarm), from GCP's own API metrics and from the orchestrator's counter. 403/404 and the
+# API's 429s to tenants (their own quotas) are other signals and do not count.
 displayName: "mapi — jobs.run 429 throttling"
 documentation:
   content: |
@@ -26,20 +28,28 @@ documentation:
   mimeType: text/markdown
 combiner: OR
 conditions:
-  - displayName: "RunJob 429 rate > 0.1/s over 5m"
+  - displayName: "Admin API answered 429 to RunJob, sustained 5m"
     conditionThreshold:
       filter: >
-        resource.type = "cloud_run_job" AND
-        metric.type = "run.googleapis.com/job/request_count" AND
-        metric.labels.response_code_class = "4xx"
+        resource.type = "consumed_api" AND
+        metric.type = "serviceruntime.googleapis.com/api/request_count" AND
+        resource.labels.service = "run.googleapis.com" AND
+        resource.labels.method = monitoring.regex.full_match(".*RunJob") AND
+        metric.labels.response_code = 429
       aggregations:
         - alignmentPeriod: 300s
           perSeriesAligner: ALIGN_RATE
           crossSeriesReducer: REDUCE_SUM
+          groupByFields: ["resource.labels.project_id", "resource.labels.location"]
       comparison: COMPARISON_GT
-      thresholdValue: 0.1
+      thresholdValue: 0
       duration: 300s
       trigger: { count: 1 }
+  - displayName: "orchestrator counted jobs.run 429s, sustained 5m"
+    conditionPrometheusQueryLanguage:
+      query: sum by (executor) (rate(mapi_executor_submit_throttled_total[5m])) > 0
+      duration: 300s
+      evaluationInterval: 60s
 severity: WARNING
 
 ---

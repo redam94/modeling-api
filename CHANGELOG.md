@@ -133,6 +133,12 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   kill-switches set --cancel-untrusted-runs`, "Cancel running uploaded code" in the web app),
   which moves every unfinished run of uploaded code to `cancelling`. The sandbox-escape and
   incident-response runbooks use both.
+- **ops**: the jobs.run 429 alarm (plan §8.3) watches Cloud Run's 429s. The orchestrator
+  exports `mapi_executor_submit_throttled_total{executor}` (every 429, retried ones
+  included), and `MapiJobsRun429` and the dashboard use it instead of the API's own 429s to
+  tenants on `POST /v1/runs`. The Cloud Monitoring policy uses
+  `serviceruntime.googleapis.com/api/request_count` (RunJob, `response_code=429`). Its old
+  filter named a metric that Cloud Run jobs do not export, and it counted every 4xx.
 - **cli**: `mapi logout --revoke` revokes the token in the project it is bound to (it was
   refused with 403 when another project was selected) and forgets the local credentials even
   when the revocation fails, then exits 1.

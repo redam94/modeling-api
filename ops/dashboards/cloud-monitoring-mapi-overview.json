@@ -331,7 +331,7 @@
               {
                 "plotType": "LINE",
                 "timeSeriesQuery": {
-                  "prometheusQuery": "sum(rate(mapi_http_requests_total{route=\"/v1/runs\",status=\"429\"}[5m]))"
+                  "prometheusQuery": "sum by (executor) (rate(mapi_executor_submit_throttled_total[5m]))"
                 },
                 "targetAxis": "Y1"
               }

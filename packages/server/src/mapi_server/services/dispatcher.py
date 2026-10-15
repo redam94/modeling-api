@@ -112,6 +112,10 @@ class Dispatcher:
         )
         if status not in (429, ErrorCode.RATE_LIMITED, "429"):
             return None
+        if not callable(getattr(self.executor, "health", None)):
+            # executors with their own health report (cloudrun-jobs) count every 429 they
+            # see, retries included; the one they finally raise is not counted twice
+            obs_metrics.record_executor_throttled(self.executor.name)
         retry_after = getattr(error, "retry_after", None)
         self._throttle_streak += 1
         return backoff_seconds(

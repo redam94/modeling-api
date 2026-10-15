@@ -38,6 +38,7 @@ __all__ = [
     "record_cost_micros",
     "record_dispatch_latency",
     "record_event_ingested",
+    "record_executor_throttled",
     "record_finalize_outcome",
     "record_http_request",
     "record_ingestion_lag",
@@ -158,6 +159,13 @@ class Metrics:
             registry=r,
             multiprocess_mode="livesum",
         )
+        self.executor_submit_throttled_total = Counter(
+            "mapi_executor_submit_throttled_total",
+            "429 answers from an executor backend to a submission (Cloud Run jobs.run), "
+            "each one, retried or not. Not the API's own 429s to tenants.",
+            ["executor"],
+            registry=r,
+        )
         self.http_requests_total = Counter(
             "mapi_http_requests_total",
             "HTTP requests handled by the API, by method, route template and status.",
@@ -247,6 +255,10 @@ def record_integrity_failure(tenant_id: str) -> None:
 
 def record_sandbox_violation(reason: str) -> None:
     METRICS.sandbox_violations_total.labels(reason=reason).inc()
+
+
+def record_executor_throttled(executor: str) -> None:
+    METRICS.executor_submit_throttled_total.labels(executor=executor).inc()
 
 
 def record_quota_rejection(scope: str, code: str) -> None:

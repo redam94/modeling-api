@@ -65,6 +65,7 @@ unless a token is set.
 | `mapi_integrity_failures_total{tenant_id}` | counter | Outputs that did not match the platform's record (a security signal) |
 | `mapi_sandbox_violations_total{reason}` | counter | Forged events, bad HMACs, execution-label mismatches |
 | `mapi_quota_rejections_total{scope,code}` | counter | `QUOTA_EXCEEDED` and `RATE_LIMITED` denials, by token, tenant or global level |
+| `mapi_executor_submit_throttled_total{executor}` | counter | `429` answers from the executor backend to a submission (Cloud Run `jobs.run`), retried ones included. Recorded by the orchestrator. The API's own `429`s to tenants are not counted here |
 | `mapi_cost_micros_total{tenant_id}` | counter | Metered compute cost (currency micros) as ledger entries are written |
 | `mapi_global_spend_micros`, `mapi_global_spend_cap_micros` | gauge | Spend in the kill switches' cap window, and the cap |
 | `mapi_sse_clients` | gauge | Live event-stream subscribers on this process |
