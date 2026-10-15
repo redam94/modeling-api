@@ -874,3 +874,29 @@ async def test_token_bucket_penalize_and_window_counter() -> None:
     assert w.count() == 1 and w.total == 2
     with pytest.raises(ValueError):
         WindowCounter(0)
+
+
+async def test_bookkeeping_stays_bounded_in_a_long_lived_worker() -> None:
+    """Submitted and cancelled executions are forgotten once they finish (a bounded record
+    still answers duplicate submits), and anything never polled here is dropped after the
+    adopt lookback: memory and health() cost do not grow with every run since start."""
+    fake = FakeCloudRun.for_inventory(INV)
+    clock = [0.0]
+    ex = _executor(fake, clock=lambda: clock[0], adopt_lookback_s=3600)
+    handles = [await ex.submit(_rs(f"run_{i}"), f"{i:064x}") for i in range(20)]
+    for h in handles[:10]:
+        await ex.cancel(h)
+        assert (await _until_terminal(ex, h)).state.terminal
+    assert len(ex._submitted) == 10 and len(ex._cancel_sent) == 0
+    assert ex.health().running_executions == 10
+    created = len(fake.executions())
+    # a duplicate submit of a finished nonce is still the same execution
+    assert await ex.submit(_rs("run_0"), f"{0:064x}") == handles[0]
+    assert len(fake.executions()) == created
+    for h in handles[10:]:
+        await ex.cancel(h)
+    assert len(ex._cancel_sent) == 10
+    clock[0] += 3601  # never polled by this process: dropped after the adopt lookback
+    assert ex.health().running_executions == 0
+    assert ex._submitted == {} and ex._cancel_sent == {}
+    await fake.aclose()

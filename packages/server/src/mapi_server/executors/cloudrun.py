@@ -416,6 +416,12 @@ class _Submitted:
     handle: Handle
     job: str
     operation: str
+    at: float = 0.0
+    """``clock()`` when submitted or adopted (entries older than the adopt lookback go)."""
+
+
+_FINISHED_MEMORY: Final = 10_000
+"""Finished executions remembered (status cache, duplicate-submit answers) per process."""
 
 
 class _SilentEvents:
@@ -487,6 +493,8 @@ class CloudRunJobsExecutor:
         self._now = now
         self._jitter = jitter or (lambda: random.uniform(0.0, 0.25))
         self._submitted: dict[str, _Submitted] = {}
+        """Executions this process submitted or adopted that are not known to be finished."""
+        self._finished: OrderedDict[str, _Submitted] = OrderedDict()
         self._ambiguous: set[str] = set()
         self._index: dict[str, list[ExecutionInfo]] = {}
         self._index_at = float("-inf")
@@ -519,7 +527,7 @@ class CloudRunJobsExecutor:
         return max(1, min(rs.timeout.seconds + self._margin, self._max_runtime))
 
     async def submit(self, rs: RunSubmit, nonce: str) -> Handle:
-        done = self._submitted.get(nonce)
+        done = self._known(nonce)
         if done is not None:  # duplicate submit: the same execution
             return done.handle
         if nonce in self._ambiguous:  # an earlier call may have created it
@@ -581,7 +589,10 @@ class CloudRunJobsExecutor:
             nonce=nonce,
             external_id=execution.name,
         )
-        self._submitted[nonce] = _Submitted(handle=handle, job=job, operation=result.operation)
+        self._prune()
+        self._submitted[nonce] = _Submitted(
+            handle=handle, job=job, operation=result.operation, at=self._clock()
+        )
         self._ambiguous.discard(nonce)
         self.last_success_at = self._now()
         log.info(
@@ -597,8 +608,29 @@ class CloudRunJobsExecutor:
 
     def operation_for(self, nonce: str) -> str | None:
         """The ``jobs.run`` operation name of an attempt submitted by this process."""
-        done = self._submitted.get(nonce)
+        done = self._known(nonce)
         return done.operation if done else None
+
+    def _known(self, nonce: str) -> _Submitted | None:
+        return self._submitted.get(nonce) or self._finished.get(nonce)
+
+    def _finish(self, nonce: str, name: str) -> None:
+        """``name`` (of ``nonce``) reached a terminal state: stop tracking it as live."""
+        done = self._submitted.pop(nonce, None)
+        if done is not None:
+            self._finished[nonce] = done
+            while len(self._finished) > _FINISHED_MEMORY:
+                self._finished.popitem(last=False)
+        self._cancel_sent.pop(name, None)
+
+    def _prune(self) -> None:
+        """Forget executions older than the adopt lookback this process never saw finish
+        (another process reconciled them): the bookkeeping stays bounded."""
+        horizon = self._clock() - self._lookback.total_seconds()
+        for nonce in [n for n, s in self._submitted.items() if s.at < horizon]:
+            del self._submitted[nonce]
+        for name in [n for n, t in self._cancel_sent.items() if t < horizon]:
+            del self._cancel_sent[name]
 
     async def _refresh_index(self, *, force: bool = False) -> None:
         async with self._index_lock:
@@ -621,7 +653,7 @@ class CloudRunJobsExecutor:
 
     async def adopt(self, nonce: str) -> Handle | None:
         """Find the execution of ``nonce`` (orphan recovery); cancel any duplicates."""
-        done = self._submitted.get(nonce)
+        done = self._known(nonce)
         if done is not None:
             return done.handle
         force = nonce in self._ambiguous
@@ -652,7 +684,9 @@ class CloudRunJobsExecutor:
             nonce=nonce,
             external_id=keep.name,
         )
-        self._submitted[nonce] = _Submitted(handle=handle, job=keep.job, operation="")
+        self._submitted[nonce] = _Submitted(
+            handle=handle, job=keep.job, operation="", at=self._clock()
+        )
         self._ambiguous.discard(nonce)
         log.info("adopted Cloud Run execution %s by nonce", keep.name)
         return handle
@@ -669,6 +703,7 @@ class CloudRunJobsExecutor:
             return ExecStatus(state=ExecState.UNKNOWN, message="no execution for this nonce")
         cached = self._terminal.get(name)
         if cached is not None:
+            self._finish(h.nonce, name)
             return cached
         try:
             info = await self.api.get_execution(name)
@@ -678,8 +713,9 @@ class CloudRunJobsExecutor:
         st = execution_status(info, tasks)
         if st.state.terminal:
             self._terminal[name] = st
-            while len(self._terminal) > 10_000:
+            while len(self._terminal) > _FINISHED_MEMORY:
                 self._terminal.popitem(last=False)
+            self._finish(h.nonce, name)
         return st
 
     async def cancel(self, h: Handle) -> None:
@@ -720,9 +756,10 @@ class CloudRunJobsExecutor:
             status = ExecutorStatus.DEGRADED
             message = f"{failures} submit failure(s) in the last hour"
         caps = self.caps()
-        live = sum(
-            1 for s in self._submitted.values() if s.handle.external_id not in self._terminal
-        )
+        self._prune()
+        # executions this process submitted or adopted and has not seen finish (the admin
+        # console counts dispatched runs from the database)
+        live = len(self._submitted)
         return ExecutorHealth(
             name=self.name,
             enabled=enabled,
