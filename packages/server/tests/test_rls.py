@@ -149,6 +149,47 @@ async def test_the_app_role_cannot_turn_row_security_off(
             await s.execute(select(func.count()).select_from(m.Run))
 
 
+async def test_audit_and_cost_records_are_append_only(ctx: ServerContext) -> None:
+    """Audit events and cost ledger entries can be added but never edited or erased: not by
+    the request-path role (a bug or an injection there cannot rewrite a tenant's audit trail
+    or billing history), and not by the platform role either."""
+    await _seed(ctx)
+    ts = now()
+    async with ctx.db.tenant_session("alpha") as s:
+        s.add(
+            m.AuditEvent(
+                id=new_id("aud"), ts=ts, tenant_id="alpha", operator=False, action="run.create",
+                resource_kind="run", outcome="success", details={},
+            )
+        )  # fmt: skip
+    async with ctx.db.session() as s:
+        s.add(
+            m.CostLedgerEntry(
+                id=new_id("cle"), tenant_id="alpha", project_id="main", run_id="run_x",
+                attempt=1, kind="actual", resource_class="S", task_count=1, wall_seconds=1,
+                vcpu_seconds=2, gib_seconds=8, price_version="v", amount_micros=10,
+                currency="USD", recorded_at=ts,
+            )
+        )  # fmt: skip
+    statements = [
+        update(m.AuditEvent).values(outcome="denied"),
+        delete(m.AuditEvent),
+        update(m.CostLedgerEntry).values(amount_micros=0),
+        delete(m.CostLedgerEntry),
+    ]
+    for stmt in statements:
+        with pytest.raises(DBAPIError, match=r"permission denied|append-only"):
+            async with ctx.db.tenant_session("alpha") as s:
+                await s.execute(stmt)
+        with pytest.raises(DBAPIError, match=r"permission denied|append-only"):
+            async with ctx.db.session() as s:
+                await s.execute(stmt)
+    async with ctx.db.session() as s:
+        assert (await s.execute(select(func.count()).select_from(m.AuditEvent))).scalar_one() == 1
+        ledger = (await s.execute(select(m.CostLedgerEntry))).scalar_one()
+        assert ledger.amount_micros == 10
+
+
 async def test_every_tenant_table_forces_rls_and_the_app_role_owns_nothing(
     ctx: ServerContext,
 ) -> None:

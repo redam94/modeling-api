@@ -172,6 +172,12 @@ A transaction that forgot to pin a tenant fails closed: on a fresh connection ev
 errors, on a pooled connection the setting is empty and matches no row. The test suite runs
 deliberately unscoped queries for two tenants over one pooled connection to prove it.
 
+The audit log (`audit_events`) and the cost ledger (`cost_ledger`) are append-only. Neither
+runtime role may `UPDATE` or `DELETE` them, and a trigger refuses any change to an existing
+row whoever asks, so a bug or an injection cannot rewrite a tenant's audit trail or billing
+history. Purging them (tenant deletion, retention) is a deliberate act of the table owner,
+who must drop the `*_append_only` trigger first.
+
 With a single `DATABASE_URL` (local development, the default Compose file) both pools log
 in as the migrating user and select their role with the start-up option `role=...`
 (`RESET ROLE` returns to that role). In production give each its own login:

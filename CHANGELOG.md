@@ -183,6 +183,10 @@ is tested against fakes, and the Terraform is validated and tested against mocke
   longer keeps receiving a 24-hour run's progress and logs: the stream closes and the
   reconnect is refused. The web client stops on 401 (and raises the session-expired prompt)
   or 403, where it used to retry forever.
+- **server**: the audit log and the cost ledger are append-only (migration
+  `0004_append_only_records`). Both runtime roles lose `UPDATE` and `DELETE` on them, and a
+  trigger refuses any change to an existing row, so a request-path bug or injection can no
+  longer rewrite a tenant's audit trail or billing history.
 
 ## [0.2.0] — M1: local vertical slice — 2026-10-15
 
