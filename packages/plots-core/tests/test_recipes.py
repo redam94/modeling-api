@@ -590,6 +590,11 @@ def test_response_curves_with_per_channel_spend_grid() -> None:
     assert (c["lo"] == c["hi"]).all()
     with pytest.raises(RecipeDataError):
         get_recipe("mmm.response_curves").render({"response_curves": point}, channel="geo")
+    # per-geo scales next to the response are never mistaken for it, whatever the order
+    scaled = xr.Dataset({"target_scale": ("geo", [2.0, 3.0])}).merge(ds)
+    assert next(iter(scaled.data_vars)) == "target_scale"
+    again = frame(get_recipe("mmm.response_curves").render({"response_curves": scaled}), "curves")
+    assert again.loc[again.channel == "b", "spend"].max() == 80.0
 
 
 def test_marginal_cost_and_roi(bundle: Any) -> None:

@@ -53,6 +53,7 @@ __all__ = [
     "DEFAULT_LIMITS",
     "MULTIINDEX_ATTR",
     "ROWMASK_SUFFIX",
+    "VAR_ORDER_ATTR",
     "WireLimits",
     "dumps_xrjson",
     "from_xrjson",
@@ -73,6 +74,9 @@ __all__ = [
 ]
 
 ROWMASK_SUFFIX = "__rowmask"
+VAR_ORDER_ATTR = "_mapi_var_order"
+"""Group attribute holding the data-variable order of a written dataset (read back and
+removed by the readers; zarr itself does not keep member order)."""
 DATETIME_UNITS = "nanoseconds since 1970-01-01"
 DATETIME_CALENDAR = "proleptic_gregorian"
 _STANDARD_CALENDARS = frozenset({"proleptic_gregorian", "standard", "gregorian"})
@@ -540,6 +544,11 @@ def _prepare_dataset(
         if vr:
             ds = ds.assign(vr)
     ds.attrs = json_safe_attrs(ds.attrs, "dataset")
+    if VAR_ORDER_ATTR in ds.attrs:
+        raise WireFormatError(f"the attribute {VAR_ORDER_ATTR!r} is reserved")
+    # zarr lists group members in no particular order: record the variable order so readers
+    # (and "first variable" defaults in plot recipes) see the dataset as it was written
+    ds.attrs[VAR_ORDER_ATTR] = [str(n) for n in ds.data_vars]
     return ds, enc
 
 
@@ -761,8 +770,22 @@ def _memory_store(entries: Mapping[str, bytes]) -> MemoryStore:
     return MemoryStore({k: proto.buffer.from_bytes(v) for k, v in entries.items()}, read_only=True)
 
 
+def _restore_order(ds: xr.Dataset) -> xr.Dataset:
+    """Data variables in their written order (``VAR_ORDER_ATTR``), else sorted by name."""
+    attrs = dict(ds.attrs)
+    order = attrs.pop(VAR_ORDER_ATTR, None)
+    names = [str(n) for n in ds.data_vars]
+    if isinstance(order, list) and sorted(map(str, order)) == sorted(names):
+        want = [str(n) for n in order]
+    else:
+        want = sorted(names)
+    out = ds.drop_vars(names).assign({n: ds.variables[n] for n in want})
+    out.attrs = attrs
+    return out
+
+
 def _decode(ds: xr.Dataset) -> xr.Dataset:
-    return restore_multiindex(normalise_dataset(ds.drop_encoding()))
+    return restore_multiindex(normalise_dataset(_restore_order(ds.drop_encoding())))
 
 
 def read_zarr_zip(
