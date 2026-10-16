@@ -153,8 +153,11 @@ a laptop, most of it sandboxed fits):
 
 ```text
 23 nodes, queued
-  adf: started
-  kpss: started
+  adf: queued
+  kpss: queued
+  …
+  adf: succeeded
+  kpss: succeeded
   …
   wanders: took the then arm
   seasonal: took the else arm
