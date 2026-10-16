@@ -313,6 +313,24 @@ describe("Guided usability fixes (M3 tester run)", () => {
   });
 });
 
+describe("an unfinished experiment (M3 review)", () => {
+  it("is summed up in one sentence per experiment beside the disabled actions", async () => {
+    const { liftSummary } = await import("./priors");
+    const rows = [newLiftRow("tv"), { ...newLiftRow("search"), start: "2025-06-01", end: "2025-05-01", spendDelta: "-40,000", kpiDelta: "-90000", se: "25000" }];
+    const { problems } = toLiftTests(rows, ["tv", "search"]);
+    expect(liftSummary(problems, rows)).toEqual([
+      "Experiment 1 still needs the first day, the last day, the spend change, the measured change and its uncertainty. Fill them in, or remove the experiment.",
+      "Experiment 2 still needs a last day after the first. Fill them in, or remove the experiment.",
+    ]);
+    expect(liftSummary([], rows)).toEqual([]);
+  });
+
+  it("uses placeholders that cannot pass for data", async () => {
+    const { LIFT_PLACEHOLDERS } = await import("./priors");
+    for (const p of Object.values(LIFT_PLACEHOLDERS)) expect(p).toMatch(/^e\.g\. /);
+  });
+});
+
 describe("the upload hint (M3 review)", () => {
   it("describes the data each template needs, and the MMM presets only for the marketing mix", async () => {
     const { dataShapePlain } = await import("./session");

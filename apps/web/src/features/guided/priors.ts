@@ -7,6 +7,7 @@
  * checks of `check_business_priors` and the `LiftTest` validators), and writes the result into
  * the spec document (`apply_prior_translation`).
  */
+import { listWords } from "./plain";
 import type { DistributionItem } from "./plots";
 import type { BusinessPriors, LiftTest, PriorPreview, PriorTranslationResult, SpecDocument } from "./types";
 
@@ -225,6 +226,34 @@ export function toLiftTests(rows: readonly LiftTestRow[], channels: readonly str
     });
   });
   return { tests, problems };
+}
+
+/** Example values for an experiment's number fields: worded so they cannot pass for data. */
+export const LIFT_PLACEHOLDERS = { spendDelta: "e.g. -120,000", kpiDelta: "e.g. -260,000", se: "e.g. 70,000" } as const;
+
+const LIFT_FIELD_WORDS: Record<string, string> = {
+  channel: "the channel tested",
+  start: "the first day",
+  end: "the last day",
+  spendDelta: "the spend change",
+  kpiDelta: "the measured change",
+  se: "its uncertainty",
+};
+
+/**
+ * One sentence per unfinished experiment ("Experiment 1 still needs the first day, …"), for the
+ * summary beside the disabled actions; each field shows its own message once it was left.
+ */
+export function liftSummary(problems: readonly FormProblem[], rows: readonly LiftTestRow[]): string[] {
+  const out: string[] = [];
+  rows.forEach((r, i) => {
+    const fields = problems.filter((p) => p.where.startsWith(`lift/${r.key}/`)).map((p) => {
+      const field = p.where.split("/")[2] ?? "";
+      return field === "end" && p.message.includes("before it starts") ? "a last day after the first" : (LIFT_FIELD_WORDS[field] ?? field);
+    });
+    if (fields.length) out.push(`Experiment ${i + 1} still needs ${listWords(fields)}. Fill them in, or remove the experiment.`);
+  });
+  return out;
 }
 
 /** A stable key for "the same beliefs" (a preview can be reused when nothing changed). */

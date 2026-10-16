@@ -467,6 +467,11 @@ milestone releases are tagged on `main`.
 - **web**: the Guided upload box described weekly marketing data by market (and the MFF and
   Meridian presets) for every template, Customer choice and Demand by store included. It
   describes the rows each template needs and names the presets for the marketing mix only.
+- **web**: adding an experiment showed a red error under every field at once, its example
+  values ("-120000") read as prefilled data, and nothing said why Preview and Save were
+  disabled. A field's message now waits until the field is left, the examples read
+  "e.g. -120,000", and a summary beside the actions says what each unfinished experiment
+  still needs.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

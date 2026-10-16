@@ -29,6 +29,8 @@ import {
   coverageSentence,
   CREDIBILITY_CHOICES,
   formFromCalibration,
+  LIFT_PLACEHOLDERS,
+  liftSummary,
   newLiftRow,
   previewGroups,
   ROI_LIMITS,
@@ -165,7 +167,7 @@ function LiftRow({
   geos,
   onChange,
   onRemove,
-  errors,
+  errors: allErrors,
 }: {
   row: LiftTestRow;
   n: number;
@@ -176,8 +178,12 @@ function LiftRow({
   errors: Record<string, string>;
 }) {
   const id = useId();
+  // A field's message waits until the field was left: a new row is not a wall of errors (the
+  // summary beside the actions says what is still missing).
+  const [touched, setTouched] = useState<ReadonlySet<string>>(() => new Set());
+  const errors = Object.fromEntries(Object.entries(allErrors).filter(([k]) => touched.has(k)));
   const field = (key: keyof LiftTestRow, label: string, input: ReactNode) => (
-    <div className="grid gap-1">
+    <div className="grid gap-1" onBlur={() => setTouched((t) => (t.has(key) ? t : new Set([...t, key])))}>
       <Label htmlFor={`${id}-${key}`} className="text-xs font-normal text-muted-foreground">
         {label}
       </Label>
@@ -227,9 +233,9 @@ function LiftRow({
         )}
         {field("start", "First day", <Input id={`${id}-start`} type="date" value={row.start} onChange={(e) => onChange({ ...row, start: e.target.value })} className="h-8" aria-invalid={errors.start ? true : undefined} />)}
         {field("end", "Last day", <Input id={`${id}-end`} type="date" value={row.end} onChange={(e) => onChange({ ...row, end: e.target.value })} className="h-8" aria-invalid={errors.end ? true : undefined} />)}
-        {field("spendDelta", "Spend change", text("spendDelta", "-120000"))}
-        {field("kpiDelta", "Measured change in results", text("kpiDelta", "-260000"))}
-        {field("se", "± uncertainty (standard error)", text("se", "70000"))}
+        {field("spendDelta", "Spend change", text("spendDelta", LIFT_PLACEHOLDERS.spendDelta))}
+        {field("kpiDelta", "Measured change in results", text("kpiDelta", LIFT_PLACEHOLDERS.kpiDelta))}
+        {field("se", "± uncertainty (standard error)", text("se", LIFT_PLACEHOLDERS.se))}
       </div>
     </li>
   );
@@ -326,6 +332,8 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
   const key = beliefsKey(bp, lift.tests);
   const translationFits = translation.data?.done && translation.data.result && (previewKey === key || (previewKey === null && runId === savedRun));
   const blocking = problems.length > 0 || lift.problems.length > 0;
+  // Why Preview and Save are disabled, beside them.
+  const blockedBy = [...(problems.length ? ["Fix the beliefs marked in red above."] : []), ...liftSummary(lift.problems, form.liftTests)];
   const canSave = can(grants, "update", "spec");
   const canPreview = can(grants, "create", "run");
 
@@ -513,6 +521,13 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
         </Button>
         <div className="flex flex-wrap items-center gap-3">
           {!canSave ? <span className="text-xs text-muted-foreground">Your role cannot change this analysis.</span> : null}
+          {blockedBy.length ? (
+            <div role="status" data-testid="beliefs-blocking" className="grid max-w-[52ch] gap-0.5 text-xs text-muted-foreground">
+              {blockedBy.map((s) => (
+                <span key={s}>{s}</span>
+              ))}
+            </div>
+          ) : null}
           <Button onClick={() => void save()} disabled={blocking || saving || !canSave}>
             {saving ? <Spinner /> : <ArrowRight />} {bp || lift.tests.length ? "Save and continue" : "Continue without beliefs"}
           </Button>
