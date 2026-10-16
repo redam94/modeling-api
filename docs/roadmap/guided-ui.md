@@ -61,7 +61,7 @@ journey
 
 | Criterion | Where it stands |
 |---|---|
-| Five non-technical testers go from upload to report to scenario unaided in under 30 minutes | Prepared: an automated run takes 137 s of system time, six usability defects it found are fixed, and the [protocol for the testers](../operations/m3-verification.md#protocol-for-the-five-non-technical-testers) is written. The sessions themselves are still to run |
+| Five non-technical testers go from upload to report to scenario unaided in under 30 minutes | Prepared: an automated run takes 135 s of system time, six usability defects it found are fixed, and the [protocol for the testers](../operations/m3-verification.md#protocol-for-the-five-non-technical-testers) is written. The sessions themselves are still to run |
 | Atlas optimises against an endpoint | Met on a laptop: +0.22 % revenue at the same budget against the live endpoint ([details](../operations/m3-verification.md#atlas-against-the-live-endpoint)) |
 | Cut line A: public launch of declarative specs and built-ins | Met for admission: sign-up workspaces are `public`, uploaded code is refused; public runs need an executor that enforces egress and DNS (`docker-gvisor` or Cloud Run Jobs), which this laptop could not run |
 

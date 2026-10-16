@@ -110,7 +110,7 @@ flowchart LR
 
 The whole journey of a geo marketing-mix model, from a spreadsheet of weekly spend and
 revenue by region to a budget scenario. The times are what an automated "tester" took on a
-laptop, almost all of it the platform working: **137 seconds** from upload to scenario.
+laptop, almost all of it the platform working: **135 seconds** from upload to scenario.
 
 <div class="mapi-path" markdown>
 
@@ -288,7 +288,7 @@ Measured on an 8-core laptop against the whole stack, on the data and settings d
 [M3 verification](operations/m3-verification.md).
 
 <div class="mapi-stats" markdown>
-<div class="mapi-stat"><strong>137 s</strong><span>upload → report → scenario, clicked through by a script; 80 s of it is the fit</span></div>
+<div class="mapi-stat"><strong>135 s</strong><span>upload → report → scenario, clicked through by a script; 79 s of it is the fit</span></div>
 <div class="mapi-stat"><strong>0.08 %</strong><span>instant slider vs the exact model for TV at half budget (−454,590 vs −454,241; exact sd 14,003)</span></div>
 <div class="mapi-stat"><strong>0.01 %</strong><span>"TV off" from the grid vs an exact counterfactual run (−1,046,519 vs −1,046,414)</span></div>
 <div class="mapi-stat"><strong>76–81 %</strong><span>of each translated prior inside the analyst's stated 80% ROI range</span></div>
