@@ -8,7 +8,6 @@ import sys
 from typing import Any
 
 import httpx
-import pytest
 from mapi_server.app import openapi_document
 from mapi_server.auth.identity import LOCAL_USER_ID
 from mapi_server.context import ServerContext
@@ -177,7 +176,6 @@ def test_route_table_covers_every_endpoint() -> None:
     assert not missing, missing
 
 
-@pytest.mark.xfail(strict=True, reason="the v0.5 server adds the M3.5 routes (M35_ENDPOINTS)")
 def test_route_table_covers_the_m35_endpoints() -> None:
     assert not _missing(ENDPOINTS)
 

@@ -109,15 +109,16 @@ def test_cards_cover_the_surviving_catalog_and_the_planned_engines() -> None:
     assert len(STEP_ABOUTS) == 28 and all(k.startswith("core.") for k in STEP_ABOUTS)
     assert set(SPLIT_ABOUTS) == {"core.time_holdout", "core.as_of", "core.leave_group_out",
                                  "core.last_per_group", "core.mask_block"}  # fmt: skip
-    assert {"tabular.regressor", "tabular.hierarchical_glm",
-                                   "choice.multinomial_logit", "ts.gaussian_hmm",
-                                   "ts.hsgp_trend"} == SURVIVING_MODEL_IDS  # fmt: skip
+    assert {"tabular.regressor", "tabular.hierarchical_glm", "choice.multinomial_logit",
+            "ts.gaussian_hmm", "ts.hsgp_trend", "sklearn.tabular_regressor",
+            "sklearn.tabular_quantiles", "sklearn.tabular_bootstrap",
+            "sklearn.tabular_conformal", "sklearn.tabular_classifier"
+            } == SURVIVING_MODEL_IDS  # fmt: skip
     assert {"mmm.bayesian", "mmm.nested", "mmm.multivariate", "mmm.frequentist", "ts.sarimax",
             "ts.arima", "ts.var", "ts.varmax", "ts.vecm", "ts.ecm", "ts.ardl", "ts.ets",
             "ts.unobserved_components", "ts.dynamic_factor", "ts.markov_switching",
             "ts.theta"} == set(PLANNED_MODEL_IDS)  # fmt: skip
-    assert not [k for k in MODEL_ABOUTS if "hierarchical_geo" in k or "pymc_marketing" in k
-                or "bayesinsight" in k]  # fmt: skip
+    assert set(MODEL_ABOUTS) == SURVIVING_MODEL_IDS | PLANNED_MODEL_IDS  # nothing else
     for template in GUIDED_TEMPLATES.values():
         assert template.about == TEMPLATE_ABOUTS[template.id]
 
