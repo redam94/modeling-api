@@ -327,6 +327,14 @@ milestone releases are tagged on `main`.
 
 ### Fixed
 
+- **spec, server** (found by the M3.5 live-stack verification): a governance policy with
+  `applies_to: {families: [ts]}` - the example of every governance page - covered none of
+  the statsmodels models, which declare the family `forecast`, `ts_multivariate` or
+  `regime`; its checks, approval and promotion gate silently never applied. A family now
+  matches a model's declared family or the namespace of its id (`ts` for `ts.sarimax`).
+- **client**: members could not be given the `reviewer` capability (needed to approve
+  validations) without raw HTTP: `tenants.add_member(..., capabilities=[...])` and
+  `tenants.set_capabilities(...)`.
 - **workflows**: `compare.diebold_mariano` with no more paired errors than the horizon
   (three folds tested at horizon 4) returned a NaN p-value and failed the node with an
   internal validation error; it is now a plain data error that says to add folds, and a

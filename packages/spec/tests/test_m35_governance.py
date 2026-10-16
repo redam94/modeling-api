@@ -20,6 +20,7 @@ from mapi_spec.governance import (
     GovernancePolicyCreate,
     ModelValidation,
     PolicyCheck,
+    PolicyMatch,
     ValidationEvent,
     ValidationStatus,
     after_checks,
@@ -169,6 +170,15 @@ def test_policies_match_merge_and_require_validation() -> None:
     assert [p.id for p in got] == ["pol_floor", "pol_ts"]
     mmm = policies_for([floor, ts], project_id="growth", family="mmm", model_id="mmm.bayesian")
     assert [p.id for p in mmm] == ["pol_floor"]
+    # the statsmodels forecasters declare family "forecast": `families: [ts]` (the docs'
+    # example) still covers them through the id's namespace, and nothing else does
+    sm = policies_for([ts], project_id="growth", family="forecast", model_id="ts.sarimax")
+    assert [p.id for p in sm] == ["pol_ts"]
+    var = policies_for([ts], project_id="growth", family="ts_multivariate", model_id="ts.var")
+    assert [p.id for p in var] == ["pol_ts"]
+    assert not policies_for([ts], project_id="growth", family="forecast", model_id="tsx.arima")
+    fc = ts.model_copy(update={"applies_to": PolicyMatch(families=["forecast"])})
+    assert not policies_for([fc], project_id="growth", family="ts", model_id="ts.hsgp_trend")
     merged = {c.check: c for c in effective_checks(got)}
     acc = merged["holdout.accuracy"]
     assert acc.severity is CheckSeverity.BLOCKING

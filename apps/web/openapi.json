@@ -16180,9 +16180,10 @@
       },
       "PolicyMatch": {
         "additionalProperties": false,
-        "description": "Which models a policy covers; an empty list matches everything on that axis.",
+        "description": "Which models a policy covers; an empty list matches everything on that axis.\n\nA family matches a model's declared family (``forecast`` for the statsmodels\nforecasters, ``ts_multivariate``, ``mmm``) *or* the namespace of its id (``ts`` for\n``ts.sarimax``), so ``families: [ts]`` covers every ``ts.*`` model whatever family its\nplugin declares.",
         "properties": {
           "families": {
+            "description": "Model families or model-id namespaces (ts covers ts.sarimax)",
             "items": {
               "type": "string"
             },
