@@ -1,4 +1,4 @@
-# CLI and Python client <span class="mapi-badge">v0.4</span>
+# CLI and Python client <span class="mapi-badge">v0.5</span>
 
 Two Apache-2.0 packages talk to the `/v1` [HTTP API](http-api.md):
 
@@ -55,6 +55,13 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
 | `webhooks` (v0.4) | `list`, `create`, `get`, `update`, `delete`, `rotate_secret`, `deliveries`, `replay` |
 | `plots` sharing (v0.4) | `save`, `saved`, `get_saved`, `delete_saved`, `render`, `render_status`, `render_output`, `download_render`, `create_embed`, `embeds`, `revoke_embed`, `embed` |
 | `tenants` trust (v0.4) | `verification`, `request_deletion`, `deletion`, `cancel_deletion`, `export`, `export_status`, `wait_export`, `download_export` |
+| `catalog` About cards (v0.5) | `abouts`, `about`, `chooser`, `recommend`, `workflow_nodes`, `workflow_node`, `governance_checks` |
+| `datasets` About and explorer (v0.5) | `about`, `describe`, `explore` |
+| `models` explorers and plans (v0.5) | `explore`, `compare`, `optimize`, `optimization`, `validate`, `validations` |
+| `explorations` (v0.5) | `get`, `wait`, `link`, `view` |
+| `workflows` (v0.5) | `list`, `find`, `create`, `validate`, `get`, `update`, `delete`, `revisions`, `revision`, `revise`, `upsert`, `run`, `runs`, `get_run`, `wait`, `cancel`, `stream_events`, `events`, `nodes`, `node`, `output_link`, `download_output`, `schedules`, `schedule`, `update_schedule`, `delete_schedule`, `triggers`, `trigger`, `delete_trigger`, `templates`, `template` |
+| `governance` (v0.5) | `checks`, `policies`, `policy`, `create_policy`, `update_policy`, `retire_policy`, `policy_versions` (`tenant_id=` for tenant-wide policies) |
+| `validations` (v0.5) | `request`, `list`, `for_model`, `get`, `wait`, `evidence`, `cancel`, `resubmit`, `decide`, `approve`, `reject`, `deprecate`, `evidence_pack`, `download_evidence_pack` |
 
 **v0.4.** `api.endpoint(alias)` is a `RemoteEndpoint` (`schema()`, `validate(ds)`,
 `score(ds) -> xr.Dataset` with inline XrJSON); `api.signup()` and `api.verify_email()` are
@@ -62,8 +69,23 @@ public calls sent without credentials. `mapi_client.webhooks.verify(headers, bod
 checks a delivery's `Mapi-Signature` ([Receiving webhooks](../guides/webhook-receivers.md));
 `mapi_client.xrjson` encodes and decodes inline payloads; budgets are optimised by the
 platform ([Optimise a budget](../tutorials/optimise-a-budget.md)).
-Every operation of the v0.4 endpoint table has a request builder, checked against the
+Every operation of the endpoint table has a request builder, checked against the
 contract by the client's tests.
+
+**v0.5.** `api.workflows.stream_events(run_id)` follows a workflow run's server-sent events:
+`WorkflowSnapshot` (the run with every node, first on each connection),
+`WorkflowEventFrame` (`workflow.node.*`, `workflow.branch.decided`, ...; its `id` is the
+event's `seq`) and `WorkflowEnd`; a dropped connection resumes with `Last-Event-ID` and no
+event is yielded twice. Workflow documents are accepted as a `WorkflowSpec`, a mapping, YAML
+text or a file path (`api.workflows.validate(Path("wf.yaml"))`); `upsert` adds a revision only
+when the document's hash changed. `models.optimize` repeats a keyed `Prefer: wait` request
+until the plan is ready; `datasets.explore`, `models.explore` and `models.compare` wait for
+the explore run and `explorations.view(exploration, section)` downloads one view.
+`catalog.recommend(goal=..., data_shape=[...])` checks the answers against the chooser's
+questions before sending. `validations.decide` (and `approve`, `reject`) is never resent
+after a lost response; reviewers sign in (`mapi login`), since no API token can approve.
+Failed workflow runs raise the failing node's error from `wait` and `run(wait=True)`
+(`raise_on_failure=False` returns the run instead).
 
 - `AsyncClient` has the same resources with `await` and `async for`.
 - List calls return lazy paginators that follow `next_cursor`.
@@ -185,13 +207,55 @@ mapi tenant status | export [-o FILE] | delete [--confirm TENANT] [--cancel]
 | `signup`, `verify-email` | Public calls: no credentials are sent |
 | `tenant delete` | Lists what is purged and kept and asks you to type the tenant id (`--confirm TENANT` in scripts) |
 
+Workflows, governance, explorers and choosing (v0.5; walked through in the
+[command-line guide](../guides/cli.md#workflows-governance-and-explorers) and the
+[workflow cookbook](../guides/workflow-cookbook.md)):
+
+```bash
+mapi workflows templates | template ID [--expert] | init ID [--name N] [--into PROJECT] [-o FILE] [--offline]
+mapi workflows validate FILE | apply FILE [-m MSG] | create [FILE | --template ID] | ls [--archived]
+mapi workflows get WF [--yaml] [-r N] | revisions WF | archive WF [--undo] | rm WF [--yes]
+mapi workflows run WF [-i NAME=REF]... [-p NAME=VALUE]... [-r N] [--no-cache] [--watch]
+mapi workflows watch RUN [--from N] | status RUN | runs WF [--status S] | nodes RUN | node RUN NODE
+mapi workflows output RUN NODE PORT -o FILE | cancel RUN | nodes-catalog [--kind K] [--about ID]
+mapi workflows schedules ls WF | add WF CRON [--tz TZ] [-i ...] [-p ...] | pause | resume | rm WF ID
+mapi workflows triggers ls WF | add WF DATASET [--input NAME] [--debounce S] | rm WF ID
+mapi governance checks [--about ID] [--expert]
+mapi governance policies ls [--scope tenant|project] [--tenant T] | get ID | versions ID
+mapi governance policies create FILE [--tenant T] | update ID FILE [--expected-version N] | retire ID
+mapi validate model MODEL_REF [-v N] [--policy ID]... [--note TEXT] [--no-wait] | workflow FILE
+mapi validations ls [--queue | --status S] | get ID | evidence ID | cancel ID | resubmit ID
+mapi validations deprecate ID --reason TEXT | pack ID -o evidence.html|evidence.json
+mapi approve VALIDATION [--reject] [--comment TEXT] [--yes]
+mapi explore dataset REF [-s SECTION]... [--kpi V] [--facet-by D] [--max-lag N] [-o DIR] [--show S]
+mapi explore model REF [-s SECTION]... [--horizon N] [--compare-with REF] [-o DIR] [--show S]
+mapi explore compare REF REF... [--horizon N] | get RUN
+mapi optimize MODEL_REF [--budget N | --change-pct P] [--channel C='{...}'] [--objective O]
+              [--frontier N] [--by-geo] [--request FILE]
+mapi choose [-a QUESTION=ANSWER[,ANSWER]]... [--kind K] [-n N] [--about N] [--expert]
+mapi about ID [--kind K] [--expert]
+```
+
+| Command | Notes |
+|---|---|
+| `workflows run --watch`, `workflows watch` | A live node board fed by the SSE stream (redrawn on a terminal, one line per change otherwise), then the summary; exit status 1 when the run failed or was cancelled. `--json`: one JSON event per line |
+| `workflows apply` | Creates the workflow named by `metadata.name`, or saves the file as the next revision; an unchanged file adds nothing |
+| `workflows init` | Writes a gallery template as YAML under your name and project (`--offline` uses the templates bundled with the CLI) |
+| `-i`, `-p` | `name=value`; `-p` values are JSON when they parse (`-p 'horizons=[1,4]'`) |
+| `validate model` | `MODEL_REF` is `model://project/name@vN`, `name@vN`, `name` with `-v N` or a model id; waits for the checks and prints each result with its plain message and suggested action; exit status 1 on `checks_failed` or `rejected` |
+| `approve` | Shows the validation and asks first (`--yes` skips); `--reject` needs `--comment`; refused for the submitter (`SELF_APPROVAL_FORBIDDEN`) and for API tokens |
+| `governance policies retire`, `validations deprecate`, `workflows rm` | Ask first (`--yes` skips) |
+| `explore …` | Waits for the explore run; `--out DIR` writes every view as JSON, `--show SECTION` prints one |
+| `optimize` | Prints the plan (current vs recommended spend, the next unit's return, notes), the uplift and its probability, and the frontier |
+| `choose` | Asks the chooser's questions (or takes `-a` answers and asks nothing) and prints the ranking with reasons, cautions and the top About cards |
+
 Errors: `QUOTA_EXCEEDED` and `RATE_LIMITED` print when to retry (`retry after 1h 30m`); with
 `--json` the error document carries `retry_after_seconds`. No command prints a token: they
 appear as `mapi_<prefix>_…`.
 
 | Template (`mapi new`) | What it is | Conformance fixture |
 |---|---|---|
-| `geo-mmm` | Hierarchical geo MMM (weekly EUR, adstock, saturation) | E33 |
+| `geo-mmm` | Geo marketing-mix model on mmm-framework (weekly EUR, adstock, saturation) | E33 |
 | `forecast` | HSGP trend + seasonality forecast | C08 |
 | `tabular` | XGBoost demand with quantile uncertainty | `xgb_store_demand` |
 | `glm` | Hierarchical GLM, long layout | E02 |

@@ -30,9 +30,26 @@ curl -s -X POST "$API/v1/models/$MODEL/versions/$VERSION:optimize" \
 - `objective: "p10"` would plan for a cautious outcome (the 10th percentile of the KPI
   across posterior draws) instead of the expected one.
 
+=== "Python"
+
+    ```python
+    --8<-- "client_v05_more.py:optimize"
+    ```
+
+=== "Command line"
+
+    ```bash
+    --8<-- "cli_v05.sh:optimize"
+    ```
+
+    The plan prints as a table (current and recommended spend, change, the next unit's
+    return, a note when a channel goes beyond the spend the model has seen), then the
+    frontier; `--json` gives the whole `Optimization`.
+
 The answer is an `Optimization`: `200` with the plan when the sandboxed run finished
 within `Prefer: wait`, else `202` with the run - poll `GET /v1/optimizations/{run_id}`
-until `done`.
+until `done` (the client and the CLI do this for you, resending with the same
+`Idempotency-Key` so the plan is computed once).
 
 ## 2. Read the plan
 

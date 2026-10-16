@@ -9,10 +9,14 @@ platform progress while the client polls.
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+import asyncio
+import contextlib
+import socket
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from typing import Any
 
 import httpx
+import uvicorn
 from mapi_client import AsyncClient, ClientConfig
 from mapi_server.app import create_app
 from mapi_server.context import ServerContext
@@ -20,7 +24,7 @@ from mapi_server.context import ServerContext
 from .builders import EXEC_TOKEN
 from .store_http import store_app
 
-__all__ = ["BASE", "SessionAuth", "asgi_client"]
+__all__ = ["BASE", "SessionAuth", "asgi_client", "serve_api"]
 
 BASE = "http://127.0.0.1:8000"
 
@@ -58,3 +62,37 @@ class SessionAuth(httpx.Auth):
         request.headers.update(self.headers)
         request.headers["Cookie"] = self.cookie
         yield request
+
+
+class _Quiet(uvicorn.Server):
+    @contextlib.contextmanager
+    def capture_signals(self) -> Iterator[None]:
+        yield
+
+
+def _free_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port: int = sock.getsockname()[1]
+        return port
+
+
+@contextlib.asynccontextmanager
+async def serve_api(ctx: ServerContext) -> AsyncIterator[str]:
+    """Serve the app over real HTTP on a free 127.0.0.1 port (for the sync client, the CLI
+    and the docs snippets); yields the base URL."""
+    port = _free_port()
+    app = create_app(ctx.settings, ctx=ctx, manage_context=False)
+    server = _Quiet(
+        uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", lifespan="off")
+    )
+    task = asyncio.create_task(server.serve())
+    for _ in range(500):
+        if server.started:
+            break
+        await asyncio.sleep(0.02)
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.should_exit = True
+        await task

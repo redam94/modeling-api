@@ -24,7 +24,11 @@ DOCS = ROOT / "docs"
 SNIPPETS = DOCS / "snippets"
 SLOW = {"plugin_pymc.py", "pymc_fast.py"}  # tiny MCMC fits
 
-NEEDS_STACK = {"client_tour.py"}  # run against `make dev` by test_docs_platform.py (e2e)
+NEEDS_STACK = {
+    "client_tour.py",  # run against `make dev` by test_docs_platform.py (e2e)
+    "client_v05.py",  # run against a real server by packages/server/tests/test_docs_client_v05.py
+    "client_v05_more.py",  # compiled and import-checked by test_docs_v05.py
+}
 
 SCRIPTS = sorted(
     p for p in SNIPPETS.glob("*.py") if not p.name.startswith("test_") and p.name not in NEEDS_STACK

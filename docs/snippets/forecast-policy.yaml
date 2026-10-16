@@ -1,0 +1,21 @@
+# A project policy for the forecasts this team publishes (validated by a docs test).
+# `mapi governance policies create forecast-policy.yaml`, or
+# `api.governance.create_policy(yaml.safe_load(open("forecast-policy.yaml")))`.
+name: Forecasts we publish
+description: Every forecast must beat naive, survive the null tests and be signed off.
+applies_to: {families: [ts]}
+checks:
+  - check: baseline.beats_naive                  # better than "same as last period"
+  - check: null.permutation_target               # better than on shuffled results
+    params: {n_permutations: 39}                 # smallest possible p = 1/40 = 0.025
+  - check: null.noise_regressors                 # fake drivers made of noise get ~0 credit
+    params: {n_noise: 3}
+  - check: residuals.whiteness                   # no pattern left in the errors
+    severity: warning
+  - check: holdout.accuracy                      # MAPE on unseen weeks
+    thresholds: {warn: 0.10, fail: 0.20}
+  - check: stability.rolling_params
+    severity: info
+require_approval: true                           # a second person signs off
+approvals_required: 1
+require_validated_for_promotion: true            # endpoints refuse unvalidated versions

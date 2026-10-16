@@ -10,6 +10,17 @@ model family: Bayesian (posterior means with highest-density intervals, R-hat), 
 (coefficients or importances). Views are computed in the sandbox from the bundle and the data
 it was fitted on, and come with Vega-Lite plots.
 
+## From Python and the command line
+
+```python
+--8<-- "client_v05_more.py:model-explorer"
+```
+
+```bash
+mapi explore model model://growth/sales-arimax@v2 -s params -s residuals -s irf --horizon 12
+mapi explore compare model://growth/sales-arimax@v2 model://growth/sales-ets@v1 --horizon 4
+```
+
 ## Views written at fit
 
 Every fit writes `params`, `diagnostics`, `fit`, `residuals`, `decomposition`,

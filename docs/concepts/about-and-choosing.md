@@ -4,6 +4,11 @@ description: Every model, step, template, workflow node and governance check car
 
 # About cards and choosing <span class="mapi-badge">v0.5</span>
 
+!!! tip "Just want to pick a model?"
+    [Choosing a model](../guides/choosing-a-model.md) shows Help me choose in the web app,
+    the terminal (`mapi choose`) and Python (`api.catalog.recommend`), and compares the model
+    families.
+
 People who do not do statistics for a living still have to pick a model, a preprocessing
 step or a workflow. Every item they can pick from a catalog therefore carries an **About
 card** in plain language, and the **Help me choose** chooser turns a few questions about

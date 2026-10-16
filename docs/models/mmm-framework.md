@@ -12,7 +12,8 @@ platform contract as two built-in models:
 
 Both carry a plain-language **About card** (what the model is for, when not to use it,
 what data it needs, what you get out); the web app's *Help me choose* recommends them
-for "explain my marketing" and "plan my budget" goals. mmm-framework is the platform's only
+for "explain my marketing" and "plan my budget" goals (`mapi choose -a goal=plan_budget`,
+see [Choosing a model](../guides/choosing-a-model.md)). mmm-framework is the platform's only
 marketing-mix engine, and budgets are optimised by the platform itself
 ([below](#budget-optimisation)).
 
@@ -238,6 +239,64 @@ the expected regret of committing to one plan, the shadow price of the next unit
 the efficient frontier, and notes - for example when a recommendation goes beyond the
 spend the model has seen. The run also renders the `mmm.budget_plans` plot. Bounds the data
 cannot meet fail the run with `OPTIMIZE_INFEASIBLE`.
+
+### End to end with the client
+
+From a fitted version to a plan you can defend, in Python (the CLI equivalent follows):
+
+1. **Check the model first.** A plan is only as good as the response curves under it. Run the
+   governance policy for marketing-mix models - null tests against shuffled sales and fake
+   noise channels, effect signs, holdout accuracy - and read why each check passed:
+
+    ```python
+    --8<-- "client_v05_more.py:validate"
+    ```
+
+2. **Look at the curves.** The Model Explorer's `response_curves` section shows each
+   channel's contribution as its spend is scaled, per posterior draw, with the current spend
+   marked; `decomposition` shows what the model attributes to each channel over time:
+
+    ```python
+    explored = api.models.explore(model_id, version, sections=["response_curves", "decomposition"])
+    curves = api.explorations.view(explored, "response_curves")
+    ```
+
+3. **Ask for the plan.** `api.models.optimize` sends `Prefer: wait` and repeats the request
+   with the same `Idempotency-Key` until the sandboxed run is done, so a slow plan never
+   starts twice:
+
+    ```python
+    --8<-- "client_v05_more.py:optimize"
+    ```
+
+4. **Test the biggest move.** Score the plan's weekly spend as a forecast, then design a lift
+   test for the channel the plan moves most; its result goes into the model's `calibration`
+   block (see [Lift tests](#lift-tests)) and the next plan knows it.
+
+The same from a terminal:
+
+```bash
+mapi validate model model://growth/geo-mmm@v7
+mapi explore model model://growth/geo-mmm@v7 -s response_curves -s decomposition --out views/
+--8<-- "cli_v05.sh:optimize"
+```
+
+```text
+ optimisation        run_01m53…
+ objective           10th percentile of revenue (cautious)
+ budget              1,000,000 EUR (now 1,000,000)
+ expected revenue    3.42e+06 (now 3.31e+06)
+ uplift              +1.2e+05
+ chance it beats the current plan   97%
+                                    Plan
+ channel   now        recommended   change   next unit returns   note
+ tv        600,000    450,000       -25%     1.4
+ search    400,000    550,000       +38%     1.4
+```
+
+A workflow can do all of it on a schedule: the `mmm_governed` gallery template fits
+`mmm.bayesian` on a geo panel, runs the policy with `submit: true` and keeps the evidence pack
+(`mapi workflows init mmm_governed`).
 
 ## The frequentist model
 

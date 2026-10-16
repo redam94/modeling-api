@@ -21,6 +21,8 @@ ports, parameters and result fields.
 | Know what runs where and what it costs | [Where nodes run](#where-nodes-run) |
 | Automate it | [Schedules and triggers](#schedules-and-triggers) |
 | Try it in a notebook without a server | [Run it locally](#run-it-locally) |
+| Copy a complete, tested analysis | [Workflow cookbook](workflow-cookbook.md) |
+| Drive it from Python or a terminal | `api.workflows` ([client](python-client.md#workflows-governance-and-explorers)), `mapi workflows` ([CLI](cli.md#workflows-governance-and-explorers)) |
 
 ## Start from the gallery
 
@@ -52,7 +54,10 @@ api GET "/v1/workflow-runs/$RUN" | jq '.nodes[] | {node_id, status, result}'
 ```
 
 `api` is the helper of the [HTTP API guide](http-api.md) (it adds the token and the project
-header). `@latest` is resolved when the run starts and recorded as an exact version, so the
+header). The same from the command line is `mapi workflows create --template
+ts_readiness_arimax`, then `mapi workflows run ts-readiness-arimax -i
+data=dataset://growth/weekly_sales@latest -p 'drivers=["price"]' --watch`; from Python,
+`api.workflows.create(template="ts_readiness_arimax")` and `api.workflows.run(...)`. `@latest` is resolved when the run starts and recorded as an exact version, so the
 run is reproducible: `GET /v1/workflow-runs/{run_id}` shows `dataset://growth/weekly_sales@v7`.
 
 A run answers `202` with the run's view. Starting one with an `Idempotency-Key` that was
@@ -433,5 +438,6 @@ security, like everything else.
   tables and results are.
 - Detrending, STL adjustment and lag/lead features are not separate nodes: use
   `transform.steps` with the catalog's preprocessing steps.
-- The CLI, the Python client and the web editor do not have workflow commands yet; use the
-  HTTP API.
+- The web editor's workflow screens are separate from this guide; the
+  [Python client](python-client.md#workflows-governance-and-explorers) and the
+  [CLI](cli.md#workflows-governance-and-explorers) cover every workflow operation.

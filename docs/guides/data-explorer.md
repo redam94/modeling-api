@@ -12,6 +12,18 @@ sandbox (the control plane never reads your data) and comes with Vega-Lite plots
 plain-language captions. This guide uses the HTTP API; the web app's explorer reads the same
 views.
 
+## From Python and the command line
+
+```python
+--8<-- "client_v05_more.py:data-explorer"
+```
+
+```bash
+mapi explore dataset dataset://growth/weekly_sales@latest \
+  -s overview -s stationarity -s ccf -s stl --kpi sales --out views/
+mapi explore dataset weekly_sales --show quality      # one view as JSON
+```
+
 ## Views written at ingest
 
 Every ingest writes the quick sections next to the dataset: `overview`, `distributions`,

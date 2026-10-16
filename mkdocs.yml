@@ -121,6 +121,7 @@ markdown_extensions:
 nav:
   - Home:
       - index.md
+      - "What's new in 0.5": whats-new-0.5.md
       - "Why modeling-api?": why.md
       - Use cases: use-cases.md
   - Getting started:
@@ -165,6 +166,8 @@ nav:
           - Explore a dataset: guides/data-explorer.md
           - Explore a model: guides/model-explorer.md
           - Validate models with governance policies: guides/governance.md
+          - "Can you trust this model? Null tests explained": guides/null-tests.md
+          - Choosing a model: guides/choosing-a-model.md
       - Running it for teams:
           - Authentication: guides/authentication.md
           - Administration: guides/administration.md
@@ -179,6 +182,7 @@ nav:
           - Forecasting and sequential models: guides/time-series.md
           - statsmodels time-series models: models/statsmodels.md
           - "Workflows: tests, decisions, models, automation": guides/workflows.md
+          - Workflow cookbook: guides/workflow-cookbook.md
           - Plots, recipes and templates: guides/plots.md
           - Sharing plots: guides/sharing-plots.md
           - Conformance corpus: guides/conformance.md

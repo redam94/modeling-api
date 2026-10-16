@@ -6,18 +6,15 @@ governance policies - exactly as a user types them."""
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import json
-import socket
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
 import pytest
-import uvicorn
 from mapi_cli.main import app as cli
-from mapi_server.app import create_app
 from mapi_server.context import ServerContext
 from mapi_server.settings import Settings
+from mapi_server_testkit.client import serve_api
 from mapi_server_testkit.workflows import catalog_file, drive, put_dataset
 from mapi_spec.workflow import WorkflowRunStatus
 from mapi_workflows.testing import weekly_series
@@ -42,13 +39,6 @@ nodes:
 """
 
 
-def _free_port() -> int:
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        port: int = sock.getsockname()[1]
-        return port
-
-
 @pytest.fixture
 def settings(settings: Settings, tmp_path: Path) -> Settings:
     return settings.model_copy(update={"catalog_path": catalog_file(tmp_path)})
@@ -64,29 +54,10 @@ def isolated_cli(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[No
     yield
 
 
-class _Quiet(uvicorn.Server):
-    @contextlib.contextmanager
-    def capture_signals(self) -> Iterator[None]:
-        yield
-
-
 @pytest.fixture
 async def live(ctx: ServerContext) -> AsyncIterator[str]:
-    port = _free_port()
-    app = create_app(ctx.settings, ctx=ctx, manage_context=False)
-    server = _Quiet(
-        uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", lifespan="off")
-    )
-    task = asyncio.create_task(server.serve())
-    for _ in range(200):
-        if server.started:
-            break
-        await asyncio.sleep(0.02)
-    try:
-        yield f"http://127.0.0.1:{port}"
-    finally:
-        server.should_exit = True
-        await task
+    async with serve_api(ctx) as url:
+        yield url
 
 
 async def _mapi(url: str, *args: str, input: str | None = None) -> Result:
