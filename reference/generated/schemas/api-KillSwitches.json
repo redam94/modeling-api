@@ -1,0 +1,98 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-KillSwitches.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Platform-wide emergency controls (operators only; every change is audited).",
+  "examples": [
+    {
+      "global_spend_cap_micros": 500000000,
+      "reason": "incident 2026-10-15: suspected sandbox probe; code runs paused",
+      "spend_cap_currency": "USD",
+      "spend_cap_period": "day",
+      "untrusted_execution_enabled": false,
+      "updated_at": "2026-10-15T09:30:00Z",
+      "updated_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0"
+    }
+  ],
+  "properties": {
+    "global_spend_cap_micros": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Stop new compute once the platform spent this much",
+      "title": "Global Spend Cap Micros"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    },
+    "spend_cap_currency": {
+      "default": "USD",
+      "pattern": "^[A-Z]{3}$",
+      "title": "Spend Cap Currency",
+      "type": "string"
+    },
+    "spend_cap_period": {
+      "default": "day",
+      "enum": [
+        "day",
+        "month"
+      ],
+      "title": "Spend Cap Period",
+      "type": "string"
+    },
+    "untrusted_execution_enabled": {
+      "default": true,
+      "description": "Off: no run of tenant-uploaded plugin code is accepted or leased",
+      "title": "Untrusted Execution Enabled",
+      "type": "boolean"
+    },
+    "updated_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Updated At"
+    },
+    "updated_by": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Updated By"
+    }
+  },
+  "title": "KillSwitches",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

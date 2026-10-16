@@ -1,0 +1,122 @@
+{
+  "$defs": {
+    "Aggregation": {
+      "additionalProperties": false,
+      "description": "Reduce outputs over dims before summarising (validity depends on representation).",
+      "properties": {
+        "how": {
+          "default": "sum",
+          "enum": [
+            "sum",
+            "mean",
+            "min",
+            "max"
+          ],
+          "title": "How",
+          "type": "string"
+        },
+        "over": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Over",
+          "type": "array"
+        }
+      },
+      "required": [
+        "over"
+      ],
+      "title": "Aggregation",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/outputselector.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "What a score request returns.",
+  "properties": {
+    "aggregate": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Aggregation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "draws": {
+      "default": 0,
+      "maximum": 10000,
+      "minimum": 0,
+      "title": "Draws",
+      "type": "integer"
+    },
+    "kind": {
+      "default": "expected",
+      "enum": [
+        "expected",
+        "predictive"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "names": {
+      "default": "dataset",
+      "enum": [
+        "dataset",
+        "canonical"
+      ],
+      "title": "Names",
+      "type": "string"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Summaries to return; default depends on representation",
+      "title": "Summary"
+    },
+    "thin_index": {
+      "const": "bundle",
+      "default": "bundle",
+      "title": "Thin Index",
+      "type": "string"
+    },
+    "units": {
+      "default": "original",
+      "enum": [
+        "original",
+        "model"
+      ],
+      "title": "Units",
+      "type": "string"
+    },
+    "vars": {
+      "items": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+        "type": "string"
+      },
+      "maxItems": 256,
+      "title": "Vars",
+      "type": "array"
+    }
+  },
+  "title": "OutputSelector",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

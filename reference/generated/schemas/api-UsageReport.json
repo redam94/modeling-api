@@ -1,0 +1,316 @@
+{
+  "$defs": {
+    "CostTotals": {
+      "description": "Sums over ledger entries (one currency).",
+      "examples": [
+        {
+          "amount_micros": 93600,
+          "attempts": 3,
+          "currency": "USD",
+          "gib_seconds": 14400,
+          "runs": 3,
+          "vcpu_seconds": 3600
+        }
+      ],
+      "properties": {
+        "amount_micros": {
+          "default": 0,
+          "title": "Amount Micros",
+          "type": "integer"
+        },
+        "attempts": {
+          "default": 0,
+          "description": "Distinct (run, attempt) pairs",
+          "minimum": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "gib_seconds": {
+          "default": 0,
+          "title": "Gib Seconds",
+          "type": "number"
+        },
+        "runs": {
+          "default": 0,
+          "description": "Distinct runs",
+          "minimum": 0,
+          "title": "Runs",
+          "type": "integer"
+        },
+        "vcpu_seconds": {
+          "default": 0,
+          "title": "Vcpu Seconds",
+          "type": "number"
+        }
+      },
+      "title": "CostTotals",
+      "type": "object"
+    },
+    "LimitName": {
+      "description": "Every limit a :class:`QuotaDecision` can name.",
+      "enum": [
+        "requests_per_minute",
+        "max_resource_class",
+        "max_fanout_tasks",
+        "concurrent_runs",
+        "vcpu_seconds_per_day",
+        "vcpu_seconds_per_month",
+        "storage_bytes",
+        "egress_bytes_per_month",
+        "untrusted_execution",
+        "global_spend"
+      ],
+      "title": "LimitName",
+      "type": "string"
+    },
+    "QuotaLimitStatus": {
+      "description": "One limit of one level as shown in ``/usage`` (``remaining`` is ``None`` if unlimited).",
+      "examples": [
+        {
+          "fraction_used": 0.5,
+          "limit": 86400,
+          "limit_name": "vcpu_seconds_per_day",
+          "remaining": 43200,
+          "resets_at": "2026-10-16T00:00:00Z",
+          "scope": "tenant",
+          "subject_id": "acme",
+          "used": 43200
+        }
+      ],
+      "properties": {
+        "fraction_used": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction Used"
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Limit"
+        },
+        "limit_name": {
+          "$ref": "#/$defs/LimitName"
+        },
+        "remaining": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remaining"
+        },
+        "resets_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resets At"
+        },
+        "scope": {
+          "$ref": "#/$defs/QuotaScope"
+        },
+        "subject_id": {
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "used": {
+          "title": "Used",
+          "type": "number"
+        }
+      },
+      "required": [
+        "scope",
+        "subject_id",
+        "limit_name",
+        "used"
+      ],
+      "title": "QuotaLimitStatus",
+      "type": "object"
+    },
+    "QuotaScope": {
+      "description": "Policy level, most specific first.",
+      "enum": [
+        "token",
+        "tenant",
+        "global"
+      ],
+      "title": "QuotaScope",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-UsageReport.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET /v1/usage`` (one project) and ``GET /v1/tenants/{tenant_id}/usage`` (whole\ntenant): ledger totals for one UTC period and the quota limits in force now.\n\nQuery: ``period=day|month`` (default ``month``), ``start`` (an RFC 3339 instant inside\nthe period; default: now), ``group_by``.",
+  "examples": [
+    {
+      "end": "2026-11-01T00:00:00Z",
+      "group_by": "resource_class",
+      "groups": {
+        "M": {
+          "amount_micros": 93600,
+          "attempts": 3,
+          "currency": "USD",
+          "gib_seconds": 14400,
+          "runs": 3,
+          "vcpu_seconds": 3600
+        }
+      },
+      "period": "month",
+      "price_versions": [
+        "cloudrun-list-2026-10"
+      ],
+      "project_id": "growth",
+      "quotas": [
+        {
+          "fraction_used": 0.5,
+          "limit": 86400,
+          "limit_name": "vcpu_seconds_per_day",
+          "remaining": 43200,
+          "resets_at": "2026-10-16T00:00:00Z",
+          "scope": "tenant",
+          "subject_id": "acme",
+          "used": 43200
+        }
+      ],
+      "start": "2026-10-01T00:00:00Z",
+      "tenant_id": "acme",
+      "totals": {
+        "amount_micros": 93600,
+        "attempts": 3,
+        "currency": "USD",
+        "gib_seconds": 14400,
+        "runs": 3,
+        "vcpu_seconds": 3600
+      }
+    }
+  ],
+  "properties": {
+    "end": {
+      "format": "date-time",
+      "title": "End",
+      "type": "string"
+    },
+    "group_by": {
+      "anyOf": [
+        {
+          "enum": [
+            "resource_class",
+            "project",
+            "day",
+            "token",
+            "run"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Group By"
+    },
+    "groups": {
+      "additionalProperties": {
+        "$ref": "#/$defs/CostTotals"
+      },
+      "title": "Groups",
+      "type": "object"
+    },
+    "period": {
+      "enum": [
+        "day",
+        "month"
+      ],
+      "title": "Period",
+      "type": "string"
+    },
+    "price_versions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Price Versions",
+      "type": "array"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "quotas": {
+      "items": {
+        "$ref": "#/$defs/QuotaLimitStatus"
+      },
+      "title": "Quotas",
+      "type": "array"
+    },
+    "start": {
+      "format": "date-time",
+      "title": "Start",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "totals": {
+      "$ref": "#/$defs/CostTotals"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "period",
+    "start",
+    "end",
+    "totals"
+  ],
+  "title": "UsageReport",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

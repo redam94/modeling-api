@@ -1,0 +1,478 @@
+{
+  "$defs": {
+    "DataRef": {
+      "additionalProperties": false,
+      "description": "A dataset stored next to the bundle (path relative to the bundle root).",
+      "properties": {
+        "crc32c": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9+/]{6}==$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crc32C"
+        },
+        "format": {
+          "default": "arrow",
+          "enum": [
+            "arrow",
+            "json"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "kind": {
+          "const": "data_ref",
+          "title": "Kind",
+          "type": "string"
+        },
+        "path": {
+          "examples": [
+            "ui/plotdata/contrib.arrow"
+          ],
+          "pattern": "^[A-Za-z0-9_.\\-][A-Za-z0-9_.\\-/]{0,511}$",
+          "title": "Path",
+          "type": "string"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size"
+        }
+      },
+      "required": [
+        "kind",
+        "path"
+      ],
+      "title": "DataRef",
+      "type": "object"
+    },
+    "InlineArrow": {
+      "additionalProperties": false,
+      "description": "A small Arrow IPC stream embedded as base64.",
+      "properties": {
+        "data": {
+          "maxLength": 2097152,
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$",
+          "title": "Data",
+          "type": "string"
+        },
+        "kind": {
+          "const": "inline_arrow",
+          "title": "Kind",
+          "type": "string"
+        },
+        "rows": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rows"
+        }
+      },
+      "required": [
+        "kind",
+        "data"
+      ],
+      "title": "InlineArrow",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "PlotBindings": {
+      "additionalProperties": false,
+      "description": "Role/dim template bindings, e.g. ``{x: \"dim:time\", y: \"role:target\"}``.\n\nTemplates bound this way apply to every model of a family, not one bundle.",
+      "properties": {
+        "band_lower": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Band Lower"
+        },
+        "band_upper": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Band Upper"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color"
+        },
+        "column": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Column"
+        },
+        "facet": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Facet"
+        },
+        "row": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Row"
+        },
+        "shape": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shape"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size"
+        },
+        "tooltip": {
+          "items": {
+            "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Tooltip",
+          "type": "array"
+        },
+        "x": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "X"
+        },
+        "y": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Y"
+        },
+        "y2": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Y2"
+        }
+      },
+      "title": "PlotBindings",
+      "type": "object"
+    },
+    "PlotProvenance": {
+      "additionalProperties": false,
+      "description": "Who produced a plot: exactly one of ``recipe``, ``plugin`` or ``author``.",
+      "properties": {
+        "author": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Author"
+        },
+        "bundle_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bundle Id"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "plugin": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plugin"
+        },
+        "recipe": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe"
+        }
+      },
+      "required": [
+        "generated_at"
+      ],
+      "title": "PlotProvenance",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/plotspec.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A renderable plot. ``spec`` is Vega-Lite JSON or Plotly ``{data, layout, ...}``.",
+  "examples": [
+    {
+      "caption_plain": "The shaded band is where the model expects 90% of weeks.",
+      "datasets": {
+        "fan": {
+          "kind": "data_ref",
+          "path": "ui/plotdata/ppc_fan.arrow"
+        }
+      },
+      "id": "core.ppc_fan",
+      "kind": "vega-lite",
+      "persona": "both",
+      "provenance": {
+        "generated_at": "2026-10-15T09:40:00Z",
+        "recipe": "core.ppc_fan@1.0.0"
+      },
+      "schema_version": "v5",
+      "spec": {
+        "data": {
+          "name": "fan"
+        },
+        "encoding": {
+          "x": {
+            "field": "time",
+            "type": "temporal"
+          },
+          "y": {
+            "field": "lo",
+            "type": "quantitative"
+          },
+          "y2": {
+            "field": "hi"
+          }
+        },
+        "mark": "area"
+      },
+      "title": "Posterior predictive fan"
+    }
+  ],
+  "properties": {
+    "bindings": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlotBindings"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "datasets": {
+      "additionalProperties": {
+        "discriminator": {
+          "mapping": {
+            "data_ref": "#/$defs/DataRef",
+            "inline_arrow": "#/$defs/InlineArrow"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/DataRef"
+          },
+          {
+            "$ref": "#/$defs/InlineArrow"
+          }
+        ]
+      },
+      "maxProperties": 64,
+      "title": "Datasets",
+      "type": "object"
+    },
+    "id": {
+      "pattern": "^[A-Za-z0-9_.\\-]{1,128}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "vega-lite",
+        "plotly"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "persona": {
+      "default": "both",
+      "enum": [
+        "guided",
+        "expert",
+        "both"
+      ],
+      "title": "Persona",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/PlotProvenance"
+    },
+    "schema_version": {
+      "examples": [
+        "v5",
+        "2.35.2"
+      ],
+      "pattern": "^v?\\d+(\\.\\d+){0,2}$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "spec": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Spec",
+      "type": "object"
+    },
+    "title": {
+      "maxLength": 300,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "kind",
+    "spec",
+    "schema_version",
+    "provenance"
+  ],
+  "title": "PlotSpec",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,72 @@
+{
+  "$defs": {
+    "Representation": {
+      "description": "How a model encodes uncertainty in its outputs.",
+      "enum": [
+        "draws",
+        "quantiles",
+        "interval",
+        "point",
+        "moments"
+      ],
+      "title": "Representation",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/catalog-plot.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A plot recipe the runner can produce.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "persona": {
+      "default": "both",
+      "enum": [
+        "guided",
+        "expert",
+        "both"
+      ],
+      "title": "Persona",
+      "type": "string"
+    },
+    "requires_groups": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Requires Groups",
+      "type": "array"
+    },
+    "requires_representation": {
+      "items": {
+        "$ref": "#/$defs/Representation"
+      },
+      "title": "Requires Representation",
+      "type": "array"
+    },
+    "title": {
+      "maxLength": 200,
+      "title": "Title",
+      "type": "string"
+    },
+    "version": {
+      "default": "1.0.0",
+      "title": "Version",
+      "type": "string"
+    },
+    "yanked": {
+      "default": false,
+      "title": "Yanked",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "title"
+  ],
+  "title": "PlotCatalogEntry",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,59 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ProjectUpdate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PATCH /v1/tenants/{tenant_id}/projects/{project_id}`` (project admins).",
+  "examples": [
+    {
+      "description": "EU and UK media mix models"
+    },
+    {
+      "guided_locked": true
+    }
+  ],
+  "properties": {
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "guided_locked": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M3: persona lock (audited as project.guided_lock)",
+      "title": "Guided Locked"
+    },
+    "name": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Name"
+    }
+  },
+  "title": "ProjectUpdate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

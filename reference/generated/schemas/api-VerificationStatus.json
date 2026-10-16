@@ -1,0 +1,96 @@
+{
+  "$defs": {
+    "TrustTier": {
+      "description": "How much the platform trusts a tenant's code and data (plan \u00a72, \u00a77, \u00a79).",
+      "enum": [
+        "internal",
+        "verified",
+        "public",
+        "self-hosted-trusted"
+      ],
+      "title": "TrustTier",
+      "type": "string"
+    },
+    "VerificationMethod": {
+      "enum": [
+        "none",
+        "email",
+        "card",
+        "document",
+        "manual"
+      ],
+      "title": "VerificationMethod",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-VerificationStatus.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET /v1/tenants/{tenant_id}/verification``.",
+  "examples": [
+    {
+      "email_verified": true,
+      "identity_verified": false,
+      "method": "email",
+      "reason_plain": "Public workspaces run built-in models only for now.",
+      "tenant_id": "acme-retail",
+      "trust_tier": "public",
+      "uploaded_code_allowed": false,
+      "verified_at": "2026-10-15T09:30:00Z"
+    }
+  ],
+  "properties": {
+    "email_verified": {
+      "title": "Email Verified",
+      "type": "boolean"
+    },
+    "identity_verified": {
+      "title": "Identity Verified",
+      "type": "boolean"
+    },
+    "method": {
+      "$ref": "#/$defs/VerificationMethod",
+      "default": "none"
+    },
+    "reason_plain": {
+      "maxLength": 500,
+      "title": "Reason Plain",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "trust_tier": {
+      "$ref": "#/$defs/TrustTier"
+    },
+    "uploaded_code_allowed": {
+      "title": "Uploaded Code Allowed",
+      "type": "boolean"
+    },
+    "verified_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Verified At"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "trust_tier",
+    "email_verified",
+    "identity_verified",
+    "uploaded_code_allowed",
+    "reason_plain"
+  ],
+  "title": "VerificationStatus",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

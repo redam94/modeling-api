@@ -1,0 +1,65 @@
+{
+  "$defs": {
+    "SnippetLanguage": {
+      "enum": [
+        "python",
+        "typescript",
+        "curl",
+        "r",
+        "apps_script",
+        "atlas",
+        "notebook"
+      ],
+      "title": "SnippetLanguage",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-Snippet.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Ready-to-run code. ``code`` is platform-generated; it embeds the example payload.",
+  "examples": [
+    {
+      "code": "curl -sS -X POST 'https://api.example.com/v1/endpoints/geo-mmm-prod/score' \\\n  -H \"Authorization: Bearer $MAPI_TOKEN\" \\\n  ...",
+      "language": "curl",
+      "requires": null,
+      "title": "curl"
+    }
+  ],
+  "properties": {
+    "code": {
+      "maxLength": 200000,
+      "title": "Code",
+      "type": "string"
+    },
+    "language": {
+      "$ref": "#/$defs/SnippetLanguage"
+    },
+    "requires": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "What to install first",
+      "title": "Requires"
+    },
+    "title": {
+      "maxLength": 200,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "language",
+    "title",
+    "code"
+  ],
+  "title": "Snippet",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

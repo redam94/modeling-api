@@ -1,0 +1,145 @@
+{
+  "$defs": {
+    "EvaluationPolicy": {
+      "additionalProperties": false,
+      "description": "What a model version must satisfy to be promoted to the endpoint (Q13).\n\n``fit_mode = evaluate_then_refit`` (default) requires versions whose production bundle\nwas refitted on all data after the holdout evaluation; ``train_only`` also accepts\nexploration fits. ``schema_change`` decides what happens when the new version expects\ninput the endpoint's callers do not send (:func:`schema_breaks`).",
+      "examples": [
+        {
+          "fit_mode": "evaluate_then_refit",
+          "schema_change": "block"
+        }
+      ],
+      "properties": {
+        "fit_mode": {
+          "$ref": "#/$defs/FitMode",
+          "default": "evaluate_then_refit"
+        },
+        "schema_change": {
+          "default": "block",
+          "enum": [
+            "block",
+            "warn",
+            "allow"
+          ],
+          "title": "Schema Change",
+          "type": "string"
+        }
+      },
+      "title": "EvaluationPolicy",
+      "type": "object"
+    },
+    "FitMode": {
+      "enum": [
+        "evaluate_then_refit",
+        "train_only"
+      ],
+      "title": "FitMode",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-EndpointPromote.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PUT /v1/endpoints/{alias}``: create the alias or point it at another version.\n\nName the version by id or by ``model://project/name@vN`` (exactly one). A version whose\ngate says ``needs_override`` needs ``override=true`` and a ``reason`` from a signed-in\nproject admin (audited); ``blocked`` versions cannot be promoted. ``expected_revision``\nguards against concurrent promotions (``409 CONFLICT`` when stale).",
+  "examples": [
+    {
+      "expected_revision": 3,
+      "model": "model://growth/eu-geo-mmm@v3"
+    },
+    {
+      "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+      "override": true,
+      "reason": "Holdout MAPE is high because of the strike in week 41; accepted by CMO."
+    }
+  ],
+  "properties": {
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "evaluation_policy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EvaluationPolicy"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "expected_revision": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "0: the alias must be new",
+      "title": "Expected Revision"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "pattern": "^model://[a-z0-9_-]+/[a-z0-9_-]+@v[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model"
+    },
+    "model_version_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Version Id"
+    },
+    "override": {
+      "default": false,
+      "title": "Override",
+      "type": "boolean"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    }
+  },
+  "title": "EndpointPromote",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

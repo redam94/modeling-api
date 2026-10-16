@@ -1,0 +1,132 @@
+{
+  "$defs": {
+    "CostTotals": {
+      "description": "Sums over ledger entries (one currency).",
+      "examples": [
+        {
+          "amount_micros": 93600,
+          "attempts": 3,
+          "currency": "USD",
+          "gib_seconds": 14400,
+          "runs": 3,
+          "vcpu_seconds": 3600
+        }
+      ],
+      "properties": {
+        "amount_micros": {
+          "default": 0,
+          "title": "Amount Micros",
+          "type": "integer"
+        },
+        "attempts": {
+          "default": 0,
+          "description": "Distinct (run, attempt) pairs",
+          "minimum": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "gib_seconds": {
+          "default": 0,
+          "title": "Gib Seconds",
+          "type": "number"
+        },
+        "runs": {
+          "default": 0,
+          "description": "Distinct runs",
+          "minimum": 0,
+          "title": "Runs",
+          "type": "integer"
+        },
+        "vcpu_seconds": {
+          "default": 0,
+          "title": "Vcpu Seconds",
+          "type": "number"
+        }
+      },
+      "title": "CostTotals",
+      "type": "object"
+    },
+    "TrustTier": {
+      "description": "How much the platform trusts a tenant's code and data (plan \u00a72, \u00a77, \u00a79).",
+      "enum": [
+        "internal",
+        "verified",
+        "public",
+        "self-hosted-trusted"
+      ],
+      "title": "TrustTier",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-TenantCost.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One tenant's ledger totals for the period (one row per currency).",
+  "examples": [
+    {
+      "name": "Acme Corp",
+      "tenant_id": "acme",
+      "totals": {
+        "amount_micros": 93600,
+        "attempts": 3,
+        "currency": "USD",
+        "gib_seconds": 14400,
+        "runs": 3,
+        "vcpu_seconds": 3600
+      },
+      "trust_tier": "verified"
+    }
+  ],
+  "properties": {
+    "name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Name"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "totals": {
+      "$ref": "#/$defs/CostTotals"
+    },
+    "trust_tier": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TrustTier"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "tenant_id",
+    "totals"
+  ],
+  "title": "TenantCost",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

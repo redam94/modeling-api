@@ -1,0 +1,84 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-PlotListItem.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A plot available for a model version; fetch the sanitized :class:`PlotSpec` at href.",
+  "examples": [
+    {
+      "href": "/v1/models/mdl_01/versions/1/plots/core.ppc_fan",
+      "id": "core.ppc_fan",
+      "kind": "vega-lite",
+      "persona": "both",
+      "recipe": "core.ppc_fan@1.0.0",
+      "title": "Posterior predictive fan"
+    }
+  ],
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "href": {
+      "title": "Href",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[A-Za-z0-9_.\\-]{1,128}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "vega-lite",
+        "plotly"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "persona": {
+      "default": "both",
+      "enum": [
+        "guided",
+        "expert",
+        "both"
+      ],
+      "title": "Persona",
+      "type": "string"
+    },
+    "recipe": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Recipe"
+    },
+    "title": {
+      "maxLength": 300,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "kind",
+    "href"
+  ],
+  "title": "PlotListItem",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

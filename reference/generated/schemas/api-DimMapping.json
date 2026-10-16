@@ -1,0 +1,128 @@
+{
+  "$defs": {
+    "DimPolicy": {
+      "description": "What may happen to a dim's coordinates at score time.",
+      "enum": [
+        "fixed",
+        "extend",
+        "new_levels"
+      ],
+      "title": "DimPolicy",
+      "type": "string"
+    },
+    "DimSpec": {
+      "additionalProperties": false,
+      "description": "A dimension and its score-time policy.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pandas-style frequency, e.g. 'W-SUN'",
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_extension": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods allowed past the fit",
+          "title": "Max Extension"
+        },
+        "new_level_strategy": {
+          "default": "error",
+          "enum": [
+            "error",
+            "hyperprior",
+            "pooled",
+            "zero"
+          ],
+          "title": "New Level Strategy",
+          "type": "string"
+        },
+        "ordered": {
+          "default": false,
+          "title": "Ordered",
+          "type": "boolean"
+        },
+        "policy": {
+          "$ref": "#/$defs/DimPolicy",
+          "default": "fixed"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DimSpec",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-DimMapping.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A dim of the dataset, read from one column of a tabular upload.",
+  "examples": [
+    {
+      "column": "date",
+      "spec": {
+        "freq": "D",
+        "kind": "time",
+        "policy": "extend"
+      }
+    }
+  ],
+  "properties": {
+    "column": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Column",
+      "type": "string"
+    },
+    "spec": {
+      "$ref": "#/$defs/DimSpec"
+    }
+  },
+  "required": [
+    "column",
+    "spec"
+  ],
+  "title": "DimMapping",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

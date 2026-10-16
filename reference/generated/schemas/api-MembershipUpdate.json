@@ -1,0 +1,35 @@
+{
+  "$defs": {
+    "ProjectRole": {
+      "description": "Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last).",
+      "enum": [
+        "viewer",
+        "editor",
+        "runner",
+        "admin"
+      ],
+      "title": "ProjectRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-MembershipUpdate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Change a member's role (the last admin of a tenant or project cannot be demoted).",
+  "examples": [
+    {
+      "role": "editor"
+    }
+  ],
+  "properties": {
+    "role": {
+      "$ref": "#/$defs/ProjectRole"
+    }
+  },
+  "required": [
+    "role"
+  ],
+  "title": "MembershipUpdate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

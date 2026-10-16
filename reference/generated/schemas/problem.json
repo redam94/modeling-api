@@ -1,0 +1,212 @@
+{
+  "$defs": {
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/problem.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).",
+  "properties": {
+    "code": {
+      "$ref": "#/$defs/ErrorCode"
+    },
+    "detail": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Detail"
+    },
+    "errors": {
+      "items": {
+        "$ref": "#/$defs/Issue"
+      },
+      "title": "Errors",
+      "type": "array"
+    },
+    "instance": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Instance"
+    },
+    "status": {
+      "maximum": 599,
+      "minimum": 100,
+      "title": "Status",
+      "type": "integer"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "trace_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Trace Id"
+    },
+    "type": {
+      "default": "about:blank",
+      "title": "Type",
+      "type": "string"
+    },
+    "untrusted_text": {
+      "anyOf": [
+        {
+          "maxLength": 65536,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Untrusted Text"
+    }
+  },
+  "required": [
+    "title",
+    "status",
+    "code"
+  ],
+  "title": "Problem",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

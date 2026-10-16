@@ -1,0 +1,158 @@
+{
+  "$defs": {
+    "CoordSummary": {
+      "additionalProperties": false,
+      "description": "Metadata summary of one coordinate (never the full array for large dims).\n\n``values`` lists categorical levels when there are at most :attr:`MAX_LEVELS` of them;\nordered dims (time/integer) describe a range by ``start``/``end``/``size`` and whether\nthe coordinate is ``contiguous`` (no gaps at its frequency/step).",
+      "properties": {
+        "contiguous": {
+          "default": true,
+          "title": "Contiguous",
+          "type": "boolean"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "maxItems": 10000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Values"
+        }
+      },
+      "required": [
+        "kind",
+        "size"
+      ],
+      "title": "CoordSummary",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/datasummary.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Summary of a dataset (or score payload): variable names and coordinate summaries.",
+  "properties": {
+    "coords": {
+      "additionalProperties": {
+        "$ref": "#/$defs/CoordSummary"
+      },
+      "title": "Coords",
+      "type": "object"
+    },
+    "vars": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Vars",
+      "type": "array"
+    }
+  },
+  "title": "DataSummary",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

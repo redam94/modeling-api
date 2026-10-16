@@ -1,0 +1,915 @@
+{
+  "$defs": {
+    "CoordSummary": {
+      "additionalProperties": false,
+      "description": "Metadata summary of one coordinate (never the full array for large dims).\n\n``values`` lists categorical levels when there are at most :attr:`MAX_LEVELS` of them;\nordered dims (time/integer) describe a range by ``start``/``end``/``size`` and whether\nthe coordinate is ``contiguous`` (no gaps at its frequency/step).",
+      "properties": {
+        "contiguous": {
+          "default": true,
+          "title": "Contiguous",
+          "type": "boolean"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "maxItems": 10000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Values"
+        }
+      },
+      "required": [
+        "kind",
+        "size"
+      ],
+      "title": "CoordSummary",
+      "type": "object"
+    },
+    "DataSchema": {
+      "additionalProperties": false,
+      "description": "Schema of an ``xr.Dataset``: dims, variables, layout and ragged structure.",
+      "properties": {
+        "dims": {
+          "maxProperties": 256,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/DimSpec"
+            }
+          },
+          "title": "Dims",
+          "type": "object"
+        },
+        "layout": {
+          "default": "dense",
+          "enum": [
+            "dense",
+            "long"
+          ],
+          "title": "Layout",
+          "type": "string"
+        },
+        "ragged": {
+          "items": {
+            "$ref": "#/$defs/RaggedSpec"
+          },
+          "maxItems": 32,
+          "title": "Ragged",
+          "type": "array"
+        },
+        "vars": {
+          "maxProperties": 4096,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/VarSpec"
+            }
+          },
+          "title": "Vars",
+          "type": "object"
+        }
+      },
+      "title": "DataSchema",
+      "type": "object"
+    },
+    "DataSummary": {
+      "additionalProperties": false,
+      "description": "Summary of a dataset (or score payload): variable names and coordinate summaries.",
+      "properties": {
+        "coords": {
+          "additionalProperties": {
+            "$ref": "#/$defs/CoordSummary"
+          },
+          "title": "Coords",
+          "type": "object"
+        },
+        "vars": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Vars",
+          "type": "array"
+        }
+      },
+      "title": "DataSummary",
+      "type": "object"
+    },
+    "DatasetVersionStatus": {
+      "enum": [
+        "ingesting",
+        "ready",
+        "failed"
+      ],
+      "title": "DatasetVersionStatus",
+      "type": "string"
+    },
+    "DimPolicy": {
+      "description": "What may happen to a dim's coordinates at score time.",
+      "enum": [
+        "fixed",
+        "extend",
+        "new_levels"
+      ],
+      "title": "DimPolicy",
+      "type": "string"
+    },
+    "DimSpec": {
+      "additionalProperties": false,
+      "description": "A dimension and its score-time policy.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pandas-style frequency, e.g. 'W-SUN'",
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_extension": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods allowed past the fit",
+          "title": "Max Extension"
+        },
+        "new_level_strategy": {
+          "default": "error",
+          "enum": [
+            "error",
+            "hyperprior",
+            "pooled",
+            "zero"
+          ],
+          "title": "New Level Strategy",
+          "type": "string"
+        },
+        "ordered": {
+          "default": false,
+          "title": "Ordered",
+          "type": "boolean"
+        },
+        "policy": {
+          "$ref": "#/$defs/DimPolicy",
+          "default": "fixed"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DimSpec",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "ObjectRef": {
+      "description": "A stored object exposed through ``\u2026/artifacts/{name}`` (fetch it as an ArtifactLink).",
+      "examples": [
+        {
+          "content_type": "application/json",
+          "name": "preview.json",
+          "size": 20480
+        }
+      ],
+      "properties": {
+        "content_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Type"
+        },
+        "crc32c": {
+          "anyOf": [
+            {
+              "description": "CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum",
+              "examples": [
+                "4waSgw=="
+              ],
+              "pattern": "^[A-Za-z0-9+/]{6}==$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crc32C"
+        },
+        "name": {
+          "examples": [
+            "preview.json"
+          ],
+          "maxLength": 1024,
+          "title": "Name",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "size"
+      ],
+      "title": "ObjectRef",
+      "type": "object"
+    },
+    "RaggedSpec": {
+      "additionalProperties": false,
+      "description": "Ragged nesting (``hh \u2192 trip``): long form (obs + index vars) or padded + mask.",
+      "properties": {
+        "form": {
+          "enum": [
+            "long",
+            "padded"
+          ],
+          "title": "Form",
+          "type": "string"
+        },
+        "group_dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Group Dim",
+          "type": "string"
+        },
+        "mask_var": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mask Var"
+        },
+        "within_dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Within Dim",
+          "type": "string"
+        }
+      },
+      "required": [
+        "group_dim",
+        "within_dim",
+        "form"
+      ],
+      "title": "RaggedSpec",
+      "type": "object"
+    },
+    "Role": {
+      "description": "What a variable means to a model.",
+      "enum": [
+        "target",
+        "covariate",
+        "media",
+        "spend",
+        "control",
+        "index",
+        "mask",
+        "constant",
+        "weight",
+        "exposure"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "VarSpec": {
+      "additionalProperties": false,
+      "description": "A data variable: its dims (by name), dtype, role, units and missingness.",
+      "properties": {
+        "bounds": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounds"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "array"
+        },
+        "dtype": {
+          "enum": [
+            "float64",
+            "float32",
+            "int64",
+            "int32",
+            "bool",
+            "str",
+            "datetime64[ns]"
+          ],
+          "title": "Dtype",
+          "type": "string"
+        },
+        "future_required": {
+          "default": false,
+          "description": "Must be supplied over a forecast horizon",
+          "title": "Future Required",
+          "type": "boolean"
+        },
+        "index_of": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Long layout: this var indexes that dim",
+          "title": "Index Of"
+        },
+        "missing": {
+          "default": "forbid",
+          "enum": [
+            "forbid",
+            "allow",
+            "mask"
+          ],
+          "title": "Missing",
+          "type": "string"
+        },
+        "missing_sentinel": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Missing Sentinel"
+        },
+        "role": {
+          "$ref": "#/$defs/Role",
+          "default": "covariate"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "pint-style, e.g. 'EUR'",
+          "title": "Units"
+        }
+      },
+      "required": [
+        "dims",
+        "dtype"
+      ],
+      "title": "VarSpec",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-DatasetVersion.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An immutable, content-addressed version (``data.zarr.zip`` + schema + profile).",
+  "examples": [
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "data_schema": {
+        "dims": {
+          "date": {
+            "freq": "D",
+            "kind": "time",
+            "policy": "extend"
+          },
+          "market": {
+            "kind": "categorical"
+          }
+        },
+        "vars": {
+          "revenue": {
+            "dims": [
+              "market",
+              "date"
+            ],
+            "dtype": "float64",
+            "role": "target"
+          }
+        }
+      },
+      "dataset_id": "ds_01jaf3a1b2c3d4e5f6g7h8j9k0",
+      "ingest_run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+      "issues": [],
+      "preview": {
+        "content_type": "application/json",
+        "name": "preview.json",
+        "size": 20480
+      },
+      "project_id": "default",
+      "ready_at": "2026-10-15T09:31:10Z",
+      "ref": "dataset://default/eu_media_daily@v3",
+      "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+      "size_bytes": 1048576,
+      "status": "ready",
+      "summary": {
+        "coords": {
+          "market": {
+            "kind": "categorical",
+            "size": 2,
+            "values": [
+              "de",
+              "fr"
+            ]
+          }
+        },
+        "vars": [
+          "revenue"
+        ]
+      },
+      "tenant_id": "default",
+      "version": 3
+    }
+  ],
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "data_schema": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DataSchema"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "dataset_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Dataset Id",
+      "type": "string"
+    },
+    "ingest_run_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ingest Run Id"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/Issue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "message": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Message"
+    },
+    "preview": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "profile": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "project_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "ready_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ready At"
+    },
+    "ref": {
+      "description": "dataset://project/name@vN",
+      "title": "Ref",
+      "type": "string"
+    },
+    "sha256": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sha256"
+    },
+    "size_bytes": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Size Bytes"
+    },
+    "status": {
+      "$ref": "#/$defs/DatasetVersionStatus"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DataSummary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "dataset_id",
+    "tenant_id",
+    "project_id",
+    "version",
+    "ref",
+    "status",
+    "created_at"
+  ],
+  "title": "DatasetVersion",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

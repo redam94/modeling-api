@@ -1,0 +1,78 @@
+{
+  "$defs": {
+    "TrustTier": {
+      "description": "How much the platform trusts a tenant's code and data (plan \u00a72, \u00a77, \u00a79).",
+      "enum": [
+        "internal",
+        "verified",
+        "public",
+        "self-hosted-trusted"
+      ],
+      "title": "TrustTier",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-TenantCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/admin/tenants`` (operators). ``initial_admin_email`` is invited as tenant\nadmin; the invitation is claimed at first login with that verified e-mail.",
+  "examples": [
+    {
+      "data_residency": "eu",
+      "id": "acme",
+      "initial_admin_email": "it@acme.example",
+      "name": "Acme Retail",
+      "trust_tier": "verified"
+    }
+  ],
+  "properties": {
+    "data_residency": {
+      "default": "us",
+      "description": "A multi-region (eu, us, asia) or one cloud region (europe-west1)",
+      "examples": [
+        "eu",
+        "us",
+        "europe-west1"
+      ],
+      "pattern": "^(?:[a-z]{2,6}|[a-z]+-[a-z]+[0-9]{1,2})$",
+      "title": "Data Residency",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Id",
+      "type": "string"
+    },
+    "initial_admin_email": {
+      "anyOf": [
+        {
+          "maxLength": 320,
+          "pattern": "^[^@\\s]{1,64}@[^@\\s]{1,255}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Initial Admin Email"
+    },
+    "name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "trust_tier": {
+      "$ref": "#/$defs/TrustTier",
+      "default": "verified"
+    }
+  },
+  "required": [
+    "id",
+    "name"
+  ],
+  "title": "TenantCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,197 @@
+{
+  "$defs": {
+    "DimPolicy": {
+      "description": "What may happen to a dim's coordinates at score time.",
+      "enum": [
+        "fixed",
+        "extend",
+        "new_levels"
+      ],
+      "title": "DimPolicy",
+      "type": "string"
+    },
+    "DimSpec": {
+      "additionalProperties": false,
+      "description": "A dimension and its score-time policy.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pandas-style frequency, e.g. 'W-SUN'",
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_extension": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods allowed past the fit",
+          "title": "Max Extension"
+        },
+        "new_level_strategy": {
+          "default": "error",
+          "enum": [
+            "error",
+            "hyperprior",
+            "pooled",
+            "zero"
+          ],
+          "title": "New Level Strategy",
+          "type": "string"
+        },
+        "ordered": {
+          "default": false,
+          "title": "Ordered",
+          "type": "boolean"
+        },
+        "policy": {
+          "$ref": "#/$defs/DimPolicy",
+          "default": "fixed"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DimSpec",
+      "type": "object"
+    },
+    "Role": {
+      "description": "What a variable means to a model.",
+      "enum": [
+        "target",
+        "covariate",
+        "media",
+        "spend",
+        "control",
+        "index",
+        "mask",
+        "constant",
+        "weight",
+        "exposure"
+      ],
+      "title": "Role",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-WideVarMapping.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One variable read from several columns, one per label of ``dim`` (a wide table).\n\n``{\"dim\": \"channel\", \"columns\": {\"tv\": \"tv_spend\", \"search\": \"search_spend\"}}`` gives a\nvariable along ``channel`` (plus the table's other dims) with coords ``tv`` and\n``search``. Several wide variables may share a dim; their labels must then agree.",
+  "examples": [
+    {
+      "columns": {
+        "search": "search_spend",
+        "social": "social_spend",
+        "tv": "tv_spend"
+      },
+      "dim": "channel",
+      "role": "spend",
+      "units": "EUR"
+    }
+  ],
+  "properties": {
+    "columns": {
+      "additionalProperties": {
+        "maxLength": 256,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxProperties": 256,
+      "minProperties": 1,
+      "title": "Columns",
+      "type": "object"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "dim": {
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Dim",
+      "type": "string"
+    },
+    "dim_spec": {
+      "$ref": "#/$defs/DimSpec"
+    },
+    "missing": {
+      "default": "forbid",
+      "enum": [
+        "forbid",
+        "allow",
+        "mask"
+      ],
+      "title": "Missing",
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/Role",
+      "default": "covariate"
+    },
+    "units": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Units"
+    }
+  },
+  "required": [
+    "dim",
+    "columns"
+  ],
+  "title": "WideVarMapping",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

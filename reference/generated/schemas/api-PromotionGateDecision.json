@@ -1,0 +1,120 @@
+{
+  "$defs": {
+    "GateOutcome": {
+      "enum": [
+        "allowed",
+        "needs_override",
+        "blocked"
+      ],
+      "title": "GateOutcome",
+      "type": "string"
+    },
+    "GateReason": {
+      "description": "Why the gate is not plainly ``allowed``: a stable code, plain text, and the check.",
+      "properties": {
+        "check": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Check"
+        },
+        "code": {
+          "enum": [
+            "SCORECARD_WARN",
+            "SCORECARD_FAIL",
+            "NO_SCORECARD",
+            "TRAIN_ONLY",
+            "PARTIAL_MODEL",
+            "SCHEMA_CHANGE",
+            "NOT_EVALUATED"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "message_plain": {
+          "maxLength": 500,
+          "title": "Message Plain",
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/GateOutcome"
+        }
+      },
+      "required": [
+        "code",
+        "outcome",
+        "message_plain"
+      ],
+      "title": "GateReason",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-PromotionGateDecision.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The gate's decision for promoting one model version to an endpoint.",
+  "examples": [
+    {
+      "failing_checks": [
+        "holdout.mape"
+      ],
+      "outcome": "needs_override",
+      "reasons": [
+        {
+          "check": "holdout.mape",
+          "code": "SCORECARD_WARN",
+          "message_plain": "Holdout error: forecasts were off by 14%.",
+          "outcome": "needs_override"
+        }
+      ],
+      "scorecard_overall": "warn"
+    }
+  ],
+  "properties": {
+    "failing_checks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Failing Checks",
+      "type": "array"
+    },
+    "outcome": {
+      "$ref": "#/$defs/GateOutcome"
+    },
+    "reasons": {
+      "items": {
+        "$ref": "#/$defs/GateReason"
+      },
+      "title": "Reasons",
+      "type": "array"
+    },
+    "scorecard_overall": {
+      "anyOf": [
+        {
+          "enum": [
+            "pass",
+            "warn",
+            "fail"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scorecard Overall"
+    }
+  },
+  "required": [
+    "outcome"
+  ],
+  "title": "PromotionGateDecision",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

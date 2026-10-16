@@ -1,0 +1,673 @@
+{
+  "$defs": {
+    "ApiToken": {
+      "description": "A token as listed by the API. It never carries the secret or its hash.",
+      "examples": [
+        {
+          "budget_period": "month",
+          "created_at": "2026-10-15T09:30:00Z",
+          "display": "mapi_7k2m9q4x_\u2026",
+          "expires_at": "2026-11-14T09:30:00Z",
+          "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+          "last_used_at": "2026-10-16T08:00:00Z",
+          "name": "atlas-optimiser",
+          "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+          "prefix": "7k2m9q4x",
+          "project_id": "growth",
+          "rate_limit_per_minute": 120,
+          "scopes": [
+            "score:geo-mmm-prod",
+            "models:read"
+          ],
+          "status": "active",
+          "tenant_id": "acme",
+          "vcpu_seconds_budget": 36000
+        }
+      ],
+      "properties": {
+        "budget_period": {
+          "$ref": "#/$defs/BudgetPeriod",
+          "default": "month"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "display": {
+          "description": "Redacted form, mapi_<prefix>_\u2026",
+          "title": "Display",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_used_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Used At"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "owner_id": {
+          "description": "Principal id of the user or service that minted it",
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Owner Id",
+          "type": "string"
+        },
+        "prefix": {
+          "examples": [
+            "7k2m9q4x"
+          ],
+          "pattern": "^[0123456789abcdefghjkmnpqrstvwxyz]{8}$",
+          "title": "Prefix",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "rate_limit_per_minute": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rate Limit Per Minute"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        },
+        "scopes": {
+          "items": {
+            "examples": [
+              "models:read",
+              "runs:create",
+              "score:geo-mmm-prod"
+            ],
+            "maxLength": 140,
+            "type": "string"
+          },
+          "title": "Scopes",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/TokenStatus"
+        },
+        "tenant_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "vcpu_seconds_budget": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vcpu Seconds Budget"
+        }
+      },
+      "required": [
+        "id",
+        "tenant_id",
+        "project_id",
+        "owner_id",
+        "name",
+        "prefix",
+        "display",
+        "scopes",
+        "status",
+        "created_at",
+        "expires_at"
+      ],
+      "title": "ApiToken",
+      "type": "object"
+    },
+    "BudgetPeriod": {
+      "description": "Window of a per-token vCPU-second budget (UTC calendar day or month).",
+      "enum": [
+        "day",
+        "month"
+      ],
+      "title": "BudgetPeriod",
+      "type": "string"
+    },
+    "InternalService": {
+      "enum": [
+        "api",
+        "dispatcher",
+        "reconciler",
+        "finalizer",
+        "events",
+        "pubsub-push"
+      ],
+      "title": "InternalService",
+      "type": "string"
+    },
+    "MeProject": {
+      "description": "A project the caller can act in, with the caller's effective role there.",
+      "examples": [
+        {
+          "name": "Growth",
+          "project_id": "growth",
+          "role": "runner",
+          "tenant_id": "acme"
+        }
+      ],
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/ProjectRole"
+        },
+        "tenant_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "project_id",
+        "name",
+        "role"
+      ],
+      "title": "MeProject",
+      "type": "object"
+    },
+    "MeTenant": {
+      "description": "A tenant the caller belongs to; ``role`` is the tenant-wide role (``None`` when the\ncaller only has project memberships).",
+      "examples": [
+        {
+          "projects": [
+            {
+              "name": "Growth",
+              "project_id": "growth",
+              "role": "runner",
+              "tenant_id": "acme"
+            }
+          ],
+          "role": null,
+          "tenant": {
+            "created_at": "2026-10-15T09:30:00Z",
+            "data_residency": "eu",
+            "id": "acme",
+            "name": "Acme Retail",
+            "status": "active",
+            "trust_tier": "verified"
+          }
+        }
+      ],
+      "properties": {
+        "projects": {
+          "items": {
+            "$ref": "#/$defs/MeProject"
+          },
+          "title": "Projects",
+          "type": "array"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectRole"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tenant": {
+          "$ref": "#/$defs/Tenant"
+        }
+      },
+      "required": [
+        "tenant"
+      ],
+      "title": "MeTenant",
+      "type": "object"
+    },
+    "ProjectRole": {
+      "description": "Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last).",
+      "enum": [
+        "viewer",
+        "editor",
+        "runner",
+        "admin"
+      ],
+      "title": "ProjectRole",
+      "type": "string"
+    },
+    "ServicePrincipal": {
+      "additionalProperties": false,
+      "description": "An internal platform component (bypasses RLS through its own database role).",
+      "properties": {
+        "id": {
+          "pattern": "^svc_[a-z][a-z0-9-]{1,40}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "service",
+          "default": "service",
+          "title": "Kind",
+          "type": "string"
+        },
+        "service": {
+          "$ref": "#/$defs/InternalService"
+        }
+      },
+      "required": [
+        "id",
+        "service"
+      ],
+      "title": "ServicePrincipal",
+      "type": "object"
+    },
+    "Tenant": {
+      "description": "The billing, isolation and quota boundary.",
+      "examples": [
+        {
+          "created_at": "2026-10-15T09:30:00Z",
+          "data_residency": "eu",
+          "id": "acme",
+          "name": "Acme Retail",
+          "status": "active",
+          "trust_tier": "verified"
+        }
+      ],
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "data_residency": {
+          "default": "us",
+          "description": "A multi-region (eu, us, asia) or one cloud region (europe-west1)",
+          "examples": [
+            "eu",
+            "us",
+            "europe-west1"
+          ],
+          "pattern": "^(?:[a-z]{2,6}|[a-z]+-[a-z]+[0-9]{1,2})$",
+          "title": "Data Residency",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/TenantStatus",
+          "default": "active"
+        },
+        "status_reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status Reason"
+        },
+        "trust_tier": {
+          "$ref": "#/$defs/TrustTier"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "trust_tier",
+        "created_at"
+      ],
+      "title": "Tenant",
+      "type": "object"
+    },
+    "TenantStatus": {
+      "description": "``suspended`` tenants are read-only; ``deleting`` tenants are inaccessible.",
+      "enum": [
+        "active",
+        "suspended",
+        "deleting"
+      ],
+      "title": "TenantStatus",
+      "type": "string"
+    },
+    "TokenPrincipal": {
+      "additionalProperties": false,
+      "description": "A request authenticated with an API token (acts as ``owner_id``, narrowed by scopes).",
+      "properties": {
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "token",
+          "default": "token",
+          "title": "Kind",
+          "type": "string"
+        },
+        "owner_id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Owner Id",
+          "type": "string"
+        },
+        "owner_kind": {
+          "default": "user",
+          "enum": [
+            "user",
+            "service_account"
+          ],
+          "title": "Owner Kind",
+          "type": "string"
+        },
+        "prefix": {
+          "pattern": "^[0-9a-hjkmnp-tv-z]{8}$",
+          "title": "Prefix",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "scopes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Scopes",
+          "type": "array"
+        },
+        "tenant_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "prefix",
+        "owner_id",
+        "tenant_id",
+        "project_id",
+        "scopes"
+      ],
+      "title": "TokenPrincipal",
+      "type": "object"
+    },
+    "TokenStatus": {
+      "enum": [
+        "active",
+        "expired",
+        "revoked"
+      ],
+      "title": "TokenStatus",
+      "type": "string"
+    },
+    "TrustTier": {
+      "description": "How much the platform trusts a tenant's code and data (plan \u00a72, \u00a77, \u00a79).",
+      "enum": [
+        "internal",
+        "verified",
+        "public",
+        "self-hosted-trusted"
+      ],
+      "title": "TrustTier",
+      "type": "string"
+    },
+    "UserPrincipal": {
+      "additionalProperties": false,
+      "description": "A person authenticated by OIDC. ``(issuer, subject)`` is the stable identity; the\nplatform id ``usr_\u2026`` is assigned at first login.",
+      "properties": {
+        "email": {
+          "anyOf": [
+            {
+              "maxLength": 320,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Email"
+        },
+        "email_verified": {
+          "default": false,
+          "title": "Email Verified",
+          "type": "boolean"
+        },
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "issuer": {
+          "pattern": "^https://[^\\s]{1,500}$",
+          "title": "Issuer",
+          "type": "string"
+        },
+        "kind": {
+          "const": "user",
+          "default": "user",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "subject": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "issuer",
+        "subject"
+      ],
+      "title": "UserPrincipal",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-Me.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET /v1/me``: who the caller is and where they may act.\n\nFor a token, ``tenants`` holds exactly the token's project and ``token`` the token\nitself (its scopes narrow every role shown here).",
+  "examples": [
+    {
+      "auth": "session",
+      "operator": false,
+      "principal": {
+        "email": "ana@acme.example",
+        "email_verified": true,
+        "id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+        "issuer": "https://accounts.google.com",
+        "kind": "user",
+        "name": "Ana Analyst",
+        "subject": "110169484474386276334"
+      },
+      "tenants": [
+        {
+          "projects": [
+            {
+              "name": "Growth",
+              "project_id": "growth",
+              "role": "runner",
+              "tenant_id": "acme"
+            }
+          ],
+          "role": null,
+          "tenant": {
+            "created_at": "2026-10-15T09:30:00Z",
+            "data_residency": "eu",
+            "id": "acme",
+            "name": "Acme Retail",
+            "status": "active",
+            "trust_tier": "verified"
+          }
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "auth": {
+      "enum": [
+        "session",
+        "token",
+        "service"
+      ],
+      "title": "Auth",
+      "type": "string"
+    },
+    "operator": {
+      "default": false,
+      "title": "Operator",
+      "type": "boolean"
+    },
+    "principal": {
+      "discriminator": {
+        "mapping": {
+          "service": "#/$defs/ServicePrincipal",
+          "token": "#/$defs/TokenPrincipal",
+          "user": "#/$defs/UserPrincipal"
+        },
+        "propertyName": "kind"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/UserPrincipal"
+        },
+        {
+          "$ref": "#/$defs/TokenPrincipal"
+        },
+        {
+          "$ref": "#/$defs/ServicePrincipal"
+        }
+      ],
+      "title": "Principal"
+    },
+    "tenants": {
+      "items": {
+        "$ref": "#/$defs/MeTenant"
+      },
+      "title": "Tenants",
+      "type": "array"
+    },
+    "token": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ApiToken"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "principal",
+    "auth"
+  ],
+  "title": "Me",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,59 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-RunCost.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Cost fields (placeholders in M1: always ``None``; populated by the M2 ledger).",
+  "examples": [
+    {
+      "estimated": true,
+      "gib_seconds": null,
+      "usd": null,
+      "vcpu_seconds": null
+    }
+  ],
+  "properties": {
+    "estimated": {
+      "default": true,
+      "title": "Estimated",
+      "type": "boolean"
+    },
+    "gib_seconds": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Gib Seconds"
+    },
+    "usd": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Usd"
+    },
+    "vcpu_seconds": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vcpu Seconds"
+    }
+  },
+  "title": "RunCost",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

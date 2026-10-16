@@ -1,0 +1,121 @@
+{
+  "$defs": {
+    "LimitName": {
+      "description": "Every limit a :class:`QuotaDecision` can name.",
+      "enum": [
+        "requests_per_minute",
+        "max_resource_class",
+        "max_fanout_tasks",
+        "concurrent_runs",
+        "vcpu_seconds_per_day",
+        "vcpu_seconds_per_month",
+        "storage_bytes",
+        "egress_bytes_per_month",
+        "untrusted_execution",
+        "global_spend"
+      ],
+      "title": "LimitName",
+      "type": "string"
+    },
+    "QuotaScope": {
+      "description": "Policy level, most specific first.",
+      "enum": [
+        "token",
+        "tenant",
+        "global"
+      ],
+      "title": "QuotaScope",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-QuotaLimitStatus.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One limit of one level as shown in ``/usage`` (``remaining`` is ``None`` if unlimited).",
+  "examples": [
+    {
+      "fraction_used": 0.5,
+      "limit": 86400,
+      "limit_name": "vcpu_seconds_per_day",
+      "remaining": 43200,
+      "resets_at": "2026-10-16T00:00:00Z",
+      "scope": "tenant",
+      "subject_id": "acme",
+      "used": 43200
+    }
+  ],
+  "properties": {
+    "fraction_used": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fraction Used"
+    },
+    "limit": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Limit"
+    },
+    "limit_name": {
+      "$ref": "#/$defs/LimitName"
+    },
+    "remaining": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Remaining"
+    },
+    "resets_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resets At"
+    },
+    "scope": {
+      "$ref": "#/$defs/QuotaScope"
+    },
+    "subject_id": {
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "used": {
+      "title": "Used",
+      "type": "number"
+    }
+  },
+  "required": [
+    "scope",
+    "subject_id",
+    "limit_name",
+    "used"
+  ],
+  "title": "QuotaLimitStatus",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

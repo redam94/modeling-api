@@ -1,0 +1,648 @@
+{
+  "$defs": {
+    "CaseOutcome": {
+      "enum": [
+        "passed",
+        "failed",
+        "skipped",
+        "error"
+      ],
+      "title": "CaseOutcome",
+      "type": "string"
+    },
+    "ConformanceCaseId": {
+      "enum": [
+        "submit",
+        "adopt_after_dispatcher_crash",
+        "duplicate_submit",
+        "cancel_mid_run",
+        "timeout",
+        "stalled_not_lost",
+        "confirmed_cancel_before_retry",
+        "checkpoint_resume",
+        "oom_classification",
+        "fanout_task_count",
+        "generation_verification",
+        "rate_limit_backoff"
+      ],
+      "title": "ConformanceCaseId",
+      "type": "string"
+    },
+    "ConformanceReport": {
+      "description": "One run of the suite against one executor.",
+      "examples": [
+        {
+          "environment": "nightly",
+          "executor": "cloudrun-jobs",
+          "finished_at": "2026-10-15T02:24:00Z",
+          "results": [
+            {
+              "case_id": "submit",
+              "duration_seconds": 61.0,
+              "outcome": "passed"
+            },
+            {
+              "case_id": "rate_limit_backoff",
+              "duration_seconds": 33.5,
+              "outcome": "passed"
+            }
+          ],
+          "started_at": "2026-10-15T02:00:00Z",
+          "suite_version": "1"
+        }
+      ],
+      "properties": {
+        "environment": {
+          "default": "pr",
+          "enum": [
+            "pr",
+            "nightly",
+            "manual"
+          ],
+          "title": "Environment",
+          "type": "string"
+        },
+        "executor": {
+          "title": "Executor",
+          "type": "string"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/$defs/ConformanceResult"
+          },
+          "title": "Results",
+          "type": "array"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "suite_version": {
+          "default": "1",
+          "title": "Suite Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "executor",
+        "started_at"
+      ],
+      "title": "ConformanceReport",
+      "type": "object"
+    },
+    "ConformanceResult": {
+      "examples": [
+        {
+          "case_id": "stalled_not_lost",
+          "duration_seconds": 41.2,
+          "outcome": "passed"
+        }
+      ],
+      "properties": {
+        "case_id": {
+          "$ref": "#/$defs/ConformanceCaseId"
+        },
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Seconds"
+        },
+        "outcome": {
+          "$ref": "#/$defs/CaseOutcome"
+        },
+        "problems": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Problems",
+          "type": "array"
+        }
+      },
+      "required": [
+        "case_id",
+        "outcome"
+      ],
+      "title": "ConformanceResult",
+      "type": "object"
+    },
+    "ExecutorCaps": {
+      "additionalProperties": false,
+      "description": "What an executor can do; placement rules are enforced against these.",
+      "properties": {
+        "checkpoint_storage": {
+          "default": false,
+          "title": "Checkpoint Storage",
+          "type": "boolean"
+        },
+        "classes": {
+          "items": {
+            "$ref": "#/$defs/ResourceClass"
+          },
+          "title": "Classes",
+          "type": "array"
+        },
+        "dns_enforced": {
+          "default": false,
+          "title": "Dns Enforced",
+          "type": "boolean"
+        },
+        "egress_enforced": {
+          "default": false,
+          "title": "Egress Enforced",
+          "type": "boolean"
+        },
+        "gpus": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Gpus",
+          "type": "array"
+        },
+        "isolation": {
+          "$ref": "#/$defs/Isolation"
+        },
+        "max_runtime": {
+          "description": "Duration such as '45m', '1h30m' or '90s'.",
+          "examples": [
+            "45m",
+            "1h30m"
+          ],
+          "pattern": "^(?=.)(\\d+h)?(\\d+m)?(\\d+s)?$",
+          "title": "Max Runtime",
+          "type": "string"
+        },
+        "max_tasks": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Max Tasks",
+          "type": "integer"
+        },
+        "regions": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Regions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "isolation"
+      ],
+      "title": "ExecutorCaps",
+      "type": "object"
+    },
+    "ExecutorStatus": {
+      "enum": [
+        "ok",
+        "degraded",
+        "down",
+        "disabled"
+      ],
+      "title": "ExecutorStatus",
+      "type": "string"
+    },
+    "Isolation": {
+      "description": "How strongly a backend isolates a run (ordered: higher is stronger).",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "title": "Isolation",
+      "type": "integer"
+    },
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    },
+    "SecurityProbeRow": {
+      "description": "One probe of a security-suite run (``mapi-security --json``).",
+      "examples": [
+        {
+          "category": "isolation",
+          "outcome": "blocked",
+          "probe_id": "dns_egress"
+        }
+      ],
+      "properties": {
+        "acceptable": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Acceptable",
+          "type": "array"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "outcome": {
+          "enum": [
+            "allowed",
+            "blocked",
+            "error",
+            "skipped"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "probe_id": {
+          "maxLength": 64,
+          "title": "Probe Id",
+          "type": "string"
+        },
+        "unexpected": {
+          "default": false,
+          "title": "Unexpected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "probe_id",
+        "outcome"
+      ],
+      "title": "SecurityProbeRow",
+      "type": "object"
+    },
+    "SecuritySuiteReport": {
+      "description": "A security-suite run against one executor: the JSON ``mapi-security --json`` prints.",
+      "examples": [
+        {
+          "executor": "cloudrun-jobs",
+          "isolation": "microvm",
+          "ok": true,
+          "rows": [
+            {
+              "category": "isolation",
+              "outcome": "blocked",
+              "probe_id": "http_egress"
+            },
+            {
+              "category": "isolation",
+              "outcome": "blocked",
+              "probe_id": "dns_egress"
+            },
+            {
+              "category": "isolation",
+              "outcome": "blocked",
+              "probe_id": "metadata_token"
+            }
+          ],
+          "started_at": "2026-10-15T02:30:00Z",
+          "unexpected": []
+        }
+      ],
+      "properties": {
+        "executor": {
+          "pattern": "^[a-z][a-z0-9-]{0,63}$",
+          "title": "Executor",
+          "type": "string"
+        },
+        "isolation": {
+          "enum": [
+            "none",
+            "process",
+            "gvisor",
+            "microvm",
+            "dedicated_vm"
+          ],
+          "title": "Isolation",
+          "type": "string"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/SecurityProbeRow"
+          },
+          "maxItems": 500,
+          "title": "Rows",
+          "type": "array"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "unexpected": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unexpected",
+          "type": "array"
+        }
+      },
+      "required": [
+        "executor",
+        "isolation",
+        "ok"
+      ],
+      "title": "SecuritySuiteReport",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ExecutorHealth.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One executor as the admin console shows it.",
+  "examples": [
+    {
+      "allows_public_tenants": true,
+      "caps": {
+        "checkpoint_storage": true,
+        "classes": [
+          "S",
+          "M",
+          "L"
+        ],
+        "dns_enforced": true,
+        "egress_enforced": true,
+        "isolation": 3,
+        "max_runtime": "1h",
+        "max_tasks": 10000,
+        "regions": [
+          "europe-west1"
+        ]
+      },
+      "checked_at": "2026-10-15T09:30:00Z",
+      "conformance": {
+        "environment": "nightly",
+        "executor": "cloudrun-jobs",
+        "finished_at": "2026-10-15T02:24:00Z",
+        "results": [
+          {
+            "case_id": "submit",
+            "duration_seconds": 61.0,
+            "outcome": "passed"
+          },
+          {
+            "case_id": "rate_limit_backoff",
+            "duration_seconds": 33.5,
+            "outcome": "passed"
+          }
+        ],
+        "started_at": "2026-10-15T02:00:00Z",
+        "suite_version": "1"
+      },
+      "conformance_passed": true,
+      "enabled": true,
+      "failures_last_hour": 1,
+      "last_success_at": "2026-10-15T09:30:00Z",
+      "name": "cloudrun-jobs",
+      "queued_runs": 4,
+      "regions": [
+        "europe-west1"
+      ],
+      "running_executions": 37,
+      "security": {
+        "executor": "cloudrun-jobs",
+        "isolation": "microvm",
+        "ok": true,
+        "rows": [
+          {
+            "category": "isolation",
+            "outcome": "blocked",
+            "probe_id": "http_egress"
+          },
+          {
+            "category": "isolation",
+            "outcome": "blocked",
+            "probe_id": "dns_egress"
+          },
+          {
+            "category": "isolation",
+            "outcome": "blocked",
+            "probe_id": "metadata_token"
+          }
+        ],
+        "started_at": "2026-10-15T02:30:00Z",
+        "unexpected": []
+      },
+      "security_passed": true,
+      "shared_tiers_enabled": true,
+      "status": "ok",
+      "submit_rate_limit_per_minute": 180,
+      "submits_last_minute": 52,
+      "throttled_last_hour": 0
+    }
+  ],
+  "properties": {
+    "allows_public_tenants": {
+      "title": "Allows Public Tenants",
+      "type": "boolean"
+    },
+    "caps": {
+      "$ref": "#/$defs/ExecutorCaps"
+    },
+    "checked_at": {
+      "format": "date-time",
+      "title": "Checked At",
+      "type": "string"
+    },
+    "conformance": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ConformanceReport"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "conformance_passed": {
+      "default": false,
+      "description": "A passing, unexpired conformance report for the current caps",
+      "title": "Conformance Passed",
+      "type": "boolean"
+    },
+    "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "failures_last_hour": {
+      "default": 0,
+      "description": "Attempts failed as infra errors",
+      "minimum": 0,
+      "title": "Failures Last Hour",
+      "type": "integer"
+    },
+    "last_success_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Success At"
+    },
+    "message": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Message"
+    },
+    "name": {
+      "pattern": "^[a-z][a-z0-9-]{0,63}$",
+      "title": "Name",
+      "type": "string"
+    },
+    "queued_runs": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Queued Runs",
+      "type": "integer"
+    },
+    "regions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Regions",
+      "type": "array"
+    },
+    "running_executions": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Running Executions",
+      "type": "integer"
+    },
+    "security": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SecuritySuiteReport"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "security_passed": {
+      "default": false,
+      "description": "A passing, unexpired security-suite report for the current caps",
+      "title": "Security Passed",
+      "type": "boolean"
+    },
+    "shared_tiers_enabled": {
+      "default": false,
+      "description": "May take verified and public tenants: the caps allow it and both suites passed for these caps (plan \u00a78.4)",
+      "title": "Shared Tiers Enabled",
+      "type": "boolean"
+    },
+    "status": {
+      "$ref": "#/$defs/ExecutorStatus"
+    },
+    "submit_rate_limit_per_minute": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Submit Rate Limit Per Minute"
+    },
+    "submits_last_minute": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Submits Last Minute",
+      "type": "integer"
+    },
+    "throttled_last_hour": {
+      "default": 0,
+      "description": "429 answers from the backend",
+      "minimum": 0,
+      "title": "Throttled Last Hour",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "name",
+    "enabled",
+    "status",
+    "caps",
+    "allows_public_tenants",
+    "checked_at"
+  ],
+  "title": "ExecutorHealth",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

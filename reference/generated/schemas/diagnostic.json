@@ -1,0 +1,116 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/diagnostic.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A diagnostic finding that rolls up into the sanity scorecard.",
+  "properties": {
+    "code": {
+      "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+      "title": "Code",
+      "type": "string"
+    },
+    "coords": {
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "title": "Coords",
+      "type": "object"
+    },
+    "message_expert": {
+      "maxLength": 2000,
+      "title": "Message Expert",
+      "type": "string"
+    },
+    "message_plain": {
+      "maxLength": 2000,
+      "title": "Message Plain",
+      "type": "string"
+    },
+    "metric": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Metric"
+    },
+    "severity": {
+      "default": "warning",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "suggested_action": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Suggested Action"
+    },
+    "threshold": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Threshold"
+    },
+    "value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Value"
+    },
+    "var": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Var"
+    }
+  },
+  "required": [
+    "code",
+    "message_expert",
+    "message_plain"
+  ],
+  "title": "Diagnostic",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

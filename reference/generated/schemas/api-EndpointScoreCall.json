@@ -1,0 +1,672 @@
+{
+  "$defs": {
+    "Aggregation": {
+      "additionalProperties": false,
+      "description": "Reduce outputs over dims before summarising (validity depends on representation).",
+      "properties": {
+        "how": {
+          "default": "sum",
+          "enum": [
+            "sum",
+            "mean",
+            "min",
+            "max"
+          ],
+          "title": "How",
+          "type": "string"
+        },
+        "over": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Over",
+          "type": "array"
+        }
+      },
+      "required": [
+        "over"
+      ],
+      "title": "Aggregation",
+      "type": "object"
+    },
+    "FutureCovariates": {
+      "description": "Where future values of ``future_required`` covariates come from in a forecast (M3).\n\n``supplied`` (default) needs them in the request's data or scenario\n(``MISSING_FUTURE_COVARIATE`` otherwise). The other policies let the runner extend them\nover the horizon, per series, inside the sandbox: ``carry_last`` repeats the last\nobserved value, ``seasonal_naive`` repeats the value one season earlier (the time dim's\nyearly period), ``zero`` sets them to zero (e.g. \"no spend planned\").",
+      "enum": [
+        "supplied",
+        "carry_last",
+        "seasonal_naive",
+        "zero"
+      ],
+      "title": "FutureCovariates",
+      "type": "string"
+    },
+    "Horizon": {
+      "additionalProperties": false,
+      "properties": {
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "periods": {
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Periods",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "dim",
+        "periods"
+      ],
+      "title": "Horizon",
+      "type": "object"
+    },
+    "Intervention": {
+      "additionalProperties": false,
+      "description": "Change ``var`` on the coords selected by ``sel``: exactly one of multiply/add/set.",
+      "properties": {
+        "add": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Add"
+        },
+        "multiply": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Multiply"
+        },
+        "sel": {
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "title": "Sel",
+          "type": "object"
+        },
+        "set": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Set"
+        },
+        "var": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var"
+      ],
+      "title": "Intervention",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "OutputSelector": {
+      "additionalProperties": false,
+      "description": "What a score request returns.",
+      "properties": {
+        "aggregate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Aggregation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "draws": {
+          "default": 0,
+          "maximum": 10000,
+          "minimum": 0,
+          "title": "Draws",
+          "type": "integer"
+        },
+        "kind": {
+          "default": "expected",
+          "enum": [
+            "expected",
+            "predictive"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "names": {
+          "default": "dataset",
+          "enum": [
+            "dataset",
+            "canonical"
+          ],
+          "title": "Names",
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 32,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Summaries to return; default depends on representation",
+          "title": "Summary"
+        },
+        "thin_index": {
+          "const": "bundle",
+          "default": "bundle",
+          "title": "Thin Index",
+          "type": "string"
+        },
+        "units": {
+          "default": "original",
+          "enum": [
+            "original",
+            "model"
+          ],
+          "title": "Units",
+          "type": "string"
+        },
+        "vars": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "title": "Vars",
+          "type": "array"
+        }
+      },
+      "title": "OutputSelector",
+      "type": "object"
+    },
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    },
+    "XrJsonDataset": {
+      "additionalProperties": false,
+      "description": "An inline dataset (``xr.Dataset.to_dict()`` shape). Dim lengths must agree across\nvariables; every dim of a data variable should have a coord (checked in the sandbox\nagainst the model's schema).",
+      "examples": [
+        {
+          "coords": {
+            "channel": {
+              "data": [
+                "tv",
+                "search"
+              ],
+              "dims": [
+                "channel"
+              ]
+            },
+            "time": {
+              "data": [
+                "2026-11-01",
+                "2026-11-08"
+              ],
+              "dims": [
+                "time"
+              ]
+            }
+          },
+          "data_vars": {
+            "spend": {
+              "data": [
+                [
+                  1000.0,
+                  1200.0
+                ],
+                [
+                  400.0,
+                  380.0
+                ]
+              ],
+              "dims": [
+                "channel",
+                "time"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "attrs": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxProperties": 64,
+          "title": "Attrs",
+          "type": "object"
+        },
+        "coords": {
+          "maxProperties": 64,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/XrJsonVariable"
+            }
+          },
+          "title": "Coords",
+          "type": "object"
+        },
+        "data_vars": {
+          "maxProperties": 256,
+          "minProperties": 1,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/XrJsonVariable"
+            }
+          },
+          "title": "Data Vars",
+          "type": "object"
+        },
+        "dims": {
+          "maxProperties": 16,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "type": "integer"
+            }
+          },
+          "title": "Dims",
+          "type": "object"
+        }
+      },
+      "required": [
+        "data_vars"
+      ],
+      "title": "XrJsonDataset",
+      "type": "object"
+    },
+    "XrJsonVariable": {
+      "additionalProperties": false,
+      "description": "A coord or data variable: ``data`` nested ``len(dims)`` deep (a scalar for no dims).",
+      "properties": {
+        "attrs": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxProperties": 64,
+          "title": "Attrs",
+          "type": "object"
+        },
+        "data": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Dims",
+          "type": "array"
+        }
+      },
+      "required": [
+        "data"
+      ],
+      "title": "XrJsonVariable",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-EndpointScoreCall.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/endpoints/{alias}/score`` (and ``\u2026/validate``): a score request for the\nendpoint's current version.\n\n``data``/``scenario`` are ``dataset://`` references or inline XrJSON datasets (up to\n5 MB; :mod:`mapi_spec.xrjson`). Send ``Prefer: wait=N`` (N \u2264 60) to wait: 200 with the\nresult when the run finishes in time, else 202 with the run.",
+  "examples": [
+    {
+      "future_covariates": "carry_last",
+      "horizon": {
+        "dim": "time",
+        "periods": 8
+      },
+      "mode": "forecast",
+      "output": {
+        "kind": "expected",
+        "summary": [
+          "mean",
+          "hdi_90"
+        ]
+      }
+    },
+    {
+      "data": {
+        "coords": {
+          "channel": {
+            "data": [
+              "search",
+              "tv"
+            ],
+            "dims": [
+              "channel"
+            ]
+          },
+          "date": {
+            "data": [
+              "2025-12-30"
+            ],
+            "dims": [
+              "date"
+            ]
+          },
+          "market": {
+            "data": [
+              "de"
+            ],
+            "dims": [
+              "market"
+            ]
+          }
+        },
+        "data_vars": {
+          "spend_local": {
+            "data": [
+              [
+                [
+                  1200.0
+                ],
+                [
+                  5300.0
+                ]
+              ]
+            ],
+            "dims": [
+              "market",
+              "channel",
+              "date"
+            ]
+          }
+        }
+      },
+      "mode": "predict"
+    }
+  ],
+  "properties": {
+    "data": {
+      "anyOf": [
+        {
+          "description": "Dataset reference dataset://project/name@version",
+          "examples": [
+            "dataset://growth/eu_media_daily@latest"
+          ],
+          "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/XrJsonDataset"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Data"
+    },
+    "future_covariates": {
+      "$ref": "#/$defs/FutureCovariates",
+      "default": "supplied"
+    },
+    "horizon": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Horizon"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "inputs_stage": {
+      "default": "raw",
+      "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+      "title": "Inputs Stage",
+      "type": "string"
+    },
+    "interventions": {
+      "items": {
+        "$ref": "#/$defs/Intervention"
+      },
+      "maxItems": 256,
+      "title": "Interventions",
+      "type": "array"
+    },
+    "labels": {
+      "maxProperties": 64,
+      "patternProperties": {
+        "^[a-z0-9]([a-z0-9_.\\-/]{0,62})$": {
+          "maxLength": 63,
+          "pattern": "^[A-Za-z0-9_.\\-]*$",
+          "type": "string"
+        }
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "mode": {
+      "default": "predict",
+      "enum": [
+        "predict",
+        "forecast",
+        "counterfactual",
+        "simulate",
+        "filter",
+        "evaluate"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "output": {
+      "$ref": "#/$defs/OutputSelector"
+    },
+    "resource_class": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResourceClass"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "scenario": {
+      "anyOf": [
+        {
+          "description": "Dataset reference dataset://project/name@version",
+          "examples": [
+            "dataset://growth/eu_media_daily@latest"
+          ],
+          "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/XrJsonDataset"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scenario"
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Seed"
+    },
+    "select": {
+      "maxProperties": 64,
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "title": "Select",
+      "type": "object"
+    },
+    "side_tables": {
+      "maxProperties": 32,
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "description": "Dataset reference dataset://project/name@version",
+          "examples": [
+            "dataset://growth/eu_media_daily@latest"
+          ],
+          "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+          "type": "string"
+        }
+      },
+      "title": "Side Tables",
+      "type": "object"
+    },
+    "timeout": {
+      "anyOf": [
+        {
+          "description": "Duration such as '45m', '1h30m' or '90s'.",
+          "examples": [
+            "45m",
+            "1h30m"
+          ],
+          "pattern": "^(?=.)(\\d+h)?(\\d+m)?(\\d+s)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timeout"
+    }
+  },
+  "title": "EndpointScoreCall",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

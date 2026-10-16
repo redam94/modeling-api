@@ -1,0 +1,405 @@
+{
+  "$defs": {
+    "DataSchema": {
+      "additionalProperties": false,
+      "description": "Schema of an ``xr.Dataset``: dims, variables, layout and ragged structure.",
+      "properties": {
+        "dims": {
+          "maxProperties": 256,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/DimSpec"
+            }
+          },
+          "title": "Dims",
+          "type": "object"
+        },
+        "layout": {
+          "default": "dense",
+          "enum": [
+            "dense",
+            "long"
+          ],
+          "title": "Layout",
+          "type": "string"
+        },
+        "ragged": {
+          "items": {
+            "$ref": "#/$defs/RaggedSpec"
+          },
+          "maxItems": 32,
+          "title": "Ragged",
+          "type": "array"
+        },
+        "vars": {
+          "maxProperties": 4096,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/VarSpec"
+            }
+          },
+          "title": "Vars",
+          "type": "object"
+        }
+      },
+      "title": "DataSchema",
+      "type": "object"
+    },
+    "DimPolicy": {
+      "description": "What may happen to a dim's coordinates at score time.",
+      "enum": [
+        "fixed",
+        "extend",
+        "new_levels"
+      ],
+      "title": "DimPolicy",
+      "type": "string"
+    },
+    "DimSpec": {
+      "additionalProperties": false,
+      "description": "A dimension and its score-time policy.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pandas-style frequency, e.g. 'W-SUN'",
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_extension": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods allowed past the fit",
+          "title": "Max Extension"
+        },
+        "new_level_strategy": {
+          "default": "error",
+          "enum": [
+            "error",
+            "hyperprior",
+            "pooled",
+            "zero"
+          ],
+          "title": "New Level Strategy",
+          "type": "string"
+        },
+        "ordered": {
+          "default": false,
+          "title": "Ordered",
+          "type": "boolean"
+        },
+        "policy": {
+          "$ref": "#/$defs/DimPolicy",
+          "default": "fixed"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DimSpec",
+      "type": "object"
+    },
+    "RaggedSpec": {
+      "additionalProperties": false,
+      "description": "Ragged nesting (``hh \u2192 trip``): long form (obs + index vars) or padded + mask.",
+      "properties": {
+        "form": {
+          "enum": [
+            "long",
+            "padded"
+          ],
+          "title": "Form",
+          "type": "string"
+        },
+        "group_dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Group Dim",
+          "type": "string"
+        },
+        "mask_var": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mask Var"
+        },
+        "within_dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Within Dim",
+          "type": "string"
+        }
+      },
+      "required": [
+        "group_dim",
+        "within_dim",
+        "form"
+      ],
+      "title": "RaggedSpec",
+      "type": "object"
+    },
+    "Role": {
+      "description": "What a variable means to a model.",
+      "enum": [
+        "target",
+        "covariate",
+        "media",
+        "spend",
+        "control",
+        "index",
+        "mask",
+        "constant",
+        "weight",
+        "exposure"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "VarSpec": {
+      "additionalProperties": false,
+      "description": "A data variable: its dims (by name), dtype, role, units and missingness.",
+      "properties": {
+        "bounds": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounds"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "array"
+        },
+        "dtype": {
+          "enum": [
+            "float64",
+            "float32",
+            "int64",
+            "int32",
+            "bool",
+            "str",
+            "datetime64[ns]"
+          ],
+          "title": "Dtype",
+          "type": "string"
+        },
+        "future_required": {
+          "default": false,
+          "description": "Must be supplied over a forecast horizon",
+          "title": "Future Required",
+          "type": "boolean"
+        },
+        "index_of": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Long layout: this var indexes that dim",
+          "title": "Index Of"
+        },
+        "missing": {
+          "default": "forbid",
+          "enum": [
+            "forbid",
+            "allow",
+            "mask"
+          ],
+          "title": "Missing",
+          "type": "string"
+        },
+        "missing_sentinel": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Missing Sentinel"
+        },
+        "role": {
+          "$ref": "#/$defs/Role",
+          "default": "covariate"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "pint-style, e.g. 'EUR'",
+          "title": "Units"
+        }
+      },
+      "required": [
+        "dims",
+        "dtype"
+      ],
+      "title": "VarSpec",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-StageSchema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The data schema after one pipeline step (``raw`` = after binding, before any step).",
+  "examples": [
+    {
+      "data_schema": {
+        "dims": {
+          "date": {
+            "freq": "D",
+            "kind": "time",
+            "policy": "extend"
+          },
+          "market": {
+            "kind": "categorical"
+          }
+        },
+        "vars": {
+          "revenue": {
+            "dims": [
+              "market",
+              "date"
+            ],
+            "dtype": "float64",
+            "role": "target"
+          }
+        }
+      },
+      "name": "weekly",
+      "split": true
+    }
+  ],
+  "properties": {
+    "data_schema": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DataSchema"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "None when the effect is dynamic"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "split": {
+      "default": false,
+      "description": "The train/holdout split happens after this stage",
+      "title": "Split",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "StageSchema",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

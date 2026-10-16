@@ -1,0 +1,63 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ObjectRef.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A stored object exposed through ``\u2026/artifacts/{name}`` (fetch it as an ArtifactLink).",
+  "examples": [
+    {
+      "content_type": "application/json",
+      "name": "preview.json",
+      "size": 20480
+    }
+  ],
+  "properties": {
+    "content_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Content Type"
+    },
+    "crc32c": {
+      "anyOf": [
+        {
+          "description": "CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum",
+          "examples": [
+            "4waSgw=="
+          ],
+          "pattern": "^[A-Za-z0-9+/]{6}==$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Crc32C"
+    },
+    "name": {
+      "examples": [
+        "preview.json"
+      ],
+      "maxLength": 1024,
+      "title": "Name",
+      "type": "string"
+    },
+    "size": {
+      "minimum": 0,
+      "title": "Size",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "name",
+    "size"
+  ],
+  "title": "ObjectRef",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

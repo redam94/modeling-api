@@ -1,0 +1,70 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-LogLine.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One captured line. ``line`` is untrusted text: render it as text only.",
+  "examples": [
+    {
+      "attempt": 1,
+      "line": "Sampling 4 chains for 400 tune and 1000 draw iterations",
+      "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+      "seq": 120,
+      "stream": "stderr",
+      "ts": "2026-10-15T09:30:00Z"
+    }
+  ],
+  "properties": {
+    "attempt": {
+      "minimum": 1,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "line": {
+      "maxLength": 4096,
+      "title": "Line",
+      "type": "string"
+    },
+    "run_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "seq": {
+      "minimum": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "stream": {
+      "enum": [
+        "stdout",
+        "stderr",
+        "system"
+      ],
+      "title": "Stream",
+      "type": "string"
+    },
+    "truncated": {
+      "default": false,
+      "title": "Truncated",
+      "type": "boolean"
+    },
+    "ts": {
+      "format": "date-time",
+      "title": "Ts",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "attempt",
+    "seq",
+    "ts",
+    "stream",
+    "line"
+  ],
+  "title": "LogLine",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

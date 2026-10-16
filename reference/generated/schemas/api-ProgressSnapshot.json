@@ -1,0 +1,158 @@
+{
+  "$defs": {
+    "ChainProgress": {
+      "additionalProperties": false,
+      "description": "Per-chain sampler progress (Expert run view).",
+      "properties": {
+        "chain": {
+          "minimum": 0,
+          "title": "Chain",
+          "type": "integer"
+        },
+        "divergences": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Divergences",
+          "type": "integer"
+        },
+        "draws_done": {
+          "minimum": 0,
+          "title": "Draws Done",
+          "type": "integer"
+        },
+        "draws_total": {
+          "minimum": 0,
+          "title": "Draws Total",
+          "type": "integer"
+        },
+        "tuning": {
+          "default": false,
+          "title": "Tuning",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "chain",
+        "draws_done",
+        "draws_total"
+      ],
+      "title": "ChainProgress",
+      "type": "object"
+    },
+    "RunnerPhase": {
+      "description": "Coarse phase reported by the runner (drives progress text in the UI).",
+      "enum": [
+        "bootstrap",
+        "load_inputs",
+        "validate",
+        "preprocess",
+        "fit",
+        "sample",
+        "score",
+        "evaluate",
+        "derive",
+        "plots",
+        "upload",
+        "done"
+      ],
+      "title": "RunnerPhase",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ProgressSnapshot.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Latest coalesced progress (one upserted row per run).",
+  "examples": [
+    {
+      "chains": [
+        {
+          "chain": 0,
+          "divergences": 0,
+          "draws_done": 400,
+          "draws_total": 1000
+        },
+        {
+          "chain": 1,
+          "divergences": 1,
+          "draws_done": 380,
+          "draws_total": 1000
+        }
+      ],
+      "eta_seconds": 95,
+      "fraction": 0.4,
+      "message": "drawing samples",
+      "phase": "sample",
+      "seq": 42,
+      "updated_at": "2026-10-15T09:30:00Z"
+    }
+  ],
+  "properties": {
+    "chains": {
+      "items": {
+        "$ref": "#/$defs/ChainProgress"
+      },
+      "title": "Chains",
+      "type": "array"
+    },
+    "eta_seconds": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Eta Seconds"
+    },
+    "fraction": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fraction"
+    },
+    "message": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Message"
+    },
+    "phase": {
+      "$ref": "#/$defs/RunnerPhase"
+    },
+    "seq": {
+      "minimum": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "seq",
+    "phase",
+    "updated_at"
+  ],
+  "title": "ProgressSnapshot",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

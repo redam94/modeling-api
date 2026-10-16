@@ -1,0 +1,59 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ProjectCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/tenants/{tenant_id}/projects`` (tenant admins).",
+  "examples": [
+    {
+      "description": "EU media mix models",
+      "id": "growth",
+      "name": "Growth"
+    }
+  ],
+  "properties": {
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "guided_locked": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M3: show only Guided mode to non-admins (default: not locked)",
+      "title": "Guided Locked"
+    },
+    "id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "name"
+  ],
+  "title": "ProjectCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

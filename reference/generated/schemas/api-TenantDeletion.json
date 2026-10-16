@@ -1,0 +1,237 @@
+{
+  "$defs": {
+    "DeletionState": {
+      "enum": [
+        "scheduled",
+        "cancelled",
+        "deleting",
+        "purged",
+        "failed"
+      ],
+      "title": "DeletionState",
+      "type": "string"
+    },
+    "StoreProgress": {
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "items_done": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Items Done",
+          "type": "integer"
+        },
+        "items_total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Items Total"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "running",
+            "done",
+            "failed"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "store": {
+          "enum": [
+            "database",
+            "object_store",
+            "queue",
+            "logs",
+            "webhooks"
+          ],
+          "title": "Store",
+          "type": "string"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        }
+      },
+      "required": [
+        "store",
+        "state"
+      ],
+      "title": "StoreProgress",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-TenantDeletion.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A tenant deletion and its progress per store.",
+  "examples": [
+    {
+      "id": "del_01jaf3q1r2s3t4v5w6x7y8z9a0",
+      "purge_after": "2026-10-15T09:30:00Z",
+      "requested_at": "2026-10-08T09:30:00Z",
+      "requested_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "started_at": "2026-10-15T09:30:00Z",
+      "state": "deleting",
+      "stores": [
+        {
+          "items_done": 412,
+          "items_total": 412,
+          "state": "done",
+          "store": "database"
+        },
+        {
+          "items_done": 40,
+          "items_total": 96,
+          "state": "running",
+          "store": "object_store"
+        },
+        {
+          "items_done": 0,
+          "items_total": 0,
+          "state": "done",
+          "store": "queue"
+        },
+        {
+          "state": "pending",
+          "store": "logs"
+        },
+        {
+          "state": "pending",
+          "store": "webhooks"
+        }
+      ],
+      "tenant_id": "acme-retail"
+    }
+  ],
+  "properties": {
+    "cancelled_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cancelled At"
+    },
+    "completed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Completed At"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "purge_after": {
+      "format": "date-time",
+      "title": "Purge After",
+      "type": "string"
+    },
+    "requested_at": {
+      "format": "date-time",
+      "title": "Requested At",
+      "type": "string"
+    },
+    "requested_by": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Requested By"
+    },
+    "retained": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Retained",
+      "type": "object"
+    },
+    "started_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Started At"
+    },
+    "state": {
+      "$ref": "#/$defs/DeletionState"
+    },
+    "stores": {
+      "items": {
+        "$ref": "#/$defs/StoreProgress"
+      },
+      "title": "Stores",
+      "type": "array"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "tenant_id",
+    "state",
+    "requested_at",
+    "purge_after"
+  ],
+  "title": "TenantDeletion",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,54 @@
+{
+  "$defs": {
+    "ProjectRole": {
+      "description": "Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last).",
+      "enum": [
+        "viewer",
+        "editor",
+        "runner",
+        "admin"
+      ],
+      "title": "ProjectRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-MeProject.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A project the caller can act in, with the caller's effective role there.",
+  "examples": [
+    {
+      "name": "Growth",
+      "project_id": "growth",
+      "role": "runner",
+      "tenant_id": "acme"
+    }
+  ],
+  "properties": {
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/ProjectRole"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "project_id",
+    "name",
+    "role"
+  ],
+  "title": "MeProject",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

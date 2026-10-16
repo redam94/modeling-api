@@ -1,0 +1,586 @@
+{
+  "$defs": {
+    "CheckThresholds": {
+      "additionalProperties": false,
+      "description": "Warn and fail thresholds of a check (in the check's direction).",
+      "properties": {
+        "fail": {
+          "title": "Fail",
+          "type": "number"
+        },
+        "warn": {
+          "title": "Warn",
+          "type": "number"
+        }
+      },
+      "required": [
+        "warn",
+        "fail"
+      ],
+      "title": "CheckThresholds",
+      "type": "object"
+    },
+    "DimPolicy": {
+      "description": "What may happen to a dim's coordinates at score time.",
+      "enum": [
+        "fixed",
+        "extend",
+        "new_levels"
+      ],
+      "title": "DimPolicy",
+      "type": "string"
+    },
+    "DimSpec": {
+      "additionalProperties": false,
+      "description": "A dimension and its score-time policy.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pandas-style frequency, e.g. 'W-SUN'",
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_extension": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods allowed past the fit",
+          "title": "Max Extension"
+        },
+        "new_level_strategy": {
+          "default": "error",
+          "enum": [
+            "error",
+            "hyperprior",
+            "pooled",
+            "zero"
+          ],
+          "title": "New Level Strategy",
+          "type": "string"
+        },
+        "ordered": {
+          "default": false,
+          "title": "Ordered",
+          "type": "boolean"
+        },
+        "policy": {
+          "$ref": "#/$defs/DimPolicy",
+          "default": "fixed"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DimSpec",
+      "type": "object"
+    },
+    "GuidedQuestion": {
+      "description": "One plain-language question. Column questions name what the column becomes:\n\n* ``dim``: the column labels a dataset dim (``dim_spec`` describes it); the placeholder\n  ``{{<id>}}`` is the dataset dim name;\n* ``role`` (``column``): the column is a data variable with that role; the placeholder is\n  the dataset variable name;\n* ``role`` + ``wide_dim`` (``columns``): the columns become *one* variable ``as_var``\n  along ``wide_dim`` (one label per column, e.g. spend per channel);\n* ``role`` without ``wide_dim`` (``columns``): each column is its own variable.",
+      "properties": {
+        "accepts": {
+          "items": {
+            "enum": [
+              "number",
+              "integer",
+              "string",
+              "date",
+              "boolean"
+            ],
+            "type": "string"
+          },
+          "title": "Accepts",
+          "type": "array"
+        },
+        "as_var": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "As Var"
+        },
+        "choices": {
+          "items": {
+            "$ref": "#/$defs/QuestionChoice"
+          },
+          "maxItems": 32,
+          "title": "Choices",
+          "type": "array"
+        },
+        "default": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "dim": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Canonical dim this column labels",
+          "title": "Dim"
+        },
+        "dim_spec": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DimSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "help_plain": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help Plain"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "keywords": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Keywords",
+          "type": "array"
+        },
+        "kind": {
+          "enum": [
+            "column",
+            "columns",
+            "choice",
+            "number",
+            "text"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximum"
+        },
+        "minimum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minimum"
+        },
+        "missing": {
+          "anyOf": [
+            {
+              "enum": [
+                "forbid",
+                "allow",
+                "mask"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M3: missing-value policy of the variables a column answer becomes (default forbid; 'allow' for ragged panels such as shopping trips per household)",
+          "title": "Missing"
+        },
+        "prompt_plain": {
+          "maxLength": 300,
+          "title": "Prompt Plain",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Role"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ui_level": {
+          "default": "basic",
+          "enum": [
+            "basic",
+            "advanced",
+            "hidden"
+          ],
+          "title": "Ui Level",
+          "type": "string"
+        },
+        "wide_dim": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wide Dim"
+        }
+      },
+      "required": [
+        "id",
+        "prompt_plain",
+        "kind"
+      ],
+      "title": "GuidedQuestion",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "QuestionChoice": {
+      "properties": {
+        "label": {
+          "maxLength": 200,
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 64,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "label"
+      ],
+      "title": "QuestionChoice",
+      "type": "object"
+    },
+    "Role": {
+      "description": "What a variable means to a model.",
+      "enum": [
+        "target",
+        "covariate",
+        "media",
+        "spend",
+        "control",
+        "index",
+        "mask",
+        "constant",
+        "weight",
+        "exposure"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "TemplateLookup": {
+      "description": "A placeholder derived from an answer: ``map[answer]`` (e.g. frequency \u2192 season).",
+      "properties": {
+        "map": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Map",
+          "type": "object"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "map"
+      ],
+      "title": "TemplateLookup",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-GuidedTemplate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A guided task: questions, the spec they fill and what to check afterwards.\n\n``ui_levels`` maps JSON pointers of the spec to ``x-ui-level`` hints (``hidden`` fields\nare kept but not shown; Expert edits round-trip). ``plugin_available`` is false while\nthe template's built-in plugin is not shipped (``plugin_note`` says what is missing).",
+  "examples": [
+    {
+      "description_plain": "Forecast one series a few weeks ahead.",
+      "family": "forecast",
+      "id": "weekly_forecast",
+      "plugin": "ts.hsgp_trend@^1",
+      "questions": [
+        {
+          "accepts": [
+            "number",
+            "integer"
+          ],
+          "id": "kpi",
+          "keywords": [
+            "sales"
+          ],
+          "kind": "column",
+          "prompt_plain": "Which column do you want to forecast?",
+          "role": "target"
+        },
+        {
+          "accepts": [
+            "date"
+          ],
+          "dim": "time",
+          "dim_spec": {
+            "kind": "time",
+            "policy": "extend"
+          },
+          "id": "date",
+          "kind": "column",
+          "prompt_plain": "Which column holds the date or week?"
+        }
+      ],
+      "scorecard_checks": [
+        "convergence.rhat",
+        "holdout.mape"
+      ],
+      "spec_template": {
+        "apiVersion": "mapi/v1",
+        "data": {
+          "bind": {
+            "dims": {
+              "t": "{{date}}"
+            },
+            "vars": {
+              "y": "{{kpi}}"
+            }
+          },
+          "dataset": "{{dataset}}"
+        },
+        "kind": "ModelSpec",
+        "metadata": {
+          "name": "{{name}}",
+          "project": "{{project}}"
+        },
+        "model": {
+          "settings": {
+            "max_extension": 26
+          },
+          "use": "ts.hsgp_trend@^1"
+        }
+      },
+      "tasks": [
+        "forecast"
+      ],
+      "title": "Weekly forecast",
+      "ui_levels": {
+        "/model/fit": "advanced"
+      },
+      "version": "1.0.0"
+    }
+  ],
+  "properties": {
+    "defaults": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Defaults",
+      "type": "object"
+    },
+    "description_plain": {
+      "maxLength": 1000,
+      "title": "Description Plain",
+      "type": "string"
+    },
+    "family": {
+      "enum": [
+        "mmm",
+        "forecast",
+        "tabular",
+        "choice"
+      ],
+      "title": "Family",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+      "title": "Id",
+      "type": "string"
+    },
+    "lookups": {
+      "additionalProperties": {
+        "$ref": "#/$defs/TemplateLookup"
+      },
+      "title": "Lookups",
+      "type": "object"
+    },
+    "plugin": {
+      "description": "UseRef of the built-in plugin (id@range)",
+      "title": "Plugin",
+      "type": "string"
+    },
+    "plugin_available": {
+      "default": true,
+      "title": "Plugin Available",
+      "type": "boolean"
+    },
+    "plugin_note": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Plugin Note"
+    },
+    "questions": {
+      "items": {
+        "$ref": "#/$defs/GuidedQuestion"
+      },
+      "maxItems": 32,
+      "minItems": 1,
+      "title": "Questions",
+      "type": "array"
+    },
+    "scorecard_checks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Scorecard Checks",
+      "type": "array"
+    },
+    "scorecard_thresholds": {
+      "additionalProperties": {
+        "$ref": "#/$defs/CheckThresholds"
+      },
+      "title": "Scorecard Thresholds",
+      "type": "object"
+    },
+    "spec_template": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Spec Template",
+      "type": "object"
+    },
+    "tasks": {
+      "items": {
+        "enum": [
+          "whatif",
+          "forecast",
+          "counterfactual",
+          "business_priors",
+          "lift_tests"
+        ],
+        "type": "string"
+      },
+      "title": "Tasks",
+      "type": "array"
+    },
+    "title": {
+      "maxLength": 120,
+      "title": "Title",
+      "type": "string"
+    },
+    "ui_levels": {
+      "additionalProperties": {
+        "enum": [
+          "basic",
+          "advanced",
+          "hidden"
+        ],
+        "type": "string"
+      },
+      "title": "Ui Levels",
+      "type": "object"
+    },
+    "version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "description_plain",
+    "family",
+    "plugin",
+    "questions",
+    "spec_template"
+  ],
+  "title": "GuidedTemplate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

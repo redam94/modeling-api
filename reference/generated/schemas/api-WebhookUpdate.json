@@ -1,0 +1,91 @@
+{
+  "$defs": {
+    "WebhookEventType": {
+      "enum": [
+        "run.succeeded",
+        "run.failed",
+        "model.version.ready",
+        "endpoint.promoted",
+        "score.completed",
+        "tenant.deletion.completed"
+      ],
+      "title": "WebhookEventType",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-WebhookUpdate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PATCH /v1/webhooks/{webhook_id}`` (re-activating resets the failure count).",
+  "examples": [
+    {
+      "active": true
+    },
+    {
+      "events": [
+        "score.completed"
+      ]
+    }
+  ],
+  "properties": {
+    "active": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Active"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "events": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/WebhookEventType"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Events"
+    },
+    "url": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 9,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Url"
+    }
+  },
+  "title": "WebhookUpdate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

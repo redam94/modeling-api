@@ -1,0 +1,173 @@
+{
+  "$defs": {
+    "ExecutionBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "resource_class": {
+          "$ref": "#/$defs/ResourceClass",
+          "default": "S"
+        },
+        "timeout": {
+          "description": "Duration such as '45m', '1h30m' or '90s'.",
+          "examples": [
+            "45m",
+            "1h30m"
+          ],
+          "pattern": "^(?=.)(\\d+h)?(\\d+m)?(\\d+s)?$",
+          "title": "Timeout",
+          "type": "string"
+        }
+      },
+      "title": "ExecutionBlock",
+      "type": "object"
+    },
+    "Metadata": {
+      "additionalProperties": false,
+      "description": "Identity and labels of a document.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "labels": {
+          "maxProperties": 64,
+          "patternProperties": {
+            "^[a-z0-9]([a-z0-9_.\\-/]{0,62})$": {
+              "maxLength": 63,
+              "pattern": "^[A-Za-z0-9_.\\-]*$",
+              "type": "string"
+            }
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "name": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+          "title": "Name",
+          "type": "string"
+        },
+        "project": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+          "title": "Project",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "project"
+      ],
+      "title": "Metadata",
+      "type": "object"
+    },
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/campaign.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A plugin-owned fit\u2192recommend loop (e.g. Bayesian optimisation) in one sandbox run.",
+  "properties": {
+    "apiVersion": {
+      "const": "mapi/v1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "base": {
+      "description": "Spec revision spec://project/name@rN",
+      "pattern": "^spec://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)@(r\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64})$",
+      "title": "Base",
+      "type": "string"
+    },
+    "batch_size": {
+      "default": 1,
+      "maximum": 1000,
+      "minimum": 1,
+      "title": "Batch Size",
+      "type": "integer"
+    },
+    "candidates": {
+      "anyOf": [
+        {
+          "description": "Dataset reference dataset://project/name@version",
+          "examples": [
+            "dataset://growth/eu_media_daily@latest"
+          ],
+          "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Candidates"
+    },
+    "execution": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExecutionBlock"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "kind": {
+      "const": "Campaign",
+      "title": "Kind",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/Metadata"
+    },
+    "rounds": {
+      "maximum": 1000,
+      "minimum": 1,
+      "title": "Rounds",
+      "type": "integer"
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Seed"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "base",
+    "rounds"
+  ],
+  "title": "Campaign",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

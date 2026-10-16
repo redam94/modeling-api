@@ -1,0 +1,49 @@
+{
+  "$defs": {
+    "VerificationMethod": {
+      "enum": [
+        "none",
+        "email",
+        "card",
+        "document",
+        "manual"
+      ],
+      "title": "VerificationMethod",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-VerificationUpdate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PUT /v1/admin/tenants/{tenant_id}/verification`` (operators; audited).",
+  "examples": [
+    {
+      "identity_verified": true,
+      "method": "manual",
+      "reason": "signed enterprise contract"
+    }
+  ],
+  "properties": {
+    "identity_verified": {
+      "title": "Identity Verified",
+      "type": "boolean"
+    },
+    "method": {
+      "$ref": "#/$defs/VerificationMethod"
+    },
+    "reason": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "identity_verified",
+    "method",
+    "reason"
+  ],
+  "title": "VerificationUpdate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

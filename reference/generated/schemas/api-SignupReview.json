@@ -1,0 +1,225 @@
+{
+  "$defs": {
+    "SignupReviewState": {
+      "description": "The operators' review of a sign-up (Sybil heuristics flag, operators decide).",
+      "enum": [
+        "none",
+        "flagged",
+        "approved",
+        "rejected"
+      ],
+      "title": "SignupReviewState",
+      "type": "string"
+    },
+    "SignupState": {
+      "description": "Where one sign-up is: waiting for its e-mail link, done, or never completed.",
+      "enum": [
+        "pending",
+        "verified",
+        "expired"
+      ],
+      "title": "SignupState",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-SignupReview.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET /v1/admin/signups`` (operators): one sign-up and why it was flagged.\n\nClient addresses and browsers appear only as keyed digests (``ip_hash``,\n``device_hash``), never raw; e-mail addresses are shown to operators for the review.",
+  "examples": [
+    {
+      "created_at": "2026-10-15T09:00:00Z",
+      "email": "ana@acme.example",
+      "email_domain": "acme.example",
+      "expires_at": "2026-10-16T09:00:00Z",
+      "flags": [
+        "same_ip"
+      ],
+      "id": "sgn_01jaf3s1t2v3w4x5y6z7a8b9c0",
+      "ip_hash": "3f7a0c9e1b2d4f6a8c0e2b4d6f8a0c2e",
+      "name": "Ana Analyst",
+      "organisation": "Acme Retail",
+      "reasons_plain": [
+        "Several workspaces were created from the same network address"
+      ],
+      "review": "flagged",
+      "state": "verified",
+      "tenant_id": "acme-retail",
+      "verified_at": "2026-10-15T09:30:00Z"
+    }
+  ],
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "device_hash": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Device Hash"
+    },
+    "email": {
+      "maxLength": 320,
+      "title": "Email",
+      "type": "string"
+    },
+    "email_domain": {
+      "maxLength": 255,
+      "title": "Email Domain",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "flags": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 4,
+      "title": "Flags",
+      "type": "array"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "ip_hash": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ip Hash"
+    },
+    "name": {
+      "maxLength": 200,
+      "title": "Name",
+      "type": "string"
+    },
+    "organisation": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Organisation"
+    },
+    "reasons_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 4,
+      "title": "Reasons Plain",
+      "type": "array"
+    },
+    "review": {
+      "$ref": "#/$defs/SignupReviewState",
+      "default": "none"
+    },
+    "review_reason": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Review Reason"
+    },
+    "reviewed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reviewed At"
+    },
+    "reviewed_by": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reviewed By"
+    },
+    "state": {
+      "$ref": "#/$defs/SignupState"
+    },
+    "tenant_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The tenant the verification created",
+      "title": "Tenant Id"
+    },
+    "verified_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Verified At"
+    }
+  },
+  "required": [
+    "id",
+    "email",
+    "email_domain",
+    "name",
+    "state",
+    "created_at",
+    "expires_at"
+  ],
+  "title": "SignupReview",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

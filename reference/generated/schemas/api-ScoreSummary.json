@@ -1,0 +1,123 @@
+{
+  "$defs": {
+    "ScoreSummaryTable": {
+      "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.",
+      "examples": [
+        {
+          "columns": [
+            "geo",
+            "time",
+            "mean",
+            "hdi_90_lower",
+            "hdi_90_upper"
+          ],
+          "rows": [
+            [
+              "de",
+              "2026-01-05",
+              1520.4,
+              1402.1,
+              1633.9
+            ]
+          ],
+          "variable": "revenue"
+        }
+      ],
+      "properties": {
+        "columns": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 256,
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "title": "Rows",
+          "type": "array"
+        },
+        "variable": {
+          "maxLength": 256,
+          "title": "Variable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "variable",
+        "columns",
+        "rows"
+      ],
+      "title": "ScoreSummaryTable",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ScoreSummary.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The requested summary of a score run as plain tables (``summary.json``), inlined in\n:class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without\nzarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the\n``score.zarr.zip`` output for everything).",
+  "examples": [
+    {
+      "tables": [
+        {
+          "columns": [
+            "geo",
+            "time",
+            "mean",
+            "hdi_90_lower",
+            "hdi_90_upper"
+          ],
+          "rows": [
+            [
+              "de",
+              "2026-01-05",
+              1520.4,
+              1402.1,
+              1633.9
+            ]
+          ],
+          "variable": "revenue"
+        }
+      ],
+      "truncated": false
+    }
+  ],
+  "properties": {
+    "tables": {
+      "items": {
+        "$ref": "#/$defs/ScoreSummaryTable"
+      },
+      "maxItems": 1000,
+      "title": "Tables",
+      "type": "array"
+    },
+    "truncated": {
+      "default": false,
+      "title": "Truncated",
+      "type": "boolean"
+    }
+  },
+  "title": "ScoreSummary",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,27 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-SignupAccepted.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``202`` of ``POST /auth/signup``: identical for new and known addresses.",
+  "examples": [
+    {
+      "expires_in_s": 86400,
+      "status": "check_email"
+    }
+  ],
+  "properties": {
+    "expires_in_s": {
+      "default": 86400,
+      "title": "Expires In S",
+      "type": "integer"
+    },
+    "status": {
+      "const": "check_email",
+      "default": "check_email",
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "title": "SignupAccepted",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,144 @@
+{
+  "$defs": {
+    "UserPrincipal": {
+      "additionalProperties": false,
+      "description": "A person authenticated by OIDC. ``(issuer, subject)`` is the stable identity; the\nplatform id ``usr_\u2026`` is assigned at first login.",
+      "properties": {
+        "email": {
+          "anyOf": [
+            {
+              "maxLength": 320,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Email"
+        },
+        "email_verified": {
+          "default": false,
+          "title": "Email Verified",
+          "type": "boolean"
+        },
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "issuer": {
+          "pattern": "^https://[^\\s]{1,500}$",
+          "title": "Issuer",
+          "type": "string"
+        },
+        "kind": {
+          "const": "user",
+          "default": "user",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "subject": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "issuer",
+        "subject"
+      ],
+      "title": "UserPrincipal",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-SessionInfo.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET /auth/session``: is the browser signed in, as whom, until when.",
+  "examples": [
+    {
+      "authenticated": true,
+      "expires_at": "2026-10-15T21:30:00Z",
+      "login_url": "/auth/login",
+      "operator": false,
+      "principal": {
+        "email": "ana@acme.example",
+        "email_verified": true,
+        "id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+        "issuer": "https://accounts.google.com",
+        "kind": "user",
+        "name": "Ana Analyst",
+        "subject": "110169484474386276334"
+      }
+    },
+    {
+      "authenticated": false,
+      "login_url": "/auth/login"
+    }
+  ],
+  "properties": {
+    "authenticated": {
+      "title": "Authenticated",
+      "type": "boolean"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expires At"
+    },
+    "login_url": {
+      "default": "/auth/login",
+      "description": "Where to send the browser to sign in",
+      "title": "Login Url",
+      "type": "string"
+    },
+    "operator": {
+      "default": false,
+      "title": "Operator",
+      "type": "boolean"
+    },
+    "principal": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/UserPrincipal"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "authenticated"
+  ],
+  "title": "SessionInfo",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

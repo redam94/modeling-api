@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "Role": {
+      "description": "What a variable means to a model.",
+      "enum": [
+        "target",
+        "covariate",
+        "media",
+        "spend",
+        "control",
+        "index",
+        "mask",
+        "constant",
+        "weight",
+        "exposure"
+      ],
+      "title": "Role",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-VarMapping.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A data variable read from one column (dtype is inferred during ingest).",
+  "examples": [
+    {
+      "column": "revenue",
+      "role": "target",
+      "units": "EUR"
+    }
+  ],
+  "properties": {
+    "column": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Column",
+      "type": "string"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "missing": {
+      "default": "forbid",
+      "enum": [
+        "forbid",
+        "allow",
+        "mask"
+      ],
+      "title": "Missing",
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/Role",
+      "default": "covariate"
+    },
+    "units": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Units"
+    }
+  },
+  "required": [
+    "column"
+  ],
+  "title": "VarMapping",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

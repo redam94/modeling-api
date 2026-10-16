@@ -1,0 +1,402 @@
+{
+  "$defs": {
+    "BayesInsightMetadata": {
+      "description": "BayesInsight's ``metadata.json`` (``{\"metadata\": {...}}`` is accepted too).\n\n``row_ids`` are the MFF key columns the model is indexed by (``Period`` always last);\nthe key columns *not* in ``row_ids`` are aggregated away and suffix variable names\n(``Promotion_Total_Total_Total``).",
+      "properties": {
+        "allowed_campaigns": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allowed Campaigns"
+        },
+        "allowed_creatives": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allowed Creatives"
+        },
+        "allowed_geos": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allowed Geos"
+        },
+        "allowed_outlets": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allowed Outlets"
+        },
+        "allowed_products": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allowed Products"
+        },
+        "end_period": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Period"
+        },
+        "necessary_variables": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 4096,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Necessary Variables"
+        },
+        "periodicity": {
+          "default": "Weekly",
+          "enum": [
+            "Weekly",
+            "Daily"
+          ],
+          "title": "Periodicity",
+          "type": "string"
+        },
+        "row_ids": {
+          "default": [
+            "Period"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "title": "Row Ids",
+          "type": "array"
+        },
+        "start_period": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Period"
+        }
+      },
+      "title": "BayesInsightMetadata",
+      "type": "object"
+    },
+    "BayesInsightModelDef": {
+      "description": "BayesInsight's ``model_def.json``. ``artifact``, ``fitted`` and ``VOF`` describe a\nlocal fit and are ignored by the import.",
+      "properties": {
+        "VOF": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "artifact": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact"
+        },
+        "fitted": {
+          "default": false,
+          "title": "Fitted",
+          "type": "boolean"
+        },
+        "variable_details": {
+          "items": {
+            "$ref": "#/$defs/BayesInsightVariable"
+          },
+          "maxItems": 1024,
+          "minItems": 1,
+          "title": "Variable Details",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variable_details"
+      ],
+      "title": "BayesInsightModelDef",
+      "type": "object"
+    },
+    "BayesInsightVariable": {
+      "additionalProperties": true,
+      "description": "One entry of ``model_def.json``'s ``variable_details``.\n\nThe fields the import interprets are typed; everything else (priors, transforms,\nlikelihood parameters) is kept verbatim for the ``mmm.bayesinsight`` plugin, which\nvalidates it in the sandbox.",
+      "properties": {
+        "fixed_ind_coeff_dims": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 6,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fixed Ind Coeff Dims"
+        },
+        "normalization": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalization"
+        },
+        "random_coeff_dims": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 6,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Random Coeff Dims"
+        },
+        "sign": {
+          "anyOf": [
+            {
+              "enum": [
+                "positive",
+                "negative"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sign"
+        },
+        "variable_name": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Variable Name",
+          "type": "string"
+        },
+        "variable_type": {
+          "enum": [
+            "control",
+            "media",
+            "exog",
+            "localtrend",
+            "season"
+          ],
+          "title": "Variable Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "variable_name",
+        "variable_type"
+      ],
+      "title": "BayesInsightVariable",
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-BayesInsightImport.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/guided/import/bayesinsight``: a BayesInsight project as a draft (Q8: an\ningest adapter plus the ``mmm.bayesinsight`` plugin, not a separate spec kind).",
+  "examples": [
+    {
+      "dataset": "bi_mff",
+      "format": "mff",
+      "metadata": {
+        "allowed_campaigns": [
+          "Total"
+        ],
+        "allowed_creatives": [
+          "Total"
+        ],
+        "allowed_geos": [
+          "US",
+          "DE"
+        ],
+        "allowed_outlets": [
+          "Total"
+        ],
+        "allowed_products": [
+          "Total"
+        ],
+        "periodicity": "Weekly",
+        "row_ids": [
+          "Geography",
+          "Product",
+          "Period"
+        ]
+      },
+      "model_def": {
+        "variable_details": [
+          {
+            "likelihood": {
+              "type": "Normal"
+            },
+            "variable_name": "Sales_Total_Total_Total",
+            "variable_type": "exog"
+          },
+          {
+            "adstock": "delayed",
+            "media_transform": "hill",
+            "variable_name": "TV_Total_Total_Total",
+            "variable_type": "media"
+          },
+          {
+            "variable_name": "annual_seasonality",
+            "variable_type": "season"
+          }
+        ]
+      },
+      "name": "bi-import"
+    }
+  ],
+  "properties": {
+    "dataset": {
+      "description": "Name of the dataset the MFF upload becomes",
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+      "title": "Dataset",
+      "type": "string"
+    },
+    "format": {
+      "default": "mff",
+      "enum": [
+        "csv",
+        "parquet",
+        "mff"
+      ],
+      "title": "Format",
+      "type": "string"
+    },
+    "holdout_periods": {
+      "default": 8,
+      "maximum": 104,
+      "minimum": 1,
+      "title": "Holdout Periods",
+      "type": "integer"
+    },
+    "metadata": {
+      "$ref": "#/$defs/BayesInsightMetadata"
+    },
+    "model_def": {
+      "$ref": "#/$defs/BayesInsightModelDef"
+    },
+    "name": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+      "title": "Name",
+      "type": "string"
+    },
+    "target": {
+      "default": "mmm.hierarchical_geo",
+      "description": "M3: the plugin to import for. mmm.hierarchical_geo (default) maps every feature with an equivalent and warns about the rest (mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight runs model_def as BayesInsight defines it (likelihoods, priors in KPI units, curves, carry-over, signs, random effects, seasons, local trends) and warns about what it cannot run",
+      "enum": [
+        "mmm.hierarchical_geo",
+        "mmm.bayesinsight"
+      ],
+      "title": "Target",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "dataset",
+    "model_def",
+    "metadata"
+  ],
+  "title": "BayesInsightImport",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

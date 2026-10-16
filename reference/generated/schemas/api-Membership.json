@@ -1,0 +1,135 @@
+{
+  "$defs": {
+    "ProjectRole": {
+      "description": "Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last).",
+      "enum": [
+        "viewer",
+        "editor",
+        "runner",
+        "admin"
+      ],
+      "title": "ProjectRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-Membership.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A role grant. ``project_id=None`` grants the role on the tenant and every project.",
+  "examples": [
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "created_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0",
+      "display_name": "Ana Analyst",
+      "email": "ana@acme.example",
+      "principal_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "principal_kind": "user",
+      "project_id": "growth",
+      "role": "runner",
+      "tenant_id": "acme"
+    },
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "email": "it@acme.example",
+      "principal_id": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0",
+      "project_id": null,
+      "role": "admin",
+      "tenant_id": "acme"
+    }
+  ],
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Created By"
+    },
+    "display_name": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Display Name"
+    },
+    "email": {
+      "anyOf": [
+        {
+          "maxLength": 320,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Email"
+    },
+    "principal_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Principal Id",
+      "type": "string"
+    },
+    "principal_kind": {
+      "default": "user",
+      "enum": [
+        "user",
+        "service_account"
+      ],
+      "title": "Principal Kind",
+      "type": "string"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "role": {
+      "$ref": "#/$defs/ProjectRole"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "principal_id",
+    "role",
+    "created_at"
+  ],
+  "title": "Membership",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

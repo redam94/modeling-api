@@ -1,0 +1,300 @@
+{
+  "$defs": {
+    "DistributionSummary": {
+      "description": "A distribution in business units: mean, sd and named quantiles (``\"0.05\"`` \u2026).",
+      "examples": [
+        {
+          "mean": 2.6,
+          "quantiles": {
+            "0.05": 1.5,
+            "0.5": 2.5,
+            "0.95": 4.1
+          },
+          "sd": 0.8
+        }
+      ],
+      "properties": {
+        "mean": {
+          "title": "Mean",
+          "type": "number"
+        },
+        "quantiles": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "maxProperties": 32,
+          "title": "Quantiles",
+          "type": "object"
+        },
+        "sd": {
+          "minimum": 0,
+          "title": "Sd",
+          "type": "number"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "mean",
+        "sd"
+      ],
+      "title": "DistributionSummary",
+      "type": "object"
+    },
+    "FanChart": {
+      "description": "Quantile bands of a series along one dim (a KPI fan): ``values[i][j]`` is quantile\n``quantiles[i]`` at ``coords[j]``. ``observed`` (if any) is the data over ``coords``.",
+      "examples": [
+        {
+          "coords": [
+            "2026-01-04",
+            "2026-01-11"
+          ],
+          "dim": "time",
+          "observed": [
+            101.0,
+            99.5
+          ],
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "units": "kEUR",
+          "values": [
+            [
+              80.0,
+              82.0
+            ],
+            [
+              100.0,
+              103.0
+            ],
+            [
+              125.0,
+              129.0
+            ]
+          ]
+        }
+      ],
+      "properties": {
+        "coords": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "maxItems": 10000,
+          "title": "Coords",
+          "type": "array"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "observed": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed"
+        },
+        "quantiles": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Quantiles",
+          "type": "array"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "values": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "maxItems": 16,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "dim",
+        "coords",
+        "quantiles",
+        "values"
+      ],
+      "title": "FanChart",
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/counterfactualview.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``ui/guided/counterfactual.json``: how a counterfactual changed the KPI.\n\n``delta_total`` is ``scenario - baseline`` summed over every period and ``summed_over``\ndims per posterior draw (common random numbers keep the difference precise);\n``delta_fan`` gives the change per period along ``dim``. ``interventions`` echo the\nrequest's (``var``, ``sel``, ``multiply``/``add``/``set``).",
+  "properties": {
+    "baseline_total": {
+      "$ref": "#/$defs/DistributionSummary"
+    },
+    "delta_fan": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FanChart"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "delta_share": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DistributionSummary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "delta_total / baseline_total per draw (None if the baseline is 0)"
+    },
+    "delta_total": {
+      "$ref": "#/$defs/DistributionSummary"
+    },
+    "dim": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Dim"
+    },
+    "format": {
+      "const": "mapi.counterfactual/v1",
+      "default": "mapi.counterfactual/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "interventions": {
+      "items": {
+        "additionalProperties": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "type": "object"
+      },
+      "maxItems": 64,
+      "title": "Interventions",
+      "type": "array"
+    },
+    "kind": {
+      "default": "expected",
+      "enum": [
+        "expected",
+        "predictive"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "kpi": {
+      "maxLength": 128,
+      "title": "Kpi",
+      "type": "string"
+    },
+    "scenario_total": {
+      "$ref": "#/$defs/DistributionSummary"
+    },
+    "summed_over": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 32,
+      "title": "Summed Over",
+      "type": "array"
+    },
+    "units": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Units"
+    }
+  },
+  "required": [
+    "kpi",
+    "scenario_total",
+    "baseline_total",
+    "delta_total"
+  ],
+  "title": "CounterfactualView",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

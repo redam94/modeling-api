@@ -1,0 +1,1073 @@
+{
+  "$defs": {
+    "ArtifactLink": {
+      "description": "A short-lived, generation-pinned signed GET URL for one artifact (HTTP Range works).",
+      "examples": [
+        {
+          "content_type": "application/zip",
+          "crc32c": "4waSgw==",
+          "expires_at": "2026-10-15T09:45:00Z",
+          "generation": 7,
+          "name": "bundle.zarr.zip",
+          "size": 2097152,
+          "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault%2Fmodels%2Fmdl_01%2F1%2Fbundle.zarr.zip?generation=7&X-Goog-Signature=\u2026"
+        }
+      ],
+      "properties": {
+        "content_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Type"
+        },
+        "crc32c": {
+          "description": "CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum",
+          "examples": [
+            "4waSgw=="
+          ],
+          "pattern": "^[A-Za-z0-9+/]{6}==$",
+          "title": "Crc32C",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "generation": {
+          "minimum": 1,
+          "title": "Generation",
+          "type": "integer"
+        },
+        "method": {
+          "const": "GET",
+          "default": "GET",
+          "title": "Method",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 1024,
+          "title": "Name",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "url",
+        "expires_at",
+        "size",
+        "crc32c",
+        "generation"
+      ],
+      "title": "ArtifactLink",
+      "type": "object"
+    },
+    "ChainProgress": {
+      "additionalProperties": false,
+      "description": "Per-chain sampler progress (Expert run view).",
+      "properties": {
+        "chain": {
+          "minimum": 0,
+          "title": "Chain",
+          "type": "integer"
+        },
+        "divergences": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Divergences",
+          "type": "integer"
+        },
+        "draws_done": {
+          "minimum": 0,
+          "title": "Draws Done",
+          "type": "integer"
+        },
+        "draws_total": {
+          "minimum": 0,
+          "title": "Draws Total",
+          "type": "integer"
+        },
+        "tuning": {
+          "default": false,
+          "title": "Tuning",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "chain",
+        "draws_done",
+        "draws_total"
+      ],
+      "title": "ChainProgress",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "FailureClass": {
+      "description": "Why a run ended ``FAILED``; each maps to one stable :class:`ErrorCode`.",
+      "enum": [
+        "user",
+        "resource_exhausted",
+        "infra",
+        "integrity",
+        "timeout",
+        "sandbox"
+      ],
+      "title": "FailureClass",
+      "type": "string"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Problem": {
+      "additionalProperties": false,
+      "description": "RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/Issue"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "instance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Instance"
+        },
+        "status": {
+          "maximum": 599,
+          "minimum": 100,
+          "title": "Status",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "trace_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trace Id"
+        },
+        "type": {
+          "default": "about:blank",
+          "title": "Type",
+          "type": "string"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 65536,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "title",
+        "status",
+        "code"
+      ],
+      "title": "Problem",
+      "type": "object"
+    },
+    "ProgressSnapshot": {
+      "description": "Latest coalesced progress (one upserted row per run).",
+      "examples": [
+        {
+          "chains": [
+            {
+              "chain": 0,
+              "divergences": 0,
+              "draws_done": 400,
+              "draws_total": 1000
+            },
+            {
+              "chain": 1,
+              "divergences": 1,
+              "draws_done": 380,
+              "draws_total": 1000
+            }
+          ],
+          "eta_seconds": 95,
+          "fraction": 0.4,
+          "message": "drawing samples",
+          "phase": "sample",
+          "seq": 42,
+          "updated_at": "2026-10-15T09:30:00Z"
+        }
+      ],
+      "properties": {
+        "chains": {
+          "items": {
+            "$ref": "#/$defs/ChainProgress"
+          },
+          "title": "Chains",
+          "type": "array"
+        },
+        "eta_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eta Seconds"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "phase": {
+          "$ref": "#/$defs/RunnerPhase"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seq",
+        "phase",
+        "updated_at"
+      ],
+      "title": "ProgressSnapshot",
+      "type": "object"
+    },
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    },
+    "Run": {
+      "description": "A unit of work and its lifecycle (see the state machine in ``mapi_spec.run``).",
+      "examples": [
+        {
+          "attempt": 1,
+          "cost": {
+            "estimated": true
+          },
+          "created_at": "2026-10-15T09:30:00Z",
+          "executor": "local-process",
+          "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+          "kind": "fit",
+          "progress": {
+            "chains": [
+              {
+                "chain": 0,
+                "divergences": 0,
+                "draws_done": 400,
+                "draws_total": 1000
+              },
+              {
+                "chain": 1,
+                "divergences": 1,
+                "draws_done": 380,
+                "draws_total": 1000
+              }
+            ],
+            "eta_seconds": 95,
+            "fraction": 0.4,
+            "message": "drawing samples",
+            "phase": "sample",
+            "seq": 42,
+            "updated_at": "2026-10-15T09:30:00Z"
+          },
+          "project_id": "default",
+          "queued_at": "2026-10-15T09:30:00Z",
+          "resource_class": "M",
+          "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+          "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+          "spec_revision": 2,
+          "started_at": "2026-10-15T09:30:05Z",
+          "state": "running",
+          "tenant_id": "default",
+          "timeout": "45m",
+          "updated_at": "2026-10-15T09:31:00Z"
+        },
+        {
+          "attempt": 1,
+          "created_at": "2026-10-15T09:30:00Z",
+          "failure_class": "resource_exhausted",
+          "finished_at": "2026-10-15T09:40:00Z",
+          "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+          "kind": "fit",
+          "problem": {
+            "code": "RESOURCE_EXHAUSTED",
+            "detail": "the worker was killed (exit 137); retry at class L",
+            "status": 507,
+            "title": "Run exhausted its resources",
+            "type": "urn:mapi:error:RESOURCE_EXHAUSTED"
+          },
+          "project_id": "default",
+          "resource_class": "M",
+          "state": "failed",
+          "tenant_id": "default",
+          "timeout": "45m",
+          "updated_at": "2026-10-15T09:40:00Z"
+        }
+      ],
+      "properties": {
+        "attempt": {
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "cost": {
+          "$ref": "#/$defs/RunCost"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "dataset_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dataset Id"
+        },
+        "executor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Executor"
+        },
+        "failure_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FailureClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RunKind"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "model_version_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version Id"
+        },
+        "output_model_version_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The model version a successful fit produced",
+          "title": "Output Model Version Id"
+        },
+        "parent_run_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Run Id"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Problem"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "progress": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProgressSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "queued_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Queued At"
+        },
+        "resource_class": {
+          "$ref": "#/$defs/ResourceClass"
+        },
+        "retry_of": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retry Of"
+        },
+        "spec_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spec Hash"
+        },
+        "spec_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spec Id"
+        },
+        "spec_revision": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spec Revision"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "state": {
+          "$ref": "#/$defs/RunState"
+        },
+        "tenant_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Duration such as '45m', '1h30m' or '90s'.",
+          "examples": [
+            "45m",
+            "1h30m"
+          ],
+          "pattern": "^(?=.)(\\d+h)?(\\d+m)?(\\d+s)?$",
+          "title": "Timeout",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "tenant_id",
+        "project_id",
+        "kind",
+        "state",
+        "attempt",
+        "resource_class",
+        "timeout",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "Run",
+      "type": "object"
+    },
+    "RunCost": {
+      "description": "Cost of a run (all attempts). ``estimated`` is true until an ``actual`` ledger entry\nexists; ``usd`` is kept for v0.2 clients and is set only when the currency is USD.",
+      "examples": [
+        {
+          "estimated": true,
+          "gib_seconds": null,
+          "usd": null,
+          "vcpu_seconds": null
+        },
+        {
+          "amount_micros": 31200,
+          "attempts_billed": 1,
+          "currency": "USD",
+          "estimate_micros": 30000,
+          "estimated": false,
+          "gib_seconds": 4800,
+          "price_version": "cloudrun-list-2026-10",
+          "usd": 0.0312,
+          "vcpu_seconds": 1200
+        }
+      ],
+      "properties": {
+        "amount_micros": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount Micros"
+        },
+        "attempts_billed": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Attempts Billed",
+          "type": "integer"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "estimate_micros": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pre-run estimate",
+          "title": "Estimate Micros"
+        },
+        "estimated": {
+          "default": true,
+          "title": "Estimated",
+          "type": "boolean"
+        },
+        "gib_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gib Seconds"
+        },
+        "price_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Price Version"
+        },
+        "usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Usd"
+        },
+        "vcpu_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vcpu Seconds"
+        }
+      },
+      "title": "RunCost",
+      "type": "object"
+    },
+    "RunKind": {
+      "description": "What a run does. ``validate`` is the explicit sandboxed dry-run of a spec.\n\n``sweep``, ``backtest``, ``sbc`` and ``campaign`` are fan-out *parents* (plan \u00a76.2,\nM4): they own child runs and never execute on an executor themselves.",
+      "enum": [
+        "ingest",
+        "describe",
+        "validate",
+        "fit",
+        "score",
+        "evaluate",
+        "derive",
+        "render",
+        "optimize",
+        "sweep",
+        "backtest",
+        "sbc",
+        "campaign",
+        "translate_priors"
+      ],
+      "title": "RunKind",
+      "type": "string"
+    },
+    "RunState": {
+      "description": "Lifecycle of a run (plan \u00a78.3). Terminal states never change again, except that a\n``PARTIAL`` run can be resumed (``RESUME`` \u2192 ``QUEUED`` with a new attempt).",
+      "enum": [
+        "created",
+        "rejected",
+        "queued",
+        "dispatching",
+        "provisioning",
+        "running",
+        "stalled",
+        "finalizing",
+        "succeeded",
+        "partial",
+        "failed",
+        "cancelling",
+        "cancelled"
+      ],
+      "title": "RunState",
+      "type": "string"
+    },
+    "RunnerPhase": {
+      "description": "Coarse phase reported by the runner (drives progress text in the UI).",
+      "enum": [
+        "bootstrap",
+        "load_inputs",
+        "validate",
+        "preprocess",
+        "fit",
+        "sample",
+        "score",
+        "evaluate",
+        "derive",
+        "plots",
+        "upload",
+        "done"
+      ],
+      "title": "RunnerPhase",
+      "type": "string"
+    },
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-PlotRender.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``POST /v1/plots:render`` (``Prefer: wait=N``) and ``GET /v1/plots/renders/{run_id}``:\nthe ``render`` run and, when done, signed links to ``renders/<plot>.<format>``.",
+  "examples": [
+    {
+      "done": true,
+      "format": "pdf",
+      "outputs": [
+        {
+          "content_type": "application/pdf",
+          "crc32c": "4waSgw==",
+          "expires_at": "2026-10-15T09:45:00Z",
+          "generation": 7,
+          "name": "renders/mmm.response_curves.pdf",
+          "size": 2097152,
+          "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault%2Fmodels%2Fmdl_01%2F1%2Fbundle.zarr.zip?generation=7&X-Goog-Signature=\u2026"
+        }
+      ],
+      "run": {
+        "attempt": 1,
+        "cost": {
+          "estimated": true
+        },
+        "created_at": "2026-10-15T09:30:00Z",
+        "executor": "local-process",
+        "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+        "kind": "render",
+        "progress": null,
+        "project_id": "default",
+        "queued_at": "2026-10-15T09:30:00Z",
+        "resource_class": "M",
+        "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+        "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+        "spec_revision": 2,
+        "started_at": "2026-10-15T09:30:05Z",
+        "state": "succeeded",
+        "tenant_id": "default",
+        "timeout": "45m",
+        "updated_at": "2026-10-15T09:31:00Z"
+      }
+    }
+  ],
+  "properties": {
+    "done": {
+      "title": "Done",
+      "type": "boolean"
+    },
+    "format": {
+      "enum": [
+        "png",
+        "svg",
+        "pdf"
+      ],
+      "title": "Format",
+      "type": "string"
+    },
+    "outputs": {
+      "items": {
+        "$ref": "#/$defs/ArtifactLink"
+      },
+      "title": "Outputs",
+      "type": "array"
+    },
+    "run": {
+      "$ref": "#/$defs/Run"
+    }
+  },
+  "required": [
+    "done",
+    "run",
+    "format"
+  ],
+  "title": "PlotRender",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

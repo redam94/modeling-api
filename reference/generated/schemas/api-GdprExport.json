@@ -1,0 +1,144 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-GdprExport.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An export job; ``download_url`` is a short-lived signed link once ``ready``.",
+  "examples": [
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "download_url": "https://storage.example/exports/exp_01\u2026?X-Goog-Signature=\u2026",
+      "expires_at": "2026-10-16T09:42:00Z",
+      "id": "exp_01jaf3r1s2t3v4w5x6y7z8a9b0",
+      "include": [
+        "metadata",
+        "datasets",
+        "models",
+        "audit",
+        "usage"
+      ],
+      "ready_at": "2026-10-15T09:42:00Z",
+      "requested_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "size_bytes": 73400320,
+      "state": "ready",
+      "tenant_id": "acme-retail"
+    }
+  ],
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "download_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Download Url"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expires At"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "include": {
+      "items": {
+        "enum": [
+          "metadata",
+          "datasets",
+          "models",
+          "audit",
+          "usage"
+        ],
+        "type": "string"
+      },
+      "title": "Include",
+      "type": "array"
+    },
+    "ready_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ready At"
+    },
+    "requested_by": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Requested By"
+    },
+    "size_bytes": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Size Bytes"
+    },
+    "state": {
+      "enum": [
+        "queued",
+        "running",
+        "ready",
+        "expired",
+        "failed"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "tenant_id",
+    "state",
+    "include",
+    "created_at"
+  ],
+  "title": "GdprExport",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

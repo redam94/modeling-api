@@ -1,0 +1,167 @@
+{
+  "$defs": {
+    "ScorecardItem": {
+      "examples": [
+        {
+          "code": "RHAT_OK",
+          "message_plain": "All chains converged to the same answer.",
+          "metric": "r_hat_max",
+          "status": "pass",
+          "threshold": 1.01,
+          "title": "Chains agree",
+          "value": 1.004
+        }
+      ],
+      "properties": {
+        "code": {
+          "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+          "title": "Code",
+          "type": "string"
+        },
+        "message_expert": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message Expert"
+        },
+        "message_plain": {
+          "maxLength": 2000,
+          "title": "Message Plain",
+          "type": "string"
+        },
+        "metric": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metric"
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "warn",
+            "fail"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        },
+        "title": {
+          "maxLength": 200,
+          "title": "Title",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "code",
+        "status",
+        "title",
+        "message_plain"
+      ],
+      "title": "ScorecardItem",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-Scorecard.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Sanity scorecard: convergence, holdout error and plausibility checks rolled up.",
+  "examples": [
+    {
+      "items": [
+        {
+          "code": "RHAT_OK",
+          "message_plain": "All chains converged to the same answer.",
+          "metric": "r_hat_max",
+          "status": "pass",
+          "threshold": 1.01,
+          "title": "Chains agree",
+          "value": 1.004
+        },
+        {
+          "code": "HOLDOUT_MAPE",
+          "message_plain": "Forecasts were off by 14% on the last 8 weeks.",
+          "metric": "mape",
+          "status": "warn",
+          "suggested_action": "Add holidays or check data for the last weeks.",
+          "threshold": 0.1,
+          "title": "Holdout error",
+          "value": 0.14
+        }
+      ],
+      "overall": "warn"
+    }
+  ],
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/ScorecardItem"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "overall": {
+      "enum": [
+        "pass",
+        "warn",
+        "fail"
+      ],
+      "title": "Overall",
+      "type": "string"
+    }
+  },
+  "required": [
+    "overall"
+  ],
+  "title": "Scorecard",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

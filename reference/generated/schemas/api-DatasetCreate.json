@@ -1,0 +1,50 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-DatasetCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Create an (empty) dataset; data arrives as versions.",
+  "examples": [
+    {
+      "description": "Daily spend and revenue per market",
+      "name": "eu_media_daily"
+    }
+  ],
+  "properties": {
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "labels": {
+      "maxProperties": 64,
+      "patternProperties": {
+        "^[a-z0-9]([a-z0-9_.\\-/]{0,62})$": {
+          "maxLength": 63,
+          "pattern": "^[A-Za-z0-9_.\\-]*$",
+          "type": "string"
+        }
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "name": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+      "title": "Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "DatasetCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

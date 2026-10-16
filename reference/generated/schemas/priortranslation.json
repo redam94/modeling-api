@@ -1,0 +1,585 @@
+{
+  "$defs": {
+    "DistributionSummary": {
+      "description": "A distribution in business units: mean, sd and named quantiles (``\"0.05\"`` \u2026).",
+      "examples": [
+        {
+          "mean": 2.6,
+          "quantiles": {
+            "0.05": 1.5,
+            "0.5": 2.5,
+            "0.95": 4.1
+          },
+          "sd": 0.8
+        }
+      ],
+      "properties": {
+        "mean": {
+          "title": "Mean",
+          "type": "number"
+        },
+        "quantiles": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "maxProperties": 32,
+          "title": "Quantiles",
+          "type": "object"
+        },
+        "sd": {
+          "minimum": 0,
+          "title": "Sd",
+          "type": "number"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "mean",
+        "sd"
+      ],
+      "title": "DistributionSummary",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "FanChart": {
+      "description": "Quantile bands of a series along one dim (a KPI fan): ``values[i][j]`` is quantile\n``quantiles[i]`` at ``coords[j]``. ``observed`` (if any) is the data over ``coords``.",
+      "examples": [
+        {
+          "coords": [
+            "2026-01-04",
+            "2026-01-11"
+          ],
+          "dim": "time",
+          "observed": [
+            101.0,
+            99.5
+          ],
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "units": "kEUR",
+          "values": [
+            [
+              80.0,
+              82.0
+            ],
+            [
+              100.0,
+              103.0
+            ],
+            [
+              125.0,
+              129.0
+            ]
+          ]
+        }
+      ],
+      "properties": {
+        "coords": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "maxItems": 10000,
+          "title": "Coords",
+          "type": "array"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "observed": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed"
+        },
+        "quantiles": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Quantiles",
+          "type": "array"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "values": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "maxItems": 16,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "dim",
+        "coords",
+        "quantiles",
+        "values"
+      ],
+      "title": "FanChart",
+      "type": "object"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "PriorPreview": {
+      "description": "The prior predictive in business units: what the model believes *before* seeing the\nKPI, so users can check that their beliefs came out as intended.",
+      "examples": [
+        {
+          "contribution_share": {
+            "tv": {
+              "mean": 0.12,
+              "quantiles": {
+                "0.05": 0.06,
+                "0.95": 0.19
+              },
+              "sd": 0.04
+            }
+          },
+          "kpi_fan": {
+            "coords": [
+              "2026-01-04",
+              "2026-01-11"
+            ],
+            "dim": "time",
+            "observed": [
+              101.0,
+              99.5
+            ],
+            "quantiles": [
+              0.05,
+              0.5,
+              0.95
+            ],
+            "units": "kEUR",
+            "values": [
+              [
+                80.0,
+                82.0
+              ],
+              [
+                100.0,
+                103.0
+              ],
+              [
+                125.0,
+                129.0
+              ]
+            ]
+          },
+          "roi": {
+            "tv": {
+              "mean": 2.6,
+              "quantiles": {
+                "0.05": 1.5,
+                "0.5": 2.5,
+                "0.95": 4.1
+              },
+              "sd": 0.8
+            }
+          }
+        }
+      ],
+      "properties": {
+        "baseline_share": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DistributionSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "contribution_share": {
+          "additionalProperties": {
+            "$ref": "#/$defs/DistributionSummary"
+          },
+          "maxProperties": 64,
+          "title": "Contribution Share",
+          "type": "object"
+        },
+        "kpi_fan": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FanChart"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "roi": {
+          "additionalProperties": {
+            "$ref": "#/$defs/DistributionSummary"
+          },
+          "maxProperties": 64,
+          "title": "Roi",
+          "type": "object"
+        }
+      },
+      "title": "PriorPreview",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/priortranslation.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``priors.json`` of a ``translate_priors`` run.\n\n``priors`` are model-space priors in the plugin's ``settings.priors`` form (pymc-marketing\n``Prior`` dicts; per-channel parameters are lists in ``channels`` order), to be written\nat :data:`PRIORS_POINTER`. ``coverage`` is the prior mass inside each stated range\n(close to the stated credibility when the translation is faithful).",
+  "examples": [
+    {
+      "channels": [
+        "tv",
+        "search",
+        "social"
+      ],
+      "coverage": {
+        "search": 0.88,
+        "social": 0.81,
+        "tv": 0.79
+      },
+      "draws": 500,
+      "format": "mapi.prior-translation/v1",
+      "preview": {
+        "contribution_share": {
+          "tv": {
+            "mean": 0.12,
+            "quantiles": {
+              "0.05": 0.06,
+              "0.95": 0.19
+            },
+            "sd": 0.04
+          }
+        },
+        "kpi_fan": {
+          "coords": [
+            "2026-01-04",
+            "2026-01-11"
+          ],
+          "dim": "time",
+          "observed": [
+            101.0,
+            99.5
+          ],
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "units": "kEUR",
+          "values": [
+            [
+              80.0,
+              82.0
+            ],
+            [
+              100.0,
+              103.0
+            ],
+            [
+              125.0,
+              129.0
+            ]
+          ]
+        },
+        "roi": {
+          "tv": {
+            "mean": 2.6,
+            "quantiles": {
+              "0.05": 1.5,
+              "0.5": 2.5,
+              "0.95": 4.1
+            },
+            "sd": 0.8
+          }
+        }
+      },
+      "priors": {
+        "beta_channel": {
+          "dims": [
+            "channel"
+          ],
+          "distribution": "LogNormal",
+          "mu": [
+            -1.2,
+            -0.9,
+            -2.1
+          ],
+          "sigma": [
+            0.38,
+            0.33,
+            0.5
+          ]
+        }
+      },
+      "seed": 7
+    }
+  ],
+  "properties": {
+    "channels": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Channels",
+      "type": "array"
+    },
+    "coverage": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "maxProperties": 64,
+      "title": "Coverage",
+      "type": "object"
+    },
+    "draws": {
+      "minimum": 1,
+      "title": "Draws",
+      "type": "integer"
+    },
+    "format": {
+      "const": "mapi.prior-translation/v1",
+      "default": "mapi.prior-translation/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/Issue"
+      },
+      "maxItems": 256,
+      "title": "Issues",
+      "type": "array"
+    },
+    "preview": {
+      "$ref": "#/$defs/PriorPreview"
+    },
+    "priors": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "type": "object"
+      },
+      "maxProperties": 64,
+      "title": "Priors",
+      "type": "object"
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Seed"
+    }
+  },
+  "required": [
+    "channels",
+    "draws"
+  ],
+  "title": "PriorTranslationResult",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

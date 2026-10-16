@@ -1,0 +1,203 @@
+{
+  "$defs": {
+    "Webhook": {
+      "description": "A webhook as listed (never its secret; ``secret_hint`` shows its last 4 characters).",
+      "examples": [
+        {
+          "active": true,
+          "created_at": "2026-10-01T08:00:00Z",
+          "events": [
+            "run.succeeded",
+            "run.failed",
+            "endpoint.promoted"
+          ],
+          "failure_count": 0,
+          "id": "whk_01jaf3h1j2k3m4n5p6q7r8s9t0",
+          "last_delivery_at": "2026-10-15T09:30:00Z",
+          "last_success_at": "2026-10-15T09:30:00Z",
+          "project_id": "growth",
+          "secret_hint": "whsec_\u2026Q2x9",
+          "tenant_id": "acme",
+          "updated_at": "2026-10-15T09:30:00Z",
+          "url": "https://hooks.example.com/mapi"
+        }
+      ],
+      "properties": {
+        "active": {
+          "title": "Active",
+          "type": "boolean"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "disabled_reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Disabled Reason"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/WebhookEventType"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "failure_count": {
+          "default": 0,
+          "description": "Consecutive failed events",
+          "minimum": 0,
+          "title": "Failure Count",
+          "type": "integer"
+        },
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_delivery_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Delivery At"
+        },
+        "last_success_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Success At"
+        },
+        "project_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "secret_hint": {
+          "pattern": "^whsec_\u2026[A-Za-z0-9_-]{4}$",
+          "title": "Secret Hint",
+          "type": "string"
+        },
+        "tenant_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "tenant_id",
+        "project_id",
+        "url",
+        "events",
+        "active",
+        "secret_hint",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "Webhook",
+      "type": "object"
+    },
+    "WebhookEventType": {
+      "enum": [
+        "run.succeeded",
+        "run.failed",
+        "model.version.ready",
+        "endpoint.promoted",
+        "score.completed",
+        "tenant.deletion.completed"
+      ],
+      "title": "WebhookEventType",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-WebhookCreated.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``201`` of ``POST /v1/webhooks`` and ``200`` of ``\u2026:rotate-secret``: the only time the\nsecret is returned. After a rotation the previous secret keeps signing for 24 h.",
+  "examples": [
+    {
+      "secret": "whsec_b3dE5gH7jK9mN1pQ3sT5vW7yZ9bC1dE3fG5hJ7kQ2x9",
+      "webhook": {
+        "active": true,
+        "created_at": "2026-10-01T08:00:00Z",
+        "events": [
+          "run.succeeded",
+          "run.failed",
+          "endpoint.promoted"
+        ],
+        "failure_count": 0,
+        "id": "whk_01jaf3h1j2k3m4n5p6q7r8s9t0",
+        "last_delivery_at": "2026-10-15T09:30:00Z",
+        "last_success_at": "2026-10-15T09:30:00Z",
+        "project_id": "growth",
+        "secret_hint": "whsec_\u2026Q2x9",
+        "tenant_id": "acme",
+        "updated_at": "2026-10-15T09:30:00Z",
+        "url": "https://hooks.example.com/mapi"
+      }
+    }
+  ],
+  "properties": {
+    "secret": {
+      "pattern": "^whsec_[A-Za-z0-9_-]{43}$",
+      "title": "Secret",
+      "type": "string"
+    },
+    "webhook": {
+      "$ref": "#/$defs/Webhook"
+    }
+  },
+  "required": [
+    "webhook",
+    "secret"
+  ],
+  "title": "WebhookCreated",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

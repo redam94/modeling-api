@@ -1,0 +1,104 @@
+{
+  "$defs": {
+    "PubSubMessage": {
+      "description": "The ``message`` of a Pub/Sub push request (both field spellings are accepted).",
+      "properties": {
+        "attributes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Attributes",
+          "type": "object"
+        },
+        "data": {
+          "default": "",
+          "description": "Base64 payload (a Cloud Logging entry for run events)",
+          "title": "Data",
+          "type": "string"
+        },
+        "messageId": {
+          "maxLength": 128,
+          "title": "Messageid",
+          "type": "string"
+        },
+        "orderingKey": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Orderingkey"
+        },
+        "publishTime": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Publishtime"
+        }
+      },
+      "required": [
+        "messageId"
+      ],
+      "title": "PubSubMessage",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-PubSubPushEnvelope.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Body of a Pub/Sub push to ``POST /internal/events``.\n\nUnknown fields are ignored (Google adds fields over time). Authentication is the OIDC\ntoken in ``Authorization``, never anything in the body.",
+  "examples": [
+    {
+      "deliveryAttempt": 1,
+      "message": {
+        "attributes": {
+          "logging.googleapis.com/timestamp": "2026-10-15T09:30:00Z"
+        },
+        "data": "eyJqc29uUGF5bG9hZCI6eyJtYXBpX2V2ZW50Ijp7fX19",
+        "messageId": "9876543210",
+        "publishTime": "2026-10-15T09:30:00Z"
+      },
+      "subscription": "projects/mapi-prod-control/subscriptions/mapi-run-events-push"
+    }
+  ],
+  "properties": {
+    "deliveryAttempt": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Deliveryattempt"
+    },
+    "message": {
+      "$ref": "#/$defs/PubSubMessage"
+    },
+    "subscription": {
+      "pattern": "^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/subscriptions/[A-Za-z][A-Za-z0-9_.~+%-]{2,254}$",
+      "title": "Subscription",
+      "type": "string"
+    }
+  },
+  "required": [
+    "message",
+    "subscription"
+  ],
+  "title": "PubSubPushEnvelope",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

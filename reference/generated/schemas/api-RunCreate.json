@@ -1,0 +1,568 @@
+{
+  "$defs": {
+    "Aggregation": {
+      "additionalProperties": false,
+      "description": "Reduce outputs over dims before summarising (validity depends on representation).",
+      "properties": {
+        "how": {
+          "default": "sum",
+          "enum": [
+            "sum",
+            "mean",
+            "min",
+            "max"
+          ],
+          "title": "How",
+          "type": "string"
+        },
+        "over": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Over",
+          "type": "array"
+        }
+      },
+      "required": [
+        "over"
+      ],
+      "title": "Aggregation",
+      "type": "object"
+    },
+    "Horizon": {
+      "additionalProperties": false,
+      "properties": {
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "periods": {
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Periods",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "dim",
+        "periods"
+      ],
+      "title": "Horizon",
+      "type": "object"
+    },
+    "Intervention": {
+      "additionalProperties": false,
+      "description": "Change ``var`` on the coords selected by ``sel``: exactly one of multiply/add/set.",
+      "properties": {
+        "add": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Add"
+        },
+        "multiply": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Multiply"
+        },
+        "sel": {
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "title": "Sel",
+          "type": "object"
+        },
+        "set": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Set"
+        },
+        "var": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var"
+      ],
+      "title": "Intervention",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "OutputSelector": {
+      "additionalProperties": false,
+      "description": "What a score request returns.",
+      "properties": {
+        "aggregate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Aggregation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "draws": {
+          "default": 0,
+          "maximum": 10000,
+          "minimum": 0,
+          "title": "Draws",
+          "type": "integer"
+        },
+        "kind": {
+          "default": "expected",
+          "enum": [
+            "expected",
+            "predictive"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "names": {
+          "default": "dataset",
+          "enum": [
+            "dataset",
+            "canonical"
+          ],
+          "title": "Names",
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 32,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Summaries to return; default depends on representation",
+          "title": "Summary"
+        },
+        "thin_index": {
+          "const": "bundle",
+          "default": "bundle",
+          "title": "Thin Index",
+          "type": "string"
+        },
+        "units": {
+          "default": "original",
+          "enum": [
+            "original",
+            "model"
+          ],
+          "title": "Units",
+          "type": "string"
+        },
+        "vars": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "title": "Vars",
+          "type": "array"
+        }
+      },
+      "title": "OutputSelector",
+      "type": "object"
+    },
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    },
+    "RunKind": {
+      "description": "What a run does. ``validate`` is the explicit sandboxed dry-run of a spec.\n\n``sweep``, ``backtest``, ``sbc`` and ``campaign`` are fan-out *parents* (plan \u00a76.2,\nM4): they own child runs and never execute on an executor themselves.",
+      "enum": [
+        "ingest",
+        "describe",
+        "validate",
+        "fit",
+        "score",
+        "evaluate",
+        "derive",
+        "render",
+        "optimize",
+        "sweep",
+        "backtest",
+        "sbc",
+        "campaign"
+      ],
+      "title": "RunKind",
+      "type": "string"
+    },
+    "ScoreRequest": {
+      "additionalProperties": false,
+      "description": "Score a fitted model with replayed preprocessing.",
+      "properties": {
+        "apiVersion": {
+          "const": "mapi/v1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "data": {
+          "anyOf": [
+            {
+              "description": "Dataset reference dataset://project/name@version",
+              "examples": [
+                "dataset://growth/eu_media_daily@latest"
+              ],
+              "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Data"
+        },
+        "horizon": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Horizon"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "inputs_stage": {
+          "default": "raw",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Inputs Stage",
+          "type": "string"
+        },
+        "interventions": {
+          "items": {
+            "$ref": "#/$defs/Intervention"
+          },
+          "maxItems": 256,
+          "title": "Interventions",
+          "type": "array"
+        },
+        "kind": {
+          "const": "ScoreRequest",
+          "title": "Kind",
+          "type": "string"
+        },
+        "mode": {
+          "default": "predict",
+          "enum": [
+            "predict",
+            "forecast",
+            "counterfactual",
+            "simulate",
+            "filter",
+            "evaluate"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "model": {
+          "description": "endpoint://project/alias or model://project/name@vN",
+          "pattern": "(?:^endpoint://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)$)|(?:^model://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)@(latest|v\\d{1,9}|\\d{1,9})$)",
+          "title": "Model",
+          "type": "string"
+        },
+        "output": {
+          "$ref": "#/$defs/OutputSelector"
+        },
+        "scenario": {
+          "anyOf": [
+            {
+              "description": "Dataset reference dataset://project/name@version",
+              "examples": [
+                "dataset://growth/eu_media_daily@latest"
+              ],
+              "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scenario"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 4294967296,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "select": {
+          "maxProperties": 64,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          },
+          "title": "Select",
+          "type": "object"
+        },
+        "side_tables": {
+          "maxProperties": 32,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "description": "Dataset reference dataset://project/name@version",
+              "examples": [
+                "dataset://growth/eu_media_daily@latest"
+              ],
+              "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+              "type": "string"
+            }
+          },
+          "title": "Side Tables",
+          "type": "object"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "model"
+      ],
+      "title": "ScoreRequest",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-RunCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Submit a run. Send an ``Idempotency-Key`` header: a retry with the same key and body\nreturns the original run (200); the same key with a different body is 409\n``IDEMPOTENCY_CONFLICT``. Keys are scoped to the project and kept for 24 h.\n\n* ``fit`` / ``validate`` (sandboxed dry-run): ``spec_id`` + ``revision``;\n* ``score``: ``model_version_id`` + ``request``;\n* ``evaluate`` / ``derive`` / ``render``: ``model_version_id`` (+ ``params``).",
+  "examples": [
+    {
+      "kind": "fit",
+      "resource_class": "M",
+      "revision": 2,
+      "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0"
+    },
+    {
+      "kind": "score",
+      "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+      "request": {
+        "apiVersion": "mapi/v1",
+        "horizon": {
+          "dim": "time",
+          "periods": 8
+        },
+        "kind": "ScoreRequest",
+        "mode": "forecast",
+        "model": "model://default/eu-geo-mmm@v1"
+      }
+    }
+  ],
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/RunKind"
+    },
+    "labels": {
+      "maxProperties": 64,
+      "patternProperties": {
+        "^[a-z0-9]([a-z0-9_.\\-/]{0,62})$": {
+          "maxLength": 63,
+          "pattern": "^[A-Za-z0-9_.\\-]*$",
+          "type": "string"
+        }
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "model_version_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Version Id"
+    },
+    "params": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Params",
+      "type": "object"
+    },
+    "request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ScoreRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "resource_class": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResourceClass"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "revision": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Revision"
+    },
+    "spec_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Spec Id"
+    },
+    "timeout": {
+      "anyOf": [
+        {
+          "description": "Duration such as '45m', '1h30m' or '90s'.",
+          "examples": [
+            "45m",
+            "1h30m"
+          ],
+          "pattern": "^(?=.)(\\d+h)?(\\d+m)?(\\d+s)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timeout"
+    }
+  },
+  "required": [
+    "kind"
+  ],
+  "title": "RunCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

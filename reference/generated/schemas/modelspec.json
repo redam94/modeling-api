@@ -1,0 +1,985 @@
+{
+  "$defs": {
+    "AsOfSplit": {
+      "additionalProperties": false,
+      "description": "Train on coords up to and including ``as_of``; hold out the rest (optionally ``gap``).",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+          "title": "After Step"
+        },
+        "allow_leakage": {
+          "default": false,
+          "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+          "title": "Allow Leakage",
+          "type": "boolean"
+        },
+        "as_of": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "title": "As Of"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "gap": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Gap",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "as_of",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "dim",
+        "as_of"
+      ],
+      "title": "AsOfSplit",
+      "type": "object"
+    },
+    "Binding": {
+      "additionalProperties": false,
+      "description": "Canonical name \u2192 dataset name, for dims and variables (``geo: market``).\n\nNames that are not bound keep their dataset name. The binding is stored in the bundle\nand reversed on every output by default.",
+      "properties": {
+        "dims": {
+          "maxProperties": 256,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            }
+          },
+          "title": "Dims",
+          "type": "object"
+        },
+        "vars": {
+          "maxProperties": 4096,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            }
+          },
+          "title": "Vars",
+          "type": "object"
+        }
+      },
+      "title": "Binding",
+      "type": "object"
+    },
+    "Checkpoint": {
+      "additionalProperties": false,
+      "properties": {
+        "every_draws": {
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Every Draws",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "every_draws"
+      ],
+      "title": "Checkpoint",
+      "type": "object"
+    },
+    "DataBlock": {
+      "additionalProperties": false,
+      "description": "The dataset, side tables, binding to canonical names and the split.",
+      "properties": {
+        "bind": {
+          "$ref": "#/$defs/Binding"
+        },
+        "dataset": {
+          "description": "Dataset reference dataset://project/name@version",
+          "examples": [
+            "dataset://growth/eu_media_daily@latest"
+          ],
+          "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+          "title": "Dataset",
+          "type": "string"
+        },
+        "side_tables": {
+          "maxProperties": 32,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/SideTable"
+            }
+          },
+          "title": "Side Tables",
+          "type": "object"
+        },
+        "split": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "as_of": "#/$defs/AsOfSplit",
+                  "last_per_group": "#/$defs/LastPerGroupSplit",
+                  "leave_group_out": "#/$defs/LeaveGroupOutSplit",
+                  "mask_block": "#/$defs/MaskBlockSplit",
+                  "time_holdout": "#/$defs/TimeHoldoutSplit"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TimeHoldoutSplit"
+                },
+                {
+                  "$ref": "#/$defs/LastPerGroupSplit"
+                },
+                {
+                  "$ref": "#/$defs/AsOfSplit"
+                },
+                {
+                  "$ref": "#/$defs/LeaveGroupOutSplit"
+                },
+                {
+                  "$ref": "#/$defs/MaskBlockSplit"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Split"
+        }
+      },
+      "required": [
+        "dataset"
+      ],
+      "title": "DataBlock",
+      "type": "object"
+    },
+    "EvaluateBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "metrics": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Metrics",
+          "type": "array"
+        }
+      },
+      "title": "EvaluateBlock",
+      "type": "object"
+    },
+    "ExecutionBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "resource_class": {
+          "$ref": "#/$defs/ResourceClass",
+          "default": "S"
+        },
+        "timeout": {
+          "description": "Duration such as '45m', '1h30m' or '90s'.",
+          "examples": [
+            "45m",
+            "1h30m"
+          ],
+          "pattern": "^(?=.)(\\d+h)?(\\d+m)?(\\d+s)?$",
+          "title": "Timeout",
+          "type": "string"
+        }
+      },
+      "title": "ExecutionBlock",
+      "type": "object"
+    },
+    "FitConfig": {
+      "additionalProperties": false,
+      "description": "Platform fit settings. Plugin-specific limits come from the manifest's ``fit_schema``.",
+      "properties": {
+        "chains": {
+          "anyOf": [
+            {
+              "maximum": 64,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chains"
+        },
+        "checkpoint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Checkpoint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "draws": {
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Draws"
+        },
+        "engine": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{0,31}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine"
+        },
+        "keep": {
+          "$ref": "#/$defs/KeepConfig"
+        },
+        "mode": {
+          "$ref": "#/$defs/FitMode",
+          "default": "evaluate_then_refit"
+        },
+        "prior_predictive": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PriorPredictive"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 4294967296,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "target_accept": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 1,
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Accept"
+        },
+        "tune": {
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tune"
+        }
+      },
+      "title": "FitConfig",
+      "type": "object"
+    },
+    "FitMode": {
+      "enum": [
+        "evaluate_then_refit",
+        "train_only"
+      ],
+      "title": "FitMode",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "KeepConfig": {
+      "additionalProperties": false,
+      "description": "Optional groups kept in the bundle.",
+      "properties": {
+        "log_likelihood": {
+          "default": false,
+          "title": "Log Likelihood",
+          "type": "boolean"
+        },
+        "posterior_predictive": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PosteriorPredictiveKeep"
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "default": false,
+          "title": "Posterior Predictive"
+        },
+        "prior": {
+          "default": false,
+          "title": "Prior",
+          "type": "boolean"
+        }
+      },
+      "title": "KeepConfig",
+      "type": "object"
+    },
+    "LastPerGroupSplit": {
+      "additionalProperties": false,
+      "description": "Hold out the last ``last`` rows along ``dim`` within each group (``min_len`` kept).",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+          "title": "After Step"
+        },
+        "allow_leakage": {
+          "default": false,
+          "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+          "title": "Allow Leakage",
+          "type": "boolean"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "kind": {
+          "const": "last_per_group",
+          "title": "Kind",
+          "type": "string"
+        },
+        "last": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Last",
+          "type": "integer"
+        },
+        "min_len": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Min Len",
+          "type": "integer"
+        },
+        "within": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Within",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "dim",
+        "within"
+      ],
+      "title": "LastPerGroupSplit",
+      "type": "object"
+    },
+    "LeaveGroupOutSplit": {
+      "additionalProperties": false,
+      "description": "Hold out whole groups of ``dim`` (explicit ``groups`` or ``n`` random ones).",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+          "title": "After Step"
+        },
+        "allow_leakage": {
+          "default": false,
+          "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+          "title": "Allow Leakage",
+          "type": "boolean"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "groups": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "maxItems": 10000,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Groups"
+        },
+        "kind": {
+          "const": "leave_group_out",
+          "title": "Kind",
+          "type": "string"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 4294967296,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        }
+      },
+      "required": [
+        "kind",
+        "dim"
+      ],
+      "title": "LeaveGroupOutSplit",
+      "type": "object"
+    },
+    "MaskBlockSplit": {
+      "additionalProperties": false,
+      "description": "Hold out random blocks over ``dims`` (block sizes per dim) covering ``fraction``.",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+          "title": "After Step"
+        },
+        "allow_leakage": {
+          "default": false,
+          "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+          "title": "Allow Leakage",
+          "type": "boolean"
+        },
+        "block": {
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "type": "integer"
+            }
+          },
+          "title": "Block",
+          "type": "object"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Dims",
+          "type": "array"
+        },
+        "fraction": {
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Fraction",
+          "type": "number"
+        },
+        "kind": {
+          "const": "mask_block",
+          "title": "Kind",
+          "type": "string"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 4294967296,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        }
+      },
+      "required": [
+        "kind",
+        "dims",
+        "fraction"
+      ],
+      "title": "MaskBlockSplit",
+      "type": "object"
+    },
+    "Metadata": {
+      "additionalProperties": false,
+      "description": "Identity and labels of a document.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "labels": {
+          "maxProperties": 64,
+          "patternProperties": {
+            "^[a-z0-9]([a-z0-9_.\\-/]{0,62})$": {
+              "maxLength": 63,
+              "pattern": "^[A-Za-z0-9_.\\-]*$",
+              "type": "string"
+            }
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "name": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+          "title": "Name",
+          "type": "string"
+        },
+        "project": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+          "title": "Project",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "project"
+      ],
+      "title": "Metadata",
+      "type": "object"
+    },
+    "ModelBlock": {
+      "additionalProperties": false,
+      "description": "The model plugin, its settings and fit configuration.\n\n``settings.dim_policies`` is platform-reserved: a mapping ``dim \u2192 policy`` that may only\n*tighten* the plugin's policies. It is removed before plugin settings validation.",
+      "properties": {
+        "fit": {
+          "$ref": "#/$defs/FitConfig"
+        },
+        "settings": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Settings",
+          "type": "object"
+        },
+        "use": {
+          "description": "Registered id with an optional semver range",
+          "examples": [
+            "core.resample@^1",
+            "mmm.hierarchical_geo@^1.3"
+          ],
+          "pattern": "^(?:(?:t|vetted)/[a-z0-9][a-z0-9-]{0,62}/)?[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+(@[^@]{1,256})?$",
+          "title": "Use",
+          "type": "string"
+        }
+      },
+      "required": [
+        "use"
+      ],
+      "title": "ModelBlock",
+      "type": "object"
+    },
+    "OutputsBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "derived": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Derived",
+          "type": "array"
+        },
+        "plots": {
+          "items": {
+            "description": "Registered id with an optional semver range",
+            "examples": [
+              "core.resample@^1",
+              "mmm.hierarchical_geo@^1.3"
+            ],
+            "pattern": "^(?:(?:t|vetted)/[a-z0-9][a-z0-9-]{0,62}/)?[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+(@[^@]{1,256})?$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Plots",
+          "type": "array"
+        },
+        "ui_draws": {
+          "default": 300,
+          "maximum": 2000,
+          "minimum": 0,
+          "title": "Ui Draws",
+          "type": "integer"
+        }
+      },
+      "title": "OutputsBlock",
+      "type": "object"
+    },
+    "PosteriorPredictiveKeep": {
+      "additionalProperties": false,
+      "properties": {
+        "thin": {
+          "default": 1,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Thin",
+          "type": "integer"
+        }
+      },
+      "title": "PosteriorPredictiveKeep",
+      "type": "object"
+    },
+    "PriorPredictive": {
+      "additionalProperties": false,
+      "properties": {
+        "draws": {
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Draws",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "draws"
+      ],
+      "title": "PriorPredictive",
+      "type": "object"
+    },
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    },
+    "ScorePolicy": {
+      "description": "Which side-table version is used at score time.",
+      "enum": [
+        "pinned",
+        "latest",
+        "supplied"
+      ],
+      "title": "ScorePolicy",
+      "type": "string"
+    },
+    "SideTable": {
+      "additionalProperties": false,
+      "description": "A small constant dataset (FX rates, holidays ...) used by steps.",
+      "properties": {
+        "ref": {
+          "description": "Dataset reference dataset://project/name@version",
+          "examples": [
+            "dataset://growth/eu_media_daily@latest"
+          ],
+          "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+          "title": "Ref",
+          "type": "string"
+        },
+        "score_policy": {
+          "$ref": "#/$defs/ScorePolicy",
+          "default": "pinned"
+        }
+      },
+      "required": [
+        "ref"
+      ],
+      "title": "SideTable",
+      "type": "object"
+    },
+    "StepCall": {
+      "additionalProperties": false,
+      "description": "One pipeline step: ``{id, use: core.resample@^1, with: {...settings}}``.",
+      "properties": {
+        "id": {
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "use": {
+          "description": "Registered id with an optional semver range",
+          "examples": [
+            "core.resample@^1",
+            "mmm.hierarchical_geo@^1.3"
+          ],
+          "pattern": "^(?:(?:t|vetted)/[a-z0-9][a-z0-9-]{0,62}/)?[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+(@[^@]{1,256})?$",
+          "title": "Use",
+          "type": "string"
+        },
+        "with": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "With",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "use"
+      ],
+      "title": "StepCall",
+      "type": "object"
+    },
+    "TimeHoldoutSplit": {
+      "additionalProperties": false,
+      "description": "Hold out the end of an ordered dim: ``last`` periods, a ``fraction`` or ``after`` a coord.",
+      "properties": {
+        "after": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "After"
+        },
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+          "title": "After Step"
+        },
+        "allow_leakage": {
+          "default": false,
+          "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+          "title": "Allow Leakage",
+          "type": "boolean"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 1,
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "kind": {
+          "const": "time_holdout",
+          "title": "Kind",
+          "type": "string"
+        },
+        "last": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last"
+        }
+      },
+      "required": [
+        "kind",
+        "dim"
+      ],
+      "title": "TimeHoldoutSplit",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/modelspec.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The declarative modelling file.",
+  "properties": {
+    "apiVersion": {
+      "const": "mapi/v1",
+      "title": "Apiversion",
+      "type": "string"
+    },
+    "data": {
+      "$ref": "#/$defs/DataBlock"
+    },
+    "evaluate": {
+      "$ref": "#/$defs/EvaluateBlock"
+    },
+    "execution": {
+      "$ref": "#/$defs/ExecutionBlock"
+    },
+    "kind": {
+      "const": "ModelSpec",
+      "title": "Kind",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/Metadata"
+    },
+    "model": {
+      "$ref": "#/$defs/ModelBlock"
+    },
+    "outputs": {
+      "$ref": "#/$defs/OutputsBlock"
+    },
+    "pipeline": {
+      "items": {
+        "$ref": "#/$defs/StepCall"
+      },
+      "maxItems": 64,
+      "title": "Pipeline",
+      "type": "array"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "data",
+    "model"
+  ],
+  "title": "ModelSpec",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

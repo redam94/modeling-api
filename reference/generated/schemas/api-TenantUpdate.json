@@ -1,0 +1,25 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-TenantUpdate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PATCH /v1/tenants/{tenant_id}`` (tenant admins): the display name only.",
+  "examples": [
+    {
+      "name": "Acme Retail Group"
+    }
+  ],
+  "properties": {
+    "name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "TenantUpdate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

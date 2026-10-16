@@ -1,0 +1,185 @@
+{
+  "$defs": {
+    "QuotaLimits": {
+      "additionalProperties": false,
+      "description": "Limits at one level. ``None`` = no limit at this level (other levels still apply).",
+      "properties": {
+        "concurrent_runs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Concurrent Runs"
+        },
+        "egress_bytes_per_month": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Egress Bytes Per Month"
+        },
+        "max_fanout_tasks": {
+          "anyOf": [
+            {
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Fanout Tasks"
+        },
+        "max_resource_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResourceClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "requests_per_minute": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requests Per Minute"
+        },
+        "storage_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Storage Bytes"
+        },
+        "vcpu_seconds_per_day": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vcpu Seconds Per Day"
+        },
+        "vcpu_seconds_per_month": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vcpu Seconds Per Month"
+        }
+      },
+      "title": "QuotaLimits",
+      "type": "object"
+    },
+    "QuotaScope": {
+      "description": "Policy level, most specific first.",
+      "enum": [
+        "token",
+        "tenant",
+        "global"
+      ],
+      "title": "QuotaScope",
+      "type": "string"
+    },
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-QuotaPolicyUpsert.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PUT /v1/admin/quotas``: create or replace the policy for ``(scope, subject_id)``.",
+  "examples": [
+    {
+      "limits": {
+        "concurrent_runs": 40,
+        "vcpu_seconds_per_day": 172800
+      },
+      "note": "beta customer, doubled daily compute",
+      "scope": "tenant",
+      "subject_id": "acme"
+    }
+  ],
+  "properties": {
+    "limits": {
+      "$ref": "#/$defs/QuotaLimits"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    },
+    "scope": {
+      "$ref": "#/$defs/QuotaScope"
+    },
+    "subject_id": {
+      "maxLength": 64,
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "scope",
+    "subject_id",
+    "limits"
+  ],
+  "title": "QuotaPolicyUpsert",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

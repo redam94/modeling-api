@@ -1,0 +1,88 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "RunEventType": {
+      "description": "Event types written by the supervisor (see :mod:`mapi_spec.run` for payloads).",
+      "enum": [
+        "state",
+        "progress",
+        "log",
+        "diagnostic",
+        "warning",
+        "checkpoint",
+        "metric",
+        "complete",
+        "error"
+      ],
+      "title": "RunEventType",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-RunEventView.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A persisted run event (``id`` is the SSE event id, increasing per run).",
+  "examples": [
+    {
+      "attempt": 1,
+      "id": 17,
+      "payload": {
+        "phase": "sample"
+      },
+      "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+      "seq": 3,
+      "ts": "2026-10-15T09:30:00Z",
+      "type": "state"
+    }
+  ],
+  "properties": {
+    "attempt": {
+      "minimum": 1,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "id": {
+      "minimum": 1,
+      "title": "Id",
+      "type": "integer"
+    },
+    "payload": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Payload",
+      "type": "object"
+    },
+    "run_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "seq": {
+      "minimum": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "ts": {
+      "format": "date-time",
+      "title": "Ts",
+      "type": "string"
+    },
+    "type": {
+      "$ref": "#/$defs/RunEventType"
+    }
+  },
+  "required": [
+    "id",
+    "run_id",
+    "attempt",
+    "seq",
+    "ts",
+    "type"
+  ],
+  "title": "RunEventView",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

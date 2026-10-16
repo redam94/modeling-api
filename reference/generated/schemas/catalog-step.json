@@ -1,0 +1,162 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "StepKind": {
+      "description": "RESHAPE changes structure (not invertible past it); VALUE rescales; FEATURE adds.",
+      "enum": [
+        "reshape",
+        "value",
+        "feature"
+      ],
+      "title": "StepKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/catalog-step.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Everything static validation needs to know about one step version.\n\n``effect`` and ``context`` are JSON templates over the step's settings (see\n:mod:`mapi_spec.template`). ``var_params``/``dim_params`` name settings fields whose\nvalues are variable/dim names that must exist at the step's input stage, and\n``side_table_params`` name fields that refer to ``data.side_tables`` entries.",
+  "properties": {
+    "context": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Context"
+    },
+    "depends_on_target": {
+      "default": false,
+      "title": "Depends On Target",
+      "type": "boolean"
+    },
+    "dim_params": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Dim Params",
+      "type": "array"
+    },
+    "effect": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Effect",
+      "type": "object"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "invertible": {
+      "default": false,
+      "title": "Invertible",
+      "type": "boolean"
+    },
+    "kind": {
+      "$ref": "#/$defs/StepKind"
+    },
+    "provides": {
+      "description": "Preprocessing a model may declare it owns (ModelManifest owns); such a step is rejected on the target/media variables of a model that owns it",
+      "items": {
+        "enum": [
+          "scaling",
+          "carryover"
+        ],
+        "type": "string"
+      },
+      "title": "Provides",
+      "type": "array"
+    },
+    "settings_schema": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Settings Schema",
+      "type": "object"
+    },
+    "side_table_params": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Side Table Params",
+      "type": "array"
+    },
+    "stateful": {
+      "description": "Has a fitted State (fit on train only)",
+      "title": "Stateful",
+      "type": "boolean"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Summary"
+    },
+    "summary_plain": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Summary Plain"
+    },
+    "target_vars_param": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "If set, the step depends on the target only when this settings field lists a target-role variable",
+      "title": "Target Vars Param"
+    },
+    "var_params": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Var Params",
+      "type": "array"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    },
+    "yanked": {
+      "default": false,
+      "title": "Yanked",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "kind",
+    "stateful"
+  ],
+  "title": "StepCatalogEntry",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

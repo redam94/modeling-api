@@ -1,0 +1,86 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/postpolicy.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A V4 POST policy: multipart form uploads of any key under ``prefix``.\n\nThe uploader posts ``multipart/form-data`` to ``url`` with every entry of ``fields``,\nthen ``key`` (which must start with ``prefix``), then the ``file`` part last. The storage\nservice rejects bodies outside ``content_length_range`` and keys outside the prefix.\n\nA ``create_only`` policy cannot replace an existing object (its signed conditions carry\n``x-goog-if-generation-match: 0``), so the holder can neither overwrite the write-once\nmanifest nor swap an output after it was written.",
+  "examples": [
+    {
+      "content_length_range": [
+        0,
+        1073741824
+      ],
+      "expires_at": "2026-10-15T10:30:00Z",
+      "fields": {
+        "policy": "eyJjb25kaXRpb25zIjpbXX0=",
+        "x-goog-algorithm": "GOOG4-HMAC-SHA256",
+        "x-goog-credential": "local/20261015/auto/storage/goog4_request",
+        "x-goog-date": "20261015T093000Z",
+        "x-goog-signature": "abcdef0123"
+      },
+      "method": "POST",
+      "prefix": "t/default/runs/run_01jabc/a1/",
+      "url": "http://127.0.0.1:4443/mapi-local-runs"
+    }
+  ],
+  "properties": {
+    "content_length_range": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "integer"
+        }
+      ],
+      "title": "Content Length Range",
+      "type": "array"
+    },
+    "create_only": {
+      "default": false,
+      "title": "Create Only",
+      "type": "boolean"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "fields": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "maxProperties": 32,
+      "title": "Fields",
+      "type": "object"
+    },
+    "method": {
+      "const": "POST",
+      "default": "POST",
+      "title": "Method",
+      "type": "string"
+    },
+    "prefix": {
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Prefix",
+      "type": "string"
+    },
+    "url": {
+      "maxLength": 8192,
+      "minLength": 8,
+      "title": "Url",
+      "type": "string"
+    }
+  },
+  "required": [
+    "url",
+    "prefix",
+    "content_length_range",
+    "expires_at"
+  ],
+  "title": "PostPolicy",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

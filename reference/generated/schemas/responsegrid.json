@@ -1,0 +1,193 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/responsegrid.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``ui/grids/response_curves.json``: per-draw response curves for instant what-if sliders.\n\nFor each thinned posterior draw ``d``, channel ``c`` and spend multiplier ``m``,\n``contribution[d][c][m]`` is the channel's total contribution to the KPI over the fit\nwindow (``periods`` periods, KPI units) when the channel's spend is scaled by\n``multipliers[m]``; ``spend[c][m]`` is that spend (spend units). Multiplier ``1`` is the\nactual spend (``current_spend``). ``baseline[d]`` is the KPI over the window that no\nchannel explains, so ``baseline[d] + sum_c contribution[d][c][at 1]`` is the model's\nexpected KPI. ``*_by_geo`` variants add a trailing geo axis (``geos`` order).\n\nSliders interpolate per draw (see :func:`mapi_spec.whatif.evaluate_scenario`), so\nuncertainty bands stay joint across channels; \"Run exact\" submits a real score run.",
+  "properties": {
+    "baseline": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Baseline"
+    },
+    "channels": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Channels",
+      "type": "array"
+    },
+    "contribution": {
+      "items": {
+        "items": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "type": "array"
+      },
+      "title": "Contribution",
+      "type": "array"
+    },
+    "contribution_by_geo": {
+      "anyOf": [
+        {
+          "items": {
+            "items": {
+              "items": {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Contribution By Geo"
+    },
+    "current_spend": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Current Spend",
+      "type": "array"
+    },
+    "draws": {
+      "maximum": 500,
+      "minimum": 1,
+      "title": "Draws",
+      "type": "integer"
+    },
+    "format": {
+      "const": "mapi.response-grid/v1",
+      "default": "mapi.response-grid/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "geos": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 256,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Geos"
+    },
+    "kpi": {
+      "maxLength": 128,
+      "title": "Kpi",
+      "type": "string"
+    },
+    "kpi_units": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Kpi Units"
+    },
+    "multipliers": {
+      "items": {
+        "type": "number"
+      },
+      "maxItems": 202,
+      "minItems": 2,
+      "title": "Multipliers",
+      "type": "array"
+    },
+    "periods": {
+      "minimum": 1,
+      "title": "Periods",
+      "type": "integer"
+    },
+    "spend": {
+      "items": {
+        "items": {
+          "type": "number"
+        },
+        "type": "array"
+      },
+      "title": "Spend",
+      "type": "array"
+    },
+    "spend_by_geo": {
+      "anyOf": [
+        {
+          "items": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Spend By Geo"
+    },
+    "spend_units": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Spend Units"
+    }
+  },
+  "required": [
+    "kpi",
+    "periods",
+    "channels",
+    "multipliers",
+    "draws",
+    "contribution",
+    "spend",
+    "current_spend"
+  ],
+  "title": "ResponseGridView",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

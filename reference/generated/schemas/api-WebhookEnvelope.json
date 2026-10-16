@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "WebhookEventType": {
+      "enum": [
+        "run.succeeded",
+        "run.failed",
+        "model.version.ready",
+        "endpoint.promoted",
+        "score.completed",
+        "tenant.deletion.completed"
+      ],
+      "title": "WebhookEventType",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-WebhookEnvelope.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The JSON body of every delivery. ``data`` depends on ``type``:\n\n* ``run.*``: ``{run_id, kind, state, failure_class?, code?, model_version_id?}``;\n* ``model.version.ready``: ``{model_id, model_version_id, ref, scorecard_overall}``;\n* ``endpoint.promoted``: ``{alias, ref, revision, model_version_id, overridden}``;\n* ``score.completed``: ``{run_id, endpoint?, model_version_id, outputs: [names]}``;\n* ``tenant.deletion.completed``: ``{deletion_id, requested_at, completed_at}``.\n\nNo envelope carries data values, signed URLs or secrets: fetch results with the API.",
+  "examples": [
+    {
+      "api_version": "v1",
+      "created": "2026-10-15T09:30:00Z",
+      "data": {
+        "kind": "fit",
+        "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+        "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+        "state": "succeeded"
+      },
+      "id": "evt_01jaf3k1m2n3p4q5r6s7t8v9w0",
+      "project": "growth",
+      "tenant": "acme",
+      "type": "run.succeeded"
+    }
+  ],
+  "properties": {
+    "api_version": {
+      "const": "v1",
+      "default": "v1",
+      "title": "Api Version",
+      "type": "string"
+    },
+    "created": {
+      "format": "date-time",
+      "title": "Created",
+      "type": "string"
+    },
+    "data": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Data",
+      "type": "object"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "project": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project"
+    },
+    "tenant": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "type": {
+      "$ref": "#/$defs/WebhookEventType"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "created",
+    "tenant"
+  ],
+  "title": "WebhookEnvelope",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

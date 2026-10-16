@@ -1,0 +1,60 @@
+{
+  "$defs": {
+    "TrustTier": {
+      "description": "How much the platform trusts a tenant's code and data (plan \u00a72, \u00a77, \u00a79).",
+      "enum": [
+        "internal",
+        "verified",
+        "public",
+        "self-hosted-trusted"
+      ],
+      "title": "TrustTier",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-VerificationResult.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The verified address and the public-tier tenant it now administers; sign in next.",
+  "examples": [
+    {
+      "email": "ana@acme.example",
+      "login_url": "/auth/login?return_to=%2Fguided",
+      "project_id": "default",
+      "tenant_id": "acme-retail",
+      "trust_tier": "public"
+    }
+  ],
+  "properties": {
+    "email": {
+      "title": "Email",
+      "type": "string"
+    },
+    "login_url": {
+      "default": "/auth/login",
+      "title": "Login Url",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "trust_tier": {
+      "$ref": "#/$defs/TrustTier",
+      "default": "public"
+    }
+  },
+  "required": [
+    "email",
+    "tenant_id",
+    "project_id"
+  ],
+  "title": "VerificationResult",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

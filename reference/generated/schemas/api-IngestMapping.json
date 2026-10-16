@@ -1,0 +1,288 @@
+{
+  "$defs": {
+    "DimMapping": {
+      "additionalProperties": false,
+      "description": "A dim of the dataset, read from one column of a tabular upload.",
+      "examples": [
+        {
+          "column": "date",
+          "spec": {
+            "freq": "D",
+            "kind": "time",
+            "policy": "extend"
+          }
+        }
+      ],
+      "properties": {
+        "column": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Column",
+          "type": "string"
+        },
+        "spec": {
+          "$ref": "#/$defs/DimSpec"
+        }
+      },
+      "required": [
+        "column",
+        "spec"
+      ],
+      "title": "DimMapping",
+      "type": "object"
+    },
+    "DimPolicy": {
+      "description": "What may happen to a dim's coordinates at score time.",
+      "enum": [
+        "fixed",
+        "extend",
+        "new_levels"
+      ],
+      "title": "DimPolicy",
+      "type": "string"
+    },
+    "DimSpec": {
+      "additionalProperties": false,
+      "description": "A dimension and its score-time policy.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pandas-style frequency, e.g. 'W-SUN'",
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_extension": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods allowed past the fit",
+          "title": "Max Extension"
+        },
+        "new_level_strategy": {
+          "default": "error",
+          "enum": [
+            "error",
+            "hyperprior",
+            "pooled",
+            "zero"
+          ],
+          "title": "New Level Strategy",
+          "type": "string"
+        },
+        "ordered": {
+          "default": false,
+          "title": "Ordered",
+          "type": "boolean"
+        },
+        "policy": {
+          "$ref": "#/$defs/DimPolicy",
+          "default": "fixed"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DimSpec",
+      "type": "object"
+    },
+    "Role": {
+      "description": "What a variable means to a model.",
+      "enum": [
+        "target",
+        "covariate",
+        "media",
+        "spend",
+        "control",
+        "index",
+        "mask",
+        "constant",
+        "weight",
+        "exposure"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "VarMapping": {
+      "additionalProperties": false,
+      "description": "A data variable read from one column (dtype is inferred during ingest).",
+      "examples": [
+        {
+          "column": "revenue",
+          "role": "target",
+          "units": "EUR"
+        }
+      ],
+      "properties": {
+        "column": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Column",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "missing": {
+          "default": "forbid",
+          "enum": [
+            "forbid",
+            "allow",
+            "mask"
+          ],
+          "title": "Missing",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role",
+          "default": "covariate"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "column"
+      ],
+      "title": "VarMapping",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-IngestMapping.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).\n\nTabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit\n``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.",
+  "examples": [
+    {
+      "dims": {
+        "date": {
+          "column": "date",
+          "spec": {
+            "freq": "D",
+            "kind": "time",
+            "policy": "extend"
+          }
+        },
+        "market": {
+          "column": "market",
+          "spec": {
+            "kind": "categorical"
+          }
+        }
+      },
+      "format": "csv",
+      "vars": {
+        "revenue_local": {
+          "column": "revenue",
+          "role": "target",
+          "units": "local"
+        },
+        "spend_local": {
+          "column": "spend",
+          "role": "spend",
+          "units": "local"
+        }
+      }
+    }
+  ],
+  "properties": {
+    "dims": {
+      "additionalProperties": {
+        "$ref": "#/$defs/DimMapping"
+      },
+      "maxProperties": 32,
+      "title": "Dims",
+      "type": "object"
+    },
+    "format": {
+      "enum": [
+        "csv",
+        "parquet",
+        "zarr_zip",
+        "netcdf"
+      ],
+      "title": "Format",
+      "type": "string"
+    },
+    "layout": {
+      "default": "dense",
+      "enum": [
+        "dense",
+        "long"
+      ],
+      "title": "Layout",
+      "type": "string"
+    },
+    "vars": {
+      "additionalProperties": {
+        "$ref": "#/$defs/VarMapping"
+      },
+      "maxProperties": 1024,
+      "title": "Vars",
+      "type": "object"
+    }
+  },
+  "required": [
+    "format"
+  ],
+  "title": "IngestMapping",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

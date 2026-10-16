@@ -1,0 +1,53 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-HealthCheck.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "examples": [
+    {
+      "latency_ms": 1.2,
+      "status": "ok"
+    }
+  ],
+  "properties": {
+    "detail": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Detail"
+    },
+    "latency_ms": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Latency Ms"
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "degraded",
+        "fail"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "title": "HealthCheck",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

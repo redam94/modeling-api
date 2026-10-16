@@ -1,0 +1,63 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ValidateRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Synchronous static validation of a document (exactly one of ``yaml``/``document``).\n\n``dataset`` overrides the dataset version whose stored schema is the raw input schema\n(default: the spec's own ``data.dataset`` reference, resolved now).",
+  "examples": [
+    {
+      "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+    }
+  ],
+  "properties": {
+    "dataset": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "examples": [
+        "dataset://default/eu_media_daily@v3"
+      ],
+      "title": "Dataset"
+    },
+    "document": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Document"
+    },
+    "yaml": {
+      "anyOf": [
+        {
+          "maxLength": 262144,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Yaml"
+    }
+  },
+  "title": "ValidateRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,266 @@
+{
+  "$defs": {
+    "GateOutcome": {
+      "enum": [
+        "allowed",
+        "needs_override",
+        "blocked"
+      ],
+      "title": "GateOutcome",
+      "type": "string"
+    },
+    "GateReason": {
+      "description": "Why the gate is not plainly ``allowed``: a stable code, plain text, and the check.",
+      "properties": {
+        "check": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Check"
+        },
+        "code": {
+          "enum": [
+            "SCORECARD_WARN",
+            "SCORECARD_FAIL",
+            "NO_SCORECARD",
+            "TRAIN_ONLY",
+            "PARTIAL_MODEL",
+            "SCHEMA_CHANGE",
+            "NOT_EVALUATED"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "message_plain": {
+          "maxLength": 500,
+          "title": "Message Plain",
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/GateOutcome"
+        }
+      },
+      "required": [
+        "code",
+        "outcome",
+        "message_plain"
+      ],
+      "title": "GateReason",
+      "type": "object"
+    },
+    "PromotionGateDecision": {
+      "description": "The gate's decision for promoting one model version to an endpoint.",
+      "examples": [
+        {
+          "failing_checks": [
+            "holdout.mape"
+          ],
+          "outcome": "needs_override",
+          "reasons": [
+            {
+              "check": "holdout.mape",
+              "code": "SCORECARD_WARN",
+              "message_plain": "Holdout error: forecasts were off by 14%.",
+              "outcome": "needs_override"
+            }
+          ],
+          "scorecard_overall": "warn"
+        }
+      ],
+      "properties": {
+        "failing_checks": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Failing Checks",
+          "type": "array"
+        },
+        "outcome": {
+          "$ref": "#/$defs/GateOutcome"
+        },
+        "reasons": {
+          "items": {
+            "$ref": "#/$defs/GateReason"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "scorecard_overall": {
+          "anyOf": [
+            {
+              "enum": [
+                "pass",
+                "warn",
+                "fail"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scorecard Overall"
+        }
+      },
+      "required": [
+        "outcome"
+      ],
+      "title": "PromotionGateDecision",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-EndpointRevision.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One entry of an endpoint's history (newest first in ``GET \u2026/history``).",
+  "examples": [
+    {
+      "action": "promote",
+      "actor_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "alias": "geo-mmm-prod",
+      "created_at": "2026-10-15T09:30:00Z",
+      "gate": {
+        "failing_checks": [
+          "holdout.mape"
+        ],
+        "outcome": "needs_override",
+        "reasons": [
+          {
+            "check": "holdout.mape",
+            "code": "SCORECARD_WARN",
+            "message_plain": "Holdout error: forecasts were off by 14%.",
+            "outcome": "needs_override"
+          }
+        ],
+        "scorecard_overall": "warn"
+      },
+      "model_ref": "model://growth/eu-geo-mmm@v3",
+      "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+      "overridden": true,
+      "previous_model_version_id": "mv_01jaf3e0f0g0h0j0k0m0n0p0q0",
+      "reason": "Holdout MAPE is high because of the strike in week 41.",
+      "revision": 4
+    }
+  ],
+  "properties": {
+    "action": {
+      "enum": [
+        "promote",
+        "rollback"
+      ],
+      "title": "Action",
+      "type": "string"
+    },
+    "actor_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actor Id"
+    },
+    "alias": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+      "title": "Alias",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "gate": {
+      "$ref": "#/$defs/PromotionGateDecision"
+    },
+    "model_ref": {
+      "title": "Model Ref",
+      "type": "string"
+    },
+    "model_version_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Model Version Id",
+      "type": "string"
+    },
+    "overridden": {
+      "default": false,
+      "title": "Overridden",
+      "type": "boolean"
+    },
+    "previous_model_version_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Previous Model Version Id"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    },
+    "revision": {
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "token_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Token Id"
+    }
+  },
+  "required": [
+    "alias",
+    "revision",
+    "action",
+    "model_version_id",
+    "model_ref",
+    "gate",
+    "created_at"
+  ],
+  "title": "EndpointRevision",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

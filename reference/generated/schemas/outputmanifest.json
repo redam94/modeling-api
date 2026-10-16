@@ -1,0 +1,298 @@
+{
+  "$defs": {
+    "InputDigest": {
+      "additionalProperties": false,
+      "description": "What the runner actually read for one input (copied from the RunSpec, then checked).",
+      "properties": {
+        "crc32c": {
+          "description": "CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum",
+          "examples": [
+            "4waSgw=="
+          ],
+          "pattern": "^[A-Za-z0-9+/]{6}==$",
+          "title": "Crc32C",
+          "type": "string"
+        },
+        "generation": {
+          "minimum": 1,
+          "title": "Generation",
+          "type": "integer"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "generation",
+        "size",
+        "crc32c"
+      ],
+      "title": "InputDigest",
+      "type": "object"
+    },
+    "ManifestObject": {
+      "additionalProperties": false,
+      "description": "One uploaded object as claimed by the runner (hashes computed while streaming).",
+      "properties": {
+        "content_type": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Type"
+        },
+        "crc32c": {
+          "description": "CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum",
+          "examples": [
+            "4waSgw=="
+          ],
+          "pattern": "^[A-Za-z0-9+/]{6}==$",
+          "title": "Crc32C",
+          "type": "string"
+        },
+        "key": {
+          "description": "Full object name in the runs bucket",
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "md5": {
+          "description": "MD5 as GCS reports it: base64 of the 16-byte digest",
+          "pattern": "^[A-Za-z0-9+/]{22}==$",
+          "title": "Md5",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "key",
+        "size",
+        "crc32c",
+        "md5"
+      ],
+      "title": "ManifestObject",
+      "type": "object"
+    },
+    "RunKind": {
+      "description": "What a run does. ``validate`` is the explicit sandboxed dry-run of a spec.\n\n``sweep``, ``backtest``, ``sbc`` and ``campaign`` are fan-out *parents* (plan \u00a76.2,\nM4): they own child runs and never execute on an executor themselves.",
+      "enum": [
+        "ingest",
+        "describe",
+        "validate",
+        "fit",
+        "score",
+        "evaluate",
+        "derive",
+        "render",
+        "optimize",
+        "sweep",
+        "backtest",
+        "sbc",
+        "campaign"
+      ],
+      "title": "RunKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/outputmanifest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The runner's manifest at ``{prefix}manifest.json``: a *claim*, verified at FINALIZING.\n\n``objects`` maps a relative output name (``bundle.zarr.zip``, ``ui/summaries.json``) to\nthe uploaded object; every key must equal ``prefix + name``. The supervisor signs it with\nthe run HMAC key (``hmac``), which only proves it came from this run's supervisor.",
+  "examples": [
+    {
+      "attempt": 1,
+      "base_image": "base-bayes@2026.10",
+      "catalog_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "created_at": "2026-10-15T10:20:00Z",
+      "inputs": {
+        "dataset": {
+          "crc32c": "4waSgw==",
+          "generation": 3,
+          "size": 1048576
+        }
+      },
+      "kind": "fit",
+      "objects": {
+        "bundle.zarr.zip": {
+          "content_type": "application/zip",
+          "crc32c": "AAAAAA==",
+          "key": "t/default/runs/run_01jabcdefghjkmnpqrstvwxyz0/a1/bundle.zarr.zip",
+          "md5": "1B2M2Y8AsgTpgAmY7PhCfg==",
+          "size": 2097152
+        }
+      },
+      "prefix": "t/default/runs/run_01jabcdefghjkmnpqrstvwxyz0/a1/",
+      "project_id": "default",
+      "run_id": "run_01jabcdefghjkmnpqrstvwxyz0",
+      "runner_version": "0.2.0",
+      "schema_version": "mapi.output-manifest/v1",
+      "spec_hash": "sha256:abababababababababababababababababababababababababababababababab",
+      "status": "complete",
+      "tenant_id": "default"
+    }
+  ],
+  "properties": {
+    "attempt": {
+      "minimum": 1,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "base_image": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Base Image"
+    },
+    "catalog_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Catalog Digest",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "hmac": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Hmac"
+    },
+    "inputs": {
+      "patternProperties": {
+        "^[a-z][a-z0-9_.\\-]{0,63}$": {
+          "$ref": "#/$defs/InputDigest"
+        }
+      },
+      "title": "Inputs",
+      "type": "object"
+    },
+    "kind": {
+      "$ref": "#/$defs/RunKind"
+    },
+    "lib_versions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "maxProperties": 256,
+      "title": "Lib Versions",
+      "type": "object"
+    },
+    "objects": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ManifestObject"
+      },
+      "maxProperties": 10000,
+      "title": "Objects",
+      "type": "object"
+    },
+    "overlay_hash": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Overlay Hash"
+    },
+    "prefix": {
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Prefix",
+      "type": "string"
+    },
+    "project_id": {
+      "examples": [
+        "default"
+      ],
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "runner_version": {
+      "maxLength": 64,
+      "title": "Runner Version",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "mapi.output-manifest/v1",
+      "default": "mapi.output-manifest/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "spec_hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Spec Hash",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "complete",
+        "partial"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "tenant_id": {
+      "examples": [
+        "default"
+      ],
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "project_id",
+    "run_id",
+    "attempt",
+    "kind",
+    "status",
+    "prefix",
+    "spec_hash",
+    "catalog_digest",
+    "runner_version",
+    "created_at"
+  ],
+  "title": "OutputManifest",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

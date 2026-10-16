@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "RunEventType": {
+      "description": "Event types written by the supervisor (see :mod:`mapi_spec.run` for payloads).",
+      "enum": [
+        "state",
+        "progress",
+        "log",
+        "diagnostic",
+        "warning",
+        "checkpoint",
+        "metric",
+        "complete",
+        "error"
+      ],
+      "title": "RunEventType",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/runevent.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One progress event; ``(run_id, attempt, seq)`` is the dedupe key.",
+  "properties": {
+    "attempt": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "hmac": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Hmac"
+    },
+    "payload": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Payload",
+      "type": "object"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "seq": {
+      "minimum": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "ts": {
+      "format": "date-time",
+      "title": "Ts",
+      "type": "string"
+    },
+    "type": {
+      "$ref": "#/$defs/RunEventType"
+    }
+  },
+  "required": [
+    "run_id",
+    "seq",
+    "type",
+    "ts"
+  ],
+  "title": "RunEvent",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

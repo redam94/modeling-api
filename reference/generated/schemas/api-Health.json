@@ -1,0 +1,115 @@
+{
+  "$defs": {
+    "HealthCheck": {
+      "examples": [
+        {
+          "latency_ms": 1.2,
+          "status": "ok"
+        }
+      ],
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "latency_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latency Ms"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "degraded",
+            "fail"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "HealthCheck",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-Health.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``/healthz`` (process liveness) and ``/readyz`` (dependencies) body.",
+  "examples": [
+    {
+      "api_version": "v1",
+      "checks": {
+        "object_store": {
+          "latency_ms": 3.4,
+          "status": "ok"
+        },
+        "postgres": {
+          "latency_ms": 1.2,
+          "status": "ok"
+        }
+      },
+      "contract_version": "0.1",
+      "status": "ok",
+      "version": "0.2.0"
+    }
+  ],
+  "properties": {
+    "api_version": {
+      "const": "v1",
+      "default": "v1",
+      "title": "Api Version",
+      "type": "string"
+    },
+    "checks": {
+      "additionalProperties": {
+        "$ref": "#/$defs/HealthCheck"
+      },
+      "title": "Checks",
+      "type": "object"
+    },
+    "contract_version": {
+      "default": "0.1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "degraded",
+        "fail"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "status",
+    "version"
+  ],
+  "title": "Health",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

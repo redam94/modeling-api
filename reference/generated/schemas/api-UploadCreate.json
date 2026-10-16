@@ -1,0 +1,40 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-UploadCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Ask for a signed PUT URL into the quarantine bucket for one file.",
+  "examples": [
+    {
+      "content_type": "text/csv",
+      "filename": "eu_media_daily.csv",
+      "size_bytes": 5242880
+    }
+  ],
+  "properties": {
+    "content_type": {
+      "default": "application/octet-stream",
+      "maxLength": 128,
+      "title": "Content Type",
+      "type": "string"
+    },
+    "filename": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[^/\\\\\\x00-\\x1f]+$",
+      "title": "Filename",
+      "type": "string"
+    },
+    "size_bytes": {
+      "minimum": 1,
+      "title": "Size Bytes",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "filename",
+    "size_bytes"
+  ],
+  "title": "UploadCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

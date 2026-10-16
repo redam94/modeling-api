@@ -1,0 +1,199 @@
+{
+  "$defs": {
+    "PlotEmbed": {
+      "description": "An embed link as listed (never its token).",
+      "examples": [
+        {
+          "allowed_origins": [
+            "https://acme.notion.site"
+          ],
+          "created_at": "2026-10-15T09:30:00Z",
+          "display": "mpe_7k2m9q\u2026",
+          "expires_at": "2027-01-13T09:30:00Z",
+          "id": "emb_01jaf3p1q2r3s4t5v6w7x8y9z0",
+          "label": "Q4 board deck",
+          "plot_id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",
+          "project_id": "growth",
+          "status": "active",
+          "tenant_id": "acme",
+          "views": 12
+        }
+      ],
+      "properties": {
+        "allowed_origins": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Origins",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created By"
+        },
+        "display": {
+          "description": "Redacted token, mpe_<first 6>\u2026",
+          "title": "Display",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "last_viewed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Viewed At"
+        },
+        "plot_id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Plot Id",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "expired",
+            "revoked"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "tenant_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "views": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Views",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "plot_id",
+        "tenant_id",
+        "project_id",
+        "display",
+        "status",
+        "created_at",
+        "expires_at"
+      ],
+      "title": "PlotEmbed",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-PlotEmbedCreated.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``201`` of ``POST \u2026/embeds``: the only time the URL (with its token) is returned.",
+  "examples": [
+    {
+      "embed": {
+        "allowed_origins": [
+          "https://acme.notion.site"
+        ],
+        "created_at": "2026-10-15T09:30:00Z",
+        "display": "mpe_7k2m9q\u2026",
+        "expires_at": "2027-01-13T09:30:00Z",
+        "id": "emb_01jaf3p1q2r3s4t5v6w7x8y9z0",
+        "label": "Q4 board deck",
+        "plot_id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",
+        "project_id": "growth",
+        "status": "active",
+        "tenant_id": "acme",
+        "views": 12
+      },
+      "token": "mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz",
+      "url": "https://plots.mapi.example/embed/mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz"
+    }
+  ],
+  "properties": {
+    "embed": {
+      "$ref": "#/$defs/PlotEmbed"
+    },
+    "token": {
+      "pattern": "^mpe_[0-9a-hjkmnp-tv-z]{40}$",
+      "title": "Token",
+      "type": "string"
+    },
+    "url": {
+      "description": "Public read-only URL; paste it into the BI tool",
+      "title": "Url",
+      "type": "string"
+    }
+  },
+  "required": [
+    "embed",
+    "url",
+    "token"
+  ],
+  "title": "PlotEmbedCreated",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

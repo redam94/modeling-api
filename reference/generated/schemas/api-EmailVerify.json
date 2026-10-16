@@ -1,0 +1,24 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-EmailVerify.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /auth/verify-email``: the token from the e-mail link (single use).",
+  "examples": [
+    {
+      "token": "mev_0123456789abcdefghjkmnpqrstvwxyz01234567"
+    }
+  ],
+  "properties": {
+    "token": {
+      "pattern": "^mev_[0-9a-hjkmnp-tv-z]{40}$",
+      "title": "Token",
+      "type": "string"
+    }
+  },
+  "required": [
+    "token"
+  ],
+  "title": "EmailVerify",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

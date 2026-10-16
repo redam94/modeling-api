@@ -1,0 +1,234 @@
+{
+  "$defs": {
+    "ApiToken": {
+      "description": "A token as listed by the API. It never carries the secret or its hash.",
+      "examples": [
+        {
+          "budget_period": "month",
+          "created_at": "2026-10-15T09:30:00Z",
+          "display": "mapi_7k2m9q4x_\u2026",
+          "expires_at": "2026-11-14T09:30:00Z",
+          "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+          "last_used_at": "2026-10-16T08:00:00Z",
+          "name": "atlas-optimiser",
+          "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+          "prefix": "7k2m9q4x",
+          "project_id": "growth",
+          "rate_limit_per_minute": 120,
+          "scopes": [
+            "score:geo-mmm-prod",
+            "models:read"
+          ],
+          "status": "active",
+          "tenant_id": "acme",
+          "vcpu_seconds_budget": 36000
+        }
+      ],
+      "properties": {
+        "budget_period": {
+          "$ref": "#/$defs/BudgetPeriod",
+          "default": "month"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "display": {
+          "description": "Redacted form, mapi_<prefix>_\u2026",
+          "title": "Display",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_used_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Used At"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "owner_id": {
+          "description": "Principal id of the user or service that minted it",
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Owner Id",
+          "type": "string"
+        },
+        "prefix": {
+          "examples": [
+            "7k2m9q4x"
+          ],
+          "pattern": "^[0123456789abcdefghjkmnpqrstvwxyz]{8}$",
+          "title": "Prefix",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "rate_limit_per_minute": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rate Limit Per Minute"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        },
+        "scopes": {
+          "items": {
+            "examples": [
+              "models:read",
+              "runs:create",
+              "score:geo-mmm-prod"
+            ],
+            "maxLength": 140,
+            "type": "string"
+          },
+          "title": "Scopes",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/TokenStatus"
+        },
+        "tenant_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "vcpu_seconds_budget": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vcpu Seconds Budget"
+        }
+      },
+      "required": [
+        "id",
+        "tenant_id",
+        "project_id",
+        "owner_id",
+        "name",
+        "prefix",
+        "display",
+        "scopes",
+        "status",
+        "created_at",
+        "expires_at"
+      ],
+      "title": "ApiToken",
+      "type": "object"
+    },
+    "BudgetPeriod": {
+      "description": "Window of a per-token vCPU-second budget (UTC calendar day or month).",
+      "enum": [
+        "day",
+        "month"
+      ],
+      "title": "BudgetPeriod",
+      "type": "string"
+    },
+    "TokenStatus": {
+      "enum": [
+        "active",
+        "expired",
+        "revoked"
+      ],
+      "title": "TokenStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-TokenCreated.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``201`` body of ``POST /v1/tokens``: the only time ``secret`` is ever returned.",
+  "examples": [
+    {
+      "secret": "mapi_7k2m9q4x_0123456789abcdefghjkmnpqrstvwxyz072gj7d",
+      "token": {
+        "budget_period": "month",
+        "created_at": "2026-10-15T09:30:00Z",
+        "display": "mapi_7k2m9q4x_\u2026",
+        "expires_at": "2026-11-14T09:30:00Z",
+        "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+        "last_used_at": "2026-10-16T08:00:00Z",
+        "name": "atlas-optimiser",
+        "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+        "prefix": "7k2m9q4x",
+        "project_id": "growth",
+        "rate_limit_per_minute": 120,
+        "scopes": [
+          "score:geo-mmm-prod",
+          "models:read"
+        ],
+        "status": "active",
+        "tenant_id": "acme",
+        "vcpu_seconds_budget": 36000
+      }
+    }
+  ],
+  "properties": {
+    "secret": {
+      "description": "The full token. Store it now; it is not shown again.",
+      "pattern": "^mapi_(?P<prefix>[0123456789abcdefghjkmnpqrstvwxyz]{8})_(?P<secret>[0123456789abcdefghjkmnpqrstvwxyz]{32})(?P<checksum>[0123456789abcdefghjkmnpqrstvwxyz]{7})$",
+      "title": "Secret",
+      "type": "string"
+    },
+    "token": {
+      "$ref": "#/$defs/ApiToken"
+    }
+  },
+  "required": [
+    "token",
+    "secret"
+  ],
+  "title": "TokenCreated",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

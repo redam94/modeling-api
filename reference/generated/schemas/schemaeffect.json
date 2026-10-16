@@ -1,0 +1,593 @@
+{
+  "$defs": {
+    "DimPolicy": {
+      "description": "What may happen to a dim's coordinates at score time.",
+      "enum": [
+        "fixed",
+        "extend",
+        "new_levels"
+      ],
+      "title": "DimPolicy",
+      "type": "string"
+    },
+    "DimSpec": {
+      "additionalProperties": false,
+      "description": "A dimension and its score-time policy.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pandas-style frequency, e.g. 'W-SUN'",
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_extension": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods allowed past the fit",
+          "title": "Max Extension"
+        },
+        "new_level_strategy": {
+          "default": "error",
+          "enum": [
+            "error",
+            "hyperprior",
+            "pooled",
+            "zero"
+          ],
+          "title": "New Level Strategy",
+          "type": "string"
+        },
+        "ordered": {
+          "default": false,
+          "title": "Ordered",
+          "type": "boolean"
+        },
+        "policy": {
+          "$ref": "#/$defs/DimPolicy",
+          "default": "fixed"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DimSpec",
+      "type": "object"
+    },
+    "Role": {
+      "description": "What a variable means to a model.",
+      "enum": [
+        "target",
+        "covariate",
+        "media",
+        "spend",
+        "control",
+        "index",
+        "mask",
+        "constant",
+        "weight",
+        "exposure"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "VarDerive": {
+      "additionalProperties": false,
+      "description": "A new variable copied from an existing one (``from``) and then patched.",
+      "properties": {
+        "append_dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Append Dims",
+          "type": "array"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dtype": {
+          "anyOf": [
+            {
+              "enum": [
+                "float64",
+                "float32",
+                "int64",
+                "int32",
+                "bool",
+                "str",
+                "datetime64[ns]"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dtype"
+        },
+        "from": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "From",
+          "type": "string"
+        },
+        "future_required": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Future Required"
+        },
+        "missing": {
+          "anyOf": [
+            {
+              "enum": [
+                "forbid",
+                "allow",
+                "mask"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Missing"
+        },
+        "remove_dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Remove Dims",
+          "type": "array"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Role"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "from"
+      ],
+      "title": "VarDerive",
+      "type": "object"
+    },
+    "VarPatch": {
+      "additionalProperties": false,
+      "description": "Partial update of a variable. ``None`` fields are left unchanged.",
+      "properties": {
+        "append_dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Append Dims",
+          "type": "array"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dtype": {
+          "anyOf": [
+            {
+              "enum": [
+                "float64",
+                "float32",
+                "int64",
+                "int32",
+                "bool",
+                "str",
+                "datetime64[ns]"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dtype"
+        },
+        "future_required": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Future Required"
+        },
+        "missing": {
+          "anyOf": [
+            {
+              "enum": [
+                "forbid",
+                "allow",
+                "mask"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Missing"
+        },
+        "remove_dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Remove Dims",
+          "type": "array"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Role"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "title": "VarPatch",
+      "type": "object"
+    },
+    "VarSpec": {
+      "additionalProperties": false,
+      "description": "A data variable: its dims (by name), dtype, role, units and missingness.",
+      "properties": {
+        "bounds": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounds"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "array"
+        },
+        "dtype": {
+          "enum": [
+            "float64",
+            "float32",
+            "int64",
+            "int32",
+            "bool",
+            "str",
+            "datetime64[ns]"
+          ],
+          "title": "Dtype",
+          "type": "string"
+        },
+        "future_required": {
+          "default": false,
+          "description": "Must be supplied over a forecast horizon",
+          "title": "Future Required",
+          "type": "boolean"
+        },
+        "index_of": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Long layout: this var indexes that dim",
+          "title": "Index Of"
+        },
+        "missing": {
+          "default": "forbid",
+          "enum": [
+            "forbid",
+            "allow",
+            "mask"
+          ],
+          "title": "Missing",
+          "type": "string"
+        },
+        "missing_sentinel": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Missing Sentinel"
+        },
+        "role": {
+          "$ref": "#/$defs/Role",
+          "default": "covariate"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "pint-style, e.g. 'EUR'",
+          "title": "Units"
+        }
+      },
+      "required": [
+        "dims",
+        "dtype"
+      ],
+      "title": "VarSpec",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/schemaeffect.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "How a step changes the schema. See the module docstring for ordering rules.",
+  "properties": {
+    "adds": {
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "$ref": "#/$defs/VarSpec"
+        }
+      },
+      "title": "Adds",
+      "type": "object"
+    },
+    "derives": {
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "$ref": "#/$defs/VarDerive"
+        }
+      },
+      "title": "Derives",
+      "type": "object"
+    },
+    "drops": {
+      "items": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+        "type": "string"
+      },
+      "title": "Drops",
+      "type": "array"
+    },
+    "dynamic": {
+      "default": false,
+      "title": "Dynamic",
+      "type": "boolean"
+    },
+    "renames": {
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "title": "Renames",
+      "type": "object"
+    },
+    "stacks": {
+      "description": "new dim -> component dims stacked into it",
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "Stacks",
+      "type": "object"
+    },
+    "template_params": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Template Params",
+      "type": "array"
+    },
+    "transforms_dims": {
+      "description": "Set (add or replace) a dim spec, e.g. resample freq",
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "$ref": "#/$defs/DimSpec"
+        }
+      },
+      "title": "Transforms Dims",
+      "type": "object"
+    },
+    "unstacks": {
+      "description": "stacked dim -> component dims restored from it (inverse of stacks); component specs come from transforms_dims when declared there, else categorical/fixed",
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "title": "Unstacks",
+      "type": "object"
+    },
+    "updates": {
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+          "$ref": "#/$defs/VarPatch"
+        }
+      },
+      "title": "Updates",
+      "type": "object"
+    }
+  },
+  "title": "SchemaEffect",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

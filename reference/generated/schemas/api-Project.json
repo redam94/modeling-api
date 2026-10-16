@@ -1,0 +1,57 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-Project.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A workspace inside a tenant (M1: only ``default``).",
+  "examples": [
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "id": "default",
+      "name": "Default project",
+      "tenant_id": "default"
+    }
+  ],
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 200,
+      "title": "Name",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "tenant_id",
+    "name",
+    "created_at"
+  ],
+  "title": "Project",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

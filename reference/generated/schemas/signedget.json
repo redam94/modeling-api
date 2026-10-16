@@ -1,0 +1,92 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/signedget.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A generation-pinned signed GET URL plus the server-computed facts about its object.\n\nThe URL honours HTTP ``Range``, so zarr zip readers can range-read one object. A reader\nverifies ``size``/``crc32c`` after a full download (corruption check only \u2014 integrity is\nenforced by the control plane).",
+  "examples": [
+    {
+      "content_type": "application/zip",
+      "crc32c": "4waSgw==",
+      "expires_at": "2026-10-15T10:30:00Z",
+      "generation": 17,
+      "method": "GET",
+      "size": 52428800,
+      "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-data/o/t%2Fdefault%2Fdatasets%2Fab12%2Fdata.zarr.zip?generation=17&X-Goog-Signature=..."
+    }
+  ],
+  "properties": {
+    "content_type": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Content Type"
+    },
+    "crc32c": {
+      "description": "CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum",
+      "examples": [
+        "4waSgw=="
+      ],
+      "pattern": "^[A-Za-z0-9+/]{6}==$",
+      "title": "Crc32C",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "generation": {
+      "minimum": 1,
+      "title": "Generation",
+      "type": "integer"
+    },
+    "md5_hash": {
+      "anyOf": [
+        {
+          "description": "MD5 as GCS reports it: base64 of the 16-byte digest",
+          "pattern": "^[A-Za-z0-9+/]{22}==$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Md5 Hash"
+    },
+    "method": {
+      "const": "GET",
+      "default": "GET",
+      "title": "Method",
+      "type": "string"
+    },
+    "size": {
+      "minimum": 0,
+      "title": "Size",
+      "type": "integer"
+    },
+    "url": {
+      "maxLength": 8192,
+      "minLength": 8,
+      "title": "Url",
+      "type": "string"
+    }
+  },
+  "required": [
+    "url",
+    "expires_at",
+    "generation",
+    "size",
+    "crc32c"
+  ],
+  "title": "SignedGet",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,31 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ExecutorUpdate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PUT /v1/admin/executors/{name}``: enable or disable an executor (audited).\n\nOrchestrators lease no new run onto a disabled executor. Runs already placed on it keep\nrunning: cancel them with ``cancel_untrusted_runs`` on the kill switches, or one by one.",
+  "examples": [
+    {
+      "enabled": false,
+      "reason": "incident 2026-10-15: suspected sandbox escape"
+    }
+  ],
+  "properties": {
+    "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "reason": {
+      "maxLength": 500,
+      "minLength": 3,
+      "title": "Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "enabled",
+    "reason"
+  ],
+  "title": "ExecutorUpdate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

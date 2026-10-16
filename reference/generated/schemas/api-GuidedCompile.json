@@ -1,0 +1,517 @@
+{
+  "$defs": {
+    "Aggregation": {
+      "additionalProperties": false,
+      "description": "Reduce outputs over dims before summarising (validity depends on representation).",
+      "properties": {
+        "how": {
+          "default": "sum",
+          "enum": [
+            "sum",
+            "mean",
+            "min",
+            "max"
+          ],
+          "title": "How",
+          "type": "string"
+        },
+        "over": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Over",
+          "type": "array"
+        }
+      },
+      "required": [
+        "over"
+      ],
+      "title": "Aggregation",
+      "type": "object"
+    },
+    "BudgetScale": {
+      "additionalProperties": false,
+      "description": "Intervention preset: scale the budget by ``k`` (all channels, or the listed ones).",
+      "properties": {
+        "channels": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Channels"
+        },
+        "k": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "K",
+          "type": "number"
+        },
+        "kind": {
+          "const": "budget_scale",
+          "default": "budget_scale",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "k"
+      ],
+      "title": "BudgetScale",
+      "type": "object"
+    },
+    "ChannelOff": {
+      "additionalProperties": false,
+      "description": "Intervention preset: what if this channel had spent nothing?",
+      "properties": {
+        "channel": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Channel",
+          "type": "string"
+        },
+        "kind": {
+          "const": "channel_off",
+          "default": "channel_off",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel"
+      ],
+      "title": "ChannelOff",
+      "type": "object"
+    },
+    "CounterfactualCompile": {
+      "additionalProperties": false,
+      "properties": {
+        "channel_dim": {
+          "default": "channel",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Channel Dim",
+          "type": "string"
+        },
+        "kind": {
+          "const": "counterfactual",
+          "default": "counterfactual",
+          "title": "Kind",
+          "type": "string"
+        },
+        "model": {
+          "description": "endpoint://project/alias or model://project/name@vN",
+          "pattern": "(?:^endpoint://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)$)|(?:^model://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)@(latest|v\\d{1,9}|\\d{1,9})$)",
+          "title": "Model",
+          "type": "string"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputSelector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "preset": {
+          "discriminator": {
+            "mapping": {
+              "budget_scale": "#/$defs/BudgetScale",
+              "channel_off": "#/$defs/ChannelOff"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ChannelOff"
+            },
+            {
+              "$ref": "#/$defs/BudgetScale"
+            }
+          ],
+          "title": "Preset"
+        },
+        "spend_var": {
+          "default": "spend",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Spend Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "preset"
+      ],
+      "title": "CounterfactualCompile",
+      "type": "object"
+    },
+    "ForecastCompile": {
+      "additionalProperties": false,
+      "properties": {
+        "channel_dim": {
+          "default": "channel",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Channel Dim",
+          "type": "string"
+        },
+        "dim": {
+          "default": "time",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "future_covariates": {
+          "$ref": "#/$defs/FutureCovariates",
+          "default": "carry_last"
+        },
+        "kind": {
+          "const": "forecast",
+          "default": "forecast",
+          "title": "Kind",
+          "type": "string"
+        },
+        "model": {
+          "description": "endpoint://project/alias or model://project/name@vN",
+          "pattern": "(?:^endpoint://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)$)|(?:^model://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)@(latest|v\\d{1,9}|\\d{1,9})$)",
+          "title": "Model",
+          "type": "string"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputSelector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "periods": {
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Periods",
+          "type": "integer"
+        },
+        "preset": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "budget_scale": "#/$defs/BudgetScale",
+                  "channel_off": "#/$defs/ChannelOff"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/ChannelOff"
+                },
+                {
+                  "$ref": "#/$defs/BudgetScale"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preset"
+        },
+        "scenario": {
+          "anyOf": [
+            {
+              "description": "Dataset reference dataset://project/name@version",
+              "examples": [
+                "dataset://growth/eu_media_daily@latest"
+              ],
+              "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scenario"
+        },
+        "spend_var": {
+          "default": "spend",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Spend Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "periods"
+      ],
+      "title": "ForecastCompile",
+      "type": "object"
+    },
+    "FutureCovariates": {
+      "description": "Where future values of ``future_required`` covariates come from in a forecast (M3).\n\n``supplied`` (default) needs them in the request's data or scenario\n(``MISSING_FUTURE_COVARIATE`` otherwise). The other policies let the runner extend them\nover the horizon, per series, inside the sandbox: ``carry_last`` repeats the last\nobserved value, ``seasonal_naive`` repeats the value one season earlier (the time dim's\nyearly period), ``zero`` sets them to zero (e.g. \"no spend planned\").",
+      "enum": [
+        "supplied",
+        "carry_last",
+        "seasonal_naive",
+        "zero"
+      ],
+      "title": "FutureCovariates",
+      "type": "string"
+    },
+    "OutputSelector": {
+      "additionalProperties": false,
+      "description": "What a score request returns.",
+      "properties": {
+        "aggregate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Aggregation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "draws": {
+          "default": 0,
+          "maximum": 10000,
+          "minimum": 0,
+          "title": "Draws",
+          "type": "integer"
+        },
+        "kind": {
+          "default": "expected",
+          "enum": [
+            "expected",
+            "predictive"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "names": {
+          "default": "dataset",
+          "enum": [
+            "dataset",
+            "canonical"
+          ],
+          "title": "Names",
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 32,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Summaries to return; default depends on representation",
+          "title": "Summary"
+        },
+        "thin_index": {
+          "const": "bundle",
+          "default": "bundle",
+          "title": "Thin Index",
+          "type": "string"
+        },
+        "units": {
+          "default": "original",
+          "enum": [
+            "original",
+            "model"
+          ],
+          "title": "Units",
+          "type": "string"
+        },
+        "vars": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "title": "Vars",
+          "type": "array"
+        }
+      },
+      "title": "OutputSelector",
+      "type": "object"
+    },
+    "WhatIfCompile": {
+      "additionalProperties": false,
+      "properties": {
+        "channel_dim": {
+          "default": "channel",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Channel Dim",
+          "type": "string"
+        },
+        "kind": {
+          "const": "whatif",
+          "default": "whatif",
+          "title": "Kind",
+          "type": "string"
+        },
+        "model": {
+          "description": "endpoint://project/alias or model://project/name@vN",
+          "pattern": "(?:^endpoint://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)$)|(?:^model://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)@(latest|v\\d{1,9}|\\d{1,9})$)",
+          "title": "Model",
+          "type": "string"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputSelector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "scenario": {
+          "$ref": "#/$defs/WhatIfScenario"
+        },
+        "spend_var": {
+          "default": "spend",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Spend Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "scenario"
+      ],
+      "title": "WhatIfCompile",
+      "type": "object"
+    },
+    "WhatIfScenario": {
+      "additionalProperties": false,
+      "description": "Spend multipliers per channel over the fit window (``1`` = what was actually spent).\n\n``geo`` restricts the scenario to one geo's grid (needs a per-geo grid).",
+      "examples": [
+        {
+          "label": "Shift 20% of TV to search",
+          "multipliers": {
+            "search": 1.3,
+            "tv": 0.8
+          }
+        }
+      ],
+      "properties": {
+        "geo": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geo"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "multipliers": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "maxProperties": 64,
+          "title": "Multipliers",
+          "type": "object"
+        }
+      },
+      "title": "WhatIfScenario",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-GuidedCompile.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Body of ``POST /v1/guided/requests:compile``: one of ``whatif``, ``forecast`` or\n``counterfactual`` (by ``kind``); the response is the equivalent ``ScoreRequest``.",
+  "discriminator": {
+    "mapping": {
+      "counterfactual": "#/$defs/CounterfactualCompile",
+      "forecast": "#/$defs/ForecastCompile",
+      "whatif": "#/$defs/WhatIfCompile"
+    },
+    "propertyName": "kind"
+  },
+  "examples": [
+    {
+      "kind": "whatif",
+      "model": "model://growth/eu-geo-mmm@v3",
+      "scenario": {
+        "multipliers": {
+          "search": 1.3,
+          "tv": 0.8
+        }
+      }
+    },
+    {
+      "kind": "forecast",
+      "model": "endpoint://growth/geo-mmm-prod",
+      "periods": 13,
+      "preset": {
+        "k": 1.1,
+        "kind": "budget_scale"
+      }
+    },
+    {
+      "kind": "counterfactual",
+      "model": "endpoint://growth/geo-mmm-prod",
+      "preset": {
+        "channel": "tv",
+        "kind": "channel_off"
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "$ref": "#/$defs/WhatIfCompile"
+    },
+    {
+      "$ref": "#/$defs/ForecastCompile"
+    },
+    {
+      "$ref": "#/$defs/CounterfactualCompile"
+    }
+  ],
+  "title": "GuidedCompile",
+  "x-mapi-contract-version": "0.1"
+}

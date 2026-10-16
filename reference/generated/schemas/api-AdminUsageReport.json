@@ -1,0 +1,309 @@
+{
+  "$defs": {
+    "CostTotals": {
+      "description": "Sums over ledger entries (one currency).",
+      "examples": [
+        {
+          "amount_micros": 93600,
+          "attempts": 3,
+          "currency": "USD",
+          "gib_seconds": 14400,
+          "runs": 3,
+          "vcpu_seconds": 3600
+        }
+      ],
+      "properties": {
+        "amount_micros": {
+          "default": 0,
+          "title": "Amount Micros",
+          "type": "integer"
+        },
+        "attempts": {
+          "default": 0,
+          "description": "Distinct (run, attempt) pairs",
+          "minimum": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "gib_seconds": {
+          "default": 0,
+          "title": "Gib Seconds",
+          "type": "number"
+        },
+        "runs": {
+          "default": 0,
+          "description": "Distinct runs",
+          "minimum": 0,
+          "title": "Runs",
+          "type": "integer"
+        },
+        "vcpu_seconds": {
+          "default": 0,
+          "title": "Vcpu Seconds",
+          "type": "number"
+        }
+      },
+      "title": "CostTotals",
+      "type": "object"
+    },
+    "GlobalSpend": {
+      "description": "Platform spend in the current window of the global spend cap: what the kill switch\ncompares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in\n``spend_cap_currency``). ``fraction`` is ``spent / cap``; null without a cap.",
+      "examples": [
+        {
+          "cap_micros": 500000000,
+          "currency": "USD",
+          "end": "2026-10-16T00:00:00Z",
+          "fraction": 0.7,
+          "period": "day",
+          "spent_micros": 350000000,
+          "start": "2026-10-15T00:00:00Z"
+        }
+      ],
+      "properties": {
+        "cap_micros": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cap Micros"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "end": {
+          "format": "date-time",
+          "title": "End",
+          "type": "string"
+        },
+        "fraction": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fraction"
+        },
+        "period": {
+          "enum": [
+            "day",
+            "month"
+          ],
+          "title": "Period",
+          "type": "string"
+        },
+        "spent_micros": {
+          "title": "Spent Micros",
+          "type": "integer"
+        },
+        "start": {
+          "format": "date-time",
+          "title": "Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "period",
+        "start",
+        "end",
+        "currency",
+        "spent_micros"
+      ],
+      "title": "GlobalSpend",
+      "type": "object"
+    },
+    "TenantCost": {
+      "description": "One tenant's ledger totals for the period (one row per currency).",
+      "examples": [
+        {
+          "name": "Acme Corp",
+          "tenant_id": "acme",
+          "totals": {
+            "amount_micros": 93600,
+            "attempts": 3,
+            "currency": "USD",
+            "gib_seconds": 14400,
+            "runs": 3,
+            "vcpu_seconds": 3600
+          },
+          "trust_tier": "verified"
+        }
+      ],
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "tenant_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "totals": {
+          "$ref": "#/$defs/CostTotals"
+        },
+        "trust_tier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TrustTier"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "tenant_id",
+        "totals"
+      ],
+      "title": "TenantCost",
+      "type": "object"
+    },
+    "TrustTier": {
+      "description": "How much the platform trusts a tenant's code and data (plan \u00a72, \u00a77, \u00a79).",
+      "enum": [
+        "internal",
+        "verified",
+        "public",
+        "self-hosted-trusted"
+      ],
+      "title": "TrustTier",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-AdminUsageReport.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET /v1/admin/usage`` (operators): cost by tenant for one UTC period, biggest spender\nfirst, and the current spend against the global spend cap.\n\nQuery: ``period=day|month`` (default ``month``) and ``start`` (an instant inside the\nperiod; default: now). Tenants without ledger entries in the period are not listed;\n``totals`` has one row per currency. ``spend_cap`` always covers the cap's current window.",
+  "examples": [
+    {
+      "end": "2026-11-01T00:00:00Z",
+      "period": "month",
+      "price_versions": [
+        "cloudrun-list-2026-10"
+      ],
+      "spend_cap": {
+        "cap_micros": 500000000,
+        "currency": "USD",
+        "end": "2026-10-16T00:00:00Z",
+        "fraction": 0.7,
+        "period": "day",
+        "spent_micros": 350000000,
+        "start": "2026-10-15T00:00:00Z"
+      },
+      "start": "2026-10-01T00:00:00Z",
+      "tenants": [
+        {
+          "name": "Acme Corp",
+          "tenant_id": "acme",
+          "totals": {
+            "amount_micros": 93600,
+            "attempts": 3,
+            "currency": "USD",
+            "gib_seconds": 14400,
+            "runs": 3,
+            "vcpu_seconds": 3600
+          },
+          "trust_tier": "verified"
+        }
+      ],
+      "totals": [
+        {
+          "amount_micros": 93600,
+          "attempts": 3,
+          "currency": "USD",
+          "gib_seconds": 14400,
+          "runs": 3,
+          "vcpu_seconds": 3600
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "end": {
+      "format": "date-time",
+      "title": "End",
+      "type": "string"
+    },
+    "period": {
+      "enum": [
+        "day",
+        "month"
+      ],
+      "title": "Period",
+      "type": "string"
+    },
+    "price_versions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Price Versions",
+      "type": "array"
+    },
+    "spend_cap": {
+      "$ref": "#/$defs/GlobalSpend"
+    },
+    "start": {
+      "format": "date-time",
+      "title": "Start",
+      "type": "string"
+    },
+    "tenants": {
+      "items": {
+        "$ref": "#/$defs/TenantCost"
+      },
+      "title": "Tenants",
+      "type": "array"
+    },
+    "totals": {
+      "items": {
+        "$ref": "#/$defs/CostTotals"
+      },
+      "title": "Totals",
+      "type": "array"
+    }
+  },
+  "required": [
+    "period",
+    "start",
+    "end",
+    "spend_cap"
+  ],
+  "title": "AdminUsageReport",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

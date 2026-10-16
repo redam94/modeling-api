@@ -1,0 +1,399 @@
+{
+  "$defs": {
+    "AuditAction": {
+      "description": "Audited actions (``<resource>.<verb>``). New actions are additive.",
+      "enum": [
+        "auth.login",
+        "auth.login_failed",
+        "auth.logout",
+        "tenant.create",
+        "tenant.update",
+        "tenant.suspend",
+        "tenant.reactivate",
+        "tenant.delete",
+        "project.create",
+        "project.update",
+        "project.delete",
+        "member.add",
+        "member.update",
+        "member.remove",
+        "token.create",
+        "token.revoke",
+        "token.auth_failed",
+        "quota.update",
+        "quota.delete",
+        "quota.denied",
+        "kill_switch.update",
+        "executor.evidence_update",
+        "executor.update",
+        "run.create",
+        "run.cancel",
+        "run.integrity_failure",
+        "dataset.download",
+        "model.artifact_link",
+        "endpoint.promote",
+        "plugin.publish",
+        "plugin.yank",
+        "event.rejected",
+        "auth.signup",
+        "auth.signup_rejected",
+        "auth.email_verified",
+        "auth.signup_flagged",
+        "auth.signup_review",
+        "tenant.verification_update",
+        "tenant.deletion_request",
+        "tenant.deletion_cancel",
+        "tenant.deletion_retry",
+        "tenant.purged",
+        "tenant.export",
+        "project.guided_lock",
+        "endpoint.create",
+        "endpoint.promote_override",
+        "endpoint.rollback",
+        "endpoint.delete",
+        "webhook.create",
+        "webhook.update",
+        "webhook.delete",
+        "webhook.secret_rotate",
+        "webhook.replay",
+        "webhook.disabled",
+        "webhook.url_blocked",
+        "plot.embed_create",
+        "plot.embed_revoke"
+      ],
+      "title": "AuditAction",
+      "type": "string"
+    },
+    "AuditOutcome": {
+      "enum": [
+        "success",
+        "denied",
+        "error"
+      ],
+      "title": "AuditOutcome",
+      "type": "string"
+    },
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "PrincipalKind": {
+      "enum": [
+        "user",
+        "service_account",
+        "token",
+        "service"
+      ],
+      "title": "PrincipalKind",
+      "type": "string"
+    },
+    "ResourceKind": {
+      "enum": [
+        "tenant",
+        "tenant_member",
+        "project",
+        "member",
+        "token",
+        "catalog",
+        "dataset",
+        "spec",
+        "run",
+        "model",
+        "endpoint",
+        "plot",
+        "plugin",
+        "usage",
+        "billing",
+        "audit",
+        "quota",
+        "kill_switch",
+        "executor",
+        "event",
+        "webhook",
+        "embed",
+        "tenant_deletion",
+        "tenant_export"
+      ],
+      "title": "ResourceKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-AuditEvent.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One audit row. ``tenant_id`` is ``None`` for platform-level actions.",
+  "examples": [
+    {
+      "action": "token.create",
+      "actor_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "actor_kind": "user",
+      "details": {
+        "expires_in_days": 30,
+        "scopes": [
+          "score:geo-mmm-prod"
+        ]
+      },
+      "id": "aud_01jaf3w1x2y3z4a5b6c7d8e9f0",
+      "ip_hash": "hmac-sha256:0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+      "outcome": "success",
+      "project_id": "growth",
+      "request_id": "req-7f3a",
+      "resource_id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+      "resource_kind": "token",
+      "tenant_id": "acme",
+      "ts": "2026-10-15T09:30:00Z",
+      "user_agent_hash": "hmac-sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90"
+    },
+    {
+      "action": "quota.denied",
+      "actor_id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+      "actor_kind": "token",
+      "code": "QUOTA_EXCEEDED",
+      "details": {
+        "limit_name": "vcpu_seconds_per_day",
+        "scope": "tenant"
+      },
+      "id": "aud_01jaf3w9x8y7z6a5b4c3d2e1f0",
+      "outcome": "denied",
+      "project_id": "growth",
+      "resource_kind": "run",
+      "tenant_id": "acme",
+      "token_id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+      "ts": "2026-10-15T09:30:00Z"
+    }
+  ],
+  "properties": {
+    "action": {
+      "$ref": "#/$defs/AuditAction"
+    },
+    "actor_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actor Id"
+    },
+    "actor_kind": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PrincipalKind"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "None: unauthenticated caller"
+    },
+    "code": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Problem code of a denial or error"
+    },
+    "details": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Details",
+      "type": "object"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "ip_hash": {
+      "anyOf": [
+        {
+          "pattern": "^hmac-sha256:[0-9a-f]{32}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ip Hash"
+    },
+    "operator": {
+      "default": false,
+      "description": "The actor acted as a platform operator",
+      "title": "Operator",
+      "type": "boolean"
+    },
+    "outcome": {
+      "$ref": "#/$defs/AuditOutcome"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "request_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Request Id"
+    },
+    "resource_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resource Id"
+    },
+    "resource_kind": {
+      "$ref": "#/$defs/ResourceKind"
+    },
+    "tenant_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tenant Id"
+    },
+    "token_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Set when the actor used an API token",
+      "title": "Token Id"
+    },
+    "ts": {
+      "format": "date-time",
+      "title": "Ts",
+      "type": "string"
+    },
+    "user_agent_hash": {
+      "anyOf": [
+        {
+          "pattern": "^hmac-sha256:[0-9a-f]{32}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "User Agent Hash"
+    }
+  },
+  "required": [
+    "id",
+    "ts",
+    "action",
+    "resource_kind",
+    "outcome"
+  ],
+  "title": "AuditEvent",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

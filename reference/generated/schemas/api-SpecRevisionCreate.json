@@ -1,0 +1,46 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-SpecRevisionCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Add an immutable revision. ``parent_revision`` guards against lost updates (409).",
+  "examples": [
+    {
+      "message": "tune",
+      "parent_revision": 1,
+      "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+    }
+  ],
+  "properties": {
+    "message": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Message"
+    },
+    "parent_revision": {
+      "minimum": 1,
+      "title": "Parent Revision",
+      "type": "integer"
+    },
+    "yaml": {
+      "maxLength": 262144,
+      "minLength": 1,
+      "title": "Yaml",
+      "type": "string"
+    }
+  },
+  "required": [
+    "yaml",
+    "parent_revision"
+  ],
+  "title": "SpecRevisionCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

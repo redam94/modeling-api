@@ -1,0 +1,81 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-GlobalSpend.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Platform spend in the current window of the global spend cap: what the kill switch\ncompares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in\n``spend_cap_currency``). ``fraction`` is ``spent / cap``; null without a cap.",
+  "examples": [
+    {
+      "cap_micros": 500000000,
+      "currency": "USD",
+      "end": "2026-10-16T00:00:00Z",
+      "fraction": 0.7,
+      "period": "day",
+      "spent_micros": 350000000,
+      "start": "2026-10-15T00:00:00Z"
+    }
+  ],
+  "properties": {
+    "cap_micros": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cap Micros"
+    },
+    "currency": {
+      "pattern": "^[A-Z]{3}$",
+      "title": "Currency",
+      "type": "string"
+    },
+    "end": {
+      "format": "date-time",
+      "title": "End",
+      "type": "string"
+    },
+    "fraction": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fraction"
+    },
+    "period": {
+      "enum": [
+        "day",
+        "month"
+      ],
+      "title": "Period",
+      "type": "string"
+    },
+    "spent_micros": {
+      "title": "Spent Micros",
+      "type": "integer"
+    },
+    "start": {
+      "format": "date-time",
+      "title": "Start",
+      "type": "string"
+    }
+  },
+  "required": [
+    "period",
+    "start",
+    "end",
+    "currency",
+    "spent_micros"
+  ],
+  "title": "GlobalSpend",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

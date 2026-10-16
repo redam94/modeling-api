@@ -1,0 +1,76 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-SignupRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /auth/signup`` (public, rate-limited). ``organisation`` names the tenant.",
+  "examples": [
+    {
+      "accepted_terms": true,
+      "email": "ana@acme.example",
+      "name": "Ana Analyst",
+      "organisation": "Acme Retail",
+      "terms_version": "2026-10"
+    }
+  ],
+  "properties": {
+    "accepted_terms": {
+      "title": "Accepted Terms",
+      "type": "boolean"
+    },
+    "challenge": {
+      "anyOf": [
+        {
+          "maxLength": 4096,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "A bot-check token (e.g. Turnstile), if configured",
+      "title": "Challenge"
+    },
+    "email": {
+      "maxLength": 320,
+      "pattern": "^[^@\\s]{1,64}@[^@\\s]{1,255}$",
+      "title": "Email",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+      "title": "Name",
+      "type": "string"
+    },
+    "organisation": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Organisation"
+    },
+    "terms_version": {
+      "default": "2026-10",
+      "maxLength": 32,
+      "title": "Terms Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "email",
+    "name",
+    "accepted_terms"
+  ],
+  "title": "SignupRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

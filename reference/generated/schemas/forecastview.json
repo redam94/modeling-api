@@ -1,0 +1,288 @@
+{
+  "$defs": {
+    "DistributionSummary": {
+      "description": "A distribution in business units: mean, sd and named quantiles (``\"0.05\"`` \u2026).",
+      "examples": [
+        {
+          "mean": 2.6,
+          "quantiles": {
+            "0.05": 1.5,
+            "0.5": 2.5,
+            "0.95": 4.1
+          },
+          "sd": 0.8
+        }
+      ],
+      "properties": {
+        "mean": {
+          "title": "Mean",
+          "type": "number"
+        },
+        "quantiles": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "maxProperties": 32,
+          "title": "Quantiles",
+          "type": "object"
+        },
+        "sd": {
+          "minimum": 0,
+          "title": "Sd",
+          "type": "number"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "mean",
+        "sd"
+      ],
+      "title": "DistributionSummary",
+      "type": "object"
+    },
+    "FanChart": {
+      "description": "Quantile bands of a series along one dim (a KPI fan): ``values[i][j]`` is quantile\n``quantiles[i]`` at ``coords[j]``. ``observed`` (if any) is the data over ``coords``.",
+      "examples": [
+        {
+          "coords": [
+            "2026-01-04",
+            "2026-01-11"
+          ],
+          "dim": "time",
+          "observed": [
+            101.0,
+            99.5
+          ],
+          "quantiles": [
+            0.05,
+            0.5,
+            0.95
+          ],
+          "units": "kEUR",
+          "values": [
+            [
+              80.0,
+              82.0
+            ],
+            [
+              100.0,
+              103.0
+            ],
+            [
+              125.0,
+              129.0
+            ]
+          ]
+        }
+      ],
+      "properties": {
+        "coords": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "maxItems": 10000,
+          "title": "Coords",
+          "type": "array"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "observed": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed"
+        },
+        "quantiles": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Quantiles",
+          "type": "array"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "values": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "maxItems": 16,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "dim",
+        "coords",
+        "quantiles",
+        "values"
+      ],
+      "title": "FanChart",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/forecastview.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``ui/guided/forecast.json``: the KPI of a ``forecast`` score run for Guided mode.\n\n``fan.coords`` are the last ``history`` fitted periods followed by the forecast periods;\n``fan.observed`` holds the actual KPI over the history (``null`` after it) and\n``fan.values`` the forecast quantiles (``null`` over the history), so the split line sits\nat ``split_at``, the first forecast period. The KPI is summed over ``summed_over``\n(geos, stores, ...) per posterior draw before the quantiles are taken; ``total`` is the\nKPI summed over the whole horizon.",
+  "properties": {
+    "dim": {
+      "maxLength": 128,
+      "title": "Dim",
+      "type": "string"
+    },
+    "fan": {
+      "$ref": "#/$defs/FanChart"
+    },
+    "format": {
+      "const": "mapi.forecast/v1",
+      "default": "mapi.forecast/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "history": {
+      "default": 0,
+      "minimum": 0,
+      "title": "History",
+      "type": "integer"
+    },
+    "kind": {
+      "default": "expected",
+      "enum": [
+        "expected",
+        "predictive"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "kpi": {
+      "maxLength": 128,
+      "title": "Kpi",
+      "type": "string"
+    },
+    "split_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Split At"
+    },
+    "summed_over": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 32,
+      "title": "Summed Over",
+      "type": "array"
+    },
+    "total": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DistributionSummary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "units": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Units"
+    }
+  },
+  "required": [
+    "kpi",
+    "dim",
+    "fan"
+  ],
+  "title": "ForecastView",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

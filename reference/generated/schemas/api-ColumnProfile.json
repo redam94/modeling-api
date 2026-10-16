@@ -1,0 +1,200 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ColumnProfile.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "What the browser (DuckDB-WASM/papaparse preview) or an ingest profile knows about a\ncolumn. ``name`` and ``sample`` are user data: render them as text only.",
+  "examples": [
+    {
+      "dtype": "number",
+      "max": 98312.0,
+      "min": 1520.5,
+      "n_distinct": 1012,
+      "n_rows": 1040,
+      "name": "revenue_eur"
+    },
+    {
+      "detected_freq": "W-SUN",
+      "dtype": "date",
+      "max_date": "2025-12-28",
+      "min_date": "2024-01-07",
+      "n_distinct": 104,
+      "n_rows": 1040,
+      "name": "week"
+    }
+  ],
+  "properties": {
+    "detected_freq": {
+      "anyOf": [
+        {
+          "maxLength": 16,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "examples": [
+        "W-SUN",
+        "D",
+        "MS"
+      ],
+      "title": "Detected Freq"
+    },
+    "dtype": {
+      "enum": [
+        "number",
+        "integer",
+        "string",
+        "date",
+        "boolean"
+      ],
+      "title": "Dtype",
+      "type": "string"
+    },
+    "max": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max"
+    },
+    "max_date": {
+      "anyOf": [
+        {
+          "maxLength": 40,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max Date"
+    },
+    "min": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Min"
+    },
+    "min_date": {
+      "anyOf": [
+        {
+          "maxLength": 40,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Min Date"
+    },
+    "monotonic": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Values never decrease in file order (dates of a single series, trip numbers); repeated panels of dates are not monotonic",
+      "title": "Monotonic"
+    },
+    "n_distinct": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "N Distinct"
+    },
+    "n_missing": {
+      "default": 0,
+      "minimum": 0,
+      "title": "N Missing",
+      "type": "integer"
+    },
+    "n_rows": {
+      "minimum": 0,
+      "title": "N Rows",
+      "type": "integer"
+    },
+    "name": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "origin": {
+      "anyOf": [
+        {
+          "enum": [
+            "column",
+            "mff_variable",
+            "dim",
+            "variable"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Where the profile comes from: a table column, a VariableName of an MFF table, or a dim/variable of a stored dataset",
+      "title": "Origin"
+    },
+    "sample": {
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "maxItems": 20,
+      "title": "Sample",
+      "type": "array"
+    }
+  },
+  "required": [
+    "name",
+    "dtype",
+    "n_rows"
+  ],
+  "title": "ColumnProfile",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,260 @@
+{
+  "$defs": {
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "QuestionSuggestion": {
+      "description": "Candidates for one question (best first) and the pre-filled answer.",
+      "properties": {
+        "answer": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/RoleCandidate"
+          },
+          "maxItems": 20,
+          "title": "Candidates",
+          "type": "array"
+        },
+        "question_id": {
+          "title": "Question Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question_id"
+      ],
+      "title": "QuestionSuggestion",
+      "type": "object"
+    },
+    "RoleCandidate": {
+      "properties": {
+        "column": {
+          "title": "Column",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "reason_plain": {
+          "maxLength": 300,
+          "title": "Reason Plain",
+          "type": "string"
+        }
+      },
+      "required": [
+        "column",
+        "confidence",
+        "reason_plain"
+      ],
+      "title": "RoleCandidate",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-RoleSuggestions.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "examples": [
+    {
+      "questions": [
+        {
+          "answer": "revenue_eur",
+          "candidates": [
+            {
+              "column": "revenue_eur",
+              "confidence": 0.9,
+              "reason_plain": "named like a revenue column; numbers"
+            }
+          ],
+          "question_id": "kpi"
+        },
+        {
+          "answer": [
+            "tv_spend"
+          ],
+          "candidates": [
+            {
+              "column": "tv_spend",
+              "confidence": 0.8,
+              "reason_plain": "named like spend; never negative"
+            }
+          ],
+          "question_id": "spend"
+        }
+      ],
+      "template_id": "geo_mmm",
+      "unassigned": []
+    }
+  ],
+  "properties": {
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/Issue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "questions": {
+      "items": {
+        "$ref": "#/$defs/QuestionSuggestion"
+      },
+      "title": "Questions",
+      "type": "array"
+    },
+    "template_id": {
+      "title": "Template Id",
+      "type": "string"
+    },
+    "unassigned": {
+      "description": "Columns no answer uses",
+      "items": {
+        "type": "string"
+      },
+      "title": "Unassigned",
+      "type": "array"
+    }
+  },
+  "required": [
+    "template_id",
+    "questions"
+  ],
+  "title": "RoleSuggestions",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

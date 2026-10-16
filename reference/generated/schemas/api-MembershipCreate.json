@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "ProjectRole": {
+      "description": "Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last).",
+      "enum": [
+        "viewer",
+        "editor",
+        "runner",
+        "admin"
+      ],
+      "title": "ProjectRole",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-MembershipCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Add a member (tenant-wide or to one project, by path). Give a known ``principal_id``\nor an ``email`` to invite (claimed at first login with that verified e-mail).",
+  "examples": [
+    {
+      "email": "ana@acme.example",
+      "role": "runner"
+    },
+    {
+      "principal_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "role": "viewer"
+    }
+  ],
+  "properties": {
+    "email": {
+      "anyOf": [
+        {
+          "maxLength": 320,
+          "pattern": "^[^@\\s]{1,64}@[^@\\s]{1,255}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Email"
+    },
+    "principal_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^(?:usr|sa)_[0-9a-z]{26}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Principal Id"
+    },
+    "role": {
+      "$ref": "#/$defs/ProjectRole"
+    }
+  },
+  "required": [
+    "role"
+  ],
+  "title": "MembershipCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

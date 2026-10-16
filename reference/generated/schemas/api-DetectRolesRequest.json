@@ -1,0 +1,289 @@
+{
+  "$defs": {
+    "ColumnProfile": {
+      "additionalProperties": false,
+      "description": "What the browser (DuckDB-WASM/papaparse preview) or an ingest profile knows about a\ncolumn. ``name`` and ``sample`` are user data: render them as text only.",
+      "examples": [
+        {
+          "dtype": "number",
+          "max": 98312.0,
+          "min": 1520.5,
+          "n_distinct": 1012,
+          "n_rows": 1040,
+          "name": "revenue_eur"
+        },
+        {
+          "detected_freq": "W-SUN",
+          "dtype": "date",
+          "max_date": "2025-12-28",
+          "min_date": "2024-01-07",
+          "n_distinct": 104,
+          "n_rows": 1040,
+          "name": "week"
+        }
+      ],
+      "properties": {
+        "detected_freq": {
+          "anyOf": [
+            {
+              "maxLength": 16,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "examples": [
+            "W-SUN",
+            "D",
+            "MS"
+          ],
+          "title": "Detected Freq"
+        },
+        "dtype": {
+          "enum": [
+            "number",
+            "integer",
+            "string",
+            "date",
+            "boolean"
+          ],
+          "title": "Dtype",
+          "type": "string"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "max_date": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Date"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "min_date": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Date"
+        },
+        "monotonic": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Values never decrease in file order (dates of a single series, trip numbers); repeated panels of dates are not monotonic",
+          "title": "Monotonic"
+        },
+        "n_distinct": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Distinct"
+        },
+        "n_missing": {
+          "default": 0,
+          "minimum": 0,
+          "title": "N Missing",
+          "type": "integer"
+        },
+        "n_rows": {
+          "minimum": 0,
+          "title": "N Rows",
+          "type": "integer"
+        },
+        "name": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "enum": [
+                "column",
+                "mff_variable",
+                "dim",
+                "variable"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Where the profile comes from: a table column, a VariableName of an MFF table, or a dim/variable of a stored dataset",
+          "title": "Origin"
+        },
+        "sample": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 20,
+          "title": "Sample",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "dtype",
+        "n_rows"
+      ],
+      "title": "ColumnProfile",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-DetectRolesRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/guided/detect-roles``: exactly one of ``dataset`` (a stored version:\nits schema and profile are used) or ``columns`` (profiled in the browser).",
+  "examples": [
+    {
+      "columns": [
+        {
+          "dtype": "number",
+          "max": 98312.0,
+          "min": 1520.5,
+          "n_distinct": 1012,
+          "n_rows": 1040,
+          "name": "revenue_eur"
+        },
+        {
+          "detected_freq": "W-SUN",
+          "dtype": "date",
+          "max_date": "2025-12-28",
+          "min_date": "2024-01-07",
+          "n_distinct": 104,
+          "n_rows": 1040,
+          "name": "week"
+        },
+        {
+          "dtype": "string",
+          "n_distinct": 10,
+          "n_rows": 1040,
+          "name": "market"
+        },
+        {
+          "dtype": "number",
+          "max": 90000.0,
+          "min": 0,
+          "n_rows": 1040,
+          "name": "tv_spend"
+        }
+      ],
+      "template_id": "geo_mmm"
+    }
+  ],
+  "properties": {
+    "columns": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/ColumnProfile"
+          },
+          "maxItems": 2048,
+          "minItems": 1,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Columns"
+    },
+    "dataset": {
+      "anyOf": [
+        {
+          "description": "Dataset reference dataset://project/name@version",
+          "examples": [
+            "dataset://growth/eu_media_daily@latest"
+          ],
+          "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Dataset"
+    },
+    "template_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+      "title": "Template Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "template_id"
+  ],
+  "title": "DetectRolesRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

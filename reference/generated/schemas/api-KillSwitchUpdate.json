@@ -1,0 +1,88 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-KillSwitchUpdate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PUT /v1/admin/kill-switches``: fields left out keep their value; ``reason`` is\nrequired so the audit log says why.",
+  "examples": [
+    {
+      "reason": "incident 2026-10-15",
+      "untrusted_execution_enabled": false
+    },
+    {
+      "cancel_untrusted_runs": true,
+      "reason": "incident 2026-10-15: confirmed sandbox escape",
+      "untrusted_execution_enabled": false
+    },
+    {
+      "global_spend_cap_micros": 500000000,
+      "reason": "daily cap for the beta"
+    }
+  ],
+  "properties": {
+    "cancel_untrusted_runs": {
+      "default": false,
+      "description": "Also cancel every unfinished run of tenant-uploaded code, queued or already placed on an executor. Requires untrusted_execution_enabled=false in the same update. Without it, pausing only holds new work and in-flight runs continue",
+      "title": "Cancel Untrusted Runs",
+      "type": "boolean"
+    },
+    "clear_spend_cap": {
+      "default": false,
+      "description": "Remove the spend cap",
+      "title": "Clear Spend Cap",
+      "type": "boolean"
+    },
+    "global_spend_cap_micros": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Global Spend Cap Micros"
+    },
+    "reason": {
+      "maxLength": 500,
+      "minLength": 3,
+      "title": "Reason",
+      "type": "string"
+    },
+    "spend_cap_period": {
+      "anyOf": [
+        {
+          "enum": [
+            "day",
+            "month"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Spend Cap Period"
+    },
+    "untrusted_execution_enabled": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Untrusted Execution Enabled"
+    }
+  },
+  "required": [
+    "reason"
+  ],
+  "title": "KillSwitchUpdate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

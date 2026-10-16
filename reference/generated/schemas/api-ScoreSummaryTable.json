@@ -1,0 +1,75 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ScoreSummaryTable.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.",
+  "examples": [
+    {
+      "columns": [
+        "geo",
+        "time",
+        "mean",
+        "hdi_90_lower",
+        "hdi_90_upper"
+      ],
+      "rows": [
+        [
+          "de",
+          "2026-01-05",
+          1520.4,
+          1402.1,
+          1633.9
+        ]
+      ],
+      "variable": "revenue"
+    }
+  ],
+  "properties": {
+    "columns": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 256,
+      "title": "Columns",
+      "type": "array"
+    },
+    "rows": {
+      "items": {
+        "items": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": "array"
+      },
+      "title": "Rows",
+      "type": "array"
+    },
+    "variable": {
+      "maxLength": 256,
+      "title": "Variable",
+      "type": "string"
+    }
+  },
+  "required": [
+    "variable",
+    "columns",
+    "rows"
+  ],
+  "title": "ScoreSummaryTable",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,82 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-Model.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A registry entry grouping the versions fitted from one spec name.",
+  "examples": [
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+      "latest_version": 1,
+      "name": "eu-geo-mmm",
+      "project_id": "default",
+      "ref": "model://default/eu-geo-mmm",
+      "tenant_id": "default",
+      "updated_at": "2026-10-15T09:30:00Z"
+    }
+  ],
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "latest_version": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Latest Version"
+    },
+    "name": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+      "title": "Name",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "ref": {
+      "description": "model://project/name (append @vN or @latest)",
+      "title": "Ref",
+      "type": "string"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "tenant_id",
+    "project_id",
+    "name",
+    "ref",
+    "created_at",
+    "updated_at"
+  ],
+  "title": "Model",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

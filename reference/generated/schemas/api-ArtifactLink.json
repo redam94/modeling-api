@@ -1,0 +1,80 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ArtifactLink.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A short-lived, generation-pinned signed GET URL for one artifact (HTTP Range works).",
+  "examples": [
+    {
+      "content_type": "application/zip",
+      "crc32c": "4waSgw==",
+      "expires_at": "2026-10-15T09:45:00Z",
+      "generation": 7,
+      "name": "bundle.zarr.zip",
+      "size": 2097152,
+      "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault%2Fmodels%2Fmdl_01%2F1%2Fbundle.zarr.zip?generation=7&X-Goog-Signature=\u2026"
+    }
+  ],
+  "properties": {
+    "content_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Content Type"
+    },
+    "crc32c": {
+      "description": "CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum",
+      "examples": [
+        "4waSgw=="
+      ],
+      "pattern": "^[A-Za-z0-9+/]{6}==$",
+      "title": "Crc32C",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "generation": {
+      "minimum": 1,
+      "title": "Generation",
+      "type": "integer"
+    },
+    "method": {
+      "const": "GET",
+      "default": "GET",
+      "title": "Method",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 1024,
+      "title": "Name",
+      "type": "string"
+    },
+    "size": {
+      "minimum": 0,
+      "title": "Size",
+      "type": "integer"
+    },
+    "url": {
+      "title": "Url",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "url",
+    "expires_at",
+    "size",
+    "crc32c",
+    "generation"
+  ],
+  "title": "ArtifactLink",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

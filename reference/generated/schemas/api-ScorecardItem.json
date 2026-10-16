@@ -1,0 +1,113 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ScorecardItem.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "examples": [
+    {
+      "code": "RHAT_OK",
+      "message_plain": "All chains converged to the same answer.",
+      "metric": "r_hat_max",
+      "status": "pass",
+      "threshold": 1.01,
+      "title": "Chains agree",
+      "value": 1.004
+    }
+  ],
+  "properties": {
+    "code": {
+      "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+      "title": "Code",
+      "type": "string"
+    },
+    "message_expert": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Message Expert"
+    },
+    "message_plain": {
+      "maxLength": 2000,
+      "title": "Message Plain",
+      "type": "string"
+    },
+    "metric": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Metric"
+    },
+    "status": {
+      "enum": [
+        "pass",
+        "warn",
+        "fail"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "suggested_action": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Suggested Action"
+    },
+    "threshold": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Threshold"
+    },
+    "title": {
+      "maxLength": 200,
+      "title": "Title",
+      "type": "string"
+    },
+    "value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Value"
+    }
+  },
+  "required": [
+    "code",
+    "status",
+    "title",
+    "message_plain"
+  ],
+  "title": "ScorecardItem",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,109 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/objectmeta.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Metadata-only view of one object generation (what ``objects.get`` returns).\n\n``crc32c`` and ``md5_hash`` are computed by the storage service, never by the uploader.\n``md5_hash`` is absent for composite objects (GCS semantics).",
+  "examples": [
+    {
+      "bucket": "mapi-local-runs",
+      "content_type": "application/zip",
+      "crc32c": "4waSgw==",
+      "generation": 1760500000123456,
+      "md5_hash": "XrY7u+Ae7tCTyyK7j1rNww==",
+      "metadata": {},
+      "metageneration": 1,
+      "name": "t/default/runs/run_01jabc/a1/bundle.zarr.zip",
+      "size": 1048576,
+      "time_created": "2026-10-15T09:30:00Z"
+    }
+  ],
+  "properties": {
+    "bucket": {
+      "pattern": "^[a-z0-9][a-z0-9_.\\-]{1,61}[a-z0-9]$",
+      "title": "Bucket",
+      "type": "string"
+    },
+    "content_type": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Content Type"
+    },
+    "crc32c": {
+      "description": "CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum",
+      "examples": [
+        "4waSgw=="
+      ],
+      "pattern": "^[A-Za-z0-9+/]{6}==$",
+      "title": "Crc32C",
+      "type": "string"
+    },
+    "generation": {
+      "minimum": 1,
+      "title": "Generation",
+      "type": "integer"
+    },
+    "md5_hash": {
+      "anyOf": [
+        {
+          "description": "MD5 as GCS reports it: base64 of the 16-byte digest",
+          "pattern": "^[A-Za-z0-9+/]{22}==$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Md5 Hash"
+    },
+    "metadata": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "maxProperties": 64,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "metageneration": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Metageneration",
+      "type": "integer"
+    },
+    "name": {
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "size": {
+      "minimum": 0,
+      "title": "Size",
+      "type": "integer"
+    },
+    "time_created": {
+      "format": "date-time",
+      "title": "Time Created",
+      "type": "string"
+    }
+  },
+  "required": [
+    "bucket",
+    "name",
+    "generation",
+    "size",
+    "crc32c",
+    "time_created"
+  ],
+  "title": "ObjectMeta",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

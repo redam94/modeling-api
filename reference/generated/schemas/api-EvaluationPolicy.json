@@ -1,0 +1,41 @@
+{
+  "$defs": {
+    "FitMode": {
+      "enum": [
+        "evaluate_then_refit",
+        "train_only"
+      ],
+      "title": "FitMode",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-EvaluationPolicy.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "What a model version must satisfy to be promoted to the endpoint (Q13).\n\n``fit_mode = evaluate_then_refit`` (default) requires versions whose production bundle\nwas refitted on all data after the holdout evaluation; ``train_only`` also accepts\nexploration fits. ``schema_change`` decides what happens when the new version expects\ninput the endpoint's callers do not send (:func:`schema_breaks`).",
+  "examples": [
+    {
+      "fit_mode": "evaluate_then_refit",
+      "schema_change": "block"
+    }
+  ],
+  "properties": {
+    "fit_mode": {
+      "$ref": "#/$defs/FitMode",
+      "default": "evaluate_then_refit"
+    },
+    "schema_change": {
+      "default": "block",
+      "enum": [
+        "block",
+        "warn",
+        "allow"
+      ],
+      "title": "Schema Change",
+      "type": "string"
+    }
+  },
+  "title": "EvaluationPolicy",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

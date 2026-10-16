@@ -1,0 +1,863 @@
+{
+  "$defs": {
+    "Capabilities": {
+      "additionalProperties": false,
+      "description": "What a model plugin can do (declared in its manifest).",
+      "properties": {
+        "checkpointable": {
+          "default": false,
+          "title": "Checkpointable",
+          "type": "boolean"
+        },
+        "contribution_scale": {
+          "default": "none",
+          "enum": [
+            "additive",
+            "multiplicative",
+            "none"
+          ],
+          "title": "Contribution Scale",
+          "type": "string"
+        },
+        "decision": {
+          "default": false,
+          "title": "Decision",
+          "type": "boolean"
+        },
+        "deterministic_given_seed": {
+          "default": true,
+          "title": "Deterministic Given Seed",
+          "type": "boolean"
+        },
+        "evidence": {
+          "default": false,
+          "title": "Evidence",
+          "type": "boolean"
+        },
+        "fast_score": {
+          "default": false,
+          "title": "Fast Score",
+          "type": "boolean"
+        },
+        "identified_quantities": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Identified Quantities",
+          "type": "array"
+        },
+        "inference": {
+          "enum": [
+            "mcmc",
+            "vi",
+            "map",
+            "smc",
+            "kalman",
+            "point",
+            "bootstrap",
+            "custom"
+          ],
+          "title": "Inference",
+          "type": "string"
+        },
+        "loo_invalid_reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loo Invalid Reason"
+        },
+        "loo_valid": {
+          "default": true,
+          "title": "Loo Valid",
+          "type": "boolean"
+        },
+        "owns": {
+          "default": [],
+          "items": {
+            "enum": [
+              "scaling",
+              "carryover",
+              "inverse_units",
+              "recursion"
+            ],
+            "type": "string"
+          },
+          "title": "Owns",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "recommend": {
+          "default": false,
+          "title": "Recommend",
+          "type": "boolean"
+        },
+        "representation": {
+          "$ref": "#/$defs/Representation"
+        },
+        "score_modes": {
+          "items": {
+            "enum": [
+              "predict",
+              "forecast",
+              "counterfactual",
+              "simulate",
+              "filter",
+              "evaluate"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Score Modes",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "inference",
+        "representation",
+        "score_modes"
+      ],
+      "title": "Capabilities",
+      "type": "object"
+    },
+    "DataSchemaTemplate": {
+      "additionalProperties": false,
+      "description": "A DataSchema-shaped JSON template plus the settings parameters it depends on.\n\nResolution is pure and static: ``resolve(settings)`` extracts each declared parameter\nfrom the settings (falling back to its default), checks its type/enum, renders the\n:mod:`~mapi_spec.template` placeholders, deep-merges every matching ``case`` and\nvalidates the result as a :class:`DataSchema`.",
+      "properties": {
+        "cases": {
+          "items": {
+            "$ref": "#/$defs/TemplateCase"
+          },
+          "maxItems": 64,
+          "title": "Cases",
+          "type": "array"
+        },
+        "params": {
+          "additionalProperties": {
+            "$ref": "#/$defs/TemplateParam"
+          },
+          "maxProperties": 64,
+          "title": "Params",
+          "type": "object"
+        },
+        "template": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Template",
+          "type": "object"
+        }
+      },
+      "required": [
+        "template"
+      ],
+      "title": "DataSchemaTemplate",
+      "type": "object"
+    },
+    "DerivedDecl": {
+      "additionalProperties": false,
+      "description": "A derived quantity (contributions, response curves, ...).",
+      "properties": {
+        "cache": {
+          "default": "on_demand",
+          "enum": [
+            "fit",
+            "on_demand"
+          ],
+          "title": "Cache",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "array"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "name",
+        "dims"
+      ],
+      "title": "DerivedDecl",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "ModelCatalogEntry": {
+      "additionalProperties": false,
+      "description": "A model plugin version: its manifest plus registry metadata.",
+      "properties": {
+        "base_image": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "examples": [
+            "base-bayes@2026.10"
+          ],
+          "title": "Base Image"
+        },
+        "manifest": {
+          "$ref": "#/$defs/ModelManifest"
+        },
+        "overlay_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Overlay Hash"
+        },
+        "yanked": {
+          "default": false,
+          "title": "Yanked",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "manifest"
+      ],
+      "title": "ModelCatalogEntry",
+      "type": "object"
+    },
+    "ModelManifest": {
+      "additionalProperties": false,
+      "description": "Everything the control plane knows about a model plugin version (static JSON).",
+      "properties": {
+        "artifact_format": {
+          "default": "zarr.zip/v1",
+          "maxLength": 64,
+          "title": "Artifact Format",
+          "type": "string"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities"
+        },
+        "derived": {
+          "items": {
+            "$ref": "#/$defs/DerivedDecl"
+          },
+          "title": "Derived",
+          "type": "array"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "fit_schema": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Fit Schema",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "outputs": {
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/OutputDecl"
+            }
+          },
+          "title": "Outputs",
+          "type": "object"
+        },
+        "plots": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Plots",
+          "type": "array"
+        },
+        "resources": {
+          "$ref": "#/$defs/ResourceHint"
+        },
+        "schema_template": {
+          "$ref": "#/$defs/DataSchemaTemplate"
+        },
+        "settings_schema": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Settings Schema",
+          "type": "object"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "capabilities",
+        "schema_template"
+      ],
+      "title": "ModelManifest",
+      "type": "object"
+    },
+    "OutputDecl": {
+      "additionalProperties": false,
+      "description": "An output variable the model writes (e.g. ``y_hat``).",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "array"
+        },
+        "dims_of": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The output also carries every dim of this input variable (e.g. 'y' for models whose data dims come from settings, such as the sklearn row dims)",
+          "title": "Dims Of"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "units_of": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Take units from this input variable",
+          "title": "Units Of"
+        }
+      },
+      "required": [
+        "dims"
+      ],
+      "title": "OutputDecl",
+      "type": "object"
+    },
+    "PlotCatalogEntry": {
+      "additionalProperties": false,
+      "description": "A plot recipe the runner can produce.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "persona": {
+          "default": "both",
+          "enum": [
+            "guided",
+            "expert",
+            "both"
+          ],
+          "title": "Persona",
+          "type": "string"
+        },
+        "requires_groups": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Requires Groups",
+          "type": "array"
+        },
+        "requires_representation": {
+          "items": {
+            "$ref": "#/$defs/Representation"
+          },
+          "title": "Requires Representation",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 200,
+          "title": "Title",
+          "type": "string"
+        },
+        "version": {
+          "default": "1.0.0",
+          "title": "Version",
+          "type": "string"
+        },
+        "yanked": {
+          "default": false,
+          "title": "Yanked",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "title": "PlotCatalogEntry",
+      "type": "object"
+    },
+    "Representation": {
+      "description": "How a model encodes uncertainty in its outputs.",
+      "enum": [
+        "draws",
+        "quantiles",
+        "interval",
+        "point",
+        "moments"
+      ],
+      "title": "Representation",
+      "type": "string"
+    },
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    },
+    "ResourceHint": {
+      "additionalProperties": false,
+      "description": "Resource guidance for scheduling.",
+      "properties": {
+        "default_class": {
+          "$ref": "#/$defs/ResourceClass",
+          "default": "S"
+        },
+        "est_fit_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Est Fit Seconds"
+        },
+        "gpu": {
+          "default": false,
+          "title": "Gpu",
+          "type": "boolean"
+        },
+        "min_class": {
+          "$ref": "#/$defs/ResourceClass",
+          "default": "S"
+        }
+      },
+      "title": "ResourceHint",
+      "type": "object"
+    },
+    "StepCatalogEntry": {
+      "additionalProperties": false,
+      "description": "Everything static validation needs to know about one step version.\n\n``effect`` and ``context`` are JSON templates over the step's settings (see\n:mod:`mapi_spec.template`). ``var_params``/``dim_params`` name settings fields whose\nvalues are variable/dim names that must exist at the step's input stage, and\n``side_table_params`` name fields that refer to ``data.side_tables`` entries.",
+      "properties": {
+        "context": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context"
+        },
+        "depends_on_target": {
+          "default": false,
+          "title": "Depends On Target",
+          "type": "boolean"
+        },
+        "dim_params": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dim Params",
+          "type": "array"
+        },
+        "effect": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Effect",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "invertible": {
+          "default": false,
+          "title": "Invertible",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/StepKind"
+        },
+        "provides": {
+          "description": "Preprocessing a model may declare it owns (ModelManifest owns); such a step is rejected on the target/media variables of a model that owns it",
+          "items": {
+            "enum": [
+              "scaling",
+              "carryover"
+            ],
+            "type": "string"
+          },
+          "title": "Provides",
+          "type": "array"
+        },
+        "settings_schema": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Settings Schema",
+          "type": "object"
+        },
+        "side_table_params": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Side Table Params",
+          "type": "array"
+        },
+        "stateful": {
+          "description": "Has a fitted State (fit on train only)",
+          "title": "Stateful",
+          "type": "boolean"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "summary_plain": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary Plain"
+        },
+        "target_vars_param": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "If set, the step depends on the target only when this settings field lists a target-role variable",
+          "title": "Target Vars Param"
+        },
+        "var_params": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Var Params",
+          "type": "array"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "yanked": {
+          "default": false,
+          "title": "Yanked",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "kind",
+        "stateful"
+      ],
+      "title": "StepCatalogEntry",
+      "type": "object"
+    },
+    "StepKind": {
+      "description": "RESHAPE changes structure (not invertible past it); VALUE rescales; FEATURE adds.",
+      "enum": [
+        "reshape",
+        "value",
+        "feature"
+      ],
+      "title": "StepKind",
+      "type": "string"
+    },
+    "TemplateCase": {
+      "additionalProperties": false,
+      "description": "Conditional fragment merged into the template when all ``when`` params match.",
+      "properties": {
+        "merge": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Merge",
+          "type": "object"
+        },
+        "when": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "minProperties": 1,
+          "title": "When",
+          "type": "object"
+        }
+      },
+      "required": [
+        "when",
+        "merge"
+      ],
+      "title": "TemplateCase",
+      "type": "object"
+    },
+    "TemplateParam": {
+      "additionalProperties": false,
+      "description": "A settings value that a :class:`DataSchemaTemplate` depends on.",
+      "properties": {
+        "default": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "enum": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "maxItems": 256,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enum"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dotted path into the settings (defaults to the parameter name)",
+          "title": "Path"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "string_list",
+            "integer_list"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "TemplateParam",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-CatalogResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The static catalog the control plane validates against (no plugin code involved).",
+  "examples": [
+    {
+      "digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "models": [],
+      "plots": [
+        {
+          "id": "core.ppc_fan",
+          "title": "PPC fan"
+        }
+      ],
+      "steps": [
+        {
+          "id": "core.log1p",
+          "invertible": true,
+          "kind": "value",
+          "stateful": false,
+          "version": "1.0.0"
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Digest",
+      "type": "string"
+    },
+    "generated_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Generated At"
+    },
+    "models": {
+      "items": {
+        "$ref": "#/$defs/ModelCatalogEntry"
+      },
+      "title": "Models",
+      "type": "array"
+    },
+    "plots": {
+      "items": {
+        "$ref": "#/$defs/PlotCatalogEntry"
+      },
+      "title": "Plots",
+      "type": "array"
+    },
+    "steps": {
+      "items": {
+        "$ref": "#/$defs/StepCatalogEntry"
+      },
+      "title": "Steps",
+      "type": "array"
+    }
+  },
+  "required": [
+    "digest"
+  ],
+  "title": "CatalogResponse",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

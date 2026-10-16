@@ -1,0 +1,671 @@
+{
+  "$defs": {
+    "DataRef": {
+      "additionalProperties": false,
+      "description": "A dataset stored next to the bundle (path relative to the bundle root).",
+      "properties": {
+        "crc32c": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9+/]{6}==$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crc32C"
+        },
+        "format": {
+          "default": "arrow",
+          "enum": [
+            "arrow",
+            "json"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "kind": {
+          "const": "data_ref",
+          "title": "Kind",
+          "type": "string"
+        },
+        "path": {
+          "examples": [
+            "ui/plotdata/contrib.arrow"
+          ],
+          "pattern": "^[A-Za-z0-9_.\\-][A-Za-z0-9_.\\-/]{0,511}$",
+          "title": "Path",
+          "type": "string"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size"
+        }
+      },
+      "required": [
+        "kind",
+        "path"
+      ],
+      "title": "DataRef",
+      "type": "object"
+    },
+    "InlineArrow": {
+      "additionalProperties": false,
+      "description": "A small Arrow IPC stream embedded as base64.",
+      "properties": {
+        "data": {
+          "maxLength": 2097152,
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$",
+          "title": "Data",
+          "type": "string"
+        },
+        "kind": {
+          "const": "inline_arrow",
+          "title": "Kind",
+          "type": "string"
+        },
+        "rows": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rows"
+        }
+      },
+      "required": [
+        "kind",
+        "data"
+      ],
+      "title": "InlineArrow",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "ModelPlotRef": {
+      "additionalProperties": false,
+      "description": "A plot a model version rendered (``GET /v1/models/{id}/versions/{v}/plots``).",
+      "properties": {
+        "model_id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "plot_id": {
+          "pattern": "^[A-Za-z0-9_.\\-]{1,128}$",
+          "title": "Plot Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "model_id",
+        "version",
+        "plot_id"
+      ],
+      "title": "ModelPlotRef",
+      "type": "object"
+    },
+    "PlotBindings": {
+      "additionalProperties": false,
+      "description": "Role/dim template bindings, e.g. ``{x: \"dim:time\", y: \"role:target\"}``.\n\nTemplates bound this way apply to every model of a family, not one bundle.",
+      "properties": {
+        "band_lower": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Band Lower"
+        },
+        "band_upper": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Band Upper"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color"
+        },
+        "column": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Column"
+        },
+        "facet": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Facet"
+        },
+        "row": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Row"
+        },
+        "shape": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shape"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size"
+        },
+        "tooltip": {
+          "items": {
+            "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Tooltip",
+          "type": "array"
+        },
+        "x": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "X"
+        },
+        "y": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Y"
+        },
+        "y2": {
+          "anyOf": [
+            {
+              "pattern": "^(dim|role|var|coord|stat):[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Y2"
+        }
+      },
+      "title": "PlotBindings",
+      "type": "object"
+    },
+    "PlotProvenance": {
+      "additionalProperties": false,
+      "description": "Who produced a plot: exactly one of ``recipe``, ``plugin`` or ``author``.",
+      "properties": {
+        "author": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Author"
+        },
+        "bundle_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bundle Id"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "plugin": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plugin"
+        },
+        "recipe": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe"
+        }
+      },
+      "required": [
+        "generated_at"
+      ],
+      "title": "PlotProvenance",
+      "type": "object"
+    },
+    "PlotSpec": {
+      "additionalProperties": false,
+      "description": "A renderable plot. ``spec`` is Vega-Lite JSON or Plotly ``{data, layout, ...}``.",
+      "examples": [
+        {
+          "caption_plain": "The shaded band is where the model expects 90% of weeks.",
+          "datasets": {
+            "fan": {
+              "kind": "data_ref",
+              "path": "ui/plotdata/ppc_fan.arrow"
+            }
+          },
+          "id": "core.ppc_fan",
+          "kind": "vega-lite",
+          "persona": "both",
+          "provenance": {
+            "generated_at": "2026-10-15T09:40:00Z",
+            "recipe": "core.ppc_fan@1.0.0"
+          },
+          "schema_version": "v5",
+          "spec": {
+            "data": {
+              "name": "fan"
+            },
+            "encoding": {
+              "x": {
+                "field": "time",
+                "type": "temporal"
+              },
+              "y": {
+                "field": "lo",
+                "type": "quantitative"
+              },
+              "y2": {
+                "field": "hi"
+              }
+            },
+            "mark": "area"
+          },
+          "title": "Posterior predictive fan"
+        }
+      ],
+      "properties": {
+        "bindings": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlotBindings"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "caption_plain": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption Plain"
+        },
+        "datasets": {
+          "additionalProperties": {
+            "discriminator": {
+              "mapping": {
+                "data_ref": "#/$defs/DataRef",
+                "inline_arrow": "#/$defs/InlineArrow"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/DataRef"
+              },
+              {
+                "$ref": "#/$defs/InlineArrow"
+              }
+            ]
+          },
+          "maxProperties": 64,
+          "title": "Datasets",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[A-Za-z0-9_.\\-]{1,128}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "vega-lite",
+            "plotly"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "persona": {
+          "default": "both",
+          "enum": [
+            "guided",
+            "expert",
+            "both"
+          ],
+          "title": "Persona",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/PlotProvenance"
+        },
+        "schema_version": {
+          "examples": [
+            "v5",
+            "2.35.2"
+          ],
+          "pattern": "^v?\\d+(\\.\\d+){0,2}$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "spec": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Spec",
+          "type": "object"
+        },
+        "title": {
+          "maxLength": 300,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "kind",
+        "spec",
+        "schema_version",
+        "provenance"
+      ],
+      "title": "PlotSpec",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-SavedPlot.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A saved plot. ``spec`` is the sanitized PlotSpec (on ``GET /v1/plots/{plot_id}``;\nomitted in lists). ``embeddable`` is :func:`embeddable` of this plot.",
+  "examples": [
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "embeddable": true,
+      "id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",
+      "kind": "vega-lite",
+      "project_id": "growth",
+      "provenance": "recipe",
+      "recipe": "mmm.response_curves@1.0.0",
+      "source": {
+        "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+        "plot_id": "mmm.response_curves",
+        "version": 3
+      },
+      "source_kind": "model_plot",
+      "tenant_id": "acme",
+      "title": "EU response curves (v3)",
+      "updated_at": "2026-10-15T09:30:00Z"
+    }
+  ],
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Created By"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "embeddable": {
+      "title": "Embeddable",
+      "type": "boolean"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "vega-lite",
+        "plotly"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "provenance": {
+      "enum": [
+        "recipe",
+        "plugin",
+        "author"
+      ],
+      "title": "Provenance",
+      "type": "string"
+    },
+    "recipe": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "provenance.recipe, if any",
+      "title": "Recipe"
+    },
+    "source": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ModelPlotRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "source_kind": {
+      "enum": [
+        "model_plot",
+        "spec"
+      ],
+      "title": "Source Kind",
+      "type": "string"
+    },
+    "spec": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlotSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "tenant_id",
+    "project_id",
+    "title",
+    "kind",
+    "source_kind",
+    "provenance",
+    "embeddable",
+    "created_at",
+    "updated_at"
+  ],
+  "title": "SavedPlot",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,211 @@
+{
+  "$defs": {
+    "MeProject": {
+      "description": "A project the caller can act in, with the caller's effective role there.",
+      "examples": [
+        {
+          "name": "Growth",
+          "project_id": "growth",
+          "role": "runner",
+          "tenant_id": "acme"
+        }
+      ],
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/ProjectRole"
+        },
+        "tenant_id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "project_id",
+        "name",
+        "role"
+      ],
+      "title": "MeProject",
+      "type": "object"
+    },
+    "ProjectRole": {
+      "description": "Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last).",
+      "enum": [
+        "viewer",
+        "editor",
+        "runner",
+        "admin"
+      ],
+      "title": "ProjectRole",
+      "type": "string"
+    },
+    "Tenant": {
+      "description": "The billing, isolation and quota boundary.",
+      "examples": [
+        {
+          "created_at": "2026-10-15T09:30:00Z",
+          "data_residency": "eu",
+          "id": "acme",
+          "name": "Acme Retail",
+          "status": "active",
+          "trust_tier": "verified"
+        }
+      ],
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "data_residency": {
+          "default": "us",
+          "description": "A multi-region (eu, us, asia) or one cloud region (europe-west1)",
+          "examples": [
+            "eu",
+            "us",
+            "europe-west1"
+          ],
+          "pattern": "^(?:[a-z]{2,6}|[a-z]+-[a-z]+[0-9]{1,2})$",
+          "title": "Data Residency",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/TenantStatus",
+          "default": "active"
+        },
+        "status_reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status Reason"
+        },
+        "trust_tier": {
+          "$ref": "#/$defs/TrustTier"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "trust_tier",
+        "created_at"
+      ],
+      "title": "Tenant",
+      "type": "object"
+    },
+    "TenantStatus": {
+      "description": "``suspended`` tenants are read-only; ``deleting`` tenants are inaccessible.",
+      "enum": [
+        "active",
+        "suspended",
+        "deleting"
+      ],
+      "title": "TenantStatus",
+      "type": "string"
+    },
+    "TrustTier": {
+      "description": "How much the platform trusts a tenant's code and data (plan \u00a72, \u00a77, \u00a79).",
+      "enum": [
+        "internal",
+        "verified",
+        "public",
+        "self-hosted-trusted"
+      ],
+      "title": "TrustTier",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-MeTenant.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A tenant the caller belongs to; ``role`` is the tenant-wide role (``None`` when the\ncaller only has project memberships).",
+  "examples": [
+    {
+      "projects": [
+        {
+          "name": "Growth",
+          "project_id": "growth",
+          "role": "runner",
+          "tenant_id": "acme"
+        }
+      ],
+      "role": null,
+      "tenant": {
+        "created_at": "2026-10-15T09:30:00Z",
+        "data_residency": "eu",
+        "id": "acme",
+        "name": "Acme Retail",
+        "status": "active",
+        "trust_tier": "verified"
+      }
+    }
+  ],
+  "properties": {
+    "projects": {
+      "items": {
+        "$ref": "#/$defs/MeProject"
+      },
+      "title": "Projects",
+      "type": "array"
+    },
+    "role": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProjectRole"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tenant": {
+      "$ref": "#/$defs/Tenant"
+    }
+  },
+  "required": [
+    "tenant"
+  ],
+  "title": "MeTenant",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

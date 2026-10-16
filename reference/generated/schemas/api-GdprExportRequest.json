@@ -1,0 +1,38 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-GdprExportRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/tenants/{tenant_id}/exports``: what to include (default: everything).",
+  "examples": [
+    {
+      "include": [
+        "metadata",
+        "datasets",
+        "models",
+        "audit",
+        "usage"
+      ]
+    }
+  ],
+  "properties": {
+    "include": {
+      "items": {
+        "enum": [
+          "metadata",
+          "datasets",
+          "models",
+          "audit",
+          "usage"
+        ],
+        "type": "string"
+      },
+      "maxItems": 5,
+      "minItems": 1,
+      "title": "Include",
+      "type": "array"
+    }
+  },
+  "title": "GdprExportRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

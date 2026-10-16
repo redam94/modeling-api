@@ -1,0 +1,68 @@
+{
+  "$defs": {
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-RunRetry.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /runs/{id}:retry``: a *new* run from a failed one, optionally one class up.",
+  "examples": [
+    {
+      "reason": "RESOURCE_EXHAUSTED at M",
+      "resource_class": "L"
+    }
+  ],
+  "properties": {
+    "reason": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    },
+    "resource_class": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResourceClass"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "exclusiveMaximum": 4294967296,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Seed"
+    }
+  },
+  "title": "RunRetry",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

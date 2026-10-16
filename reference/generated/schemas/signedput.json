@@ -1,0 +1,74 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/signedput.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A signed PUT URL for exactly one object name.\n\n``headers`` must be sent verbatim (they are part of the signature): typically\n``content-type``, ``x-goog-if-generation-match: 0`` (write-once) and\n``x-goog-content-length-range: 0,<max_bytes>``.",
+  "examples": [
+    {
+      "expires_at": "2026-10-15T10:30:00Z",
+      "headers": {
+        "content-type": "application/json",
+        "x-goog-content-length-range": "0,1048576",
+        "x-goog-if-generation-match": "0"
+      },
+      "max_bytes": 1048576,
+      "method": "PUT",
+      "name": "t/default/runs/run_01jabc/a1/manifest.json",
+      "url": "http://127.0.0.1:4443/upload/storage/v1/b/mapi-local-runs/o/t%2Fdefault%2Fruns%2Frun_01jabc%2Fa1%2Fmanifest.json?X-Goog-Signature=..."
+    }
+  ],
+  "properties": {
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "headers": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "maxProperties": 32,
+      "title": "Headers",
+      "type": "object"
+    },
+    "max_bytes": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max Bytes"
+    },
+    "method": {
+      "const": "PUT",
+      "default": "PUT",
+      "title": "Method",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "url": {
+      "maxLength": 8192,
+      "minLength": 8,
+      "title": "Url",
+      "type": "string"
+    }
+  },
+  "required": [
+    "url",
+    "name",
+    "expires_at"
+  ],
+  "title": "SignedPut",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

@@ -1,0 +1,1084 @@
+{
+  "$defs": {
+    "Binding": {
+      "additionalProperties": false,
+      "description": "Canonical name \u2192 dataset name, for dims and variables (``geo: market``).\n\nNames that are not bound keep their dataset name. The binding is stored in the bundle\nand reversed on every output by default.",
+      "properties": {
+        "dims": {
+          "maxProperties": 256,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            }
+          },
+          "title": "Dims",
+          "type": "object"
+        },
+        "vars": {
+          "maxProperties": 4096,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            }
+          },
+          "title": "Vars",
+          "type": "object"
+        }
+      },
+      "title": "Binding",
+      "type": "object"
+    },
+    "Capabilities": {
+      "additionalProperties": false,
+      "description": "What a model plugin can do (declared in its manifest).",
+      "properties": {
+        "checkpointable": {
+          "default": false,
+          "title": "Checkpointable",
+          "type": "boolean"
+        },
+        "contribution_scale": {
+          "default": "none",
+          "enum": [
+            "additive",
+            "multiplicative",
+            "none"
+          ],
+          "title": "Contribution Scale",
+          "type": "string"
+        },
+        "decision": {
+          "default": false,
+          "title": "Decision",
+          "type": "boolean"
+        },
+        "deterministic_given_seed": {
+          "default": true,
+          "title": "Deterministic Given Seed",
+          "type": "boolean"
+        },
+        "evidence": {
+          "default": false,
+          "title": "Evidence",
+          "type": "boolean"
+        },
+        "fast_score": {
+          "default": false,
+          "title": "Fast Score",
+          "type": "boolean"
+        },
+        "identified_quantities": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Identified Quantities",
+          "type": "array"
+        },
+        "inference": {
+          "enum": [
+            "mcmc",
+            "vi",
+            "map",
+            "smc",
+            "kalman",
+            "point",
+            "bootstrap",
+            "custom"
+          ],
+          "title": "Inference",
+          "type": "string"
+        },
+        "loo_invalid_reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loo Invalid Reason"
+        },
+        "loo_valid": {
+          "default": true,
+          "title": "Loo Valid",
+          "type": "boolean"
+        },
+        "owns": {
+          "default": [],
+          "items": {
+            "enum": [
+              "scaling",
+              "carryover",
+              "inverse_units",
+              "recursion"
+            ],
+            "type": "string"
+          },
+          "title": "Owns",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "recommend": {
+          "default": false,
+          "title": "Recommend",
+          "type": "boolean"
+        },
+        "representation": {
+          "$ref": "#/$defs/Representation"
+        },
+        "score_modes": {
+          "items": {
+            "enum": [
+              "predict",
+              "forecast",
+              "counterfactual",
+              "simulate",
+              "filter",
+              "evaluate"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Score Modes",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "inference",
+        "representation",
+        "score_modes"
+      ],
+      "title": "Capabilities",
+      "type": "object"
+    },
+    "ContextNeed": {
+      "additionalProperties": false,
+      "description": "Per-group tail a step needs at score time: ``n`` rows along ``along`` within groups.\n\n``min_lag`` is the smallest lag the step applies (for recursive-forecast checks);\nit defaults to 1 when the step depends on the target.",
+      "properties": {
+        "along": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Along",
+          "type": "string"
+        },
+        "min_lag": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Lag"
+        },
+        "n": {
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "within": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Within",
+          "type": "array"
+        }
+      },
+      "required": [
+        "along",
+        "n"
+      ],
+      "title": "ContextNeed",
+      "type": "object"
+    },
+    "DataSchema": {
+      "additionalProperties": false,
+      "description": "Schema of an ``xr.Dataset``: dims, variables, layout and ragged structure.",
+      "properties": {
+        "dims": {
+          "maxProperties": 256,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/DimSpec"
+            }
+          },
+          "title": "Dims",
+          "type": "object"
+        },
+        "layout": {
+          "default": "dense",
+          "enum": [
+            "dense",
+            "long"
+          ],
+          "title": "Layout",
+          "type": "string"
+        },
+        "ragged": {
+          "items": {
+            "$ref": "#/$defs/RaggedSpec"
+          },
+          "maxItems": 32,
+          "title": "Ragged",
+          "type": "array"
+        },
+        "vars": {
+          "maxProperties": 4096,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/VarSpec"
+            }
+          },
+          "title": "Vars",
+          "type": "object"
+        }
+      },
+      "title": "DataSchema",
+      "type": "object"
+    },
+    "DimPolicy": {
+      "description": "What may happen to a dim's coordinates at score time.",
+      "enum": [
+        "fixed",
+        "extend",
+        "new_levels"
+      ],
+      "title": "DimPolicy",
+      "type": "string"
+    },
+    "DimSpec": {
+      "additionalProperties": false,
+      "description": "A dimension and its score-time policy.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pandas-style frequency, e.g. 'W-SUN'",
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_extension": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods allowed past the fit",
+          "title": "Max Extension"
+        },
+        "new_level_strategy": {
+          "default": "error",
+          "enum": [
+            "error",
+            "hyperprior",
+            "pooled",
+            "zero"
+          ],
+          "title": "New Level Strategy",
+          "type": "string"
+        },
+        "ordered": {
+          "default": false,
+          "title": "Ordered",
+          "type": "boolean"
+        },
+        "policy": {
+          "$ref": "#/$defs/DimPolicy",
+          "default": "fixed"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DimSpec",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "RaggedSpec": {
+      "additionalProperties": false,
+      "description": "Ragged nesting (``hh \u2192 trip``): long form (obs + index vars) or padded + mask.",
+      "properties": {
+        "form": {
+          "enum": [
+            "long",
+            "padded"
+          ],
+          "title": "Form",
+          "type": "string"
+        },
+        "group_dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Group Dim",
+          "type": "string"
+        },
+        "mask_var": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mask Var"
+        },
+        "within_dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Within Dim",
+          "type": "string"
+        }
+      },
+      "required": [
+        "group_dim",
+        "within_dim",
+        "form"
+      ],
+      "title": "RaggedSpec",
+      "type": "object"
+    },
+    "Representation": {
+      "description": "How a model encodes uncertainty in its outputs.",
+      "enum": [
+        "draws",
+        "quantiles",
+        "interval",
+        "point",
+        "moments"
+      ],
+      "title": "Representation",
+      "type": "string"
+    },
+    "ResolvedModel": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities"
+        },
+        "derived": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Derived",
+          "type": "array"
+        },
+        "effective_policies": {
+          "additionalProperties": {
+            "$ref": "#/$defs/DimPolicy"
+          },
+          "title": "Effective Policies",
+          "type": "object"
+        },
+        "input_schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataSchema"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "outputs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Outputs",
+          "type": "array"
+        },
+        "resolved": {
+          "title": "Resolved",
+          "type": "string"
+        },
+        "use": {
+          "title": "Use",
+          "type": "string"
+        }
+      },
+      "required": [
+        "use",
+        "resolved",
+        "capabilities"
+      ],
+      "title": "ResolvedModel",
+      "type": "object"
+    },
+    "ResolvedSpec": {
+      "additionalProperties": false,
+      "description": "What the control plane stores with a run: everything score-time checks need.",
+      "properties": {
+        "binding": {
+          "$ref": "#/$defs/Binding"
+        },
+        "model": {
+          "$ref": "#/$defs/ResolvedModel"
+        },
+        "side_tables": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ScorePolicy"
+          },
+          "title": "Side Tables",
+          "type": "object"
+        },
+        "spec_hash": {
+          "title": "Spec Hash",
+          "type": "string"
+        },
+        "split_stage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Split Stage"
+        },
+        "stages": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/DataSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Stages",
+          "type": "object"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/ResolvedStep"
+          },
+          "title": "Steps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "spec_hash",
+        "binding",
+        "steps",
+        "stages",
+        "split_stage",
+        "model"
+      ],
+      "title": "ResolvedSpec",
+      "type": "object"
+    },
+    "ResolvedStep": {
+      "additionalProperties": false,
+      "description": "A pipeline step after ref resolution, with defaults applied and effects evaluated.",
+      "properties": {
+        "context": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContextNeed"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "depends_on_target": {
+          "title": "Depends On Target",
+          "type": "boolean"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "input_stage": {
+          "title": "Input Stage",
+          "type": "string"
+        },
+        "invertible": {
+          "title": "Invertible",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/StepKind"
+        },
+        "resolved": {
+          "title": "Resolved",
+          "type": "string"
+        },
+        "settings": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Settings",
+          "type": "object"
+        },
+        "side_tables": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Side Tables",
+          "type": "array"
+        },
+        "stateful": {
+          "title": "Stateful",
+          "type": "boolean"
+        },
+        "use": {
+          "title": "Use",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "use",
+        "resolved",
+        "kind",
+        "stateful",
+        "invertible",
+        "depends_on_target",
+        "input_stage"
+      ],
+      "title": "ResolvedStep",
+      "type": "object"
+    },
+    "Role": {
+      "description": "What a variable means to a model.",
+      "enum": [
+        "target",
+        "covariate",
+        "media",
+        "spend",
+        "control",
+        "index",
+        "mask",
+        "constant",
+        "weight",
+        "exposure"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "ScorePolicy": {
+      "description": "Which side-table version is used at score time.",
+      "enum": [
+        "pinned",
+        "latest",
+        "supplied"
+      ],
+      "title": "ScorePolicy",
+      "type": "string"
+    },
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "StageSchema": {
+      "description": "The data schema after one pipeline step (``raw`` = after binding, before any step).",
+      "examples": [
+        {
+          "data_schema": {
+            "dims": {
+              "date": {
+                "freq": "D",
+                "kind": "time",
+                "policy": "extend"
+              },
+              "market": {
+                "kind": "categorical"
+              }
+            },
+            "vars": {
+              "revenue": {
+                "dims": [
+                  "market",
+                  "date"
+                ],
+                "dtype": "float64",
+                "role": "target"
+              }
+            }
+          },
+          "name": "weekly",
+          "split": true
+        }
+      ],
+      "properties": {
+        "data_schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataSchema"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None when the effect is dynamic"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "split": {
+          "default": false,
+          "description": "The train/holdout split happens after this stage",
+          "title": "Split",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "StageSchema",
+      "type": "object"
+    },
+    "StepKind": {
+      "description": "RESHAPE changes structure (not invertible past it); VALUE rescales; FEATURE adds.",
+      "enum": [
+        "reshape",
+        "value",
+        "feature"
+      ],
+      "title": "StepKind",
+      "type": "string"
+    },
+    "VarSpec": {
+      "additionalProperties": false,
+      "description": "A data variable: its dims (by name), dtype, role, units and missingness.",
+      "properties": {
+        "bounds": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounds"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "array"
+        },
+        "dtype": {
+          "enum": [
+            "float64",
+            "float32",
+            "int64",
+            "int32",
+            "bool",
+            "str",
+            "datetime64[ns]"
+          ],
+          "title": "Dtype",
+          "type": "string"
+        },
+        "future_required": {
+          "default": false,
+          "description": "Must be supplied over a forecast horizon",
+          "title": "Future Required",
+          "type": "boolean"
+        },
+        "index_of": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Long layout: this var indexes that dim",
+          "title": "Index Of"
+        },
+        "missing": {
+          "default": "forbid",
+          "enum": [
+            "forbid",
+            "allow",
+            "mask"
+          ],
+          "title": "Missing",
+          "type": "string"
+        },
+        "missing_sentinel": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Missing Sentinel"
+        },
+        "role": {
+          "$ref": "#/$defs/Role",
+          "default": "covariate"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "pint-style, e.g. 'EUR'",
+          "title": "Units"
+        }
+      },
+      "required": [
+        "dims",
+        "dtype"
+      ],
+      "title": "VarSpec",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-ValidateResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Every problem at once, located by JSON pointers, plus per-stage schemas.",
+  "examples": [
+    {
+      "catalog_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+      "issues": [
+        {
+          "code": "LEAKAGE_RISK",
+          "message": "stateful step 'scale_y' runs before the split",
+          "pointer": "/pipeline/2",
+          "severity": "error",
+          "suggested_action": "move the split to after 'weekly'"
+        }
+      ],
+      "kind": "ModelSpec",
+      "stages": [
+        {
+          "data_schema": {
+            "dims": {
+              "date": {
+                "freq": "D",
+                "kind": "time",
+                "policy": "extend"
+              },
+              "market": {
+                "kind": "categorical"
+              }
+            },
+            "vars": {
+              "revenue": {
+                "dims": [
+                  "market",
+                  "date"
+                ],
+                "dtype": "float64",
+                "role": "target"
+              }
+            }
+          },
+          "name": "raw",
+          "split": false
+        }
+      ],
+      "valid": false
+    }
+  ],
+  "properties": {
+    "catalog_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Catalog Digest"
+    },
+    "hash": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Hash"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/Issue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "kind": {
+      "anyOf": [
+        {
+          "enum": [
+            "ModelSpec",
+            "ScoreRequest",
+            "Sweep",
+            "Backtest",
+            "SBC",
+            "Campaign"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Kind"
+    },
+    "resolved": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResolvedSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "stages": {
+      "items": {
+        "$ref": "#/$defs/StageSchema"
+      },
+      "title": "Stages",
+      "type": "array"
+    },
+    "valid": {
+      "title": "Valid",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "valid"
+  ],
+  "title": "ValidateResponse",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

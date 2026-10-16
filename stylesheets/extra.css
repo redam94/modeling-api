@@ -1,0 +1,171 @@
+/* modeling-api brand: deep indigo (structure) + teal (the highlighted cell). */
+
+:root {
+  --mapi-indigo-950: #1e1b4b;
+  --mapi-indigo-900: #312e81;
+  --mapi-indigo-700: #4338ca;
+  --mapi-indigo-300: #a5b4fc;
+  --mapi-teal-700: #0f766e;
+  --mapi-teal-600: #0d9488;
+  --mapi-teal-300: #5eead4;
+}
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: var(--mapi-indigo-900);
+  --md-primary-fg-color--light: var(--mapi-indigo-700);
+  --md-primary-fg-color--dark: var(--mapi-indigo-950);
+  --md-accent-fg-color: var(--mapi-teal-600);
+  --md-accent-fg-color--transparent: rgba(13, 148, 136, 0.1);
+  --md-typeset-a-color: var(--mapi-indigo-700);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-hue: 240;
+  --md-primary-fg-color: var(--mapi-indigo-950);
+  --md-primary-fg-color--light: var(--mapi-indigo-900);
+  --md-primary-fg-color--dark: #13112e;
+  --md-accent-fg-color: var(--mapi-teal-300);
+  --md-accent-fg-color--transparent: rgba(94, 234, 212, 0.1);
+  --md-typeset-a-color: var(--mapi-indigo-300);
+}
+
+/* ------------------------------------------------------------------ landing hero */
+
+.mapi-hero {
+  margin: 0 0 2rem;
+  padding: 2.6rem 2.2rem 2.2rem;
+  border-radius: 0.8rem;
+  color: #ffffff;
+  background:
+    radial-gradient(circle at 85% 20%, rgba(94, 234, 212, 0.28), transparent 45%),
+    linear-gradient(135deg, var(--mapi-indigo-950) 0%, var(--mapi-indigo-900) 55%, var(--mapi-teal-700) 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.mapi-hero h1 {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 2.2rem;
+  line-height: 1.15;
+  margin: 0 0 0.8rem;
+}
+
+.mapi-hero p {
+  font-size: 0.95rem;
+  max-width: 38rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.mapi-hero img {
+  width: 9rem;
+  height: 9rem;
+}
+
+.mapi-hero .md-button {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.7);
+  margin: 0.3rem 0.4rem 0 0;
+}
+
+.mapi-hero .md-button--primary {
+  background-color: var(--mapi-teal-300);
+  border-color: var(--mapi-teal-300);
+  color: var(--mapi-indigo-950);
+}
+
+.mapi-hero .md-button:hover {
+  background-color: #ffffff;
+  border-color: #ffffff;
+  color: var(--mapi-indigo-950);
+}
+
+.mapi-hero .mapi-tagline {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--mapi-teal-300);
+  margin: 0 0 0.4rem;
+}
+
+@media screen and (max-width: 44.9375em) {
+  .mapi-hero {
+    grid-template-columns: 1fr;
+    padding: 1.8rem 1.2rem;
+  }
+  .mapi-hero img {
+    display: none;
+  }
+  .mapi-hero h1 {
+    font-size: 1.6rem;
+  }
+}
+
+/* ------------------------------------------------------------------ roadmap badges */
+
+.mapi-badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 1rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+  background: var(--md-accent-fg-color--transparent);
+  color: var(--md-accent-fg-color);
+  border: 1px solid var(--md-accent-fg-color);
+}
+
+.mapi-badge--soon {
+  background: rgba(67, 56, 202, 0.08);
+  color: var(--md-typeset-a-color);
+  border-color: var(--md-typeset-a-color);
+}
+
+/* ------------------------------------------------------------------ tables */
+
+.md-typeset table:not([class]) th {
+  white-space: nowrap;
+}
+
+.md-typeset .mapi-compare td:first-child {
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ screenshots */
+
+.md-typeset img.mapi-shot {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.4rem;
+  box-shadow: 0 0.2rem 0.8rem rgba(30, 27, 75, 0.12);
+}
+
+.md-typeset .mapi-shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.md-typeset .mapi-shots figure {
+  margin: 0;
+}
+
+.md-typeset .mapi-shots figcaption {
+  font-size: 0.7rem;
+  margin-top: 0.4rem;
+  max-width: none;
+}
+
+/* ------------------------------------------------------------------ OpenAPI explorer */
+
+.md-typeset iframe.mapi-openapi {
+  width: 100%;
+  height: 80vh;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.4rem;
+  background: #ffffff;
+}

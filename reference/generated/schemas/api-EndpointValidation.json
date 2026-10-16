@@ -1,0 +1,600 @@
+{
+  "$defs": {
+    "Aggregation": {
+      "additionalProperties": false,
+      "description": "Reduce outputs over dims before summarising (validity depends on representation).",
+      "properties": {
+        "how": {
+          "default": "sum",
+          "enum": [
+            "sum",
+            "mean",
+            "min",
+            "max"
+          ],
+          "title": "How",
+          "type": "string"
+        },
+        "over": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Over",
+          "type": "array"
+        }
+      },
+      "required": [
+        "over"
+      ],
+      "title": "Aggregation",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+      "enum": [
+        "SCHEMA_INVALID",
+        "SPEC_PARSE_ERROR",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_API_VERSION",
+        "REF_UNRESOLVED",
+        "SETTINGS_INVALID",
+        "BINDING_INVALID",
+        "SPLIT_INVALID",
+        "LEAKAGE_RISK",
+        "DIM_POLICY_LOOSENED",
+        "SCHEMA_DYNAMIC",
+        "SIDE_TABLE_COVERAGE",
+        "PLOT_UNSAFE",
+        "UNSEEN_LEVELS",
+        "COORD_NOT_ALLOWED",
+        "HORIZON_EXCEEDS_FIT",
+        "MISSING_FUTURE_COVARIATE",
+        "NON_CONTIGUOUS_EXTENSION",
+        "CAPABILITY_UNSUPPORTED",
+        "RECURSIVE_UNSUPPORTED",
+        "MODE_NOT_SUPPORTED",
+        "QUOTA_EXCEEDED",
+        "RATE_LIMITED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "PRECONDITION_FAILED",
+        "USER_CODE_ERROR",
+        "RESOURCE_EXHAUSTED",
+        "INFRA_ERROR",
+        "INTEGRITY_FAILURE",
+        "TIMEOUT",
+        "SANDBOX_VIOLATION",
+        "CANCELLED",
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "FutureCovariates": {
+      "description": "Where future values of ``future_required`` covariates come from in a forecast (M3).\n\n``supplied`` (default) needs them in the request's data or scenario\n(``MISSING_FUTURE_COVARIATE`` otherwise). The other policies let the runner extend them\nover the horizon, per series, inside the sandbox: ``carry_last`` repeats the last\nobserved value, ``seasonal_naive`` repeats the value one season earlier (the time dim's\nyearly period), ``zero`` sets them to zero (e.g. \"no spend planned\").",
+      "enum": [
+        "supplied",
+        "carry_last",
+        "seasonal_naive",
+        "zero"
+      ],
+      "title": "FutureCovariates",
+      "type": "string"
+    },
+    "Horizon": {
+      "additionalProperties": false,
+      "properties": {
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "periods": {
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Periods",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "dim",
+        "periods"
+      ],
+      "title": "Horizon",
+      "type": "object"
+    },
+    "Intervention": {
+      "additionalProperties": false,
+      "description": "Change ``var`` on the coords selected by ``sel``: exactly one of multiply/add/set.",
+      "properties": {
+        "add": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Add"
+        },
+        "multiply": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Multiply"
+        },
+        "sel": {
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "title": "Sel",
+          "type": "object"
+        },
+        "set": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Set"
+        },
+        "var": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var"
+      ],
+      "title": "Intervention",
+      "type": "object"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "description": "One problem found while validating a document, located by a JSON pointer.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        },
+        "message": {
+          "description": "Trusted, platform-authored text",
+          "maxLength": 2000,
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "default": "",
+          "description": "RFC 6901 JSON pointer into the submitted document",
+          "title": "Pointer",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
+        },
+        "suggested_action": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Action"
+        },
+        "untrusted_text": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User/plugin-originated text; render as text only",
+          "title": "Untrusted Text"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "OutputSelector": {
+      "additionalProperties": false,
+      "description": "What a score request returns.",
+      "properties": {
+        "aggregate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Aggregation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "draws": {
+          "default": 0,
+          "maximum": 10000,
+          "minimum": 0,
+          "title": "Draws",
+          "type": "integer"
+        },
+        "kind": {
+          "default": "expected",
+          "enum": [
+            "expected",
+            "predictive"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "names": {
+          "default": "dataset",
+          "enum": [
+            "dataset",
+            "canonical"
+          ],
+          "title": "Names",
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 32,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Summaries to return; default depends on representation",
+          "title": "Summary"
+        },
+        "thin_index": {
+          "const": "bundle",
+          "default": "bundle",
+          "title": "Thin Index",
+          "type": "string"
+        },
+        "units": {
+          "default": "original",
+          "enum": [
+            "original",
+            "model"
+          ],
+          "title": "Units",
+          "type": "string"
+        },
+        "vars": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "title": "Vars",
+          "type": "array"
+        }
+      },
+      "title": "OutputSelector",
+      "type": "object"
+    },
+    "ScoreRequest": {
+      "additionalProperties": false,
+      "description": "Score a fitted model with replayed preprocessing.",
+      "properties": {
+        "apiVersion": {
+          "const": "mapi/v1",
+          "title": "Apiversion",
+          "type": "string"
+        },
+        "data": {
+          "anyOf": [
+            {
+              "description": "Dataset reference dataset://project/name@version",
+              "examples": [
+                "dataset://growth/eu_media_daily@latest"
+              ],
+              "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Data"
+        },
+        "future_covariates": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FutureCovariates"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M3: how forecasts get future covariates (default: supplied)"
+        },
+        "horizon": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Horizon"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "inputs_stage": {
+          "default": "raw",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Inputs Stage",
+          "type": "string"
+        },
+        "interventions": {
+          "items": {
+            "$ref": "#/$defs/Intervention"
+          },
+          "maxItems": 256,
+          "title": "Interventions",
+          "type": "array"
+        },
+        "kind": {
+          "const": "ScoreRequest",
+          "title": "Kind",
+          "type": "string"
+        },
+        "mode": {
+          "default": "predict",
+          "enum": [
+            "predict",
+            "forecast",
+            "counterfactual",
+            "simulate",
+            "filter",
+            "evaluate"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "model": {
+          "description": "endpoint://project/alias or model://project/name@vN",
+          "pattern": "(?:^endpoint://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)$)|(?:^model://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)@(latest|v\\d{1,9}|\\d{1,9})$)",
+          "title": "Model",
+          "type": "string"
+        },
+        "output": {
+          "$ref": "#/$defs/OutputSelector"
+        },
+        "scenario": {
+          "anyOf": [
+            {
+              "description": "Dataset reference dataset://project/name@version",
+              "examples": [
+                "dataset://growth/eu_media_daily@latest"
+              ],
+              "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scenario"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 4294967296,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "select": {
+          "maxProperties": 64,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          },
+          "title": "Select",
+          "type": "object"
+        },
+        "side_tables": {
+          "maxProperties": 32,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "description": "Dataset reference dataset://project/name@version",
+              "examples": [
+                "dataset://growth/eu_media_daily@latest"
+              ],
+              "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+              "type": "string"
+            }
+          },
+          "title": "Side Tables",
+          "type": "object"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "model"
+      ],
+      "title": "ScoreRequest",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-EndpointValidation.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``POST /v1/endpoints/{alias}/validate``: the static checks of a score call (CoordPlan,\ncapabilities, inline payload envelope) without running it.",
+  "examples": [
+    {
+      "issues": [
+        {
+          "code": "MISSING_FUTURE_COVARIATE",
+          "message": "forecasting needs future values of ['spend'] at stage 'raw'",
+          "pointer": "/scenario",
+          "severity": "error",
+          "suggested_action": "Provide them in a scenario dataset."
+        }
+      ],
+      "valid": false
+    }
+  ],
+  "properties": {
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/Issue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ScoreRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "valid": {
+      "title": "Valid",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "valid"
+  ],
+  "title": "EndpointValidation",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

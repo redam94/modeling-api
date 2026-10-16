@@ -1,0 +1,48 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-PlotEmbedCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/plots/{plot_id}/embeds``. ``allowed_origins`` (https origins) become the\nembed page's ``frame-ancestors``; empty allows any site to frame it.",
+  "examples": [
+    {
+      "allowed_origins": [
+        "https://acme.notion.site"
+      ],
+      "expires_in_days": 90,
+      "label": "Q4 board deck"
+    }
+  ],
+  "properties": {
+    "allowed_origins": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 10,
+      "title": "Allowed Origins",
+      "type": "array"
+    },
+    "expires_in_days": {
+      "default": 30,
+      "maximum": 365,
+      "minimum": 1,
+      "title": "Expires In Days",
+      "type": "integer"
+    },
+    "label": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Label"
+    }
+  },
+  "title": "PlotEmbedCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

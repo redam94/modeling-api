@@ -1,0 +1,129 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "TemplateCase": {
+      "additionalProperties": false,
+      "description": "Conditional fragment merged into the template when all ``when`` params match.",
+      "properties": {
+        "merge": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Merge",
+          "type": "object"
+        },
+        "when": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "minProperties": 1,
+          "title": "When",
+          "type": "object"
+        }
+      },
+      "required": [
+        "when",
+        "merge"
+      ],
+      "title": "TemplateCase",
+      "type": "object"
+    },
+    "TemplateParam": {
+      "additionalProperties": false,
+      "description": "A settings value that a :class:`DataSchemaTemplate` depends on.",
+      "properties": {
+        "default": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "enum": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "maxItems": 256,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enum"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dotted path into the settings (defaults to the parameter name)",
+          "title": "Path"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "string_list",
+            "integer_list"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "TemplateParam",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/dataschematemplate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A DataSchema-shaped JSON template plus the settings parameters it depends on.\n\nResolution is pure and static: ``resolve(settings)`` extracts each declared parameter\nfrom the settings (falling back to its default), checks its type/enum, renders the\n:mod:`~mapi_spec.template` placeholders, deep-merges every matching ``case`` and\nvalidates the result as a :class:`DataSchema`.",
+  "properties": {
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/TemplateCase"
+      },
+      "maxItems": 64,
+      "title": "Cases",
+      "type": "array"
+    },
+    "params": {
+      "additionalProperties": {
+        "$ref": "#/$defs/TemplateParam"
+      },
+      "maxProperties": 64,
+      "title": "Params",
+      "type": "object"
+    },
+    "template": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Template",
+      "type": "object"
+    }
+  },
+  "required": [
+    "template"
+  ],
+  "title": "DataSchemaTemplate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

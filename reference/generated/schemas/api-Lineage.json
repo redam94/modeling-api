@@ -1,0 +1,208 @@
+{
+  "$defs": {
+    "ResourceClass": {
+      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "title": "ResourceClass",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-Lineage.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Everything a model version came from (plan \u00a78.6).",
+  "examples": [
+    {
+      "attempt": 1,
+      "base_image": "base-bayes@2026.10",
+      "dataset_sha": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+      "engine": "nutpie",
+      "executor": "local-process",
+      "lib_versions": {
+        "pymc": "5.25.1"
+      },
+      "plugin": "mmm.hierarchical_geo@1.3.2",
+      "resource_class": "M",
+      "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+      "seed": 20261014,
+      "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f"
+    }
+  ],
+  "properties": {
+    "attempt": {
+      "minimum": 1,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "base_image": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Base Image"
+    },
+    "catalog_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Catalog Digest"
+    },
+    "dataset_sha": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Dataset Sha"
+    },
+    "engine": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Engine"
+    },
+    "evaluation_of": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "evaluate_then_refit: the evaluation model version this refit pairs",
+      "title": "Evaluation Of"
+    },
+    "executor": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Executor"
+    },
+    "lib_versions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Lib Versions",
+      "type": "object"
+    },
+    "overlay_hash": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Overlay Hash"
+    },
+    "plugin": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "examples": [
+        "mmm.hierarchical_geo@1.3.2"
+      ],
+      "title": "Plugin"
+    },
+    "resource_class": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResourceClass"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "run_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Seed"
+    },
+    "side_tables": {
+      "additionalProperties": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Side Tables",
+      "type": "object"
+    },
+    "spec_hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Spec Hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "attempt",
+    "spec_hash"
+  ],
+  "title": "Lineage",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

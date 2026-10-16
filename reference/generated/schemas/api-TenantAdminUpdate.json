@@ -1,0 +1,111 @@
+{
+  "$defs": {
+    "TenantStatus": {
+      "description": "``suspended`` tenants are read-only; ``deleting`` tenants are inaccessible.",
+      "enum": [
+        "active",
+        "suspended",
+        "deleting"
+      ],
+      "title": "TenantStatus",
+      "type": "string"
+    },
+    "TrustTier": {
+      "description": "How much the platform trusts a tenant's code and data (plan \u00a72, \u00a77, \u00a79).",
+      "enum": [
+        "internal",
+        "verified",
+        "public",
+        "self-hosted-trusted"
+      ],
+      "title": "TrustTier",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-TenantAdminUpdate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``PATCH /v1/admin/tenants/{tenant_id}`` (operators). Changing ``data_residency`` only\naffects where *new* runs are placed; moving stored data is a separate procedure.",
+  "examples": [
+    {
+      "status": "suspended",
+      "status_reason": "payment overdue"
+    },
+    {
+      "trust_tier": "internal"
+    }
+  ],
+  "properties": {
+    "data_residency": {
+      "anyOf": [
+        {
+          "description": "A multi-region (eu, us, asia) or one cloud region (europe-west1)",
+          "examples": [
+            "eu",
+            "us",
+            "europe-west1"
+          ],
+          "pattern": "^(?:[a-z]{2,6}|[a-z]+-[a-z]+[0-9]{1,2})$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Data Residency"
+    },
+    "name": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Name"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TenantStatus"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "status_reason": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Status Reason"
+    },
+    "trust_tier": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TrustTier"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "title": "TenantAdminUpdate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

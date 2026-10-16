@@ -1,0 +1,39 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-SpecCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Create a spec document with its first revision (YAML 1.2 or JSON text).",
+  "examples": [
+    {
+      "message": "first draft",
+      "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+    }
+  ],
+  "properties": {
+    "message": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Message"
+    },
+    "yaml": {
+      "maxLength": 262144,
+      "minLength": 1,
+      "title": "Yaml",
+      "type": "string"
+    }
+  },
+  "required": [
+    "yaml"
+  ],
+  "title": "SpecCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

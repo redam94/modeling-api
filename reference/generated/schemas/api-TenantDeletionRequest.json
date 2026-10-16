@@ -1,0 +1,38 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-TenantDeletionRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/tenants/{tenant_id}/deletion``: ``confirm`` must repeat the tenant id.",
+  "examples": [
+    {
+      "confirm": "acme-retail",
+      "reason": "closing the account"
+    }
+  ],
+  "properties": {
+    "confirm": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Confirm",
+      "type": "string"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    }
+  },
+  "required": [
+    "confirm"
+  ],
+  "title": "TenantDeletionRequest",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}

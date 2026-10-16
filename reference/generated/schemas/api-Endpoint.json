@@ -1,0 +1,1036 @@
+{
+  "$defs": {
+    "CoordSummary": {
+      "additionalProperties": false,
+      "description": "Metadata summary of one coordinate (never the full array for large dims).\n\n``values`` lists categorical levels when there are at most :attr:`MAX_LEVELS` of them;\nordered dims (time/integer) describe a range by ``start``/``end``/``size`` and whether\nthe coordinate is ``contiguous`` (no gaps at its frequency/step).",
+      "properties": {
+        "contiguous": {
+          "default": true,
+          "title": "Contiguous",
+          "type": "boolean"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "maxItems": 10000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Values"
+        }
+      },
+      "required": [
+        "kind",
+        "size"
+      ],
+      "title": "CoordSummary",
+      "type": "object"
+    },
+    "DataSchema": {
+      "additionalProperties": false,
+      "description": "Schema of an ``xr.Dataset``: dims, variables, layout and ragged structure.",
+      "properties": {
+        "dims": {
+          "maxProperties": 256,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/DimSpec"
+            }
+          },
+          "title": "Dims",
+          "type": "object"
+        },
+        "layout": {
+          "default": "dense",
+          "enum": [
+            "dense",
+            "long"
+          ],
+          "title": "Layout",
+          "type": "string"
+        },
+        "ragged": {
+          "items": {
+            "$ref": "#/$defs/RaggedSpec"
+          },
+          "maxItems": 32,
+          "title": "Ragged",
+          "type": "array"
+        },
+        "vars": {
+          "maxProperties": 4096,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "$ref": "#/$defs/VarSpec"
+            }
+          },
+          "title": "Vars",
+          "type": "object"
+        }
+      },
+      "title": "DataSchema",
+      "type": "object"
+    },
+    "DimPolicy": {
+      "description": "What may happen to a dim's coordinates at score time.",
+      "enum": [
+        "fixed",
+        "extend",
+        "new_levels"
+      ],
+      "title": "DimPolicy",
+      "type": "string"
+    },
+    "DimSpec": {
+      "additionalProperties": false,
+      "description": "A dimension and its score-time policy.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pandas-style frequency, e.g. 'W-SUN'",
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_extension": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods allowed past the fit",
+          "title": "Max Extension"
+        },
+        "new_level_strategy": {
+          "default": "error",
+          "enum": [
+            "error",
+            "hyperprior",
+            "pooled",
+            "zero"
+          ],
+          "title": "New Level Strategy",
+          "type": "string"
+        },
+        "ordered": {
+          "default": false,
+          "title": "Ordered",
+          "type": "boolean"
+        },
+        "policy": {
+          "$ref": "#/$defs/DimPolicy",
+          "default": "fixed"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DimSpec",
+      "type": "object"
+    },
+    "EndpointSchemaSnapshot": {
+      "description": "The input contract of the promoted version, frozen at promotion: what callers send.\n\n``input_schema`` is the schema at ``inputs_stage`` under the spec's canonical names\n(``data.bind`` applied: ``time``, ``y``), which inline payloads use; the runner renames\nthem to the dataset's own names before scoring. ``horizon_dim`` is the canonical name of\nthe dim a forecast extends.",
+      "examples": [
+        {
+          "fit_coords": {
+            "channel": {
+              "kind": "categorical",
+              "size": 2,
+              "values": [
+                "search",
+                "tv"
+              ]
+            },
+            "date": {
+              "end": "2025-12-30",
+              "freq": "D",
+              "kind": "time",
+              "size": 730,
+              "start": "2024-01-01"
+            },
+            "market": {
+              "kind": "categorical",
+              "size": 2,
+              "values": [
+                "de",
+                "fr"
+              ]
+            }
+          },
+          "future_required": [
+            "spend_local"
+          ],
+          "horizon_dim": "time",
+          "input_schema": {
+            "dims": {
+              "channel": {
+                "kind": "categorical"
+              },
+              "date": {
+                "freq": "D",
+                "kind": "time",
+                "policy": "extend"
+              },
+              "market": {
+                "kind": "categorical",
+                "new_level_strategy": "pooled",
+                "policy": "new_levels"
+              }
+            },
+            "vars": {
+              "revenue_local": {
+                "dims": [
+                  "market",
+                  "date"
+                ],
+                "dtype": "float64",
+                "role": "target"
+              },
+              "spend_local": {
+                "dims": [
+                  "market",
+                  "channel",
+                  "date"
+                ],
+                "dtype": "float64",
+                "future_required": true,
+                "role": "spend"
+              }
+            }
+          },
+          "inputs_stage": "raw",
+          "representation": "draws",
+          "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+          "score_modes": [
+            "counterfactual",
+            "evaluate",
+            "forecast",
+            "predict"
+          ]
+        }
+      ],
+      "properties": {
+        "fit_coords": {
+          "additionalProperties": {
+            "$ref": "#/$defs/CoordSummary"
+          },
+          "title": "Fit Coords",
+          "type": "object"
+        },
+        "future_required": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Future Required",
+          "type": "array"
+        },
+        "horizon_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Horizon Dim"
+        },
+        "input_schema": {
+          "$ref": "#/$defs/DataSchema"
+        },
+        "inputs_stage": {
+          "default": "raw",
+          "title": "Inputs Stage",
+          "type": "string"
+        },
+        "representation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Representation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "schema_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Schema Hash",
+          "type": "string"
+        },
+        "score_modes": {
+          "items": {
+            "enum": [
+              "predict",
+              "forecast",
+              "counterfactual",
+              "simulate",
+              "filter",
+              "evaluate"
+            ],
+            "type": "string"
+          },
+          "title": "Score Modes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "input_schema",
+        "schema_hash"
+      ],
+      "title": "EndpointSchemaSnapshot",
+      "type": "object"
+    },
+    "EvaluationPolicy": {
+      "additionalProperties": false,
+      "description": "What a model version must satisfy to be promoted to the endpoint (Q13).\n\n``fit_mode = evaluate_then_refit`` (default) requires versions whose production bundle\nwas refitted on all data after the holdout evaluation; ``train_only`` also accepts\nexploration fits. ``schema_change`` decides what happens when the new version expects\ninput the endpoint's callers do not send (:func:`schema_breaks`).",
+      "examples": [
+        {
+          "fit_mode": "evaluate_then_refit",
+          "schema_change": "block"
+        }
+      ],
+      "properties": {
+        "fit_mode": {
+          "$ref": "#/$defs/FitMode",
+          "default": "evaluate_then_refit"
+        },
+        "schema_change": {
+          "default": "block",
+          "enum": [
+            "block",
+            "warn",
+            "allow"
+          ],
+          "title": "Schema Change",
+          "type": "string"
+        }
+      },
+      "title": "EvaluationPolicy",
+      "type": "object"
+    },
+    "FitMode": {
+      "enum": [
+        "evaluate_then_refit",
+        "train_only"
+      ],
+      "title": "FitMode",
+      "type": "string"
+    },
+    "GateOutcome": {
+      "enum": [
+        "allowed",
+        "needs_override",
+        "blocked"
+      ],
+      "title": "GateOutcome",
+      "type": "string"
+    },
+    "GateReason": {
+      "description": "Why the gate is not plainly ``allowed``: a stable code, plain text, and the check.",
+      "properties": {
+        "check": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Check"
+        },
+        "code": {
+          "enum": [
+            "SCORECARD_WARN",
+            "SCORECARD_FAIL",
+            "NO_SCORECARD",
+            "TRAIN_ONLY",
+            "PARTIAL_MODEL",
+            "SCHEMA_CHANGE",
+            "NOT_EVALUATED"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "message_plain": {
+          "maxLength": 500,
+          "title": "Message Plain",
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/GateOutcome"
+        }
+      },
+      "required": [
+        "code",
+        "outcome",
+        "message_plain"
+      ],
+      "title": "GateReason",
+      "type": "object"
+    },
+    "PromotionGateDecision": {
+      "description": "The gate's decision for promoting one model version to an endpoint.",
+      "examples": [
+        {
+          "failing_checks": [
+            "holdout.mape"
+          ],
+          "outcome": "needs_override",
+          "reasons": [
+            {
+              "check": "holdout.mape",
+              "code": "SCORECARD_WARN",
+              "message_plain": "Holdout error: forecasts were off by 14%.",
+              "outcome": "needs_override"
+            }
+          ],
+          "scorecard_overall": "warn"
+        }
+      ],
+      "properties": {
+        "failing_checks": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Failing Checks",
+          "type": "array"
+        },
+        "outcome": {
+          "$ref": "#/$defs/GateOutcome"
+        },
+        "reasons": {
+          "items": {
+            "$ref": "#/$defs/GateReason"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "scorecard_overall": {
+          "anyOf": [
+            {
+              "enum": [
+                "pass",
+                "warn",
+                "fail"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scorecard Overall"
+        }
+      },
+      "required": [
+        "outcome"
+      ],
+      "title": "PromotionGateDecision",
+      "type": "object"
+    },
+    "RaggedSpec": {
+      "additionalProperties": false,
+      "description": "Ragged nesting (``hh \u2192 trip``): long form (obs + index vars) or padded + mask.",
+      "properties": {
+        "form": {
+          "enum": [
+            "long",
+            "padded"
+          ],
+          "title": "Form",
+          "type": "string"
+        },
+        "group_dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Group Dim",
+          "type": "string"
+        },
+        "mask_var": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mask Var"
+        },
+        "within_dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Within Dim",
+          "type": "string"
+        }
+      },
+      "required": [
+        "group_dim",
+        "within_dim",
+        "form"
+      ],
+      "title": "RaggedSpec",
+      "type": "object"
+    },
+    "Representation": {
+      "description": "How a model encodes uncertainty in its outputs.",
+      "enum": [
+        "draws",
+        "quantiles",
+        "interval",
+        "point",
+        "moments"
+      ],
+      "title": "Representation",
+      "type": "string"
+    },
+    "Role": {
+      "description": "What a variable means to a model.",
+      "enum": [
+        "target",
+        "covariate",
+        "media",
+        "spend",
+        "control",
+        "index",
+        "mask",
+        "constant",
+        "weight",
+        "exposure"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "VarSpec": {
+      "additionalProperties": false,
+      "description": "A data variable: its dims (by name), dtype, role, units and missingness.",
+      "properties": {
+        "bounds": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounds"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "array"
+        },
+        "dtype": {
+          "enum": [
+            "float64",
+            "float32",
+            "int64",
+            "int32",
+            "bool",
+            "str",
+            "datetime64[ns]"
+          ],
+          "title": "Dtype",
+          "type": "string"
+        },
+        "future_required": {
+          "default": false,
+          "description": "Must be supplied over a forecast horizon",
+          "title": "Future Required",
+          "type": "boolean"
+        },
+        "index_of": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Long layout: this var indexes that dim",
+          "title": "Index Of"
+        },
+        "missing": {
+          "default": "forbid",
+          "enum": [
+            "forbid",
+            "allow",
+            "mask"
+          ],
+          "title": "Missing",
+          "type": "string"
+        },
+        "missing_sentinel": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Missing Sentinel"
+        },
+        "role": {
+          "$ref": "#/$defs/Role",
+          "default": "covariate"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "pint-style, e.g. 'EUR'",
+          "title": "Units"
+        }
+      },
+      "required": [
+        "dims",
+        "dtype"
+      ],
+      "title": "VarSpec",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-Endpoint.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A stable alias and the model version it serves now.",
+  "examples": [
+    {
+      "alias": "geo-mmm-prod",
+      "created_at": "2026-09-01T08:00:00Z",
+      "description": "Weekly EU MMM used by the budget planner",
+      "evaluation_policy": {
+        "fit_mode": "evaluate_then_refit",
+        "schema_change": "block"
+      },
+      "gate": {
+        "outcome": "allowed",
+        "scorecard_overall": "pass"
+      },
+      "id": "ep_01jaf3g1h2j3k4m5n6p7q8r9s0",
+      "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+      "model_ref": "model://growth/eu-geo-mmm@v3",
+      "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+      "overridden": false,
+      "project_id": "growth",
+      "promoted_at": "2026-10-15T09:30:00Z",
+      "promoted_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "ref": "endpoint://growth/geo-mmm-prod",
+      "revision": 4,
+      "schema_snapshot": {
+        "fit_coords": {
+          "channel": {
+            "kind": "categorical",
+            "size": 2,
+            "values": [
+              "search",
+              "tv"
+            ]
+          },
+          "date": {
+            "end": "2025-12-30",
+            "freq": "D",
+            "kind": "time",
+            "size": 730,
+            "start": "2024-01-01"
+          },
+          "market": {
+            "kind": "categorical",
+            "size": 2,
+            "values": [
+              "de",
+              "fr"
+            ]
+          }
+        },
+        "future_required": [
+          "spend_local"
+        ],
+        "horizon_dim": "time",
+        "input_schema": {
+          "dims": {
+            "channel": {
+              "kind": "categorical"
+            },
+            "date": {
+              "freq": "D",
+              "kind": "time",
+              "policy": "extend"
+            },
+            "market": {
+              "kind": "categorical",
+              "new_level_strategy": "pooled",
+              "policy": "new_levels"
+            }
+          },
+          "vars": {
+            "revenue_local": {
+              "dims": [
+                "market",
+                "date"
+              ],
+              "dtype": "float64",
+              "role": "target"
+            },
+            "spend_local": {
+              "dims": [
+                "market",
+                "channel",
+                "date"
+              ],
+              "dtype": "float64",
+              "future_required": true,
+              "role": "spend"
+            }
+          }
+        },
+        "inputs_stage": "raw",
+        "representation": "draws",
+        "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+        "score_modes": [
+          "counterfactual",
+          "evaluate",
+          "forecast",
+          "predict"
+        ]
+      },
+      "tenant_id": "acme",
+      "updated_at": "2026-10-15T09:30:00Z"
+    }
+  ],
+  "properties": {
+    "alias": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+      "title": "Alias",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "evaluation_policy": {
+      "$ref": "#/$defs/EvaluationPolicy"
+    },
+    "gate": {
+      "$ref": "#/$defs/PromotionGateDecision"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "model_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Model Id",
+      "type": "string"
+    },
+    "model_ref": {
+      "description": "model://project/name@vN",
+      "title": "Model Ref",
+      "type": "string"
+    },
+    "model_version_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Model Version Id",
+      "type": "string"
+    },
+    "overridden": {
+      "default": false,
+      "description": "The current version was promoted by override",
+      "title": "Overridden",
+      "type": "boolean"
+    },
+    "project_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "promoted_at": {
+      "format": "date-time",
+      "title": "Promoted At",
+      "type": "string"
+    },
+    "promoted_by": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Promoted By"
+    },
+    "ref": {
+      "description": "endpoint://project/alias",
+      "title": "Ref",
+      "type": "string"
+    },
+    "revision": {
+      "description": "Increases with every promotion and rollback",
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "schema_snapshot": {
+      "$ref": "#/$defs/EndpointSchemaSnapshot"
+    },
+    "tenant_id": {
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "alias",
+    "tenant_id",
+    "project_id",
+    "ref",
+    "model_id",
+    "model_version_id",
+    "model_ref",
+    "revision",
+    "schema_snapshot",
+    "gate",
+    "promoted_at",
+    "created_at",
+    "updated_at"
+  ],
+  "title": "Endpoint",
+  "type": "object",
+  "x-mapi-contract-version": "0.1"
+}
