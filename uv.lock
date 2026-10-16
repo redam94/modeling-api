@@ -2035,6 +2035,10 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+atlas = [
+    { name = "mapi-sdk" },
+    { name = "xarray" },
+]
 xarray = [
     { name = "mapi-sdk" },
     { name = "xarray" },
@@ -2044,8 +2048,10 @@ xarray = [
 requires-dist = [
     { name = "google-crc32c", specifier = ">=1.5" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "mapi-sdk", marker = "extra == 'atlas'", editable = "packages/sdk" },
     { name = "mapi-sdk", marker = "extra == 'xarray'", editable = "packages/sdk" },
     { name = "mapi-spec", editable = "packages/spec" },
+    { name = "xarray", marker = "extra == 'atlas'", specifier = ">=2025.1" },
     { name = "xarray", marker = "extra == 'xarray'", specifier = ">=2025.1" },
 ]
 

@@ -76,7 +76,7 @@ _QUOTA = QuotaPolicyUpsert(scope="tenant", subject_id="acme", limits=QuotaLimits
 def _ex[M](model: type[M], index: int = 0) -> M:
     """A request DTO from its published schema example."""
     schema = model.model_json_schema()  # type: ignore[attr-defined]
-    return model.model_validate(schema["examples"][index])  # type: ignore[attr-defined,no-any-return]
+    return model.model_validate(schema["examples"][index])  # type: ignore[attr-defined]
 
 
 _CALL = _ex(EndpointScoreCall)
@@ -235,9 +235,7 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "update_webhook": lambda: m3.update_webhook(_WH, _ex(WebhookUpdate)),
     "delete_webhook": lambda: m3.delete_webhook(_WH),
     "rotate_webhook_secret": lambda: m3.rotate_webhook_secret(_WH),
-    "list_webhook_deliveries": lambda: m3.list_webhook_deliveries(
-        _WH, None, None, status="failed"
-    ),
+    "list_webhook_deliveries": lambda: m3.list_webhook_deliveries(_WH, None, None, status="failed"),
     "replay_webhook_delivery": lambda: m3.replay_webhook_delivery(_WH, "whd_1"),
     # v0.4 plots, renders and embeds
     "create_saved_plot": lambda: m3.create_saved_plot(_ex(SavedPlotCreate)),

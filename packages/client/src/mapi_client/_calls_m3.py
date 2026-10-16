@@ -106,9 +106,7 @@ def get_guided_template(template_id: str) -> Call[GuidedTemplate]:
 
 
 def detect_roles(body: DetectRolesRequest) -> Call[RoleSuggestions]:
-    return Call(
-        "POST", f"{V1}/guided/detect-roles", parse_model(RoleSuggestions), json=dump(body)
-    )
+    return Call("POST", f"{V1}/guided/detect-roles", parse_model(RoleSuggestions), json=dump(body))
 
 
 def create_guided_draft(body: GuidedAnswers) -> Call[GuidedDraft]:
