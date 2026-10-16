@@ -1,6 +1,9 @@
 """Every endpoint a program may call has a request builder whose method, path, success
-statuses and project scoping match ``mapi_spec.api.ENDPOINTS`` and ``ROUTE_ACCESS`` (the
-contract the server's route table is tested against)."""
+statuses and project scoping match ``mapi_spec.api.V03_ENDPOINTS`` and ``ROUTE_ACCESS`` (the
+contract the server's route table is tested against).
+
+The client covers the v0.3 table; the M3 rows of ``ENDPOINTS`` (``M3_ENDPOINTS``) get their
+builders with the M3 client, which then checks the whole of ``ENDPOINTS`` here."""
 
 from __future__ import annotations
 
@@ -12,8 +15,8 @@ import pytest
 from mapi_client import _calls as c
 from mapi_client._http import Call
 from mapi_spec.api import (
-    ENDPOINTS,
     ROUTE_ACCESS,
+    V03_ENDPOINTS,
     DatasetCreate,
     DatasetVersionCreate,
     EndpointDecl,
@@ -171,7 +174,9 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "admin_get_usage": lambda: c.admin_get_usage(period="day"),
 }
 
-PROGRAM_ENDPOINTS = tuple(d for d in ENDPOINTS if d.operation_id not in NOT_FOR_PROGRAMS)
+CLIENT_ENDPOINTS = V03_ENDPOINTS
+"""The table the client covers (v0.3; ``ENDPOINTS`` once the M3 builders exist)."""
+PROGRAM_ENDPOINTS = tuple(d for d in CLIENT_ENDPOINTS if d.operation_id not in NOT_FOR_PROGRAMS)
 
 
 def _pattern(decl: EndpointDecl) -> re.Pattern[str]:
@@ -183,7 +188,7 @@ def _pattern(decl: EndpointDecl) -> re.Pattern[str]:
 
 def test_every_endpoint_has_a_builder() -> None:
     assert {d.operation_id for d in PROGRAM_ENDPOINTS} == set(BUILDERS)
-    assert {d.operation_id for d in ENDPOINTS} >= NOT_FOR_PROGRAMS
+    assert {d.operation_id for d in CLIENT_ENDPOINTS} >= NOT_FOR_PROGRAMS
 
 
 @pytest.mark.parametrize("decl", PROGRAM_ENDPOINTS, ids=lambda d: d.operation_id)
