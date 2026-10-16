@@ -45,8 +45,7 @@ class ArdlSettings(StatsmodelsSettings, ExogMixin):
         ...,
         min_length=1,
         max_length=64,
-        description="Driver variables (at least one); their future values are needed for "
-        "forecasts",
+        description="Driver variables (at least one); their future values are needed for forecasts",
         json_schema_extra={"x-ui-level": "basic"},
     )
     lags: int = Field(1, ge=0, le=12, description="Past values of the result to use")
@@ -253,8 +252,7 @@ class EcmSettings(StatsmodelsSettings, ExogMixin):
         ...,
         min_length=1,
         max_length=64,
-        description="Driver variables (at least one); their future values are needed for "
-        "forecasts",
+        description="Driver variables (at least one); their future values are needed for forecasts",
         json_schema_extra={"x-ui-level": "basic"},
     )
     lags: int = Field(1, ge=1, le=12, description="Past values of the result in the levels ARDL")

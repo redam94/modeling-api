@@ -246,6 +246,9 @@ class StatsmodelsModel[S: StatsmodelsSettings](CustomModel[S]):
     # =================================================================== fit
     def fit(self, ds: xr.Dataset, s: S, cfg: FitConfig, ctx: FitContext) -> FitOutput:
         self._check_data(ds, s)
+        if TIME in ds.coords and not ds.indexes[TIME].is_monotonic_increasing:
+            ds = ds.sortby(TIME)
+        _check_regular(np.asarray(ds[TIME].values))
         series = list(s.series_dims)
         order = {d: np.asarray(ds[d].values) for d in series}
         keys = list(iter_cells(ds, series))
@@ -502,6 +505,25 @@ class StatsmodelsModel[S: StatsmodelsSettings](CustomModel[S]):
 
 
 # ============================================================================== helpers
+
+
+def _check_regular(t: np.ndarray) -> None:
+    """statsmodels indexes periods by position: the fitted periods must be evenly spaced."""
+    if t.size < 3 or t.dtype.kind not in "iuM":
+        return
+    if t.dtype.kind == "M":
+        import pandas as pd
+
+        regular = pd.infer_freq(pd.DatetimeIndex(t)) is not None
+    else:
+        regular = np.unique(np.diff(t)).size == 1
+    if regular:
+        return
+    raise data_error(
+        "the time index is not evenly spaced (periods are missing or repeated); resample it "
+        "with core.resample or add the missing periods with empty targets (state-space "
+        "models such as ts.sarimax accept missing values)"
+    )
 
 
 def _clean(ds: xr.Dataset) -> xr.Dataset:

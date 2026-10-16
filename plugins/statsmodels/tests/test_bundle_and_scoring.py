@@ -247,6 +247,19 @@ def test_complete_series_models_reject_gaps_in_plain_words(registry: Registry) -
     assert "core.impute" in (info.value.untrusted_text or info.value.detail)
 
 
+def test_unevenly_spaced_periods_are_refused(registry: Registry) -> None:
+    from mapi_plugin_statsmodels.base import _check_regular
+
+    weeks = sales_dataset(periods=40, seed=3)["date"].values
+    _check_regular(weeks)  # regular weekly dates pass
+    _check_regular(np.arange(0, 40, 2))  # so do evenly stepped integers
+    for bad in (np.delete(weeks, 10), np.array([0, 1, 2, 4, 5])):
+        with pytest.raises(MapiError) as info:
+            _check_regular(bad)
+        assert info.value.code is ErrorCode.SCHEMA_INVALID
+        assert "core.resample" in info.value.detail
+
+
 def test_orders_too_large_for_the_history_are_settings_errors(registry: Registry) -> None:
     data = sales_dataset(periods=20, seed=1).drop_vars(["price", "promo"])
     schema = DataSchema.model_validate(
