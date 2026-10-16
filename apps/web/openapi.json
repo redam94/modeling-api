@@ -15531,7 +15531,8 @@
           "curl",
           "r",
           "apps_script",
-          "atlas"
+          "atlas",
+          "notebook"
         ],
         "title": "SnippetLanguage",
         "type": "string"

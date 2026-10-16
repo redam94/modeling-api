@@ -319,6 +319,45 @@ def test_python_snippet_runs_against_the_api(monkeypatch: pytest.MonkeyPatch) ->
     assert printed == [("succeeded", [])]
 
 
+@pytest.mark.skipif(not HAS_XARRAY, reason="needs the xarray extra")
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"mode": "forecast", "horizon": {"dim": "time", "periods": 8}, "data": None},
+        {"mode": "predict", "timeout": "10m"},  # a field named like a score() keyword
+    ],
+    ids=["remote-endpoint", "endpoints-score"],
+)
+def test_notebook_snippet_runs_against_the_api(
+    payload: dict[str, Any],
+    fake_endpoint: Callable[..., Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The notebook cell ``GET …/snippets`` returns runs as generated and ends in a dataset."""
+    import xarray as xr
+
+    base = "https://api.example.com"
+    ctx = SnippetContext(base_url=base, project="acme/growth", alias="plan-prod", payload=payload)
+    code = render_snippet("notebook", ctx).code
+    monkeypatch.setenv("MAPI_TOKEN", "snippet-token")
+    scope: dict[str, Any] = {}
+    with respx.mock(base_url=base, assert_all_called=False) as router:
+        ep = fake_endpoint(
+            lambda _ds: xr.Dataset({"y_hat": ("time", [1.0, 2.0])}), router=router, base_url=base
+        )
+        exec(compile(code, "<notebook snippet>", "exec"), scope)
+        scope["api"].close()
+    ds = scope["ds"]
+    assert isinstance(ds, xr.Dataset)
+    assert ds["y_hat"].sel(stat="mean").values.tolist() == [1.0, 2.0]
+    sent = ep.bodies[-1]
+    assert {k: v for k, v in sent.items() if k in payload} == {
+        k: v for k, v in payload.items() if v is not None
+    }
+    assert ep.headers[-1]["authorization"] == "Bearer snippet-token"
+    assert ep.headers[-1]["x-mapi-project"] == "acme/growth"
+
+
 # ================================================================================== webhooks
 
 

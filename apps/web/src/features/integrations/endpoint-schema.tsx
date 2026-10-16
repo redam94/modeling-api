@@ -1,7 +1,7 @@
 /**
  * What an endpoint expects (its input contract frozen at promotion), a ready example call,
- * "Try it" (validate or score the example, editable), the generated snippets in every language
- * and the "Open in notebook" cell.
+ * "Try it" (validate or score the example, editable) and the server's generated snippets in
+ * every language, the "Open in notebook" cell among them, shown and copied verbatim.
  */
 import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Clock, FlaskConical, KeyRound, Play } from "lucide-react";
@@ -15,9 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, TBody, TD, TH, THead, TR, Table, Textarea } from "@/components/ui/primitives";
 import { useWorkspace } from "@/features/auth/workspace";
-import { env } from "@/env";
 import { formatBytes } from "@/lib/format";
-import { notebookSnippet, parseCallJson, SNIPPET_LANGUAGES } from "@/lib/integrations";
+import { parseCallJson, SNIPPET_LANGUAGES } from "@/lib/integrations";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
 
@@ -240,41 +239,41 @@ export function SnippetView({ snippet }: { snippet: Snippet }) {
   );
 }
 
-export function SnippetTabs({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchema | undefined }) {
+const SNIPPET_NOTES: Partial<Record<SnippetLanguage, string>> = {
+  notebook: "Open in a notebook: paste this cell into Jupyter or marimo. It scores the endpoint with the Python client and shows the result as an xarray Dataset.",
+  apps_script: "Paste into Extensions > Apps Script of a Google Sheet; it writes the run's state into cell A1.",
+  atlas: "An Atlas model backed by this endpoint: Atlas's optimisers score budgets against it.",
+};
+
+export function SnippetTabs({ endpoint }: { endpoint: Endpoint }) {
   const snippets = useEndpointSnippets(endpoint.alias, endpoint.revision);
-  const ws = useWorkspace();
-  const [tab, setTab] = useState<SnippetLanguage | "notebook">("python");
-  const project = ws.current?.key ?? `${endpoint.tenant_id}/${endpoint.project_id}`;
+  const [tab, setTab] = useState<SnippetLanguage>("python");
   return (
     <QueryView query={snippets}>
       {(set) => {
         const byLang = new Map((set.items ?? []).map((s) => [s.language, s]));
+        const shown = SNIPPET_LANGUAGES.filter((l) => byLang.has(l.id));
         return (
-          <Tabs value={tab} onValueChange={(v) => setTab(v as SnippetLanguage | "notebook")}>
+          <Tabs value={byLang.has(tab) ? tab : (shown[0]?.id ?? tab)} onValueChange={(v) => setTab(v as SnippetLanguage)}>
             <TabsList aria-label="Snippet languages">
-              {SNIPPET_LANGUAGES.filter((l) => byLang.has(l.id)).map((l) => (
+              {shown.map((l) => (
                 <TabsTrigger key={l.id} value={l.id}>
                   {l.label}
                 </TabsTrigger>
               ))}
-              <TabsTrigger value="notebook">Notebook</TabsTrigger>
             </TabsList>
-            {SNIPPET_LANGUAGES.map((l) => {
-              const s = byLang.get(l.id);
-              return s ? (
+            {shown.map((l) => {
+              const s = byLang.get(l.id)!;
+              const note = SNIPPET_NOTES[l.id];
+              return (
                 <TabsContent key={l.id} value={l.id}>
-                  <SnippetView snippet={s} />
+                  <div className="grid gap-2">
+                    {note ? <p className="text-[13px] text-muted-foreground">{note}</p> : null}
+                    <SnippetView snippet={s} />
+                  </div>
                 </TabsContent>
-              ) : null;
+              );
             })}
-            <TabsContent value="notebook">
-              <div className="grid gap-2">
-                <p className="text-[13px] text-muted-foreground">
-                  Open in a notebook: paste this cell into Jupyter or marimo. It scores the endpoint with the Python client and the example call.
-                </p>
-                <CodeBlock code={notebookSnippet({ baseUrl: env.apiBase, project, alias: endpoint.alias, example: schema?.example ?? {} })} label="Notebook cell" language="python" />
-              </div>
-            </TabsContent>
           </Tabs>
         );
       }}
@@ -317,7 +316,6 @@ export function EndpointSchemaPanel({ endpoint }: { endpoint: Endpoint }) {
 }
 
 export function EndpointSnippetsPanel({ endpoint }: { endpoint: Endpoint }) {
-  const schema = useEndpointSchema(endpoint.alias, endpoint.revision);
   return (
     <Card>
       <CardHeader className="flex-wrap">
@@ -332,7 +330,7 @@ export function EndpointSnippetsPanel({ endpoint }: { endpoint: Endpoint }) {
         </Button>
       </CardHeader>
       <CardContent>
-        <SnippetTabs endpoint={endpoint} schema={schema.data} />
+        <SnippetTabs endpoint={endpoint} />
       </CardContent>
     </Card>
   );

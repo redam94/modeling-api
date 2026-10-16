@@ -80,7 +80,7 @@ test("snippets are copied and the example call is tried", async ({ page, context
   expect(copied).toContain(`/v1/endpoints/${ALIAS}/score`);
   expect(copied).toContain("$MAPI_TOKEN");
   await page.getByRole("tab", { name: "Notebook" }).click();
-  await expect(page.getByLabel("Notebook cell", { exact: true })).toContainText(`api.endpoints.score("${ALIAS}"`);
+  await expect(page.getByLabel("Notebook (mapi-client, xarray) snippet", { exact: true })).toContainText(`endpoint = api.endpoint('${ALIAS}')`);
   // The token shortcut opens a score:<alias> token.
   await page.getByRole("link", { name: `Create a score:${ALIAS} token` }).click();
   const tokenDialog = page.getByRole("dialog", { name: "New API token" });

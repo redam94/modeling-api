@@ -95,6 +95,7 @@ class FakeEndpoint:
         pending: int = 0,
         throttle: int = 0,
         retry_after: int = 1,
+        base_url: str = BASE,
     ) -> None:
         from mapi_spec.api import EndpointSchema
 
@@ -108,7 +109,7 @@ class FakeEndpoint:
         self._calls_per_key: dict[str, int] = {}
         self._results: dict[str, dict[str, Any]] = {}
         self._n = 0
-        base = f"{BASE}/v1/endpoints/{alias}"
+        base = f"{base_url}/v1/endpoints/{alias}"
         schema = _example(EndpointSchema, alias=alias, ref=f"endpoint://growth/{alias}")
         if snapshot is not None:
             schema["snapshot"] = snapshot
@@ -240,7 +241,9 @@ def scenario_snapshot() -> dict[str, Any]:
 
 @pytest.fixture
 def fake_endpoint(api: respx.MockRouter) -> Callable[..., FakeEndpoint]:
-    def make(respond: Callable[[Any], Any], **options: Any) -> FakeEndpoint:
-        return FakeEndpoint(api, respond, **options)
+    def make(
+        respond: Callable[[Any], Any], *, router: respx.MockRouter | None = None, **options: Any
+    ) -> FakeEndpoint:
+        return FakeEndpoint(router or api, respond, **options)
 
     return make

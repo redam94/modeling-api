@@ -10,8 +10,7 @@ import { modelVersion } from "@/mocks/fixtures";
 import { initialTokenForm, validateTokenForm } from "@/routes/tokens";
 
 import { gateFromProblem, previewGate, worstOutcome } from "./gate";
-import { iframeSnippet, notebookSnippet, parseAllowedOrigins, parseCallJson, validateWebhookForm } from "./integrations";
-import { py } from "./pyliteral";
+import { iframeSnippet, parseAllowedOrigins, parseCallJson, validateWebhookForm } from "./integrations";
 
 const card = (overall: "pass" | "warn" | "fail", items: NonNullable<ModelVersion["scorecard"]>["items"] = []): Pick<ModelVersion, "scorecard" | "status"> => ({
   status: "ready",
@@ -95,25 +94,7 @@ describe("webhook and embed forms", () => {
   });
 });
 
-describe("snippets the app writes", () => {
-  it("writes Python literals that cannot break out of their strings", () => {
-    expect(py({ a: [1, 2.5, true, null], b: { c: "x" } })).toBe('{\n    "a": [1, 2.5, True, None],\n    "b": {\n        "c": "x",\n    },\n}');
-    const hostile = '"""\nimport os; os.system("rm -rf /") # \'';
-    const lit = py(hostile);
-    expect(lit.startsWith('"')).toBe(true);
-    expect(lit).not.toContain("\n");
-    expect(JSON.parse(lit)).toBe(hostile);
-    expect(() => py(Number.NaN)).toThrow(/NaN/);
-  });
-
-  it("builds the notebook cell from the example call, never with a token", () => {
-    const code = notebookSnippet({ baseUrl: "https://api.example", project: "acme/growth", alias: "geo-mmm-prod", example: { mode: "forecast" } });
-    expect(code).toContain('api.endpoints.score("geo-mmm-prod", call, wait=60)');
-    expect(code).toContain('call = {\n    "mode": "forecast",\n}');
-    expect(code).toContain('os.environ["MAPI_TOKEN"]');
-    expect(code).not.toMatch(/mapi_[a-z0-9]{10}/);
-  });
-
+describe("the Try it editor", () => {
   it("parses the Try it body", () => {
     expect(parseCallJson('{"mode": "predict"}')).toEqual({ value: { mode: "predict" }, error: null });
     expect(parseCallJson("[1]").error).toMatch(/object/);

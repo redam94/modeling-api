@@ -9936,7 +9936,7 @@ export interface components {
          * SnippetLanguage
          * @enum {string}
          */
-        SnippetLanguage: "python" | "typescript" | "curl" | "r" | "apps_script" | "atlas";
+        SnippetLanguage: "python" | "typescript" | "curl" | "r" | "apps_script" | "atlas" | "notebook";
         /**
          * SnippetSet
          * @description ``GET /v1/endpoints/{alias}/snippets`` (``?language=`` narrows it).

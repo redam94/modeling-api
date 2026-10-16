@@ -53,6 +53,7 @@ class SnippetLanguage(StrEnum):
     R = "r"
     APPS_SCRIPT = "apps_script"
     ATLAS = "atlas"
+    NOTEBOOK = "notebook"
 
 
 SNIPPET_LANGUAGES: Final = tuple(SnippetLanguage)
@@ -321,6 +322,50 @@ model = RemoteModel(api, endpoint={py_literal(ctx.alias)})
     )
 
 
+#: Keyword arguments of ``RemoteEndpoint.score`` itself; a payload field with one of these names
+#: cannot be passed as a keyword, so such a payload goes through ``api.endpoints.score``.
+_REMOTE_SCORE_KWARGS: Final = frozenset({"data", "group", "wait", "timeout", "conform"})
+
+
+def _notebook(ctx: SnippetContext) -> Snippet:
+    head = f"""# A notebook cell (Jupyter or marimo): the endpoint as an object, results as xarray.
+import os
+
+from mapi_client import Client
+
+api = Client(
+    {py_literal(ctx.base_url)},
+    token=os.environ[{py_literal(ctx.token_env)}],
+    project={py_literal(ctx.project)},
+)
+endpoint = api.endpoint({py_literal(ctx.alias)})
+schema = endpoint.schema()  # the input contract and an example call
+"""
+    fields = {k: v for k, v in ctx.payload.items() if k != "data"}
+    if _REMOTE_SCORE_KWARGS.isdisjoint(fields) and all(k.isidentifier() for k in fields):
+        body = f"""
+# The example call. For your own inputs, pass an xarray.Dataset shaped like
+# schema.snapshot.input_schema as `data`.
+data = {py_literal(ctx.payload.get("data"))}
+call = {py_literal(fields)}
+ds = endpoint.score(data, wait={ctx.wait}, **call)
+ds  # the summary: one variable per output, with a `stat` dim (mean, hdi_90_lower, ...)
+"""
+    else:
+        body = f"""
+call = {py_literal(ctx.payload)}
+result = api.endpoints.score({py_literal(ctx.alias)}, call, wait={ctx.wait})
+ds = result.tree["summary"].to_dataset()
+ds
+"""
+    return Snippet(
+        language=SnippetLanguage.NOTEBOOK,
+        title="Notebook (mapi-client, xarray)",
+        code=head + body,
+        requires="pip install 'mapi-client[xarray]'",
+    )
+
+
 _RENDER = {
     SnippetLanguage.PYTHON: _python,
     SnippetLanguage.TYPESCRIPT: _typescript,
@@ -328,6 +373,7 @@ _RENDER = {
     SnippetLanguage.R: _r,
     SnippetLanguage.APPS_SCRIPT: _apps_script,
     SnippetLanguage.ATLAS: _atlas,
+    SnippetLanguage.NOTEBOOK: _notebook,
 }
 
 

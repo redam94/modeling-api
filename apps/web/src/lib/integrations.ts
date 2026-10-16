@@ -1,11 +1,10 @@
 /**
  * Pure helpers of the Integrations hub: webhook events and delivery states in words, form
- * validation that mirrors the `mapi_spec` contracts (the server still decides), and the
- * snippets the app writes itself (iframe embed code, "Open in notebook").
+ * validation that mirrors the `mapi_spec` contracts (the server still decides), and the iframe
+ * code for an embed link. Code snippets for endpoints are always the server's
+ * (`GET /v1/endpoints/{alias}/snippets`, `mapi_spec.snippets`); the app never writes its own.
  */
 import type { DeliveryStatus, SnippetLanguage, WebhookEventType } from "@/api/types";
-
-import { py } from "./pyliteral";
 
 export const ALIAS_RE = /^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$/;
 
@@ -36,6 +35,7 @@ export const SNIPPET_LANGUAGES: { id: SnippetLanguage; label: string }[] = [
   { id: "r", label: "R" },
   { id: "apps_script", label: "Apps Script" },
   { id: "atlas", label: "Atlas" },
+  { id: "notebook", label: "Notebook" },
 ];
 
 export interface WebhookForm {
@@ -84,33 +84,6 @@ export function parseAllowedOrigins(text: string): { origins: string[]; error: s
 export function iframeSnippet(url: string, title: string): string {
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return `<iframe src="${esc(url)}" title="${esc(title)}" width="800" height="500" style="border:0" loading="lazy" referrerpolicy="no-referrer"></iframe>`;
-}
-
-/**
- * "Open in notebook": a Jupyter or marimo cell that scores the endpoint with the Python client,
- * from the endpoint's example payload. The token is read from `MAPI_TOKEN`, never embedded.
- */
-export function notebookSnippet(o: { baseUrl: string; project: string; alias: string; example: unknown }): string {
-  return `# pip install mapi-client
-import os
-
-from mapi_client import Client
-
-api = Client(
-    ${py(o.baseUrl)},
-    token=os.environ["MAPI_TOKEN"],  # a score:${o.alias} token from the Tokens page
-    project=${py(o.project)},
-)
-
-# The endpoint's example call; replace "data" with your own dataset:// reference or an
-# xarray.Dataset converted with ds.to_dict().
-call = ${py(o.example, 0)}
-
-result = api.endpoints.score(${py(o.alias)}, call, wait=60)
-print(result.run.state)
-for link in result.outputs:
-    print(link.name, link.size)
-`;
 }
 
 /** Parse the "Try it" payload editor: a JSON object, or a message saying what is wrong. */
