@@ -62,6 +62,7 @@ from mapi_sdk.coords import (
     next_label,
 )
 from mapi_sdk.errors import SchemaValidationError, StepError, plugin_error
+from mapi_sdk.future import fill_future_covariates
 from mapi_sdk.metrics import compute_metrics, elpd
 from mapi_sdk.models import PREDICTIONS, FitContext, FitOutput, Fitted, ModelPlugin, ScoreContext
 from mapi_sdk.pipeline import RAW, FitTrace, Pipeline, ReplayTrace
@@ -948,6 +949,7 @@ def score_bundle(
     metric_mask: xr.DataArray | None = None,
     hooks: FitHooks | None = None,
     observed: xr.Dataset | None = None,
+    history: xr.Dataset | None = None,
 ) -> xr.DataTree:
     """Score a fitted bundle; returns a ``DataTree``.
 
@@ -962,7 +964,9 @@ def score_bundle(
     attrs carry the representation, output kind, units/output space, retransformation
     labels, non-error issues and - in ``evaluate`` mode - the metrics. ``observed``
     (evaluation of cell-level splits) gives the observed targets for metrics when ``data``
-    has them masked.
+    has them masked. ``history`` (M3) is the fitted dataset (dataset names): forecasts whose
+    ``future_covariates`` policy is ``carry_last`` or ``seasonal_naive`` extend the
+    covariates the payload lacks from it (:mod:`mapi_sdk.future`).
     """
     req = load_score_request(request) if isinstance(request, str) else request
     registry = registry or default_registry()
@@ -1001,14 +1005,6 @@ def score_bundle(
         data = _horizon_payload(bundle, req)
     entry_schema = rs.stages.get(req.inputs_stage)
     data = _order_payload(binding.apply(normalise_dataset(data), missing="ignore"), entry_schema)
-
-    plan = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws)
-    issues = plan.check(data)
-    derived = _requested_derived(bundle, req)
-    if scenario is not None:
-        scenario = binding.apply(normalise_dataset(scenario), missing="ignore")
-        scenario = _order_payload(scenario, entry_schema)
-        issues += [i for i in plan.check(scenario) if i not in issues]
     # pinned tables always replay the version stored at fit; callers only supply the others
     tables = {
         **{
@@ -1018,6 +1014,41 @@ def score_bundle(
         },
         **bundle.side_tables,
     }
+    seed = req.seed if req.seed is not None else (bundle.model.fit_config.seed or 0)
+    filled: list[Issue] = []
+    if req.mode == "forecast" and req.horizon is not None:
+        hist = None
+        if history is not None:
+            hist = _order_payload(
+                binding.apply(normalise_dataset(history), missing="ignore"), rs.stages.get(RAW)
+            )
+            if req.inputs_stage != RAW:
+                hist = pipeline.transform(
+                    hist,
+                    bundle.states,
+                    end=req.inputs_stage,
+                    replay=False,
+                    side_tables=tables,
+                    seed=seed,
+                    cancel=hooks.cancel,
+                    log=hooks.log,
+                ).data
+        data, filled = fill_future_covariates(
+            data,
+            req.future_covariates,
+            dim=req.horizon.dim,
+            schema=entry_schema,
+            history=hist,
+            targets=entry_schema.targets if entry_schema is not None else (),
+        )
+
+    plan = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws)
+    issues = filled + plan.check(data)
+    derived = _requested_derived(bundle, req)
+    if scenario is not None:
+        scenario = binding.apply(normalise_dataset(scenario), missing="ignore")
+        scenario = _order_payload(scenario, entry_schema)
+        issues += [i for i in plan.check(scenario) if i not in issues]
     needed = sorted({t for s in rs.steps_after(req.inputs_stage) for t in s.side_tables})
     for t in needed:
         if t not in tables:
@@ -1026,7 +1057,6 @@ def score_bundle(
                 code=ErrorCode.SIDE_TABLE_COVERAGE,
                 pointer=f"/side_tables/{t}",
             )
-    seed = req.seed if req.seed is not None else (bundle.model.fit_config.seed or 0)
     targets = rs.model.input_schema.targets if rs.model.input_schema is not None else []
 
     def prepare(ds: xr.Dataset) -> tuple[ReplayTrace, xr.Dataset, CanonicalPlan]:

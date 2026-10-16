@@ -32,7 +32,7 @@ from mapi_spec.run import INPUT_DATASET, RunnerPhase
 from mapi_spec.spec import ScoreRequest
 from mapi_spec.views import COUNTERFACTUAL_VIEW, FORECAST_VIEW
 
-from mapi_runner.jobs import INPUT_SCENARIO, DeriveJob, EvaluateJob, ScoreJob
+from mapi_runner.jobs import INPUT_HISTORY, INPUT_SCENARIO, DeriveJob, EvaluateJob, ScoreJob
 from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.data import (
     load_bundle,
@@ -138,6 +138,7 @@ def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
     bundle = load_bundle(ctx)
     data = _optional_dataset(ctx, INPUT_DATASET)
     scenario = _optional_dataset(ctx, INPUT_SCENARIO)
+    history = _optional_dataset(ctx, INPUT_HISTORY)
     tables = load_side_tables(ctx)
     ctx.state(RunnerPhase.SCORE, f"scoring ({job.request.mode})")
     guided = job.request.mode in ("forecast", "counterfactual")
@@ -151,6 +152,7 @@ def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
         max_draws=job.max_draws,
         hooks=ctx.fit_hooks(),
         return_full=guided,
+        history=history,
     )
     plot_trees: list[xr.DataTree] = []
     if guided:

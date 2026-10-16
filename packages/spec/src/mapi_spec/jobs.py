@@ -15,7 +15,9 @@ fit        a ``ModelSpec`` document                     ``dataset``, optional ``
 score      a ``ScoreRequest`` document, or              ``bundle``, optional
            :class:`ScoreJob`                            ``bundle.manifest``, ``dataset`` (the
                                                         request's ``data``), ``scenario``,
-                                                        ``side.<name>``
+                                                        ``side.<name>``, ``history`` (M3: the
+                                                        fit dataset, for ``carry_last`` /
+                                                        ``seasonal_naive`` future covariates)
 evaluate   :class:`EvaluateJob`                         ``bundle``, ``dataset``, ...
 derive     :class:`DeriveJob`                           ``bundle``, ``dataset``, ``side.<name>``
 render     :class:`RenderJob`                           ``plots`` (a ``plots.json``)
@@ -61,6 +63,7 @@ __all__ = [
     "INPUT_BUNDLE",
     "INPUT_BUNDLE_MANIFEST",
     "INPUT_DATASET",
+    "INPUT_HISTORY",
     "INPUT_PLOTS",
     "INPUT_SCENARIO",
     "INPUT_SCHEMA",
@@ -91,6 +94,9 @@ INPUT_SCHEMA: Final = "schema"
 INPUT_SCENARIO: Final = "scenario"
 INPUT_BUNDLE_MANIFEST: Final = "bundle.manifest"
 INPUT_PLOTS: Final = "plots"
+INPUT_HISTORY: Final = "history"
+"""Score input (M3): the model's fit dataset, from which a forecast extends the covariates
+its payload lacks (``ScoreRequest.future_covariates``: ``carry_last``, ``seasonal_naive``)."""
 SIDE_TABLE_PREFIX: Final = "side."
 
 SCORE_INPUTS: Final = {"data": INPUT_DATASET, "scenario": INPUT_SCENARIO}

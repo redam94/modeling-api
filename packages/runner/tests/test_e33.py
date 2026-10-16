@@ -171,6 +171,30 @@ def test_e33_validate_fit_derive_score_evaluate_render(
     assert forecast.history == 30 and len(forecast.fan.coords) == 38
     assert forecast.units == "EUR" and forecast.summed_over == ["market"]
 
+    # ---- a guided forecast: future spend carried forward from the fitted history -------------
+    carry = {
+        **request,
+        "future_covariates": "carry_last",
+        "output": {"kind": "expected", "summary": ["mean", "hdi_90"]},
+    }
+    guided = run_supervisor(
+        make_run(
+            gcs,
+            RunKind.SCORE,
+            carry,
+            inputs={
+                **bundle_inputs,
+                "history": inputs["dataset"],
+                "side.fx": inputs["side.fx"],
+            },
+        )
+    )
+    _ok(guided)
+    guided_view = ForecastView.model_validate_json(guided.output(FORECAST_VIEW))
+    assert guided_view.total is not None and guided_view.total.mean > 0
+    result = json.loads(guided.output("result.json"))
+    assert any("carry_last" in i["message"] for i in result["issues"])
+
     # ---- counterfactual: TV off over the fit window ------------------------------------------
     cf_request = {
         "apiVersion": "mapi/v1",
