@@ -91,6 +91,11 @@ __all__ = [
 
 INGEST_COLUMNS = "columns.json"
 INGEST_NOTES_ATTR = "mapi.ingest_notes"
+INGEST_EXPLORE_REF = "dataset://upload/content@latest"
+"""The ``ref`` of the ingest's Data Explorer index. Every ingest output is stored
+content-addressed with the data (``t/<tenant>/datasets/<sha>/``), so identical data uploaded
+again - as the next version, or into another dataset or project - must write identical
+objects: the index names no dataset (the version's own ref is the server's)."""
 """``Dataset.attrs`` key of the notes a build leaves for the ingest run (``[{pointer,
 message}]``): reported as ``info`` issues, never stored with the data."""
 _OFFSET = r"(\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)\s*(?:Z|UTC|[+-]\d{2}:?\d{2})$"
@@ -1025,6 +1030,6 @@ def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
 
     ctx.progress(0.95, "computing the Data Explorer overview")
     ds.attrs.pop(SCHEMA_ATTR, None)
-    write_data_explorer(ctx, ds, schema, ref=job.dataset or "dataset://runner/upload@latest")
+    write_data_explorer(ctx, ds, schema, ref=INGEST_EXPLORE_REF)
     ctx.progress(1.0, "dataset ready", force=True)
     return schema

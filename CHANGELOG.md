@@ -332,6 +332,13 @@ milestone releases are tagged on `main`.
   the statsmodels models, which declare the family `forecast`, `ts_multivariate` or
   `regime`; its checks, approval and promotion gate silently never applied. A family now
   matches a model's declared family or the namespace of its id (`ts` for `ts.sarimax`).
+- **runner, server** (found by the M3.5 live-stack verification): uploading data that was
+  uploaded before - the same file as the next version, or into another dataset or project -
+  failed its ingest with `INTEGRITY_FAILURE` ("ui/explore/index.json already holds different
+  content"). Ingest outputs are stored under the data's content hash, and the v0.5 Data
+  Explorer views written at ingest named the dataset version and carry plot timestamps. The
+  ingest's index now names no dataset, and the finalizer keeps the explorer views already
+  stored for that data (the data and its sidecars must still match exactly).
 - **client**: members could not be given the `reviewer` capability (needed to approve
   validations) without raw HTTP: `tenants.add_member(..., capabilities=[...])` and
   `tenants.set_capabilities(...)`.

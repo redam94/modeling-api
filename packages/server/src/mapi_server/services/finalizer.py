@@ -74,6 +74,7 @@ from mapi_spec.storage import (
     run_prefix,
 )
 from mapi_spec.validate import ResolvedSpec, ScoreMetadata
+from mapi_spec.views import EXPLORE_PREFIX
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -404,7 +405,11 @@ class Finalizer:
     async def _outputs_only(self, v: _Verified) -> RunState | None:
         return await self._commit(v)
 
-    async def _copy(self, src: ObjectMeta, dst_bucket: str, dst_name: str) -> ObjectMeta:
+    async def _copy(
+        self, src: ObjectMeta, dst_bucket: str, dst_name: str, *, keep_existing: bool = False
+    ) -> ObjectMeta:
+        """Copy once (``if_generation_match=0``). An existing destination must hold the same
+        content - or, with ``keep_existing``, is reused as it is."""
         store = self.ctx.store
         try:
             return await store.copy(
@@ -417,7 +422,7 @@ class Finalizer:
             )
         except PreconditionFailed:
             existing = await store.stat(dst_bucket, dst_name)
-            if not existing.same_content(src):
+            if not keep_existing and not existing.same_content(src):
                 raise IntegrityError(
                     f"destination {dst_name!r} already holds different content"
                 ) from None
@@ -792,7 +797,13 @@ class Finalizer:
         data_bucket = self.ctx.buckets.data
         stored: dict[str, Any] = {}
         for name, meta in sorted(v.objects.items()):
-            copied = await self._copy(meta, data_bucket, prefix + name)
+            # The prefix is the data's content hash: identical data uploaded again (the next
+            # version, another dataset or project) lands on the objects already there. The
+            # data and its sidecars must match them exactly; the Data Explorer views are
+            # derived from that same data but carry timestamps, so the stored ones are kept.
+            copied = await self._copy(
+                meta, data_bucket, prefix + name, keep_existing=name.startswith(EXPLORE_PREFIX)
+            )
             stored[name] = {
                 "bucket": data_bucket,
                 "name": copied.name,

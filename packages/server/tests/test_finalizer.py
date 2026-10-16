@@ -308,6 +308,56 @@ async def test_ingest_run_makes_the_dataset_version_ready(
     assert r.status_code == 307
 
 
+async def _ingest_version(
+    client: httpx.AsyncClient, ctx: ServerContext, ds_id: str
+) -> dict[str, Any]:
+    up = (
+        await client.post(
+            f"/v1/datasets/{ds_id}/uploads",
+            json={"filename": "co2.csv", "content_type": "text/csv", "size_bytes": 100},
+        )
+    ).json()
+    await ctx.store.put(ctx.buckets.quarantine, up["upload"]["name"], os.urandom(50))
+    mapping = {
+        "format": "csv",
+        "dims": {"t": {"column": "date", "spec": {"kind": "time", "policy": "extend"}}},
+        "vars": {"y": {"column": "co2", "role": "target"}},
+    }
+    created = await client.post(
+        f"/v1/datasets/{ds_id}/versions", json={"upload_id": up["id"], "mapping": mapping}
+    )
+    return dict(created.json())
+
+
+async def test_identical_data_uploaded_again_keeps_the_stored_explorer_views(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """The ingest's objects live under the data's content hash. Uploading the same data as
+    the next version must succeed although its explorer views (timestamped plots, an index)
+    differ byte for byte: the stored views are kept. A sidecar that differs is still an
+    integrity failure."""
+    ds = (await client.post("/v1/datasets", json={"name": "co2"})).json()
+    data = {"data.zarr.zip": b"the same data" * 300}
+    gens = []
+    for i in (1, 2):
+        dv = await _ingest_version(client, ctx, ds["id"])
+        run, att = await _finalizing(ctx, dv["ingest_run_id"])
+        index = json.dumps({"format": "mapi.explorer-index/v1", "run": i}).encode()
+        await simulate_outputs(
+            ctx, run, att, replace=data, add={"ui/explore/index.json": (index, "application/json")}
+        )
+        assert await Finalizer(ctx).finalize(run.id, att.attempt) is RunState.SUCCEEDED
+        async with ctx.db.session() as s:
+            row = await s.get(m.DatasetVersion, (ds["id"], i))
+            assert row is not None and row.status == "ready"
+            gens.append(row.objects["ui/explore/index.json"]["generation"])
+    assert gens[0] == gens[1]  # the first upload's views are reused
+    dv = await _ingest_version(client, ctx, ds["id"])
+    run, att = await _finalizing(ctx, dv["ingest_run_id"])
+    await simulate_outputs(ctx, run, att, replace={**data, "summary.json": b'{"vars": ["z"]}'})
+    assert await Finalizer(ctx).finalize(run.id, att.attempt) is not RunState.SUCCEEDED
+
+
 async def test_failed_ingest_marks_the_version_failed(
     ctx: ServerContext, client: httpx.AsyncClient
 ) -> None:

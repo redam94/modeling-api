@@ -70,6 +70,34 @@ def test_mff_ingest_writes_the_dataset_and_column_profiles(gcs: ShimGcs) -> None
     assert {p.name for p in profiles if p.origin == "mff_variable"} >= {"Sales", "media_var_0"}
 
 
+def test_identical_data_writes_identical_outputs(gcs: ShimGcs) -> None:
+    """Ingest outputs are stored content-addressed with the data, so the same file uploaded
+    again - as v2, or into another dataset or project - must write the same objects (the
+    Data Explorer index used to name the dataset version)."""
+    gcs.put(gcs.buckets.quarantine, UPLOAD, MFF.read_bytes(), "text/csv")
+    outputs = []
+    for ref in ("dataset://default/mff@v1", "dataset://other/sales@v7"):
+        job = _job().model_copy(update={"dataset": ref})
+        result = run_supervisor(
+            make_run(
+                gcs,
+                RunKind.INGEST,
+                job.model_dump(mode="json"),
+                inputs={"upload": (gcs.buckets.quarantine, UPLOAD)},
+            )
+        )
+        assert result.code == RunnerExit.OK, [e.payload for e in result.of("error")]
+        objects = sorted(result.manifest().objects)
+        outputs.append({name: result.output(name) for name in objects})
+    first, second = outputs
+    assert set(first) == set(second) and "ui/explore/index.json" in first
+    # only the plot specs differ (their provenance carries a timestamp; the finalizer keeps
+    # the stored ones): the data, its sidecars, the views and the index are identical
+    diff = [n for n in first if first[n] != second[n]]
+    assert all(n.startswith("ui/explore/plots/") for n in diff), diff
+    assert json.loads(first["ui/explore/index.json"])["ref"] == "dataset://upload/content@latest"
+
+
 def test_a_refused_upload_explains_itself(gcs: ShimGcs) -> None:
     bomb = gzip.compress(b"Period,VariableName\n" + b"2020-01-06,x\n" * 2_000_000)
     gcs.put(gcs.buckets.quarantine, UPLOAD, bomb, "application/gzip")
