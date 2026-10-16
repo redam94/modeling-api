@@ -2192,7 +2192,7 @@ class PriorTranslation(_Response):
 
 class PlotRender(_Response):
     """``POST /v1/plots:render`` (``Prefer: wait=N``) and ``GET /v1/plots/renders/{run_id}``:
-    the ``render`` run and, when done, signed links to ``render/<plot>.<format>``."""
+    the ``render`` run and, when done, signed links to ``renders/<plot>.<format>``."""
 
     done: bool
     run: Run
@@ -2207,7 +2207,7 @@ class PlotRender(_Response):
             "format": "pdf",
             "outputs": [
                 {**ArtifactLink.model_json_schema()["examples"][0],
-                 "name": "render/mmm.response_curves.pdf", "content_type": "application/pdf"}
+                 "name": "renders/mmm.response_curves.pdf", "content_type": "application/pdf"}
             ],
         }
     )  # fmt: skip

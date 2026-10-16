@@ -267,6 +267,18 @@ class EmbedView(ResponseModel):
     plot: PlotSpec
     generated_at: AwareDatetime
     expires_at: AwareDatetime
+    allowed_origins: list[str] = Field(
+        default_factory=list,
+        max_length=10,
+        description="The embed's PlotEmbedCreate.allowed_origins: sites that may frame the "
+        "embed page (empty: any). The embed page refuses to render elsewhere.",
+    )
+    image_url: str | None = Field(
+        None,
+        max_length=4096,
+        description="Short-lived signed URL of a static PNG of the plot (the embed page's "
+        "fallback link), once the sandbox has rendered one",
+    )
 
     model_config = dto_examples(
         {
@@ -277,6 +289,9 @@ class EmbedView(ResponseModel):
             },
             "generated_at": EXAMPLE_TS,
             "expires_at": "2027-01-13T09:30:00Z",
+            "allowed_origins": ["https://acme.notion.site"],
+            "image_url": "https://storage.googleapis.com/mapi-prod-bundles/t/acme/embeds/"
+            "emb_01jaf3p1q2r3s4t5v6w7x8y9z0/plot.png?X-Goog-Signature=…",
         }
     )
 
