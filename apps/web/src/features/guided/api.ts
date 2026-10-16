@@ -31,7 +31,6 @@ export const gk = {
   translation: (p: string, runId: string) => ["p", p, "guided", "translations", runId] as const,
   grid: (p: string, modelId: string, version: number) => ["p", p, "guided", "grid", modelId, version] as const,
   endpoints: (p: string) => ["p", p, "guided", "endpoints"] as const,
-  projectInfo: (t: string) => ["tenants", t, "projects"] as const,
 };
 
 // ----------------------------------------------------------------------------- templates
@@ -220,18 +219,6 @@ export function useResponseGrid(mv: ModelVersion | null | undefined) {
     },
     enabled: Boolean(mv),
     staleTime: Infinity,
-  });
-}
-
-/** The project's details (persona lock), from the tenant's project list. */
-export function useProjectInfo(tenantId: string | null | undefined, projectId: string | null | undefined, enabled = true) {
-  return useQuery({
-    queryKey: gk.projectInfo(tenantId ?? ""),
-    queryFn: ({ signal }) =>
-      unwrap(api.GET("/v1/tenants/{tenant_id}/projects", { params: { path: { tenant_id: tenantId ?? "" }, query: { limit: 200 } }, signal })),
-    enabled: enabled && Boolean(tenantId && projectId),
-    staleTime: 60_000,
-    select: (page) => page.items.find((p) => p.id === projectId) ?? null,
   });
 }
 

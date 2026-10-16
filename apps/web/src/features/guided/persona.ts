@@ -4,13 +4,29 @@
  * project, members below admin see Guided screens only and no Expert toggle; the API still
  * enforces what they may store.
  */
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
 
 import { atLeast } from "@/api/access";
+import { api, unwrap } from "@/api/client";
+import { qk } from "@/api/queries";
 import { useWorkspace } from "@/features/auth/workspace";
 import { personaOf, useUi, type Persona } from "@/stores/ui";
 
-import { useProjectInfo } from "./api";
+/**
+ * The project's details (persona lock), from the tenant's project list. Kept out of the Guided
+ * API module: the shell runs this on every page.
+ */
+function useProjectInfo(tenantId: string | null | undefined, projectId: string | null | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: qk.tenantProjects(tenantId ?? ""),
+    queryFn: ({ signal }) =>
+      unwrap(api.GET("/v1/tenants/{tenant_id}/projects", { params: { path: { tenant_id: tenantId ?? "" }, query: { limit: 200 } }, signal })),
+    enabled: enabled && Boolean(tenantId && projectId),
+    staleTime: 60_000,
+    select: (page) => page.items.find((p) => p.id === projectId) ?? null,
+  });
+}
 
 export interface GuidedLock {
   /** The project is locked to Guided mode. */
