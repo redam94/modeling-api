@@ -9,6 +9,7 @@ import { Ban, CheckCircle2, Download, FileCheck2, RotateCcw, ShieldOff, ThumbsDo
 import { useState } from "react";
 
 import { can } from "@/api/access";
+import type { ArtifactLink } from "@/api/types";
 import { useModel } from "@/api/queries";
 import { ErrorNotice, KeyValues, LoadingRows, Mono, PageHeader, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -186,7 +187,7 @@ function ExportPack({ validation }: { validation: ModelValidation }) {
       const link = pack.download as { url?: unknown; name?: unknown } | null | undefined;
       if (format === "html" && link && typeof link.url === "string") {
         // A static HTML file: saved, never rendered inside the app.
-        const bytes = await fetchArtifactBytes(link as never);
+        const bytes = await fetchArtifactBytes(link as unknown as ArtifactLink);
         saveBytes(bytes, `${base}.html`);
       } else {
         saveBytes(new TextEncoder().encode(JSON.stringify(pack, null, 2)), `${base}.json`, "application/json");
