@@ -88,6 +88,8 @@ module "control" {
   kms_key_version          = lookup(var.control, "kms_key_version", 1)
   kms_trusted_key_versions = lookup(var.control, "kms_trusted_key_versions", [])
   events_args              = lookup(var.control, "events_args", ["api", "--host", "0.0.0.0", "--port", "8080"])
+  cloud_armor              = lookup(var.control, "cloud_armor", {})
+  log_retention_days       = lookup(var.control, "log_retention_days", 30)
 
   depends_on = [google_project_service.this]
 }

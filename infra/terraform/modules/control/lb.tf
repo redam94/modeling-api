@@ -3,8 +3,8 @@
 #   https://<domains.web>     /v1/*, /auth/*, /healthz, /readyz -> api ;  everything else -> web
 #   https://<domains.plots>   -> plots (the isolated plot renderer, a different site)
 #
-# HTTP only redirects to HTTPS. TLS 1.2+ with the MODERN profile. A Cloud Armor policy can be
-# attached to every backend (M3).
+# HTTP only redirects to HTTPS. TLS 1.2+ with the MODERN profile. Every backend carries the
+# Cloud Armor policy of armor.tf (or var.security_policy when one is supplied).
 
 locals {
   lb   = local.lb_enabled && local.services_ready ? 1 : 0
@@ -59,7 +59,7 @@ resource "google_compute_backend_service" "run" {
   name                  = "${local.prefix}-${each.key}"
   load_balancing_scheme = "EXTERNAL_MANAGED"
   protocol              = "HTTPS"
-  security_policy       = var.security_policy
+  security_policy       = local.security_policy
 
   backend {
     group = google_compute_region_network_endpoint_group.run[each.key].id

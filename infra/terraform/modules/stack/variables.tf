@@ -84,13 +84,13 @@ variable "domains" {
 }
 
 variable "security_policy" {
-  description = "Optional Cloud Armor policy for the load balancer backends."
+  description = "Optional Cloud Armor policy for the load balancer backends, instead of the one modules/control creates (control.cloud_armor)."
   type        = string
   default     = null
 }
 
 variable "control" {
-  description = "Settings passed to modules/control (database, services, network, pubsub, kms, kms_key_version, identity_platform, secret_versions, kms_trusted_key_versions, oidc, extra_env, metrics_collector, events_args, dispatch_pool); see that module's variables."
+  description = "Settings passed to modules/control (database, services, network, pubsub, kms, kms_key_version, identity_platform, secret_versions, kms_trusted_key_versions, oidc, extra_env, metrics_collector, events_args, dispatch_pool, cloud_armor, log_retention_days); see that module's variables."
   type        = any
   default     = {}
 }

@@ -35,6 +35,38 @@ milestone releases are tagged on `main`.
     actions, problem codes and `Project.guided_locked`.
 - **docs**: Guided mode and Integrations concept pages; the v0.4 section of the HTTP API
   reference.
+- **spec**: the sign-up review queue (`SignupReview`, `SignupReviewDecision`, the
+  `SYBIL_FLAGS` catalog), `GET /v1/admin/signups`, `POST /v1/admin/signups/{signup_id}/review`
+  and `POST /v1/admin/tenants/{tenant_id}/deletion/retry`; the `auth.signup_flagged`,
+  `auth.signup_review` and `tenant.deletion_retry` audit actions; the deletion record and
+  platform logs in `RETAINED_RECORDS`.
+- **server**: the trust lifecycle (migration `0010_trust_lifecycle`).
+  - Self-service sign-up (`POST /auth/signup`, `POST /auth/verify-email`): single-use e-mail
+    tokens stored as HMACs (24 h), the same answer for new and known addresses, a mailer
+    protocol (SMTP with required TLS, a file outbox read at `GET /dev/outbox` in the `dev`
+    profile, console), the disposable-domain blocklist plus configured domains and files,
+    per-address, per-domain and platform-wide sign-up limits, and Sybil heuristics (same
+    address, browser cookie, e-mail, domain burst) that flag sign-ups for the operators'
+    review queue. Verification creates a `public` tenant, its `default` project and the admin
+    grant.
+  - Identity verification (`GET /v1/tenants/{id}/verification`, operators'
+    `PUT /v1/admin/tenants/{id}/verification`, an `IdentityVerifier` provider protocol with a
+    fake) and cut line A at run admission: uploaded code needs a trusted tier or identity
+    verification (`IDENTITY_VERIFICATION_REQUIRED`); public tenants run built-ins and
+    declarative specs only.
+  - Tenant deletion: a confirmed request suspends the tenant and cancels its runs; after the
+    grace period the orchestrator makes it `deleting` (tokens revoked, sessions ended,
+    revoker hooks) and a procrastinate job purges the queue, every tenant table, every
+    `t/{tenant}/` object prefix (resuming after retention locks), then notifies and writes
+    the `tenant.purged` tombstone; progress per store; automatic and operator retries.
+  - GDPR export: a zip of every tenant record (credentials redacted), dataset objects and
+    bundle manifests, with a short-lived signed link.
+- **infra**: a Cloud Armor policy on every load-balancer backend (OWASP CRS sqli, xss, lfi,
+  rce and scanner rules in preview-then-enforce, per-IP rate bans on sign-up, `/auth/*`,
+  embeds and endpoint scoring, Adaptive Protection), and an explicit retention for the control
+  project's `_Default` log bucket (tenant deletion does not purge logs).
+- **docs**: Sign-up and abuse controls, Deleting and exporting data, and a Cloud Armor
+  section in Security hardening.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

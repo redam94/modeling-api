@@ -149,6 +149,7 @@ nav:
       - Running it for teams:
           - Authentication: guides/authentication.md
           - Administration: guides/administration.md
+          - Deleting and exporting data: guides/data-deletion.md
       - Modelling:
           - Port a model in 15 minutes: guides/port-a-model.md
           - Write a step or model plugin: guides/plugins.md
@@ -197,6 +198,7 @@ nav:
       - Deploying to Google Cloud: operations/gcp-deployment.md
       - Security hardening on Google Cloud: operations/security-hardening.md
       - Authentication and isolation: operations/authentication.md
+      - Sign-up and abuse controls: operations/signup-and-abuse.md
       - Cloud Run Jobs executor: operations/cloud-run.md
       - Observability: operations/observability.md
       - Security suite: operations/security-suite.md
