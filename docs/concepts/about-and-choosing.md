@@ -45,7 +45,8 @@ their goal and their data into a ranked list with the reasons.
 
 Cards are attached to model manifests and catalog entries (`ModelManifest.about`,
 `StepCatalogEntry.about`), guided templates (`GuidedTemplate.about`), workflow templates,
-node kinds and node implementations, and governance checks. `GET /v1/catalog/abouts` lists
+node kinds and node implementations, and governance checks. Your own specs, pipelines and
+workflows can carry one too, in `metadata.about`, so colleagues know when to reuse them. `GET /v1/catalog/abouts` lists
 them all (filter with `kind`). Datasets have a `DatasetAbout`: the owner's own description
 plus a summary generated from the schema and coordinate summary, for example *"Weekly data
 from 2023-01-01 to 2024-12-29 (104 weeks) for 10 geos and 3 channels, with 3 measures:

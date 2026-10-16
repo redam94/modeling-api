@@ -25,6 +25,7 @@ from mapi_spec._types import (
     StrictModel,
     unique,
 )
+from mapi_spec.about import About
 from mapi_spec.calibration import Calibration
 from mapi_spec.capabilities import OutputSelector, ScoreMode
 from mapi_spec.errors import parse_pointer
@@ -86,6 +87,12 @@ class Metadata(StrictModel):
     project: Slug
     labels: dict[LabelKey, LabelValue] = Field(default_factory=dict, max_length=64)
     description: str | None = Field(None, max_length=4000)
+    about: About | None = Field(
+        None,
+        description="M3.5: a plain-language About card so others can choose this spec, "
+        "pipeline or workflow (see mapi_spec.about)",
+        exclude_if=lambda v: v is None,
+    )
 
 
 # --------------------------------------------------------------------------------- data

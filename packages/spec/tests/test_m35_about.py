@@ -234,3 +234,16 @@ def test_recommendation_query_errors() -> None:
     assert exc.value.code is ErrorCode.CHOOSER_ANSWER_INVALID and exc.value.pointer == "/goal"
     assert chooser_answers_from_query({"goal": ["forecast, plan_budget"]})[0].values == [
         "forecast", "plan_budget"]  # fmt: skip
+
+
+def test_specs_and_workflows_may_carry_an_about_card() -> None:
+    from mapi_spec.examples import E33_YAML
+    from mapi_spec.loader import load_model_spec, spec_hash
+    from mapi_spec.spec import Metadata
+
+    spec = load_model_spec(E33_YAML)
+    assert spec.metadata.about is None
+    assert "about" not in spec.model_dump(mode="json", by_alias=True)["metadata"]
+    meta = Metadata(name="geo", project="growth", about=About.model_validate(EXAMPLE))
+    described = spec.model_copy(update={"metadata": meta})
+    assert spec_hash(described) != spec_hash(spec)
