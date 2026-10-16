@@ -191,7 +191,11 @@ class CoordSummary(StrictModel):
             if self.freq is None:
                 return None
             return parse_freq(self.freq).ordinal(parse_time(value))
-        if self.kind == "integer" and isinstance(value, int) and not isinstance(value, bool):
+        if (
+            self.kind in ("integer", "index")
+            and isinstance(value, int)
+            and not isinstance(value, bool)
+        ):
             step = int(self.step or 1)
             return value // step if value % step == 0 else None
         return None
