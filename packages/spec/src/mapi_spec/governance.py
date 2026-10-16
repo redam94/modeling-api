@@ -74,6 +74,7 @@ __all__ = [
     "PolicyMatch",
     "PolicyScope",
     "ValidationEvent",
+    "ValidationNote",
     "ValidationRequest",
     "ValidationStatus",
     "ValidationTransitionRecord",
@@ -139,6 +140,20 @@ class GovernanceCheckDef(ResponseModel):
     params_schema: dict[str, JsonValue] = Field(default_factory=dict)
     default_severity: CheckSeverity = CheckSeverity.BLOCKING
     about: About
+
+    model_config = dto_examples(
+        {
+            "id": "baseline.beats_naive",
+            "title": "Beats simple benchmarks",
+            "category": "baseline",
+            "metric": "relative_skill",
+            "direction": "min",
+            "warn": 0.05,
+            "fail": 0.0,
+            "requires": ["holdout", "time_series"],
+            "about": About.model_json_schema()["examples"][0],
+        }
+    )
 
     @field_validator("params_schema")
     @classmethod
@@ -958,11 +973,22 @@ class ModelValidation(ResponseModel):
     )
 
 
+class ValidationNote(RequestModel):
+    """``POST /v1/validations/{validation_id}:cancel|:resubmit|:deprecate``: why (a
+    deprecation needs a reason; it is audited)."""
+
+    note: str | None = Field(None, max_length=2000)
+
+    model_config = dto_examples({"note": "Superseded by v8 after the Q1 data refresh."})
+
+
 class EvidencePackRequest(RequestModel):
     """``POST /v1/validations/{validation_id}/evidence-pack``."""
 
     format: Literal["html", "json"] = "html"
     include_plots: bool = True
+
+    model_config = dto_examples({"format": "html", "include_plots": True})
 
 
 class EvidencePack(ResponseModel):
@@ -981,3 +1007,14 @@ class EvidencePack(ResponseModel):
     download: dict[str, JsonValue] | None = Field(
         None, description="Signed link to the HTML rendering (ArtifactLink)"
     )
+
+    model_config = dto_examples(
+        {
+            "validation": ModelValidation.model_json_schema()["examples"][0],
+            "model_ref": "model://growth/geo-mmm@v7",
+            "lineage": {"dataset": "dataset://growth/weekly_sales@v4",
+                        "plugin": "mmm.bayesian@1.0.0"},
+            "policies": [GovernancePolicy.model_json_schema()["examples"][0]],
+            "generated_at": EXAMPLE_TS,
+        }
+    )  # fmt: skip

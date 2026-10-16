@@ -445,6 +445,7 @@ class GateReason(ResponseModel):
         "PARTIAL_MODEL",
         "SCHEMA_CHANGE",
         "NOT_EVALUATED",
+        "NOT_VALIDATED",
     ]
     outcome: GateOutcome
     message_plain: str = Field(..., max_length=500)
@@ -485,8 +486,14 @@ def promotion_gate(
     schema_breaks: Sequence[str] = (),
     schema_change: Literal["block", "warn", "allow"] = "block",
     required_checks: Sequence[str] = (),
+    require_validated: bool = False,
+    validation_status: str | None = None,
 ) -> PromotionGateDecision:
     """Decide whether a model version may be promoted (pure).
+
+    M3.5: when a governance policy requires validation (``require_validated``, see
+    :func:`mapi_spec.governance.requires_validation`), a version whose ``validation_status``
+    is not ``validated`` is blocked (``NOT_VALIDATED``): no override promotes it.
 
     * a ``partial`` version (interrupted fit) is blocked;
     * a ``train_only`` fit is blocked unless the endpoint's policy allows it (Q13:
@@ -511,6 +518,14 @@ def promotion_gate(
 
     if partial:
         add("PARTIAL_MODEL", GateOutcome.BLOCKED, "The fit was interrupted before it finished.")
+    if require_validated and validation_status != "validated":
+        state = (validation_status or "not submitted").replace("_", " ")
+        add(
+            "NOT_VALIDATED",
+            GateOutcome.BLOCKED,
+            "The governance policy requires a validated model; this version is "
+            f"{state}. Submit it for validation first.",
+        )
     if fit_mode == "train_only" and not allow_train_only:
         add(
             "TRAIN_ONLY",
@@ -617,6 +632,11 @@ def authorize_promotion(
     if decision.outcome is GateOutcome.ALLOWED:
         return False
     if decision.outcome is GateOutcome.BLOCKED:
+        if any(r.code == "NOT_VALIDATED" for r in decision.reasons):
+            raise MapiError(
+                next(r.message_plain for r in decision.reasons if r.code == "NOT_VALIDATED"),
+                code=ErrorCode.NOT_VALIDATED,
+            )
         raise MapiError(
             "the promotion gate blocks this model version: "
             + "; ".join(r.message_plain for r in decision.reasons if r.outcome == "blocked"),

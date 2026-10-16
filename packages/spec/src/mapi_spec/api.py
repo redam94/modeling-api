@@ -12,12 +12,14 @@ Conventions shared by every endpoint (see ``docs/reference/http-api.md``):
   :class:`~mapi_spec.errors.Problem` documents with stable codes.
 * Timestamps are timezone-aware RFC 3339 strings in UTC.
 
-:data:`M1_ENDPOINTS` and :data:`M2_ENDPOINTS` (together :data:`ENDPOINTS`, what v0.3 serves)
-and :data:`M3_ENDPOINTS` (guided mode and integrations) are the machine-readable endpoint
-tables; :data:`ALL_ENDPOINTS` is all three. The server's route table and the reference docs
-are tested against them. :data:`ROUTE_ACCESS` gives every operation its tenant/project scope and the
-permission it checks. From v0.3 every M1 resource is project-scoped: the project comes from
-the path or the ``X-Mapi-Project`` header (:func:`mapi_spec.tenancy.resolve_project_scope`).
+:data:`M1_ENDPOINTS`, :data:`M2_ENDPOINTS` (v0.3), :data:`M3_ENDPOINTS` (guided mode and
+integrations, v0.4) and :data:`M35_ENDPOINTS` (workflows, governance, explorers,
+optimisation and About cards, v0.5) are the machine-readable endpoint tables;
+:data:`ENDPOINTS` (= :data:`ALL_ENDPOINTS`) is all four. The server's route table and the
+reference docs are tested against them. :data:`ROUTE_ACCESS` gives every operation its
+tenant/project scope and the permission it checks. From v0.3 every M1 resource is
+project-scoped: the project comes from the path or the ``X-Mapi-Project`` header
+(:func:`mapi_spec.tenancy.resolve_project_scope`).
 """
 
 from __future__ import annotations
@@ -46,6 +48,14 @@ from mapi_spec._dto import TenantId as TenantId
 from mapi_spec._dto import dto_examples as _examples
 from mapi_spec._dto import new_id
 from mapi_spec._types import Duration, LabelKey, LabelValue, MetricName, Slug
+from mapi_spec.about import (
+    About,
+    AboutKind,
+    ChooserQuestionnaire,
+    ChooserResult,
+    DatasetAbout,
+    DatasetAboutUpdate,
+)
 from mapi_spec.admin import (
     ExecutorEvidence,
     ExecutorEvidenceUpdate,
@@ -78,6 +88,20 @@ from mapi_spec.endpoints import (
 )
 from mapi_spec.errors import ErrorCode, Issue, Problem
 from mapi_spec.executor import RunEventType, RunKind
+from mapi_spec.explore import DataExploreRequest, ModelExploreRequest
+from mapi_spec.governance import (
+    ApprovalCreate,
+    CheckResult,
+    EvidencePack,
+    EvidencePackRequest,
+    GovernanceCheckDef,
+    GovernancePolicy,
+    GovernancePolicyCreate,
+    GovernancePolicyUpdate,
+    ModelValidation,
+    ValidationNote,
+    ValidationRequest,
+)
 from mapi_spec.guided import (
     ColumnProfile,
     DetectRolesRequest,
@@ -92,6 +116,7 @@ from mapi_spec.ingest import (
     VarMapping,
     WideVarMapping,
 )
+from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.plots import PlotSpec
 from mapi_spec.quotas import QuotaLimitStatus, QuotaPolicy, QuotaPolicyUpsert
 from mapi_spec.resources import ResourceClass
@@ -114,6 +139,7 @@ from mapi_spec.tenancy import (
     DEFAULT_RESIDENCY,
     PROJECT_HEADER,
     Action,
+    Capability,
     Membership,
     Principal,
     Project,
@@ -140,6 +166,7 @@ from mapi_spec.trust import (
     VerificationUpdate,
 )
 from mapi_spec.validate import ResolvedSpec
+from mapi_spec.views import ExplorerIndex
 from mapi_spec.webhooks import (
     Webhook,
     WebhookCreate,
@@ -149,6 +176,25 @@ from mapi_spec.webhooks import (
     WebhookUpdate,
 )
 from mapi_spec.whatif import GuidedCompile
+from mapi_spec.workflow import (
+    NodeRun,
+    ScheduleCreate,
+    ScheduleUpdate,
+    TriggerCreate,
+    Workflow,
+    WorkflowCreate,
+    WorkflowRevision,
+    WorkflowRevisionCreate,
+    WorkflowRun,
+    WorkflowRunCreate,
+    WorkflowSchedule,
+    WorkflowTrigger,
+    WorkflowUpdate,
+    WorkflowValidateRequest,
+    WorkflowValidation,
+)
+from mapi_spec.workflow_nodes import NodeImplementation
+from mapi_spec.workflow_templates import WorkflowTemplate
 
 __all__ = [
     "ALL_ENDPOINTS",
@@ -164,6 +210,7 @@ __all__ = [
     "M1_ENDPOINTS",
     "M2_ENDPOINTS",
     "M3_ENDPOINTS",
+    "M35_ENDPOINTS",
     "MAX_PREFER_WAIT_SECONDS",
     "PAGE_LIMIT_DEFAULT",
     "PAGE_LIMIT_MAX",
@@ -180,14 +227,25 @@ __all__ = [
     "SSE_RETRY_MS",
     "TOKEN_TENANT_ROUTES",
     "V03_ENDPOINTS",
+    "V04_ENDPOINTS",
+    "About",
+    "AboutKind",
     "AdminUsageReport",
     "ApiToken",
+    "ApprovalCreate",
     "ArtifactLink",
     "AuditEvent",
+    "CatalogAbout",
     "CatalogResponse",
+    "CheckResult",
+    "ChooserQuestionnaire",
+    "ChooserResult",
     "ColumnProfile",
     "CostTotals",
+    "DataExploreRequest",
     "Dataset",
+    "DatasetAbout",
+    "DatasetAboutUpdate",
     "DatasetCreate",
     "DatasetVersion",
     "DatasetVersionCreate",
@@ -205,13 +263,21 @@ __all__ = [
     "EndpointScoreCall",
     "EndpointValidation",
     "EvaluationPolicy",
+    "EvidencePack",
+    "EvidencePackRequest",
     "ExecutorEvidence",
     "ExecutorEvidenceUpdate",
     "ExecutorHealth",
     "ExecutorUpdate",
+    "Exploration",
+    "ExplorerIndex",
     "GdprExport",
     "GdprExportRequest",
     "GlobalSpend",
+    "GovernanceCheckDef",
+    "GovernancePolicy",
+    "GovernancePolicyCreate",
+    "GovernancePolicyUpdate",
     "GuidedAnswers",
     "GuidedCompile",
     "GuidedDraft",
@@ -230,8 +296,15 @@ __all__ = [
     "MembershipCreate",
     "MembershipUpdate",
     "Model",
+    "ModelExploreRequest",
+    "ModelValidation",
     "ModelVersion",
+    "NodeImplementation",
+    "NodeRun",
     "ObjectRef",
+    "Optimization",
+    "OptimizeRequest",
+    "OptimizeResult",
     "Page",
     "PlotEmbed",
     "PlotEmbedCreate",
@@ -262,6 +335,8 @@ __all__ = [
     "RunRetry",
     "SavedPlot",
     "SavedPlotCreate",
+    "ScheduleCreate",
+    "ScheduleUpdate",
     "ScoreCall",
     "ScoreCallResult",
     "ScoreSummary",
@@ -290,11 +365,14 @@ __all__ = [
     "TenantUpdate",
     "TokenCreate",
     "TokenCreated",
+    "TriggerCreate",
     "UploadCreate",
     "UploadSession",
     "UsageReport",
     "ValidateRequest",
     "ValidateResponse",
+    "ValidationNote",
+    "ValidationRequest",
     "VarMapping",
     "VerificationResult",
     "VerificationStatus",
@@ -306,6 +384,18 @@ __all__ = [
     "WebhookEnvelope",
     "WebhookUpdate",
     "WideVarMapping",
+    "Workflow",
+    "WorkflowCreate",
+    "WorkflowRevision",
+    "WorkflowRevisionCreate",
+    "WorkflowRun",
+    "WorkflowRunCreate",
+    "WorkflowSchedule",
+    "WorkflowTemplate",
+    "WorkflowTrigger",
+    "WorkflowUpdate",
+    "WorkflowValidateRequest",
+    "WorkflowValidation",
     "check_idempotency_key",
     "encode_sse",
     "loc_to_pointer",
@@ -470,6 +560,9 @@ class Dataset(_Response):
     latest_version: int | None = Field(None, ge=1)
     created_at: AwareDatetime
     updated_at: AwareDatetime
+    about: DatasetAbout | None = Field(
+        None, description="M3.5: the description plus a summary generated from the schema"
+    )
 
     model_config = _examples(
         {
@@ -1771,6 +1864,9 @@ class MembershipCreate(_Request):
     principal_id: Id | None = Field(None, pattern=r"^(?:usr|sa)_[0-9a-z]{26}$")
     email: str | None = Field(None, max_length=320, pattern=_EMAIL_RE)
     role: ProjectRole
+    capabilities: list[Capability] = Field(
+        default_factory=list, description="M3.5: e.g. reviewer (approves model validations)"
+    )
 
     model_config = _examples(
         {"email": "ana@acme.example", "role": "runner"},
@@ -1785,11 +1881,19 @@ class MembershipCreate(_Request):
 
 
 class MembershipUpdate(_Request):
-    """Change a member's role (the last admin of a tenant or project cannot be demoted)."""
+    """Change a member's role (the last admin of a tenant or project cannot be demoted)
+    and, from M3.5, their capabilities (``reviewer``)."""
 
-    role: ProjectRole
+    role: ProjectRole | None = None
+    capabilities: list[Capability] | None = None
 
-    model_config = _examples({"role": "editor"})
+    model_config = _examples({"role": "editor"}, {"capabilities": ["reviewer"]})
+
+    @model_validator(mode="after")
+    def _some(self) -> MembershipUpdate:
+        if self.role is None and self.capabilities is None:
+            raise ValueError("give a role, capabilities or both")
+        return self
 
 
 # =================================================================================== M2: usage
@@ -2534,12 +2638,412 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
 )  # fmt: skip
 """The M3 endpoint table (guided mode and integrations; additive to :data:`V03_ENDPOINTS`)."""
 
-ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
-"""Every endpoint of the v0.4 API (M1 + M2 + M3); the server serves every row."""
+# ==================================================================================== M3.5: DTOs
+#
+# Workflows, governance, explorers, budget optimisation and About cards (v0.5). The
+# building blocks live in their own modules (mapi_spec.about, .abouts, .workflow,
+# .workflow_nodes, .workflow_templates, .governance, .explore, .views, .optimize,
+# .splitplan, .stattests) and are re-exported here; the DTOs below wrap a Run.
+
+
+class CatalogAbout(_Response):
+    """``GET /v1/catalog/abouts``: one catalog item's About card (``kind`` + ``id``)."""
+
+    kind: AboutKind
+    id: str = Field(..., max_length=128)
+    about: About
+
+    model_config = _examples(
+        {"kind": "step", "id": "core.resample", "about": About.model_json_schema()["examples"][0]}
+    )
+
+
+class Exploration(_Response):
+    """``POST …/explore`` (``202``) and ``GET /v1/explorations/{run_id}``: the ``explore``
+    run and, once done, its index and signed links to every section view."""
+
+    run: Run
+    done: bool
+    target: Literal["dataset", "model"]
+    ref: str = Field(..., max_length=512)
+    index: ExplorerIndex | None = None
+    views: list[ArtifactLink] = Field(default_factory=list)
+
+    model_config = _examples(
+        {
+            "run": {**Run.model_json_schema()["examples"][0], "kind": "explore",
+                    "state": "succeeded", "progress": None},
+            "done": True,
+            "target": "dataset",
+            "ref": "dataset://growth/weekly_sales@v4",
+            "index": {"target": "dataset", "ref": "dataset://growth/weekly_sales@v4",
+                      "sections": [{"section": "stationarity",
+                                    "view": "ui/explore/stationarity.json"}]},
+            "views": [{**ArtifactLink.model_json_schema()["examples"][0],
+                       "name": "ui/explore/stationarity.json"}],
+        }
+    )  # fmt: skip
+
+
+class Optimization(_Response):
+    """``POST …:optimize`` (``Prefer: wait=N``: ``200`` when done, else ``202``) and
+    ``GET /v1/optimizations/{run_id}``: the ``optimize`` run and, once done, the plan."""
+
+    run: Run
+    done: bool
+    request: OptimizeRequest
+    result: OptimizeResult | None = None
+
+    model_config = _examples(
+        {
+            "run": {**Run.model_json_schema()["examples"][0], "kind": "optimize",
+                    "state": "succeeded", "progress": None},
+            "done": True,
+            "request": OptimizeRequest.model_json_schema()["examples"][0],
+            "result": OptimizeResult.model_json_schema()["examples"][0],
+        }
+    )  # fmt: skip
+
+
+# =================================================================================== M3.5 table
+
+_WF = "/v1/workflows/{workflow_id}"
+_WFR = "/v1/workflow-runs/{run_id}"
+_MV = "/v1/models/{model_id}/versions/{version}"
+_VAL = "/v1/validations/{validation_id}"
+_POL = "/v1/governance/policies"
+_TPOL = "/v1/tenants/{tenant_id}/governance/policies"
+_RUNH = (PROJECT_HEADER, IDEMPOTENCY_KEY_HEADER)
+
+M35_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    # About cards and the chooser
+    EndpointDecl(
+        "GET", "/v1/catalog/abouts", "list_catalog_abouts",
+        "About cards of catalog items (filter: kind)", "Page[CatalogAbout]", 200,
+        paginated=True, query=(*_PAGE, "kind"),
+    ),
+    EndpointDecl(
+        "GET", "/v1/catalog/chooser", "get_chooser",
+        "The Help-me-choose questions", "ChooserQuestionnaire", 200,
+    ),
+    EndpointDecl(
+        "GET", "/v1/catalog/recommendations", "recommend_catalog_items",
+        "Ranked recommendations for chooser answers (query: <question>=<answer>[,...])",
+        "ChooserResult", 200, errors=(_E.CHOOSER_ANSWER_INVALID,),
+        query=("kind", "limit", "goal", "data_shape", "frequency", "history", "drivers",
+               "uncertainty", "experience", "speed"),
+    ),
+    EndpointDecl(
+        "GET", "/v1/catalog/workflow-nodes", "list_workflow_nodes",
+        "Workflow node implementations with ports, parameters and About cards",
+        "Page[NodeImplementation]", 200, paginated=True, query=(*_PAGE, "kind"),
+    ),
+    EndpointDecl(
+        "GET", "/v1/catalog/workflow-nodes/{node_id}", "get_workflow_node",
+        "One node implementation", "NodeImplementation", 200, errors=_NF,
+    ),
+    EndpointDecl(
+        "GET", "/v1/catalog/governance-checks", "list_governance_checks",
+        "The governance check catalog", "Page[GovernanceCheckDef]", 200, paginated=True,
+        query=_PAGE,
+    ),
+    # datasets: About and the Data Explorer
+    EndpointDecl(
+        "GET", "/v1/datasets/{dataset_id}/about", "get_dataset_about",
+        "The owner's description and the generated summary of the latest version",
+        "DatasetAbout", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "PATCH", "/v1/datasets/{dataset_id}/about", "update_dataset_about",
+        "Change the owner's description", "DatasetAbout", 200, request="DatasetAboutUpdate",
+        errors=(*_BODY, *_NF, *_FB), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/datasets/{dataset_id}/versions/{version}/explore",
+        "explore_dataset_version", "Compute Data Explorer sections (an explore run)",
+        "Exploration", 202, request="DataExploreRequest",
+        errors=(*_BODY, *_NF, _E.EXPLORE_INVALID, _E.QUOTA_EXCEEDED), headers=_RUNH,
+    ),
+    EndpointDecl(
+        "GET", "/v1/explorations/{run_id}", "get_exploration",
+        "An explore run and, once done, links to its views", "Exploration", 200, errors=_NF,
+        headers=_PH,
+    ),
+    # models: the Model Explorer and budget optimisation
+    EndpointDecl(
+        "POST", _MV + "/explore", "explore_model_version",
+        "Compute Model Explorer sections (an explore run)", "Exploration", 202,
+        request="ModelExploreRequest",
+        errors=(*_BODY, *_NF, _E.EXPLORE_INVALID, _E.CAPABILITY_UNSUPPORTED, _E.QUOTA_EXCEEDED),
+        headers=_RUNH,
+    ),
+    EndpointDecl(
+        "POST", _MV + ":optimize", "optimize_model_version",
+        "Optimise a budget across channels (Prefer: wait=N -> 200 if done, else 202)",
+        "Optimization", 200, request="OptimizeRequest",
+        errors=(*_BODY, *_NF, _E.OPTIMIZE_INFEASIBLE, _E.CAPABILITY_UNSUPPORTED,
+                _E.QUOTA_EXCEEDED),
+        headers=(*_RUNH, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "GET", "/v1/optimizations/{run_id}", "get_optimization",
+        "An optimize run and, once done, its plan", "Optimization", 200, errors=_NF,
+        headers=_PH,
+    ),
+    # workflows
+    EndpointDecl(
+        "GET", "/v1/workflows", "list_workflows", "Workflows of the project",
+        "Page[Workflow]", 200, paginated=True, query=(*_PAGE, "archived"), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/workflows", "create_workflow",
+        "Create a workflow from a document, YAML text or a gallery template", "Workflow", 201,
+        request="WorkflowCreate", errors=(*_BODY, *_NF, _E.WORKFLOW_INVALID, _E.CONFLICT,
+                                          _E.SPEC_PARSE_ERROR, _E.PAYLOAD_TOO_LARGE),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/workflows:validate", "validate_workflow",
+        "Static checks of a workflow document (JSON pointers); stores nothing",
+        "WorkflowValidation", 200, request="WorkflowValidateRequest",
+        errors=(*_BODY, _E.SPEC_PARSE_ERROR, _E.PAYLOAD_TOO_LARGE), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _WF, "get_workflow", "A workflow", "Workflow", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "PATCH", _WF, "update_workflow", "Change the description or archive it", "Workflow",
+        200, request="WorkflowUpdate", errors=(*_BODY, *_NF), headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", _WF, "delete_workflow",
+        "Delete a workflow (its runs, schedules and triggers go with it)", None, 204,
+        errors=(*_NF, *_FB, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _WF + "/revisions", "list_workflow_revisions", "Revisions, newest first",
+        "Page[WorkflowRevision]", 200, errors=_NF, paginated=True, query=_PAGE, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _WF + "/revisions", "create_workflow_revision",
+        "Save a new revision (validated; errors make it unrunnable)", "WorkflowRevision", 201,
+        request="WorkflowRevisionCreate",
+        errors=(*_BODY, *_NF, _E.CONFLICT, _E.SPEC_PARSE_ERROR, _E.PAYLOAD_TOO_LARGE),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _WF + "/revisions/{revision}", "get_workflow_revision",
+        "A revision with its validation", "WorkflowRevision", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _WF + "/runs", "start_workflow_run",
+        "Run a revision (a workflow parent run)", "WorkflowRun", 202,
+        request="WorkflowRunCreate",
+        errors=(*_BODY, *_NF, _E.WORKFLOW_INVALID, _E.WORKFLOW_NOT_RUNNABLE, _E.QUOTA_EXCEEDED,
+                _E.IDEMPOTENCY_CONFLICT),
+        headers=_RUNH,
+    ),
+    EndpointDecl(
+        "GET", _WF + "/runs", "list_workflow_runs", "Runs of a workflow, newest first",
+        "Page[WorkflowRun]", 200, errors=_NF, paginated=True, query=(*_PAGE, "status"),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _WFR, "get_workflow_run",
+        "A workflow run with every node, decision and output", "WorkflowRun", 200,
+        errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _WFR + ":cancel", "cancel_workflow_run",
+        "Cancel a workflow run and its running children", "WorkflowRun", 202,
+        errors=(*_NF, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _WFR + "/events", "workflow_run_events",
+        "Workflow run events (SSE, Last-Event-ID)", None, 200, errors=_NF,
+        headers=(*_PH, LAST_EVENT_ID_HEADER), streaming=True,
+    ),
+    EndpointDecl(
+        "GET", _WFR + "/nodes", "list_workflow_node_runs", "The node runs of a workflow run",
+        "Page[NodeRun]", 200, errors=_NF, paginated=True, query=(*_PAGE, "status"),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _WFR + "/nodes/{node_id}", "get_workflow_node_run",
+        "One node's status, result and outputs", "NodeRun", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _WFR + "/nodes/{node_id}/outputs/{port}", "get_workflow_node_output",
+        "A signed link to a node output's object", "ArtifactLink", 200, errors=_NF,
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _WF + "/schedules", "list_workflow_schedules", "Cron schedules",
+        "Page[WorkflowSchedule]", 200, errors=_NF, paginated=True, query=_PAGE, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _WF + "/schedules", "create_workflow_schedule",
+        "Run the workflow on a cron schedule", "WorkflowSchedule", 201,
+        request="ScheduleCreate", errors=(*_BODY, *_NF, _E.SCHEDULE_INVALID), headers=_PH,
+    ),
+    EndpointDecl(
+        "PATCH", _WF + "/schedules/{schedule_id}", "update_workflow_schedule",
+        "Change or pause a schedule", "WorkflowSchedule", 200, request="ScheduleUpdate",
+        errors=(*_BODY, *_NF, _E.SCHEDULE_INVALID), headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", _WF + "/schedules/{schedule_id}", "delete_workflow_schedule",
+        "Delete a schedule", None, 204, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _WF + "/triggers", "list_workflow_triggers", "Dataset triggers",
+        "Page[WorkflowTrigger]", 200, errors=_NF, paginated=True, query=_PAGE, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _WF + "/triggers", "create_workflow_trigger",
+        "Run the workflow when a dataset gets a new version", "WorkflowTrigger", 201,
+        request="TriggerCreate", errors=(*_BODY, *_NF, _E.SCHEDULE_INVALID), headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", _WF + "/triggers/{trigger_id}", "delete_workflow_trigger",
+        "Delete a trigger", None, 204, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", "/v1/workflow-templates", "list_workflow_templates",
+        "The gallery of workflow templates", "Page[WorkflowTemplate]", 200, paginated=True,
+        query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/workflow-templates/{template_id}", "get_workflow_template",
+        "One gallery template", "WorkflowTemplate", 200, errors=_NF,
+    ),
+    # governance: project policies
+    EndpointDecl(
+        "GET", _POL, "list_policies",
+        "Policies in force in the project (its own and the tenant's)",
+        "Page[GovernancePolicy]", 200, paginated=True, query=(*_PAGE, "scope"), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _POL, "create_policy", "Add a project policy (version 1)", "GovernancePolicy",
+        201, request="GovernancePolicyCreate", errors=(*_BODY, *_FB, _E.POLICY_INVALID),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _POL + "/{policy_id}", "get_policy", "The latest version of a policy",
+        "GovernancePolicy", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "PUT", _POL + "/{policy_id}", "update_policy",
+        "Save a new version (expected_version guards concurrent edits)", "GovernancePolicy",
+        200, request="GovernancePolicyUpdate",
+        errors=(*_BODY, *_NF, *_FB, _E.CONFLICT, _E.POLICY_INVALID), headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", _POL + "/{policy_id}", "delete_policy",
+        "Retire a policy (its versions stay for audit)", None, 204, errors=(*_NF, *_FB),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _POL + "/{policy_id}/versions", "list_policy_versions",
+        "Every version of a policy, newest first", "Page[GovernancePolicy]", 200, errors=_NF,
+        paginated=True, query=_PAGE, headers=_PH,
+    ),
+    # governance: tenant-wide policies
+    EndpointDecl(
+        "GET", _TPOL, "list_tenant_policies", "Tenant-wide policies (every project's floor)",
+        "Page[GovernancePolicy]", 200, errors=(*_NF, *_FB), paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "POST", _TPOL, "create_tenant_policy", "Add a tenant-wide policy", "GovernancePolicy",
+        201, request="GovernancePolicyCreate",
+        errors=(*_BODY, *_NF, *_FB, _E.POLICY_INVALID),
+    ),
+    EndpointDecl(
+        "GET", _TPOL + "/{policy_id}", "get_tenant_policy", "A tenant-wide policy",
+        "GovernancePolicy", 200, errors=(*_NF, *_FB),
+    ),
+    EndpointDecl(
+        "PUT", _TPOL + "/{policy_id}", "update_tenant_policy",
+        "Save a new version of a tenant-wide policy", "GovernancePolicy", 200,
+        request="GovernancePolicyUpdate",
+        errors=(*_BODY, *_NF, *_FB, _E.CONFLICT, _E.POLICY_INVALID),
+    ),
+    EndpointDecl(
+        "DELETE", _TPOL + "/{policy_id}", "delete_tenant_policy",
+        "Retire a tenant-wide policy", None, 204, errors=(*_NF, *_FB),
+    ),
+    # governance: validations, approvals, evidence
+    EndpointDecl(
+        "POST", _MV + "/validations", "request_model_validation",
+        "Submit a model version: runs the policy checks as a governance workflow",
+        "ModelValidation", 202, request="ValidationRequest",
+        errors=(*_BODY, *_NF, _E.VALIDATION_TRANSITION_INVALID, _E.POLICY_INVALID,
+                _E.QUOTA_EXCEEDED),
+        headers=_RUNH,
+    ),
+    EndpointDecl(
+        "GET", _MV + "/validations", "list_model_validations",
+        "Validations of a model version, newest first", "Page[ModelValidation]", 200,
+        errors=_NF, paginated=True, query=_PAGE, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", "/v1/validations", "list_validations",
+        "Validations of the project (filter: status, e.g. the reviewers' queue)",
+        "Page[ModelValidation]", 200, paginated=True, query=(*_PAGE, "status"), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _VAL, "get_validation", "A validation: status, results, approvals, history",
+        "ModelValidation", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _VAL + "/evidence", "list_validation_evidence",
+        "Every check result with its evidence", "Page[CheckResult]", 200, errors=_NF,
+        paginated=True, query=_PAGE, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _VAL + ":cancel", "cancel_validation", "Stop running checks (back to draft)",
+        "ModelValidation", 200, request="ValidationNote",
+        errors=(*_BODY, *_NF, _E.VALIDATION_TRANSITION_INVALID), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _VAL + ":resubmit", "resubmit_validation",
+        "Run the checks again after a failure or a rejection", "ModelValidation", 202,
+        request="ValidationNote",
+        errors=(*_BODY, *_NF, _E.VALIDATION_TRANSITION_INVALID, _E.QUOTA_EXCEEDED),
+        headers=_RUNH,
+    ),
+    EndpointDecl(
+        "POST", _VAL + "/approvals", "decide_validation",
+        "A reviewer approves or rejects (never the submitter; audited)", "ModelValidation",
+        200, request="ApprovalCreate",
+        errors=(*_BODY, *_NF, *_FB, _E.SELF_APPROVAL_FORBIDDEN,
+                _E.VALIDATION_TRANSITION_INVALID, _E.CONFLICT),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _VAL + ":deprecate", "deprecate_validation",
+        "Retire a validated model version (audited with the reason)", "ModelValidation", 200,
+        request="ValidationNote",
+        errors=(*_BODY, *_NF, *_FB, _E.VALIDATION_TRANSITION_INVALID), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _VAL + "/evidence-pack", "export_evidence_pack",
+        "The audit export (JSON, and a signed link to the HTML rendering)", "EvidencePack",
+        200, request="EvidencePackRequest", errors=(*_BODY, *_NF), headers=_PH,
+    ),
+)  # fmt: skip
+"""The M3.5 endpoint table (workflows, governance, explorers, optimisation, About cards;
+additive to :data:`V04_ENDPOINTS`)."""
+
+V04_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
+"""Every endpoint of the v0.4 API (M1 + M2 + M3)."""
+
+ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V04_ENDPOINTS + M35_ENDPOINTS
+"""Every endpoint of the v0.5 API (M1 + M2 + M3 + M3.5); the server serves every row."""
 
 ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
-"""Every endpoint of the v0.4 contract (an alias of :data:`ENDPOINTS`, kept for the M3
-components that were written against it)."""
+"""Every endpoint of the contract (an alias of :data:`ENDPOINTS`, kept for the components
+that were written against it)."""
 
 _RK, _AC = ResourceKind, Action
 
@@ -2563,6 +3067,80 @@ def _alias(action: Action, *also: tuple[ResourceKind, Action]) -> RouteAccess:
 
 _PUBLIC = RouteAccess(RouteScope.PUBLIC)
 _AUTH = RouteAccess(RouteScope.AUTHENTICATED)
+
+_M35_ACCESS: Final[dict[str, RouteAccess]] = {
+    # About cards, chooser, catalogs (static catalog data: any signed-in principal)
+    "list_catalog_abouts": _AUTH,
+    "get_chooser": _AUTH,
+    "recommend_catalog_items": _AUTH,
+    "list_workflow_nodes": _AUTH,
+    "get_workflow_node": _AUTH,
+    "list_governance_checks": _AUTH,
+    "list_workflow_templates": _AUTH,
+    "get_workflow_template": _AUTH,
+    # datasets and the Data Explorer
+    "get_dataset_about": _p(_RK.DATASET, _AC.READ),
+    "update_dataset_about": _p(_RK.DATASET, _AC.UPDATE),
+    "explore_dataset_version": _p(_RK.RUN, _AC.CREATE, (_RK.DATASET, _AC.READ)),
+    "get_exploration": _p(_RK.RUN, _AC.READ),
+    # models: the Model Explorer and optimisation
+    "explore_model_version": _p(_RK.RUN, _AC.CREATE, (_RK.MODEL, _AC.READ)),
+    "optimize_model_version": RouteAccess(
+        RouteScope.PROJECT, _RK.MODEL, _AC.RUN, ((_RK.RUN, _AC.CREATE),), "model_id"
+    ),
+    "get_optimization": _p(_RK.RUN, _AC.READ),
+    # workflows
+    "list_workflows": _p(_RK.WORKFLOW, _AC.READ),
+    "create_workflow": _p(_RK.WORKFLOW, _AC.CREATE),
+    "validate_workflow": _p(_RK.WORKFLOW, _AC.READ),
+    "get_workflow": _p(_RK.WORKFLOW, _AC.READ),
+    "update_workflow": _p(_RK.WORKFLOW, _AC.UPDATE),
+    "delete_workflow": _p(_RK.WORKFLOW, _AC.DELETE),
+    "list_workflow_revisions": _p(_RK.WORKFLOW, _AC.READ),
+    "create_workflow_revision": _p(_RK.WORKFLOW, _AC.UPDATE),
+    "get_workflow_revision": _p(_RK.WORKFLOW, _AC.READ),
+    "start_workflow_run": _p(_RK.WORKFLOW, _AC.RUN, (_RK.RUN, _AC.CREATE)),
+    "list_workflow_runs": _p(_RK.WORKFLOW, _AC.READ),
+    "get_workflow_run": _p(_RK.WORKFLOW, _AC.READ),
+    "cancel_workflow_run": _p(_RK.WORKFLOW, _AC.CANCEL),
+    "workflow_run_events": _p(_RK.WORKFLOW, _AC.READ),
+    "list_workflow_node_runs": _p(_RK.WORKFLOW, _AC.READ),
+    "get_workflow_node_run": _p(_RK.WORKFLOW, _AC.READ),
+    "get_workflow_node_output": _p(_RK.WORKFLOW, _AC.READ, (_RK.RUN, _AC.READ)),
+    "list_workflow_schedules": _p(_RK.WORKFLOW, _AC.READ),
+    "create_workflow_schedule": _p(_RK.WORKFLOW, _AC.RUN, (_RK.WORKFLOW, _AC.UPDATE)),
+    "update_workflow_schedule": _p(_RK.WORKFLOW, _AC.RUN, (_RK.WORKFLOW, _AC.UPDATE)),
+    "delete_workflow_schedule": _p(_RK.WORKFLOW, _AC.UPDATE),
+    "list_workflow_triggers": _p(_RK.WORKFLOW, _AC.READ),
+    "create_workflow_trigger": _p(_RK.WORKFLOW, _AC.RUN, (_RK.WORKFLOW, _AC.UPDATE)),
+    "delete_workflow_trigger": _p(_RK.WORKFLOW, _AC.UPDATE),
+    # governance: policies
+    "list_policies": _p(_RK.POLICY, _AC.READ),
+    "create_policy": _p(_RK.POLICY, _AC.CREATE),
+    "get_policy": _p(_RK.POLICY, _AC.READ),
+    "update_policy": _p(_RK.POLICY, _AC.UPDATE),
+    "delete_policy": _p(_RK.POLICY, _AC.DELETE),
+    "list_policy_versions": _p(_RK.POLICY, _AC.READ),
+    "list_tenant_policies": _t(_RK.TENANT_POLICY, _AC.READ),
+    "create_tenant_policy": _t(_RK.TENANT_POLICY, _AC.CREATE),
+    "get_tenant_policy": _t(_RK.TENANT_POLICY, _AC.READ),
+    "update_tenant_policy": _t(_RK.TENANT_POLICY, _AC.UPDATE),
+    "delete_tenant_policy": _t(_RK.TENANT_POLICY, _AC.DELETE),
+    # governance: validations
+    "request_model_validation": _p(_RK.MODEL, _AC.VALIDATE, (_RK.RUN, _AC.CREATE)),
+    "list_model_validations": _p(_RK.MODEL, _AC.READ),
+    "list_validations": _p(_RK.MODEL, _AC.READ),
+    "get_validation": _p(_RK.MODEL, _AC.READ),
+    "list_validation_evidence": _p(_RK.MODEL, _AC.READ),
+    "cancel_validation": _p(_RK.MODEL, _AC.VALIDATE),
+    "resubmit_validation": _p(_RK.MODEL, _AC.VALIDATE, (_RK.RUN, _AC.CREATE)),
+    "decide_validation": _p(_RK.MODEL, _AC.APPROVE),
+    "deprecate_validation": _p(_RK.MODEL, _AC.UPDATE),
+    "export_evidence_pack": _p(_RK.MODEL, _AC.READ),
+}
+"""Access rules of :data:`M35_ENDPOINTS`. ``decide_validation`` needs the reviewer
+capability (or project admin) and is refused to the submitter
+(:func:`mapi_spec.governance.check_approver`); no API token can approve."""
 
 ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     # M1 (project-scoped from v0.3)
@@ -2710,9 +3288,11 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "admin_list_signups": _op(_RK.TENANT, _AC.READ),
     "admin_review_signup": _op(_RK.TENANT, _AC.MANAGE),
     "admin_retry_tenant_deletion": _op(_RK.TENANT_DELETION, _AC.MANAGE),
+    # M3.5 workflows, governance, explorers, optimisation, About cards
+    **_M35_ACCESS,
 }
 """Tenant/project scoping and the permission checked for every operation in
-:data:`ALL_ENDPOINTS` (keyed by ``operation_id``).
+:data:`ALL_ENDPOINTS` (keyed by ``operation_id``; M3.5 rows from :data:`_M35_ACCESS`).
 
 Acting on *other principals'* tokens (``list_tokens?all=true``, revoking someone else's
 token) additionally needs ``manage`` on ``token``. A ``create_run`` for a model version

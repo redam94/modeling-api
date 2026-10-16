@@ -418,6 +418,23 @@ class ChooserQuestionnaire(ResponseModel):
 
     questions: list[ChooserQuestion]
 
+    model_config = dto_examples(
+        {
+            "questions": [
+                {
+                    "id": "goal",
+                    "prompt_plain": "What do you want to do?",
+                    "choices": [
+                        {"value": "forecast", "label": "Forecast the future"},
+                        {"value": "explain_marketing", "label": "Measure what my marketing adds"},
+                    ],
+                    "multiple": True,
+                    "weight": 3,
+                }
+            ]
+        }
+    )
+
 
 def _q(
     id: str,

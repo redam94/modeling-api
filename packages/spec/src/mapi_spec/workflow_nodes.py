@@ -42,7 +42,7 @@ from typing import Any, Final, Literal
 
 from pydantic import Field, JsonValue, field_validator, model_validator
 
-from mapi_spec._dto import ResponseModel
+from mapi_spec._dto import ResponseModel, dto_examples
 from mapi_spec.about import About, AboutReference, Difficulty, TypicalRuntime
 from mapi_spec.capabilities import check_json_schema
 from mapi_spec.splitplan import (
@@ -150,6 +150,19 @@ class NodeImplementation(ResponseModel):
     runs_in: RunsIn = "sandbox"
     cacheable: bool = Field(True, description="Same inputs and params give the same result")
     about: About
+
+    model_config = dto_examples(
+        {
+            "id": "test.adf",
+            "version": "1.0.0",
+            "kind": "test",
+            "inputs": {"data": {"type": "dataset", "description": "The data to work on"}},
+            "outputs": {"result": "test_result"},
+            "params_schema": {"type": "object", "properties": {"alpha": {"type": "number"}}},
+            "result_fields": {"p_value": {"type": "number", "description": "The p-value"}},
+            "about": About.model_json_schema()["examples"][0],
+        }
+    )
 
     @field_validator("params_schema")
     @classmethod

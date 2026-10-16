@@ -37,6 +37,8 @@ from pydantic import Field, JsonValue, model_validator
 
 from mapi_spec._dto import RequestModel, ResponseModel, dto_examples
 from mapi_spec._types import Slug
+from mapi_spec.about import About
+from mapi_spec.abouts import TEMPLATE_ABOUTS
 from mapi_spec.calibration import BusinessPriors, LiftTest
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity, parse_pointer
@@ -183,6 +185,9 @@ class GuidedTemplate(ResponseModel):
     scorecard_thresholds: dict[str, CheckThresholds] = Field(default_factory=dict)
     tasks: list[GuidedTask] = Field(default_factory=list)
     ui_levels: dict[str, UiLevel] = Field(default_factory=dict)
+    about: About | None = Field(
+        None, description="M3.5: the plain-language About card (every built-in has one)"
+    )
 
     model_config = dto_examples(
         {
@@ -602,7 +607,8 @@ CUSTOMER_CHOICE = GuidedTemplate(
 )  # fmt: skip
 
 GUIDED_TEMPLATES: Final[dict[str, GuidedTemplate]] = {
-    t.id: t for t in (GEO_MMM, WEEKLY_FORECAST, STORE_DEMAND, CUSTOMER_CHOICE)
+    t.id: t.model_copy(update={"about": TEMPLATE_ABOUTS[t.id]})
+    for t in (GEO_MMM, WEEKLY_FORECAST, STORE_DEMAND, CUSTOMER_CHOICE)
 }
 """The built-in guided templates, by id (``GET /v1/guided/templates``)."""
 

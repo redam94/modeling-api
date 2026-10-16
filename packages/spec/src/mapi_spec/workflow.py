@@ -1093,6 +1093,8 @@ class WorkflowUpdate(RequestModel):
     description: str | None = Field(None, max_length=4000)
     archived: bool | None = None
 
+    model_config = dto_examples({"description": "Weekly readiness checks", "archived": False})
+
 
 class Workflow(ResponseModel):
     """A saved workflow (``workflow://project/name``) and its latest revision."""
@@ -1468,6 +1470,8 @@ class ScheduleUpdate(RequestModel):
     params: dict[str, JsonValue] | None = None
     inputs: dict[str, str] | None = None
     active: bool | None = None
+
+    model_config = dto_examples({"active": False}, {"cron": "0 7 * * 1-5"})
 
     @field_validator("cron")
     @classmethod

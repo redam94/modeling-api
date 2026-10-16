@@ -30,7 +30,7 @@ from typing import Any, Final, cast
 
 from pydantic import Field, JsonValue
 
-from mapi_spec._dto import ResponseModel
+from mapi_spec._dto import ResponseModel, dto_examples
 from mapi_spec._types import Slug
 from mapi_spec.about import About, AboutReference, Difficulty, TypicalRuntime
 from mapi_spec.guided import MMM_MODEL_ID, MMM_TEMPLATE_SETTINGS
@@ -52,6 +52,21 @@ class WorkflowTemplate(ResponseModel):
     about: About
     document: dict[str, JsonValue]
     tags: list[str] = Field(default_factory=list, max_length=16)
+
+    model_config = dto_examples(
+        {
+            "id": "readiness",
+            "about": About.model_json_schema()["examples"][0],
+            "document": {
+                "apiVersion": "mapi/v1",
+                "kind": "Workflow",
+                "metadata": {"name": "readiness", "project": "templates"},
+                "inputs": {"data": {"type": "dataset"}},
+                "nodes": [{"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}}],
+            },
+            "tags": ["forecast"],
+        }
+    )
 
     @property
     def spec(self) -> WorkflowSpec:

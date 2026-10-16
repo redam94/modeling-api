@@ -979,3 +979,25 @@ class ExplorerIndex(_View):
     target: Literal["dataset", "model"]
     ref: str = Field(..., max_length=512, description="dataset://… or model://…")
     sections: list[ExplorerSectionRef] = Field(default_factory=list, max_length=32)
+
+    model_config = ConfigDict(
+        extra="allow",
+        frozen=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "target": "dataset",
+                    "ref": "dataset://growth/weekly_sales@v4",
+                    "sections": [
+                        {"section": "stationarity", "view": "ui/explore/stationarity.json"},
+                        {
+                            "section": "stl",
+                            "view": "ui/explore/stl.json",
+                            "status": "skipped",
+                            "message_plain": "Less than two seasons of data.",
+                        },
+                    ],
+                }
+            ]
+        },
+    )
