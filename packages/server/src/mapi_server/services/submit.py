@@ -39,7 +39,7 @@ from mapi_spec.jobs import (
 from mapi_spec.loader import spec_hash
 from mapi_spec.quotas import QuotaDemand, default_priority
 from mapi_spec.refs import DatasetRef
-from mapi_spec.resources import ResourceClass
+from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.spec import DEFAULT_FIT_SEED, ModelSpec, ScoreRequest
 from mapi_spec.tenancy import ResourceKind, TrustTier
@@ -553,6 +553,13 @@ async def submit_ingest(
     generation: int,
     mapping: dict[str, Any],
 ) -> m.Run:
+    # plan §8.5: the smallest class whose dataset cap holds the upload (uploads are capped
+    # at class L's limit, so one always fits)
+    resource_class = class_for_size(upload.size_bytes) or ResourceClass.L
+    # M3: whatever an upload decodes to must fit the class's scratch budget (Cloud Run's
+    # filesystem lives in RAM), so a decompression bomb fails as PAYLOAD_TOO_LARGE first
+    scratch = RESOURCE_CLASSES[resource_class].scratch_bytes
+    caps: dict[str, Any] = {} if scratch is None else {"max_uncompressed_bytes": scratch}
     job = IngestJob(
         mapping=mapping,
         dataset=f"dataset://{dataset.project_id}/{dataset.name}@v{version}",
@@ -561,12 +568,10 @@ async def submit_ingest(
             content_type=upload.content_type,
             size_bytes=upload.size_bytes,
         ),
+        **caps,
     )
     payload = job.model_dump(mode="json", by_alias=True, exclude_none=True)
     snapshot = await ctx.catalogs.get(session)
-    # plan §8.5: the smallest class whose dataset cap holds the upload (uploads are capped
-    # at class L's limit, so one always fits)
-    resource_class = class_for_size(upload.size_bytes) or ResourceClass.L
     run = await create_run(
         session,
         ctx.scope,

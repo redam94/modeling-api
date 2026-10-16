@@ -21,6 +21,7 @@ from mapi_server_testkit.builders import ready_dataset, simulate_outputs
 from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_spec.errors import PROBLEM_CONTENT_TYPE
 from mapi_spec.guided import GuidedDraft, GuidedTemplate, RoleSuggestions
+from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
 from sqlalchemy import update
 
@@ -135,6 +136,9 @@ async def test_ingest_stores_column_profiles_and_detection_reads_them(
         att = await s.get(m.RunAttempt, (run.id, run.attempt))
         assert att is not None
         s.expunge_all()
+    # decoded data must fit the class's scratch budget (a bomb fails before it fills RAM)
+    scratch = RESOURCE_CLASSES[ResourceClass(run.resource_class)].scratch_bytes
+    assert run.payload["max_uncompressed_bytes"] == scratch
     await simulate_outputs(ctx, run, att)
     assert await Finalizer(ctx).finalize(run.id, att.attempt) is RunState.SUCCEEDED
     async with ctx.db.session() as s:
