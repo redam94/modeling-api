@@ -65,6 +65,7 @@ plugins:
             - packages/steps-core/src
             - packages/plots-core/src
             - packages/runner/src
+            - packages/client/src
           options:
             docstring_style: google
             docstring_options:
@@ -219,6 +220,7 @@ nav:
           - mapi_steps: reference/api/steps.md
           - mapi_plots: reference/api/plots.md
           - mapi_runner: reference/api/runner.md
+          - mapi_client: reference/api/client.md
   - Deployment:
       - operations/index.md
       - Local, without Docker: operations/local-development.md
