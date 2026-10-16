@@ -135,7 +135,7 @@ class ModelCompareRequest(RequestModel):
 
     model_config = dto_examples(
         {
-            "models":["model://growth/sales-arimax@v3", "model://growth/sales-ets@v1"],
+            "models": ["model://growth/sales-arimax@v3", "model://growth/sales-ets@v1"],
             "sections": ["comparison", "params"],
         }
     )

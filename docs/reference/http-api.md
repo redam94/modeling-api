@@ -561,13 +561,13 @@ override the gate.
 |---|---|---|---|---|---|
 | `GET /v1/endpoints` | Endpoints of the project | — | `Page[Endpoint]` | 200 | — |
 | `GET /v1/endpoints/{alias}` | An endpoint and the version it serves | — | `Endpoint` | 200 | `NOT_FOUND` |
-| `PUT /v1/endpoints/{alias}` | Create or promote (gated on the scorecard; override = admin + reason, audited) | `EndpointPromote` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `PROMOTION_BLOCKED`, `OVERRIDE_REQUIRED` |
+| `PUT /v1/endpoints/{alias}` | Create or promote (gated on the scorecard; override = admin + reason, audited) | `EndpointPromote` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `PROMOTION_BLOCKED`, `OVERRIDE_REQUIRED`, `NOT_VALIDATED` |
 | `DELETE /v1/endpoints/{alias}` | Delete the alias (model versions stay) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
 | `GET /v1/endpoints/{alias}/history` | Promotions and rollbacks, newest first | — | `Page[EndpointRevision]` | 200 | `NOT_FOUND` |
 | `POST /v1/endpoints/{alias}/score` | Score the current version (Prefer: wait=N → 200 if done, else 202 with the run) | `EndpointScoreCall` | `ScoreCallResult` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED`, `PAYLOAD_TOO_LARGE` |
 | `GET /v1/endpoints/{alias}/schema` | Input schema of the current version and an example payload | — | `EndpointSchema` | 200 | `NOT_FOUND` |
 | `POST /v1/endpoints/{alias}/validate` | Static checks of a score call without running it | `EndpointScoreCall` | `EndpointValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE` |
-| `POST /v1/endpoints/{alias}/rollback` | Point the alias back at an earlier revision's version (audited) | `EndpointRollback` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `POST /v1/endpoints/{alias}/rollback` | Point the alias back at an earlier revision's version (audited) | `EndpointRollback` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `NOT_VALIDATED` |
 | `GET /v1/endpoints/{alias}/snippets` | Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint | — | `SnippetSet` | 200 | `NOT_FOUND` |
 
 ### Webhooks

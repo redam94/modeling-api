@@ -2445,7 +2445,8 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "PUT", _ALIAS, "promote_endpoint",
         "Create or promote (gated on the scorecard; override = admin + reason, audited)",
         "Endpoint", 200, request="EndpointPromote",
-        errors=(*_BODY, *_NF, *_FB, _E.CONFLICT, _E.PROMOTION_BLOCKED, _E.OVERRIDE_REQUIRED),
+        errors=(*_BODY, *_NF, *_FB, _E.CONFLICT, _E.PROMOTION_BLOCKED, _E.OVERRIDE_REQUIRED,
+                _E.NOT_VALIDATED),
         headers=_PH,
     ),
     EndpointDecl(
@@ -2476,7 +2477,8 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     EndpointDecl(
         "POST", _ALIAS + "/rollback", "rollback_endpoint",
         "Point the alias back at an earlier revision's version (audited)", "Endpoint", 200,
-        request="EndpointRollback", errors=(*_BODY, *_NF, *_FB, _E.CONFLICT), headers=_PH,
+        request="EndpointRollback", errors=(*_BODY, *_NF, *_FB, _E.CONFLICT, _E.NOT_VALIDATED),
+        headers=_PH,
     ),
     EndpointDecl(
         "GET", _ALIAS + "/snippets", "list_endpoint_snippets",

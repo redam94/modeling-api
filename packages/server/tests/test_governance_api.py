@@ -370,3 +370,19 @@ async def test_webhooks_announce_validation_steps(
         envelope = (await s.execute(select(m.WebhookEvent))).scalars().first()
         assert envelope is not None and envelope.envelope["data"]["validation_id"] == val["id"]
         assert json.dumps(envelope.envelope).count("model_version_id") == 1
+
+
+async def test_a_rollback_meets_the_same_policy(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    from mapi_server_testkit.integrations import refit_version
+
+    mv = await fitted_version(ctx)
+    await refit_version(ctx, mv)
+    for v in (1, 2):
+        r = await client.put("/v1/endpoints/trend", json={"model": f"model://default/trend@v{v}"})
+        assert r.status_code == 200, r.text
+    assert (await client.post(POL, json=STRICT)).status_code == 201
+    r = await client.post("/v1/endpoints/trend/rollback", json={"reason": "v2 regressed"})
+    assert r.status_code == 409 and r.json()["code"] == "NOT_VALIDATED"
+    assert (await client.get("/v1/endpoints/trend")).json()["revision"] == 2

@@ -258,7 +258,9 @@ class EndpointRevision(ResponseModel):
 class EndpointRollback(RequestModel):
     """``POST /v1/endpoints/{alias}/rollback``: point the alias back at the version of an
     earlier revision (default: the one before the current). The gate is not re-run - the
-    version was promoted before - but the rollback is audited with its reason."""
+    version was promoted before - but the rollback is audited with its reason. M3.5: when a
+    governance policy requires validated models, the earlier version must still be
+    ``validated`` (``NOT_VALIDATED`` otherwise)."""
 
     to_revision: int | None = Field(None, ge=1)
     reason: str = Field(..., min_length=1, max_length=1000)

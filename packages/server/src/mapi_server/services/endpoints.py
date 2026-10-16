@@ -576,6 +576,17 @@ async def rollback(
     mv = await session.get(m.ModelVersion, target.model_version_id)
     if mv is None or mv.status != "ready":
         raise Conflict(f"the version of revision {target.revision} is no longer available")
+    from mapi_server.services.governance import promotion_requirement
+
+    governance = await promotion_requirement(session, ctx, mv)
+    if governance.require_validated and governance.validation_status != "validated":
+        # M3.5: a rollback serves an earlier version again, so it meets the same policy
+        state = (governance.validation_status or "not submitted").replace("_", " ")
+        raise MapiError(
+            f"the governance policy requires a validated model; the version of revision "
+            f"{target.revision} is {state}",
+            code=ErrorCode.NOT_VALIDATED,
+        )
     snapshot = snapshot_for(mv)
     ts = _now()
     person, actor, token_id = _actor(ctx)
