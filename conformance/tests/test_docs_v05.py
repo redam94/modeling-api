@@ -210,7 +210,9 @@ def test_the_statsmodels_page_quotes_the_about_cards() -> None:
     assert {f"ts.{s}" for s in sections if s != "common"} == expected
 
 
-REMOVED = re.compile(r"atlas|bayesinsight|hierarchical_geo|pymc[-_]marketing", re.I)
+# spelled in pieces so the names themselves appear nowhere outside the changelog either
+_GONE = ("at" + "las", "bayes" + "insight", "hierarchical" + "_geo", "pymc[-_]" + "marketing")
+REMOVED = re.compile("|".join(_GONE), re.I)
 
 
 def test_removed_engines_are_named_only_in_the_changelog() -> None:
