@@ -4,6 +4,20 @@
       "additionalProperties": false,
       "description": "What a model plugin can do (declared in its manifest).",
       "properties": {
+        "calibration": {
+          "default": [],
+          "description": "Calibration data the model uses from a spec's calibration block (M3)",
+          "items": {
+            "enum": [
+              "business_priors",
+              "lift_tests"
+            ],
+            "type": "string"
+          },
+          "title": "Calibration",
+          "type": "array",
+          "uniqueItems": true
+        },
         "checkpointable": {
           "default": false,
           "title": "Checkpointable",

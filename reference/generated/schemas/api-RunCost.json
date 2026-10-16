@@ -1,16 +1,72 @@
 {
   "$id": "https://schemas.mapi.dev/v1/api-RunCost.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Cost fields (placeholders in M1: always ``None``; populated by the M2 ledger).",
+  "description": "Cost of a run (all attempts). ``estimated`` is true until an ``actual`` ledger entry\nexists; ``usd`` is kept for v0.2 clients and is set only when the currency is USD.",
   "examples": [
     {
       "estimated": true,
       "gib_seconds": null,
       "usd": null,
       "vcpu_seconds": null
+    },
+    {
+      "amount_micros": 31200,
+      "attempts_billed": 1,
+      "currency": "USD",
+      "estimate_micros": 30000,
+      "estimated": false,
+      "gib_seconds": 4800,
+      "price_version": "cloudrun-list-2026-10",
+      "usd": 0.0312,
+      "vcpu_seconds": 1200
     }
   ],
   "properties": {
+    "amount_micros": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Amount Micros"
+    },
+    "attempts_billed": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Attempts Billed",
+      "type": "integer"
+    },
+    "currency": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Currency"
+    },
+    "estimate_micros": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Pre-run estimate",
+      "title": "Estimate Micros"
+    },
     "estimated": {
       "default": true,
       "title": "Estimated",
@@ -27,6 +83,18 @@
       ],
       "default": null,
       "title": "Gib Seconds"
+    },
+    "price_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Price Version"
     },
     "usd": {
       "anyOf": [

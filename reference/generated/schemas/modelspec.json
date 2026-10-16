@@ -95,6 +95,266 @@
       "title": "Binding",
       "type": "object"
     },
+    "BusinessPriors": {
+      "additionalProperties": false,
+      "description": "Beliefs in business units, per channel (keys are channel *labels* as in the data),\nand/or about the baseline. At least one belief is stated: a baseline belief alone is\nfine (channels without a belief keep the model's default priors).",
+      "examples": [
+        {
+          "baseline_share": {
+            "credibility": 0.8,
+            "share": [
+              0.5,
+              0.8
+            ]
+          },
+          "channels": {
+            "search": {
+              "credibility": 0.9,
+              "roi": [
+                2.0,
+                6.0
+              ]
+            },
+            "social": {
+              "contribution_share": [
+                0.02,
+                0.1
+              ]
+            },
+            "tv": {
+              "credibility": 0.8,
+              "roi": [
+                1.5,
+                4.0
+              ]
+            }
+          },
+          "kpi_units": "EUR",
+          "spend_units": "EUR"
+        }
+      ],
+      "properties": {
+        "baseline_share": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ShareBelief"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "channels": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ChannelBelief"
+          },
+          "maxProperties": 64,
+          "title": "Channels",
+          "type": "object"
+        },
+        "kpi_units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "examples": [
+            "EUR"
+          ],
+          "title": "Kpi Units"
+        },
+        "spend_units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "examples": [
+            "EUR"
+          ],
+          "title": "Spend Units"
+        }
+      },
+      "title": "BusinessPriors",
+      "type": "object"
+    },
+    "Calibration": {
+      "additionalProperties": false,
+      "description": "The ``calibration`` block of a ``ModelSpec``: beliefs and experiment results the model\nshould respect. ``prior_translation_run`` records which ``translate_priors`` run produced\nthe priors in ``model.settings.priors`` (lineage only).",
+      "examples": [
+        {
+          "business_priors": {
+            "baseline_share": {
+              "credibility": 0.8,
+              "share": [
+                0.5,
+                0.8
+              ]
+            },
+            "channels": {
+              "search": {
+                "credibility": 0.9,
+                "roi": [
+                  2.0,
+                  6.0
+                ]
+              },
+              "social": {
+                "contribution_share": [
+                  0.02,
+                  0.1
+                ]
+              },
+              "tv": {
+                "credibility": 0.8,
+                "roi": [
+                  1.5,
+                  4.0
+                ]
+              }
+            },
+            "kpi_units": "EUR",
+            "spend_units": "EUR"
+          },
+          "lift_tests": [
+            {
+              "channel": "tv",
+              "ci": [
+                -380000.0,
+                -140000.0
+              ],
+              "ci_level": 0.9,
+              "description": "TV off in Germany for four weeks",
+              "end": "2026-05-03",
+              "geo": "de",
+              "id": "tv-holdout-2026q2",
+              "kpi_delta": -260000.0,
+              "spend_delta": -120000.0,
+              "start": "2026-04-06"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "business_priors": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BusinessPriors"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "lift_tests": {
+          "items": {
+            "$ref": "#/$defs/LiftTest"
+          },
+          "maxItems": 500,
+          "title": "Lift Tests",
+          "type": "array"
+        },
+        "prior_translation_run": {
+          "anyOf": [
+            {
+              "pattern": "^run_[0-9a-z]{26}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prior Translation Run"
+        }
+      },
+      "title": "Calibration",
+      "type": "object"
+    },
+    "ChannelBelief": {
+      "additionalProperties": false,
+      "description": "What the user believes about one channel: exactly one of ``roi`` or\n``contribution_share``, held with ``credibility``.\n\n* ``roi``: KPI units gained per spend unit over the fit window (``[1.5, 4]`` = \"every\n  euro returns between 1.5 and 4 euros of revenue\");\n* ``contribution_share``: the channel's share of the KPI over the fit window.",
+      "properties": {
+        "contribution_share": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "examples": [
+            [
+              0.05,
+              0.15
+            ]
+          ],
+          "title": "Contribution Share"
+        },
+        "credibility": {
+          "default": 0.8,
+          "description": "Probability that the true value lies inside the range (0.8 = 'I am 80% sure')",
+          "maximum": 0.99,
+          "minimum": 0.5,
+          "title": "Credibility",
+          "type": "number"
+        },
+        "roi": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "examples": [
+            [
+              1.5,
+              4.0
+            ]
+          ],
+          "title": "Roi"
+        }
+      },
+      "title": "ChannelBelief",
+      "type": "object"
+    },
     "Checkpoint": {
       "additionalProperties": false,
       "properties": {
@@ -540,6 +800,148 @@
       "title": "LeaveGroupOutSplit",
       "type": "object"
     },
+    "LiftTest": {
+      "additionalProperties": false,
+      "description": "One experiment: ``spend_delta`` extra spend on ``channel`` (optionally in one ``geo``)\nfrom ``start`` to ``end`` (inclusive) caused ``kpi_delta`` incremental KPI.\n\nGive the measurement's uncertainty as a standard error ``se`` *or* a confidence interval\n``ci`` at ``ci_level``. A holdout (\"turn the channel off\") is a negative ``spend_delta``\nwith (usually) a negative ``kpi_delta``.",
+      "examples": [
+        {
+          "channel": "tv",
+          "ci": [
+            -380000.0,
+            -140000.0
+          ],
+          "ci_level": 0.9,
+          "description": "TV off in Germany for four weeks",
+          "end": "2026-05-03",
+          "geo": "de",
+          "id": "tv-holdout-2026q2",
+          "kpi_delta": -260000.0,
+          "spend_delta": -120000.0,
+          "start": "2026-04-06"
+        }
+      ],
+      "properties": {
+        "channel": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Channel",
+          "type": "string"
+        },
+        "ci": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Confidence interval of kpi_delta",
+          "title": "Ci"
+        },
+        "ci_level": {
+          "default": 0.9,
+          "maximum": 0.999,
+          "minimum": 0.5,
+          "title": "Ci Level",
+          "type": "number"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "end": {
+          "format": "date",
+          "title": "End",
+          "type": "string"
+        },
+        "geo": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geo"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,62}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "kpi_delta": {
+          "description": "Measured incremental KPI (KPI units)",
+          "title": "Kpi Delta",
+          "type": "number"
+        },
+        "se": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Standard error of kpi_delta",
+          "title": "Se"
+        },
+        "spend_delta": {
+          "description": "Extra spend during the test (spend units)",
+          "title": "Spend Delta",
+          "type": "number"
+        },
+        "start": {
+          "format": "date",
+          "title": "Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel",
+        "start",
+        "end",
+        "spend_delta",
+        "kpi_delta"
+      ],
+      "title": "LiftTest",
+      "type": "object"
+    },
     "MaskBlockSplit": {
       "additionalProperties": false,
       "description": "Hold out random blocks over ``dims`` (block sizes per dim) covering ``fraction``.",
@@ -782,6 +1184,39 @@
       "title": "ScorePolicy",
       "type": "string"
     },
+    "ShareBelief": {
+      "additionalProperties": false,
+      "description": "A share range (for example of the baseline: KPI that happens without any media).",
+      "properties": {
+        "credibility": {
+          "default": 0.8,
+          "description": "Probability that the true value lies inside the range (0.8 = 'I am 80% sure')",
+          "maximum": 0.99,
+          "minimum": 0.5,
+          "title": "Credibility",
+          "type": "number"
+        },
+        "share": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Share",
+          "type": "array"
+        }
+      },
+      "required": [
+        "share"
+      ],
+      "title": "ShareBelief",
+      "type": "object"
+    },
     "SideTable": {
       "additionalProperties": false,
       "description": "A small constant dataset (FX rates, holidays ...) used by steps.",
@@ -939,6 +1374,18 @@
       "const": "mapi/v1",
       "title": "Apiversion",
       "type": "string"
+    },
+    "calibration": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Calibration"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Business priors and lift tests the model should respect (M3); needs a model whose capabilities declare them"
     },
     "data": {
       "$ref": "#/$defs/DataBlock"

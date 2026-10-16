@@ -10,13 +10,73 @@
           "threshold": 1.01,
           "title": "Chains agree",
           "value": 1.004
+        },
+        {
+          "category": "holdout",
+          "check": "holdout.mape",
+          "code": "HOLDOUT_MAPE",
+          "docs_anchor": "check-holdout-mape",
+          "message_plain": "Forecasts were off by 14% on the held-out periods.",
+          "metric": "mape",
+          "status": "warn",
+          "suggested_action": "Check the last weeks of data for gaps or one-off events.",
+          "threshold": 0.1,
+          "title": "Holdout error",
+          "value": 0.14
         }
       ],
       "properties": {
+        "category": {
+          "anyOf": [
+            {
+              "enum": [
+                "convergence",
+                "holdout",
+                "plausibility",
+                "data"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M3: the check's category",
+          "title": "Category"
+        },
+        "check": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z]+\\.[a-z0-9_]{1,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M3: the stable check id (SCORECARD_CHECKS), e.g. holdout.mape",
+          "title": "Check"
+        },
         "code": {
           "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
           "title": "Code",
           "type": "string"
+        },
+        "docs_anchor": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9-]{0,99}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M3: anchor on the scorecard docs page that explains the check",
+          "title": "Docs Anchor"
         },
         "message_expert": {
           "anyOf": [
@@ -156,6 +216,15 @@
       ],
       "title": "Overall",
       "type": "string"
+    },
+    "skipped": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "M3: checks that could not run, with the reason (check id -> text)",
+      "maxProperties": 64,
+      "title": "Skipped",
+      "type": "object"
     }
   },
   "required": [

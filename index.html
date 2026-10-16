@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Fit, score and share labelled multi-dimensional models, and replay the exact fitted preprocessing every time you score.">
+        <meta name="description" content="Analysts go from a spreadsheet to a report and a what-if scenario in minutes, with honest uncertainty. Data scientists bring PyMC, scikit-learn and forecasting models whose preprocessing is replayed exactly, and put them behind an endpoint in one click.">
       
       
         <meta name="author" content="Matthew Reda">
@@ -14,7 +14,7 @@
       
       
       
-        <link rel="next" href="getting-started/">
+        <link rel="next" href="why/">
       
       
         
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fit-with-preprocessingscore-with-the-same-preprocessing" class="md-skip">
+        <a href="#trustworthy-modelsfrom-spreadsheet-to-endpoint" class="md-skip">
           Skip to content
         </a>
       
@@ -211,17 +211,20 @@
     
   
   
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="." class="md-tabs__link">
-        
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="." class="md-tabs__link">
+          
   
   
     
   
   Home
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -240,6 +243,28 @@
     
   
   Getting started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="tutorials/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
 
         </a>
       </li>
@@ -437,16 +462,39 @@
   
   
   
-    <li class="md-nav__item md-nav__item--active">
+    
+    
       
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
       
       
         
       
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
           
+          <div class="md-nav__link md-nav__container">
+            <a href="." class="md-nav__link md-nav__link--active">
+              
   
   
   <span class="md-ellipsis">
@@ -460,17 +508,43 @@
   
   
 
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+            </a>
+            
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_1" id="__nav_1_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="why/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Home
+    Why modeling-api?
   
 
     
@@ -479,113 +553,41 @@
   
 
       </a>
-      
-        
+    </li>
+  
 
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+              
+            
+              
+                
   
   
   
+  
+    <li class="md-nav__item">
+      <a href="use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
     
   
+    Use cases
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#see-it-run" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See it run
-      
-    </span>
-  </a>
+
+    
+  </span>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#why-labelled-multi-dimensional-models" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why labelled, multi-dimensional models?
-      
-    </span>
-  </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-whole-story-in-one-picture" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The whole story in one picture
-      
-    </span>
-  </a>
+
+      </a>
+    </li>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#safe-by-construction" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Safe by construction
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#built-for-two-kinds-of-people" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Built for two kinds of people
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-you-get-in-v02" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What you get in v0.2
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-it-compares" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How it compares
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#a-taste" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        A taste
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -780,6 +782,268 @@
       
         
       
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="tutorials/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/guided-tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first MMM in Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tutorials/google-sheets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect Google Sheets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tutorials/embed-a-chart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embed a chart in Notion, Slack or BI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/webhook-receivers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Receive webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/atlas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimise a budget with Atlas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tutorials/bayesinsight-import/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Import a BayesInsight model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -797,7 +1061,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -819,14 +1083,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1062,6 +1326,118 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="concepts/tenancy-and-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tenancy and authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="concepts/quotas-and-cost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quotas and cost
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="concepts/guided-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="concepts/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1082,6 +1458,8 @@
       
         
       
+        
+      
     
     
     
@@ -1095,10 +1473,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -1116,8 +1494,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1146,6 +1524,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1159,10 +1543,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
         
           
-          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
             
   
   
@@ -1180,8 +1564,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_1">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1331,6 +1715,242 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/guided-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    From a spreadsheet to a Guided draft
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/endpoints-and-webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoints and webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/integrations-hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Integrations hub
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running it for teams
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Running it for teams
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/administration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/data-deletion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deleting and exporting data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1364,6 +1984,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1377,10 +2001,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
         
           
-          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
             
   
   
@@ -1398,8 +2022,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1556,6 +2180,34 @@
   
   
     <li class="md-nav__item">
+      <a href="guides/guided-modelling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided modelling: priors, lift tests, scorecard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="guides/time-series/" class="md-nav__link">
         
   
@@ -1592,6 +2244,34 @@
     
   
     Plots, recipes and templates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/sharing-plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sharing plots
   
 
     
@@ -1697,6 +2377,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1710,10 +2394,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -1731,8 +2415,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2225,6 +2909,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/generated/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/generated/server-settings/" class="md-nav__link">
         
   
@@ -2233,6 +2945,34 @@
     
   
     Server settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/generated/environment-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment variables
   
 
     
@@ -2314,7 +3054,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_20" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_22" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2336,14 +3076,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_20" id="__nav_5_20_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_22" id="__nav_6_22_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_20_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_20">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_22_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_22">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2589,6 +3329,24 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2602,7 +3360,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2624,14 +3382,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2734,6 +3492,258 @@
   
   
     <li class="md-nav__item">
+      <a href="operations/gcp-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploying to Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="operations/security-hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security hardening on Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="operations/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication and isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="operations/signup-and-abuse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sign-up and abuse controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="operations/cloud-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Run Jobs executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="operations/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="operations/security-suite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="operations/m2-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M2 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="operations/m3-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="operations/configuration/" class="md-nav__link">
         
   
@@ -2809,6 +3819,8 @@
       
         
       
+        
+      
     
     
     
@@ -2822,7 +3834,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2844,14 +3856,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2947,6 +3959,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="roadmap/expert-plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Next: expert plugins, MCP and optimisation (v0.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2982,10 +4022,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
             
   
   
@@ -3003,8 +4043,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3134,10 +4174,49 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#see-it-run" class="md-nav__link">
+  <a href="#two-ways-in-one-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        See it run
+        Two ways in, one model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Two ways in, one model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#analysts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Analysts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-scientists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data scientists
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
       
     </span>
   </a>
@@ -3145,10 +4224,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-labelled-multi-dimensional-models" class="md-nav__link">
+  <a href="#your-first-mmm-in-guided-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why labelled, multi-dimensional models?
+        Your first MMM in Guided mode
       
     </span>
   </a>
@@ -3156,10 +4235,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-whole-story-in-one-picture" class="md-nav__link">
+  <a href="#whats-new-in-v04" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The whole story in one picture
+        What's new in v0.4
       
     </span>
   </a>
@@ -3167,10 +4246,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#safe-by-construction" class="md-nav__link">
+  <a href="#measured-not-promised" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Safe by construction
+        Measured, not promised
       
     </span>
   </a>
@@ -3178,10 +4257,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#built-for-two-kinds-of-people" class="md-nav__link">
+  <a href="#connect-it-to-everything" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Built for two kinds of people
+        Connect it to everything
       
     </span>
   </a>
@@ -3189,10 +4268,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-you-get-in-v02" class="md-nav__link">
+  <a href="#the-core-idea-fit-with-preprocessing-score-with-the-same-preprocessing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What you get in v0.2
+        The core idea: fit with preprocessing, score with the same preprocessing
       
     </span>
   </a>
@@ -3200,10 +4279,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-it-compares" class="md-nav__link">
+  <a href="#secure-by-design" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How it compares
+        Secure by design
       
     </span>
   </a>
@@ -3211,10 +4290,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#a-taste" class="md-nav__link">
+  <a href="#run-it-for-many-teams" class="md-nav__link">
     <span class="md-ellipsis">
       
-        A taste
+        Run it for many teams
       
     </span>
   </a>
@@ -3242,93 +4321,281 @@
 
 <div class="mapi-hero">
 <div>
-<p class="mapi-tagline">Labelled models · replayed preprocessing · typed, honest answers</p>
-<h1 id="fit-with-preprocessingscore-with-the-same-preprocessing">Fit with preprocessing.<br>Score with the <em>same</em> preprocessing.<a class="headerlink" href="#fit-with-preprocessingscore-with-the-same-preprocessing" title="Permanent link">&para;</a></h1>
-<p>modeling-api is a platform for Bayesian and classical models whose data has <strong>named
-dimensions</strong>: geo × channel × week, store × sku × day, household × trip. Describe a model
-in a small YAML spec or a few lines of Python. The platform checks your data, learns every
-preprocessing step on the training data only, and replays exactly that work whenever you
-forecast, add a new market or ask "what if".</p>
-<p><a class="md-button md-button--primary" href="getting-started/quickstart/">Quickstart: 10 minutes</a>
-<a class="md-button" href="getting-started/">Get started</a>
-<a class="md-button" href="concepts/architecture/">How it works</a></p>
+<p class="mapi-tagline">Guided for analysts · exact for data scientists · honest uncertainty · one safe platform</p>
+<h1 id="trustworthy-modelsfrom-spreadsheet-to-endpoint">Trustworthy models,<br>from spreadsheet to endpoint.<a class="headerlink" href="#trustworthy-modelsfrom-spreadsheet-to-endpoint" title="Permanent link">&para;</a></h1>
+<p>modeling-api fits Bayesian and classical models of data with <strong>named
+dimensions</strong> (market × channel × week, store × product × day, household × trip) and
+answers questions with them in the units your business uses. An analyst uploads a spreadsheet
+and gets a report, a sanity scorecard and instant what-if sliders. A data scientist writes a
+small spec or a few lines of Python and gets the same model behind a versioned endpoint,
+with the fitted preprocessing replayed exactly on every call. Every run happens in a fresh
+sandbox, and every result says how sure it is.</p>
+<p><a class="md-button md-button--primary" href="guides/guided-tutorial/">Your first MMM in Guided mode</a>
+<a class="md-button" href="getting-started/quickstart/">Quickstart for data scientists</a>
+<a class="md-button" href="why/">Why modeling-api?</a></p>
 </div>
 <p><img alt="modeling-api logo: a labelled data cube" src="assets/logo.svg" /></p>
 </div>
-<div class="admonition info">
-<p class="admonition-title">Where the project is today: v0.2, the platform runs end to end on your laptop</p>
-<p><code>make install &amp;&amp; make dev &amp;&amp; make seed</code> starts the whole platform locally, without Docker:
-an HTTP API with an OpenAPI document, a job queue, a sandboxed runner, an object store
-that behaves like Google Cloud Storage, the web app and an isolated plot sandbox. From the
-browser, the <a href="guides/cli/">CLI</a>, the <a href="guides/python-client/">Python client</a> or plain
-<a href="guides/http-api/">HTTP</a>, you upload data, validate a spec as you type, fit it, follow
-the sampler live, inspect a signed model and score forecasts, new markets and what-ifs.
-The v0.1 contract layer (specs, 28 steps, 11 model plugins, plots, conformance corpus)
-still runs in your own Python process too. Cloud execution and multiple tenants come next:
-see the <a href="roadmap/">roadmap</a>.</p>
+<div class="admonition success">
+<p class="admonition-title">v0.4: Guided mode and integrations</p>
+<p>Analysts get <strong>Guided mode</strong>: templates, questions instead of a column mapper, beliefs as
+ROI ranges and lift tests, a sanity scorecard, what-if sliders and forecasts. Other
+applications get <strong>endpoints</strong> promoted through the scorecard, code snippets, signed
+<strong>webhooks</strong>, <strong>embeddable charts</strong>, Google Sheets and an <strong>Atlas</strong> budget optimiser.
+Every number on this page was measured on a laptop running the whole stack
+(<a href="operations/m3-verification/">M3 verification</a>); the cloud pieces are tested against
+fakes, and the study with five non-technical testers is still to come.</p>
 </div>
-<h2 id="see-it-run">See it run<a class="headerlink" href="#see-it-run" title="Permanent link">&para;</a></h2>
-<p>These are screenshots of the <a href="getting-started/quickstart/">quickstart</a>, taken from a fresh
-<code>make dev</code> stack: the E33 geo marketing-mix demo, fitted and scored from the browser.</p>
+<h2 id="two-ways-in-one-model">Two ways in, one model<a class="headerlink" href="#two-ways-in-one-model" title="Permanent link">&para;</a></h2>
+<div class="mapi-personas">
+<div class="mapi-persona">
+<h3 id="analysts"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m7 17 3.2-6.8L17 7l-3.2 6.8zm5-5.9a.9.9 0 0 0-.9.9.9.9 0 0 0 .9.9.9.9 0 0 0 .9-.9.9.9 0 0 0-.9-.9M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10A10 10 0 0 1 2 12 10 10 0 0 1 12 2m0 2a8 8 0 0 0-8 8 8 8 0 0 0 8 8 8 8 0 0 0 8-8 8 8 0 0 0-8-8"/></svg></span> Analysts<a class="headerlink" href="#analysts" title="Permanent link">&para;</a></h3>
+<p class="mapi-promise">Upload → report → scenario in minutes, with honest uncertainty.</p>
+<ul>
+<li>Pick what you want to learn; answer "which column is revenue?" (the platform suggests
+  the answer and says why).</li>
+<li>Say what you already believe ("TV returns 1.5 to 4 per euro") or enter a lift test.</li>
+<li>Read a report in plain words, with a <strong>sanity scorecard</strong> that tells you whether to trust it.</li>
+<li>Drag <strong>what-if sliders</strong>: answers in your browser, with a range that stays honest when
+  several channels move at once. "Run exact" asks the full model.</li>
+<li>Share a live chart or put the model in a Google Sheet.</li>
+</ul>
+<p><a href="guides/guided-tutorial/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Your first analysis in Guided mode</a></p>
+</div>
+<div class="mapi-persona mapi-persona--expert">
+<h3 id="data-scientists"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 3a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2H3v2h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h2v-2H8v-5a2 2 0 0 0-2-2 2 2 0 0 0 2-2V5h2V3m6 0a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1v2h-1a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-2v-2h2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5h-2V3z"/></svg></span> Data scientists<a class="headerlink" href="#data-scientists" title="Permanent link">&para;</a></h3>
+<p class="mapi-promise">Any PyMC, scikit-learn or forecasting model. Preprocessing replayed exactly. Endpoints in one click.</p>
+<ul>
+<li>A PyMC model is one <code>build()</code> method, an sklearn model one <code>estimator()</code>; built-in
+  marketing-mix, forecasting, demand and choice models are ready to use.</li>
+<li>Steps <strong>learn on the training data only</strong> and are <strong>replayed</strong>, never refitted, at score
+  time: forecasts, new markets, counterfactuals.</li>
+<li>Uncertainty is first-class: draws, quantiles or intervals, with the aggregations that are
+  valid for each.</li>
+<li>Promote a version to an <strong>endpoint</strong> through the scorecard gate; copy a snippet for
+  Python, TypeScript, curl, R, Apps Script, Atlas or a notebook.</li>
+</ul>
+<p><a href="getting-started/quickstart/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Quickstart: zero to first model</a></p>
+</div>
+</div>
+<p>Both edit the same <code>ModelSpec</code>: every Guided screen has <strong>View as YAML</strong>, and an expert's
+changes come back to Guided mode intact. <a href="why/">Who it is for, and who it is not for</a>.</p>
+<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart LR
+    D["Your data&lt;br/&gt;CSV · Parquet · MFF ·&lt;br/&gt;Meridian · BayesInsight"] --&gt; I["Sandboxed ingest&lt;br/&gt;checked, profiled,&lt;br/&gt;dims and roles"]
+    Q["Guided answers&lt;br/&gt;or a YAML spec"] --&gt; V{{"Static checks&lt;br/&gt;before any compute"}}
+    I --&gt; V
+    V --&gt; F["Fit in a fresh sandbox&lt;br/&gt;preprocessing learned&lt;br/&gt;on train only"]
+    F --&gt; B[("Signed bundle&lt;br/&gt;states · posterior ·&lt;br/&gt;scorecard · grids")]
+    B --&gt; R["Report and&lt;br/&gt;what-if sliders"]
+    B --&gt; E["Endpoint&lt;br/&gt;gated on the scorecard"]
+    E --&gt; S["Sheets · BI embeds ·&lt;br/&gt;webhooks · Atlas ·&lt;br/&gt;Python, TS, R"]</code></pre>
+<ol>
+<li><strong>Your data stays labelled.</strong> The upload becomes an <code>xr.Dataset</code> with named dims, roles and
+   units; nothing downstream is positional.</li>
+<li><strong>Mistakes fail early.</strong> A spec that would leak the holdout, a forecast past what the
+   model supports, a market the model has never seen: typed errors, before any compute.</li>
+<li><strong>Fitting learns, scoring replays.</strong> Every preprocessing step stores what it learned, so a
+   forecast or a new market goes through exactly the same transformations, then back into
+   your units.</li>
+<li><strong>Results are checked twice.</strong> Outputs are verified against the storage's own checksums
+   and signed; the scorecard checks convergence, holdout error and plausibility.</li>
+<li><strong>Other tools connect to an endpoint, not a file.</strong> Promote a better model and every
+   integration uses it; roll back with one call.</li>
+</ol>
+<h2 id="your-first-mmm-in-guided-mode">Your first MMM in Guided mode<a class="headerlink" href="#your-first-mmm-in-guided-mode" title="Permanent link">&para;</a></h2>
+<p>The whole journey of a geo marketing-mix model, from a spreadsheet of weekly spend and
+revenue by region to a budget scenario. The times are what an automated "tester" took on a
+laptop, almost all of it the platform working: <strong>135 seconds</strong> from upload to scenario.</p>
+<div class="mapi-path">
+<ol>
+<li><strong>Choose "Geo marketing mix"</strong> and drop your CSV on the page. Each column is profiled <em>in
+   your browser</em>; the platform suggests which column is revenue, which are spend, and why.
+   <em>(5 s)</em></li>
+<li><strong>Say what you believe</strong>, if anything: an ROI range per channel, a lift test. <em>Preview
+   what this means</em> shows it in business units before any fitting. <em>(22 s, optional)</em></li>
+<li><strong>Fit the model.</strong> Plain-language progress; the model is tested on weeks it has not seen,
+   then refitted on everything. <em>(80 s)</em></li>
+<li><strong>Read the results</strong>: ROI and share per channel with 90% ranges, and the sanity scorecard,
+   each check with what to do next. <em>(instant)</em></li>
+<li><strong>Ask "what if"</strong>: move search +20% and see the change in revenue with its range at once;
+   <em>Run exact</em> confirms it with the full model. <em>(30 s with the exact run and a forecast)</em></li>
+<li><strong>Share it</strong>: put the model live as an endpoint, or share a chart by link.</li>
+</ol>
+</div>
+<p><a href="guides/guided-tutorial/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> The full tutorial, with screenshots</a> ·
+<a href="guides/guided-data/">From a spreadsheet to a draft, with curl</a></p>
 <div class="mapi-shots">
 <figure>
-<p><a href="guides/web-ui/#home"><img alt="The home dashboard" class="mapi-shot" loading="lazy" src="assets/screenshots/dashboard.png" /></a></p>
-<figcaption>Home: what is running, what needs attention, recent runs and models.</figcaption>
+<p><a href="guides/guided-tutorial/#1-choose-what-you-want-to-learn"><img alt="The Guided templates" class="mapi-shot" loading="lazy" src="assets/screenshots/guided-templates.png" /></a></p>
+<figcaption>Templates: start from the question, not the model.</figcaption>
 </figure>
 <figure>
-<p><a href="guides/web-ui/#build"><img alt="The spec editor with live validation and the pipeline" class="mapi-shot" loading="lazy" src="assets/screenshots/editor.png" /></a></p>
-<figcaption>Build: YAML with live validation, and the schema after every pipeline step.</figcaption>
+<p><a href="guides/guided-tutorial/#2-your-data"><img alt="The question flow with role detection" class="mapi-shot" loading="lazy" src="assets/screenshots/guided-data.png" /></a></p>
+<figcaption>Your data: suggested answers, each with its reason.</figcaption>
 </figure>
 <figure>
-<p><a href="guides/web-ui/#run-detail"><img alt="A fit run while the sampler draws" class="mapi-shot" loading="lazy" src="assets/screenshots/run-progress.png" /></a></p>
-<figcaption>Runs: the sampler's own progress, streamed live from the sandbox.</figcaption>
+<p><a href="guides/guided-tutorial/#3-what-you-believe"><img alt="Beliefs as ROI ranges with a preview" class="mapi-shot" loading="lazy" src="assets/screenshots/guided-priors.png" /></a></p>
+<figcaption>Beliefs: ROI ranges and lift tests, previewed in business units.</figcaption>
 </figure>
 <figure>
-<p><a href="guides/web-ui/#overview"><img alt="The sanity scorecard of a fitted model" class="mapi-shot" loading="lazy" src="assets/screenshots/scorecard.png" /></a></p>
-<figcaption>Inspect: a scorecard of convergence and holdout checks, each with a next step.</figcaption>
+<p><a href="guides/guided-tutorial/#5-results-and-the-sanity-scorecard"><img alt="The report with ROI and share per channel" class="mapi-shot" loading="lazy" src="assets/screenshots/guided-report.png" /></a></p>
+<figcaption>Results: every number with the range it could really be in.</figcaption>
 </figure>
 <figure>
-<p><a href="guides/web-ui/#plots"><img alt="Revenue decomposed into baseline and channels" class="mapi-shot" loading="lazy" src="assets/screenshots/decomposition.png" /></a></p>
-<figcaption>Plots: rendered in a sandboxed iframe on a separate origin.</figcaption>
+<p><a href="guides/guided-tutorial/#5-results-and-the-sanity-scorecard"><img alt="The sanity scorecard" class="mapi-shot" loading="lazy" src="assets/screenshots/guided-scorecard.png" /></a></p>
+<figcaption>Scorecard: can you trust it, and what to do if not.</figcaption>
 </figure>
 <figure>
-<p><a href="guides/web-ui/#score"><img alt="An 8-week forecast per market" class="mapi-shot" loading="lazy" src="assets/screenshots/score-forecast.png" /></a></p>
-<figcaption>Score: an 8-week forecast with the fitted preprocessing replayed exactly.</figcaption>
+<p><a href="guides/guided-tutorial/#6-what-if"><img alt="What-if sliders with the exact run" class="mapi-shot" loading="lazy" src="assets/screenshots/guided-whatif.png" /></a></p>
+<figcaption>What if: instant answers from per-draw response curves.</figcaption>
 </figure>
 </div>
-<h2 id="why-labelled-multi-dimensional-models">Why labelled, multi-dimensional models?<a class="headerlink" href="#why-labelled-multi-dimensional-models" title="Permanent link">&para;</a></h2>
-<p>Most model-serving stacks see a matrix: rows in, numbers out. Real business models do not
-live in a matrix.</p>
-<div class="grid">
-<div class="admonition failure">
-<p class="admonition-title">What goes wrong with positional data</p>
+<h2 id="whats-new-in-v04">What's new in v0.4<a class="headerlink" href="#whats-new-in-v04" title="Permanent link">&para;</a></h2>
+<div class="grid cards">
 <ul>
-<li>Column 7 used to be <em>search spend</em>; after a schema change it is <em>social</em>.</li>
-<li>The forecast starts in week 53, but the lag features were built from week 1.</li>
-<li>A market opens. Is it row 12? Does the model even know it is new?</li>
-<li>Revenue was scaled by the mean, so the prediction came back in "1.37".</li>
-<li>Someone sums the 90% quantiles of 40 stores and calls it the 90% quantile of the total.</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m7 17 3.2-6.8L17 7l-3.2 6.8zm5-5.9a.9.9 0 0 0-.9.9.9.9 0 0 0 .9.9.9.9 0 0 0 .9-.9.9.9 0 0 0-.9-.9M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10A10 10 0 0 1 2 12 10 10 0 0 1 12 2m0 2a8 8 0 0 0-8 8 8 8 0 0 0 8 8 8 8 0 0 0 8-8 8 8 0 0 0-8-8"/></svg></span> <strong>Guided mode</strong></p>
+<hr />
+<p>Four templates (geo marketing mix, weekly forecast, demand by store, customer choice),
+role detection, MFF and Meridian presets, drafts you can open as YAML, and a lock that
+keeps a project Guided-only.</p>
+<p><a href="guides/guided-tutorial/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Tutorial</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 3c-1.27 0-2.4.8-2.82 2H3v2h1.95L2 14c-.47 2 1 3 3.5 3s4.06-1 3.5-3L6.05 7h3.12c.33.85.98 1.5 1.83 1.83V20H2v2h20v-2h-9V8.82c.85-.32 1.5-.97 1.82-1.82h3.13L15 14c-.47 2 1 3 3.5 3s4.06-1 3.5-3l-2.95-7H21V5h-6.17C14.4 3.8 13.27 3 12 3m0 2a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1m-6.5 5.25L7 14H4zm13 0L20 14h-3z"/></svg></span> <strong>Business priors and lift tests</strong></p>
+<hr />
+<p>ROI or contribution-share ranges translated into model priors in a sandbox, with a
+prior-predictive preview; experiments enter the likelihood as calibration.</p>
+<p><a href="guides/guided-modelling/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Guided modelling</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2m-7 0a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1M7 7h10V5h2v14H5V5h2zm.5 6.5L9 12l2 2 4.5-4.5L17 11l-6 6z"/></svg></span> <strong>Sanity scorecard and promotion gate</strong></p>
+<hr />
+<p>Convergence, holdout error and coverage, plausibility and data checks, each in plain
+words. Pass goes live, warn needs an admin's audited reason, fail is blocked.</p>
+<p><a href="concepts/integrations/#promotion-gate"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> The gate</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 13c-1.86 0-3.41 1.28-3.86 3H2v2h2.14c.45 1.72 2 3 3.86 3s3.41-1.28 3.86-3H22v-2H11.86c-.45-1.72-2-3-3.86-3m0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2M19.86 6c-.45-1.72-2-3-3.86-3s-3.41 1.28-3.86 3H2v2h10.14c.45 1.72 2 3 3.86 3s3.41-1.28 3.86-3H22V6zM16 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2"/></svg></span> <strong>What-if, forecasts, counterfactuals</strong></p>
+<hr />
+<p>Sliders over response curves precomputed per posterior draw, so bands stay joint and
+honest; "Run exact" scores the full model with common random numbers.</p>
+<p><a href="guides/guided-tutorial/#6-what-if"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> What if…</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 7H5a2 2 0 0 0-2 2v8h2v-4h2v4h2V9a2 2 0 0 0-2-2m0 4H5V9h2m7-2h-4v10h2v-4h2a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2m0 4h-2V9h2m6 0v6h1v2h-4v-2h1V9h-1V7h4v2Z"/></svg></span> <strong>Endpoints, aliases and snippets</strong></p>
+<hr />
+<p>A stable alias per use, history and rollback, a frozen input contract with an example
+call, <code>score:&lt;alias&gt;</code> tokens, and generated code in seven flavours.</p>
+<p><a href="guides/integrations-hub/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Integrations hub</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10.46 19C9 21.07 6.15 21.59 4.09 20.15c-2.05-1.44-2.53-4.31-1.09-6.4a4.59 4.59 0 0 1 3.58-1.98l.05 1.43c-.91.07-1.79.54-2.36 1.36-1 1.44-.69 3.38.68 4.35 1.38.96 3.31.59 4.31-.84.31-.45.49-.94.56-1.44v-1.01l5.58-.04.07-.11c.53-.92 1.68-1.24 2.58-.72a1.9 1.9 0 0 1 .68 2.6c-.53.91-1.69 1.23-2.59.71-.41-.23-.7-.6-.83-1.02l-4.07.02a5 5 0 0 1-.78 1.94m7.28-7.14c2.53.31 4.33 2.58 4.02 5.07-.31 2.5-2.61 4.27-5.14 3.96a4.63 4.63 0 0 1-3.43-2.21l1.24-.72a3.22 3.22 0 0 0 2.32 1.45c1.75.21 3.3-.98 3.51-2.65s-1.03-3.2-2.76-3.41c-.54-.06-1.06.01-1.53.18l-.85.44-2.58-4.77h-.22a1.906 1.906 0 0 1-1.85-1.95c.03-1.04.93-1.85 1.98-1.81 1.05.06 1.88.91 1.85 1.95-.02.44-.19.84-.46 1.15l1.9 3.51c.62-.2 1.3-.27 2-.19M8.25 9.14c-1-2.35.06-5.04 2.37-6.02 2.32-.98 5 .13 6 2.48.59 1.37.47 2.87-.2 4.07l-1.24-.72c.42-.81.49-1.8.09-2.73-.68-1.6-2.49-2.37-4.04-1.72-1.56.66-2.26 2.5-1.58 4.1.28.66.75 1.17 1.32 1.51l.39.21-3.07 4.99c.03.05.07.11.1.19.49.91.15 2.06-.77 2.55-.91.49-2.06.13-2.56-.81-.49-.93-.15-2.08.77-2.57.39-.21.82-.26 1.23-.17l2.31-3.77c-.47-.43-.87-.97-1.12-1.59"/></svg></span> <strong>Signed webhooks</strong></p>
+<hr />
+<p><code>run.*</code>, <code>model.version.ready</code>, <code>endpoint.promoted</code>, <code>score.completed</code>: HMAC-signed,
+retried, logged and replayable, through an SSRF guard.</p>
+<p><a href="guides/webhook-receivers/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Receive webhooks</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22 5v2h-3v3h-2V7h-3V5h3V2h2v3zm-3 14H5V5h6V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-6h-2zm-4-6v4h2v-4zm-4 4h2V9h-2zm-2 0v-6H7v6z"/></svg></span> <strong>Embeds and static renders</strong></p>
+<hr />
+<p>Read-only, expiring chart links for Notion, Slack, Looker Studio or Power BI, and PNG,
+SVG or PDF rendered in the sandbox.</p>
+<p><a href="tutorials/embed-a-chart/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Embed a chart</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 2v2.07A8 8 0 0 0 4.07 11H2v2h2.07A8 8 0 0 0 11 19.93V22h2v-2.07A8 8 0 0 0 19.93 13H22v-2h-2.07A8 8 0 0 0 13 4.07V2m-2 4.08V8h2V6.09c2.5.41 4.5 2.41 4.92 4.91H16v2h1.91c-.41 2.5-2.41 4.5-4.91 4.92V16h-2v1.91C8.5 17.5 6.5 15.5 6.08 13H8v-2H6.09C6.5 8.5 8.5 6.5 11 6.08M12 11a1 1 0 0 0-1 1 1 1 0 0 0 1 1 1 1 0 0 0 1-1 1 1 0 0 0-1-1"/></svg></span> <strong>Atlas and Google Sheets</strong></p>
+<hr />
+<p><code>RemoteModel</code> makes an endpoint an Atlas model for budget optimisation; an Apps Script
+writes a forecast into a sheet every morning.</p>
+<p><a href="guides/atlas/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Optimise a budget</a> ·
+<a href="tutorials/google-sheets/">Connect Sheets</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14 12-4-4v3H2v2h8v3m10 2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3h2V6h12v12H6v-3H4v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2"/></svg></span> <strong>BayesInsight and Meridian data</strong></p>
+<hr />
+<p>BayesInsight's <code>model_def.json</code> runs as a built-in model or maps onto the geo MMM, with
+every unsupported feature reported, never dropped.</p>
+<p><a href="tutorials/bayesinsight-import/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Import a BayesInsight model</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m21.1 12.5 1.4 1.41-6.53 6.59L12.5 17l1.4-1.41 2.07 2.08zM11 4a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4m0 2a2 2 0 0 0-2 2 2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0-2-2m0 7c.68 0 1.5.09 2.41.26l-1.67 1.67-.74-.03c-2.97 0-6.1 1.46-6.1 2.1v1.1h6.2L13 20H3v-3c0-2.66 5.33-4 8-4"/></svg></span> <strong>Sign-up and the data lifecycle</strong></p>
+<hr />
+<p>Self-service workspaces with e-mail verification and abuse controls, GDPR export, tenant
+deletion that purges every store, and a Cloud Armor policy.</p>
+<p><a href="guides/data-deletion/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Deleting and exporting data</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2c0-1.11.89-2 2-2M1 2h3.27l.94 2H20a1 1 0 0 1 1 1c0 .17-.05.34-.12.5l-3.58 6.47c-.34.61-1 1.03-1.75 1.03H8.1l-.9 1.63-.03.12a.25.25 0 0 0 .25.25H19v2H7a2 2 0 0 1-2-2c0-.35.09-.68.24-.96l1.36-2.45L3 4H1zm6 16a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2c0-1.11.89-2 2-2m9-7 2.78-5H6.14l2.36 5z"/></svg></span> <strong>A customer-choice model</strong></p>
+<hr />
+<p><code>choice.multinomial_logit</code>, a conditional logit with household effects, and categorical
+holdout metrics: hit rate against always guessing the favourite, log score, Brier.</p>
+<p><a href="use-cases/#customer-choice"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Use cases</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 19V7H4v12zm0-16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm-7 14v-2h5v2zm-3.42-4L5.57 9H8.4l3.3 3.3c.39.39.39 1.03 0 1.42L8.42 17H5.59z"/></svg></span> <strong>Client and CLI for all of it</strong></p>
+<hr />
+<p><code>api.endpoint("…").score(ds)</code> returns an <code>xarray.Dataset</code>; <code>mapi endpoints</code>, <code>webhooks</code>,
+<code>plots</code>, <code>guided</code>, <code>priors</code> and <code>tenant</code> cover the rest from a terminal.</p>
+<p><a href="guides/python-client/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> The Python client</a></p>
+</li>
 </ul>
 </div>
-<div class="admonition success">
-<p class="admonition-title">What modeling-api does instead</p>
-<ul>
-<li>Every array is an <strong><code>xr.Dataset</code> with named dims and coordinates</strong>; nothing is
-  positional, so shuffled, subset or reordered data scores the same.</li>
-<li>Each dim declares what may happen at score time: <strong><code>fixed</code></strong>, <strong><code>extend</code></strong> (time) or
-  <strong><code>new_levels</code></strong> (markets, stores, counties) with a declared strategy.</li>
-<li>Every output says what it is: its <strong>representation</strong> (draws, quantiles, interval, point,
-  moments), its <strong>units</strong> and its <strong>output space</strong>.</li>
-<li>Requests that cannot be answered honestly fail <strong>before any compute</strong>, with a typed
-  error code and a JSON pointer.</li>
-</ul>
+<h2 id="measured-not-promised">Measured, not promised<a class="headerlink" href="#measured-not-promised" title="Permanent link">&para;</a></h2>
+<p>Measured on an 8-core laptop against the whole stack, on the data and settings described in
+<a href="operations/m3-verification/">M3 verification</a>.</p>
+<div class="mapi-stats">
+<div class="mapi-stat"><strong>135 s</strong><span>upload → report → scenario, clicked through by a script; 79 s of it is the fit</span></div>
+<div class="mapi-stat"><strong>0.08 %</strong><span>instant slider vs the exact model for TV at half budget (−454,590 vs −454,241; exact sd 14,003)</span></div>
+<div class="mapi-stat"><strong>0.01 %</strong><span>"TV off" from the grid vs an exact counterfactual run (−1,046,519 vs −1,046,414)</span></div>
+<div class="mapi-stat"><strong>76–81 %</strong><span>of each translated prior inside the analyst's stated 80% ROI range</span></div>
+<div class="mapi-stat"><strong>&lt; 1 %</strong><span>holdout error of the endpoint's model, with every plausibility check passing</span></div>
+<div class="mapi-stat"><strong>+0.22 %</strong><span>revenue at the same budget, found by Atlas against the live endpoint (25 candidates, 22 requests)</span></div>
+<div class="mapi-stat"><strong>0 objects</strong><span>left in five buckets after a tenant deletion (285 before); only the audit log and cost ledger are kept</span></div>
+<div class="mapi-stat"><strong>15 / 15</strong><span>end-to-end API tests of the M3 journey passing against a live stack</span></div>
 </div>
+<p>The same runs found six usability defects, two of them dead ends, which were fixed before
+release. Not yet measured: real testers, a real Google Cloud project, Docker-isolated public
+workspaces (<a href="operations/m3-verification/#what-remains-unverified">what remains</a>).</p>
+<h2 id="connect-it-to-everything">Connect it to everything<a class="headerlink" href="#connect-it-to-everything" title="Permanent link">&para;</a></h2>
+<div class="mapi-shots">
+<figure>
+<p><a href="guides/integrations-hub/"><img alt="The Integrations overview" class="mapi-shot" loading="lazy" src="assets/screenshots/integrations-overview.png" /></a></p>
+<figcaption>Integrations: Sheets, BI and webhooks in a few steps.</figcaption>
+</figure>
+<figure>
+<p><a href="guides/integrations-hub/#an-endpoints-page"><img alt="An endpoint with its history" class="mapi-shot" loading="lazy" src="assets/screenshots/integrations-endpoint.png" /></a></p>
+<figcaption>Endpoints: one alias, every promotion and rollback with its reason.</figcaption>
+</figure>
+<figure>
+<p><a href="guides/integrations-hub/#an-endpoints-page"><img alt="Generated snippets" class="mapi-shot" loading="lazy" src="assets/screenshots/integrations-snippets.png" /></a></p>
+<figcaption>Snippets: Python, TypeScript, curl, R, Apps Script, Atlas, notebook.</figcaption>
+</figure>
+<figure>
+<p><a href="tutorials/embed-a-chart/"><img alt="A shared chart on its embed page" class="mapi-shot" loading="lazy" src="assets/screenshots/embed-page.png" /></a></p>
+<figcaption>Embeds: a read-only chart for a dashboard or a doc, revocable at any time.</figcaption>
+</figure>
 </div>
-<h2 id="the-whole-story-in-one-picture">The whole story in one picture<a class="headerlink" href="#the-whole-story-in-one-picture" title="Permanent link">&para;</a></h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">geo_mmm</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">endpoint</span><span class="p">(</span><span class="s2">"geo-mmm-prod"</span><span class="p">)</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">schema</span> <span class="o">=</span> <span class="n">geo_mmm</span><span class="o">.</span><span class="n">schema</span><span class="p">()</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">snapshot</span><span class="o">.</span><span class="n">input_schema</span><span class="o">.</span><span class="n">vars</span><span class="p">))</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">plan</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="p">{</span><span class="s2">"spend_local"</span><span class="p">:</span> <span class="p">((</span><span class="s2">"market"</span><span class="p">,</span> <span class="s2">"channel"</span><span class="p">,</span> <span class="s2">"date"</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[[</span><span class="mf">1200.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">5300.0</span><span class="p">]]]))},</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s2">"market"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"de"</span><span class="p">],</span> <span class="s2">"channel"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"search"</span><span class="p">,</span> <span class="s2">"tv"</span><span class="p">],</span> <span class="s2">"date"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"2025-12-30"</span><span class="p">]},</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">result</span> <span class="o">=</span> <span class="n">geo_mmm</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># inline XrJSON in, xr.Dataset out</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"revenue_local"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">stat</span><span class="o">=</span><span class="s2">"mean"</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+</span></code></pre></div>
+<p><a href="tutorials/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Tutorials</a> ·
+<a href="use-cases/">Use cases</a> ·
+<a href="guides/python-client/">The Python client</a></p>
+<h2 id="the-core-idea-fit-with-preprocessing-score-with-the-same-preprocessing">The core idea: fit with preprocessing, score with the <em>same</em> preprocessing<a class="headerlink" href="#the-core-idea-fit-with-preprocessing-score-with-the-same-preprocessing" title="Permanent link">&para;</a></h2>
 <p>The same pipeline object runs at fit time and at score time. At fit time each step
-<strong>learns</strong> its state from the training data; at score time it <strong>replays</strong> that state. Steps that
-look back in time store a small per-group tail, so a forecast sees exactly the history the
-model was fitted on.</p>
+<strong>learns</strong> its state from the training data; at score time it <strong>replays</strong> that state. Steps
+that look back in time store a small per-group tail, so a forecast sees exactly the history
+the model was fitted on.</p>
 <pre class="mermaid"><code>flowchart LR
     subgraph FIT["Fit (once)"]
         direction LR
@@ -3350,14 +4617,14 @@ model was fitted on.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">What you write</label><label for="__tabbed_1_2">What the platform does</label><label for="__tabbed_1_3">What you get back</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">pipeline</span><span class="p">:</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">to_eur</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">core.fx_convert@^1</span><span class="p p-Indicator">,</span><span class="nt"> with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">y</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">spend</span><span class="p p-Indicator">],</span><span class="nt"> table</span><span class="p">:</span><span class="w"> </span><span class="nv">fx</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">...</span><span class="p p-Indicator">}}</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">weekly</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">core.resample@^1</span><span class="p p-Indicator">,</span><span class="nt">   with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">dim</span><span class="p">:</span><span class="w"> </span><span class="nv">time</span><span class="p p-Indicator">,</span><span class="nt"> freq</span><span class="p">:</span><span class="w"> </span><span class="nv">W-SUN</span><span class="p p-Indicator">,</span><span class="nt"> how</span><span class="p">:</span><span class="w"> </span><span class="nv">sum</span><span class="p p-Indicator">}}</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">scale</span><span class="p p-Indicator">,</span><span class="nt">  use</span><span class="p">:</span><span class="w"> </span><span class="nv">core.mean_scale@^1</span><span class="p p-Indicator">,</span><span class="nt"> with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">spend</span><span class="p p-Indicator">],</span><span class="nt"> over</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">time</span><span class="p p-Indicator">]}}</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">lags</span><span class="p p-Indicator">,</span><span class="nt">   use</span><span class="p">:</span><span class="w"> </span><span class="nv">core.lag_tensor@^1</span><span class="p p-Indicator">,</span><span class="nt"> with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">spend</span><span class="p p-Indicator">],</span><span class="nt"> along</span><span class="p">:</span><span class="w"> </span><span class="nv">time</span><span class="p p-Indicator">,</span><span class="nt"> within</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">geo</span><span class="p p-Indicator">],</span><span class="nt"> l_max</span><span class="p">:</span><span class="w"> </span><span class="nv">6</span><span class="p p-Indicator">}}</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nt">model</span><span class="p">:</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mmm.hierarchical_geo@^1.3</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">fit</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="nv">evaluate_then_refit</span><span class="p p-Indicator">}</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">pipeline</span><span class="p">:</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">to_eur</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">core.fx_convert@^1</span><span class="p p-Indicator">,</span><span class="nt"> with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">y</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">spend</span><span class="p p-Indicator">],</span><span class="nt"> table</span><span class="p">:</span><span class="w"> </span><span class="nv">fx</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">...</span><span class="p p-Indicator">}}</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">weekly</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">core.resample@^1</span><span class="p p-Indicator">,</span><span class="nt">   with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">dim</span><span class="p">:</span><span class="w"> </span><span class="nv">time</span><span class="p p-Indicator">,</span><span class="nt"> freq</span><span class="p">:</span><span class="w"> </span><span class="nv">W-SUN</span><span class="p p-Indicator">,</span><span class="nt"> how</span><span class="p">:</span><span class="w"> </span><span class="nv">sum</span><span class="p p-Indicator">}}</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">scale</span><span class="p p-Indicator">,</span><span class="nt">  use</span><span class="p">:</span><span class="w"> </span><span class="nv">core.mean_scale@^1</span><span class="p p-Indicator">,</span><span class="nt"> with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">spend</span><span class="p p-Indicator">],</span><span class="nt"> over</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">time</span><span class="p p-Indicator">]}}</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">lags</span><span class="p p-Indicator">,</span><span class="nt">   use</span><span class="p">:</span><span class="w"> </span><span class="nv">core.lag_tensor@^1</span><span class="p p-Indicator">,</span><span class="nt"> with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">spend</span><span class="p p-Indicator">],</span><span class="nt"> along</span><span class="p">:</span><span class="w"> </span><span class="nv">time</span><span class="p p-Indicator">,</span><span class="nt"> within</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">geo</span><span class="p p-Indicator">],</span><span class="nt"> l_max</span><span class="p">:</span><span class="w"> </span><span class="nv">6</span><span class="p p-Indicator">}}</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="nt">model</span><span class="p">:</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mmm.hierarchical_geo@^1.3</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nt">fit</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="nv">evaluate_then_refit</span><span class="p p-Indicator">}</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -3382,242 +4649,114 @@ model was fitted on.</p>
 </div>
 </div>
 </div>
-<h2 id="safe-by-construction">Safe by construction<a class="headerlink" href="#safe-by-construction" title="Permanent link">&para;</a></h2>
+<p>The same model in plain Python, without any server; every snippet on this site is executed
+by the test suite:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_spec</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">bundle</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">schema</span><span class="p">)</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">bundle</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>  <span class="c1"># holdout metrics, in units sold: {'rmse': ..., 'mape': ..., ...}</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">bundle</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">n_holdout</span><span class="p">)</span>  <span class="c1"># 48 cells: 3 stores x 2 skus x 8 weeks</span>
+</span></code></pre></div>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">ErrorCode</span><span class="p">,</span> <span class="n">MapiError</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">try_score</span><span class="p">(</span><span class="n">request_yaml</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ErrorCode</span><span class="p">:</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        <span class="n">score_bundle</span><span class="p">(</span><span class="n">bundle</span><span class="p">,</span> <span class="n">request_yaml</span><span class="p">,</span> <span class="n">payload</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">)</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="k">except</span> <span class="n">MapiError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        <span class="nb">print</span><span class="p">(</span><span class="n">err</span><span class="o">.</span><span class="n">code</span><span class="p">,</span> <span class="s2">"-"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        <span class="k">return</span> <span class="n">err</span><span class="o">.</span><span class="n">code</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s2">"expected a typed error"</span><span class="p">)</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="n">FORECAST</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="s2">apiVersion: mapi/v1</span>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="s2">kind: ScoreRequest</span>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="s2">model: endpoint://quickstart/fruit-demand</span>
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="s2">mode: forecast</span>
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="s2">horizon: {dim: time, periods: 4}</span>
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="s2">"""</span>
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="c1"># 1. a forecast without next month's promotions: promo is future_required</span>
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a><span class="n">code_1</span> <span class="o">=</span> <span class="n">try_score</span><span class="p">(</span><span class="n">FORECAST</span><span class="p">,</span> <span class="n">plan</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">"promo"</span><span class="p">))</span>
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>
+</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="c1"># 2. quantiles are per cell, so "total over all stores" would be a made-up number</span>
+</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a><span class="n">code_2</span> <span class="o">=</span> <span class="n">try_score</span><span class="p">(</span><span class="n">FORECAST</span> <span class="o">+</span> <span class="s2">"output: {aggregate: {over: [store]}}</span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span> <span class="n">plan</span><span class="p">)</span>
+</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>
+</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a><span class="c1"># 3. a product outside the fitted range: sku is a fixed dim</span>
+</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a><span class="n">code_3</span> <span class="o">=</span> <span class="n">try_score</span><span class="p">(</span><span class="n">FORECAST</span><span class="p">,</span> <span class="n">plan</span><span class="o">.</span><span class="n">assign_coords</span><span class="p">(</span><span class="n">sku</span><span class="o">=</span><span class="p">[</span><span class="s2">"apples"</span><span class="p">,</span> <span class="s2">"kiwis"</span><span class="p">]))</span>
+</span></code></pre></div>
+<h2 id="secure-by-design">Secure by design<a class="headerlink" href="#secure-by-design" title="Permanent link">&para;</a></h2>
+<p>The platform is built to run models and data from people it does not trust. The controls that
+matter most are not settings you can forget to turn on: they are how it works.
+<a href="concepts/security/">The security model</a> says what each one stops, and what is still to be
+verified in the cloud.</p>
 <div class="grid cards">
 <ul>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 22v-2h3v-3h2v3.5c0 .39-.16.74-.46 1.04s-.65.46-1.04.46zM7 22H3.5c-.39 0-.74-.16-1.04-.46S2 20.89 2 20.5V17h2v3h3zM17 2h3.5c.39 0 .74.16 1.04.46s.46.65.46 1.04V7h-2V4h-3zM7 2v2H4v3H2V3.5c0-.39.16-.74.46-1.04S3.11 2 3.5 2zm6 15.25 4-2.3v-4.59l-4 2.3zm-1-6.33 4-2.29-4-2.35-4 2.35zm-5 4.03 4 2.3v-4.59l-4-2.3zm11.23-7.36c.5.32.77.75.77 1.32v6.32c0 .57-.27 1-.77 1.32l-5.48 3.18q-.75.48-1.5 0l-5.48-3.18c-.5-.32-.77-.75-.77-1.32V8.91c0-.57.27-1 .77-1.32l5.48-3.18c.25-.13.5-.19.75-.19s.5.06.75.19z"/></svg></span> <strong>A fresh sandbox per run</strong></p>
+<hr />
+<p>Every ingest, fit, score and render runs in its own sandbox (a microVM on Cloud Run
+Jobs), with no secrets and no network but signed URLs to its own objects. Placement by
+trust tier is enforced in code.</p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 15h-2v2h2m0-6h-2v2h2m2 6h-8v-2h2v-2h-2v-2h2v-2h-2V9h8M10 7H8V5h2m0 6H8V9h2m0 6H8v-2h2m0 6H8v-2h2M6 7H4V5h2m0 6H4V9h2m0 6H4v-2h2m0 6H4v-2h2m6-10V3H2v18h20V7z"/></svg></span> <strong>Tenants never see each other</strong></p>
+<hr />
+<p>PostgreSQL row-level security on every table, pinned per transaction and failing closed;
+roles checked at every request; operators manage the platform without reading tenant
+data.</p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m23 12-2.4-2.8.3-3.7-3.6-.8-1.9-3.2L12 3 8.6 1.5 6.7 4.7l-3.6.8.3 3.7L1 12l2.4 2.8-.3 3.7 3.6.8 1.9 3.2L12 21l3.4 1.5 1.9-3.2 3.6-.8-.3-3.7zm-4.3 4.9-2.7.6-1.4 2.4-2.6-1.1-2.6 1.1L8 17.5l-2.7-.6.2-2.8L3.7 12l1.8-2.1-.2-2.8L8 6.5l1.4-2.4L12 5.2l2.6-1.1L16 6.5l2.7.6-.2 2.8 1.8 2.1-1.8 2.1zm-2.1-9.3L18 9l-8 8-4-4 1.4-1.4 2.6 2.6z"/></svg></span> <strong>Outputs are claims</strong></p>
+<hr />
+<p>A run's outputs are checked against the store's own hashes and generations, copied where
+runs cannot write, and signed. Download links are minted only after the signature
+verifies.</p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 11c0 5.55-3.84 10.74-9 12-5.16-1.26-9-6.45-9-12V5l9-4 9 4zm-9 10c3.75-1 7-5.46 7-9.78V6.3l-7-3.12L5 6.3v4.92C5 15.54 8.25 20 12 21m2.28-11.27c.58.58.9 1.35.9 2.17 0 .83-.32 1.6-.9 2.18l-2.02 2.02c-.6.6-1.39.9-2.18.9s-1.58-.3-2.18-.9a3.09 3.09 0 0 1 0-4.36l1.25-1.24-.01.56c0 .44.07.89.22 1.3l.04.14-.36.37c-.29.28-.44.63-.44 1.05 0 .39.15.76.43 1.04.57.57 1.54.57 2.1.01l2.01-2.02c.29-.28.44-.65.44-1.04 0-.41-.15-.77-.44-1.05a.87.87 0 0 1-.24-.57c0-.21.1-.42.24-.57.31-.3.86-.3 1.14.01M18 9.08c0 .82-.32 1.6-.9 2.18l-1.25 1.24.01-.56c0-.44-.07-.88-.22-1.3l-.05-.14.37-.37c.29-.28.44-.63.44-1.05 0-.39-.15-.76-.44-1.04-.56-.57-1.53-.57-2.09-.01l-2.01 2.02c-.29.28-.44.65-.44 1.05s.15.76.43 1.04c.15.15.25.36.25.57 0 .22-.1.42-.25.57s-.35.22-.56.22c-.2 0-.41-.07-.57-.22a3.054 3.054 0 0 1 0-4.36l2.02-2.02a3.09 3.09 0 0 1 4.36 0c.58.6.9 1.36.9 2.18"/></svg></span> <strong>Integrations that cannot be turned against you</strong></p>
+<hr />
+<p>Webhooks are HMAC-signed and sent through an SSRF guard that pins the checked address;
+embed links show platform recipes only, carry no credential and can be revoked; snippets
+never contain a secret.</p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21.8 15c.6 0 1.2.6 1.2 1.3v3.5c0 .6-.6 1.2-1.3 1.2h-5.5c-.6 0-1.2-.6-1.2-1.3v-3.5c0-.6.6-1.2 1.2-1.2v-1.5c0-1.4 1.4-2.5 2.8-2.5s2.8 1.1 2.8 2.5zm-1.3 0v-1.5c0-.8-.7-1.3-1.5-1.3s-1.5.5-1.5 1.3V15zM2 6h18v3.1L19 9c-.82 0-1.59.2-2.27.54C16.28 9.18 16 8.62 16 8H6c0 1.11-.89 2-2 2v4a2 2 0 0 1 2 2h7.04l-.04.5V18H2zm9 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3"/></svg></span> <strong>Compute you can see and cap</strong></p>
+<hr />
+<p>Quotas in vCPU-seconds per token, tenant and platform, per-token budgets for endpoint
+callers, a cost on every run, a global spend cap and an audited kill switch.</p>
+</li>
 <li>
 <p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 13c-1.4 0-2.8 1.1-2.8 2.5V17c-.6 0-1.2.6-1.2 1.2v3.5c0 .7.6 1.3 1.2 1.3h5.5c.7 0 1.3-.6 1.3-1.2v-3.5c0-.7-.6-1.3-1.2-1.3v-1.5c0-1.4-1.4-2.5-2.8-2.5m0 1.2c.8 0 1.5.5 1.5 1.3V17h-3v-1.5c0-.8.7-1.3 1.5-1.3M6 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h6v-2H6V4h7v5h5v2c.7 0 1.4.2 2 .4V8l-6-6z"/></svg></span> <strong>No pickle, anywhere</strong></p>
 <hr />
-<p>Bundles are single zarr zips plus JSON sidecars. Native models are stored as skops
-(allow-listed types) or xgboost JSON. Every file carries CRC32C, MD5 and SHA-256, and
-reading verifies them.</p>
-</li>
-<li>
-<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 11c0 5.55-3.84 10.74-9 12-5.16-1.26-9-6.45-9-12V5l9-4 9 4zm-9 10c3.75-1 7-5.46 7-9.78V6.3l-7-3.12L5 6.3v4.92C5 15.54 8.25 20 12 21m-2-4-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9"/></svg></span> <strong>Contracts are pure JSON</strong></p>
-<hr />
-<p><code>mapi-spec</code> never imports numpy or xarray, and the control plane never imports plugin
-code. Specs are validated from <strong>exported static JSON</strong>: settings schemas and schema
-effects. An import-linter contract enforces it.</p>
-</li>
-<li>
-<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 17H7v-7h2zm4 0h-2V7h2zm4 0h-2v-4h2zm2 2H5V5h14v14.1M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2"/></svg></span> <strong>Plots are sanitized</strong></p>
-<hr />
-<p>Vega-Lite and Plotly specs are checked against pinned schemas. URL data, links, external
-images, tile maps, prototype keys and unsafe expressions are rejected before anyone sees
-a chart.</p>
-</li>
-<li>
-<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8.27 3 3 8.27v7.46L8.27 21h7.46C17.5 19.24 21 15.73 21 15.73V8.27L15.73 3M9.1 5h5.8L19 9.1v5.8L14.9 19H9.1L5 14.9V9.1m6 5.9h2v2h-2zm0-8h2v6h-2z"/></svg></span> <strong>Typed errors, early</strong></p>
-<hr />
-<p><code>UNSEEN_LEVELS</code>, <code>HORIZON_EXCEEDS_FIT</code>, <code>MISSING_FUTURE_COVARIATE</code>,
-<code>CAPABILITY_UNSUPPORTED</code>, … Stable codes, HTTP statuses and JSON pointers, raised before
-any compute is spent.</p>
+<p>Bundles are single zarr zips plus JSON sidecars; native models are skops (allow-listed
+types) or xgboost JSON. Every file carries CRC32C, MD5 and SHA-256, and reading verifies
+them.</p>
 </li>
 </ul>
 </div>
-<h2 id="built-for-two-kinds-of-people">Built for two kinds of people<a class="headerlink" href="#built-for-two-kinds-of-people" title="Permanent link">&para;</a></h2>
-<div class="grid cards">
-<ul>
-<li>
-<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m7 17 3.2-6.8L17 7l-3.2 6.8zm5-5.9a.9.9 0 0 0-.9.9.9.9 0 0 0 .9.9.9.9 0 0 0 .9-.9.9.9 0 0 0-.9-.9M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10A10 10 0 0 1 2 12 10 10 0 0 1 12 2m0 2a8 8 0 0 0-8 8 8 8 0 0 0 8 8 8 8 0 0 0 8-8 8 8 0 0 0-8-8"/></svg></span> <strong>Guided: analysts</strong></p>
-<hr />
-<p>Marketing and finance analysts pick a template, answer questions in business terms
-("which column is revenue?"), enter priors as ROI ranges, and get a report with a sanity
-scorecard, plain-language captions on every plot and instant what-if sliders.</p>
-<p>Every plot recipe already ships a <code>caption_plain</code> and a <code>persona</code>, every model setting an
-<code>x-ui-level</code>, and every scorecard item a plain-language message. The Guided UI arrives in
-<a href="roadmap/guided-ui/">v0.4</a>.</p>
-</li>
-<li>
-<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 3a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2H3v2h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h2v-2H8v-5a2 2 0 0 0-2-2 2 2 0 0 0 2-2V5h2V3m6 0a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1v2h-1a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-2v-2h2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5h-2V3z"/></svg></span> <strong>Expert: data scientists</strong></p>
-<hr />
-<p>Write specs and plugins, inspect posteriors and preprocessing state, and pull any bundle
-into a notebook. The Expert web app, the <code>mapi</code> CLI and the Python client work today, and
-so does everything in plain Python.</p>
-<p><a href="guides/web-ui/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> The Expert web app</a></p>
-</li>
-<li>
-<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22 13.5c0 1.76-1.3 3.22-3 3.46V20a2 2 0 0 1-2 2h-3.8v-.3a2.7 2.7 0 0 0-2.7-2.7c-1.5 0-2.7 1.21-2.7 2.7v.3H4a2 2 0 0 1-2-2v-3.8h.3C3.79 16.2 5 15 5 13.5s-1.21-2.7-2.7-2.7H2V7a2 2 0 0 1 2-2h3.04c.24-1.7 1.7-3 3.46-3s3.22 1.3 3.46 3H17a2 2 0 0 1 2 2v3.04c1.7.24 3 1.7 3 3.46M17 15h1.5a1.5 1.5 0 0 0 1.5-1.5 1.5 1.5 0 0 0-1.5-1.5H17V7h-5V5.5A1.5 1.5 0 0 0 10.5 4 1.5 1.5 0 0 0 9 5.5V7H4v2.12c1.76.68 3 2.38 3 4.38s-1.25 3.7-3 4.38V20h2.12a4.7 4.7 0 0 1 4.38-3c2 0 3.7 1.25 4.38 3H17z"/></svg></span> <strong>Plugin authors</strong></p>
-<hr />
-<p>A PyMC model is one <code>build()</code> method; an sklearn model is one <code>estimator()</code>. The
-contract kit tells you, before anyone runs your code, whether you followed the rules.</p>
-<p><a href="guides/port-a-model/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Port a model</a></p>
-</li>
-<li>
-<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21.4 7.5c.8.8.8 2.1 0 2.8l-2.8 2.8-7.8-7.8 2.8-2.8c.8-.8 2.1-.8 2.8 0l1.8 1.8 3-3 1.4 1.4-3 3zm-5.8 5.8-1.4-1.4-2.8 2.8-2.1-2.1 2.8-2.8-1.4-1.4-2.8 2.8-1.5-1.4-2.8 2.8c-.8.8-.8 2.1 0 2.8l1.8 1.8-4 4 1.4 1.4 4-4 1.8 1.8c.8.8 2.1.8 2.8 0l2.8-2.8-1.4-1.4z"/></svg></span> <strong>Integrators</strong></p>
-<hr />
-<p>A versioned HTTP API with an OpenAPI 3.1 document, RFC 7807 errors, idempotency keys and
-server-sent events, plus a typed Python client. Endpoints, webhooks and MCP tools follow
-in <a href="roadmap/guided-ui/">v0.4</a>.</p>
-<p><a href="guides/http-api/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> HTTP API guide</a></p>
-</li>
-</ul>
+<h2 id="run-it-for-many-teams">Run it for many teams<a class="headerlink" href="#run-it-for-many-teams" title="Permanent link">&para;</a></h2>
+<p>One deployment serves many organisations. People sign up or sign in with their own identity
+provider, work in the projects they have a role in, and see what their compute costs;
+operators look after the platform without ever reading a tenant's data.</p>
+<div class="mapi-shots">
+<figure>
+<p><a href="guides/authentication/#browser-sign-in"><img alt="The project switcher with two tenants" class="mapi-shot" loading="lazy" src="assets/screenshots/project-switcher.png" /></a></p>
+<figcaption>Tenants and projects: your role in each, and each tenant's trust tier.</figcaption>
+</figure>
+<figure>
+<p><a href="guides/administration/#cost-and-usage"><img alt="Usage and cost of a project" class="mapi-shot" loading="lazy" src="assets/screenshots/usage.png" /></a></p>
+<figcaption>Usage: metered cost per run, by token and resource class, against every quota.</figcaption>
+</figure>
+<figure>
+<p><a href="guides/data-deletion/"><img alt="Settings &gt; Data: export and deletion" class="mapi-shot" loading="lazy" src="assets/screenshots/settings-data.png" /></a></p>
+<figcaption>Your data: a GDPR export, and a deletion that purges every store.</figcaption>
+</figure>
 </div>
-<h2 id="what-you-get-in-v02">What you get in v0.2<a class="headerlink" href="#what-you-get-in-v02" title="Permanent link">&para;</a></h2>
-<div class="grid cards">
-<ul>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 16V4H3v12zm0-14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-7v2h2v2H8v-2h2v-2H3a2 2 0 0 1-2-2V4c0-1.11.89-2 2-2zM5 6h9v5H5zm10 0h4v2h-4zm4 3v5h-4V9zM5 12h4v2H5zm5 0h4v2h-4z"/></svg></span> <strong>The Expert web app</strong></p>
-<p>Datasets, a YAML editor with live validation, live runs, a model inspector and scoring,
-with every plot in a sandboxed iframe. <a href="guides/web-ui/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Web app guide</a></p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 7H5a2 2 0 0 0-2 2v8h2v-4h2v4h2V9a2 2 0 0 0-2-2m0 4H5V9h2m7-2h-4v10h2v-4h2a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2m0 4h-2V9h2m6 0v6h1v2h-4v-2h1V9h-1V7h4v2Z"/></svg></span> <strong>An HTTP API and its clients</strong></p>
-<p><code>/v1</code> with OpenAPI 3.1, RFC 7807 errors, idempotency and SSE; the <code>mapi</code> CLI and a typed
-Python client. <a href="guides/http-api/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> HTTP API</a></p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 11c0 5.55-3.84 10.74-9 12-5.16-1.26-9-6.45-9-12V5l9-4 9 4zm-9 10c3.75-1 7-5.46 7-9.78V6.3l-7-3.12L5 6.3v4.92C5 15.54 8.25 20 12 21m2.8-10V9.5C14.8 8.1 13.4 7 12 7S9.2 8.1 9.2 9.5V11c-.6 0-1.2.6-1.2 1.2v3.5c0 .7.6 1.3 1.2 1.3h5.5c.7 0 1.3-.6 1.3-1.2v-3.5c0-.7-.6-1.3-1.2-1.3m-1.3 0h-3V9.5c0-.8.7-1.3 1.5-1.3s1.5.5 1.5 1.3z"/></svg></span> <strong>Sandboxed, verified runs</strong></p>
-<p>A supervisor and worker per run, HMAC-signed events, outputs checked against the store's
-own checksums and a signed manifest. <a href="concepts/security/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Security model</a></p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 6h16v10H4m16 2a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4c-1.11 0-2 .89-2 2v10a2 2 0 0 0 2 2H0v2h24v-2z"/></svg></span> <strong>Runs on a laptop</strong></p>
-<p><code>make dev</code> without Docker (embedded PostgreSQL, a Cloud Storage emulator), or the same
-stack in containers. <a href="operations/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Deployment</a></p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18s-.41-.06-.57-.18l-7.9-4.44A.99.99 0 0 1 3 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18s.41.06.57.18l7.9 4.44c.32.17.53.5.53.88zM12 4.15 6.04 7.5 12 10.85l5.96-3.35zM5 15.91l6 3.38v-6.71L5 9.21zm14 0v-6.7l-6 3.37v6.71z"/></svg></span> <strong>Labelled data contract</strong></p>
-<p><code>DataSchema</code>, dim policies, roles, units, ragged layouts and plain-language data checks.
-<a href="concepts/labelled-data/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Labelled data</a></p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22 14h-2v2h-6v-3h2v-2h-2V6a2 2 0 0 0-2-2H4V2H2v8h2V8h6v3H8v2h2v5a2 2 0 0 0 2 2h8v2h2"/></svg></span> <strong>Stateful pipelines</strong></p>
-<p>28 built-in steps with fitted state, stages, splits, context tails and inverse transforms.
-<a href="reference/generated/steps-catalog/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Steps catalog</a></p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 6H8.83l6 6-6 6H18v2H6v-2l6-6-6-6V4h12z"/></svg></span> <strong>PyMC and scikit-learn</strong></p>
-<p>nutpie, PyMC (segmented and resumable), MAP, ADVI; allow-listed sklearn and xgboost
-estimators with quantile, bootstrap and conformal uncertainty.
-<a href="guides/pymc/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Guides</a></p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h1v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h3l5 4V4zm3 7.6L13 14H4v-4h9l2-1.6zm6.5-3.6c0 1.71-.96 3.26-2.5 4V8c1.53.75 2.5 2.3 2.5 4"/></svg></span> <strong>Marketing-mix models</strong></p>
-<p>A hierarchical geo MMM with response curves, marginal costs and a budget objective, and
-an adapter for pymc-marketing. <a href="guides/mmm/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> MMM guide</a></p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m3 14 .5.07L8.07 9.5a1.95 1.95 0 0 1 .52-1.91c.78-.79 2.04-.79 2.82 0 .53.52.7 1.26.52 1.91l2.57 2.57.5-.07c.18 0 .35 0 .5.07l3.57-3.57C19 8.35 19 8.18 19 8a2 2 0 0 1 2-2 2 2 0 0 1 2 2 2 2 0 0 1-2 2c-.18 0-.35 0-.5-.07l-3.57 3.57c.07.15.07.32.07.5a2 2 0 0 1-2 2 2 2 0 0 1-2-2l.07-.5-2.57-2.57c-.32.07-.68.07-1 0L4.93 15.5 5 16a2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2"/></svg></span> <strong>Forecasting</strong></p>
-<p>HSGP trends with horizon contracts, HMMs with terminal state and filtering.
-<a href="guides/time-series/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Time series</a></p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m23 12-2.4-2.8.3-3.7-3.6-.8-1.9-3.2L12 3 8.6 1.5 6.7 4.7l-3.6.8.3 3.7L1 12l2.4 2.8-.3 3.7 3.6.8 1.9 3.2L12 21l3.4 1.5 1.9-3.2 3.6-.8-.3-3.7zm-4.3 4.9-2.7.6-1.4 2.4-2.6-1.1-2.6 1.1L8 17.5l-2.7-.6.2-2.8L3.7 12l1.8-2.1-.2-2.8L8 6.5l1.4-2.4L12 5.2l2.6-1.1L16 6.5l2.7.6-.2 2.8 1.8 2.1-1.8 2.1zm-2.1-9.3L18 9l-8 8-4-4 1.4-1.4 2.6 2.6z"/></svg></span> <strong>A conformance corpus</strong></p>
-<p>Six reference problems run end to end on every change: validate, fit, score, evaluate,
-contract kit, plots. <a href="guides/conformance/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Corpus</a></p>
-</li>
-</ul>
-</div>
-<h2 id="how-it-compares">How it compares<a class="headerlink" href="#how-it-compares" title="Permanent link">&para;</a></h2>
-<p>MLflow and BentoML are excellent at what they target: packaging a trained model from almost
-any framework and serving it behind an API. modeling-api targets a narrower problem, labelled
-statistical models whose preprocessing, coordinates and uncertainty must survive the trip to
-production, and makes different trade-offs.</p>
-<div class="mapi-compare">
-<table>
-<thead>
-<tr>
-<th></th>
-<th>Tabular model serving (MLflow / BentoML style)</th>
-<th>modeling-api</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Input contract</td>
-<td>Column or tensor signatures: names and shapes, no dimensions</td>
-<td><code>xr.Dataset</code> with named dims, coordinates, roles, units and per-dim score policies</td>
-</tr>
-<tr>
-<td>Preprocessing at score time</td>
-<td>Up to you: bundle it into the model artifact, or re-implement it in the service</td>
-<td>Declared steps with <strong>fitted state</strong>, replayed exactly; stage-aware splits and per-group context tails</td>
-</tr>
-<tr>
-<td>New groups and horizons</td>
-<td>Whatever the model happens to do with an unseen row</td>
-<td>Declared per dim (<code>fixed</code>, <code>extend</code>, <code>new_levels</code> + strategy); checked before compute</td>
-</tr>
-<tr>
-<td>Uncertainty</td>
-<td>Point predictions by default; intervals are a custom output</td>
-<td>A first-class <strong>representation</strong> that decides which summaries and aggregations are valid</td>
-</tr>
-<tr>
-<td>Units of the answer</td>
-<td>Whatever space the model was trained in</td>
-<td>Inverted to original units, with the output space recorded on every variable</td>
-</tr>
-<tr>
-<td>Serialization</td>
-<td>Framework-native; pickle and cloudpickle are common</td>
-<td>Zarr zip + JSON, skops or xgboost JSON; <strong>pickle is rejected</strong> on write and on read</td>
-</tr>
-<tr>
-<td>Validating a request</td>
-<td>At call time, inside the model</td>
-<td>Statically, from JSON, before a run starts: typed errors with JSON pointers</td>
-</tr>
-<tr>
-<td>Who it is for</td>
-<td>Any model, any framework</td>
-<td>Bayesian and classical models of panels, time series and hierarchies; analysts and data scientists</td>
-</tr>
-</tbody>
-</table>
-</div>
-<h2 id="a-taste">A taste<a class="headerlink" href="#a-taste" title="Permanent link">&para;</a></h2>
-<p>The same model in plain Python, without any server. The <a href="getting-started/first-model/">Python guide</a>
-builds it end to end; every snippet on this site is executed by the test suite.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_spec</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">bundle</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">schema</span><span class="p">)</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">bundle</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>  <span class="c1"># holdout metrics, in units sold: {'rmse': ..., 'mape': ..., ...}</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">bundle</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">n_holdout</span><span class="p">)</span>  <span class="c1"># 48 cells: 3 stores x 2 skus x 8 weeks</span>
-</span></code></pre></div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">ErrorCode</span><span class="p">,</span> <span class="n">MapiError</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">try_score</span><span class="p">(</span><span class="n">request_yaml</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ErrorCode</span><span class="p">:</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="k">try</span><span class="p">:</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        <span class="n">score_bundle</span><span class="p">(</span><span class="n">bundle</span><span class="p">,</span> <span class="n">request_yaml</span><span class="p">,</span> <span class="n">payload</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">)</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="k">except</span> <span class="n">MapiError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="nb">print</span><span class="p">(</span><span class="n">err</span><span class="o">.</span><span class="n">code</span><span class="p">,</span> <span class="s2">"-"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="k">return</span> <span class="n">err</span><span class="o">.</span><span class="n">code</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s2">"expected a typed error"</span><span class="p">)</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="n">FORECAST</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="s2">apiVersion: mapi/v1</span>
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="s2">kind: ScoreRequest</span>
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="s2">model: endpoint://quickstart/fruit-demand</span>
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="s2">mode: forecast</span>
-</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="s2">horizon: {dim: time, periods: 4}</span>
-</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="s2">"""</span>
-</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>
-</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="c1"># 1. a forecast without next month's promotions: promo is future_required</span>
-</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="n">code_1</span> <span class="o">=</span> <span class="n">try_score</span><span class="p">(</span><span class="n">FORECAST</span><span class="p">,</span> <span class="n">plan</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">"promo"</span><span class="p">))</span>
-</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>
-</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="c1"># 2. quantiles are per cell, so "total over all stores" would be a made-up number</span>
-</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="n">code_2</span> <span class="o">=</span> <span class="n">try_score</span><span class="p">(</span><span class="n">FORECAST</span> <span class="o">+</span> <span class="s2">"output: {aggregate: {over: [store]}}</span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span> <span class="n">plan</span><span class="p">)</span>
-</span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>
-</span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="c1"># 3. a product outside the fitted range: sku is a fixed dim</span>
-</span><span id="__span-2-28"><a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="n">code_3</span> <span class="o">=</span> <span class="n">try_score</span><span class="p">(</span><span class="n">FORECAST</span><span class="p">,</span> <span class="n">plan</span><span class="o">.</span><span class="n">assign_coords</span><span class="p">(</span><span class="n">sku</span><span class="o">=</span><span class="p">[</span><span class="s2">"apples"</span><span class="p">,</span> <span class="s2">"kiwis"</span><span class="p">]))</span>
-</span></code></pre></div>
-<div class="grid cards">
-<ul>
-<li>
-<p><strong>Next: run the platform and fit your first model</strong></p>
-<p><a href="getting-started/quickstart/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Quickstart</a></p>
-</li>
-<li>
-<p><strong>Understand the moving parts</strong></p>
-<p><a href="concepts/architecture/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Architecture</a> ·
-<a href="concepts/">Concepts</a></p>
-</li>
-</ul>
-</div>
+<p><a href="guides/administration/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Administration</a> ·
+<a href="operations/">Deploy on your laptop or Google Cloud</a> ·
+<a href="roadmap/">Roadmap: what comes next</a></p>
 
 
 
@@ -3663,13 +4802,13 @@ builds it end to end; every snippet on this site is executed by the test suite.<
         
         
           
-          <a href="getting-started/" class="md-footer__link md-footer__link--next" aria-label="Next: Getting started">
+          <a href="why/" class="md-footer__link md-footer__link--next" aria-label="Next: Why modeling-api?">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Getting started
+                Why modeling-api?
               </div>
             </div>
             <div class="md-footer__button md-icon">

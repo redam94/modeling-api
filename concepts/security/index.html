@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="What modeling-api protects against, which controls are enforced on a laptop today, and what production adds in later releases.">
+        <meta name="description" content="What modeling-api protects against, which controls each executor isolation level enforces, the threat model in plain terms, and what is verified, what is not yet, and what comes later.">
       
       
         <meta name="author" content="Matthew Reda">
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#security-model-v02" class="md-skip">
+        <a href="#security-model-v04" class="md-skip">
           Skip to content
         </a>
       
@@ -211,17 +211,20 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
-        
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
   
   
     
   
   Home
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -240,6 +243,28 @@
     
   
   Getting started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
 
         </a>
       </li>
@@ -435,9 +460,36 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+    
+    
+      
         
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
@@ -451,7 +503,87 @@
   
   
 
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../why/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why modeling-api?
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -624,6 +756,260 @@
       
   
   
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../tutorials/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/guided-tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first MMM in Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/google-sheets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect Google Sheets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/embed-a-chart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embed a chart in Notion, Slack or BI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/webhook-receivers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Receive webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/atlas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimise a budget with Atlas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/bayesinsight-import/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Import a BayesInsight model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -633,6 +1019,14 @@
       
         
           
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -667,7 +1061,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -689,14 +1083,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -814,6 +1208,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#threats-in-plain-terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threats, in plain terms
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-each-executor-enforces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What each executor enforces
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#local-development-vs-production" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -908,10 +1324,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-production-adds" class="md-nav__link">
+  <a href="#known-gaps-in-v04" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What production adds
+        Known gaps in v0.4
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-comes-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What comes next
       
     </span>
   </a>
@@ -1095,6 +1522,118 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tenancy-and-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tenancy and authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quotas-and-cost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quotas and cost
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guided-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1115,6 +1654,8 @@
       
         
       
+        
+      
     
     
     
@@ -1128,10 +1669,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -1149,8 +1690,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1179,6 +1720,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1192,10 +1739,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
         
           
-          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
             
   
   
@@ -1213,8 +1760,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_1">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1364,6 +1911,242 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/guided-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    From a spreadsheet to a Guided draft
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/endpoints-and-webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoints and webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/integrations-hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Integrations hub
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running it for teams
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Running it for teams
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/administration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/data-deletion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deleting and exporting data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1397,6 +2180,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1410,10 +2197,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
         
           
-          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
             
   
   
@@ -1431,8 +2218,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1589,6 +2376,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/guided-modelling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided modelling: priors, lift tests, scorecard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/time-series/" class="md-nav__link">
         
   
@@ -1625,6 +2440,34 @@
     
   
     Plots, recipes and templates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/sharing-plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sharing plots
   
 
     
@@ -1730,6 +2573,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1743,10 +2590,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -1764,8 +2611,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2258,6 +3105,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/generated/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/generated/server-settings/" class="md-nav__link">
         
   
@@ -2266,6 +3141,34 @@
     
   
     Server settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/environment-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment variables
   
 
     
@@ -2347,7 +3250,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_20" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_22" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2369,14 +3272,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_20" id="__nav_5_20_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_22" id="__nav_6_22_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_20_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_20">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_22_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_22">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2622,6 +3525,24 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2635,7 +3556,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2657,14 +3578,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2767,6 +3688,258 @@
   
   
     <li class="md-nav__item">
+      <a href="../../operations/gcp-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploying to Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/security-hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security hardening on Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication and isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/signup-and-abuse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sign-up and abuse controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cloud-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Run Jobs executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/security-suite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/m2-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M2 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/m3-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../operations/configuration/" class="md-nav__link">
         
   
@@ -2842,6 +4015,8 @@
       
         
       
+        
+      
     
     
     
@@ -2855,7 +4030,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2877,14 +4052,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2980,6 +4155,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/expert-plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Next: expert plugins, MCP and optimisation (v0.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3015,10 +4218,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
             
   
   
@@ -3036,8 +4239,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3176,6 +4379,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#threats-in-plain-terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threats, in plain terms
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-each-executor-enforces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What each executor enforces
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#local-development-vs-production" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3270,10 +4495,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-production-adds" class="md-nav__link">
+  <a href="#known-gaps-in-v04" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What production adds
+        Known gaps in v0.4
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-comes-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What comes next
       
     </span>
   </a>
@@ -3297,18 +4533,20 @@
 
 
 
-<h1 id="security-model-v02">Security model <span class="mapi-badge">v0.2</span><a class="headerlink" href="#security-model-v02" title="Permanent link">&para;</a></h1>
-<p>modeling-api is built to run <strong>models and data from people it does not trust</strong>, eventually
-from the public internet. v0.2 is a single-tenant, local slice of that platform, but the
-controls that do not depend on the cloud are already in the code and tested, so the design is
-exercised from the first release. This page says what each control protects against and how
-much of it you get in each setting.</p>
+<h1 id="security-model-v04">Security model <span class="mapi-badge">v0.4</span><a class="headerlink" href="#security-model-v04" title="Permanent link">&para;</a></h1>
+<p>modeling-api is built to run <strong>models and data from people it does not trust</strong>, from many
+organisations on one deployment. Every control that does not need a cloud is in the code and
+tested on a laptop; the cloud controls are written (Terraform, the Cloud Run Jobs executor,
+Cloud KMS, authenticated Pub/Sub) and tested against fakes, and a short list of cloud
+behaviours still waits for a real project. This page says what each control protects against,
+which ones a given executor enforces, and where the honest limits are today.</p>
 <div class="admonition danger">
-<p class="admonition-title">v0.2 has no authentication</p>
-<p>The API, the web app and the object store listen on <code>127.0.0.1</code>, and Docker Compose
-publishes its ports on <code>127.0.0.1</code> only. Anyone who can reach those ports can do anything.
-Do not expose a v0.2 stack to a network you do not trust, and do not run untrusted plugin
-code on it: local and compose runs are not a multi-tenant boundary.</p>
+<p class="admonition-title">A local stack is not a security boundary</p>
+<p><code>make dev</code> and Docker Compose run the <code>dev</code> profile: anyone who can reach the API can sign
+in as any seeded account through the built-in development identity provider. Every port
+listens on <code>127.0.0.1</code> only. Do not expose a local stack to a network you do not trust, and
+do not run untrusted plugin code on it: the <code>local-process</code> and plain <code>docker</code> executors
+are process isolation, not a multi-tenant boundary.</p>
 </div>
 <h2 id="what-it-protects">What it protects<a class="headerlink" href="#what-it-protects" title="Permanent link">&para;</a></h2>
 <table>
@@ -3321,6 +4559,11 @@ code on it: local and compose runs are not a multi-tenant boundary.</p>
 </thead>
 <tbody>
 <tr>
+<td>Each tenant's data</td>
+<td>Another tenant, or a bug, reads or changes it</td>
+<td>PostgreSQL row-level security pinned per transaction and failing closed; storage keys built by the server from ids; roles checked at every request; operators never read tenant content</td>
+</tr>
+<tr>
 <td>The control plane</td>
 <td>A hostile dataset, bundle or plot exploits a parser in the API</td>
 <td>The API parses JSON and YAML only (a strict loader: no anchors or tags, size and depth caps). Arrays, zarr, netCDF, CSV and Parquet are opened only inside a run's sandbox</td>
@@ -3328,7 +4571,7 @@ code on it: local and compose runs are not a multi-tenant boundary.</p>
 <tr>
 <td>Credentials and other runs</td>
 <td>Model code reads or steals what the run holds</td>
-<td>Supervisor/worker split; no secrets in the environment or arguments; a one-time bootstrap object; object-scoped, short-lived signed URLs</td>
+<td>A fresh sandbox per run; supervisor/worker split; no secrets in the environment or arguments; a one-time bootstrap object; object-scoped, short-lived signed URLs</td>
 </tr>
 <tr>
 <td>Results</td>
@@ -3336,9 +4579,14 @@ code on it: local and compose runs are not a multi-tenant boundary.</p>
 <td>Outputs are claims checked against the store's own checksums and generations; write-once bundles; signed bundle manifests checked before every download link; HMAC-signed events</td>
 </tr>
 <tr>
+<td>The bill</td>
+<td>A leaked token, a runaway sweep or abuse runs up compute</td>
+<td>vCPU-second quotas per token, tenant and platform; fair-share scheduling; a global spend cap and a kill switch for uploaded code</td>
+</tr>
+<tr>
 <td>The browser and the user's data</td>
 <td>A malicious plot spec runs script in the app</td>
-<td>A server-side sanitizer, then rendering only in a sandboxed iframe on a separate origin, with strict CSPs on both origins</td>
+<td>A server-side sanitizer, then rendering only in a sandboxed iframe on a separate origin, with strict CSPs on both origins; sessions in <code>HttpOnly</code>, <code>SameSite=Strict</code> cookies with CSRF tokens</td>
 </tr>
 <tr>
 <td>The user's terminal and screen</td>
@@ -3352,28 +4600,197 @@ code on it: local and compose runs are not a multi-tenant boundary.</p>
 </tr>
 </tbody>
 </table>
+<h2 id="threats-in-plain-terms">Threats, in plain terms<a class="headerlink" href="#threats-in-plain-terms" title="Permanent link">&para;</a></h2>
+<p>The plan's threat model, as a user would ask about it. <strong>Enforced</strong> means in the code and
+covered by tests on every change; <strong>[verify M0]</strong> means the control is built but depends on a
+cloud behaviour not yet confirmed against a real Cloud Run Jobs execution (see
+<a href="../../operations/gcp-deployment/#before-you-start-the-verify-m0-checklist">the checklist</a>).</p>
+<table>
+<thead>
+<tr>
+<th>If someone tries to…</th>
+<th>What stops them</th>
+<th>In v0.4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Break out of the sandbox into the machine</td>
+<td>A fresh microVM per run; the model code runs as its own non-root user with <code>no_new_privs</code>, on a read-only root filesystem</td>
+<td>Built for Cloud Run Jobs; the uid split there is <strong>[verify M0]</strong>. Local executors are not boundaries</td>
+</tr>
+<tr>
+<td>Steal the run's credentials</td>
+<td>Nothing secret in the environment or arguments; the run's instructions are read from a one-time object and deleted before model code starts; the only credential can get and delete that object, nothing else</td>
+<td><strong>Enforced</strong> (locally the storage emulator enforces the same permissions)</td>
+</tr>
+<tr>
+<td>Send your data out over the network</td>
+<td>Deny-all egress, only Google's restricted APIs address, a VPC Service Controls perimeter</td>
+<td>Terraform written and tested offline; <strong>[verify M0]</strong></td>
+</tr>
+<tr>
+<td>Send your data out over DNS</td>
+<td>A DNS response policy that answers nothing outside Google APIs</td>
+<td><strong>[verify M0]</strong>. Until it passes, <code>verified</code> and <code>public</code> tenants are not placed on Cloud Run at all</td>
+</tr>
+<tr>
+<td>Crash or take over the API with a crafted file</td>
+<td>The API only parses JSON and YAML; everything else is opened inside a sandbox</td>
+<td><strong>Enforced</strong></td>
+</tr>
+<tr>
+<td>Swap or replay a model's files</td>
+<td>Outputs checked against the store's own hashes and generations, copied where runs cannot write, and signed; the signature is checked before every download link</td>
+<td><strong>Enforced</strong> (Cloud KMS signing tested against a fake)</td>
+</tr>
+<tr>
+<td>Fake progress or results</td>
+<td>Only the supervisor writes events, each signed and numbered; the executor's own status decides whether a run is alive</td>
+<td><strong>Enforced</strong></td>
+</tr>
+<tr>
+<td>Read another organisation's work</td>
+<td>Row-level security on every table, failing closed; ids checked against the caller's tenant; a test reuses pooled connections across two tenants</td>
+<td><strong>Enforced</strong></td>
+</tr>
+<tr>
+<td>Use a leaked token</td>
+<td>Tokens are scoped, bound to one project, expire, can carry rate limits and budgets, are revoked at once, and never carry operator powers; failed uses are audited</td>
+<td><strong>Enforced</strong></td>
+</tr>
+<tr>
+<td>Run up a huge bill, or starve everyone else</td>
+<td>Quotas in vCPU-seconds per token, tenant and platform; interactive work ahead of batch; a global spend cap; a switch that stops all uploaded code</td>
+<td><strong>Enforced</strong></td>
+</tr>
+<tr>
+<td>Run script in your browser through a plot</td>
+<td>A sanitizer, then a sandboxed iframe on another origin with a strict CSP</td>
+<td><strong>Enforced</strong></td>
+</tr>
+<tr>
+<td>Hijack the runner with a malicious package</td>
+<td>The supervisor runs in its own environment (<code>python -I -S</code>); package uploads are checked for <code>.pth</code> and <code>sitecustomize</code></td>
+<td>Supervisor isolation <strong>enforced</strong>; uploaded packages arrive with the overlay pipeline (v0.5)</td>
+</tr>
+<tr>
+<td>Slip something into the supply chain</td>
+<td>Hash-locked Python, digest-pinned images, a frozen JavaScript lockfile without install scripts, keyless CI identities</td>
+<td><strong>Enforced</strong> in the builds; signed-image enforcement (Binary Authorization) comes with public code upload</td>
+</tr>
+<tr>
+<td>Turn a webhook against your network (SSRF)</td>
+<td>Static URL checks, one DNS resolution with every address checked, a connection pinned to the checked address, no redirects, time and size caps; private, loopback and link-local addresses and odd ports refused</td>
+<td><strong>Enforced</strong> (to public hosts covered by unit tests; the development allow-list is refused in the <code>multi-tenant</code> profile)</td>
+</tr>
+<tr>
+<td>Forge or replay a webhook delivery to your receiver</td>
+<td>An HMAC-SHA256 signature over a timestamp and the raw body under a per-webhook secret shown once and stored sealed; receivers refuse stale timestamps; envelopes carry ids and states, never data, links or secrets</td>
+<td><strong>Enforced</strong> (<code>mapi_client.webhooks.verify</code>)</td>
+</tr>
+<tr>
+<td>Use an embed link to see more than one chart</td>
+<td>A tokenised link to one saved plot of a platform recipe, stored as a keyed hash; the public view reads no credential, inlines only that plot's data, is rate-limited per link and per address, and stops on revocation or expiry</td>
+<td><strong>Enforced</strong></td>
+</tr>
+<tr>
+<td>Sign up many workspaces to farm free compute</td>
+<td>E-mail verification, disposable domains refused, per-address, per-domain and platform-wide sign-up limits, Sybil flags reviewed by operators; <code>public</code> workspaces run built-ins and declarative specs only (cut line A), and only on executors that enforce egress and DNS</td>
+<td><strong>Enforced</strong>; vendor identity verification and a public run on such an executor await a deployment</td>
+</tr>
+<tr>
+<td>Keep a tenant's data after it leaves</td>
+<td>Tenant deletion purges every table and object prefix after a grace period and notifies by signed webhook; a GDPR export with credentials redacted</td>
+<td><strong>Enforced</strong>; only the pseudonymised audit log and the cost ledger are retained</td>
+</tr>
+<tr>
+<td>Misuse the MCP server</td>
+<td>Curated tools with delimited untrusted text</td>
+<td>Not applicable yet: the MCP server comes in v0.5</td>
+</tr>
+</tbody>
+</table>
+<p>The probes that check these rows as hostile code, executor by executor, are the
+<a href="../../operations/security-suite/">security suite</a>.</p>
+<h2 id="what-each-executor-enforces">What each executor enforces<a class="headerlink" href="#what-each-executor-enforces" title="Permanent link">&para;</a></h2>
+<p>Each executor declares its <strong>isolation level</strong> and whether it enforces egress and DNS. The
+dispatcher compares that with the tenant's <a href="../../guides/administration/#trust-tiers">trust tier</a>
+before every run, in code: no tenant setting can lower the bar.</p>
+<table>
+<thead>
+<tr>
+<th>Executor</th>
+<th>Isolation</th>
+<th>Egress / DNS enforced</th>
+<th>Tenants it may run</th>
+<th>Security suite must show</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inproc</code></td>
+<td><code>NONE</code></td>
+<td>No</td>
+<td>Your own notebook only (never through the API)</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>local-process</code></td>
+<td><code>PROCESS</code></td>
+<td>No</td>
+<td><code>internal</code>, <code>self-hosted-trusted</code>. Refuses to start under <code>MAPI_PROFILE=multi-tenant</code></td>
+<td>Platform probes BLOCKED; sandbox probes may be ALLOWED</td>
+</tr>
+<tr>
+<td><code>docker</code> (runc)</td>
+<td><code>PROCESS</code></td>
+<td>Only with <code>MAPI_DOCKER_NETWORK=none</code></td>
+<td><code>internal</code>, <code>self-hosted-trusted</code></td>
+<td>As above</td>
+</tr>
+<tr>
+<td><code>docker-gvisor</code></td>
+<td><code>GVISOR</code> when the supervisor can drop the worker to its own uid, else <code>PROCESS</code></td>
+<td>Only with <code>MAPI_DOCKER_NETWORK=none</code> (needs an HTTPS bootstrap URL, so not with the local shim)</td>
+<td>Every tier once egress and DNS are enforced</td>
+<td>Every probe BLOCKED</td>
+</tr>
+<tr>
+<td><code>cloudrun-jobs</code></td>
+<td><code>MICROVM</code></td>
+<td>Egress yes (<code>MAPI_CLOUDRUN_EGRESS_ENFORCED</code>); DNS only once <code>MAPI_CLOUDRUN_DNS_ENFORCED=true</code>, after the M0 DNS check</td>
+<td><code>internal</code>, <code>self-hosted-trusted</code>; <code>verified</code> and <code>public</code> once DNS is enforced</td>
+<td>Every probe BLOCKED, run inside an execution (not wired up yet)</td>
+</tr>
+</tbody>
+</table>
+<p>What every executor shares, whatever its isolation: the supervisor/worker protocol, the
+scrubbed worker environment, capped logs and outputs, HMAC-signed events, and verification of
+every output by the control plane. What only the stronger levels add is a boundary between the
+model code and the machine it runs on.</p>
 <h2 id="local-development-vs-production">Local development vs production<a class="headerlink" href="#local-development-vs-production" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Control</th>
-<th><code>make dev</code> (v0.2)</th>
-<th>Docker Compose (v0.2)</th>
-<th>Production (v0.3 and later)</th>
+<th><code>make dev</code></th>
+<th>Docker Compose</th>
+<th>Google Cloud (v0.3)</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Authentication</td>
-<td>None; <code>127.0.0.1</code> only</td>
-<td>None; ports published on <code>127.0.0.1</code> only</td>
-<td>OIDC for people, scoped API tokens with budgets for programs</td>
+<td>The development IdP: any seeded account, no password; <code>127.0.0.1</code> only</td>
+<td>Same; ports published on <code>127.0.0.1</code> only</td>
+<td>OIDC for people (Google or another provider), scoped API tokens with budgets for programs</td>
 </tr>
 <tr>
 <td>Tenancy</td>
-<td>One tenant and project (<code>default</code>); every row and storage key already carries them</td>
+<td>Multiple tenants and row-level security, exactly as in production</td>
 <td>Same</td>
-<td>Multiple tenants; PostgreSQL row-level security on every table</td>
+<td>Same, on Cloud SQL with separate database logins per role</td>
 </tr>
 <tr>
 <td>Run isolation</td>
@@ -3403,7 +4820,7 @@ code on it: local and compose runs are not a multi-tenant boundary.</p>
 <td>Event integrity</td>
 <td>HMAC per event, read from the supervisor's stdout pipe</td>
 <td>Same</td>
-<td>HMAC per event, through Cloud Logging and Pub/Sub with OIDC push</td>
+<td>HMAC per event, through Cloud Logging and Pub/Sub push with an OIDC token checked by the events service</td>
 </tr>
 <tr>
 <td>Web app CSP</td>
@@ -3419,9 +4836,9 @@ code on it: local and compose runs are not a multi-tenant boundary.</p>
 </tr>
 <tr>
 <td>Quotas and cost limits</td>
-<td>None</td>
-<td>Worker memory, CPU and <code>/tmp</code> limits</td>
-<td>Per-tenant and per-token vCPU-second quotas, priority classes, a global kill switch</td>
+<td>Tier defaults, quotas, the cost ledger and kill switches all apply</td>
+<td>Same, plus worker memory, CPU and <code>/tmp</code> limits</td>
+<td>Same, priced with the deployment's price table</td>
 </tr>
 </tbody>
 </table>
@@ -3491,27 +4908,45 @@ escape sequences before printing.</p>
 <li>This documentation site's OpenAPI explorer loads a vendored, hash-pinned Redoc bundle; it
   makes no request outside the site.</li>
 </ul>
-<div class="admonition note">
-<p class="admonition-title">Known gaps in v0.2</p>
+<h2 id="known-gaps-in-v04">Known gaps in v0.4<a class="headerlink" href="#known-gaps-in-v04" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The API's built-in <code>/docs</code> and <code>/redoc</code> pages (FastAPI's defaults) load Swagger UI and
-  Redoc from a public CDN. Use the <a href="../../reference/openapi/">OpenAPI explorer</a> or
-  <code>/openapi.json</code> instead.</li>
+<li><strong>Cloud behaviours not yet verified.</strong> Everything marked [verify M0] above, chiefly that the
+  DNS response policy applies to Cloud Run Jobs. Until it is confirmed, the executor declares
+  DNS as not enforced and shared tiers are not placed on it.</li>
+<li><strong>The nightly security suite does not run in the cloud yet.</strong> The probes run locally and
+  against gVisor; the base images do not ship them and Terraform defines no probe Job
+  (<a href="../../operations/security-suite/#where-the-probes-run">Security suite</a>).</li>
+<li><strong>Executor conformance reports are not stored</strong>, so the admin console shows every executor
+  as <em>conformance not passed</em> and enabling an executor is not gated on a stored report
+  (<a href="../../operations/m2-verification/#known-gaps-not-cloud-specific">M2 verification</a>).
+  Placement by trust tier is enforced regardless.</li>
+<li><strong>Identity Platform's own tokens</strong> are not accepted by the browser sign-in yet; use Google
+  or another OpenID provider (<a href="../../guides/authentication/#identity-platform">Authentication</a>).</li>
+<li><strong>Public workspaces need an enforcing executor.</strong> Sign-up creates <code>public</code> workspaces, which
+  run only on <code>docker-gvisor</code> or on Cloud Run Jobs once its DNS enforcement is verified; a
+  deployment with neither cannot run their work. Neither ran in the M3
+  verification (<a href="../../operations/m3-verification/#what-remains-unverified">what remains</a>).</li>
+<li><strong>Identity verification has no vendor integration yet</strong>: operators verify tenants by hand
+  (audited), behind the <code>IdentityVerifier</code> protocol.</li>
+<li><strong>Webhook deliveries to the internet</strong> were exercised only through the development
+  allow-list; the SSRF policy for public hosts is covered by unit tests.</li>
+<li>The API's built-in <code>/docs</code> and <code>/redoc</code> pages (FastAPI's defaults) load Swagger UI and Redoc
+  from a public CDN. Use the <a href="../../reference/openapi/">OpenAPI explorer</a> or <code>/openapi.json</code>
+  instead.</li>
 <li>The app's CSP is not enforced by the Vite dev server (see the table).</li>
-<li>Local and compose runs have no egress restriction unless you use the <code>docker</code> executor.</li>
 <li>Under the <code>local-process</code> executor, run code runs as the orchestrator's own uid, so it can
-  read the shim's control key and the bundle-signing key. The orchestrator is non-dumpable
-  and logs a warning at start-up, but run only trusted plugin code in this mode; see
+  read the shim's control key and the bundle-signing key. The orchestrator is non-dumpable and
+  logs a warning at start-up, but run only trusted plugin code in this mode; see
   <a href="../../operations/docker/#executor-choice-local-process-vs-docker">Docker Compose</a>.</li>
 </ul>
-</div>
-<h2 id="what-production-adds">What production adds<a class="headerlink" href="#what-production-adds" title="Permanent link">&para;</a></h2>
-<p><a href="../../roadmap/cloud/">v0.3</a> moves runs to Cloud Run Jobs: a fresh microVM per run, a separate
-execution project with deny-all egress (DNS included) and VPC Service Controls, a bootstrap
-bucket the execution service account can only get from and delete in, Cloud KMS signatures,
-OIDC, scoped tokens, row-level security, quotas and a kill switch.
-<a href="../../roadmap/#after-v04">Public code upload</a> comes only after a dedicated overlay
-build pipeline, abuse controls and an external penetration test.</p>
+<h2 id="what-comes-next">What comes next<a class="headerlink" href="#what-comes-next" title="Permanent link">&para;</a></h2>
+<p>Plugin upload for allow-listed teams comes in <a href="../../roadmap/expert-plugins/">v0.5</a>, built into
+hash-pinned overlays and checked by the contract kit on upload.
+<a href="../../roadmap/#after-v05">Public code upload</a> (every tenant uploading their own plugins) comes
+only after a dedicated overlay build pipeline with a curated package mirror, a separate
+execution project for public tenants, Binary Authorization on base images, abuse controls
+(verification before any code runs), a rehearsed kill-switch drill and an external penetration
+test, with the security suite green in the cloud for two weeks.</p>
 
 
 

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Drive the platform from Python with mapi_client - upload datasets, validate and fit specs, follow runs live, inspect signed model versions and score them into xarray.">
+        <meta name="description" content="Drive the platform from Python with mapi_client - upload datasets, validate and fit specs, follow runs live, inspect signed model versions, score them and their endpoints into xarray, and wire up webhooks and plot renders.">
       
       
         <meta name="author" content="Matthew Reda">
@@ -211,17 +211,20 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
-        
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
   
   
     
   
   Home
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -240,6 +243,28 @@
     
   
   Getting started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
 
         </a>
       </li>
@@ -437,9 +462,36 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+    
+    
+      
         
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
@@ -453,7 +505,87 @@
   
   
 
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../why/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why modeling-api?
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -647,6 +779,268 @@
       
         
       
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../tutorials/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guided-tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first MMM in Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/google-sheets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect Google Sheets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/embed-a-chart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embed a chart in Notion, Slack or BI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../webhook-receivers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Receive webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../atlas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimise a budget with Atlas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/bayesinsight-import/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Import a BayesInsight model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -664,7 +1058,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -686,14 +1080,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -929,6 +1323,118 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/tenancy-and-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tenancy and authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/quotas-and-cost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quotas and cost
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/guided-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -951,6 +1457,8 @@
       
         
       
+        
+      
     
     
     
@@ -967,10 +1475,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -988,8 +1496,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1020,6 +1528,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1036,10 +1550,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" checked>
         
           
-          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="">
             
   
   
@@ -1057,8 +1571,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4_1">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1296,6 +1810,128 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#projects-tokens-and-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Projects, tokens and usage v0.3
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Projects, tokens and usage v0.3">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quotas-and-rate-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quotas and rate limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#endpoints-webhooks-and-sharing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Endpoints, webhooks and sharing v0.4
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Endpoints, webhooks and sharing v0.4">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#promote-a-model-version-to-an-endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Promote a model version to an endpoint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#score-an-endpoint-into-xarray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Score an endpoint into xarray
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#snippets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snippets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#webhooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Webhooks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#render-a-plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Render a plot
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sign-up-verification-deletion-and-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sign-up, verification, deletion and export
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guided-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guided mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#async" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1354,6 +1990,245 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guided-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    From a spreadsheet to a Guided draft
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../endpoints-and-webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoints and webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations-hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Integrations hub
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running it for teams
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Running it for teams
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-deletion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deleting and exporting data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1387,6 +2262,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1403,10 +2282,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
         
           
-          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="">
             
   
   
@@ -1424,8 +2303,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1582,6 +2461,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../guided-modelling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided modelling: priors, lift tests, scorecard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../time-series/" class="md-nav__link">
         
   
@@ -1618,6 +2525,34 @@
     
   
     Plots, recipes and templates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sharing-plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sharing plots
   
 
     
@@ -1723,6 +2658,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1736,10 +2675,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -1757,8 +2696,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2251,6 +3190,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/generated/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/generated/server-settings/" class="md-nav__link">
         
   
@@ -2259,6 +3226,34 @@
     
   
     Server settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/environment-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment variables
   
 
     
@@ -2340,7 +3335,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_20" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_22" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2362,14 +3357,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_20" id="__nav_5_20_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_22" id="__nav_6_22_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_20_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_20">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_22_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_22">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2615,6 +3610,24 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2628,7 +3641,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2650,14 +3663,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2760,6 +3773,258 @@
   
   
     <li class="md-nav__item">
+      <a href="../../operations/gcp-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploying to Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/security-hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security hardening on Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication and isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/signup-and-abuse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sign-up and abuse controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cloud-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Run Jobs executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/security-suite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/m2-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M2 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/m3-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../operations/configuration/" class="md-nav__link">
         
   
@@ -2835,6 +4100,8 @@
       
         
       
+        
+      
     
     
     
@@ -2848,7 +4115,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2870,14 +4137,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2973,6 +4240,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/expert-plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Next: expert plugins, MCP and optimisation (v0.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3008,10 +4303,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
             
   
   
@@ -3029,8 +4324,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3235,6 +4530,128 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#projects-tokens-and-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Projects, tokens and usage v0.3
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Projects, tokens and usage v0.3">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quotas-and-rate-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quotas and rate limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#endpoints-webhooks-and-sharing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Endpoints, webhooks and sharing v0.4
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Endpoints, webhooks and sharing v0.4">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#promote-a-model-version-to-an-endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Promote a model version to an endpoint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#score-an-endpoint-into-xarray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Score an endpoint into xarray
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#snippets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snippets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#webhooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Webhooks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#render-a-plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Render a plot
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sign-up-verification-deletion-and-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sign-up, verification, deletion and export
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guided-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guided mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#async" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3294,10 +4711,11 @@ demo files: <code>make dev</code>, then <code>uv run python scripts/seed.py --ex
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">health</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">ready</span><span class="p">()</span>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">base_url</span><span class="p">,</span> <span class="n">health</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">health</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
 </span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>http://127.0.0.1:8000 ok 0.2.0
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>http://127.0.0.1:8000 ok 0.4.0
 </span></code></pre></div>
-<p><code>Client()</code> resolves its settings like the CLI: arguments (<code>Client("http://…", token=…)</code>),
-then <code>MAPI_URL</code> (or <code>MAPI_API_URL</code>), <code>MAPI_TOKEN</code> and <code>MAPI_PROFILE</code>, then a profile in
+<p><code>Client()</code> resolves its settings like the CLI: arguments (<code>Client("http://…", token=…,
+project=…)</code>), then <code>MAPI_URL</code> (or <code>MAPI_API_URL</code>), <code>MAPI_TOKEN</code>, <code>MAPI_PROJECT</code> and
+<code>MAPI_PROFILE</code>, then a profile in
 <code>~/.config/mapi/config.toml</code>, then <code>http://127.0.0.1:8000</code>. <code>api.config.sources</code> says where
 each value came from. Use the client as a context manager (<code>with Client() as api:</code>) or call
 <code>close()</code>.</p>
@@ -3501,27 +4919,185 @@ Pydantic model. <code>apiVersion</code> and <code>kind</code> are filled in for 
 individual <code>issues</code>. Both requests above failed during static checks, before any run
 was created. Transport failures raise <code>mapi_client.TransportError</code>; responses the client
 cannot parse raise <code>UnexpectedResponse</code>.</p>
-<p>Idempotent calls (<code>GET</code>s, and <code>POST</code>s with an idempotency key) are retried on 429, 502, 503,
-504 and connection errors, honouring <code>Retry-After</code> (<code>ClientConfig.max_retries</code>, default 2).</p>
+<p>Idempotent calls (<code>GET</code>s, and <code>POST</code>s with an idempotency key) are retried on 502, 503,
+504 and connection errors, honouring <code>Retry-After</code> (<code>ClientConfig.max_retries</code>, default 2).
+<code>429</code> answers are handled as described in <a href="#quotas-and-rate-limits">Quotas and rate limits</a>.</p>
+<h2 id="projects-tokens-and-usage">Projects, tokens and usage <span class="mapi-badge">v0.3</span><a class="headerlink" href="#projects-tokens-and-usage" title="Permanent link">&para;</a></h2>
+<p>On a multi-tenant API the client needs credentials and a project
+(<a href="../../concepts/tenancy-and-auth/">Tenancy and authentication</a>). Credentials come from an
+API token (<code>Client(token=…)</code>, <code>MAPI_TOKEN</code> or the profile) or, when none is set, from the
+sign-in <code>mapi login</code> stored for the profile; the client renews that sign-in by itself and
+only sends it to the API it was made for. The project comes from <code>Client(project=…)</code>,
+<code>MAPI_PROJECT</code> or the profile (<code>mapi use</code>), and is sent as <code>X-Mapi-Project</code> on
+project-scoped requests only:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">me</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">me</span><span class="p">()</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="k">for</span> <span class="n">tenant</span> <span class="ow">in</span> <span class="n">me</span><span class="o">.</span><span class="n">tenants</span><span class="p">:</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    <span class="k">for</span> <span class="n">project</span> <span class="ow">in</span> <span class="n">tenant</span><span class="o">.</span><span class="n">projects</span><span class="p">:</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">project</span><span class="o">.</span><span class="n">tenant_id</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">project</span><span class="o">.</span><span class="n">project_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">project</span><span class="o">.</span><span class="n">role</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="n">api</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s2">"acme/growth"</span><span class="p">)</span>  <span class="c1"># X-Mapi-Project on every project-scoped request from now on</span>
+</span></code></pre></div>
+<p>Mint a token for a program. The secret is returned exactly once and is kept out of <code>repr</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">created</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">tokens</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    <span class="s2">"atlas-optimiser"</span><span class="p">,</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>    <span class="p">[</span><span class="s2">"score:geo-mmm-prod"</span><span class="p">,</span> <span class="s2">"models:read"</span><span class="p">],</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    <span class="n">expires_in_days</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    <span class="n">rate_limit_per_minute</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="p">)</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">created</span><span class="o">.</span><span class="n">token</span><span class="o">.</span><span class="n">display</span><span class="p">,</span> <span class="n">created</span><span class="o">.</span><span class="n">token</span><span class="o">.</span><span class="n">expires_at</span><span class="o">.</span><span class="n">date</span><span class="p">())</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="n">secret</span> <span class="o">=</span> <span class="n">created</span><span class="o">.</span><span class="n">secret</span>  <span class="c1"># the only copy: put it in your secret store now</span>
+</span></code></pre></div>
+<p>Usage reports and runs carry exact costs in integer micro-units of the currency:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">report</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s2">"month"</span><span class="p">,</span> <span class="n">group_by</span><span class="o">=</span><span class="s2">"resource_class"</span><span class="p">)</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">totals</span><span class="o">.</span><span class="n">amount_micros</span> <span class="o">/</span> <span class="mf">1e6</span><span class="p">,</span> <span class="n">report</span><span class="o">.</span><span class="n">totals</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="k">for</span> <span class="n">quota</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">quotas</span><span class="p">:</span>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">quota</span><span class="o">.</span><span class="n">limit_name</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">quota</span><span class="o">.</span><span class="n">fraction_used</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">quota</span><span class="o">.</span><span class="n">resets_at</span><span class="p">)</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="n">run</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"run_01jaf3q2x8m9v7k5h4g3f2e1d0"</span><span class="p">)</span>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">amount_micros</span><span class="p">,</span> <span class="n">run</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span> <span class="n">run</span><span class="o">.</span><span class="n">cost</span><span class="o">.</span><span class="n">estimated</span><span class="p">)</span>
+</span></code></pre></div>
+<p><code>api.tenants</code> covers tenants, projects and members; <code>api.admin</code> the operator endpoints
+(tenants, quotas, kill switches, executors, the audit log). See the <a href="#reference">reference</a>.</p>
+<h3 id="quotas-and-rate-limits">Quotas and rate limits<a class="headerlink" href="#quotas-and-rate-limits" title="Permanent link">&para;</a></h3>
+<p>A <code>429</code> answer carries one of two codes. <code>RATE_LIMITED</code> means the request was refused before
+the server acted on it, so the client waits (<code>Retry-After</code>, then exponential back-off with a
+little jitter) and sends it again, whatever the method; it raises <code>RateLimited</code> only after
+<code>RetryPolicy.rate_limit_retries</code> attempts, or at once when the server asks for a wait longer
+than <code>max_rate_limit_wait</code>. <code>QUOTA_EXCEEDED</code> is raised at once as <code>QuotaExceeded</code>;
+<code>retry_after_of(exc)</code> says when the quota window resets (<code>None</code> when only finishing running
+work frees capacity):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="k">try</span><span class="p">:</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>    <span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="s2">"spc_01jaf3q2x8m9v7k5h4g3f2e1d0"</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="k">except</span> <span class="n">QuotaExceeded</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    <span class="n">wait</span> <span class="o">=</span> <span class="n">retry_after_of</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>  <span class="c1"># seconds until the quota window resets (None: no reset)</span>
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">exc</span><span class="o">.</span><span class="n">detail</span><span class="p">,</span> <span class="n">wait</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Tune the behaviour with a <code>RetryPolicy</code> (<code>max_quota_wait</code> lets a short quota window be
+waited out too):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="n">patient</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span>
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    <span class="n">retry</span><span class="o">=</span><span class="n">RetryPolicy</span><span class="p">(</span><span class="n">rate_limit_retries</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">max_rate_limit_wait</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">max_quota_wait</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="p">)</span>
+</span></code></pre></div>
+<h2 id="endpoints-webhooks-and-sharing">Endpoints, webhooks and sharing <span class="mapi-badge">v0.4</span><a class="headerlink" href="#endpoints-webhooks-and-sharing" title="Permanent link">&para;</a></h2>
+<p>The examples in this section come from <code>docs/snippets/client_integrations.py</code>, which runs
+offline against a stand-in API. The concepts are in <a href="../../concepts/integrations/">Integrations</a>.</p>
+<h3 id="promote-a-model-version-to-an-endpoint">Promote a model version to an endpoint<a class="headerlink" href="#promote-a-model-version-to-an-endpoint" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="n">endpoint</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">endpoints</span><span class="o">.</span><span class="n">promote</span><span class="p">(</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    <span class="s2">"geo-mmm-prod"</span><span class="p">,</span>
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    <span class="s2">"model://growth/eu-geo-mmm@v3"</span><span class="p">,</span>
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    <span class="n">expected_revision</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>  <span class="c1"># 409 CONFLICT if someone else promoted in between</span>
+</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="p">)</span>
+</span><span id="__span-23-6"><a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">endpoint</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span> <span class="s2">"-&gt;"</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">.</span><span class="n">model_ref</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">.</span><span class="n">gate</span><span class="o">.</span><span class="n">outcome</span><span class="p">)</span>
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>endpoint://growth/geo-mmm-prod -&gt; model://growth/eu-geo-mmm@v3 allowed
+</span></code></pre></div>
+<p>Promotion goes through the <a href="../../concepts/integrations/#promotion-gate">promotion gate</a>: a
+version whose scorecard warns raises <code>MapiError</code> with code <code>OVERRIDE_REQUIRED</code> until a
+signed-in project admin repeats the call with <code>override=True, reason="…"</code>; <code>PROMOTION_BLOCKED</code>
+cannot be overridden. <code>api.endpoints</code> also has <code>list</code>, <code>get</code>, <code>history</code>, <code>rollback(alias,
+reason, to_revision=…)</code> and <code>delete</code>.</p>
+<h3 id="score-an-endpoint-into-xarray">Score an endpoint into xarray<a class="headerlink" href="#score-an-endpoint-into-xarray" title="Permanent link">&para;</a></h3>
+<p><code>api.endpoint(alias)</code> returns a <code>RemoteEndpoint</code>: <code>schema()</code> says what to send, <code>validate(ds)</code>
+checks a payload without running it, and <code>score(ds)</code> sends an <code>xr.Dataset</code> inline (as
+XrJSON, up to 5 MB) and returns the scored <code>xr.Dataset</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="n">geo_mmm</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">endpoint</span><span class="p">(</span><span class="s2">"geo-mmm-prod"</span><span class="p">)</span>
+</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="n">schema</span> <span class="o">=</span> <span class="n">geo_mmm</span><span class="o">.</span><span class="n">schema</span><span class="p">()</span>
+</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">snapshot</span><span class="o">.</span><span class="n">input_schema</span><span class="o">.</span><span class="n">vars</span><span class="p">))</span>
+</span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>
+</span><span id="__span-25-5"><a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="n">plan</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+</span><span id="__span-25-6"><a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>    <span class="p">{</span><span class="s2">"spend_local"</span><span class="p">:</span> <span class="p">((</span><span class="s2">"market"</span><span class="p">,</span> <span class="s2">"channel"</span><span class="p">,</span> <span class="s2">"date"</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[[</span><span class="mf">1200.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">5300.0</span><span class="p">]]]))},</span>
+</span><span id="__span-25-7"><a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>    <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s2">"market"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"de"</span><span class="p">],</span> <span class="s2">"channel"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"search"</span><span class="p">,</span> <span class="s2">"tv"</span><span class="p">],</span> <span class="s2">"date"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"2025-12-30"</span><span class="p">]},</span>
+</span><span id="__span-25-8"><a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a><span class="p">)</span>
+</span><span id="__span-25-9"><a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a><span class="n">result</span> <span class="o">=</span> <span class="n">geo_mmm</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># inline XrJSON in, xr.Dataset out</span>
+</span><span id="__span-25-10"><a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"revenue_local"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">stat</span><span class="o">=</span><span class="s2">"mean"</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>['revenue_local', 'spend_local']
+</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>[[13260.]]
+</span></code></pre></div>
+<p><code>score</code> returns the <code>summary</code> group (a <code>stat</code> dim: <code>mean</code>, <code>hdi_90_lower</code>, <code>hdi_90_upper</code>,
+...); pass <code>group="draws"</code> with <code>output={"draws": 100}</code> for posterior draws along <code>sample</code>,
+or <code>group="delta/summary"</code> for a counterfactual. Any other <code>EndpointScoreCall</code> field is a
+keyword: <code>mode="forecast"</code>, <code>horizon={"dim": "time", "periods": 8}</code>, <code>scenario=plan_ds</code>,
+<code>future_covariates="carry_last"</code>. Like <code>models.score</code>, it sends <code>Prefer: wait=60</code> and
+repeats the call with the same idempotency key until the run is done (<code>timeout=</code> bounds the
+wait), so a slow score never creates two runs. <code>api.endpoints.score(alias, call)</code> is the
+lower-level call: it returns a <code>ScoreResult</code> with the run, the output links and the
+downloaded tree. Inline payloads need the <code>xarray</code> extra; larger data is uploaded as a
+dataset and sent as <code>data="dataset://growth/plan@v2"</code>.</p>
+<p><code>mapi_client.xrjson.encode(ds)</code> and <code>decode(payload)</code> convert between <code>xr.Dataset</code> and the
+XrJSON payload (the SDK wire format: dates as ISO strings, <code>NaN</code> as <code>null</code>, size-checked
+before anything is sent).</p>
+<h3 id="snippets">Snippets<a class="headerlink" href="#snippets" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="n">python</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">endpoints</span><span class="o">.</span><span class="n">snippets</span><span class="p">(</span><span class="s2">"geo-mmm-prod"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"python"</span><span class="p">])</span><span class="o">.</span><span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">python</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="mi">2</span><span class="p">])</span>
+</span></code></pre></div>
+<p><code>api.endpoints.snippets(alias, languages)</code> returns the code the
+<a href="../../concepts/integrations/#snippets">Integrations hub</a> shows, in Python, TypeScript, curl,
+R, Apps Script, Atlas and a notebook cell. The Python snippet is exactly the
+<code>api.endpoints.score(...)</code> call above, the notebook cell the <code>api.endpoint(alias).score(...)</code>
+form; both run as generated (the client's tests execute them).</p>
+<h3 id="webhooks">Webhooks<a class="headerlink" href="#webhooks" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="n">created</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">webhooks</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+</span><span id="__span-28-2"><a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>    <span class="s2">"https://hooks.example.com/mapi"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"model.version.ready"</span><span class="p">,</span> <span class="s2">"endpoint.promoted"</span><span class="p">]</span>
+</span><span id="__span-28-3"><a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="p">)</span>
+</span><span id="__span-28-4"><a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="n">signing_secret</span> <span class="o">=</span> <span class="n">created</span><span class="o">.</span><span class="n">secret</span>  <span class="c1"># the only copy: store it with the receiver</span>
+</span><span id="__span-28-5"><a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">created</span><span class="o">.</span><span class="n">webhook</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">created</span><span class="o">.</span><span class="n">webhook</span><span class="o">.</span><span class="n">secret_hint</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The signing secret is returned once (by <code>create</code> and <code>rotate_secret</code>) and kept out of
+<code>repr</code>. <code>api.webhooks</code> also has <code>list</code>, <code>get</code>, <code>update</code>, <code>delete</code>, <code>deliveries(id,
+status=…)</code> and <code>replay(id, delivery_id)</code>. To check deliveries on the receiving side, see
+<a href="../webhook-receivers/">Receiving webhooks</a>.</p>
+<h3 id="render-a-plot">Render a plot<a class="headerlink" href="#render-a-plot" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>    <span class="n">render</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">plots</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+</span><span id="__span-29-2"><a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>        <span class="n">model_id</span><span class="o">=</span><span class="s2">"mdl_01jaf3c1d2e3f4g5h6j7k8m9n0"</span><span class="p">,</span>
+</span><span id="__span-29-3"><a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>        <span class="n">version</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-29-4"><a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>        <span class="n">plot_id</span><span class="o">=</span><span class="s2">"mmm.response_curves"</span><span class="p">,</span>
+</span><span id="__span-29-5"><a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>        <span class="nb">format</span><span class="o">=</span><span class="s2">"png"</span><span class="p">,</span>
+</span><span id="__span-29-6"><a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a>        <span class="n">width</span><span class="o">=</span><span class="mi">1200</span><span class="p">,</span>
+</span><span id="__span-29-7"><a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a>    <span class="p">)</span>
+</span><span id="__span-29-8"><a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a>    <span class="n">path</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">plots</span><span class="o">.</span><span class="n">download_render</span><span class="p">(</span><span class="n">render</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"response_curves.png"</span><span class="p">)</span>
+</span></code></pre></div>
+<p><code>plots.render</code> takes a PlotSpec, a saved plot (<code>saved_plot_id=</code>) or a model version's plot,
+waits for the sandboxed render like a score, and <code>download_render</code> fetches the file
+(CRC32C-checked). <code>plots.save</code>, <code>saved</code>, <code>get_saved</code> and <code>delete_saved</code> manage saved plots;
+<code>create_embed</code> returns a read-only embed link once (<code>embeds</code>, <code>revoke_embed</code>, and the public
+<code>embed(token)</code> view). See <a href="../sharing-plots/">Sharing plots</a>.</p>
+<h3 id="sign-up-verification-deletion-and-export">Sign-up, verification, deletion and export<a class="headerlink" href="#sign-up-verification-deletion-and-export" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-30-1"><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>    <span class="n">export</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">tenants</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">"acme"</span><span class="p">)</span>
+</span><span id="__span-30-2"><a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>    <span class="n">archive</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">tenants</span><span class="o">.</span><span class="n">download_export</span><span class="p">(</span><span class="s2">"acme"</span><span class="p">,</span> <span class="n">export</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"acme-export.zip"</span><span class="p">)</span>
+</span></code></pre></div>
+<p><code>download_export</code> waits for the export to be ready, downloads it through the storage client
+(never with your API credentials) to a temporary file and renames it into place once its
+size matches. <code>api.tenants</code> also has <code>verification</code>, <code>request_deletion(tenant_id,
+confirm=tenant_id)</code>, <code>deletion</code> and <code>cancel_deletion</code>; <code>api.signup(...)</code> and
+<code>api.verify_email(token)</code> are the public sign-up calls (sent without credentials). Operators
+have <code>api.admin.signups</code>, <code>review_signup</code>, <code>set_verification</code> and <code>retry_deletion</code>. See
+<a href="../data-deletion/">Deleting and exporting data</a>.</p>
+<h3 id="guided-mode">Guided mode<a class="headerlink" href="#guided-mode" title="Permanent link">&para;</a></h3>
+<p><code>api.guided</code> drives <a href="../../concepts/guided-mode/">Guided mode</a> from code: <code>templates()</code> and
+<code>template(id)</code>, <code>detect_roles(template_id, columns=[…] | dataset="dataset://…")</code>,
+<code>draft(template_id=…, name=…, dataset=…, answers={…})</code> (the ingest mapping, the <code>ModelSpec</code>
+and its YAML; nothing is stored), <code>compile({...})</code> (the <code>ScoreRequest</code> a what-if, forecast
+or preset stands for) and <code>preview_priors(business_priors, spec_id=…, revision=…)</code> (a
+sandboxed <code>translate_priors</code> run, waited for).</p>
 <h2 id="async">Async<a class="headerlink" href="#async" title="Permanent link">&para;</a></h2>
 <p><code>AsyncClient</code> has the same resources and arguments; calls are awaited and lists are
 iterated with <code>async for</code>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncClient</span>
-</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>
-</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>
-</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">recent_fits</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">aapi</span><span class="p">:</span>  <span class="c1"># same resources and arguments, awaited</span>
-</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>        <span class="n">found</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="__span-18-9"><a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>        <span class="k">async</span> <span class="k">for</span> <span class="n">run</span> <span class="ow">in</span> <span class="n">aapi</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">list</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"fit"</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">n</span><span class="p">):</span>  <span class="c1"># follows next_cursor lazily</span>
-</span><span id="__span-18-10"><a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>            <span class="n">found</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">run</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">run</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="__span-18-11"><a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">found</span><span class="p">)</span> <span class="o">==</span> <span class="n">n</span><span class="p">:</span>
-</span><span id="__span-18-12"><a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>                <span class="k">break</span>
-</span><span id="__span-18-13"><a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>        <span class="k">return</span> <span class="n">found</span>
-</span><span id="__span-18-14"><a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>
-</span><span id="__span-18-15"><a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>
-</span><span id="__span-18-16"><a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a><span class="nb">print</span><span class="p">(</span><span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">recent_fits</span><span class="p">()))</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-31-1"><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+</span><span id="__span-31-2"><a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>
+</span><span id="__span-31-3"><a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncClient</span>
+</span><span id="__span-31-4"><a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>
+</span><span id="__span-31-5"><a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>
+</span><span id="__span-31-6"><a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">recent_fits</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="__span-31-7"><a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">aapi</span><span class="p">:</span>  <span class="c1"># same resources and arguments, awaited</span>
+</span><span id="__span-31-8"><a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a>        <span class="n">found</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-31-9"><a id="__codelineno-31-9" name="__codelineno-31-9" href="#__codelineno-31-9"></a>        <span class="k">async</span> <span class="k">for</span> <span class="n">run</span> <span class="ow">in</span> <span class="n">aapi</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">list</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"fit"</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">n</span><span class="p">):</span>  <span class="c1"># follows next_cursor lazily</span>
+</span><span id="__span-31-10"><a id="__codelineno-31-10" name="__codelineno-31-10" href="#__codelineno-31-10"></a>            <span class="n">found</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">run</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">run</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="__span-31-11"><a id="__codelineno-31-11" name="__codelineno-31-11" href="#__codelineno-31-11"></a>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">found</span><span class="p">)</span> <span class="o">==</span> <span class="n">n</span><span class="p">:</span>
+</span><span id="__span-31-12"><a id="__codelineno-31-12" name="__codelineno-31-12" href="#__codelineno-31-12"></a>                <span class="k">break</span>
+</span><span id="__span-31-13"><a id="__codelineno-31-13" name="__codelineno-31-13" href="#__codelineno-31-13"></a>        <span class="k">return</span> <span class="n">found</span>
+</span><span id="__span-31-14"><a id="__codelineno-31-14" name="__codelineno-31-14" href="#__codelineno-31-14"></a>
+</span><span id="__span-31-15"><a id="__codelineno-31-15" name="__codelineno-31-15" href="#__codelineno-31-15"></a>
+</span><span id="__span-31-16"><a id="__codelineno-31-16" name="__codelineno-31-16" href="#__codelineno-31-16"></a><span class="nb">print</span><span class="p">(</span><span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">recent_fits</span><span class="p">()))</span>
 </span></code></pre></div>
 <h2 id="reference">Reference<a class="headerlink" href="#reference" title="Permanent link">&para;</a></h2>
 <table>
@@ -3558,12 +5134,43 @@ iterated with <code>async for</code>:</p>
 </tr>
 <tr>
 <td><code>plots</code></td>
-<td><code>list</code>, <code>get</code>, <code>validate</code></td>
+<td><code>list</code>, <code>get</code>, <code>validate</code>; v0.4: <code>save</code>, <code>saved</code>, <code>get_saved</code>, <code>delete_saved</code>, <code>render</code>, <code>render_status</code>, <code>render_output</code>, <code>download_render</code>, <code>create_embed</code>, <code>embeds</code>, <code>revoke_embed</code>, <code>embed</code></td>
+</tr>
+<tr>
+<td><code>guided</code> (v0.4)</td>
+<td><code>templates</code>, <code>template</code>, <code>detect_roles</code>, <code>draft</code>, <code>import_bayesinsight</code>, <code>compile</code>, <code>translate_priors</code>, <code>prior_translation</code>, <code>wait_prior_translation</code>, <code>preview_priors</code></td>
+</tr>
+<tr>
+<td><code>endpoints</code> (v0.4)</td>
+<td><code>list</code>, <code>get</code>, <code>promote</code>, <code>delete</code>, <code>history</code>, <code>rollback</code>, <code>schema</code>, <code>validate</code>, <code>submit</code>, <code>score</code>, <code>snippets</code>; <code>api.endpoint(alias)</code>: <code>info</code>, <code>schema</code>, <code>history</code>, <code>snippets</code>, <code>validate</code>, <code>score</code>, <code>score_result</code></td>
+</tr>
+<tr>
+<td><code>webhooks</code> (v0.4)</td>
+<td><code>list</code>, <code>create</code>, <code>get</code>, <code>update</code>, <code>delete</code>, <code>rotate_secret</code>, <code>deliveries</code>, <code>replay</code></td>
+</tr>
+<tr>
+<td><code>tenants</code> (v0.3)</td>
+<td><code>list</code>, <code>get</code>, <code>rename</code>, <code>projects</code>, <code>create_project</code>, <code>update_project</code>, <code>delete_project</code>, <code>members</code>, <code>add_member</code>, <code>set_role</code>, <code>remove_member</code>, <code>usage</code>, <code>audit</code>; v0.4: <code>verification</code>, <code>request_deletion</code>, <code>deletion</code>, <code>cancel_deletion</code>, <code>export</code>, <code>export_status</code>, <code>wait_export</code>, <code>download_export</code></td>
+</tr>
+<tr>
+<td><code>tokens</code> (v0.3)</td>
+<td><code>list</code>, <code>create</code>, <code>get</code>, <code>revoke</code></td>
+</tr>
+<tr>
+<td><code>usage</code> (v0.3)</td>
+<td><code>get</code> (the project), <code>tenant</code></td>
+</tr>
+<tr>
+<td><code>admin</code> (v0.3, operators)</td>
+<td><code>tenants</code>, <code>tenant</code>, <code>create_tenant</code>, <code>update_tenant</code>, <code>quotas</code>, <code>set_quota</code>, <code>delete_quota</code>, <code>kill_switches</code>, <code>set_kill_switches</code>, <code>executors</code>, <code>executor</code>, <code>audit</code>; v0.4: <code>signups</code>, <code>review_signup</code>, <code>set_verification</code>, <code>retry_deletion</code></td>
 </tr>
 </tbody>
 </table>
 <p>List calls return lazy paginators that follow <code>next_cursor</code>. <code>api.health()</code> and <code>api.ready()</code>
-call <code>/healthz</code> and <code>/readyz</code>. The DTOs are documented in
+call <code>/healthz</code> and <code>/readyz</code>; <code>api.me()</code> calls <code>/v1/me</code> and <code>api.use(project)</code> changes the
+selected project; <code>api.signup()</code>, <code>api.verify_email()</code> and <code>api.endpoint(alias)</code> are v0.4.
+<code>mapi_client.webhooks</code> verifies deliveries, <code>mapi_client.atlas</code> adapts an endpoint to
+<a href="../atlas/">Atlas</a> and <code>mapi_client.xrjson</code> encodes inline payloads. The DTOs are documented in
 <a href="../../reference/api/spec/#rest-dtos"><code>mapi_spec</code></a> and the endpoints in the
 <a href="../../reference/http-api/">HTTP API reference</a>.</p>
 

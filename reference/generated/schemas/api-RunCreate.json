@@ -32,6 +32,17 @@
       "title": "Aggregation",
       "type": "object"
     },
+    "FutureCovariates": {
+      "description": "Where future values of ``future_required`` covariates come from in a forecast (M3).\n\n``supplied`` (default) needs them in the request's data or scenario\n(``MISSING_FUTURE_COVARIATE`` otherwise). The other policies let the runner extend them\nover the horizon, per series, inside the sandbox: ``carry_last`` repeats the last\nobserved value, ``seasonal_naive`` repeats the value one season earlier (the time dim's\nyearly period), ``zero`` sets them to zero (e.g. \"no spend planned\").",
+      "enum": [
+        "supplied",
+        "carry_last",
+        "seasonal_naive",
+        "zero"
+      ],
+      "title": "FutureCovariates",
+      "type": "string"
+    },
     "Horizon": {
       "additionalProperties": false,
       "properties": {
@@ -259,7 +270,8 @@
         "sweep",
         "backtest",
         "sbc",
-        "campaign"
+        "campaign",
+        "translate_priors"
       ],
       "title": "RunKind",
       "type": "string"
@@ -289,6 +301,18 @@
           ],
           "default": null,
           "title": "Data"
+        },
+        "future_covariates": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FutureCovariates"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M3: how forecasts get future covariates (default: supplied)"
         },
         "horizon": {
           "anyOf": [

@@ -155,7 +155,22 @@
         "TIMEOUT",
         "SANDBOX_VIOLATION",
         "CANCELLED",
-        "INTERNAL_ERROR"
+        "INTERNAL_ERROR",
+        "GUIDED_ANSWERS_INVALID",
+        "BUSINESS_PRIORS_INVALID",
+        "CALIBRATION_UNSUPPORTED",
+        "IMPORT_UNSUPPORTED",
+        "SCENARIO_OUT_OF_RANGE",
+        "PROMOTION_BLOCKED",
+        "OVERRIDE_REQUIRED",
+        "WEBHOOK_URL_BLOCKED",
+        "WEBHOOK_SIGNATURE_INVALID",
+        "EMBED_NOT_ALLOWED",
+        "LINK_EXPIRED",
+        "EMAIL_NOT_ALLOWED",
+        "TERMS_NOT_ACCEPTED",
+        "EMAIL_NOT_VERIFIED",
+        "IDENTITY_VERIFICATION_REQUIRED"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -786,16 +801,72 @@
       "type": "object"
     },
     "RunCost": {
-      "description": "Cost fields (placeholders in M1: always ``None``; populated by the M2 ledger).",
+      "description": "Cost of a run (all attempts). ``estimated`` is true until an ``actual`` ledger entry\nexists; ``usd`` is kept for v0.2 clients and is set only when the currency is USD.",
       "examples": [
         {
           "estimated": true,
           "gib_seconds": null,
           "usd": null,
           "vcpu_seconds": null
+        },
+        {
+          "amount_micros": 31200,
+          "attempts_billed": 1,
+          "currency": "USD",
+          "estimate_micros": 30000,
+          "estimated": false,
+          "gib_seconds": 4800,
+          "price_version": "cloudrun-list-2026-10",
+          "usd": 0.0312,
+          "vcpu_seconds": 1200
         }
       ],
       "properties": {
+        "amount_micros": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount Micros"
+        },
+        "attempts_billed": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Attempts Billed",
+          "type": "integer"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "estimate_micros": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pre-run estimate",
+          "title": "Estimate Micros"
+        },
         "estimated": {
           "default": true,
           "title": "Estimated",
@@ -812,6 +883,18 @@
           ],
           "default": null,
           "title": "Gib Seconds"
+        },
+        "price_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Price Version"
         },
         "usd": {
           "anyOf": [
@@ -856,7 +939,8 @@
         "sweep",
         "backtest",
         "sbc",
-        "campaign"
+        "campaign",
+        "translate_priors"
       ],
       "title": "RunKind",
       "type": "string"
@@ -900,6 +984,124 @@
       "title": "RunnerPhase",
       "type": "string"
     },
+    "ScoreSummary": {
+      "description": "The requested summary of a score run as plain tables (``summary.json``), inlined in\n:class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without\nzarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the\n``score.zarr.zip`` output for everything).",
+      "examples": [
+        {
+          "tables": [
+            {
+              "columns": [
+                "geo",
+                "time",
+                "mean",
+                "hdi_90_lower",
+                "hdi_90_upper"
+              ],
+              "rows": [
+                [
+                  "de",
+                  "2026-01-05",
+                  1520.4,
+                  1402.1,
+                  1633.9
+                ]
+              ],
+              "variable": "revenue"
+            }
+          ],
+          "truncated": false
+        }
+      ],
+      "properties": {
+        "tables": {
+          "items": {
+            "$ref": "#/$defs/ScoreSummaryTable"
+          },
+          "maxItems": 1000,
+          "title": "Tables",
+          "type": "array"
+        },
+        "truncated": {
+          "default": false,
+          "title": "Truncated",
+          "type": "boolean"
+        }
+      },
+      "title": "ScoreSummary",
+      "type": "object"
+    },
+    "ScoreSummaryTable": {
+      "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.",
+      "examples": [
+        {
+          "columns": [
+            "geo",
+            "time",
+            "mean",
+            "hdi_90_lower",
+            "hdi_90_upper"
+          ],
+          "rows": [
+            [
+              "de",
+              "2026-01-05",
+              1520.4,
+              1402.1,
+              1633.9
+            ]
+          ],
+          "variable": "revenue"
+        }
+      ],
+      "properties": {
+        "columns": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 256,
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "title": "Rows",
+          "type": "array"
+        },
+        "variable": {
+          "maxLength": 256,
+          "title": "Variable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "variable",
+        "columns",
+        "rows"
+      ],
+      "title": "ScoreSummaryTable",
+      "type": "object"
+    },
     "Severity": {
       "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
       "enum": [
@@ -913,7 +1115,7 @@
   },
   "$id": "https://schemas.mapi.dev/v1/api-ScoreCallResult.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "``done`` with output links (200), or the still-running run (202).",
+  "description": "``done`` with output links (200), or the still-running run (202). ``summary`` is the\nrequested summary (mean and HDI by default) inline, once the run succeeded.",
   "examples": [
     {
       "done": true,
@@ -966,6 +1168,17 @@
     },
     "run": {
       "$ref": "#/$defs/Run"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ScoreSummary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [

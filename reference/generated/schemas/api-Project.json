@@ -8,6 +8,13 @@
       "id": "default",
       "name": "Default project",
       "tenant_id": "default"
+    },
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "guided_locked": true,
+      "id": "growth",
+      "name": "Growth",
+      "tenant_id": "acme"
     }
   ],
   "properties": {
@@ -28,6 +35,12 @@
       ],
       "default": null,
       "title": "Description"
+    },
+    "guided_locked": {
+      "default": false,
+      "description": "Persona lock (M3): the web app shows only Guided mode to members below admin. The API still accepts every spec; the lock is a presentation policy.",
+      "title": "Guided Locked",
+      "type": "boolean"
     },
     "id": {
       "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",

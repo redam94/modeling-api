@@ -110,7 +110,8 @@
         "sweep",
         "backtest",
         "sbc",
-        "campaign"
+        "campaign",
+        "translate_priors"
       ],
       "title": "RunKind",
       "type": "string"
