@@ -122,6 +122,8 @@ SERVER_ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "devidp_jwks": _PUBLIC,
     "devidp_authorize": _PUBLIC,
     "devidp_token": _PUBLIC,
+    # dev profile with the outbox mailer only: the e-mails a sign-up sent (e2e tests)
+    "dev_outbox": _PUBLIC,
     # Prometheus scrape: authenticated by its own bearer (MAPI_METRICS_TOKEN), like pushes
     "metrics": RouteAccess(RouteScope.INTERNAL),
 }

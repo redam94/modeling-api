@@ -43,6 +43,7 @@ from mapi_server.api import (
     specs,
     tenancy,
     tokens,
+    trust,
     usage,
 )
 from mapi_server.api import auth as auth_routes
@@ -63,7 +64,8 @@ from mapi_server.services.tenancy import (
     invite_admins,
     seed_dev_accounts,
 )
-from mapi_server.settings import Profile, Settings, SignerKind
+from mapi_server.services.trust import TrustServices
+from mapi_server.settings import MailerKind, Profile, Settings, SignerKind
 from mapi_server.storage import build_object_store
 
 __all__ = [
@@ -208,6 +210,7 @@ def build_context(
         price_table=price_table,
         devidp=devidp,
         oidc=build_oidc(settings, devidp),
+        trust=TrustServices.from_settings(settings),
     )
     aclose = getattr(ctx.store, "aclose", None)
     if owned_store and callable(aclose):
@@ -370,10 +373,13 @@ def create_app(
         models.router,
         models.plots_router,
         internal.router,
+        *trust.ROUTERS,
     ):
         app.include_router(router)
     if settings.devidp_enabled:
         mount_devidp(app, settings)
+    if settings.profile is Profile.DEV and settings.effective_mailer is MailerKind.OUTBOX:
+        trust.mount_dev_outbox(app, settings)
     check_route_access(app)
     return app
 

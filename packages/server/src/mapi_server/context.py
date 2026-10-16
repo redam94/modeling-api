@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from mapi_server.auth.request import RequestAuth
     from mapi_server.devidp import DevIdP
     from mapi_server.services.pubsub import PushVerifier
+    from mapi_server.services.trust import TrustServices
 
 __all__ = ["FinalizeQueue", "NoProjectScope", "ServerContext"]
 
@@ -60,6 +61,8 @@ class ServerContext:
     devidp: DevIdP | None = None
     push_verifier: PushVerifier | None = None
     """Pub/Sub push OIDC verifier (built on first use when push auth is configured)."""
+    trust: TrustServices | None = None
+    """Mailer, e-mail policy and the tenant-deletion hooks (M3 trust lifecycle)."""
     request: RequestAuth | None = None
     """The authenticated caller (request views only; ``None`` in the orchestrator)."""
 

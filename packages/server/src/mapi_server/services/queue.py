@@ -50,6 +50,8 @@ class ProcrastinateQueue:
 
         self._task: Any = finalize_run
         self._opened = False
+        self.queues: list[str] = [FINALIZE_QUEUE]
+        """Queues the worker serves (other components add theirs, e.g. ``lifecycle``)."""
 
     async def open(self) -> None:
         if not self._opened:
@@ -103,10 +105,10 @@ class ProcrastinateQueue:
             )
 
     async def run_worker(self, *, wait: bool = True) -> None:
-        """Run the procrastinate worker on the finalize queue (``wait=False`` drains once)."""
+        """Run the procrastinate worker on :attr:`queues` (``wait=False`` drains once)."""
         await self.open()
         await self.app.run_worker_async(
-            queues=[FINALIZE_QUEUE],
+            queues=list(self.queues),
             wait=wait,
             concurrency=4,
             install_signal_handlers=False,
