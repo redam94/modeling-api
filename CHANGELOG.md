@@ -429,6 +429,9 @@ milestone releases are tagged on `main`.
   promotions that needed attention across tenants (gate overrides with their reason and
   failing checks, blocked promotions and those refused for want of an override), from the
   audit log. There is still no queue: the gate decides each promotion at once.
+- **web**: a project could be locked to Guided mode only through the API. Project admins now
+  have **Lock … to Guided mode** under Settings > Mode (`PATCH …/projects/{project_id}`,
+  audited as before).
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

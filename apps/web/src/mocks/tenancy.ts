@@ -600,6 +600,27 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
       PROJECT_NAMES[key] = body.name;
       return HttpResponse.json(created, { status: 201 });
     }),
+    http.patch(`${API}/v1/tenants/:tenant/projects/:project`, async ({ params, request }) => {
+      const p = persona()!;
+      const key = `${String(params.tenant)}/${String(params.project)}`;
+      const row = state.projects.get(key);
+      if (!row) return problem(404, "NOT_FOUND", "Not found", "no such project");
+      if (rank(projectRole(p, key)) < rank("admin")) return problem(403, "FORBIDDEN", "Not allowed", "only project admins change a project");
+      const body = (await request.json()) as { name?: string | null; description?: string | null; guided_locked?: boolean | null };
+      const next = { ...row, ...(body.name ? { name: body.name } : {}), ...("description" in body ? { description: body.description ?? null } : {}) };
+      state.projects.set(key, next);
+      if (typeof body.guided_locked === "boolean") {
+        const locked = mockGuidedLocked();
+        if (body.guided_locked) locked.add(key);
+        else locked.delete(key);
+        try {
+          localStorage.setItem(MOCK_GUIDED_LOCK_KEY, [...locked].join(","));
+        } catch {
+          // storage unavailable: the lock lasts for this response only
+        }
+      }
+      return HttpResponse.json({ ...next, guided_locked: mockGuidedLocked().has(key) });
+    }),
 
     // ------------------------------------------------------------------ members
     http.get(`${API}/v1/tenants/:tenant/members`, ({ params }) => page(state.members.filter((m) => m.tenant_id === params.tenant && m.project_id == null))),

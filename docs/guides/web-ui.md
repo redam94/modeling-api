@@ -274,7 +274,10 @@ the [generated catalogs](../reference/generated/models-catalog.md).
 
 ![Settings: appearance, mode and connection](../assets/screenshots/settings.png){ .mapi-shot }
 
-**Appearance** and **Mode** are stored in this browser. **Connection** shows the API and plot
+**Appearance** and **Mode** are stored in this browser. Project admins also find **Lock
+… to Guided mode** under Mode <span class="mapi-badge">v0.4</span>: the project's persona lock
+(stored on the server and audited; see [Guided mode](../concepts/guided-mode.md#the-persona-lock)).
+**Connection** shows the API and plot
 sandbox the app was built for (`VITE_API_BASE`, `VITE_PLOTS_ORIGIN`), the server and contract
 versions, and the latency of each readiness check.
 

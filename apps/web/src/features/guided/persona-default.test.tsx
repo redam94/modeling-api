@@ -9,7 +9,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import { PublicApp } from "@/features/trust/public-pages";
 import { createHandlers } from "@/mocks/handlers";
-import { PERSONAS } from "@/mocks/tenancy";
+import { MOCK_GUIDED_LOCK_KEY, PERSONAS } from "@/mocks/tenancy";
 import { MOCK_OUTBOX_KEY } from "@/mocks/trust";
 import { renderApp } from "@/test/render-app";
 import { personaOf, useUi } from "@/stores/ui";
@@ -79,6 +79,40 @@ describe("a first visit", () => {
     expect(within(nav).getByRole("link", { name: "Guided" })).toHaveAttribute("href", "/guided");
     expect(within(nav).getByRole("link", { name: "Home" })).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: /Start a guided analysis/ })).toHaveAttribute("href", "/guided");
+  });
+});
+
+describe("the Guided lock", () => {
+  it("is switched on and off by a project admin in Settings", async () => {
+    const user = userEvent.setup();
+    const patches: unknown[] = [];
+    server.events.on("request:start", ({ request }) => {
+      if (request.method === "PATCH" && new URL(request.url).pathname === "/v1/tenants/acme/projects/growth") {
+        void request.clone().json().then((b) => patches.push(b));
+      }
+    });
+    try {
+      renderApp("/settings", "ana");
+      const lock = await screen.findByRole("switch", { name: "Lock Growth to Guided mode" });
+      expect(lock).not.toBeChecked();
+      await user.click(lock);
+      await waitFor(() => expect(lock).toBeChecked());
+      expect(patches).toEqual([{ guided_locked: true }]);
+      expect(screen.getByText(/Members below admin see Guided screens only/)).toBeInTheDocument();
+      await user.click(lock);
+      await waitFor(() => expect(lock).not.toBeChecked());
+      expect(patches).toEqual([{ guided_locked: true }, { guided_locked: false }]);
+    } finally {
+      server.events.removeAllListeners();
+      localStorage.removeItem(MOCK_GUIDED_LOCK_KEY);
+    }
+  });
+
+  it("is not offered below the project admin role", async () => {
+    renderApp("/settings", "rui");
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Mode" })).toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: /to Guided mode/ })).toBeNull();
   });
 });
 

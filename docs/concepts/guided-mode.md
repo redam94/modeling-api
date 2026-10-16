@@ -24,8 +24,9 @@ and the client share. The endpoints are listed in the
 
 Every user picks Guided or Expert in the header, and the choice is remembered (until then, a
 self-service workspace starts in Guided mode and any other in Expert). A project admin
-can **lock a project to Guided mode** (`Project.guided_locked`, set with
-`PATCH /v1/tenants/{tenant_id}/projects/{project_id}`, audited as `project.guided_lock`):
+can **lock a project to Guided mode** (`Project.guided_locked`: **Settings > Mode > Lock
+… to Guided mode** in the web app, or
+`PATCH /v1/tenants/{tenant_id}/projects/{project_id}`; audited as `project.guided_lock`):
 members below admin then only see Guided screens.
 
 The API holds those members to the same line when they **write specs**
