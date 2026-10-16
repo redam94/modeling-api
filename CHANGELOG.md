@@ -230,6 +230,24 @@ milestone releases are tagged on `main`.
     policies, validations and approvals. `apps/web/scripts/gen_workflow_fixtures.py`
     writes their data from `mapi_spec` and a real local run of the canonical template and
     two governed fits (checked by `make web-check` and CI).
+- **web**: the M3.5 screens work as one app.
+  - Navigation per persona: Guided mode lists Guided, **Help me choose** and **Recipes**
+    (the workflow gallery as recipes) first, as does a Guided-locked project; Expert mode
+    has Workflows, Governance and Help me choose (++g++ ++o++).
+  - **Start with this** opens a workflow template as a recipe (Guided) or in the template
+    wizard (Expert), and a governance check in the check catalog.
+  - A finished workflow run links each model it fitted to the Model Explorer and the
+    version's validations (run summary, fit step, outputs); a workflow run's run page opens
+    its monitor, and lineage links the workflow run that fitted a version.
+  - The Model Explorer shows the validation status in its header (a link to the version's
+    validations) and links the latest validation and the policies; a validation links the
+    Model Explorer and the run that computed its checks. Explorer and governance screens
+    share one validation cache and badge.
+  - The Data Explorer offers the readiness workflow with the data bound (`?data=` on the
+    recipe and template wizard pages).
+  - One About card component for every screen (framed or plain, compact for side panels).
+  - Playwright journeys: Data Explorer → recipe run → Model Explorer → validations, and
+    Guided what-if → budget optimisation and back.
 - **client** (v0.5 calls): a request builder for every M3.5 operation of
   `mapi_spec.api.ENDPOINTS` (checked against the contract; the strict coverage test is no
   longer an expected failure) and sync and async resources: `Client.workflows` (documents

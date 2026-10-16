@@ -42,6 +42,13 @@ in the Data Explorer, Guided mode puts the plain reading first and Expert mode e
 
 ![Governance evidence: each check's result, measured value, limit and evidence](../assets/screenshots/explorer-model-governance.png){ .mapi-shot }
 
+The header shows the version's validation status; it links to the version's validations,
+where a new validation is requested. Under *Governance evidence*, **Open this validation**
+leads to the latest one (its status path, the reviewers' decisions and the evidence pack) and
+**Policies** to the governance policies (see [Validate models with governance
+policies](governance.md#in-the-web-app)). When a workflow fitted the version, *Lineage* links
+the workflow run's monitor.
+
 **Compare** (`/models/compare`) puts two to eleven versions side by side: pick each model
 and version (the first is the one the tests use as reference), then **Compare**. The page
 shows the holdout metrics with the best value of each metric marked, the Diebold-Mariano

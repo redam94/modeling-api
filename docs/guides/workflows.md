@@ -71,11 +71,13 @@ gallery. Everything below uses the same endpoints as the rest of this guide.
 
 ### Recipes for Guided users
 
-In Guided mode the page opens on **Recipes**: the gallery templates as About cards (what each
+In Guided mode the sidebar entry reads **Recipes** and the page opens on them: the gallery templates as About cards (what each
 does in plain words, when to use it and when not, what it needs and gives, a tiny example).
 **Run on my data** asks for a dataset and, only when the recipe needs them, the settings it
 cannot guess (the drivers of the marketing-mix recipe); the rest sit under *Fine-tune*. The
-first run creates the project's workflow from the template; later runs reuse it. The run
+first run creates the project's workflow from the template; later runs reuse it. The Data
+Explorer of data over time offers the readiness recipe with that data already chosen
+(*Check it is ready to forecast*). The run
 page then shows each step in plain words as it finishes, with the decisions taken and the
 report's summary.
 
@@ -134,6 +136,11 @@ in the plot sandbox, and a download for file outputs such as derived datasets), 
 it ran with, its sandbox run, fits or child workflow runs with their logs, and its cost.
 **Cancel run** stops a running workflow and its children; the run's cost is shown when it
 finishes.
+
+A model the run fitted opens in the [Model Explorer](model-explorer.md#in-the-web-app):
+**Explore *name* vN** sits under the run's summary when it succeeds, beside the fit step's
+runs and on every `model_version` output, with a **Validation** link to that version's
+validations. The Model Explorer's lineage links back to this run.
 
 ### Schedules and triggers in the app
 
