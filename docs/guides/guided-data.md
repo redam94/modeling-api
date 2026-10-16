@@ -140,6 +140,7 @@ after parsing (`IngestJob` sets the limits; the server's defaults are below).
 | characters per cell or column name | 4,096 (names: 256) | every header and text cell |
 | decompression ratio | 50 × the stored size | gzip CSV (streamed), Parquet, zip archives, netCDF (decoded bytes); files that decode to less than 64 MiB are never refused for their ratio |
 | uncompressed size | the ingest run's scratch budget: 3 GiB (class S), 6 GiB (M), 12 GiB (L) | the same, as an absolute size; the class is the smallest whose dataset cap holds the upload |
+| dataset size | 250 million values, and 8 bytes per value within the scratch budget | the dense dataset a table pivots to (every combination of the dim labels, times the variables), checked before it is built (`PAYLOAD_TOO_LARGE`) |
 
 bzip2, xz and zstd compressed uploads are refused. Every refusal is one plain-language
 message and a suggested action, for example:
@@ -151,6 +152,7 @@ message and a suggested action, for example:
 | text in a spend column | column 'TV' ('spend' for 'tv') has 3 cells that are not numbers | Use plain numbers without currency signs or thousands separators. |
 | not UTF-8 | the upload is not UTF-8 text | Save the file as 'CSV UTF-8' (in Excel: File > Save As > CSV UTF-8). |
 | a decompression bomb | the gzip file expands to more than … bytes | Upload the CSV uncompressed, or split it into several files. |
+| dims that rarely repeat | the mapped dims span 100,000 store x 100,000 day = 10,000,000,000 combinations, so the dataset would hold … values | Most combinations have no row: map fewer columns as dims (keep the others as variables), use a long layout with one id dim, or split the upload. |
 
 A failed ingest marks the dataset version `failed`; its `issues` carry the messages and the
 run's events carry them as diagnostics with `message_plain` and `suggested_action`. Cell

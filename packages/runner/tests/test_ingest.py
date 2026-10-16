@@ -140,6 +140,59 @@ def test_mff_preset_errors() -> None:
         dataset_from_mff(_mff(), MffOptions(roles={"nope": "target"}))
 
 
+def _diagonal(n: int) -> pd.DataFrame:
+    """``n`` rows whose two keys never repeat: a dense cube of ``n x n`` cells."""
+    return pd.DataFrame({"a": [f"a{i}" for i in range(n)], "b": [f"b{i}" for i in range(n)],
+                         "v": 1.0})  # fmt: skip
+
+
+def _diagonal_mapping() -> IngestMapping:
+    return IngestMapping.model_validate(
+        {
+            "format": "csv",
+            "dims": {"a": {"column": "a", "spec": {"kind": "categorical"}},
+                     "b": {"column": "b", "spec": {"kind": "categorical"}}},
+            "vars": {"v": {"column": "v", "role": "target"}},
+        }
+    )  # fmt: skip
+
+
+def test_a_dense_cube_larger_than_the_limits_is_refused_before_it_is_built() -> None:
+    """A small CSV of 'diagonal' rows mapped to two dims asks for n^2 cells (100k rows:
+    1e10 float64, ~80 GB); it fails as PAYLOAD_TOO_LARGE instead of exhausting memory."""
+    from mapi_runner.worker.tabular import IngestLimits
+    from mapi_spec.errors import ErrorCode
+
+    small = IngestLimits(max_cells=10_000)
+    ds, _ = dataset_from_table(_diagonal(100), _diagonal_mapping(), limits=small)
+    assert dict(ds.sizes) == {"a": 100, "b": 100}
+    with pytest.raises(MapiError) as exc:
+        dataset_from_table(_diagonal(101), _diagonal_mapping(), limits=small)
+    assert exc.value.code is ErrorCode.PAYLOAD_TOO_LARGE
+    assert exc.value.pointer == "/mapping/dims"
+    assert "10,201" in exc.value.detail
+    # the default limits refuse the memory bomb outright (and quickly)
+    with pytest.raises(MapiError) as exc:
+        dataset_from_table(_diagonal(100_000), _diagonal_mapping())
+    assert exc.value.code is ErrorCode.PAYLOAD_TOO_LARGE
+    # the byte budget (the class's scratch) applies too
+    tight = IngestLimits(max_uncompressed_bytes=8 * 50 * 50)
+    with pytest.raises(MapiError) as exc:
+        dataset_from_table(_diagonal(51), _diagonal_mapping(), limits=tight)
+    assert exc.value.code is ErrorCode.PAYLOAD_TOO_LARGE
+
+
+def test_the_mff_pivot_is_capped_like_a_dense_table() -> None:
+    from mapi_runner.worker.tabular import IngestLimits
+    from mapi_spec.errors import ErrorCode
+
+    with pytest.raises(MapiError) as exc:
+        dataset_from_mff(_mff(), MffOptions(), limits=IngestLimits(max_cells=19))
+    assert exc.value.code is ErrorCode.PAYLOAD_TOO_LARGE
+    ds, _ = dataset_from_mff(_mff(), MffOptions(), limits=IngestLimits(max_cells=20))
+    assert dict(ds.sizes) == {"date": 5, "geo": 2}
+
+
 def test_ingest_job_needs_exactly_one_of_mapping_or_preset() -> None:
     with pytest.raises(ValueError):
         IngestJob()

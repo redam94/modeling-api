@@ -442,6 +442,10 @@ milestone releases are tagged on `main`.
   target, and `POST /v1/specs:validate` reported a score request aimed at an endpoint as
   `REF_UNRESOLVED` ("endpoint aliases arrive in v0.4"). An endpoint ref now resolves to the
   version the endpoint serves.
+- **runner**: a dense ingest (and the MFF pivot) built every combination of the dim labels
+  with no cap, so a 2 MB CSV whose keys rarely repeat asked for ~80 GB and the run was
+  OOM-killed. The cube is now checked before it is built (at most 250 million values, and
+  within the class's scratch budget) and refused as `PAYLOAD_TOO_LARGE` with a hint.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

@@ -76,6 +76,10 @@ class IngestLimits:
     ratio_floor_bytes: int = 64 * 1024**2
     """Expansion below this size is never refused for its ratio (a small file of zeros is
     harmless); the absolute cap still applies."""
+    max_cells: int = 250_000_000
+    """Values of the dense dataset a table pivots to (every combination of the dim labels
+    times the variables), checked before it is built; its bytes must also fit
+    ``max_uncompressed_bytes`` (the class's scratch budget)."""
 
     @classmethod
     def from_job(cls, job: IngestJob) -> IngestLimits:

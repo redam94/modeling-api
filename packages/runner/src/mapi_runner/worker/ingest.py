@@ -29,6 +29,7 @@ Every byte of user data is parsed here, in the sandbox, under the caps of
 
 from __future__ import annotations
 
+import dataclasses
 import difflib
 import hashlib
 import math
@@ -123,14 +124,7 @@ def _read_table(
     """Parse a CSV or Parquet upload (kept for callers of v0.2; see :func:`read_table`)."""
     lim = limits or IngestLimits(max_rows=max_rows)
     if lim.max_rows != max_rows:
-        lim = IngestLimits(
-            max_rows=max_rows,
-            max_columns=lim.max_columns,
-            max_cell_chars=lim.max_cell_chars,
-            max_decompression_ratio=lim.max_decompression_ratio,
-            max_uncompressed_bytes=lim.max_uncompressed_bytes,
-            ratio_floor_bytes=lim.ratio_floor_bytes,
-        )
+        lim = dataclasses.replace(lim, max_rows=max_rows)
     return read_table(path, fmt, lim)
 
 
@@ -287,9 +281,35 @@ def _wide_labels(mapping: IngestMapping) -> dict[str, list[str]]:
     return labels
 
 
-def dataset_from_table(df: pd.DataFrame, mapping: IngestMapping) -> tuple[xr.Dataset, DataSchema]:
+def _check_cube(frame: pd.DataFrame, dims: list[str], limits: IngestLimits, pointer: str) -> None:
+    """Refuse (``PAYLOAD_TOO_LARGE``) a pivot whose dense cube - every combination of the
+    dim labels, times the variables - exceeds the limits, before it is allocated: a small
+    table whose keys rarely repeat would otherwise ask for n^2 (or n^k) cells."""
+    sizes = [int(frame[d].nunique(dropna=False)) for d in dims]
+    combos = math.prod(sizes)
+    n_vars = max(1, len(frame.columns) - len(dims))
+    cells = combos * n_vars
+    nbytes = cells * 8
+    if cells <= limits.max_cells and nbytes <= limits.max_uncompressed_bytes:
+        return
+    shape = " x ".join(f"{n:,} {d}" for d, n in zip(dims, sizes, strict=True))
+    raise problem(
+        ErrorCode.PAYLOAD_TOO_LARGE,
+        f"the mapped dims span {shape} = {combos:,} combinations, so the dataset would hold "
+        f"{cells:,} values (~{nbytes / 1024**3:.1f} GiB) for {len(frame):,} rows; the limit "
+        f"is {min(limits.max_cells, limits.max_uncompressed_bytes // 8):,} values",
+        pointer=pointer,
+        action="Most combinations have no row: map fewer columns as dims (keep the others "
+        "as variables), use a long layout with one id dim, or split the upload.",
+    )
+
+
+def dataset_from_table(
+    df: pd.DataFrame, mapping: IngestMapping, *, limits: IngestLimits = _UNLIMITED
+) -> tuple[xr.Dataset, DataSchema]:
     """Build a dataset + schema from a parsed table and a column mapping (``dims``,
-    ``vars`` and ``wide`` variables: one column per label of a new dim)."""
+    ``vars`` and ``wide`` variables: one column per label of a new dim). A dense cube
+    larger than ``limits`` allows is refused before it is built."""
     _check_columns(df, mapping)
     if mapping.layout == "long" and len(mapping.dims) != 1:
         raise _schema_error(
@@ -341,6 +361,7 @@ def dataset_from_table(df: pd.DataFrame, mapping: IngestMapping) -> tuple[xr.Dat
             action=hint,
             untrusted_text=str(first),
         )
+    _check_cube(frame, dims, limits, "/mapping/dims")
     ds = _text_vars(frame.set_index(dims).sort_index().to_xarray())
     for name, cols in tmp.items():
         w = mapping.wide[name]
@@ -540,6 +561,7 @@ def dataset_from_mff(
     kept under its own name."""
     table, index, variables = mff_table(df, opts, limits, bayesinsight=bayesinsight)
     frame = table.rename(columns=index)
+    _check_cube(frame, list(index.values()), limits, "/mapping/mff")
     ds = frame.set_index(list(index.values())).sort_index().to_xarray()
     for dim in list(index.values())[1:]:
         ds = ds.assign_coords({dim: _labels(ds[dim].values)})
@@ -658,12 +680,12 @@ def meridian_mapping(mapping: IngestMapping) -> IngestMapping:
 
 
 def dataset_from_meridian(
-    df: pd.DataFrame, mapping: IngestMapping
+    df: pd.DataFrame, mapping: IngestMapping, *, limits: IngestLimits = _UNLIMITED
 ) -> tuple[xr.Dataset, DataSchema]:
     """The ``meridian`` preset: a wide table under Meridian's column contract."""
     m = mapping.meridian
     assert m is not None
-    ds, schema = dataset_from_table(df, meridian_mapping(mapping))
+    ds, schema = dataset_from_table(df, meridian_mapping(mapping), limits=limits)
     if m.freq and schema.dims["time"].freq is None:
         schema.dims["time"] = schema.dims["time"].model_copy(update={"freq": m.freq})
     if m.kpi_type == "revenue":
@@ -936,15 +958,17 @@ def build_dataset(
         table, index, variables = mff_table(df, opts, limits, bayesinsight=meta)
         profiles = column_profiles(table, variables=variables)
         if mapping.vars or mapping.wide:
-            ds, schema = dataset_from_table(table, _mff_mapping(mapping, index, opts, table))
+            ds, schema = dataset_from_table(
+                table, _mff_mapping(mapping, index, opts, table), limits=limits
+            )
         else:
             ds, schema = dataset_from_mff(df, opts, limits=limits, bayesinsight=meta)
         return ds, schema, profiles
     profiles = column_profiles(df)
     if preset is IngestPreset.MERIDIAN:
-        ds, schema = dataset_from_meridian(df, mapping)
+        ds, schema = dataset_from_meridian(df, mapping, limits=limits)
     else:
-        ds, schema = dataset_from_table(df, mapping)
+        ds, schema = dataset_from_table(df, mapping, limits=limits)
     return ds, schema, profiles
 
 
