@@ -41,3 +41,13 @@ def test_the_engine_core_imports_no_array_library() -> None:
         "assert not bad, bad"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
+
+
+def test_the_guide_shows_the_canonical_template_as_it_is() -> None:
+    import yaml
+    from mapi_spec.workflow_templates import TS_READINESS_ARIMAX
+
+    path = PAGE.parents[1] / "snippets" / "workflow_ts_readiness_arimax.yaml"
+    assert yaml.safe_load(path.read_text()) == TS_READINESS_ARIMAX.document, (
+        f"{path} is stale: regenerate it from mapi_spec.workflow_templates.TS_READINESS_ARIMAX"
+    )

@@ -12,11 +12,11 @@ step is a **node**; the arrows between them carry typed results. A workflow is a
 and can run on a schedule or whenever a dataset gets a new version.
 
 !!! info "Status"
-    v0.5 defines the contracts in `mapi_spec.workflow`, `mapi_spec.workflow_nodes`,
+    The contracts live in `mapi_spec.workflow`, `mapi_spec.workflow_nodes`,
     `mapi_spec.workflow_templates`, `mapi_spec.expr`, `mapi_spec.splitplan` and
-    `mapi_spec.stattests`, and the endpoints in the
-    [HTTP API reference](../reference/http-api.md#m35). The orchestrator, the node runner
-    and the web editor build on them.
+    `mapi_spec.stattests`; the engine and the node implementations in `mapi_workflows`; the
+    endpoints in the [HTTP API reference](../reference/http-api.md#m35). The
+    [workflows guide](../guides/workflows.md) is the practical walkthrough and cookbook.
 
 ## The canonical example
 
@@ -153,9 +153,11 @@ orchestrator walks the graph in topological order and:
 
 - evaluates **branches** and **selections** itself, on JSON results only (`orchestrator`
   nodes), recording a `BranchDecision` with the values the condition read;
-- sends **tests, transforms, splits and searches** to sandboxed `workflow_node` runs (user
-  data is only ever decoded in the sandbox);
-- starts **fits, backtests and governance checks** as child runs (`child_run` nodes).
+- sends **tests, transforms, splits, searches, backtests, forecasts, evaluations and
+  governance checks** to sandboxed `workflow_node` child runs (user data is only ever
+  decoded in the sandbox);
+- starts **fits** as ordinary `fit` child runs and **sub-workflows** as child workflow runs
+  (see [where nodes run](../guides/workflows.md#where-nodes-run)).
 
 Each node's identity is a **cache key** (`node_cache_key`): the resolved implementation, its
 resolved parameters and the content of its inputs. An unchanged node reuses its earlier result
