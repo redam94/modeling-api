@@ -30,7 +30,13 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 import xarray as xr
-from mapi_spec.capabilities import REPRESENTATION_RULES, OutputSelector, Representation
+from mapi_spec.calibration import Calibration
+from mapi_spec.capabilities import (
+    REPRESENTATION_RULES,
+    ModelManifest,
+    OutputSelector,
+    Representation,
+)
 from mapi_spec.errors import CoordPlanError, ErrorCode, Issue, MapiError, Severity
 from mapi_spec.loader import load_model_spec, load_score_request
 from mapi_spec.schema import DataSchema, DimPolicy, Role
@@ -75,8 +81,10 @@ from mapi_sdk.wire import write_zarr_zip
 __all__ = [
     "DEFAULT_EVAL_METRICS",
     "FitHooks",
+    "ModelStage",
     "data_hash",
     "fit_spec",
+    "prepare_model_stage",
     "score_bundle",
 ]
 
@@ -391,6 +399,8 @@ def _fit_from(
         cancel=hooks.cancel,
         checkpoint_sink=hooks.checkpoint_sink,
         stage_schema=rs.stages.get(rs.model_stage),
+        calibration=_calibration_for(env.spec, manifest),
+        to_original=_to_original(env.pipeline, states, env.side_tables),
     )
     try:
         out = env.plugin.fit(model_ds, s, env.spec.model.fit, fctx)
@@ -471,6 +481,118 @@ def _fit_from(
     ):
         bundle.residuals = _residuals(env, bundle, model_ds)
     return bundle
+
+
+def _calibration_for(spec: ModelSpec, manifest: ModelManifest) -> Calibration | None:
+    """The spec's calibration block, if the model declares what it carries.
+
+    Static validation already refuses a block the model cannot use
+    (``CALIBRATION_UNSUPPORTED``); this is the in-sandbox guard for direct SDK calls.
+    """
+    cal = spec.calibration
+    if cal is None or cal.empty:
+        return None
+    declared = manifest.capabilities.calibration
+    for kind, present in (
+        ("business_priors", cal.business_priors is not None),
+        ("lift_tests", bool(cal.lift_tests)),
+    ):
+        if present and kind not in declared:
+            raise MapiError(
+                f"model {manifest.id!r} does not use {kind.replace('_', ' ')} "
+                "(its capabilities do not declare them)",
+                code=ErrorCode.CALIBRATION_UNSUPPORTED,
+                pointer=f"/calibration/{kind}",
+            )
+    return cal
+
+
+@dataclass(slots=True)
+class ModelStage:
+    """The model-stage data of a spec with its preprocessing fitted on all of ``data`` -
+    what a sandboxed run that builds (but does not fit) the model needs (M3: the
+    ``translate_priors`` run)."""
+
+    spec: ModelSpec
+    resolved: ResolvedSpec
+    raw_schema: DataSchema
+    pipeline: Pipeline
+    states: dict[str, StepState]
+    data: xr.Dataset
+    plugin: ModelPlugin
+    settings: dict[str, Any]
+    fit_context: FitContext
+    to_original: Callable[[xr.DataArray, str], xr.DataArray]
+    issues: list[Issue] = field(default_factory=list)
+
+
+def prepare_model_stage(
+    spec: ModelSpec | str,
+    data: xr.Dataset,
+    side_tables: Mapping[str, xr.Dataset] | None = None,
+    registry: Registry | None = None,
+    *,
+    raw_schema: DataSchema | None = None,
+    hooks: FitHooks | None = None,
+) -> ModelStage:
+    """Validate ``spec`` against ``data``, fit every pipeline step on all of it and return
+    the model-stage dataset with the model plugin, its parsed settings and a
+    :class:`~mapi_sdk.models.FitContext` (``to_original`` uses the fitted step states).
+
+    Nothing is split and the model is not fitted: the scales are the data-derived ones a
+    full fit would learn (the production refit of ``evaluate_then_refit``).
+    """
+    spec = load_model_spec(spec) if isinstance(spec, str) else spec
+    registry = registry or default_registry()
+    hooks = hooks or FitHooks()
+    data = normalise_dataset(data)
+    resolved, schema, issues = _resolve(spec, registry, data, raw_schema)
+    check_dataset(schema, data)
+    tables = {k: normalise_dataset(v) for k, v in (side_tables or {}).items()}
+    needed = sorted({t for s in resolved.steps for t in s.side_tables})
+    missing = [t for t in needed if t not in tables]
+    if missing:
+        raise MapiError(
+            f"side table {missing[0]!r} is used by the pipeline but was not provided",
+            code=ErrorCode.SIDE_TABLE_COVERAGE,
+            pointer=f"/data/side_tables/{missing[0]}",
+        )
+    plugin_cls = registry.model(resolved.model.resolved)
+    plugin = plugin_cls()
+    manifest = plugin_cls.manifest()
+    pipeline = Pipeline.from_spec(spec, registry, resolved)
+    raw = BindingMap(resolved.binding).apply(data)
+    seed = spec.model.fit.seed or 0
+    trace = pipeline.fit(
+        raw, start=RAW, side_tables=tables, seed=seed, cancel=hooks.cancel, log=hooks.log
+    )
+    states = dict(trace.states)
+    model_coords = trace.coords.get(resolved.model_stage, xr.Dataset())
+    to_original = _to_original(pipeline, states, tables)
+    fctx = FitContext(
+        seed=seed,
+        schema=resolved.model.input_schema,
+        policies=resolved.model.effective_policies,
+        coords={str(d): np.asarray(model_coords[d].values) for d in model_coords.coords},
+        log=hooks.log,
+        cancel=hooks.cancel,
+        stage_schema=resolved.stages.get(resolved.model_stage),
+        calibration=spec.calibration,
+        to_original=to_original,
+    )
+    return ModelStage(
+        spec=spec,
+        resolved=resolved,
+        raw_schema=schema,
+        pipeline=pipeline,
+        states=states,
+        data=trace.data,
+        plugin=plugin,
+        settings=_model_settings(manifest.settings_schema, spec),
+        fit_context=fctx,
+        to_original=to_original,
+        issues=list(issues),
+    )
 
 
 def _to_original(
