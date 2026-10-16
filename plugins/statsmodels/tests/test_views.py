@@ -6,6 +6,7 @@ import json
 
 import numpy as np
 import pytest
+import xarray as xr
 from mapi_plugin_statsmodels import PLUGIN_IDS, PLUGINS
 from mapi_plugin_statsmodels.views import explorer_views
 from mapi_sdk.bundle import Bundle
@@ -88,3 +89,37 @@ def test_unobserved_components_show_a_decomposition(bundles: dict[str, Bundle]) 
     dec = views["decomposition"]
     assert isinstance(dec, DecompositionView)
     assert "level" in dec.components and dec.warnings_plain  # a panel: first series shown
+
+
+def test_forecast_fans_per_series_from_a_score_run() -> None:
+    from mapi_plugin_statsmodels.datasets import sales_dataset, sales_schema
+    from mapi_plugin_statsmodels.examples import example_spec
+    from mapi_plugin_statsmodels.views import forecast_view
+    from mapi_sdk.harness import fit_spec, score_bundle
+    from mapi_spec import load_score_request
+    from mapi_spec.views import ModelForecastView
+
+    data = sales_dataset(periods=72, geos=["north", "south"], seed=4)
+    spec = example_spec(
+        "ts.sarimax",
+        "{order: [1, 0, 0], exog: [price, promo], series_dims: [geo]}",
+        "{dims: {t: date}, vars: {y: sales}}",
+    )
+    bundle = fit_spec(spec, data.isel(date=slice(0, 64)), raw_schema=sales_schema(geo=True))
+    req = load_score_request(
+        "apiVersion: mapi/v1\nkind: ScoreRequest\nmodel: endpoint://t/t\nmode: forecast\n"
+        "horizon: {dim: t, periods: 8}\n"
+    )
+    future = data.isel(date=slice(64, None)).drop_vars("sales")
+    tree = score_bundle(bundle, req, future, return_full=True)
+    node = tree["predictions"]
+    assert isinstance(node, xr.DataTree)
+    view = forecast_view(
+        node.to_dataset(), observed=data["sales"].isel(date=slice(0, 64)), history=12
+    )
+    assert isinstance(view, ModelForecastView) and len(view.forecasts) == 2
+    fan = view.forecasts[0]
+    assert fan.history == 12 and len(fan.fan.coords) == 20
+    assert fan.fan.quantiles[0] == 0.025 and fan.fan.observed is not None
+    assert fan.model_dump()["facet"] == {"geo": "north"}
+    ModelForecastView.model_validate_json(view.model_dump_json())

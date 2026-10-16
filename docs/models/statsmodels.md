@@ -200,7 +200,10 @@ fails with `INTEGRITY_FAILURE`.
 (`mapi_spec.views` DTOs): `params` (the table with 95% intervals and p-values),
 `diagnostics` (fit statistics, Granger, Johansen and bounds tests), `residuals` (residuals
 over time, their autocorrelation, Q-Q points and the residual tests per series), `irf`,
-`fevd` and `decomposition`. Panels appear as facets.
+`fevd` and `decomposition`. Panels appear as facets. `views.forecast_view(predictions,
+observed=...)` turns a forecast score run's quantiles into the `forecast` section: one fan
+per series (with the recent history), because quantiles of different series cannot be
+added into one fan.
 
 ## How it is tested
 

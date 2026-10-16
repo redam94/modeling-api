@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from mapi_sdk.models import Fitted
+from mapi_spec.calibration import FanChart
 from mapi_spec.stattests import TEST_DEFINITIONS, StatTestResult, make_test_result
 from mapi_spec.views import (
     MAX_EXPLORE_LAGS,
@@ -25,10 +26,12 @@ from mapi_spec.views import (
     MAX_EXPLORE_SERIES,
     DecompositionView,
     FevdView,
+    ForecastView,
     Histogram,
     IrfView,
     LagProfile,
     ModelDiagnosticsView,
+    ModelForecastView,
     ParamRow,
     ParamTableView,
     QQPoints,
@@ -40,7 +43,7 @@ from scipy import stats
 
 from mapi_plugin_statsmodels._common import PARAM, RESIDUAL_TESTS, TEST, TIME, VARIABLE
 
-__all__ = ["explorer_views", "johansen_result", "residual_test_results"]
+__all__ = ["explorer_views", "forecast_view", "johansen_result", "residual_test_results"]
 
 MAX_PARAM_ROWS = 5000
 
@@ -454,6 +457,73 @@ def decomposition_view(fitted: Fitted) -> DecompositionView | None:
         shares={k: v / total for k, v in absmean.items()},
         caption_plain="The series split into its smoothed level/trend, season and other parts.",
         warnings_plain=[f"Showing {_facet(key)} of {n} series."] if n > 1 else [],
+    )
+
+
+def forecast_view(
+    predictions: xr.Dataset,
+    *,
+    observed: xr.DataArray | None = None,
+    history: int = 52,
+    var: str = "y_hat",
+    units: str | None = None,
+) -> ModelForecastView:
+    """The ``forecast`` section from a forecast score run's full ``predictions`` (the
+    quantile representation): one fan per series cell - quantiles are never summed across
+    cells. ``observed`` (same dims as the predictions without ``quantile``) adds the last
+    ``history`` periods before the forecast. Dims are the score tree's (dataset names)."""
+    da = predictions[var]
+    if "quantile" not in da.dims:
+        raise ValueError("forecast_view needs quantile predictions (return_full=True)")
+    t = str(da.dims[-1])
+    cells = [str(d) for d in da.dims if d not in ("quantile", t)]
+    levels = [float(q) for q in np.asarray(da["quantile"].values)]
+    fans: list[ForecastView] = []
+    omitted = 0
+    for key in _cells(da.to_dataset(name="v"), cells):
+        if len(fans) >= MAX_EXPLORE_SERIES:
+            omitted += 1
+            continue
+        cell = (da.sel(key) if key else da).transpose("quantile", t)
+        times = np.asarray(cell[t].values)
+        hist_times: np.ndarray = np.asarray([])
+        hist_values: np.ndarray = np.asarray([])
+        if observed is not None and t in observed.dims:
+            h = observed.sel({k: v for k, v in key.items() if k in observed.dims})
+            h = h.where(h[t] < times.min(), drop=True).isel({t: slice(-history, None)})
+            hist_times = np.asarray(h[t].values)
+            hist_values = np.asarray(h.values, dtype=float).reshape(-1)
+        n_hist = int(hist_times.size)
+        coords = _coords(hist_times) + _coords(times)
+        fan = FanChart(
+            dim=t,
+            coords=[c for c in coords if c is not None and not isinstance(c, bool)],
+            quantiles=levels,
+            values=[[None] * n_hist + [_num(v) for v in row] for row in np.asarray(cell.values)],
+            observed=[_num(v) for v in hist_values] + [None] * times.size,
+            units=units,
+        )
+        label = " / ".join(str(_scalar(v)) for v in key.values()) or var
+        fans.append(
+            ForecastView.model_validate(
+                {
+                    "kpi": label[:128],
+                    "units": units,
+                    "kind": "predictive",
+                    "dim": t,
+                    "history": n_hist,
+                    "split_at": coords[n_hist] if times.size else None,
+                    "fan": fan,
+                    "facet": _facet(key),
+                }
+            )
+        )
+    warnings = [f"{omitted} more series are not shown."] if omitted else []
+    return ModelForecastView(
+        forecasts=fans,
+        caption_plain="Forecast ranges per series: the darker the band, the more likely; "
+        "ranges are per series and cannot be added up.",
+        warnings_plain=warnings,
     )
 
 
