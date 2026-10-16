@@ -257,3 +257,24 @@ def test_reference_and_concept_docs_cover_m35() -> None:
     about = (docs / "concepts" / "about-and-choosing.md").read_text("utf-8")
     for needle in ("summary_plain", "use_when", "Help me choose", "/v1/catalog/recommendations"):
         assert needle in about, needle
+
+
+def test_m35_modules_stay_json_only() -> None:
+    import subprocess
+    import sys
+
+    code = (
+        "import sys\n"
+        "import mapi_spec.about, mapi_spec.abouts, mapi_spec.expr, mapi_spec.cron\n"
+        "import mapi_spec.splitplan, mapi_spec.stattests, mapi_spec.workflow\n"
+        "import mapi_spec.workflow_nodes, mapi_spec.workflow_templates, mapi_spec.governance\n"
+        "import mapi_spec.explore, mapi_spec.optimize\n"
+        "mapi_spec.abouts.builtin_abouts()\n"
+        "bad = sorted(m for m in ('numpy', 'xarray', 'pandas', 'scipy', 'statsmodels',"
+        " 'sklearn', 'mapi_sdk', 'mapi_server', 'mapi_runner') if m in sys.modules)\n"
+        "assert not bad, bad\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, timeout=60, check=False
+    )
+    assert proc.returncode == 0, proc.stderr
