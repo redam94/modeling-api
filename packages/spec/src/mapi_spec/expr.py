@@ -655,12 +655,12 @@ class _Evaluator:
             return found if op == "in" else not found
         if (_is_num(a) and _is_num(b)) or (isinstance(a, str) and isinstance(b, str)):
             if op == "<":
-                return a < b  # type: ignore[operator]
+                return bool(a < b)  # type: ignore[operator]
             if op == "<=":
-                return a <= b  # type: ignore[operator]
+                return bool(a <= b)  # type: ignore[operator]
             if op == ">":
-                return a > b  # type: ignore[operator]
-            return a >= b  # type: ignore[operator]
+                return bool(a > b)  # type: ignore[operator]
+            return bool(a >= b)  # type: ignore[operator]
         raise _eval_err(f"cannot compare a {_type_name(a)} with a {_type_name(b)} using {op!r}")
 
     def _call(self, name: str, args: tuple[Node, ...]) -> object:
