@@ -16,8 +16,9 @@ and the client share. The endpoints are listed in the
     persona lock, walked through in
     [From a spreadsheet to a Guided draft](../guides/guided-data.md)) and the modelling path
     (business priors, lift tests, the scorecard, the what-if grids and the forecast and
-    counterfactual views, in [Guided modelling](../guides/guided-modelling.md)). The Guided
-    screens of the web app come next.
+    counterfactual views, in [Guided modelling](../guides/guided-modelling.md)). The web app's
+    Guided screens use all of it: see
+    [Your first analysis in Guided mode](../guides/guided-tutorial.md).
 
 ## The persona lock
 
@@ -260,6 +261,10 @@ interpolation contract, shared by the web app and `mapi_spec.whatif.evaluate_sce
 3. per draw, KPI = baseline + the channels' contributions, and the change is taken against all
    multipliers at `1`; means and quantiles are computed **after** summing, so the uncertainty
    band stays joint across channels.
+
+The web app answers the sliders in the browser with a TypeScript port of this contract, which
+its unit tests check against golden cases the spec tests export
+(`packages/spec/tests/snapshots/whatif_golden.json`).
 
 **Run exact** turns the scenario into a `counterfactual` score request with one `multiply`
 intervention per changed channel and submits a real score run

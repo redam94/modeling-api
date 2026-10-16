@@ -9,6 +9,7 @@ import type { DatasetVersion, Problem, Run, RunEventView, SpecRevision, UploadSe
 import { env } from "@/env";
 
 import * as fx from "./fixtures";
+import { createGuidedHandlers } from "./guided";
 import { createTenancyHandlers, createTenancyState } from "./tenancy";
 
 const API = env.apiBase;
@@ -119,6 +120,8 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
   return [
     // v0.3: session, tenancy and the per-request checks (first, so they guard every /v1 route).
     ...createTenancyHandlers(state.tenancy),
+    // M3 Guided mode: answers for the resources a Guided session creates, falls through otherwise.
+    ...createGuidedHandlers(state),
     http.get(`${API}/readyz`, () =>
       HttpResponse.json({ status: "ok", version: "0.3.0-mock", contract_version: "0.1", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
     ),

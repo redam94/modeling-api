@@ -180,11 +180,13 @@ api-types: ## Regenerate apps/web/openapi.json, access.gen.json and src/api/sche
 .PHONY: snapshots
 snapshots: ## Regenerate the contract snapshot (mapi_spec) and the Guided catalog fixture of the server tests
 	MAPI_UPDATE_SNAPSHOTS=1 $(UV) run pytest -q packages/spec/tests/test_contract_snapshot.py \
+		packages/spec/tests/test_m3_whatif_golden.py \
 		conformance/tests/test_guided_catalog.py
 
 .PHONY: web-check
 web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*
 	$(UV) run python apps/web/scripts/gen_openapi.py --check
+	$(UV) run python apps/web/scripts/gen_guided_fixtures.py --check
 	$(PNPM) -r lint
 	$(PNPM) -r typecheck
 	$(PNPM) -r test
@@ -258,6 +260,12 @@ docs-screenshots: ## Recapture docs/assets/screenshots from a running, seeded st
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots docs/assets/screenshots
 
 DOCS_ADMIN_SHOTS := signin,dev-idp,project-switcher,members,tokens,token-new,token-created,usage,admin-tenants,admin-quotas,admin-kill-switches,admin-executors,admin-audit
+
+.PHONY: docs-screenshots-guided
+docs-screenshots-guided: ## Recapture the Guided tutorial screenshots from the mock-mode app (Playwright)
+	MAPI_GUIDED_SCREENSHOTS=1 MAPI_SMOKE_WEB_PORT=$${MAPI_SMOKE_WEB_PORT:-15173} MAPI_SMOKE_PLOTS_PORT=$${MAPI_SMOKE_PLOTS_PORT:-15174} \
+		$(PNPM) --filter @mapi/web exec playwright test e2e/guided-screenshots.spec.ts
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-guided docs/assets/screenshots --max-kb 150
 
 .PHONY: docs-screenshots-admin
 docs-screenshots-admin: ## Recapture the multi-tenant screenshots (sign-in, members, tokens, usage, admin) from a dev stack

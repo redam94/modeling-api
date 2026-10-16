@@ -1,6 +1,6 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { AlertTriangle, LogIn, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import { useReady } from "@/api/queries";
 import { signIn } from "@/api/session";
@@ -18,6 +18,7 @@ import {
 import { Kbd } from "@/components/ui/primitives";
 import { Logo, NoProjectScreen } from "@/features/auth/gate";
 import { useWorkspace } from "@/features/auth/workspace";
+import { useEffectivePersona, useGuidedLock, useSetPersona } from "@/features/guided/persona";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { useApplyTheme } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
@@ -126,9 +127,12 @@ function ThemeMenu() {
 }
 
 export function PersonaToggle() {
-  const persona = useUi((s) => s.persona);
-  const setPersona = useUi((s) => s.setPersona);
+  const persona = useEffectivePersona();
+  const setPersona = useSetPersona();
+  const lock = useGuidedLock();
   const navigate = useNavigate();
+  // Members below admin of a Guided-locked project see Guided mode only.
+  if (lock.locked) return null;
   return (
     <SegmentedControl<Persona>
       label="Mode"
@@ -138,7 +142,7 @@ export function PersonaToggle() {
         void navigate({ to: p === "guided" ? "/guided" : "/" });
       }}
       options={[
-        { value: "guided", label: "Guided", title: "Task-based flows (arrives in v0.4)" },
+        { value: "guided", label: "Guided", title: "Task-based flows in business terms" },
         { value: "expert", label: "Expert", title: "Specs, runs and diagnostics" },
       ]}
     />
@@ -188,12 +192,17 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const collapsed = useUi((s) => s.sidebarCollapsed);
   const toggleSidebar = useUi((s) => s.toggleSidebar);
-  const persona = useUi((s) => s.persona);
+  const persona = useEffectivePersona();
+  const lock = useGuidedLock();
   const setPaletteOpen = useUi((s) => s.setPaletteOpen);
   const setShortcutsOpen = useUi((s) => s.setShortcutsOpen);
   const navigate = useNavigate();
 
-  const nav = persona === "guided" ? [GUIDED_NAV, ...EXPERT_NAV.slice(1)] : EXPERT_NAV;
+  // A Guided-locked project shows members below admin the Guided screens only.
+  const nav = lock.locked ? [GUIDED_NAV] : persona === "guided" ? [GUIDED_NAV, ...EXPERT_NAV.slice(1)] : EXPERT_NAV;
+  useEffect(() => {
+    if (lock.locked && pathname === "/") void navigate({ to: "/guided", replace: true });
+  }, [lock.locked, pathname, navigate]);
   const projectNav = ws.mode === "session" ? PROJECT_NAV : [];
   const adminNav = ws.operator ? [ADMIN_NAV] : [];
   const chords = Object.fromEntries(

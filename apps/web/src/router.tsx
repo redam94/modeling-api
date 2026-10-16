@@ -141,6 +141,13 @@ const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/set
 
 const guidedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guided", component: lazyRouteComponent(page.guided, "GuidedPage") });
 
+// Guided sessions (M3): a new one starts from a template; a saved one is a spec, one URL per step.
+const guidedNewRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guided/new/$templateId", component: lazyRouteComponent(page.guided, "GuidedNewPage") });
+
+const guidedResumeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guided/$specId", component: lazyRouteComponent(page.guided, "GuidedResumePage") });
+
+const guidedStepRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guided/$specId/$step", component: lazyRouteComponent(page.guided, "GuidedSessionPage") });
+
 const tokensRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/tokens",
@@ -197,6 +204,9 @@ export const routeTree = rootRoute.addChildren([
   catalogRoute,
   settingsRoute,
   guidedRoute,
+  guidedNewRoute,
+  guidedResumeRoute,
+  guidedStepRoute,
   tokensRoute,
   membersRoute,
   usageRoute,

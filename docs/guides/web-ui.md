@@ -13,10 +13,10 @@ This page walks through every page in navigation order. The screenshots come fro
 [quickstart](../getting-started/quickstart.md) stack; `make dev` serves the app at
 <http://127.0.0.1:5173>.
 
-!!! note "Guided mode arrives in v0.4"
-    The **Guided / Expert** switch in the header already exists, but Guided mode is a preview
-    of the task flow that analysts will get in [v0.4](../roadmap/guided-ui.md). Both modes edit
-    the same `ModelSpec`.
+!!! note "Guided mode"
+    The **Guided / Expert** switch in the header changes the whole app to the task flow for
+    analysts described in [Your first analysis in Guided mode](guided-tutorial.md). Both modes
+    edit the same `ModelSpec`.
 
 ## The shell
 
@@ -26,7 +26,7 @@ This page walks through every page in navigation order. The screenshots come fro
 | Sidebar | Home, Datasets, Build, Runs, Models, Score and Catalog; under **Project**, Usage, Members and Tokens; under **Platform**, Admin (operators only); Settings at the bottom. **Collapse** (++cmd+b++) narrows it to icons. |
 | **Jump to…** (++cmd+k++ or ++slash++) | A command palette: go to any page, start a new spec, switch the theme, or paste an id (`run_…`, `mdl_…`, `ds_…`, `spc_…`) to open it. |
 | **API connected** | Polls `GET /readyz`: green when PostgreSQL, the object store and the catalog are ready, amber (*API degraded*) or red (*API unreachable*) otherwise. It links to **Settings**, which shows each check. |
-| **Guided / Expert** | The persona switch (remembered in this browser). |
+| **Guided / Expert** | The persona switch, remembered per user on this browser. Hidden for members below admin of a project locked to Guided mode. |
 | Display icon | Light, dark or system theme. |
 | ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++m++ Models, ++s++ Score, ++c++ Catalog, ++comma++ Settings. |
 
@@ -280,11 +280,12 @@ versions, and the latency of each readiness check.
 
 ## Guided
 
-![The Guided mode preview](../assets/screenshots/guided.png){ .mapi-shot }
+![Guided mode: what do you want to learn?](../assets/screenshots/guided-templates.png){ .mapi-shot }
 
-The six tasks an analyst will follow in v0.4: choose a template, answer questions about the
-data, enter beliefs as ROI ranges, run, read the report and scorecard, try what-if scenarios.
-Today the page explains them and links back to Expert mode.
+The task flow for analysts: choose a template, answer questions about the data, state what
+you believe, fit, read the report and the sanity scorecard, try what-if scenarios and share
+the result. Every step has its own URL and **View as YAML**. The walkthrough is
+[Your first analysis in Guided mode](guided-tutorial.md).
 
 ## Usage, Members, Tokens and Admin <span class="mapi-badge">v0.3</span> { #team-pages }
 
