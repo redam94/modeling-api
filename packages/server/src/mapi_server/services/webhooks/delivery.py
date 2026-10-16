@@ -68,6 +68,7 @@ __all__ = [
     "WebhookRelay",
     "WebhookSender",
     "excerpt",
+    "sender_for",
     "webhook_ssl_context",
 ]
 
@@ -203,6 +204,19 @@ class WebhookSender:
         return SendResult(status=status, body=raw, error=error, duration_ms=ms(), target=target)
 
 
+def sender_for(ctx: ServerContext) -> WebhookSender:
+    """The sender a server context delivers with: its URL policy (dev allow-list), resolver
+    and trust store (``MAPI_WEBHOOK_CA_FILE``)."""
+    settings = ctx.settings
+    return WebhookSender(
+        UrlPolicy.from_settings(settings),
+        resolver=ctx.webhook_resolver,
+        ssl_context=webhook_ssl_context(
+            str(settings.webhook_ca_file) if settings.webhook_ca_file else None
+        ),
+    )
+
+
 def _http_error(exc: httpx.HTTPError) -> str:
     if isinstance(exc, httpx.TimeoutException):
         return "the receiver did not answer in time"
@@ -239,14 +253,7 @@ class WebhookDeliverer:
         clock: Callable[[], datetime] = now,
     ) -> None:
         self.ctx = ctx
-        settings = ctx.settings
-        self.sender = sender or WebhookSender(
-            UrlPolicy.from_settings(settings),
-            resolver=ctx.webhook_resolver,
-            ssl_context=webhook_ssl_context(
-                str(settings.webhook_ca_file) if settings.webhook_ca_file else None
-            ),
-        )
+        self.sender = sender or sender_for(ctx)
         self.box = SecretBox(ctx.secrets.webhook_key)
         self.jitter = jitter
         self.clock = clock

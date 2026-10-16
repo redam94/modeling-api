@@ -70,6 +70,7 @@ from mapi_server.services.tenancy import (
     invite_admins,
     seed_dev_accounts,
 )
+from mapi_server.services.tenant_hooks import install_tenant_hooks
 from mapi_server.services.trust import TrustServices
 from mapi_server.settings import MailerKind, Profile, Settings, SignerKind
 from mapi_server.storage import build_object_store
@@ -223,6 +224,7 @@ def build_context(
         oidc=build_oidc(settings, devidp),
         trust=TrustServices.from_settings(settings),
     )
+    install_tenant_hooks(ctx)
     aclose = getattr(ctx.store, "aclose", None)
     if owned_store and callable(aclose):
         ctx.on_shutdown.append(aclose)
