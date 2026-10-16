@@ -571,9 +571,8 @@ class MultinomialLogit(CustomModel[MultinomialLogitSettings]):
             one_hot = np.zeros_like(flat)
             one_hot[np.arange(flat.shape[0]), pick] = 1.0
             # a cell without a choice set stays all zero
-            p = np.where(
-                design.available.any(axis=-1)[None, ..., None], one_hot.reshape(p.shape), 0.0
-            )
+            has_set = np.asarray(design.available.any(axis=-1), dtype=bool)
+            p = np.where(has_set[None, ..., None], one_hot.reshape(p.shape), 0.0)
         y_hat = xr.DataArray(
             p[None],
             dims=("chain", "draw", GROUP_DIM, OCCASION_DIM, ALTERNATIVE_DIM),
