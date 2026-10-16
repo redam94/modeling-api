@@ -375,6 +375,23 @@ def test_faceted_fan_gives_every_panel_its_own_date_axis_in_coordinate_order() -
     assert wide.spec["columns"] == len(ex.GEOS)
 
 
+def test_facets_are_titled_with_the_dataset_s_own_names(bundle: Any) -> None:
+    """A Guided geo MMM binds the analyst's column (``market``) to the spec dim ``geo``:
+    panels used to be titled with the internal name."""
+    tree = ex.score_tree()
+    assert get_recipe("core.ppc_fan").render(tree).spec["facet"]["title"] == "geo"
+    binding = {"dims": {"geo": "market", "channel": "Media"}, "vars": {}}
+    tree["binding"] = xr.DataTree(xr.Dataset(attrs={"json": json.dumps(binding)}))
+    assert RecipeInput(tree).dim_label("geo") == "market"
+    assert RecipeInput(tree).dim_label("time") == "time"
+    plot = get_recipe("core.ppc_fan").render(tree)
+    assert plot.spec["facet"]["title"] == "market"
+    bound = bundle.copy()
+    bound["binding"] = xr.DataTree(xr.Dataset(attrs={"json": json.dumps(binding)}))
+    curves = get_recipe("mmm.response_curves").render(bound, facet=True)
+    assert curves.spec["facet"]["title"] == "Media"
+
+
 def test_faceted_response_curves_give_every_panel_its_own_axes(bundle: Any) -> None:
     plot = get_recipe("mmm.response_curves").render(bundle, facet=True)
     assert plot.spec["resolve"]["axis"] == {"x": "independent", "y": "independent"}

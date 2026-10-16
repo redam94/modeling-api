@@ -472,6 +472,11 @@ milestone releases are tagged on `main`.
   pattern, and a missing value in the last season was copied forward as NaN. It now takes
   the value whole seasons before each horizon date, stepping back past missing values, and
   carries the last value forward (with a warning) only where no season has one.
+- **plots/runner**: a Guided geo MMM's fit chart titled its panels with the spec's internal
+  dim name (`geo`) instead of the analyst's column (`market`), and faceted response curves
+  said `channel` whatever the column was called. Recipes now title facets with the dataset's
+  name for the dim (`RecipeInput.dim_label`, from the bundle's `/binding`), and the fit's
+  holdout prediction tree carries the binding.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

@@ -189,6 +189,22 @@ def test_prior_posterior_overlap() -> None:
     assert value > 0.8 and "b[1]" in expert  # the second channel learned nothing
 
 
+def test_fit_plots_of_the_evaluation_title_panels_with_the_dataset_s_names(
+    bundle: Bundle, registry: Registry, e33: tuple[xr.Dataset, dict[str, xr.Dataset]]
+) -> None:
+    """E33 binds ``geo: market``: the holdout fan chart's panels said 'geo'."""
+    from mapi_plots.recipes import get_recipe
+    from mapi_plots.recipes._base import RecipeInput
+    from mapi_runner.worker.fit import _evaluation_tree
+
+    ctx = SimpleNamespace(registry=registry, warning=lambda *a, **k: None)
+    tree = _evaluation_tree(ctx, bundle.spec, e33[0], bundle, e33[1])  # type: ignore[arg-type]
+    assert tree is not None
+    assert RecipeInput(tree).dim_label("geo") == "market"
+    fan = get_recipe("core.ppc_fan").render(tree)
+    assert fan.spec["facet"]["title"] == "market"
+
+
 # ========================================================================= what-if grid
 
 

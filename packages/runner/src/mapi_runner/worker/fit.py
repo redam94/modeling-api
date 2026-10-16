@@ -174,7 +174,7 @@ def _evaluation_tree(
         request["side_tables"] = supplied
     metrics = [m for m in spec.evaluate.metrics if not m.startswith("elpd_")] or ["rmse"]
     try:
-        return score_bundle(
+        tree = score_bundle(
             target,
             ScoreRequest.model_validate(request),
             payload,
@@ -190,3 +190,8 @@ def _evaluation_tree(
             untrusted_text=f"{type(exc).__name__}: {exc}"[:8000],
         )
         return None
+    if isinstance(tree, xr.DataTree) and "binding" not in tree.children:
+        # canonical names in, so plots can title panels with the dataset's own names
+        binding = target.resolved.binding.model_dump_json()
+        tree["binding"] = xr.DataTree(xr.Dataset(attrs={"json": binding}))
+    return tree
