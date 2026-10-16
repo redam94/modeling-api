@@ -120,6 +120,12 @@ to do about it.
 **Inspect in Expert mode** opens the model's diagnostics for a closer look. The checks and
 their thresholds are listed in [Guided mode](../concepts/guided-mode.md#scorecard).
 
+If a check under *Did the model settle?* says *Check* or *Fail*, the page offers **Fit again,
+more carefully**: the same data and beliefs, fitted with longer and more careful sampling
+(it takes about twice as long). This usually fixes those checks; the settings it changes are
+hidden in Guided mode, so the button is the way to change them. In a project locked to
+Guided mode, a project admin presses it.
+
 ## 6. What if…
 
 ![Budget sliders with the instant answer and its range, the exact run, scenarios and a forecast](../assets/screenshots/guided-whatif.png){ .mapi-shot }
@@ -149,11 +155,12 @@ spent).
   failed check cannot go live. See [Integrations](../concepts/integrations.md#promotion-gate).
 - **Share a chart** creates a read-only link to one chart for a slide, a Notion page or a
   dashboard. The link is shown once, expires, and can be revoked. Only charts the platform
-  itself drew can be shared ([Sharing plots](sharing-plots.md)).
+  itself drew can be shared ([Embed a chart](../tutorials/embed-a-chart.md)).
 - Once the model is live, **Code for this endpoint** opens its page in the
   [Integrations hub](integrations-hub.md) on the Snippets tab (Google Sheets, Python, a
   notebook cell and more), and **Create a token for it** a key that may score only this
-  endpoint. The chart link can be revoked later under **Plots and links**.
+  endpoint ([Connect Google Sheets](../tutorials/google-sheets.md) uses both). The chart link
+  can be revoked later under **Plots and links**.
 - **Open the Integrations hub** for spreadsheets, BI tools, scheduled exports and webhooks. In a
   project locked to Guided mode the hub stays in the navigation.
 
