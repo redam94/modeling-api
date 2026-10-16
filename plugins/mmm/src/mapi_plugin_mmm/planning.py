@@ -24,6 +24,8 @@ from collections.abc import Sequence
 from typing import Any, Final
 
 import numpy as np
+import xarray as xr
+from mapi_sdk.models import BudgetPlan
 from mapi_spec.calibration import DistributionSummary
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.optimize import (
@@ -106,8 +108,9 @@ def _interp(curves: np.ndarray, grid: np.ndarray, spend: np.ndarray) -> np.ndarr
     return out
 
 
-def optimize_budget_plan(win: FitWindow, req: OptimizeRequest, *, seed: int) -> OptimizeResult:
-    """The plan for ``req`` from the fitted model's curves (see the module doc)."""
+def optimize_budget_plan(win: FitWindow, req: OptimizeRequest, *, seed: int) -> BudgetPlan:
+    """The plan for ``req`` from the fitted model's curves (see the module doc), with the
+    current and optimal plans per draw for the ``mmm.budget_plans`` plot."""
     from mmm_framework.planning.budget import ResponseCurves, optimize_budget
     from mmm_framework.planning.frontier import budget_frontier
 
@@ -286,7 +289,7 @@ def optimize_budget_plan(win: FitWindow, req: OptimizeRequest, *, seed: int) -> 
                 )
             )
     notes = [str(n)[:500] for n in [*res.notes, *(frontier.notes if frontier else [])]][:50]
-    return OptimizeResult(
+    result = OptimizeResult(
         objective=req.objective,
         objective_label=str(res.objective_label)[:200],
         mode=req.mode,
@@ -309,6 +312,23 @@ def optimize_budget_plan(win: FitWindow, req: OptimizeRequest, *, seed: int) -> 
         n_draws=int(n_draws),
         notes_plain=notes,
     )
+    spend = np.zeros((2, len(channels)))
+    for a, (_g, c) in enumerate(arms):
+        spend[0, c] += base[a]
+        spend[1, c] += optimal[a]
+    plans = xr.Dataset(
+        {
+            "spend": (("plan", "channel"), spend),
+            "outcome": (("sample", "plan"), np.stack([current, expected], axis=1)),
+        },
+        coords={
+            "plan": ["current", "optimal"],
+            "channel": channels,
+            "sample": np.arange(expected.size),
+        },
+    )
+    plans["outcome"].attrs["description"] = "expected KPI of the plan, per posterior draw"
+    return BudgetPlan(result=result, plans=plans)
 
 
 def _baseline(win: FitWindow) -> np.ndarray:

@@ -16,7 +16,16 @@ from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 def _plan(pf: Any, **kw: Any) -> OptimizeResult:
     req = OptimizeRequest.model_validate({"max_draws": 20, "n_steps": 200, **kw})
     out = pf.plugin.optimize(pf.fitted, req, ScoreContext(seed=3))
-    return OptimizeResult.model_validate(out.model_dump(mode="json"))
+    plans = out.plans
+    assert list(plans.plan.values) == ["current", "optimal"]
+    np.testing.assert_allclose(
+        plans.spend.sel(plan="optimal").sum(), sum(a.optimal_spend for a in out.result.allocation)
+    )
+    np.testing.assert_allclose(
+        plans.outcome.mean("sample").values,
+        [out.result.current_kpi.mean, out.result.expected_kpi.mean],
+    )  # type: ignore[union-attr]
+    return OptimizeResult.model_validate(out.result.model_dump(mode="json"))
 
 
 def _current(res: OptimizeResult) -> float:

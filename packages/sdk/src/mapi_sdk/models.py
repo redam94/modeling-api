@@ -50,6 +50,7 @@ from mapi_sdk.steps import CancelToken
 
 __all__ = [
     "PREDICTIONS",
+    "BudgetPlan",
     "CustomModel",
     "FitContext",
     "FitOutput",
@@ -154,6 +155,20 @@ class PriorTranslation:
 
     result: PriorTranslationResult
     preview: xr.Dataset = field(default_factory=xr.Dataset)
+
+
+@dataclass(slots=True)
+class BudgetPlan:
+    """What a plugin's optional ``optimize`` hook returns (M3.5).
+
+    ``result`` is the ``optimize.json`` document. ``plans`` holds the plans compared for
+    the ``mmm.budget_plans`` plot: ``spend(plan, channel)`` and ``outcome(sample, plan)``
+    (the expected KPI per posterior draw) with ``plan`` coords ``current`` and
+    ``optimal``.
+    """
+
+    result: OptimizeResult
+    plans: xr.Dataset = field(default_factory=xr.Dataset)
 
 
 @dataclass(slots=True)
@@ -396,9 +411,7 @@ class CustomModel[SettingsT: BaseModel]:
     ) -> xr.Dataset:
         raise NotImplementedError(f"model {self.id!r} does not recommend")
 
-    def optimize(
-        self, fitted: Fitted, request: OptimizeRequest, ctx: ScoreContext
-    ) -> OptimizeResult:
+    def optimize(self, fitted: Fitted, request: OptimizeRequest, ctx: ScoreContext) -> BudgetPlan:
         """Budget optimisation (M3.5, ``POST …:optimize``; plugins that declare
         ``capabilities.decision``): split ``request``'s budget across channels from the
         fitted model's posterior and return the plan with its uncertainty. The runner

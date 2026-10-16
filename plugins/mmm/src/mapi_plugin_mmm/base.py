@@ -28,11 +28,11 @@ from typing import Any, ClassVar, Final
 
 import numpy as np
 import xarray as xr
-from mapi_sdk.models import PREDICTIONS, CustomModel, Fitted, ScoreContext
+from mapi_sdk.models import PREDICTIONS, BudgetPlan, CustomModel, Fitted, ScoreContext
 from mapi_sdk.summarise import select_draws
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.errors import ErrorCode, MapiError
-from mapi_spec.optimize import OptimizeRequest, OptimizeResult
+from mapi_spec.optimize import OptimizeRequest
 from mapi_spec.spec import FitConfig, ScoreRequest
 
 from mapi_plugin_mmm.derived import (
@@ -291,6 +291,23 @@ class FrameworkMMM[SettingsT: BayesianSettings | FrequentistSettings](CustomMode
             ),
             FIT_DATA: _clean(data.to_dataset()),
         }
+        if data.y is not None:
+            # the observed KPI on the model stage's labels (forecast views draw the history
+            # from it, like every plugin's observed_data group)
+            obs = xr.DataArray(
+                data.y,
+                dims=[TIME, GEO, PRODUCT],
+                coords={TIME: data.times},
+            )
+            drop = [d for d in (GEO, PRODUCT) if d not in data.panel]
+            obs = obs.isel({d: 0 for d in drop}, drop=True)
+            labels: dict[str, Any] = {}
+            if data.geos:
+                labels[GEO] = np.asarray(data.geos)
+            if data.products:
+                labels[PRODUCT] = np.asarray(data.products)
+            obs = obs.assign_coords(labels).transpose(*data.panel, TIME)
+            groups["observed_data"] = _clean(xr.Dataset({TARGET: obs}))
         if "sample_stats" in trace.children:
             stats = trace["sample_stats"].to_dataset(inherit=False)
             groups["sample_stats"] = _clean(
@@ -527,9 +544,7 @@ class FrameworkMMM[SettingsT: BayesianSettings | FrequentistSettings](CustomMode
         )
 
     # ------------------------------------------------------------------ decisions
-    def optimize(
-        self, fitted: Fitted, request: OptimizeRequest, ctx: ScoreContext
-    ) -> OptimizeResult:
+    def optimize(self, fitted: Fitted, request: OptimizeRequest, ctx: ScoreContext) -> BudgetPlan:
         """The budget plan for ``request`` (:mod:`mapi_plugin_mmm.planning`), over at most
         ``request.max_draws`` evenly thinned posterior draws."""
         post = fitted.posterior
