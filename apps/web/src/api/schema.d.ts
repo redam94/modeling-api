@@ -1622,7 +1622,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -1718,6 +1718,45 @@ export interface components {
          * @enum {string}
          */
         AuditOutcome: "success" | "denied" | "error";
+        /**
+         * BayesInsightMetadata
+         * @description BayesInsight's ``metadata.json`` (``{"metadata": {...}}`` is accepted too).
+         *
+         *     ``row_ids`` are the MFF key columns the model is indexed by (``Period`` always last);
+         *     the key columns *not* in ``row_ids`` are aggregated away and suffix variable names
+         *     (``Promotion_Total_Total_Total``).
+         */
+        BayesInsightMetadata: {
+            /** Allowed Campaigns */
+            allowed_campaigns?: string[] | null;
+            /** Allowed Creatives */
+            allowed_creatives?: string[] | null;
+            /** Allowed Geos */
+            allowed_geos?: string[] | null;
+            /** Allowed Outlets */
+            allowed_outlets?: string[] | null;
+            /** Allowed Products */
+            allowed_products?: string[] | null;
+            /** End Period */
+            end_period?: string | null;
+            /** Necessary Variables */
+            necessary_variables?: string[] | null;
+            /**
+             * Periodicity
+             * @default Weekly
+             * @enum {string}
+             */
+            periodicity?: "Weekly" | "Daily";
+            /**
+             * Row Ids
+             * @default [
+             *       "Period"
+             *     ]
+             */
+            row_ids?: string[];
+            /** Start Period */
+            start_period?: string | null;
+        };
         /**
          * Binding
          * @description Canonical name → dataset name, for dims and variables (``geo: market``).
@@ -1871,6 +1910,12 @@ export interface components {
          * @description What a model plugin can do (declared in its manifest).
          */
         Capabilities: {
+            /**
+             * Calibration
+             * @description Calibration data the model uses from a spec's calibration block (M3)
+             * @default []
+             */
+            calibration?: unknown[];
             /**
              * Checkpointable
              * @default false
@@ -2655,7 +2700,7 @@ export interface components {
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
          */
-        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR";
+        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED";
         /**
          * ErrorPayload
          * @description ``error``: the run failed; ``message`` is platform-authored, plugin text is untrusted.
@@ -3132,6 +3177,18 @@ export interface components {
          */
         FailureClass: "user" | "resource_exhausted" | "infra" | "integrity" | "timeout" | "sandbox";
         /**
+         * FutureCovariates
+         * @description Where future values of ``future_required`` covariates come from in a forecast (M3).
+         *
+         *     ``supplied`` (default) needs them in the request's data or scenario
+         *     (``MISSING_FUTURE_COVARIATE`` otherwise). The other policies let the runner extend them
+         *     over the horizon, per series, inside the sandbox: ``carry_last`` repeats the last
+         *     observed value, ``seasonal_naive`` repeats the value one season earlier (the time dim's
+         *     yearly period), ``zero`` sets them to zero (e.g. "no spend planned").
+         * @enum {string}
+         */
+        FutureCovariates: "supplied" | "carry_last" | "seasonal_naive" | "zero";
+        /**
          * GlobalSpend
          * @description Platform spend in the current window of the global spend cap: what the kill switch
          *     compares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in
@@ -3282,8 +3339,71 @@ export interface components {
          *         }
          *       }
          *     }
+         * @example {
+         *       "dims": {
+         *         "market": {
+         *           "column": "market",
+         *           "spec": {
+         *             "kind": "categorical"
+         *           }
+         *         },
+         *         "week": {
+         *           "column": "week",
+         *           "spec": {
+         *             "freq": "W-SUN",
+         *             "kind": "time",
+         *             "policy": "extend"
+         *           }
+         *         }
+         *       },
+         *       "format": "csv",
+         *       "vars": {
+         *         "revenue": {
+         *           "column": "revenue",
+         *           "role": "target",
+         *           "units": "EUR"
+         *         }
+         *       },
+         *       "wide": {
+         *         "spend": {
+         *           "columns": {
+         *             "search": "search_spend",
+         *             "social": "social_spend",
+         *             "tv": "tv_spend"
+         *           },
+         *           "dim": "channel",
+         *           "role": "spend",
+         *           "units": "EUR"
+         *         }
+         *       }
+         *     }
+         * @example {
+         *       "format": "mff",
+         *       "mff": {
+         *         "freq": "W-MON"
+         *       },
+         *       "preset": "mff"
+         *     }
+         * @example {
+         *       "format": "parquet",
+         *       "meridian": {
+         *         "kpi": "revenue",
+         *         "media": [
+         *           "tv_impressions"
+         *         ],
+         *         "media_channels": [
+         *           "tv"
+         *         ],
+         *         "media_spend": [
+         *           "tv_spend"
+         *         ]
+         *       },
+         *       "preset": "meridian"
+         *     }
          */
         IngestMapping: {
+            /** @description BayesInsight's metadata.json (the bayesinsight preset) */
+            bayesinsight?: components["schemas"]["BayesInsightMetadata"] | null;
             /** Dims */
             dims?: {
                 [key: string]: components["schemas"]["DimMapping"];
@@ -3292,18 +3412,39 @@ export interface components {
              * Format
              * @enum {string}
              */
-            format: "csv" | "parquet" | "zarr_zip" | "netcdf";
+            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf";
             /**
              * Layout
              * @default dense
              * @enum {string}
              */
             layout?: "dense" | "long";
+            /** @description The meridian preset's columns */
+            meridian?: components["schemas"]["MeridianColumns"] | null;
+            /** @description Options of the mff/bayesinsight presets */
+            mff?: components["schemas"]["MffOptions"] | null;
+            /**
+             * @description M3: a file contract instead of (or refined by) the column mapping
+             * @default none
+             */
+            preset?: components["schemas"]["IngestPreset"];
             /** Vars */
             vars?: {
                 [key: string]: components["schemas"]["VarMapping"];
             };
+            /**
+             * Wide
+             * @description M3: variables read from one column per label of a dim (wide tables)
+             */
+            wide?: {
+                [key: string]: components["schemas"]["WideVarMapping"];
+            };
         };
+        /**
+         * IngestPreset
+         * @enum {string}
+         */
+        IngestPreset: "none" | "mff" | "meridian" | "bayesinsight";
         /** IngestResponse */
         IngestResponse: {
             result: components["schemas"]["IngestResult"];
@@ -3804,6 +3945,92 @@ export interface components {
             role: components["schemas"]["ProjectRole"];
         };
         /**
+         * MeridianColumns
+         * @description Google Meridian's ``CoordToColumns`` contract for a wide CSV/Parquet table.
+         *
+         *     ``media``/``media_spend`` (and ``reach``/``frequency``/``rf_spend``) are parallel lists:
+         *     the *i*-th column of each belongs to the *i*-th entry of ``media_channels``
+         *     (``rf_channels``). ``geo`` is omitted for a national model; ``kpi_type`` says whether
+         *     the KPI is revenue (ROI in currency) or a count (``revenue_per_kpi`` converts it).
+         * @example {
+         *       "controls": [
+         *         "competitor_sales",
+         *         "sentiment"
+         *       ],
+         *       "geo": "geo",
+         *       "kpi": "conversions",
+         *       "kpi_type": "non_revenue",
+         *       "media": [
+         *         "tv_impressions",
+         *         "search_impressions"
+         *       ],
+         *       "media_channels": [
+         *         "tv",
+         *         "search"
+         *       ],
+         *       "media_spend": [
+         *         "tv_spend",
+         *         "search_spend"
+         *       ],
+         *       "population": "population",
+         *       "revenue_per_kpi": "revenue_per_conversion",
+         *       "time": "time"
+         *     }
+         */
+        MeridianColumns: {
+            /** Controls */
+            controls?: string[];
+            /**
+             * Freq
+             * @description Time frequency (pandas alias)
+             * @default W
+             */
+            freq?: string | null;
+            /** Frequency */
+            frequency?: string[];
+            /**
+             * Geo
+             * @default geo
+             */
+            geo?: string | null;
+            /**
+             * Kpi
+             * @default kpi
+             */
+            kpi?: string;
+            /**
+             * Kpi Type
+             * @default revenue
+             * @enum {string}
+             */
+            kpi_type?: "revenue" | "non_revenue";
+            /** Media */
+            media?: string[];
+            /** Media Channels */
+            media_channels?: string[];
+            /** Media Spend */
+            media_spend?: string[];
+            /** Non Media Treatments */
+            non_media_treatments?: string[];
+            /** Organic Media */
+            organic_media?: string[];
+            /** Population */
+            population?: string | null;
+            /** Reach */
+            reach?: string[];
+            /** Revenue Per Kpi */
+            revenue_per_kpi?: string | null;
+            /** Rf Channels */
+            rf_channels?: string[];
+            /** Rf Spend */
+            rf_spend?: string[];
+            /**
+             * Time
+             * @default time
+             */
+            time?: string;
+        };
+        /**
          * MetricPayload
          * @description ``metric``: a scalar metric (holdout error, elpd, ...).
          */
@@ -3821,6 +4048,69 @@ export interface components {
             step?: number | null;
             /** Value */
             value: number;
+        };
+        /**
+         * MffOptions
+         * @description The MFF ("model feature format") long-table preset.
+         *
+         *     One row per ``(period, geography, product, campaign, outlet, creative, variable)`` with
+         *     the value in ``value_column``. ``Period`` becomes the time dim; the other key columns
+         *     become dims only when they hold more than one distinct value; ``VariableName`` values
+         *     become data variables.
+         */
+        MffOptions: {
+            /**
+             * Freq
+             * @description Pandas offset alias; inferred when omitted
+             */
+            freq?: string | null;
+            /**
+             * Key Columns
+             * @description Key column -> dim name
+             */
+            key_columns?: {
+                [key: string]: string;
+            };
+            /**
+             * Missing
+             * @default allow
+             * @enum {string}
+             */
+            missing?: "forbid" | "allow" | "mask";
+            /**
+             * Period Column
+             * @default Period
+             */
+            period_column?: string;
+            /**
+             * Roles
+             * @description Variable -> role
+             */
+            roles?: {
+                [key: string]: string;
+            };
+            /**
+             * Time Dim
+             * @default date
+             */
+            time_dim?: string;
+            /**
+             * Units
+             * @description Variable -> units
+             */
+            units?: {
+                [key: string]: string;
+            };
+            /**
+             * Value Column
+             * @default VariableValue
+             */
+            value_column?: string;
+            /**
+             * Variable Column
+             * @default VariableName
+             */
+            variable_column?: string;
         };
         /**
          * Model
@@ -4764,6 +5054,13 @@ export interface components {
          *       "name": "Default project",
          *       "tenant_id": "default"
          *     }
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "guided_locked": true,
+         *       "id": "growth",
+         *       "name": "Growth",
+         *       "tenant_id": "acme"
+         *     }
          */
         Project: {
             /**
@@ -4773,6 +5070,12 @@ export interface components {
             created_at: string;
             /** Description */
             description?: string | null;
+            /**
+             * Guided Locked
+             * @description Persona lock (M3): the web app shows only Guided mode to members below admin. The API still accepts every spec; the lock is a presentation policy.
+             * @default false
+             */
+            guided_locked?: boolean;
             /** Id */
             id: string;
             /** Name */
@@ -4792,6 +5095,11 @@ export interface components {
         ProjectCreate: {
             /** Description */
             description?: string | null;
+            /**
+             * Guided Locked
+             * @description M3: show only Guided mode to non-admins (default: not locked)
+             */
+            guided_locked?: boolean | null;
             /** Id */
             id: string;
             /** Name */
@@ -4809,10 +5117,18 @@ export interface components {
          * @example {
          *       "description": "EU and UK media mix models"
          *     }
+         * @example {
+         *       "guided_locked": true
+         *     }
          */
         ProjectUpdate: {
             /** Description */
             description?: string | null;
+            /**
+             * Guided Locked
+             * @description M3: persona lock (audited as project.guided_lock)
+             */
+            guided_locked?: boolean | null;
             /** Name */
             name?: string | null;
         };
@@ -5048,7 +5364,7 @@ export interface components {
          * ResourceKind
          * @enum {string}
          */
-        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event";
+        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export";
         /**
          * Role
          * @description What a variable means to a model.
@@ -5342,7 +5658,7 @@ export interface components {
          *     M4): they own child runs and never execute on an executor themselves.
          * @enum {string}
          */
-        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign";
+        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors";
         /**
          * RunRetry
          * @description ``POST /runs/{id}:retry``: a *new* run from a failed one, optionally one class up.
@@ -5471,6 +5787,8 @@ export interface components {
             apiVersion: "mapi/v1";
             /** Data */
             data?: string | null;
+            /** @description M3: how forecasts get future covariates (default: supplied) */
+            future_covariates?: components["schemas"]["FutureCovariates"] | null;
             horizon?: components["schemas"]["Horizon"] | null;
             /**
              * Inputs Stage
@@ -5545,6 +5863,13 @@ export interface components {
              * @enum {string}
              */
             overall: "pass" | "warn" | "fail";
+            /**
+             * Skipped
+             * @description M3: checks that could not run, with the reason (check id -> text)
+             */
+            skipped?: {
+                [key: string]: string;
+            };
         };
         /**
          * ScorecardItem
@@ -5557,10 +5882,38 @@ export interface components {
          *       "title": "Chains agree",
          *       "value": 1.004
          *     }
+         * @example {
+         *       "category": "holdout",
+         *       "check": "holdout.mape",
+         *       "code": "HOLDOUT_MAPE",
+         *       "docs_anchor": "check-holdout-mape",
+         *       "message_plain": "Forecasts were off by 14% on the held-out periods.",
+         *       "metric": "mape",
+         *       "status": "warn",
+         *       "suggested_action": "Check the last weeks of data for gaps or one-off events.",
+         *       "threshold": 0.1,
+         *       "title": "Holdout error",
+         *       "value": 0.14
+         *     }
          */
         ScorecardItem: {
+            /**
+             * Category
+             * @description M3: the check's category
+             */
+            category?: ("convergence" | "holdout" | "plausibility" | "data") | null;
+            /**
+             * Check
+             * @description M3: the stable check id (SCORECARD_CHECKS), e.g. holdout.mape
+             */
+            check?: string | null;
             /** Code */
             code: string;
+            /**
+             * Docs Anchor
+             * @description M3: anchor on the scorecard docs page that explains the check
+             */
+            docs_anchor?: string | null;
             /** Message Expert */
             message_expert?: string | null;
             /** Message Plain */
@@ -6718,6 +7071,45 @@ export interface components {
              * @default null
              */
             untrusted_text?: string | null;
+        };
+        /**
+         * WideVarMapping
+         * @description One variable read from several columns, one per label of ``dim`` (a wide table).
+         *
+         *     ``{"dim": "channel", "columns": {"tv": "tv_spend", "search": "search_spend"}}`` gives a
+         *     variable along ``channel`` (plus the table's other dims) with coords ``tv`` and
+         *     ``search``. Several wide variables may share a dim; their labels must then agree.
+         * @example {
+         *       "columns": {
+         *         "search": "search_spend",
+         *         "social": "social_spend",
+         *         "tv": "tv_spend"
+         *       },
+         *       "dim": "channel",
+         *       "role": "spend",
+         *       "units": "EUR"
+         *     }
+         */
+        WideVarMapping: {
+            /** Columns */
+            columns: {
+                [key: string]: string;
+            };
+            /** Description */
+            description?: string | null;
+            /** Dim */
+            dim: string;
+            dim_spec?: components["schemas"]["DimSpec"];
+            /**
+             * Missing
+             * @default forbid
+             * @enum {string}
+             */
+            missing?: "forbid" | "allow" | "mask";
+            /** @default covariate */
+            role?: components["schemas"]["Role"];
+            /** Units */
+            units?: string | null;
         };
     };
     responses: never;

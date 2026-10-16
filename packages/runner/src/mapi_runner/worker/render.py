@@ -59,6 +59,8 @@ def _vega_lite(plot: PlotSpec, fmt: str, scale: float) -> bytes:
     spec["datasets"] = inline
     if fmt == "svg":
         return str(vlc.vegalite_to_svg(spec)).encode("utf-8")
+    if fmt == "pdf":  # M3 contract: RenderJob.format may be pdf
+        return bytes(vlc.vegalite_to_pdf(spec, scale=scale))
     return bytes(vlc.vegalite_to_png(spec, scale=scale))
 
 

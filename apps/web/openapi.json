@@ -404,7 +404,29 @@
           "endpoint.promote",
           "plugin.publish",
           "plugin.yank",
-          "event.rejected"
+          "event.rejected",
+          "auth.signup",
+          "auth.signup_rejected",
+          "auth.email_verified",
+          "tenant.verification_update",
+          "tenant.deletion_request",
+          "tenant.deletion_cancel",
+          "tenant.purged",
+          "tenant.export",
+          "project.guided_lock",
+          "endpoint.create",
+          "endpoint.promote_override",
+          "endpoint.rollback",
+          "endpoint.delete",
+          "webhook.create",
+          "webhook.update",
+          "webhook.delete",
+          "webhook.secret_rotate",
+          "webhook.replay",
+          "webhook.disabled",
+          "webhook.url_blocked",
+          "plot.embed_create",
+          "plot.embed_revoke"
         ],
         "title": "AuditAction",
         "type": "string"
@@ -628,6 +650,146 @@
         ],
         "title": "AuditOutcome",
         "type": "string"
+      },
+      "BayesInsightMetadata": {
+        "description": "BayesInsight's ``metadata.json`` (``{\"metadata\": {...}}`` is accepted too).\n\n``row_ids`` are the MFF key columns the model is indexed by (``Period`` always last);\nthe key columns *not* in ``row_ids`` are aggregated away and suffix variable names\n(``Promotion_Total_Total_Total``).",
+        "properties": {
+          "allowed_campaigns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 10000,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Campaigns"
+          },
+          "allowed_creatives": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 10000,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Creatives"
+          },
+          "allowed_geos": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 10000,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Geos"
+          },
+          "allowed_outlets": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 10000,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Outlets"
+          },
+          "allowed_products": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 10000,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Products"
+          },
+          "end_period": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Period"
+          },
+          "necessary_variables": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 4096,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Necessary Variables"
+          },
+          "periodicity": {
+            "default": "Weekly",
+            "enum": [
+              "Weekly",
+              "Daily"
+            ],
+            "title": "Periodicity",
+            "type": "string"
+          },
+          "row_ids": {
+            "default": [
+              "Period"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Row Ids",
+            "type": "array"
+          },
+          "start_period": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Period"
+          }
+        },
+        "title": "BayesInsightMetadata",
+        "type": "object"
       },
       "Binding": {
         "additionalProperties": false,
@@ -924,6 +1086,13 @@
         "additionalProperties": false,
         "description": "What a model plugin can do (declared in its manifest).",
         "properties": {
+          "calibration": {
+            "default": [],
+            "description": "Calibration data the model uses from a spec's calibration block (M3)",
+            "items": {},
+            "title": "Calibration",
+            "type": "array"
+          },
           "checkpointable": {
             "default": false,
             "title": "Checkpointable",
@@ -2587,7 +2756,22 @@
           "TIMEOUT",
           "SANDBOX_VIOLATION",
           "CANCELLED",
-          "INTERNAL_ERROR"
+          "INTERNAL_ERROR",
+          "GUIDED_ANSWERS_INVALID",
+          "BUSINESS_PRIORS_INVALID",
+          "CALIBRATION_UNSUPPORTED",
+          "IMPORT_UNSUPPORTED",
+          "SCENARIO_OUT_OF_RANGE",
+          "PROMOTION_BLOCKED",
+          "OVERRIDE_REQUIRED",
+          "WEBHOOK_URL_BLOCKED",
+          "WEBHOOK_SIGNATURE_INVALID",
+          "EMBED_NOT_ALLOWED",
+          "LINK_EXPIRED",
+          "EMAIL_NOT_ALLOWED",
+          "TERMS_NOT_ACCEPTED",
+          "EMAIL_NOT_VERIFIED",
+          "IDENTITY_VERIFICATION_REQUIRED"
         ],
         "title": "ErrorCode",
         "type": "string"
@@ -3315,6 +3499,17 @@
         "title": "FailureClass",
         "type": "string"
       },
+      "FutureCovariates": {
+        "description": "Where future values of ``future_required`` covariates come from in a forecast (M3).\n\n``supplied`` (default) needs them in the request's data or scenario\n(``MISSING_FUTURE_COVARIATE`` otherwise). The other policies let the runner extend them\nover the horizon, per series, inside the sandbox: ``carry_last`` repeats the last\nobserved value, ``seasonal_naive`` repeats the value one season earlier (the time dim's\nyearly period), ``zero`` sets them to zero (e.g. \"no spend planned\").",
+        "enum": [
+          "supplied",
+          "carry_last",
+          "seasonal_naive",
+          "zero"
+        ],
+        "title": "FutureCovariates",
+        "type": "string"
+      },
       "GlobalSpend": {
         "description": "Platform spend in the current window of the global spend cap: what the kill switch\ncompares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in\n``spend_cap_currency``). ``fraction`` is ``spent / cap``; null without a cap.",
         "examples": [
@@ -3568,9 +3763,81 @@
                 "units": "local"
               }
             }
+          },
+          {
+            "dims": {
+              "market": {
+                "column": "market",
+                "spec": {
+                  "kind": "categorical"
+                }
+              },
+              "week": {
+                "column": "week",
+                "spec": {
+                  "freq": "W-SUN",
+                  "kind": "time",
+                  "policy": "extend"
+                }
+              }
+            },
+            "format": "csv",
+            "vars": {
+              "revenue": {
+                "column": "revenue",
+                "role": "target",
+                "units": "EUR"
+              }
+            },
+            "wide": {
+              "spend": {
+                "columns": {
+                  "search": "search_spend",
+                  "social": "social_spend",
+                  "tv": "tv_spend"
+                },
+                "dim": "channel",
+                "role": "spend",
+                "units": "EUR"
+              }
+            }
+          },
+          {
+            "format": "mff",
+            "mff": {
+              "freq": "W-MON"
+            },
+            "preset": "mff"
+          },
+          {
+            "format": "parquet",
+            "meridian": {
+              "kpi": "revenue",
+              "media": [
+                "tv_impressions"
+              ],
+              "media_channels": [
+                "tv"
+              ],
+              "media_spend": [
+                "tv_spend"
+              ]
+            },
+            "preset": "meridian"
           }
         ],
         "properties": {
+          "bayesinsight": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BayesInsightMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "BayesInsight's metadata.json (the bayesinsight preset)"
+          },
           "dims": {
             "additionalProperties": {
               "$ref": "#/components/schemas/DimMapping"
@@ -3583,6 +3850,7 @@
             "enum": [
               "csv",
               "parquet",
+              "mff",
               "zarr_zip",
               "netcdf"
             ],
@@ -3598,12 +3866,48 @@
             "title": "Layout",
             "type": "string"
           },
+          "meridian": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeridianColumns"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The meridian preset's columns"
+          },
+          "mff": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MffOptions"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Options of the mff/bayesinsight presets"
+          },
+          "preset": {
+            "$ref": "#/components/schemas/IngestPreset",
+            "default": "none",
+            "description": "M3: a file contract instead of (or refined by) the column mapping"
+          },
           "vars": {
             "additionalProperties": {
               "$ref": "#/components/schemas/VarMapping"
             },
             "maxProperties": 1024,
             "title": "Vars",
+            "type": "object"
+          },
+          "wide": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/WideVarMapping"
+            },
+            "description": "M3: variables read from one column per label of a dim (wide tables)",
+            "maxProperties": 64,
+            "title": "Wide",
             "type": "object"
           }
         },
@@ -3612,6 +3916,16 @@
         ],
         "title": "IngestMapping",
         "type": "object"
+      },
+      "IngestPreset": {
+        "enum": [
+          "none",
+          "mff",
+          "meridian",
+          "bayesinsight"
+        ],
+        "title": "IngestPreset",
+        "type": "string"
       },
       "IngestResponse": {
         "properties": {
@@ -4728,6 +5042,213 @@
         "title": "MembershipUpdate",
         "type": "object"
       },
+      "MeridianColumns": {
+        "additionalProperties": false,
+        "description": "Google Meridian's ``CoordToColumns`` contract for a wide CSV/Parquet table.\n\n``media``/``media_spend`` (and ``reach``/``frequency``/``rf_spend``) are parallel lists:\nthe *i*-th column of each belongs to the *i*-th entry of ``media_channels``\n(``rf_channels``). ``geo`` is omitted for a national model; ``kpi_type`` says whether\nthe KPI is revenue (ROI in currency) or a count (``revenue_per_kpi`` converts it).",
+        "examples": [
+          {
+            "controls": [
+              "competitor_sales",
+              "sentiment"
+            ],
+            "geo": "geo",
+            "kpi": "conversions",
+            "kpi_type": "non_revenue",
+            "media": [
+              "tv_impressions",
+              "search_impressions"
+            ],
+            "media_channels": [
+              "tv",
+              "search"
+            ],
+            "media_spend": [
+              "tv_spend",
+              "search_spend"
+            ],
+            "population": "population",
+            "revenue_per_kpi": "revenue_per_conversion",
+            "time": "time"
+          }
+        ],
+        "properties": {
+          "controls": {
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Controls",
+            "type": "array"
+          },
+          "freq": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "W",
+            "description": "Time frequency (pandas alias)",
+            "title": "Freq"
+          },
+          "frequency": {
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Frequency",
+            "type": "array"
+          },
+          "geo": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "geo",
+            "title": "Geo"
+          },
+          "kpi": {
+            "default": "kpi",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Kpi",
+            "type": "string"
+          },
+          "kpi_type": {
+            "default": "revenue",
+            "enum": [
+              "revenue",
+              "non_revenue"
+            ],
+            "title": "Kpi Type",
+            "type": "string"
+          },
+          "media": {
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Media",
+            "type": "array"
+          },
+          "media_channels": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Media Channels",
+            "type": "array"
+          },
+          "media_spend": {
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Media Spend",
+            "type": "array"
+          },
+          "non_media_treatments": {
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Non Media Treatments",
+            "type": "array"
+          },
+          "organic_media": {
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Organic Media",
+            "type": "array"
+          },
+          "population": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Population"
+          },
+          "reach": {
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Reach",
+            "type": "array"
+          },
+          "revenue_per_kpi": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Per Kpi"
+          },
+          "rf_channels": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Rf Channels",
+            "type": "array"
+          },
+          "rf_spend": {
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Rf Spend",
+            "type": "array"
+          },
+          "time": {
+            "default": "time",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Time",
+            "type": "string"
+          }
+        },
+        "title": "MeridianColumns",
+        "type": "object"
+      },
       "MetricPayload": {
         "additionalProperties": false,
         "description": "``metric``: a scalar metric (holdout error, elpd, ...).",
@@ -4768,6 +5289,80 @@
           "value"
         ],
         "title": "MetricPayload",
+        "type": "object"
+      },
+      "MffOptions": {
+        "additionalProperties": false,
+        "description": "The MFF (\"model feature format\") long-table preset.\n\nOne row per ``(period, geography, product, campaign, outlet, creative, variable)`` with\nthe value in ``value_column``. ``Period`` becomes the time dim; the other key columns\nbecome dims only when they hold more than one distinct value; ``VariableName`` values\nbecome data variables.",
+        "properties": {
+          "freq": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pandas offset alias; inferred when omitted",
+            "title": "Freq"
+          },
+          "key_columns": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Key column -> dim name",
+            "title": "Key Columns",
+            "type": "object"
+          },
+          "missing": {
+            "default": "allow",
+            "enum": [
+              "forbid",
+              "allow",
+              "mask"
+            ],
+            "title": "Missing",
+            "type": "string"
+          },
+          "period_column": {
+            "default": "Period",
+            "title": "Period Column",
+            "type": "string"
+          },
+          "roles": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Variable -> role",
+            "title": "Roles",
+            "type": "object"
+          },
+          "time_dim": {
+            "default": "date",
+            "title": "Time Dim",
+            "type": "string"
+          },
+          "units": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Variable -> units",
+            "title": "Units",
+            "type": "object"
+          },
+          "value_column": {
+            "default": "VariableValue",
+            "title": "Value Column",
+            "type": "string"
+          },
+          "variable_column": {
+            "default": "VariableName",
+            "title": "Variable Column",
+            "type": "string"
+          }
+        },
+        "title": "MffOptions",
         "type": "object"
       },
       "Model": {
@@ -6914,6 +7509,13 @@
             "id": "default",
             "name": "Default project",
             "tenant_id": "default"
+          },
+          {
+            "created_at": "2026-10-15T09:30:00Z",
+            "guided_locked": true,
+            "id": "growth",
+            "name": "Growth",
+            "tenant_id": "acme"
           }
         ],
         "properties": {
@@ -6933,6 +7535,12 @@
               }
             ],
             "title": "Description"
+          },
+          "guided_locked": {
+            "default": false,
+            "description": "Persona lock (M3): the web app shows only Guided mode to members below admin. The API still accepts every spec; the lock is a presentation policy.",
+            "title": "Guided Locked",
+            "type": "boolean"
           },
           "id": {
             "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
@@ -6982,6 +7590,18 @@
             ],
             "title": "Description"
           },
+          "guided_locked": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3: show only Guided mode to non-admins (default: not locked)",
+            "title": "Guided Locked"
+          },
           "id": {
             "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
             "title": "Id",
@@ -7018,6 +7638,9 @@
         "examples": [
           {
             "description": "EU and UK media mix models"
+          },
+          {
+            "guided_locked": true
           }
         ],
         "properties": {
@@ -7032,6 +7655,18 @@
               }
             ],
             "title": "Description"
+          },
+          "guided_locked": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3: persona lock (audited as project.guided_lock)",
+            "title": "Guided Locked"
           },
           "name": {
             "anyOf": [
@@ -7691,7 +8326,11 @@
           "quota",
           "kill_switch",
           "executor",
-          "event"
+          "event",
+          "webhook",
+          "embed",
+          "tenant_deletion",
+          "tenant_export"
         ],
         "title": "ResourceKind",
         "type": "string"
@@ -8396,7 +9035,8 @@
           "sweep",
           "backtest",
           "sbc",
-          "campaign"
+          "campaign",
+          "translate_priors"
         ],
         "title": "RunKind",
         "type": "string"
@@ -8660,6 +9300,17 @@
             ],
             "title": "Data"
           },
+          "future_covariates": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FutureCovariates"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3: how forecasts get future covariates (default: supplied)"
+          },
           "horizon": {
             "anyOf": [
               {
@@ -8834,6 +9485,15 @@
             ],
             "title": "Overall",
             "type": "string"
+          },
+          "skipped": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "M3: checks that could not run, with the reason (check id -> text)",
+            "maxProperties": 64,
+            "title": "Skipped",
+            "type": "object"
           }
         },
         "required": [
@@ -8852,13 +9512,70 @@
             "threshold": 1.01,
             "title": "Chains agree",
             "value": 1.004
+          },
+          {
+            "category": "holdout",
+            "check": "holdout.mape",
+            "code": "HOLDOUT_MAPE",
+            "docs_anchor": "check-holdout-mape",
+            "message_plain": "Forecasts were off by 14% on the held-out periods.",
+            "metric": "mape",
+            "status": "warn",
+            "suggested_action": "Check the last weeks of data for gaps or one-off events.",
+            "threshold": 0.1,
+            "title": "Holdout error",
+            "value": 0.14
           }
         ],
         "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "convergence",
+                  "holdout",
+                  "plausibility",
+                  "data"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3: the check's category",
+            "title": "Category"
+          },
+          "check": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z]+\\.[a-z0-9_]{1,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3: the stable check id (SCORECARD_CHECKS), e.g. holdout.mape",
+            "title": "Check"
+          },
           "code": {
             "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
             "title": "Code",
             "type": "string"
+          },
+          "docs_anchor": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9][a-z0-9-]{0,99}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3: anchor on the scorecard docs page that explains the check",
+            "title": "Docs Anchor"
           },
           "message_expert": {
             "anyOf": [
@@ -11272,6 +11989,87 @@
           "message"
         ],
         "title": "WarningPayload",
+        "type": "object"
+      },
+      "WideVarMapping": {
+        "additionalProperties": false,
+        "description": "One variable read from several columns, one per label of ``dim`` (a wide table).\n\n``{\"dim\": \"channel\", \"columns\": {\"tv\": \"tv_spend\", \"search\": \"search_spend\"}}`` gives a\nvariable along ``channel`` (plus the table's other dims) with coords ``tv`` and\n``search``. Several wide variables may share a dim; their labels must then agree.",
+        "examples": [
+          {
+            "columns": {
+              "search": "search_spend",
+              "social": "social_spend",
+              "tv": "tv_spend"
+            },
+            "dim": "channel",
+            "role": "spend",
+            "units": "EUR"
+          }
+        ],
+        "properties": {
+          "columns": {
+            "additionalProperties": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxProperties": 256,
+            "minProperties": 1,
+            "title": "Columns",
+            "type": "object"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "dim": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dim",
+            "type": "string"
+          },
+          "dim_spec": {
+            "$ref": "#/components/schemas/DimSpec"
+          },
+          "missing": {
+            "default": "forbid",
+            "enum": [
+              "forbid",
+              "allow",
+              "mask"
+            ],
+            "title": "Missing",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role",
+            "default": "covariate"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Units"
+          }
+        },
+        "required": [
+          "dim",
+          "columns"
+        ],
+        "title": "WideVarMapping",
         "type": "object"
       }
     }
