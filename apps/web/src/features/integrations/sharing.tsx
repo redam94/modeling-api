@@ -404,6 +404,19 @@ export function SavePlotDialog({ initial, onClose, onSaved }: { initial?: ModelP
 
 // ----------------------------------------------------------------------- section
 
+/** A model's name from the project's models (its id while unknown, e.g. a deleted model). */
+function ModelName({ id }: { id: string }) {
+  const models = useModels();
+  const name = models.data?.items.find((m) => m.id === id)?.name;
+  return name ? (
+    <span title={id} className="font-medium">
+      {name}
+    </span>
+  ) : (
+    <Mono>{id}</Mono>
+  );
+}
+
 function SavedPlotCard({ plot, plotlyRefusal, onPlotlyRefused }: { plot: SavedPlot; plotlyRefusal: string | null; onPlotlyRefused: (r: string) => void }) {
   const ws = useWorkspace();
   const canEmbed = can(ws.grants, "create", "embed");
@@ -420,7 +433,7 @@ function SavedPlotCard({ plot, plotlyRefusal, onPlotlyRefused }: { plot: SavedPl
           <CardDescription className="break-all">
             {plot.source ? (
               <>
-                <Mono>{plot.source.plot_id}</Mono> of <Mono>{plot.source.model_id}</Mono> v{plot.source.version}
+                <Mono>{plot.source.plot_id}</Mono> of <ModelName id={plot.source.model_id} /> v{plot.source.version}
               </>
             ) : (
               "Written by hand"

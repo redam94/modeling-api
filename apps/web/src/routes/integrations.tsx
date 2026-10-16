@@ -14,6 +14,7 @@ import { KeyValues, Mono, PageHeader, QueryView } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, TBody, TD, TH, THead, TR, Table } from "@/components/ui/primitives";
+import { PersonName } from "@/features/auth/people";
 import { useWorkspace } from "@/features/auth/workspace";
 import { EndpointSchemaPanel, EndpointSnippetsPanel } from "@/features/integrations/endpoint-schema";
 import { DeleteEndpointDialog, EndpointsSection, GateBadge, GateReasons, PromoteDialog, RollbackDialog } from "@/features/integrations/endpoints";
@@ -111,7 +112,7 @@ function HistoryTable({ endpoint, onRollback }: { endpoint: Endpoint; onRollback
                 <TD className="max-w-72 text-[13px] text-muted-foreground">{r.reason ?? "—"}</TD>
                 <TD>
                   <span title={absoluteTime(r.created_at)}>{relativeTime(r.created_at)}</span>
-                  {r.actor_id ? <Mono className="block text-[11px] text-muted-foreground">{r.actor_id}</Mono> : null}
+                  {r.actor_id ? <PersonName id={r.actor_id} className="block text-[11px] text-muted-foreground" /> : null}
                 </TD>
                 <TD className="text-right">
                   {r.revision < endpoint.revision ? (
@@ -190,7 +191,7 @@ function EndpointView({ endpoint }: { endpoint: Endpoint }) {
                       <Mono>{endpoint.model_ref}</Mono>
                     </Link>,
                   ],
-                  ["Promoted by", endpoint.promoted_by ? <Mono key="by">{endpoint.promoted_by}</Mono> : "—"],
+                  ["Promoted by", endpoint.promoted_by ? <PersonName key="by" id={endpoint.promoted_by} /> : "—"],
                   ["Scorecard", endpoint.gate.scorecard_overall ?? "none"],
                   ["Accepted fits", endpoint.evaluation_policy?.fit_mode === "train_only" ? "Exploration fits too (train only)" : "Evaluated, then refitted on all data"],
                   ["Input changes", { block: "Blocked", warn: "Need an override", allow: "Allowed" }[endpoint.evaluation_policy?.schema_change ?? "block"]],

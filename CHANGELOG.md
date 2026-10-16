@@ -457,6 +457,9 @@ milestone releases are tagged on `main`.
   fitted horizon (`max_extension`), saying a longer one needs a new fit.
 - **web**: Guided fan charts (forecast, prior predictive) started their y axis at zero, which
   squeezed the bands into slivers; the axis now fits the data (`zero: false`).
+- **web**: the endpoint page said "Promoted by usr_01…" and its history listed user ids, and
+  saved plots said "of mdl_01…". People are named from the project's members (the id stays in
+  the tooltip, and an unknown id is shown as is), and saved plots name their model.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

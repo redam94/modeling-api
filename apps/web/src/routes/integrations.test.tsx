@@ -190,6 +190,26 @@ describe("webhooks", () => {
   });
 });
 
+describe("names instead of ids (M3 review)", () => {
+  it("says who promoted an endpoint by name", async () => {
+    renderApp(`/integrations/endpoints/${ENDPOINT_ALIAS}`, "rui");
+    const promoted = (await screen.findByText("Promoted by")).closest("div")!;
+    expect(await within(promoted).findByText("Ana Analyst")).toBeInTheDocument();
+    expect(within(promoted).queryByText(/^usr_/)).toBeNull();
+    const history = await screen.findByRole("table", { name: "Endpoint history" });
+    expect(within(history).getAllByText("Ana Analyst").length).toBeGreaterThan(0);
+    expect(within(history).queryByText(/^usr_/)).toBeNull();
+  });
+
+  it("names the model a saved plot comes from", async () => {
+    renderApp("/integrations?tab=sharing");
+    const cards = await screen.findAllByTestId("saved-plot");
+    const vega = cards.find((c) => within(c).queryByText("EU posterior predictive fan (v1)"))!;
+    expect(await within(vega).findByText("eu-geo-mmm")).toBeInTheDocument();
+    expect(within(vega).queryByText(/^mdl_/)).toBeNull();
+  });
+});
+
 describe("plots and links", () => {
   it("creates an embed link with an expiry and allowed sites", async () => {
     const user = userEvent.setup();
