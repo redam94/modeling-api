@@ -447,6 +447,10 @@ milestone releases are tagged on `main`.
   (`channels` defaults to `{}`; a baseline-only block validates, and the "largest shares"
   warning no longer fires without channel shares), both MMM plugins translate a baseline
   alone, and the Guided page previews and saves it.
+- **plot-sandbox**: in dark mode, rule and text marks without a colour of their own were
+  drawn black on the dark card (Vega-Lite's default): the beliefs preview's 90% line, the
+  forecast's split line and its "Forecast starts" label. The theme colours rules in muted ink
+  and text and ticks in body ink, so a median tick also stands apart from its bar.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
