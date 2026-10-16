@@ -46,11 +46,13 @@ from mapi_plots.recipes.predictions import DecompositionSettings, _decomposition
 __all__ = [
     "BudgetPlanSettings",
     "MarginalCostSettings",
+    "PriorBeliefSettings",
     "ResponseCurveSettings",
     "budget_plans",
     "marginal_cost",
     "mmm_decomposition",
     "mmm_recipes",
+    "prior_beliefs",
     "response_curves",
 ]
 
@@ -444,6 +446,147 @@ def mmm_decomposition(inp: RecipeInput, s: MMMDecompositionSettings) -> Figure:
     return _decomposition(inp, s.model_copy(update={"component": comp}), "channel")
 
 
+# ------------------------------------------------------------------ prior beliefs (M3)
+
+BELIEF_GROUPS = ("prior_beliefs",)
+_QUANTITY_TITLES = {
+    "roi": "ROI (KPI per unit of spend)",
+    "contribution_share": "Share of the KPI",
+    "baseline_share": "Share of the KPI",
+}
+
+
+class PriorBeliefSettings(RecipeSettings):
+    channel: str = "channel"
+    height: int = Field(26, ge=12, le=200, description="Height of one channel row")
+
+
+def _belief_rows(ds: Any, s: PriorBeliefSettings) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    stated = ds.get("stated_quantity")
+    channels: list[str] = []
+    for var in ("roi", "contribution_share"):
+        if var in ds and s.channel in ds[var].dims:
+            channels = [str(c) for c in coord_values(ds[var], s.channel)]
+            break
+    for i, ch in enumerate(channels):
+        what = str(stated.values[i]) if stated is not None else ""
+        quantity = what or ("roi" if "roi" in ds else "contribution_share")
+        if quantity not in ds:
+            continue
+        da = ds[quantity]
+        st = stack_samples(da) if has_samples(da) else da.expand_dims({SAMPLE: [0]})
+        x = np.asarray(st.isel({s.channel: i}).values, dtype=float)
+        x = x[np.isfinite(x)]
+        if not x.size:
+            continue
+        q = np.quantile(x, [0.05, 0.25, 0.5, 0.75, 0.95])
+        lo = float(ds["stated_low"].values[i]) if what and "stated_low" in ds else np.nan
+        hi = float(ds["stated_high"].values[i]) if what and "stated_high" in ds else np.nan
+        cred = (
+            float(ds["stated_credibility"].values[i])
+            if what and "stated_credibility" in ds
+            else np.nan
+        )
+        inside = float(((x >= lo) & (x <= hi)).mean()) if np.isfinite(lo) else np.nan
+        rows.append(
+            {
+                "quantity": _QUANTITY_TITLES[quantity],
+                "label": ch,
+                "q05": q[0], "q25": q[1], "q50": q[2], "q75": q[3], "q95": q[4],
+                "stated_low": lo, "stated_high": hi, "credibility": cred, "coverage": inside,
+            }
+        )  # fmt: skip
+    if "baseline_share" in ds:
+        da = ds["baseline_share"]
+        x = np.asarray(da.values, dtype=float).ravel()
+        x = x[np.isfinite(x)]
+        lo = float(da.attrs.get("range_low", np.nan))
+        hi = float(da.attrs.get("range_high", np.nan))
+        if x.size and np.isfinite(lo):
+            q = np.quantile(x, [0.05, 0.25, 0.5, 0.75, 0.95])
+            rows.append(
+                {
+                    "quantity": _QUANTITY_TITLES["baseline_share"],
+                    "label": "baseline",
+                    "q05": q[0], "q25": q[1], "q50": q[2], "q75": q[3], "q95": q[4],
+                    "stated_low": lo, "stated_high": hi,
+                    "credibility": float(da.attrs.get("credibility", np.nan)),
+                    "coverage": float(((x >= lo) & (x <= hi)).mean()),
+                }
+            )  # fmt: skip
+    if not rows:
+        raise RecipeDataError("no ROI or share draws to compare with stated beliefs")
+    return pd.DataFrame(rows)
+
+
+@recipe(
+    "mmm.prior_beliefs",
+    title="Your beliefs and the priors",
+    settings=PriorBeliefSettings,
+    persona="guided",
+    requires_groups=list(BELIEF_GROUPS),
+    summary="What the translated priors believe about each channel's ROI or share before "
+    "seeing the KPI, against the range you stated.",
+    tags=["mmm"],
+)
+def prior_beliefs(inp: RecipeInput, s: PriorBeliefSettings) -> Figure:
+    """Prior ROI/share intervals per channel (50% bar, 90% line, median tick) over the
+    stated range (shaded), one panel per quantity."""
+    ds = inp.require(*BELIEF_GROUPS)
+    frame = _belief_rows(ds, s)
+    base = alt.Chart()
+    y = alt.Y("label:N", title=None, sort=list(dict.fromkeys(frame["label"])))
+    layers: list[Any] = [
+        base.mark_bar(height=16, opacity=0.25, color=REFERENCE).encode(
+            y=y, x=alt.X("stated_low:Q", title=None), x2="stated_high:Q"
+        ),
+        base.mark_rule(color=OBSERVED).encode(y=y, x="q05:Q", x2="q95:Q"),
+        base.mark_bar(height=8, color=REFERENCE).encode(y=y, x="q25:Q", x2="q75:Q"),
+        base.mark_tick(thickness=2, size=14, color=OBSERVED).encode(
+            y=y,
+            x="q50:Q",
+            tooltip=[
+                alt.Tooltip("label:N", title="channel"),
+                alt.Tooltip("q50:Q", title="median", format=".3g"),
+                alt.Tooltip("q05:Q", title="5%", format=".3g"),
+                alt.Tooltip("q95:Q", title="95%", format=".3g"),
+                alt.Tooltip("stated_low:Q", title="you said from", format=".3g"),
+                alt.Tooltip("stated_high:Q", title="to", format=".3g"),
+                alt.Tooltip("coverage:Q", title="prior inside your range", format=".0%"),
+            ],
+        ),
+    ]
+    quantities = list(dict.fromkeys(frame["quantity"]))
+    size = {"width": s.width, "height": alt.Step(s.height)}  # one row per channel
+    chart: Any
+    if len(quantities) > 1:
+        chart = (
+            alt.layer(*layers)
+            .properties(**size)
+            .facet(row=alt.Row("quantity:N", title=None, sort=quantities), data=named("beliefs"))
+            .resolve_scale(x="independent", y="independent")
+            .resolve_axis(x="independent")
+        )
+    else:
+        chart = alt.layer(*layers, data=named("beliefs")).properties(title=quantities[0], **size)
+    parts = []
+    for row in frame.itertuples():
+        if np.isfinite(row.coverage):
+            parts.append(
+                f"{row.label}: {pct(row.coverage)} of the prior lies in your range "
+                f"(you said {pct(row.credibility)})"
+            )
+    caption = (
+        "Before seeing the KPI, the model believes each channel's value lies on the black line "
+        "(90% of the prior) and mostly in the dark bar (50%), with the tick at the median. The "
+        "light band is the range you stated."
+    )
+    if parts:
+        caption += " " + "; ".join(parts[:8]) + "."
+    return Figure(chart=chart, datasets={"beliefs": frame}, caption=caption)
+
+
 def mmm_recipes() -> list[Recipe[Any]]:
     """The MMM domain pack (entry point ``mapi.plots: mmm``)."""
-    return [response_curves, marginal_cost, budget_plans, mmm_decomposition]
+    return [response_curves, marginal_cost, budget_plans, mmm_decomposition, prior_beliefs]
