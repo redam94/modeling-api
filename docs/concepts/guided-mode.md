@@ -193,7 +193,8 @@ it runs in the sandbox as a `translate_priors` run (`POST /v1/guided/prior-trans
 result (`PriorTranslationResult`) holds the priors to write at `/model/settings/priors`
 (`apply_prior_translation`) and a **prior-predictive preview in business units**: ROI and
 contribution-share distributions per channel, the baseline share and a KPI fan - so users see
-what their beliefs imply before fitting.
+what their beliefs imply before fitting. The math, the lift-test likelihood and the checks
+each layer runs are in [Guided modelling](../guides/guided-modelling.md).
 
 ## 4. Run, then the sanity scorecard { #scorecard }
 
@@ -225,6 +226,7 @@ The catalog is `mapi_spec.scorecard.SCORECARD_CHECKS`:
 | <a id="check-plausibility-roi-absurd"></a>`plausibility.roi_absurd` (Returns are believable) | `roi_max` | warn above 20, fail above 100 | Check spend units and gaps, or state an ROI range in business priors. |
 | <a id="check-plausibility-share-outlier"></a>`plausibility.share_outlier` (No channel dominates) | `max_channel_share` | warn above 60%, fail above 90% | Check for a missing control (price, promotions, seasonality). |
 | <a id="check-plausibility-baseline-share"></a>`plausibility.baseline_share` (Baseline is plausible) | `baseline_share` | warn when more than 40% away from 50%, fail when more than 48% away | State a baseline share in business priors, or review the controls. |
+| <a id="check-plausibility-prior-overlap"></a>`plausibility.prior_overlap` (The data informed the model) | `prior_overlap_max` | warn above 90%, fail above 99% | Add data that varies the driver (or a lift test), or state a business prior you trust for it. |
 
 #### Data
 
@@ -234,7 +236,9 @@ The catalog is `mapi_spec.scorecard.SCORECARD_CHECKS`:
 | <a id="check-data-history"></a>`data.history` (Enough history) | `history_periods` | warn below 104, fail below 52 | Add more history if you have it. |
 | <a id="check-data-spend-variation"></a>`data.spend_variation` (Spend varies enough) | `spend_cv_min` | warn below 10%, fail below 2% | Add a lift test for the channel, or state its ROI in business priors. |
 
-The scorecard also gates promotion to an endpoint: see
+How the runner measures each check is in
+[Guided modelling](../guides/guided-modelling.md#the-sanity-scorecard). The scorecard also
+gates promotion to an endpoint: see
 [Integrations](integrations.md#promotion-gate).
 
 ## 5. What-if sliders

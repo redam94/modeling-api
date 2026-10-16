@@ -35,6 +35,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
+from mapi_server.services.calibration import check_spec_calibration
 from mapi_server.services.catalog import CatalogService, CatalogSnapshot
 from mapi_server.services.runs import Scope
 
@@ -279,6 +280,8 @@ async def _validate_model_spec(
         return
     result = validate_spec(spec, snapshot.catalog, DataSchema.model_validate(dv.data_schema))
     out.issues.extend(result.issues)
+    if spec.calibration is not None and dv.summary:
+        out.issues.extend(check_spec_calibration(spec, DataSummary.model_validate(dv.summary)))
     split = result.resolved.split_stage if result.resolved else None
     out.stages = [(st.name, st.schema, st.name == split) for st in result.stages]
     out.resolved = result.resolved

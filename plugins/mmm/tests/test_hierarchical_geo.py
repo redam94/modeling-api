@@ -125,6 +125,15 @@ def test_response_curves_and_marginal_cost(
     )
     np.testing.assert_allclose(rc["spend"].sel(multiplier=2.0), 2 * rc["current_spend"], rtol=1e-12)
     assert rc["spend"].attrs["output_space"] == "weekly"
+    # M3: the baseline (intercepts + controls) closes the expected KPI over the window
+    unexplained = (contrib["baseline"] + contrib["fourier"] + contrib["holiday"]).sum("time")
+    np.testing.assert_allclose(
+        rc["baseline_by_geo"].transpose("sample", "geo"),
+        unexplained.transpose("sample", "geo"),
+        rtol=1e-8,
+    )
+    np.testing.assert_allclose(rc["baseline"], rc["baseline_by_geo"].sum("geo"), rtol=1e-12)
+    assert rc["baseline"].attrs["units"] == "EUR"
     mc = bundle.model.derived["marginal_cost"]
     cost = mc["marginal_cost"]
     assert bool((cost > 0).all()) and bool(np.isfinite(cost).all())

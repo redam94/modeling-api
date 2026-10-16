@@ -40,6 +40,7 @@ from mapi_server.api import (
     internal,
     meta,
     models,
+    prior_translations,
     runs,
     specs,
     tenancy,
@@ -372,6 +373,7 @@ def create_app(
         runs.router,
         models.router,
         models.plots_router,
+        prior_translations.router,
         internal.router,
     ):
         app.include_router(router)

@@ -25,6 +25,7 @@ from mapi_spec.jobs import (
     INPUT_BUNDLE,
     INPUT_BUNDLE_MANIFEST,
     INPUT_DATASET,
+    INPUT_HISTORY,
     INPUT_PLOTS,
     INPUT_UPLOAD,
     DeriveJob,
@@ -41,7 +42,7 @@ from mapi_spec.quotas import QuotaDemand, default_priority
 from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
-from mapi_spec.spec import DEFAULT_FIT_SEED, ModelSpec, ScoreRequest
+from mapi_spec.spec import DEFAULT_FIT_SEED, FutureCovariates, ModelSpec, ScoreRequest
 from mapi_spec.tenancy import ResourceKind, TrustTier
 from pydantic import JsonValue
 from sqlalchemy import select
@@ -441,6 +442,10 @@ async def submit_model_run(
         for name, dv in datasets.items():
             inputs[name] = data_ref(dv)
             read.append(dv)
+        if _needs_history(request):
+            fit_dv = await _fit_dataset(session, mv)
+            inputs[INPUT_HISTORY] = data_ref(fit_dv)
+            read.append(fit_dv)
     else:
         job = parse_model_job_params(kind, dict(params or {}))
         payload = job.model_dump(mode="json", by_alias=True, exclude_none=True)
@@ -471,6 +476,14 @@ async def submit_model_run(
         catalog_digest=mv.manifest.get("catalog_digest"),
     )
     return await _accept(session, ctx, run, untrusted=bool((mv.lineage or {}).get("overlay_hash")))
+
+
+def _needs_history(request: ScoreRequest) -> bool:
+    """A forecast whose missing covariates are extended from the fitted series (M3)."""
+    return request.mode == "forecast" and request.future_covariates in (
+        FutureCovariates.CARRY_LAST,
+        FutureCovariates.SEASONAL_NAIVE,
+    )
 
 
 async def submit_run(session: AsyncSession, ctx: ServerContext, body: RunCreate) -> m.Run:

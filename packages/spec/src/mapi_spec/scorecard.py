@@ -8,7 +8,8 @@ category        checks (:data:`SCORECARD_CHECKS`)
 ==============  =========================================================================
 convergence     chains agree (R-hat), enough effective draws, no divergences
 holdout         holdout error (MAPE) and interval coverage on the evaluation split
-plausibility    negative or absurd ROI, a channel taking most of the KPI, the baseline share
+plausibility    negative or absurd ROI, a channel taking most of the KPI, the baseline share,
+                parameters the data did not inform (prior-posterior overlap)
 data            missing values, history length, spend that never varies
 ==============  =========================================================================
 
@@ -39,6 +40,7 @@ from mapi_spec.errors import ErrorCode, MapiError
 __all__ = [
     "SCORECARD_CHECKS",
     "SCORECARD_DOCS_PAGE",
+    "SCORECARD_OUTPUT",
     "CheckDirection",
     "CheckThresholds",
     "GateOutcome",
@@ -59,6 +61,9 @@ __all__ = [
 ScorecardStatus = Literal["pass", "warn", "fail"]
 ScorecardCategory = Literal["convergence", "holdout", "plausibility", "data"]
 SCORECARD_DOCS_PAGE: Final = "concepts/guided-mode.md"
+SCORECARD_OUTPUT: Final = "scorecard.json"
+"""The fit sidecar holding the runner-computed :class:`Scorecard` (M3); the finalizer
+stores it on the model version."""
 """The docs page whose anchors (``ScorecardItem.docs_anchor``) explain each check."""
 
 _RANK: Final[dict[str, int]] = {"pass": 0, "warn": 1, "fail": 2}
@@ -311,6 +316,16 @@ SCORECARD_CHECKS: Final[dict[str, ScorecardCheck]] = {
                "The baseline (KPI without media) is {value}, which is not plausible.",
                "State a baseline share in business priors, or review the controls.",
            ), "pct", target=0.50),
+        _c("plausibility.prior_overlap", "plausibility", "PRIOR_OVERLAP",
+           "The data informed the model", "prior_overlap_max", _MAX, 0.90, 0.99, (
+               "The data moved every parameter away from its prior.",
+               "A parameter barely moved from its prior ({value} overlap): the data says "
+               "little about it.",
+               "A parameter did not move from its prior at all ({value} overlap): its value "
+               "comes from the assumptions, not the data.",
+               "Add data that varies the driver (or a lift test), or state a business prior "
+               "you trust for it.",
+           ), "pct"),
         _c("data.missing", "data", "DATA_MISSING", "Few missing values", "missing_fraction",
            _MAX, 0.05, 0.30, (
                "Only {value} of the values are missing.",

@@ -12,6 +12,10 @@ file                   ``format``                content
 ``ui/preprocess.json`` ``mapi.preprocess/v1``    learned preprocessing state per pipeline step
 ``ui/grids/            ``mapi.response-grid/v1`` per-draw response curves for what-if sliders
 response_curves.json``                           (M3; :class:`ResponseGridView`)
+``ui/guided/           ``mapi.forecast/v1``      a forecast score run's KPI: history, then the
+forecast.json``                                  forecast fan after the split (M3)
+``ui/guided/           ``mapi.counterfactual/v1`` a counterfactual score run's change of the
+counterfactual.json``                            KPI, in total and per period (M3)
 =====================  ========================  ==========================================
 
 Views are produced inside the sandbox from untrusted data: strings are capped and readers
@@ -25,8 +29,13 @@ from typing import Final, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from mapi_spec._types import JsonValue
+from mapi_spec.calibration import DistributionSummary, FanChart
 
 __all__ = [
+    "COUNTERFACTUAL_FORMAT",
+    "COUNTERFACTUAL_VIEW",
+    "FORECAST_FORMAT",
+    "FORECAST_VIEW",
     "MAX_GRID_CELLS",
     "MAX_GRID_DRAWS",
     "MAX_LEARNED_BYTES",
@@ -38,6 +47,8 @@ __all__ = [
     "RESPONSE_GRID_FORMAT",
     "RESPONSE_GRID_VIEW",
     "TREE_INDEX_FORMAT",
+    "CounterfactualView",
+    "ForecastView",
     "MissingnessGrid",
     "PreprocessView",
     "PreviewColumn",
@@ -61,6 +72,12 @@ PREPROCESS_FORMAT: Final = "mapi.preprocess/v1"
 RESPONSE_GRID_FORMAT: Final = "mapi.response-grid/v1"
 RESPONSE_GRID_VIEW: Final = "ui/grids/response_curves.json"
 """Where a fit writes its :class:`ResponseGridView` (served by ``…/artifacts/{name}``)."""
+FORECAST_FORMAT: Final = "mapi.forecast/v1"
+FORECAST_VIEW: Final = "ui/guided/forecast.json"
+"""Where a ``forecast`` score run writes its :class:`ForecastView` (M3)."""
+COUNTERFACTUAL_FORMAT: Final = "mapi.counterfactual/v1"
+COUNTERFACTUAL_VIEW: Final = "ui/guided/counterfactual.json"
+"""Where a ``counterfactual`` score run writes its :class:`CounterfactualView` (M3)."""
 MAX_GRID_DRAWS: Final = 500
 MAX_GRID_CELLS: Final = 2_000_000
 """Cap on the number of floats in one response grid (draws x channels x points [x geos])."""
@@ -293,3 +310,57 @@ class ResponseGridView(_View):
             ):
                 raise ValueError("spend_by_geo must be [geo][channel][multiplier]")
         return self
+
+
+class ForecastView(_View):
+    """``ui/guided/forecast.json``: the KPI of a ``forecast`` score run for Guided mode.
+
+    ``fan.coords`` are the last ``history`` fitted periods followed by the forecast periods;
+    ``fan.observed`` holds the actual KPI over the history (``null`` after it) and
+    ``fan.values`` the forecast quantiles (``null`` over the history), so the split line sits
+    at ``split_at``, the first forecast period. The KPI is summed over ``summed_over``
+    (geos, stores, ...) per posterior draw before the quantiles are taken; ``total`` is the
+    KPI summed over the whole horizon.
+    """
+
+    format: Literal["mapi.forecast/v1"] = FORECAST_FORMAT
+    kpi: str = Field(..., max_length=128)
+    units: str | None = Field(None, max_length=64)
+    kind: Literal["expected", "predictive"] = "expected"
+    dim: str = Field(..., max_length=128)
+    history: int = Field(0, ge=0)
+    split_at: ViewScalar = None
+    summed_over: list[str] = Field(default_factory=list, max_length=32)
+    fan: FanChart
+    total: DistributionSummary | None = None
+
+    @model_validator(mode="after")
+    def _split(self) -> Self:
+        if self.history > len(self.fan.coords):
+            raise ValueError("history cannot exceed the number of coords")
+        return self
+
+
+class CounterfactualView(_View):
+    """``ui/guided/counterfactual.json``: how a counterfactual changed the KPI.
+
+    ``delta_total`` is ``scenario - baseline`` summed over every period and ``summed_over``
+    dims per posterior draw (common random numbers keep the difference precise);
+    ``delta_fan`` gives the change per period along ``dim``. ``interventions`` echo the
+    request's (``var``, ``sel``, ``multiply``/``add``/``set``).
+    """
+
+    format: Literal["mapi.counterfactual/v1"] = COUNTERFACTUAL_FORMAT
+    kpi: str = Field(..., max_length=128)
+    units: str | None = Field(None, max_length=64)
+    kind: Literal["expected", "predictive"] = "expected"
+    dim: str | None = Field(None, max_length=128)
+    summed_over: list[str] = Field(default_factory=list, max_length=32)
+    interventions: list[dict[str, JsonValue]] = Field(default_factory=list, max_length=64)
+    scenario_total: DistributionSummary
+    baseline_total: DistributionSummary
+    delta_total: DistributionSummary
+    delta_share: DistributionSummary | None = Field(
+        None, description="delta_total / baseline_total per draw (None if the baseline is 0)"
+    )
+    delta_fan: FanChart | None = None

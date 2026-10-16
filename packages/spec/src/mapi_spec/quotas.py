@@ -100,13 +100,20 @@ PRIORITY_WEIGHTS: Final[dict[PriorityClass, float]] = {
 tenant's running batch work counts four times as heavily against its next interactive run."""
 
 _INTERACTIVE_KINDS = frozenset(
-    {RunKind.SCORE, RunKind.RENDER, RunKind.DERIVE, RunKind.VALIDATE, RunKind.DESCRIBE}
+    {
+        RunKind.SCORE,
+        RunKind.RENDER,
+        RunKind.DERIVE,
+        RunKind.VALIDATE,
+        RunKind.DESCRIBE,
+        RunKind.TRANSLATE_PRIORS,  # M3: a guided user waits for it while drafting
+    }
 )
 
 
 def default_priority(kind: RunKind | str) -> PriorityClass:
-    """Interactive for short, user-facing kinds (score, render, derive, validate, describe);
-    batch for fits, ingest, evaluate, optimise and fan-out parents."""
+    """Interactive for short, user-facing kinds (score, render, derive, validate, describe,
+    translate_priors); batch for fits, ingest, evaluate, optimise and fan-out parents."""
     return PriorityClass.INTERACTIVE if RunKind(kind) in _INTERACTIVE_KINDS else PriorityClass.BATCH
 
 

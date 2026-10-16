@@ -477,3 +477,32 @@ def test_manifest_declares_fast_score_and_defaults() -> None:
     assert not PyMCModel.capabilities.deterministic_given_seed
     with pytest.raises(NotImplementedError):
         PyMCModel().build(xr.Dataset(), ModelSettings(), BuildContext("fit", xr.Dataset()))
+
+
+class _OverlapRadon(RadonModel):
+    """Radon with cheap prior draws of its floor slope for the scorecard's overlap check."""
+
+    id = "test.overlap_radon"
+    prior_overlap_vars = ("b", "not_a_parameter")
+    prior_overlap_draws = 60
+
+
+def test_prior_overlap_vars_keep_cheap_prior_draws(radon_data: xr.Dataset) -> None:
+    reg = _registry_with(_OverlapRadon, RadonModel)
+    text = (
+        RADON_SPEC_YAML.replace("examples.radon", "test.overlap_radon")
+        .replace("keep: {log_likelihood: true, posterior_predictive: {thin: 5}},", "")
+        .replace("prior_predictive: {draws: 40}", "tune: 50")
+        .replace("tune: 150, draws: 150", "draws: 50")
+    )
+    b = fit_spec(load_model_spec(text), radon_data, registry=reg, raw_schema=RADON_SCHEMA)
+    prior = b.model.groups["prior"]
+    assert set(prior.data_vars) == {"b"} and prior.sizes["draw"] == 60
+    # a plugin that declares none keeps no prior unless the spec asks for it
+    plain = fit_spec(
+        load_model_spec(text.replace("test.overlap_radon", "examples.radon")),
+        radon_data,
+        registry=reg,
+        raw_schema=RADON_SCHEMA,
+    )
+    assert "prior" not in plain.model.groups

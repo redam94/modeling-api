@@ -66,6 +66,40 @@ milestone releases are tagged on `main`.
 - **docs**: the "From a spreadsheet to a Guided draft" guide; the Guided mode
   concept page, the built-in models and the conformance guide describe the served parts.
 
+- **mmm**: `mmm.hierarchical_geo` declares `business_priors` and `lift_tests` calibration.
+  - Business priors (ROI or contribution-share ranges at a credibility, a baseline share)
+    become per-channel `LogNormal` `beta_channel` priors (and an `intercept` prior) through a
+    vectorised location/scale bisection over Monte Carlo draws of the other priors, with a
+    prior-predictive preview in business units and the prior mass inside each stated range
+    (`mapi_plugin_mmm.calibration`; property tests check the round trip).
+  - Lift tests add `kpi_delta ~ Normal(implied lift, se)` over the test window; the extra
+    spend is carried over through the lag tensor and the implied lift is kept as
+    `lift_tests__model`.
+  - `response_curves` carries the baseline (intercepts and controls), closing the expected KPI.
+  - `mmm.pymc_marketing` takes lift tests through pymc-marketing's `add_lift_test_measurements`.
+- **runner**: `translate_priors` runs (`priors.json` and the `mmm.prior_beliefs` /
+  `core.prior_predictive` plots); every fit writes `scorecard.json` (the whole check catalog,
+  or the guided template's, each measured or skipped with a reason) and the what-if grid
+  view `ui/grids/response_curves.json`; forecast and counterfactual score runs write
+  `ui/guided/forecast.json` and `ui/guided/counterfactual.json`, and a forecast's fan chart
+  shows the fitted history with the split line. Lift tests are checked against the raw data
+  before a fit.
+- **server**: `POST /v1/guided/prior-translations` and `GET …/{run_id}` (static checks of the
+  beliefs and lift tests against the dataset summary, a pinned `translate_priors` run, its
+  verified `priors.json`). The finalizer stores the runner's scorecard on the model version
+  and validates `priors.json`; spec validation checks a spec's lift tests against the dataset.
+- **sdk**: `FitContext.calibration` and `FitContext.to_original` (the fitted scales);
+  `prepare_model_stage` for runs that build but do not fit a model; the optional
+  `translate_priors` plugin hook. **sdk-pymc**: `PyMCModel.prior_overlap_vars` keeps cheap
+  prior draws for the scorecard's new `plausibility.prior_overlap` check.
+- **sdk/runner/server**: forecasts extend the covariates their payload lacks
+  (`ScoreRequest.future_covariates`: `carry_last`, `seasonal_naive`, `zero`) from the fitted
+  history (`mapi_sdk.future`); the server passes the fit dataset as the score run's `history`
+  input. `mapi_server.services.scorecards.promotion_decision` derives the promotion gate from
+  a stored model version.
+- **plots**: `mmm.prior_beliefs` (each channel's prior ROI or share against the stated range).
+- **docs**: Guided modelling (the translation math, the lift-test likelihood, how each
+  scorecard check is measured, the what-if, forecast and counterfactual views).
 ### Changed
 - **spec**: the `customer_choice` template (1.1.0) targets the built-in
   `choice.multinomial_logit`; wide column labels drop the question's keywords

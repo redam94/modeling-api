@@ -50,6 +50,7 @@ def test_hierarchical_geo_manifest() -> None:
     caps = m.capabilities
     assert m.id == "mmm.hierarchical_geo" and m.version == "1.3.0"
     assert caps.decision and caps.fast_score and caps.contribution_scale == "additive"
+    assert set(caps.calibration) == {"business_priors", "lift_tests"}
     assert set(caps.score_modes) >= {"predict", "forecast", "counterfactual", "evaluate"}
     assert m.derived_names() == {"contributions", "response_curves", "marginal_cost"}
     assert all(d.cache == "fit" for d in m.derived)

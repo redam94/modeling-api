@@ -325,7 +325,7 @@ it, so a renamed input or a changed payload fails type checks and tests on both 
 | `describe` | `DescribeJob` (`image_digest`) | none | `catalog.json` (`Catalog`) |
 | `validate` | the resolved `ModelSpec` | `dataset`, `side.<name>` | `validation.json` |
 | `fit` | the resolved `ModelSpec` (`use:` and dataset refs pinned) | `dataset`, `side.<name>` | `bundle.zarr.zip`, `diagnostics.json`, `metrics.json` (`MetricsSidecar`), `plots.json`, `coords.json` (`ScoreMetadata.fit_coords`), `ui/…` |
-| `score` | the `ScoreRequest` | `bundle`, `bundle.manifest`, `dataset` (the request's `data`), `scenario`, `side.<name>` | `score.zarr.zip`, `result.json`, `plots.json`, `ui/summary.arrow` |
+| `score` | the `ScoreRequest` | `bundle`, `bundle.manifest`, `dataset` (the request's `data`), `scenario`, `side.<name>`, `history` (v0.4: the fit dataset, for forecasts whose `future_covariates` is `carry_last` or `seasonal_naive`) | `score.zarr.zip`, `result.json`, `plots.json`, `ui/summary.arrow`; `ui/guided/forecast.json` or `ui/guided/counterfactual.json` (v0.4) |
 | `evaluate` / `derive` / `render` | `EvaluateJob` / `DeriveJob` / `RenderJob` from the run's `params` | `bundle`, `dataset` (default: the fit dataset), `side.<name>`; `plots` for render | as listed in the [runner reference](runner.md#what-runspecspec-holds-per-kind) |
 
 `side_table_input(name)` builds `side.<name>`; `SCORE_INPUTS` maps a `ScoreRequest`'s `data`

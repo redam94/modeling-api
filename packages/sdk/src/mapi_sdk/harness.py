@@ -30,7 +30,13 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 import xarray as xr
-from mapi_spec.capabilities import REPRESENTATION_RULES, OutputSelector, Representation
+from mapi_spec.calibration import Calibration
+from mapi_spec.capabilities import (
+    REPRESENTATION_RULES,
+    ModelManifest,
+    OutputSelector,
+    Representation,
+)
 from mapi_spec.errors import CoordPlanError, ErrorCode, Issue, MapiError, Severity
 from mapi_spec.loader import load_model_spec, load_score_request
 from mapi_spec.schema import DataSchema, DimPolicy, Role
@@ -56,6 +62,7 @@ from mapi_sdk.coords import (
     next_label,
 )
 from mapi_sdk.errors import SchemaValidationError, StepError, plugin_error
+from mapi_sdk.future import fill_future_covariates
 from mapi_sdk.metrics import compute_metrics, elpd
 from mapi_sdk.models import PREDICTIONS, FitContext, FitOutput, Fitted, ModelPlugin, ScoreContext
 from mapi_sdk.pipeline import RAW, FitTrace, Pipeline, ReplayTrace
@@ -75,8 +82,10 @@ from mapi_sdk.wire import write_zarr_zip
 __all__ = [
     "DEFAULT_EVAL_METRICS",
     "FitHooks",
+    "ModelStage",
     "data_hash",
     "fit_spec",
+    "prepare_model_stage",
     "score_bundle",
 ]
 
@@ -391,6 +400,8 @@ def _fit_from(
         cancel=hooks.cancel,
         checkpoint_sink=hooks.checkpoint_sink,
         stage_schema=rs.stages.get(rs.model_stage),
+        calibration=_calibration_for(env.spec, manifest),
+        to_original=_to_original(env.pipeline, states, env.side_tables),
     )
     try:
         out = env.plugin.fit(model_ds, s, env.spec.model.fit, fctx)
@@ -471,6 +482,118 @@ def _fit_from(
     ):
         bundle.residuals = _residuals(env, bundle, model_ds)
     return bundle
+
+
+def _calibration_for(spec: ModelSpec, manifest: ModelManifest) -> Calibration | None:
+    """The spec's calibration block, if the model declares what it carries.
+
+    Static validation already refuses a block the model cannot use
+    (``CALIBRATION_UNSUPPORTED``); this is the in-sandbox guard for direct SDK calls.
+    """
+    cal = spec.calibration
+    if cal is None or cal.empty:
+        return None
+    declared = manifest.capabilities.calibration
+    for kind, present in (
+        ("business_priors", cal.business_priors is not None),
+        ("lift_tests", bool(cal.lift_tests)),
+    ):
+        if present and kind not in declared:
+            raise MapiError(
+                f"model {manifest.id!r} does not use {kind.replace('_', ' ')} "
+                "(its capabilities do not declare them)",
+                code=ErrorCode.CALIBRATION_UNSUPPORTED,
+                pointer=f"/calibration/{kind}",
+            )
+    return cal
+
+
+@dataclass(slots=True)
+class ModelStage:
+    """The model-stage data of a spec with its preprocessing fitted on all of ``data`` -
+    what a sandboxed run that builds (but does not fit) the model needs (M3: the
+    ``translate_priors`` run)."""
+
+    spec: ModelSpec
+    resolved: ResolvedSpec
+    raw_schema: DataSchema
+    pipeline: Pipeline
+    states: dict[str, StepState]
+    data: xr.Dataset
+    plugin: ModelPlugin
+    settings: dict[str, Any]
+    fit_context: FitContext
+    to_original: Callable[[xr.DataArray, str], xr.DataArray]
+    issues: list[Issue] = field(default_factory=list)
+
+
+def prepare_model_stage(
+    spec: ModelSpec | str,
+    data: xr.Dataset,
+    side_tables: Mapping[str, xr.Dataset] | None = None,
+    registry: Registry | None = None,
+    *,
+    raw_schema: DataSchema | None = None,
+    hooks: FitHooks | None = None,
+) -> ModelStage:
+    """Validate ``spec`` against ``data``, fit every pipeline step on all of it and return
+    the model-stage dataset with the model plugin, its parsed settings and a
+    :class:`~mapi_sdk.models.FitContext` (``to_original`` uses the fitted step states).
+
+    Nothing is split and the model is not fitted: the scales are the data-derived ones a
+    full fit would learn (the production refit of ``evaluate_then_refit``).
+    """
+    spec = load_model_spec(spec) if isinstance(spec, str) else spec
+    registry = registry or default_registry()
+    hooks = hooks or FitHooks()
+    data = normalise_dataset(data)
+    resolved, schema, issues = _resolve(spec, registry, data, raw_schema)
+    check_dataset(schema, data)
+    tables = {k: normalise_dataset(v) for k, v in (side_tables or {}).items()}
+    needed = sorted({t for s in resolved.steps for t in s.side_tables})
+    missing = [t for t in needed if t not in tables]
+    if missing:
+        raise MapiError(
+            f"side table {missing[0]!r} is used by the pipeline but was not provided",
+            code=ErrorCode.SIDE_TABLE_COVERAGE,
+            pointer=f"/data/side_tables/{missing[0]}",
+        )
+    plugin_cls = registry.model(resolved.model.resolved)
+    plugin = plugin_cls()
+    manifest = plugin_cls.manifest()
+    pipeline = Pipeline.from_spec(spec, registry, resolved)
+    raw = BindingMap(resolved.binding).apply(data)
+    seed = spec.model.fit.seed or 0
+    trace = pipeline.fit(
+        raw, start=RAW, side_tables=tables, seed=seed, cancel=hooks.cancel, log=hooks.log
+    )
+    states = dict(trace.states)
+    model_coords = trace.coords.get(resolved.model_stage, xr.Dataset())
+    to_original = _to_original(pipeline, states, tables)
+    fctx = FitContext(
+        seed=seed,
+        schema=resolved.model.input_schema,
+        policies=resolved.model.effective_policies,
+        coords={str(d): np.asarray(model_coords[d].values) for d in model_coords.coords},
+        log=hooks.log,
+        cancel=hooks.cancel,
+        stage_schema=resolved.stages.get(resolved.model_stage),
+        calibration=spec.calibration,
+        to_original=to_original,
+    )
+    return ModelStage(
+        spec=spec,
+        resolved=resolved,
+        raw_schema=schema,
+        pipeline=pipeline,
+        states=states,
+        data=trace.data,
+        plugin=plugin,
+        settings=_model_settings(manifest.settings_schema, spec),
+        fit_context=fctx,
+        to_original=to_original,
+        issues=list(issues),
+    )
 
 
 def _to_original(
@@ -826,6 +949,7 @@ def score_bundle(
     metric_mask: xr.DataArray | None = None,
     hooks: FitHooks | None = None,
     observed: xr.Dataset | None = None,
+    history: xr.Dataset | None = None,
 ) -> xr.DataTree:
     """Score a fitted bundle; returns a ``DataTree``.
 
@@ -840,7 +964,9 @@ def score_bundle(
     attrs carry the representation, output kind, units/output space, retransformation
     labels, non-error issues and - in ``evaluate`` mode - the metrics. ``observed``
     (evaluation of cell-level splits) gives the observed targets for metrics when ``data``
-    has them masked.
+    has them masked. ``history`` (M3) is the fitted dataset (dataset names): forecasts whose
+    ``future_covariates`` policy is ``carry_last`` or ``seasonal_naive`` extend the
+    covariates the payload lacks from it (:mod:`mapi_sdk.future`).
     """
     req = load_score_request(request) if isinstance(request, str) else request
     registry = registry or default_registry()
@@ -879,14 +1005,6 @@ def score_bundle(
         data = _horizon_payload(bundle, req)
     entry_schema = rs.stages.get(req.inputs_stage)
     data = _order_payload(binding.apply(normalise_dataset(data), missing="ignore"), entry_schema)
-
-    plan = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws)
-    issues = plan.check(data)
-    derived = _requested_derived(bundle, req)
-    if scenario is not None:
-        scenario = binding.apply(normalise_dataset(scenario), missing="ignore")
-        scenario = _order_payload(scenario, entry_schema)
-        issues += [i for i in plan.check(scenario) if i not in issues]
     # pinned tables always replay the version stored at fit; callers only supply the others
     tables = {
         **{
@@ -896,6 +1014,41 @@ def score_bundle(
         },
         **bundle.side_tables,
     }
+    seed = req.seed if req.seed is not None else (bundle.model.fit_config.seed or 0)
+    filled: list[Issue] = []
+    if req.mode == "forecast" and req.horizon is not None:
+        hist = None
+        if history is not None:
+            hist = _order_payload(
+                binding.apply(normalise_dataset(history), missing="ignore"), rs.stages.get(RAW)
+            )
+            if req.inputs_stage != RAW:
+                hist = pipeline.transform(
+                    hist,
+                    bundle.states,
+                    end=req.inputs_stage,
+                    replay=False,
+                    side_tables=tables,
+                    seed=seed,
+                    cancel=hooks.cancel,
+                    log=hooks.log,
+                ).data
+        data, filled = fill_future_covariates(
+            data,
+            req.future_covariates,
+            dim=req.horizon.dim,
+            schema=entry_schema,
+            history=hist,
+            targets=entry_schema.targets if entry_schema is not None else (),
+        )
+
+    plan = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws)
+    issues = filled + plan.check(data)
+    derived = _requested_derived(bundle, req)
+    if scenario is not None:
+        scenario = binding.apply(normalise_dataset(scenario), missing="ignore")
+        scenario = _order_payload(scenario, entry_schema)
+        issues += [i for i in plan.check(scenario) if i not in issues]
     needed = sorted({t for s in rs.steps_after(req.inputs_stage) for t in s.side_tables})
     for t in needed:
         if t not in tables:
@@ -904,7 +1057,6 @@ def score_bundle(
                 code=ErrorCode.SIDE_TABLE_COVERAGE,
                 pointer=f"/side_tables/{t}",
             )
-    seed = req.seed if req.seed is not None else (bundle.model.fit_config.seed or 0)
     targets = rs.model.input_schema.targets if rs.model.input_schema is not None else []
 
     def prepare(ds: xr.Dataset) -> tuple[ReplayTrace, xr.Dataset, CanonicalPlan]:

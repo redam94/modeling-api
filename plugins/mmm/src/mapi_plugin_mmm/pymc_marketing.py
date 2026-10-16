@@ -21,6 +21,13 @@ Persistence never pickles: the bundle stores the posterior, pymc-marketing's ``f
 group and its JSON ``idata`` attributes; scoring rebuilds the model with
 ``MMM.attrs_to_init_kwargs`` + ``build_from_idata`` (pymc-marketing's own load path).
 
+Lift tests (M3, ``calibration.lift_tests``) go through pymc-marketing's own
+``add_lift_test_measurements``: each test becomes one row per period of its window - the
+channel's average spend per period ``x``, the extra spend per period ``delta_x`` and the
+lift per period ``delta_y`` with its ``sigma`` - conditioned on the saturation curve
+(pymc-marketing's model of a lift; carry-over is not part of it). With panel ``dims`` a test
+must name its ``geo`` (the first panel dim).
+
 ``pymc_marketing`` is imported lazily, so describing the plugin (manifest, catalog) does
 not pay its import cost.
 """
@@ -41,6 +48,7 @@ import pandas as pd
 import xarray as xr
 from mapi_pymc.diagnostics import convergence_diagnostics
 from mapi_sdk.models import PREDICTIONS, CustomModel, FitContext, FitOutput, Fitted, ScoreContext
+from mapi_spec.calibration import LiftTest
 from mapi_spec.capabilities import Capabilities, Diagnostic, Representation, ResourceHint
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.resources import ResourceClass
@@ -231,6 +239,7 @@ class PyMCMarketingMMM(CustomModel[PyMCMarketingSettings]):
         owns=frozenset({"scaling", "carryover", "inverse_units"}),
         deterministic_given_seed=False,
         checkpointable=False,
+        calibration=frozenset({"lift_tests"}),
     )
     schema_template = SCHEMA_TEMPLATE
     outputs: ClassVar[dict[str, Any]] = {
@@ -279,6 +288,8 @@ class PyMCMarketingMMM(CustomModel[PyMCMarketingSettings]):
             )
         seed = cfg.seed if cfg.seed is not None else ctx.seed
         mmm = _make_mmm(s, channels)
+        cal = ctx.calibration
+        lift = lift_frame(cal.lift_tests, frame, s, channels) if cal and cal.lift_tests else None
         kwargs: dict[str, Any] = {
             "draws": cfg.draws or 1000,
             "tune": cfg.tune if cfg.tune is not None else 1000,
@@ -293,7 +304,11 @@ class PyMCMarketingMMM(CustomModel[PyMCMarketingSettings]):
         ctx.check_cancelled()
         try:
             with _quiet():
-                idata = mmm.fit(frame.drop(columns=[TARGET]), frame[TARGET], **kwargs)
+                x_fit, y_fit = frame.drop(columns=[TARGET]), frame[TARGET]
+                if lift is not None and not lift.empty:
+                    mmm.build_model(x_fit, y_fit)
+                    mmm.add_lift_test_measurements(lift, dist=_lift_dist(), name=LIFT_NAME)
+                idata = mmm.fit(x_fit, y_fit, **kwargs)
         except MapiError:
             raise
         except Exception as exc:
@@ -317,6 +332,8 @@ class PyMCMarketingMMM(CustomModel[PyMCMarketingSettings]):
             "channels": channels,
             "pymc_marketing": {"version": pymc_marketing.__version__, "attrs": attrs},
         }
+        if lift is not None:
+            learned["calibration"] = {"lift_rows": len(lift)}
         ctx.progress(1.0, "fit complete")
         return FitOutput(groups=groups, learned=learned, diagnostics=diagnostics)
 
@@ -458,6 +475,72 @@ class PyMCMarketingMMM(CustomModel[PyMCMarketingSettings]):
         out = self._to_output(stacked, ds, s)
         out.attrs = {"kind": "expected", "noise": "none"}
         return out
+
+
+LIFT_NAME = "lift_measurements"
+
+
+def _lift_dist() -> Any:
+    """pymc-marketing's default lift likelihood (a Gamma on the absolute lift)."""
+    import pymc.dims as pmd
+
+    return pmd.Gamma
+
+
+def lift_frame(
+    tests: list[LiftTest], frame: pd.DataFrame, s: PyMCMarketingSettings, channels: list[str]
+) -> pd.DataFrame:
+    """Lift tests as pymc-marketing's ``df_lift_test`` (one row per period of a window).
+
+    Tests whose window lies after the data (a holdout fit) are left out; a window inside the
+    data must cover at least one period. Raises ``SCHEMA_INVALID`` at the test's pointer.
+    """
+    rows: list[dict[str, Any]] = []
+    dates = pd.to_datetime(frame[DATE])
+    last = dates.max()
+    if len(s.dims) > 1:
+        raise MapiError(
+            "lift tests support at most one panel dim in the pymc-marketing adapter",
+            code=ErrorCode.CALIBRATION_UNSUPPORTED,
+            pointer="/calibration/lift_tests",
+        )
+    for i, test in enumerate(tests):
+        here = f"/calibration/lift_tests/{i}"
+        if test.channel not in channels:
+            raise _schema_error(f"lift test {i}: no channel {test.channel!r}", here + "/channel")
+        mask = (dates >= pd.Timestamp(test.start)) & (dates <= pd.Timestamp(test.end))
+        sub = frame[mask]
+        if s.dims:
+            dim = s.dims[0]
+            if test.geo is None:
+                raise MapiError(
+                    f"lift test {i}: name the {dim!r} it ran in (the model has panel dims)",
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer=here + "/geo",
+                )
+            if str(test.geo) not in set(map(str, frame[dim])):
+                raise _schema_error(f"lift test {i}: no {dim} {test.geo!r}", here + "/geo")
+            sub = sub[sub[dim].astype(str) == str(test.geo)]
+        periods = int(sub[DATE].nunique())
+        if not periods:
+            if pd.Timestamp(test.start) > last:
+                continue
+            raise _schema_error(f"lift test {i}: its window covers no period of the data", here)
+        row: dict[str, Any] = {
+            "channel": test.channel,
+            "x": float(sub[test.channel].mean()),
+            "delta_x": test.spend_delta / periods,
+            "delta_y": test.kpi_delta / periods,
+            "sigma": test.sigma / periods,
+        }
+        if s.dims:
+            row[s.dims[0]] = test.geo
+        if row["x"] + row["delta_x"] < -1e-9:
+            raise _schema_error(
+                f"lift test {i} removes more spend than the data shows", here + "/spend_delta"
+            )
+        rows.append(row)
+    return pd.DataFrame(rows)
 
 
 def _clean(ds: xr.Dataset) -> xr.Dataset:

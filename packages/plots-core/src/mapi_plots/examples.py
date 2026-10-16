@@ -26,6 +26,7 @@ __all__ = [
     "feature_importance_tree",
     "panel_data",
     "plans_dataset",
+    "prior_beliefs_dataset",
     "response_curves",
     "score_tree",
 ]
@@ -228,6 +229,29 @@ def plans_dataset() -> xr.Dataset:
     )
 
 
+def prior_beliefs_dataset() -> xr.Dataset:
+    """A ``translate_priors`` preview: prior ROI/share draws per channel with stated ranges."""
+    rng = _rng(13)
+    n = 400
+    roi = np.exp(rng.normal([0.9, 1.2], [0.3, 0.25], size=(n, 2)))
+    share = roi * np.array([0.05, 0.03])
+    baseline = 0.65 + 0.08 * rng.standard_normal(n)
+    ds = xr.Dataset(
+        {
+            "roi": (("sample", "channel"), roi),
+            "contribution_share": (("sample", "channel"), share),
+            "baseline_share": (("sample",), baseline),
+            "stated_quantity": (("channel",), np.array(["roi", "contribution_share"])),
+            "stated_low": (("channel",), [1.5, 0.05]),
+            "stated_high": (("channel",), [4.0, 0.15]),
+            "stated_credibility": (("channel",), [0.8, 0.9]),
+        },
+        coords={"sample": np.arange(n), "channel": CHANNELS},
+    )
+    ds["baseline_share"].attrs = {"range_low": 0.5, "range_high": 0.8, "credibility": 0.8}
+    return ds
+
+
 def feature_importance_tree() -> xr.DataTree:
     """A tabular bundle shaped like ``mapi_sklearn``'s: tree importances and coefficients."""
     feats = ["price", "promo_lagged[1]", "promo_lagged[2]", "calendar[week_of_year]", "store"]
@@ -271,5 +295,6 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
         "mmm.marginal_cost": (bundle, {}),
         "mmm.budget_plans": ({"plans": plans_dataset()}, {}),
         "mmm.decomposition": (bundle, {}),
+        "mmm.prior_beliefs": ({"prior_beliefs": prior_beliefs_dataset()}, {}),
         "ml.feature_importance": (feature_importance_tree(), {}),
     }

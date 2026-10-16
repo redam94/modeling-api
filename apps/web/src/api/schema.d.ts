@@ -637,6 +637,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/guided/prior-translations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Translate business priors (sandboxed translate_priors run)
+         * @description Business priors (ROI or share ranges with a credibility, a baseline share) to
+         *     model-space priors for the spec's model, with a prior-predictive preview in business
+         *     units. Static problems (an unknown channel, shares adding up to more than the KPI, a
+         *     model without ``business_priors`` calibration) are refused before any run starts.
+         */
+        post: operations["create_prior_translation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/prior-translations/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A prior translation and, once done, its priors and preview
+         * @description ``done`` once the run is terminal; ``result`` only when it succeeded (a failed run's
+         *     problem is on ``run.problem``).
+         */
+        get: operations["get_prior_translation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/guided/templates": {
         parameters: {
             query?: never;
@@ -3156,6 +3200,31 @@ export interface components {
             policy?: components["schemas"]["DimPolicy"];
         };
         /**
+         * DistributionSummary
+         * @description A distribution in business units: mean, sd and named quantiles (``"0.05"`` …).
+         * @example {
+         *       "mean": 2.6,
+         *       "quantiles": {
+         *         "0.05": 1.5,
+         *         "0.5": 2.5,
+         *         "0.95": 4.1
+         *       },
+         *       "sd": 0.8
+         *     }
+         */
+        DistributionSummary: {
+            /** Mean */
+            mean: number;
+            /** Quantiles */
+            quantiles?: {
+                [key: string]: number;
+            };
+            /** Sd */
+            sd: number;
+            /** Units */
+            units?: string | null;
+        };
+        /**
          * ErrorCode
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
@@ -3636,6 +3705,56 @@ export interface components {
          * @enum {string}
          */
         FailureClass: "user" | "resource_exhausted" | "infra" | "integrity" | "timeout" | "sandbox";
+        /**
+         * FanChart
+         * @description Quantile bands of a series along one dim (a KPI fan): ``values[i][j]`` is quantile
+         *     ``quantiles[i]`` at ``coords[j]``. ``observed`` (if any) is the data over ``coords``.
+         * @example {
+         *       "coords": [
+         *         "2026-01-04",
+         *         "2026-01-11"
+         *       ],
+         *       "dim": "time",
+         *       "observed": [
+         *         101,
+         *         99.5
+         *       ],
+         *       "quantiles": [
+         *         0.05,
+         *         0.5,
+         *         0.95
+         *       ],
+         *       "units": "kEUR",
+         *       "values": [
+         *         [
+         *           80,
+         *           82
+         *         ],
+         *         [
+         *           100,
+         *           103
+         *         ],
+         *         [
+         *           125,
+         *           129
+         *         ]
+         *       ]
+         *     }
+         */
+        FanChart: {
+            /** Coords */
+            coords: (string | number)[];
+            /** Dim */
+            dim: string;
+            /** Observed */
+            observed?: (number | null)[] | null;
+            /** Quantiles */
+            quantiles: number[];
+            /** Units */
+            units?: string | null;
+            /** Values */
+            values: (number | null)[][];
+        };
         /**
          * FutureCovariates
          * @description Where future values of ``future_required`` covariates come from in a forecast (M3).
@@ -5842,6 +5961,399 @@ export interface components {
          * @enum {string}
          */
         PrincipalKind: "user" | "service_account" | "token" | "service";
+        /**
+         * PriorPreview
+         * @description The prior predictive in business units: what the model believes *before* seeing the
+         *     KPI, so users can check that their beliefs came out as intended.
+         * @example {
+         *       "contribution_share": {
+         *         "tv": {
+         *           "mean": 0.12,
+         *           "quantiles": {
+         *             "0.05": 0.06,
+         *             "0.95": 0.19
+         *           },
+         *           "sd": 0.04
+         *         }
+         *       },
+         *       "kpi_fan": {
+         *         "coords": [
+         *           "2026-01-04",
+         *           "2026-01-11"
+         *         ],
+         *         "dim": "time",
+         *         "observed": [
+         *           101,
+         *           99.5
+         *         ],
+         *         "quantiles": [
+         *           0.05,
+         *           0.5,
+         *           0.95
+         *         ],
+         *         "units": "kEUR",
+         *         "values": [
+         *           [
+         *             80,
+         *             82
+         *           ],
+         *           [
+         *             100,
+         *             103
+         *           ],
+         *           [
+         *             125,
+         *             129
+         *           ]
+         *         ]
+         *       },
+         *       "roi": {
+         *         "tv": {
+         *           "mean": 2.6,
+         *           "quantiles": {
+         *             "0.05": 1.5,
+         *             "0.5": 2.5,
+         *             "0.95": 4.1
+         *           },
+         *           "sd": 0.8
+         *         }
+         *       }
+         *     }
+         */
+        PriorPreview: {
+            baseline_share?: components["schemas"]["DistributionSummary"] | null;
+            /** Contribution Share */
+            contribution_share?: {
+                [key: string]: components["schemas"]["DistributionSummary"];
+            };
+            kpi_fan?: components["schemas"]["FanChart"] | null;
+            /** Roi */
+            roi?: {
+                [key: string]: components["schemas"]["DistributionSummary"];
+            };
+        };
+        /**
+         * PriorTranslation
+         * @description ``GET /v1/guided/prior-translations/{run_id}`` (and the ``202`` of the POST): the run
+         *     and, once it succeeded, the translated priors with their preview. Apply ``result.priors``
+         *     at ``apply_at`` (``mapi_spec.calibration.apply_prior_translation``).
+         * @example {
+         *       "done": true,
+         *       "result": {
+         *         "channels": [
+         *           "tv",
+         *           "search",
+         *           "social"
+         *         ],
+         *         "coverage": {
+         *           "search": 0.88,
+         *           "social": 0.81,
+         *           "tv": 0.79
+         *         },
+         *         "draws": 500,
+         *         "format": "mapi.prior-translation/v1",
+         *         "preview": {
+         *           "contribution_share": {
+         *             "tv": {
+         *               "mean": 0.12,
+         *               "quantiles": {
+         *                 "0.05": 0.06,
+         *                 "0.95": 0.19
+         *               },
+         *               "sd": 0.04
+         *             }
+         *           },
+         *           "kpi_fan": {
+         *             "coords": [
+         *               "2026-01-04",
+         *               "2026-01-11"
+         *             ],
+         *             "dim": "time",
+         *             "observed": [
+         *               101,
+         *               99.5
+         *             ],
+         *             "quantiles": [
+         *               0.05,
+         *               0.5,
+         *               0.95
+         *             ],
+         *             "units": "kEUR",
+         *             "values": [
+         *               [
+         *                 80,
+         *                 82
+         *               ],
+         *               [
+         *                 100,
+         *                 103
+         *               ],
+         *               [
+         *                 125,
+         *                 129
+         *               ]
+         *             ]
+         *           },
+         *           "roi": {
+         *             "tv": {
+         *               "mean": 2.6,
+         *               "quantiles": {
+         *                 "0.05": 1.5,
+         *                 "0.5": 2.5,
+         *                 "0.95": 4.1
+         *               },
+         *               "sd": 0.8
+         *             }
+         *           }
+         *         },
+         *         "priors": {
+         *           "beta_channel": {
+         *             "dims": [
+         *               "channel"
+         *             ],
+         *             "distribution": "LogNormal",
+         *             "mu": [
+         *               -1.2,
+         *               -0.9,
+         *               -2.1
+         *             ],
+         *             "sigma": [
+         *               0.38,
+         *               0.33,
+         *               0.5
+         *             ]
+         *           }
+         *         },
+         *         "seed": 7
+         *       },
+         *       "run": {
+         *         "attempt": 1,
+         *         "cost": {
+         *           "estimated": true
+         *         },
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "executor": "local-process",
+         *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *         "kind": "translate_priors",
+         *         "project_id": "default",
+         *         "queued_at": "2026-10-15T09:30:00Z",
+         *         "resource_class": "M",
+         *         "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *         "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+         *         "spec_revision": 2,
+         *         "started_at": "2026-10-15T09:30:05Z",
+         *         "state": "succeeded",
+         *         "tenant_id": "default",
+         *         "timeout": "45m",
+         *         "updated_at": "2026-10-15T09:31:00Z"
+         *       }
+         *     }
+         */
+        PriorTranslation: {
+            /**
+             * Apply At
+             * @default /model/settings/priors
+             */
+            apply_at?: string;
+            /** Done */
+            done: boolean;
+            result?: components["schemas"]["PriorTranslationResult"] | null;
+            run: components["schemas"]["Run"];
+        };
+        /**
+         * PriorTranslationRequest
+         * @description ``POST /v1/guided/prior-translations``: start a sandboxed ``translate_priors`` run.
+         *
+         *     Give the spec as a saved revision (``spec_id`` + ``revision``) or an unsaved
+         *     ``document`` (a guided draft); ``dataset`` overrides its ``data.dataset``.
+         * @example {
+         *       "business_priors": {
+         *         "baseline_share": {
+         *           "credibility": 0.8,
+         *           "share": [
+         *             0.5,
+         *             0.8
+         *           ]
+         *         },
+         *         "channels": {
+         *           "search": {
+         *             "credibility": 0.9,
+         *             "roi": [
+         *               2,
+         *               6
+         *             ]
+         *           },
+         *           "social": {
+         *             "contribution_share": [
+         *               0.02,
+         *               0.1
+         *             ]
+         *           },
+         *           "tv": {
+         *             "credibility": 0.8,
+         *             "roi": [
+         *               1.5,
+         *               4
+         *             ]
+         *           }
+         *         },
+         *         "kpi_units": "EUR",
+         *         "spend_units": "EUR"
+         *       },
+         *       "draws": 500,
+         *       "revision": 2,
+         *       "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0"
+         *     }
+         */
+        PriorTranslationRequest: {
+            business_priors: components["schemas"]["BusinessPriors"];
+            /**
+             * Dataset
+             * @example dataset://growth/eu@v3
+             */
+            dataset?: string | null;
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Draws
+             * @default 500
+             */
+            draws?: number;
+            /** Lift Tests */
+            lift_tests?: components["schemas"]["LiftTest"][];
+            resource_class?: components["schemas"]["ResourceClass"] | null;
+            /** Revision */
+            revision?: number | null;
+            /** Seed */
+            seed?: number | null;
+            /** Spec Id */
+            spec_id?: string | null;
+        };
+        /**
+         * PriorTranslationResult
+         * @description ``priors.json`` of a ``translate_priors`` run.
+         *
+         *     ``priors`` are model-space priors in the plugin's ``settings.priors`` form (pymc-marketing
+         *     ``Prior`` dicts; per-channel parameters are lists in ``channels`` order), to be written
+         *     at :data:`PRIORS_POINTER`. ``coverage`` is the prior mass inside each stated range
+         *     (close to the stated credibility when the translation is faithful).
+         * @example {
+         *       "channels": [
+         *         "tv",
+         *         "search",
+         *         "social"
+         *       ],
+         *       "coverage": {
+         *         "search": 0.88,
+         *         "social": 0.81,
+         *         "tv": 0.79
+         *       },
+         *       "draws": 500,
+         *       "format": "mapi.prior-translation/v1",
+         *       "preview": {
+         *         "contribution_share": {
+         *           "tv": {
+         *             "mean": 0.12,
+         *             "quantiles": {
+         *               "0.05": 0.06,
+         *               "0.95": 0.19
+         *             },
+         *             "sd": 0.04
+         *           }
+         *         },
+         *         "kpi_fan": {
+         *           "coords": [
+         *             "2026-01-04",
+         *             "2026-01-11"
+         *           ],
+         *           "dim": "time",
+         *           "observed": [
+         *             101,
+         *             99.5
+         *           ],
+         *           "quantiles": [
+         *             0.05,
+         *             0.5,
+         *             0.95
+         *           ],
+         *           "units": "kEUR",
+         *           "values": [
+         *             [
+         *               80,
+         *               82
+         *             ],
+         *             [
+         *               100,
+         *               103
+         *             ],
+         *             [
+         *               125,
+         *               129
+         *             ]
+         *           ]
+         *         },
+         *         "roi": {
+         *           "tv": {
+         *             "mean": 2.6,
+         *             "quantiles": {
+         *               "0.05": 1.5,
+         *               "0.5": 2.5,
+         *               "0.95": 4.1
+         *             },
+         *             "sd": 0.8
+         *           }
+         *         }
+         *       },
+         *       "priors": {
+         *         "beta_channel": {
+         *           "dims": [
+         *             "channel"
+         *           ],
+         *           "distribution": "LogNormal",
+         *           "mu": [
+         *             -1.2,
+         *             -0.9,
+         *             -2.1
+         *           ],
+         *           "sigma": [
+         *             0.38,
+         *             0.33,
+         *             0.5
+         *           ]
+         *         }
+         *       },
+         *       "seed": 7
+         *     }
+         */
+        PriorTranslationResult: {
+            /** Channels */
+            channels: string[];
+            /** Coverage */
+            coverage?: {
+                [key: string]: number;
+            };
+            /** Draws */
+            draws: number;
+            /**
+             * Format
+             * @default mapi.prior-translation/v1
+             * @constant
+             */
+            format?: "mapi.prior-translation/v1";
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            preview?: components["schemas"]["PriorPreview"];
+            /** Priors */
+            priors?: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["JsonValue"];
+                };
+            };
+            /** Seed */
+            seed?: number | null;
+        };
         /**
          * Problem
          * @description RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).
@@ -9437,6 +9949,108 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_prior_translation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriorTranslationRequest"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriorTranslation"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriorTranslation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `BUSINESS_PRIORS_INVALID`: The business priors are inconsistent; `CALIBRATION_UNSUPPORTED`: The model cannot use this calibration data */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_prior_translation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriorTranslation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

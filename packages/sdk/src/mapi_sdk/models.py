@@ -25,6 +25,7 @@ from typing import Any, ClassVar, Literal, Protocol, runtime_checkable
 
 import numpy as np
 import xarray as xr
+from mapi_spec.calibration import Calibration, PriorTranslationJob, PriorTranslationResult
 from mapi_spec.capabilities import (
     Capabilities,
     DerivedDecl,
@@ -52,6 +53,7 @@ __all__ = [
     "Fitted",
     "ModelPlugin",
     "ModelSettings",
+    "PriorTranslation",
     "ScoreContext",
     "build_manifest",
     "new_level_mask",
@@ -79,6 +81,13 @@ class FitContext:
     ``checkpoint_sink`` is an engine-specific sink for segmented fits (for example
     ``mapi_pymc.CheckpointSink``); the runner supplies one that writes to the run prefix.
     ``None`` disables checkpointing.
+
+    ``calibration`` (M3) is the spec's ``calibration`` block - business priors and lift
+    tests - for plugins whose capabilities declare them (``Capabilities.calibration``).
+    ``to_original`` (M3) maps a model-stage array in the units of input variable ``src``
+    back to the output space with the *fitted* preprocessing state (as
+    :attr:`ScoreContext.to_original` does for derived quantities), so a plugin can turn
+    business-unit calibration data into model units. Both are ``None`` outside the harness.
     """
 
     seed: int = 0
@@ -91,6 +100,8 @@ class FitContext:
     cancel: CancelToken | None = None
     checkpoint_sink: Any | None = None
     stage_schema: DataSchema | None = None
+    calibration: Calibration | None = None
+    to_original: Callable[[xr.DataArray, str], xr.DataArray] | None = None
     rng: np.random.Generator = field(init=False)
 
     def __post_init__(self) -> None:
@@ -124,6 +135,22 @@ class FitOutput:
     terminal_state: xr.Dataset | None = None
     derived: dict[str, xr.Dataset] = field(default_factory=dict)
     diagnostics: list[Diagnostic] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class PriorTranslation:
+    """What a plugin's optional ``translate_priors`` hook returns (M3).
+
+    ``result`` is the ``priors.json`` document (model-space priors, coverage and the
+    prior-predictive summaries). ``preview`` holds the prior-predictive draws in business
+    units along a ``sample`` dim for plots: ``roi(sample, channel)``,
+    ``contribution_share(sample, channel)``, ``baseline_share(sample)`` and
+    ``kpi(sample, <time>)`` with ``kpi_observed(<time>)``; the stated ranges are in the
+    variables' ``range_low``/``range_high``/``credibility`` attributes.
+    """
+
+    result: PriorTranslationResult
+    preview: xr.Dataset = field(default_factory=xr.Dataset)
 
 
 @dataclass(slots=True)
@@ -353,3 +380,11 @@ class CustomModel[SettingsT: BaseModel]:
         self, fitted: Fitted, candidates: xr.Dataset, q: int, ctx: ScoreContext
     ) -> xr.Dataset:
         raise NotImplementedError(f"model {self.id!r} does not recommend")
+
+    def translate_priors(
+        self, ds: xr.Dataset, s: SettingsT, job: PriorTranslationJob, ctx: FitContext
+    ) -> PriorTranslation:
+        """Business priors to model-space priors over model-stage ``ds`` (M3; plugins that
+        declare ``business_priors`` in ``Capabilities.calibration``). ``ctx.to_original``
+        carries the data-derived preprocessing scales."""
+        raise NotImplementedError(f"model {self.id!r} does not translate business priors")

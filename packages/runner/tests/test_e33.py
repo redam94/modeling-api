@@ -1,6 +1,7 @@
 """E33-style geo MMM through the runner: validate, fit (side tables, evaluate_then_refit,
-derived quantities, MMM plots, response grids), derive, score an 8-week EUR forecast,
-evaluate, and render (which needs vl-convert, absent here)."""
+derived quantities, MMM plots, response grids, the scorecard and the what-if grid view),
+derive, score an 8-week EUR forecast (with its guided view), a channel-off counterfactual,
+evaluate, render (which needs vl-convert, absent here) and translate business priors."""
 
 from __future__ import annotations
 
@@ -12,10 +13,20 @@ import pytest
 from mapi_conformance.fixtures.e33 import data as e33
 from mapi_sdk.wire import read_arrow_ipc, read_datatree_zip, write_zarr_zip
 from mapi_spec.api import ValidateResponse
+from mapi_spec.calibration import PriorTranslationResult
 from mapi_spec.executor import RunKind
 from mapi_spec.loader import canonical_json, load_model_spec
 from mapi_spec.run import ErrorPayload, OutputManifest, RunnerExit, verify_output_objects
-from mapi_spec.views import PreprocessView
+from mapi_spec.scorecard import SCORECARD_OUTPUT, Scorecard
+from mapi_spec.views import (
+    COUNTERFACTUAL_VIEW,
+    FORECAST_VIEW,
+    RESPONSE_GRID_VIEW,
+    CounterfactualView,
+    ForecastView,
+    PreprocessView,
+    ResponseGridView,
+)
 from runner_helpers import Result, assert_signed_stream, make_run, run_supervisor
 from shimgcs import ShimGcs
 
@@ -99,6 +110,14 @@ def test_e33_validate_fit_derive_score_evaluate_render(
     assert scale.stateful and len(heat.dims) == 2 and set(heat.dims) == {"geo", "channel"}
     thin = read_datatree_zip(fit.output("ui/thin.zarr.zip"))
     assert thin["posterior"].to_dataset().sizes["sample"] == 100
+    card = Scorecard.model_validate_json(fit.output(SCORECARD_OUTPUT))
+    assert card.items and all(i.check and i.docs_anchor for i in card.items)
+    assert {"convergence.rhat", "holdout.mape", "plausibility.roi_absurd"} <= {
+        i.check for i in card.items
+    }
+    grid = ResponseGridView.model_validate_json(fit.output(RESPONSE_GRID_VIEW))
+    assert grid.channels == ["tv", "search"] and grid.draws == 100 and grid.kpi_units == "EUR"
+    assert grid.baseline is not None and grid.geos is not None
     bundle_inputs = {
         "bundle": (runs, fit.run.prefix + "bundle.zarr.zip"),
         "bundle.manifest": (runs, fit.run.prefix + "bundle.manifest.json"),
@@ -144,7 +163,54 @@ def test_e33_validate_fit_derive_score_evaluate_render(
     out = read_datatree_zip(score.output("score.zarr.zip"))
     y = out["summary"].to_dataset()["y_hat"]
     assert y.sizes["date"] == 8 and y.attrs["units"] == "EUR"
-    assert [p["id"] for p in json.loads(score.output("plots.json"))] == ["core.ppc_fan"]
+    assert "predictions" not in out  # full draws only fed the guided view
+    fan_plots = json.loads(score.output("plots.json"))
+    assert [p["id"] for p in fan_plots] == ["core.ppc_fan"]
+    assert "training data ends" in fan_plots[0]["caption_plain"]  # history + split line
+    forecast = ForecastView.model_validate_json(score.output(FORECAST_VIEW))
+    assert forecast.history == 30 and len(forecast.fan.coords) == 38
+    assert forecast.units == "EUR" and forecast.summed_over == ["market"]
+
+    # ---- a guided forecast: future spend carried forward from the fitted history -------------
+    carry = {
+        **request,
+        "future_covariates": "carry_last",
+        "output": {"kind": "expected", "summary": ["mean", "hdi_90"]},
+    }
+    guided = run_supervisor(
+        make_run(
+            gcs,
+            RunKind.SCORE,
+            carry,
+            inputs={
+                **bundle_inputs,
+                "history": inputs["dataset"],
+                "side.fx": inputs["side.fx"],
+            },
+        )
+    )
+    _ok(guided)
+    guided_view = ForecastView.model_validate_json(guided.output(FORECAST_VIEW))
+    assert guided_view.total is not None and guided_view.total.mean > 0
+    result = json.loads(guided.output("result.json"))
+    assert any("carry_last" in i["message"] for i in result["issues"])
+
+    # ---- counterfactual: TV off over the fit window ------------------------------------------
+    cf_request = {
+        "apiVersion": "mapi/v1",
+        "kind": "ScoreRequest",
+        "model": "endpoint://growth/eu-geo-mmm",
+        "mode": "counterfactual",
+        "side_tables": {"fx": "dataset://growth/fx_daily@latest"},
+        "interventions": [{"var": "spend_local", "sel": {"channel": "tv"}, "set": 0.0}],
+        "output": {"kind": "expected", "summary": ["mean", "hdi_90"]},
+    }
+    cf = run_supervisor(
+        make_run(gcs, RunKind.SCORE, cf_request, inputs={**bundle_inputs, **inputs})
+    )
+    _ok(cf)
+    view = CounterfactualView.model_validate_json(cf.output(COUNTERFACTUAL_VIEW))
+    assert view.delta_total.mean < 0 and view.delta_fan is not None
 
     # ---- evaluate (in sample, through the score path) ---------------------------------------
     ev = run_supervisor(
@@ -179,3 +245,26 @@ def test_e33_validate_fit_derive_score_evaluate_render(
     else:  # pragma: no cover - only where the optional renderer is installed
         _ok(render)
         assert render.output("renders/core.convergence.png").startswith(b"\x89PNG")
+
+    # ---- translate business priors (draft time: no fit) ---------------------------------------
+    job = {
+        "spec": spec,
+        "business_priors": {
+            "channels": {
+                "tv": {"roi": [1.0, 3.0], "credibility": 0.8},
+                "search": {"contribution_share": [0.05, 0.2]},
+            },
+            "baseline_share": {"share": [0.5, 0.8]},
+        },
+        "draws": 300,
+        "seed": 3,
+    }
+    tr = run_supervisor(make_run(gcs, RunKind.TRANSLATE_PRIORS, job, inputs=inputs))
+    manifest = _ok(tr)
+    assert {"priors.json", "plots.json"} <= set(manifest.objects)
+    result = PriorTranslationResult.model_validate_json(tr.output("priors.json"))
+    assert result.priors["beta_channel"]["distribution"] == "LogNormal"
+    assert set(result.coverage) == {"tv", "search", "baseline"}
+    assert result.preview.kpi_fan is not None and result.preview.roi["tv"].units == "EUR per EUR"
+    ids = sorted(p["id"] for p in json.loads(tr.output("plots.json")))
+    assert ids == ["core.prior_predictive", "mmm.prior_beliefs"]

@@ -207,6 +207,11 @@ Ask for them in `outputs.derived`; they are computed once, at fit, over the firs
 - **`marginal_cost`**: the extra EUR of spend needed for one extra EUR of revenue at
   current spend (and its inverse, marginal ROI), per geo and per channel.
 
+`response_curves` also carries the `baseline` (intercepts and controls, per draw and per
+geo), so the what-if grid view closes the expected KPI. Business priors (ROI or share
+ranges) and lift tests calibrate this model through the spec's `calibration` block: see
+[Guided modelling](guided-modelling.md).
+
 ## Optimising budgets
 
 `mmm.hierarchical_geo` declares `decision: true`. Its objective scores a budget per
