@@ -37,6 +37,7 @@ __all__ = [
     "OPERATOR_PERMISSIONS",
     "PERMISSIONS",
     "PROJECT_HEADER",
+    "SUSPENDED_ALLOWED",
     "TIER_PLACEMENT",
     "Action",
     "AuthContext",
@@ -222,6 +223,11 @@ class Project(ResponseModel):
     name: str = Field(..., max_length=200)
     description: str | None = Field(None, max_length=4000)
     created_at: AwareDatetime
+    guided_locked: bool = Field(
+        False,
+        description="Persona lock (M3): the web app shows only Guided mode to members below "
+        "admin. The API still accepts every spec; the lock is a presentation policy.",
+    )
 
     model_config = dto_examples(
         {
@@ -229,7 +235,14 @@ class Project(ResponseModel):
             "tenant_id": "default",
             "name": "Default project",
             "created_at": EXAMPLE_TS,
-        }
+        },
+        {
+            "id": "growth",
+            "tenant_id": "acme",
+            "name": "Growth",
+            "created_at": EXAMPLE_TS,
+            "guided_locked": True,
+        },
     )
 
 
@@ -312,6 +325,14 @@ class ResourceKind(StrEnum):
     EXECUTOR = "executor"
     EVENT = "event"
     """Run events pushed to ``/internal/events``."""
+    WEBHOOK = "webhook"
+    """Outgoing webhooks of a project and their delivery log (M3)."""
+    EMBED = "embed"
+    """Tokenised read-only embed links of saved plots (M3)."""
+    TENANT_DELETION = "tenant_deletion"
+    """Deleting the whole tenant and every byte it stored (M3)."""
+    TENANT_EXPORT = "tenant_export"
+    """GDPR exports of everything a tenant stored (M3)."""
 
 
 class Level(StrEnum):
@@ -381,9 +402,18 @@ PERMISSIONS: Final[dict[tuple[ResourceKind, Action], Rule]] = {
     (_RK.ENDPOINT, _AC.UPDATE): Rule(_A, _P),
     (_RK.ENDPOINT, _AC.PROMOTE): Rule(_A, _P),
     (_RK.ENDPOINT, _AC.DELETE): Rule(_A, _P),
+    (_RK.ENDPOINT, _AC.MANAGE): Rule(_A, _P),  # override a promotion gate (sessions only)
     (_RK.PLOT, _AC.READ): Rule(_V, _P),
     (_RK.PLOT, _AC.CREATE): Rule(_E, _P),
     (_RK.PLOT, _AC.RUN): Rule(_R, _P),
+    (_RK.PLOT, _AC.DELETE): Rule(_E, _P),
+    (_RK.EMBED, _AC.READ): Rule(_V, _P),
+    (_RK.EMBED, _AC.CREATE): Rule(_E, _P),
+    (_RK.EMBED, _AC.DELETE): Rule(_E, _P),
+    (_RK.WEBHOOK, _AC.READ): Rule(_A, _P),
+    (_RK.WEBHOOK, _AC.CREATE): Rule(_A, _P),
+    (_RK.WEBHOOK, _AC.UPDATE): Rule(_A, _P),
+    (_RK.WEBHOOK, _AC.DELETE): Rule(_A, _P),
     (_RK.PLUGIN, _AC.READ): Rule(_V, _P),
     (_RK.PLUGIN, _AC.CREATE): Rule(_A, _P),
     (_RK.PLUGIN, _AC.DELETE): Rule(_A, _P),
@@ -398,6 +428,12 @@ PERMISSIONS: Final[dict[tuple[ResourceKind, Action], Rule]] = {
     (_RK.EXECUTOR, _AC.READ): _OP,
     (_RK.EXECUTOR, _AC.UPDATE): _OP,
     (_RK.EVENT, _AC.CREATE): Rule(None, Level.INTERNAL),
+    (_RK.TENANT_DELETION, _AC.READ): Rule(_A, _T),
+    (_RK.TENANT_DELETION, _AC.CREATE): Rule(_A, _T),
+    (_RK.TENANT_DELETION, _AC.CANCEL): Rule(_A, _T),
+    (_RK.TENANT_DELETION, _AC.MANAGE): _OP,
+    (_RK.TENANT_EXPORT, _AC.READ): Rule(_A, _T),
+    (_RK.TENANT_EXPORT, _AC.CREATE): Rule(_A, _T),
 }
 """The complete matrix. A pair that is not listed is denied to everyone."""
 
@@ -416,11 +452,24 @@ OPERATOR_PERMISSIONS: Final[frozenset[tuple[ResourceKind, Action]]] = frozenset(
             ResourceKind.BILLING,
             ResourceKind.AUDIT,
             ResourceKind.CATALOG,
+            ResourceKind.TENANT_DELETION,
         )
     }
 )
 """What platform operators may do. Operators read metadata (tenants, members, token
 listings, runs, usage, audit) but never tenant content (datasets, specs, models, plots)."""
+
+
+SUSPENDED_ALLOWED: Final[frozenset[tuple[ResourceKind, Action]]] = frozenset(
+    {
+        (ResourceKind.TENANT_DELETION, Action.CREATE),
+        (ResourceKind.TENANT_DELETION, Action.CANCEL),
+        (ResourceKind.TENANT_EXPORT, Action.CREATE),
+    }
+)
+"""Writes a *suspended* tenant may still do (besides every read): ask for its data
+(GDPR access) and ask for, or cancel, its own deletion. A tenant whose deletion is scheduled
+is suspended during the grace period, so the cancel must stay possible."""
 
 
 def required_rule(action: Action | str, resource: ResourceKind | str) -> Rule | None:
@@ -608,7 +657,8 @@ class AuthContext(StrictModel):
 
         1. internal services may do exactly the ``internal`` rules;
         2. operators may do :data:`OPERATOR_PERMISSIONS` (regardless of tenant status);
-        3. otherwise the tenant must allow it (suspended: reads only; deleting: nothing),
+        3. otherwise the tenant must allow it (suspended: reads and
+           :data:`SUSPENDED_ALLOWED` only; deleting: nothing),
            the role at the rule's level must satisfy :func:`can`, and a token's scopes
            must cover it (:func:`mapi_spec.tokens.scope_allows`).
         """
@@ -627,6 +677,7 @@ class AuthContext(StrictModel):
         if not (
             self.tenant_status.allows_writes
             or (act is Action.READ and self.tenant_status.allows_reads)
+            or (self.tenant_status is TenantStatus.SUSPENDED and (res, act) in SUSPENDED_ALLOWED)
         ):
             return False
         role = (

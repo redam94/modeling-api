@@ -74,6 +74,25 @@ class ErrorCode(StrEnum):
     SANDBOX_VIOLATION = "SANDBOX_VIOLATION"
     CANCELLED = "CANCELLED"
     INTERNAL_ERROR = "INTERNAL_ERROR"
+    # --- M3: guided mode, calibration and imports --------------------------------------------
+    GUIDED_ANSWERS_INVALID = "GUIDED_ANSWERS_INVALID"
+    BUSINESS_PRIORS_INVALID = "BUSINESS_PRIORS_INVALID"
+    CALIBRATION_UNSUPPORTED = "CALIBRATION_UNSUPPORTED"
+    IMPORT_UNSUPPORTED = "IMPORT_UNSUPPORTED"
+    SCENARIO_OUT_OF_RANGE = "SCENARIO_OUT_OF_RANGE"
+    # --- M3: endpoints and promotion --------------------------------------------------------
+    PROMOTION_BLOCKED = "PROMOTION_BLOCKED"
+    OVERRIDE_REQUIRED = "OVERRIDE_REQUIRED"
+    # --- M3: integrations (webhooks, embeds) ------------------------------------------------
+    WEBHOOK_URL_BLOCKED = "WEBHOOK_URL_BLOCKED"
+    WEBHOOK_SIGNATURE_INVALID = "WEBHOOK_SIGNATURE_INVALID"
+    EMBED_NOT_ALLOWED = "EMBED_NOT_ALLOWED"
+    LINK_EXPIRED = "LINK_EXPIRED"
+    # --- M3: trust lifecycle ----------------------------------------------------------------
+    EMAIL_NOT_ALLOWED = "EMAIL_NOT_ALLOWED"
+    TERMS_NOT_ACCEPTED = "TERMS_NOT_ACCEPTED"
+    EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED"
+    IDENTITY_VERIFICATION_REQUIRED = "IDENTITY_VERIFICATION_REQUIRED"
 
 
 Category = Literal["spec", "coords", "capability", "quota", "api", "run", "internal"]
@@ -127,6 +146,40 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ErrorCode.SANDBOX_VIOLATION: ErrorInfo(422, "Sandbox policy violated", "run"),
     ErrorCode.CANCELLED: ErrorInfo(409, "Run was cancelled", "run"),
     ErrorCode.INTERNAL_ERROR: ErrorInfo(500, "Internal error", "internal", retryable=True),
+    # M3 (additive)
+    ErrorCode.GUIDED_ANSWERS_INVALID: ErrorInfo(
+        422, "The guided answers do not fit the template", "spec"
+    ),
+    ErrorCode.BUSINESS_PRIORS_INVALID: ErrorInfo(
+        422, "The business priors are inconsistent", "spec"
+    ),
+    ErrorCode.CALIBRATION_UNSUPPORTED: ErrorInfo(
+        422, "The model cannot use this calibration data", "capability"
+    ),
+    ErrorCode.IMPORT_UNSUPPORTED: ErrorInfo(
+        422, "The imported model uses an unsupported feature", "spec"
+    ),
+    ErrorCode.SCENARIO_OUT_OF_RANGE: ErrorInfo(
+        422, "The scenario is outside the precomputed grid", "capability"
+    ),
+    ErrorCode.PROMOTION_BLOCKED: ErrorInfo(409, "Promotion blocked by the scorecard", "api"),
+    ErrorCode.OVERRIDE_REQUIRED: ErrorInfo(
+        409, "Promotion needs an administrator override with a reason", "api"
+    ),
+    ErrorCode.WEBHOOK_URL_BLOCKED: ErrorInfo(
+        422, "The webhook URL is not allowed by the egress policy", "api"
+    ),
+    ErrorCode.WEBHOOK_SIGNATURE_INVALID: ErrorInfo(401, "Webhook signature invalid", "api"),
+    ErrorCode.EMBED_NOT_ALLOWED: ErrorInfo(
+        422, "Only platform plot recipes can be embedded", "api"
+    ),
+    ErrorCode.LINK_EXPIRED: ErrorInfo(410, "The link has expired or was revoked", "api"),
+    ErrorCode.EMAIL_NOT_ALLOWED: ErrorInfo(422, "This e-mail address cannot sign up", "api"),
+    ErrorCode.TERMS_NOT_ACCEPTED: ErrorInfo(422, "The terms of service were not accepted", "api"),
+    ErrorCode.EMAIL_NOT_VERIFIED: ErrorInfo(403, "The e-mail address is not verified", "api"),
+    ErrorCode.IDENTITY_VERIFICATION_REQUIRED: ErrorInfo(
+        403, "Identity verification is required", "api"
+    ),
 }
 
 
