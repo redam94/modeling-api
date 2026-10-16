@@ -10,6 +10,12 @@ somewhere else — a slide, a report, a BI dashboard, a Notion page or a Slack t
 All three need a signed-in caller or an API token of the project. The embed link itself is
 public: anyone who has it can see that one plot until it expires or is revoked.
 
+Where each one fits: BI tools and Notion frame an **embed link** and show the live chart.
+Chat tools such as Slack and Teams never frame a page; they unfurl a link into a card from its
+page tags, and the embed page's tags are the same for every link (a "Shared chart" card with no
+plot name and no image), so post a **rendered PNG** to a Slack thread and add the link if
+people should open the live view.
+
 ## Save a plot
 
 Save a plot of a model version by naming its source. The API checks the model version's

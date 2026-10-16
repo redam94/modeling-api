@@ -113,7 +113,7 @@ function BiCard({ goTo }: { goTo: (tab: HubTab) => void }) {
   const [sharing, setSharing] = useState<SavedPlot | null>(null);
   const [created, setCreated] = useState<{ c: PlotEmbedCreated; title: string } | null>(null);
   return (
-    <GuidedCard icon={<BarChart3 />} title="BI dashboard" description="Put a live, read-only chart into Looker Studio, Power BI, Notion or Slack with an embed link.">
+    <GuidedCard icon={<BarChart3 />} title="BI dashboard" description="Put a live, read-only chart into Looker Studio, Power BI or Notion with an embed link (for Slack, post the PNG).">
       {saved.isPending ? (
         <LoadingRows rows={2} />
       ) : chosen ? (

@@ -491,6 +491,11 @@ milestone releases are tagged on `main`.
   `ScoreCallResult.summary` carries it inline once the run succeeded. The Apps Script builds
   its payload from an `Input` sheet (long format) when there is one and writes the summary
   tables to a `Result` sheet; the other snippets print the tables.
+- **web, plot-sandbox, docs**: embed links were advertised for Slack, but Slack does not frame
+  pages and the embed page had no unfurl tags, so a pasted link showed a bare "Shared plot".
+  The page now carries static Open Graph tags (a "Shared chart" card, never the plot's name or
+  the token), and the UI and guides recommend posting the rendered PNG to Slack instead of
+  promising a live chart there.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

@@ -27,7 +27,7 @@ Three cards cover the common cases without reading any API documentation:
 | Card | What you get | You need |
 |---|---|---|
 | **Google Sheets** | The Apps Script that scores an endpoint from a sheet - the rows of a sheet named `Input` (a header row with the endpoint's dims and inputs, one row per coordinate), or the example call - and writes the answer's summary (mean and 90% interval per coordinate) to a sheet named `Result`, with the steps to install it | An endpoint; a token from **Create a token** (it can only score that endpoint) |
-| **BI dashboard** | A read-only, expiring embed link for Looker Studio, Power BI, Notion or Slack | A saved plot of a platform recipe |
+| **BI dashboard** | A read-only, expiring embed link for Looker Studio, Power BI or Notion (Slack shows a link as a card without the chart: post the PNG there) | A saved plot of a platform recipe |
 | **Webhook** | A signed call to your URL when a model is ready or a run fails | The project admin role |
 
 Below them, **For developers** links to the endpoints, to [scoped tokens](administration.md#api-tokens)

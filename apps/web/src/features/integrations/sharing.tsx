@@ -231,7 +231,7 @@ export function CreateEmbedDialog({ plot, onClose, onCreated }: { plot: SavedPlo
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent wide>
         <DialogTitle>Share “{plot.title}” by link</DialogTitle>
-        <DialogDescription>Anyone with the link sees this plot - read-only, no sign-in - until it expires or you revoke it. Paste it into a BI tool, Slack or Notion.</DialogDescription>
+        <DialogDescription>Anyone with the link sees this plot - read-only, no sign-in - until it expires or you revoke it. Paste it into a BI tool or Notion; Slack shows it as a link card, so post the PNG there.</DialogDescription>
         <form className="grid gap-5" onSubmit={submit} noValidate>
           <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <Field label="Label (optional)" htmlFor="emb-label" hint="Who the link is for; only you see it.">
