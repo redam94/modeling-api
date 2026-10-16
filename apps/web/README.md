@@ -100,8 +100,22 @@ sliders, forecasts and sharing. The user guide is `docs/guides/guided-tutorial.m
   rankings, governance results and a budget plan computed by the real runner, plots-core
   and `mapi_spec` (`uv run python apps/web/scripts/gen_explorer_fixtures.py`, minutes;
   `--check` validates them against the contracts in seconds).
-- **Workflow templates.** "Start with this" on a workflow template opens
-  `/workflows/new?template=<id>` when the router has that route, else the template's card.
+- **Start with this** (`features/about/start.ts`): a workflow template opens
+  `/workflows/recipe?template=<id>` for Guided users and `/workflows/new?template=<id>` for
+  Expert users (both take `?data=<dataset ref>` to bind the data); a governance check opens
+  `/governance?tab=checks`.
+
+## How the M3.5 screens connect
+
+- **Navigation.** `components/shell/nav.ts`: Guided mode lists Guided, Help me choose
+  (`CHOOSE_NAV`, `g o`) and Recipes (`RECIPES_NAV`, the `/workflows` route) first;
+  `LOCKED_NAV` is what a Guided-locked project shows.
+- **One validation store.** The Model Explorer uses `features/governance/api.ts`
+  (`useModelValidations`) and `features/governance/badge.tsx` (`ValidationBadge`); the mock's
+  validations all live in `mocks/governance.ts` (the explorer's computed ones are seeded there).
+- **Workflow → model.** `features/workflows/model-link.tsx` resolves `model_version` outputs
+  (`model://project/name@vN`) against the project's models and links the Model Explorer and the
+  version's validations (run summary, node drawer, outputs).
 ## Workflows and governance (M3.5)
 
 `features/workflows` and `features/governance` hold the M3.5 screens (routes in

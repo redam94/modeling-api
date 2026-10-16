@@ -116,7 +116,9 @@ top of Guided mode) asks the questions one at a time - each a set of large, keyb
 choices, any of which can be skipped - and ranks the matches as you answer, with the reasons
 ("Suits: forecast the future") and cautions ("Needs expert-level statistics knowledge").
 **Start with this** opens a new Guided analysis for a guided template, a new spec in the
-editor with that model (and its About as comments), or a workflow from a workflow template.
+editor with that model (and its About as comments), a workflow template as a recipe run on
+your data (Guided mode) or in the "use this template" wizard (Expert mode), or a governance
+check in the governance check catalog.
 The answers live in the address, so a suggestion can be shared; the switch at the top ranks
 models, preparation steps, governance checks or workflow nodes instead of starting points.
 

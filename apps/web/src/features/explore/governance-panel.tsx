@@ -3,55 +3,70 @@
  * validation's status, the checks it was held to and their results with evidence
  * (`GET /v1/models/{model_id}/versions/{version}/validations`).
  */
-import { AlertTriangle, CheckCircle2, CircleSlash, ShieldCheck, ShieldQuestion, XCircle } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { AlertTriangle, ArrowRight, CheckCircle2, CircleSlash, ShieldCheck, ShieldQuestion, XCircle } from "lucide-react";
 
 import { EmptyState, ErrorNotice, JsonBlock, LoadingRows } from "@/components/common";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/primitives";
 import { useAbout } from "@/features/about/api";
 import { AboutButton } from "@/features/about/about-card";
+import { useModelValidations } from "@/features/governance/api";
+import { ValidationBadge } from "@/features/governance/badge";
+import { TONE_BADGE, VALIDATION_META } from "@/features/governance/status";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-import { useModelValidations, type CheckResult, type EvidenceItem, type ModelValidation, type ValidationStatus } from "./api";
+import type { CheckResult, EvidenceItem, ModelValidation } from "./api";
 import { num, StatTable } from "./ui";
-
-export const VALIDATION_META: Record<ValidationStatus, { label: string; variant: "success" | "warning" | "danger" | "info" | "outline"; plain: string }> = {
-  draft: { label: "Not validated", variant: "outline", plain: "No checks have run on this version yet." },
-  checks_running: { label: "Checks running", variant: "info", plain: "The governance checks are running in the sandbox." },
-  checks_passed: { label: "Checks passed", variant: "success", plain: "Every required check passed." },
-  checks_failed: { label: "Checks failed", variant: "danger", plain: "A required check failed: fix the model or the data and resubmit." },
-  awaiting_approval: { label: "Awaiting approval", variant: "warning", plain: "The checks passed; a reviewer has to approve it." },
-  validated: { label: "Validated", variant: "success", plain: "The version passed its checks and may be promoted." },
-  rejected: { label: "Rejected", variant: "danger", plain: "A reviewer rejected this version." },
-  deprecated: { label: "Deprecated", variant: "outline", plain: "The version was validated, then retired." },
-};
 
 /** The latest validation (by update time). */
 export function latestValidation(items: readonly ModelValidation[] | undefined): ModelValidation | null {
   return [...(items ?? [])].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ?? null;
 }
 
-export function ValidationBadge({ status, className }: { status: ValidationStatus | null; className?: string }) {
-  if (!status) {
-    return (
-      <Badge variant="outline" className={className}>
-        <ShieldQuestion aria-hidden /> Not validated
-      </Badge>
-    );
-  }
-  const meta = VALIDATION_META[status];
-  return (
-    <Badge variant={meta.variant} className={className} title={meta.plain} data-validation={status}>
-      {status === "validated" ? <ShieldCheck aria-hidden /> : null} {meta.label}
-    </Badge>
-  );
-}
+export { ValidationBadge };
 
-/** The validation status of a version, for headers. */
+/** The validation status of a version, for headers; it links to the version's validations. */
 export function ValidationStatusBadge({ modelId, version }: { modelId: string; version: number }) {
   const v = useModelValidations(modelId, version);
   if (v.isPending || v.isError) return null;
-  return <ValidationBadge status={latestValidation(v.data.items)?.status ?? null} />;
+  const latest = latestValidation(v.data.items);
+  return (
+    <Link
+      to="/models/$modelId/versions/$version/validations"
+      params={{ modelId, version: String(version) }}
+      className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      aria-label={`Validation: ${latest ? VALIDATION_META[latest.status].label : "Not validated"}. Open the validations of this version`}
+    >
+      <ValidationBadge status={latest?.status ?? null} />
+    </Link>
+  );
+}
+
+/** Where to act on governance: this version's validations, the validation itself, the policies. */
+function GovernanceLinks({ modelId, version, latest }: { modelId: string; version: number; latest: ModelValidation | null }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {latest ? (
+        <Button asChild size="sm">
+          <Link to="/validations/$validationId" params={{ validationId: latest.id }}>
+            <ShieldCheck /> Open this validation
+          </Link>
+        </Button>
+      ) : null}
+      <Button asChild size="sm" variant={latest ? "outline" : "default"}>
+        <Link to="/models/$modelId/versions/$version/validations" params={{ modelId, version: String(version) }}>
+          {latest ? "All validations of this version" : "Request a validation"}
+        </Link>
+      </Button>
+      <Button asChild size="sm" variant="outline">
+        <Link to="/governance">
+          Policies <ArrowRight />
+        </Link>
+      </Button>
+    </div>
+  );
 }
 
 const STATUS_ICON = {
@@ -150,19 +165,20 @@ export function GovernancePanel({ modelId, version, expert }: { modelId: string;
   const latest = latestValidation(v.data.items);
   if (!latest) {
     return (
-      <EmptyState icon={<ShieldQuestion />} title="Not validated yet">
+      <EmptyState icon={<ShieldQuestion />} title="Not validated yet" action={<GovernanceLinks modelId={modelId} version={version} latest={null} />}>
         No governance checks have run on this version. A validation runs the checks of your project&apos;s policies (null tests against shuffled data, benchmarks, residual whiteness, convergence and more) in the sandbox and records the evidence here.
       </EmptyState>
     );
   }
   const meta = VALIDATION_META[latest.status];
+  const tone = TONE_BADGE[meta.tone];
   const results = latest.results ?? [];
   const order = { fail: 0, error: 1, warn: 2, pass: 3, skipped: 4 } as const;
   const sorted = [...results].sort((a, b) => order[a.status] - order[b.status]);
   const required = new Map((latest.required_checks ?? []).map((c) => [c.check, c]));
   return (
     <div className="grid gap-4">
-      <div className={cn("grid gap-1.5 rounded-lg border-l-[3px] bg-muted/30 px-4 py-3", meta.variant === "success" ? "border-l-success" : meta.variant === "danger" ? "border-l-destructive" : "border-l-warning")}>
+      <div className={cn("grid gap-1.5 rounded-lg border-l-[3px] bg-muted/30 px-4 py-3", tone === "success" ? "border-l-success" : tone === "danger" ? "border-l-destructive" : "border-l-warning")}>
         <p className="flex flex-wrap items-center gap-2">
           <ValidationBadge status={latest.status} />
           <span className="text-[14px]">{meta.plain}</span>
@@ -174,6 +190,7 @@ export function GovernancePanel({ modelId, version, expert }: { modelId: string;
           {latest.policies?.length ? ` · policies ${latest.policies.join(", ")}` : ""}
         </p>
         {latest.failing_checks?.length ? <p className="text-[13px]">Blocking: {latest.failing_checks.join(", ")}</p> : null}
+        <GovernanceLinks modelId={modelId} version={version} latest={latest} />
       </div>
       <ul className="grid gap-2" aria-label="Check results">
         {sorted.map((r) => (

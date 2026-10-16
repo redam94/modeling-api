@@ -23,6 +23,7 @@ import { TERMINAL_RUN, useCancelWorkflowRun, useNodeCatalog, useWorkflow, useWor
 import { implId } from "./doc";
 import { CanvasFallback, LazyWorkflowCanvas } from "./editor";
 import { DecisionView, NodeDrawer } from "./node-drawer";
+import { ModelExplorerLinks, modelVersionRefs } from "./model-link";
 import { OutputView, PayloadView } from "./outputs";
 import { useWorkflowRunEvents } from "./run-events";
 import { KIND_LABEL, NODE_STATUS_META, RUN_STATUS_META, TONE_BADGE, TRIGGER_LABEL } from "./status";
@@ -152,6 +153,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
   const done = nodes.filter((n) => DONE.has(n.status)).length;
   const cost = runCostView(run.cost);
   const report = Object.values(run.outputs ?? {}).find((o) => o.type === "report" && o.inline);
+  const modelRefs = run.status === "succeeded" ? modelVersionRefs(run.outputs) : [];
   const node = nodes.find((n) => n.node_id === openNode) ?? null;
   const mayCancel = can(ws.grants, "cancel", "workflow") && (run.status === "queued" || run.status === "running");
 
@@ -237,6 +239,13 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
               <p className="text-[13px]" data-testid="run-summary">
                 {(report.inline as { summary_plain: string }).summary_plain}
               </p>
+            ) : null}
+            {modelRefs.length ? (
+              <div className="flex flex-wrap gap-2 pt-1" data-testid="run-models">
+                {modelRefs.map((ref) => (
+                  <ModelExplorerLinks key={ref} modelRef={ref} />
+                ))}
+              </div>
             ) : null}
           </CardContent>
         </Card>

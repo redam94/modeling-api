@@ -9,7 +9,7 @@ import type { DatasetVersion, Problem, Run, RunEventView, SpecRevision, UploadSe
 import { env } from "@/env";
 
 import * as fx from "./fixtures";
-import { createExploreHandlers, createExploreState } from "./explore";
+import { createExploreHandlers, createExploreState, explorerValidations } from "./explore";
 import { createGovernanceHandlers, createGovernanceState, notValidatedProblem } from "./governance";
 import { createGuidedHandlers } from "./guided";
 import { createIntegrationHandlers, createIntegrationsState } from "./integrations";
@@ -44,6 +44,12 @@ interface MockState {
   uploads: Map<string, number>;
 }
 
+/** The validations the explorer fixtures computed join the governance mock's (one store). */
+function seedGovernance(governance: ReturnType<typeof createGovernanceState>): ReturnType<typeof createGovernanceState> {
+  for (const v of explorerValidations()) governance.validations.set(v.id, { v, finishesAt: null, pending: null });
+  return governance;
+}
+
 export function createState(): MockState {
   const json = (v: unknown) => enc.encode(JSON.stringify(v));
   return {
@@ -52,7 +58,7 @@ export function createState(): MockState {
     trust: createTrustState(),
     explore: createExploreState(),
     workflows: createWorkflowsState(),
-    governance: createGovernanceState(),
+    governance: seedGovernance(createGovernanceState()),
     runs: new Map(fx.runs.map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],

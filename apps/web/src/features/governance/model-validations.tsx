@@ -19,7 +19,7 @@ import { relativeTime, shortId } from "@/lib/format";
 import { toast } from "@/stores/toast";
 
 import { useModelValidations, usePolicies, useRequestValidation } from "./api";
-import { ValidationBadge } from "./validation-view";
+import { ValidationBadge } from "./badge";
 
 function RequestForm({ modelId, version }: { modelId: string; version: number }) {
   const navigate = useNavigate();

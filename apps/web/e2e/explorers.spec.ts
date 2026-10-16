@@ -132,7 +132,7 @@ test("the Data Explorer shows the ingest views and computes the rest on demand",
 
 test("the Model Explorer: parameters, diagnostics, forecasts, governance and lineage", async ({ page }) => {
   await page.goto(`/models/${MMM}/versions/1`);
-  await expect(page.getByText("Checks failed")).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Validation: Awaiting approval/ })).toBeVisible();
   await page.getByRole("link", { name: "Explore" }).click();
   await expect(page.getByRole("heading", { name: "At a glance" })).toBeVisible();
   await expect(page.getByTestId("plain-summary").first()).toContainText("R-hat");
@@ -154,7 +154,8 @@ test("the Model Explorer: parameters, diagnostics, forecasts, governance and lin
 
   await nav.getByRole("button", { name: /Governance/ }).click();
   const checks = page.getByRole("list", { name: "Check results" });
-  await expect(checks.locator('[data-check="convergence"]')).toHaveAttribute("data-status", "fail");
+  await expect(checks.locator('[data-check="null.permutation_target"]')).toHaveAttribute("data-status", "pass");
+  await expect(page.getByRole("link", { name: /Open this validation/ })).toHaveAttribute("href", /\/validations\/val_/);
   await nav.getByRole("button", { name: /Lineage/ }).click();
   await expect(page.getByRole("list", { name: "Lineage" })).toContainText("eu-geo-mmm@v1");
   await expect(page.getByText("mmm.bayesian@1.0.0")).toBeVisible();

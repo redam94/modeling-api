@@ -49,9 +49,10 @@ describe("About cards", () => {
   it("starts each kind of item in the right place", () => {
     expect(startTarget("template", "geo_mmm")).toMatchObject({ to: "/guided/new/$templateId", params: { templateId: "geo_mmm" } });
     expect(startTarget("model", "ts.ets")).toMatchObject({ to: "/build/new", search: { model: "ts.ets" } });
-    expect(startTarget("workflow_template", "workflow.ts_readiness_arimax", () => true)).toMatchObject({ href: "/workflows/new?template=ts_readiness_arimax" });
-    expect(startTarget("workflow_template", "workflow.ts_readiness_arimax")).toMatchObject({ to: "/catalog", search: { about: "workflow_template:workflow.ts_readiness_arimax" } });
-    expect(startTarget("check", "convergence")).toMatchObject({ search: { about: "check:convergence" } });
+    expect(startTarget("workflow_template", "workflow.ts_readiness_arimax")).toMatchObject({ to: "/workflows/new", search: { template: "ts_readiness_arimax" } });
+    expect(startTarget("workflow_template", "workflow.ts_readiness_arimax", "guided")).toMatchObject({ to: "/workflows/recipe", search: { template: "ts_readiness_arimax" } });
+    expect(startTarget("check", "convergence")).toMatchObject({ to: "/governance", search: { tab: "checks" } });
+    expect(startTarget("step", "core.resample")).toMatchObject({ search: { about: "step:core.resample" } });
   });
 
   it("starts a spec for a model with its About as comments, safely", () => {
@@ -109,8 +110,9 @@ describe("the Model Explorer", () => {
   it("lists what applies, with governance evidence and lineage", async () => {
     renderApp(`/models/${MODEL_ID}/versions/1/explore?section=governance`);
     const checks = await screen.findByRole("list", { name: "Check results" }, T);
-    expect(checks.querySelector('[data-check="convergence"]')).toHaveAttribute("data-status", "fail");
-    expect(screen.getAllByText("Checks failed").length).toBeGreaterThan(0);
+    // The latest validation of the version (the governance mock's, awaiting a reviewer).
+    expect(checks.querySelector('[data-check="null.permutation_target"]')).toHaveAttribute("data-status", "pass");
+    expect(screen.getAllByText("Awaiting approval").length).toBeGreaterThan(0);
     const nav = screen.getByRole("navigation", { name: "Model Explorer sections" });
     expect(nav.querySelector('[data-section="irf"]')).toHaveAttribute("data-status", "skipped");
     expect(nav.querySelector('[data-section="forecast"]')).toHaveAttribute("data-status", "missing");

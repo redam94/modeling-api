@@ -92,9 +92,16 @@ export function LineagePanel({ mv, expert }: { mv: ModelVersion; expert: boolean
             <Arrow />
             <Step icon={<GitBranch />} title={parent.data?.kind === "workflow" ? "Workflow run" : "Parent run"}>
               <span className="flex flex-wrap items-center gap-2">
-                <Link to="/runs/$runId" params={{ runId: run.data.parent_run_id }} className="text-primary hover:underline">
-                  {shortId(run.data.parent_run_id)}
-                </Link>
+                {parent.data?.kind === "workflow" ? (
+                  // The workflow that fitted it: its run monitor (graph, decisions, outputs).
+                  <Link to="/workflow-runs/$runId" params={{ runId: run.data.parent_run_id }} className="text-primary hover:underline">
+                    {shortId(run.data.parent_run_id)}
+                  </Link>
+                ) : (
+                  <Link to="/runs/$runId" params={{ runId: run.data.parent_run_id }} className="text-primary hover:underline">
+                    {shortId(run.data.parent_run_id)}
+                  </Link>
+                )}
                 {parent.data ? <StateBadge state={parent.data.state} /> : null}
               </span>
             </Step>

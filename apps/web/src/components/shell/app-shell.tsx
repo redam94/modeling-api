@@ -28,7 +28,7 @@ import { useAuth } from "@/stores/auth";
 import { useScope } from "@/stores/scope";
 
 import { CommandPalette, ShortcutsDialog } from "./command-palette";
-import { ADMIN_NAV, EXPERT_NAV, GUIDED_MODE_NAV, GUIDED_NAV, INTEGRATIONS_NAV, PROJECT_NAV, SETTINGS_NAV, type NavItem } from "./nav";
+import { ADMIN_NAV, EXPERT_NAV, GUIDED_MODE_NAV, LOCKED_NAV, PROJECT_NAV, SETTINGS_NAV, type NavItem } from "./nav";
 import { ProjectSwitcher } from "./project-switcher";
 import { Toaster } from "./toaster";
 import { UserMenu } from "./user-menu";
@@ -183,7 +183,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
   // A Guided-locked project shows members below admin the Guided screens only, and the
   // Integrations hub that Guided mode's "Share" step leads to.
-  const nav = lock.locked ? [GUIDED_NAV, INTEGRATIONS_NAV] : persona === "guided" ? GUIDED_MODE_NAV : EXPERT_NAV;
+  const nav = lock.locked ? LOCKED_NAV : persona === "guided" ? GUIDED_MODE_NAV : EXPERT_NAV;
   // Guided mode has no Expert Home: "/" opens the Guided start page (a new self-service
   // workspace lands there, as does a Guided-locked project).
   useEffect(() => {

@@ -22,6 +22,7 @@ import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 import { nodeOutputLink } from "./api";
+import { ModelExplorerLinks } from "./model-link";
 import { PORT_TYPE_META } from "./ports";
 import type { NodeOutputRef } from "./types";
 
@@ -211,6 +212,7 @@ export function OutputView({ runId, nodeId, port, out }: { runId: string; nodeId
           <Mono>{out.ref}</Mono>
         </p>
       ) : null}
+      {out.type === "model_version" && out.ref ? <ModelExplorerLinks modelRef={out.ref} /> : null}
       {hasInline ? <PayloadView value={out.inline} title={`${nodeId}.${port}`} /> : null}
       {error ? (
         <p role="alert" className={cn("text-xs text-destructive")}>

@@ -4,7 +4,7 @@
  * run whose views the page shows (so a link keeps both).
  */
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Workflow } from "lucide-react";
 
 import { useDataset, useDatasetVersion } from "@/api/queries";
 import { ErrorNotice, LoadingRows, Mono, PageHeader } from "@/components/common";
@@ -15,6 +15,13 @@ import { DataExplorer } from "@/features/explore/data-explorer";
 import { useEffectivePersona } from "@/features/guided/persona";
 
 const route = getRouteApi("/datasets/$datasetId/versions/$version/explore");
+
+/** The gallery's time-series readiness → ARIMAX workflow, offered for data over time. */
+const READINESS_TEMPLATE = "ts_readiness_arimax";
+
+function hasTimeDim(schema: { dims?: Record<string, { kind: string }> } | null | undefined): boolean {
+  return Object.values(schema?.dims ?? {}).some((d) => d.kind === "time");
+}
 
 export function DataExplorerPage() {
   const { datasetId, version } = route.useParams();
@@ -46,11 +53,21 @@ export function DataExplorerPage() {
           </>
         }
         actions={
-          <Button asChild variant="ghost">
-            <Link to="/datasets/$datasetId" params={{ datasetId }} search={{ version: v }}>
-              <ArrowLeft /> Back to the dataset
-            </Link>
-          </Button>
+          <>
+            <Button asChild variant="ghost">
+              <Link to="/datasets/$datasetId" params={{ datasetId }} search={{ version: v }}>
+                <ArrowLeft /> Back to the dataset
+              </Link>
+            </Button>
+            {dv.data?.status === "ready" && hasTimeDim(dv.data.data_schema) ? (
+              // M3.5: the readiness workflow (unit roots, differencing, order search, backtest, ARIMAX).
+              <Button asChild variant="outline">
+                <Link to={expert ? "/workflows/new" : "/workflows/recipe"} search={{ template: READINESS_TEMPLATE, data: dv.data.ref }}>
+                  <Workflow /> {expert ? "Readiness workflow" : "Check it is ready to forecast"}
+                </Link>
+              </Button>
+            ) : null}
+          </>
         }
       />
       <DatasetAboutCard datasetId={datasetId} />

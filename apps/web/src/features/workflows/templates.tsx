@@ -110,7 +110,13 @@ export function instantiate(t: WorkflowTemplate, name: string, project: string, 
 const STEPS = ["About", "Parameters", "Data"] as const;
 
 /** Expert: create a workflow from a template, with chosen defaults and a bound dataset. */
-export function TemplateWizard({ templateId }: { templateId: string }) {
+/** The first dataset input of a template (the one "your data" binds to). */
+function firstDatasetInput(doc: WorkflowDoc | null): string | undefined {
+  return Object.entries(doc?.inputs ?? {}).find(([, d]) => d.type === "dataset")?.[0];
+}
+
+/** `initialData` (a dataset ref) is bound to the template's data input until changed. */
+export function TemplateWizard({ templateId, initialData }: { templateId: string; initialData?: string | undefined }) {
   const navigate = useNavigate();
   const ws = useWorkspace();
   const tpl = useWorkflowTemplate(templateId);
@@ -119,11 +125,13 @@ export function TemplateWizard({ templateId }: { templateId: string }) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState<string | null>(null);
   const [params, setParams] = useState<JsonObject>({});
-  const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [chosenInputs, setInputs] = useState<Record<string, string> | null>(null);
   const [runNow, setRunNow] = useState(true);
   const [busy, setBusy] = useState(false);
   const t = tpl.data;
   const doc = t ? (t.document as unknown as WorkflowDoc) : null;
+  const seededInput = initialData ? firstDatasetInput(doc) : undefined;
+  const inputs = chosenInputs ?? (seededInput && initialData ? { [seededInput]: initialData } : {});
   const defaultName = doc?.metadata.name ?? "";
   const effectiveName = name ?? defaultName;
   const taken = workflows.data?.items.some((w) => w.name === effectiveName) ?? false;
@@ -220,12 +228,12 @@ export function TemplateWizard({ templateId }: { templateId: string }) {
  * template the first time (or reused when the project already has it); the run carries the data
  * and the settings, so nothing else has to be edited.
  */
-export function RecipeRunner({ templateId }: { templateId: string }) {
+export function RecipeRunner({ templateId, initialData }: { templateId: string; initialData?: string | undefined }) {
   const navigate = useNavigate();
   const tpl = useWorkflowTemplate(templateId);
   const workflows = useWorkflows();
   const create = useCreateWorkflow();
-  const [data, setData] = useState("");
+  const [data, setData] = useState(initialData ?? "");
   const [params, setParams] = useState<JsonObject>({});
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<unknown>(null);

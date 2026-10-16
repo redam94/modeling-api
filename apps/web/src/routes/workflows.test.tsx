@@ -37,10 +37,11 @@ describe("Workflows", () => {
   it("lists the project's workflows and the gallery with About cards", async () => {
     const user = userEvent.setup();
     renderApp("/workflows");
-    expect(await screen.findByRole("heading", { name: "Workflows" })).toBeInTheDocument();
-    expect(await screen.findByRole("link", { name: "weekly-readiness" })).toBeInTheDocument();
+    // Generous timeouts: the first render loads the lazy route under a busy full-suite run.
+    expect(await screen.findByRole("heading", { name: "Workflows" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "weekly-readiness" }, { timeout: 3000 })).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Templates" }));
-    const gallery = await screen.findByTestId("template-gallery");
+    const gallery = await screen.findByTestId("template-gallery", undefined, { timeout: 3000 });
     const cards = within(gallery).getAllByTestId("about-card");
     expect(cards).toHaveLength(4);
     expect(gallery).toHaveTextContent("Time-series readiness to ARIMAX");

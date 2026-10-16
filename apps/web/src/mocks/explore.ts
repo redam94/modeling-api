@@ -72,6 +72,8 @@ export const EXTRA_MODEL_IDS = {
   arimax: "mdl_01jaf3m35arimax000000001",
   ets: "mdl_01jaf3m35ets00000000001",
   vecm: "mdl_01jaf3m35vecm0000000001",
+  /** The ARIMAX the canonical workflow run fitted (`mocks/workflows.ts`), explored like sales-arimax v1. */
+  workflowFit: "mdl_01jaf3m35wffit000000001",
 } as const;
 
 interface ExtraModel {
@@ -105,14 +107,66 @@ export const EXTRA_MODELS: ExtraModel[] = [
   ]),
   extraModel(EXTRA_MODEL_IDS.ets, "sales-ets", [{ v: 1, plugin: "ts.ets@1.0.0", inference: "kalman", metrics: { mape: 22.75, rmse: 7.75 } }]),
   extraModel(EXTRA_MODEL_IDS.vecm, "macro-vecm", [{ v: 1, plugin: "ts.vecm@1.0.0", inference: "point", metrics: {} }]),
+  extraModel(EXTRA_MODEL_IDS.workflowFit, "wf-weekly-readiness-fit", [{ v: 1, plugin: "ts.sarimax@1.0.0", inference: "kalman", metrics: { mape: 10.37, rmse: 2.62 } }]),
 ];
 
 /** The fixture of a model version (unknown models are the MMM). */
 function modelFixture(modelId: string, version: number): ModelFixture {
   if (modelId === EXTRA_MODEL_IDS.arimax) return FIXTURE.models[`${ARIMAX}@v${version === 2 ? 2 : 1}`]!;
+  if (modelId === EXTRA_MODEL_IDS.workflowFit) return FIXTURE.models[`${ARIMAX}@v1`]!;
   if (modelId === EXTRA_MODEL_IDS.ets) return FIXTURE.models[ETS]!;
   if (modelId === EXTRA_MODEL_IDS.vecm) return FIXTURE.models[VECM]!;
   return FIXTURE.models[MMM]!;
+}
+
+/**
+ * The validations the explorer fixtures computed (the real governance checks of the fitted
+ * MMM and ARIMAX versions), seeded into the governance mock (`mocks/governance.ts`), which
+ * serves every validation route.
+ */
+export function explorerValidations(): ModelValidation[] {
+  return [
+    [fx.MODEL_ID, 1],
+    [EXTRA_MODEL_IDS.arimax, 1],
+  ].flatMap(([mid, ver]) => {
+    const validation = computedValidation(String(mid), Number(ver));
+    return validation ? [validation] : [];
+  });
+}
+
+function computedValidation(id: string, v: number): ModelValidation | null {
+  const m = modelFixture(id, v);
+  if (!m.governance || (id !== fx.MODEL_ID && !(id === EXTRA_MODEL_IDS.arimax && v === 1))) return null;
+  const failing = (m.governance as { check: string; status: string }[]).filter((r) => r.status === "fail" || r.status === "error").map((r) => r.check);
+  const status = failing.length ? "checks_failed" : "validated";
+  // The MMM's computed validation is its first one: the governance mock's later validations
+  // of that version (failed, then awaiting approval) are the story the governance screens tell.
+  const submitted = id === fx.MODEL_ID ? "2026-10-12T09:00:00Z" : fx.T0;
+  const done = id === fx.MODEL_ID ? "2026-10-12T09:10:00Z" : "2026-10-15T09:40:00Z";
+  const validation: ModelValidation = {
+    id: `val_${id.slice(4, 16)}${v}`,
+    tenant_id: "default",
+    project_id: "default",
+    model_id: id,
+    version: v,
+    status,
+    policies: [id === fx.MODEL_ID ? "pol_default_mmm@1" : "pol_default_forecast@1"],
+    required_checks: (m.governance as { check: string }[]).map((r) => ({ check: r.check, severity: r.check === "residuals.whiteness" ? "warning" : "blocking" })),
+    results: m.governance as ModelValidation["results"],
+    failing_checks: failing,
+    require_approval: false,
+    approvals_required: 1,
+    approvals: [],
+    submitted_by: "usr_ana",
+    submitted_at: submitted,
+    updated_at: done,
+    history: [
+      { at: submitted, event: "submit", from_status: "draft", to_status: "checks_running", actor_id: "usr_ana" },
+      { at: done, event: failing.length ? "checks_failed" : "checks_passed", from_status: "checks_running", to_status: failing.length ? "checks_failed" : "checks_passed", actor_id: null },
+      ...(failing.length ? [] : [{ at: done, event: "validate", from_status: "checks_passed", to_status: "validated", actor_id: null }]),
+    ] as ModelValidation["history"],
+  };
+  return validation;
 }
 
 // ------------------------------------------------------------------------------ state
@@ -369,39 +423,6 @@ export function createExploreHandlers(shared: ExploreMockShared, state: ExploreM
       return HttpResponse.json(exploration(String(params.id), rec));
     }),
 
-    // Governance evidence
-    http.get(`${API}/v1/models/:id/versions/:v/validations`, ({ params }) => {
-      const id = String(params.id);
-      const v = Number(params.v);
-      const m = modelFixture(id, v);
-      if (!m.governance || (id !== fx.MODEL_ID && !(id === EXTRA_MODEL_IDS.arimax && v === 1))) return page([]);
-      const failing = (m.governance as { check: string; status: string }[]).filter((r) => r.status === "fail" || r.status === "error").map((r) => r.check);
-      const status = failing.length ? "checks_failed" : "validated";
-      const validation: ModelValidation = {
-        id: `val_${id.slice(4, 16)}${v}`,
-        tenant_id: "default",
-        project_id: "default",
-        model_id: id,
-        version: v,
-        status,
-        policies: [id === fx.MODEL_ID ? "pol_default_mmm@1" : "pol_default_forecast@1"],
-        required_checks: (m.governance as { check: string }[]).map((r) => ({ check: r.check, severity: r.check === "residuals.whiteness" ? "warning" : "blocking" })),
-        results: m.governance as ModelValidation["results"],
-        failing_checks: failing,
-        require_approval: false,
-        approvals_required: 1,
-        approvals: [],
-        submitted_by: "usr_ana",
-        submitted_at: fx.T0,
-        updated_at: "2026-10-15T09:40:00Z",
-        history: [
-          { at: fx.T0, event: "submit", from_status: "draft", to_status: "checks_running", actor_id: "usr_ana" },
-          { at: "2026-10-15T09:40:00Z", event: failing.length ? "checks_failed" : "checks_passed", from_status: "checks_running", to_status: failing.length ? "checks_failed" : "checks_passed", actor_id: null },
-          ...(failing.length ? [] : [{ at: "2026-10-15T09:40:00Z", event: "validate", from_status: "checks_passed", to_status: "validated", actor_id: null }]),
-        ] as ModelValidation["history"],
-      };
-      return page([validation]);
-    }),
 
     // Budget optimisation
     http.post(new RegExp(`^${API_RE}/v1/models/[^/]+/versions/\\d+:optimize$`), async ({ request }) => {

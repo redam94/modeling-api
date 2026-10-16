@@ -10,7 +10,7 @@
  */
 import { http, HttpResponse, type HttpHandler } from "msw";
 
-import type { Membership, Problem, ProjectRole } from "@/api/types";
+import type { Membership, Problem, ProjectRole, Run } from "@/api/types";
 import type {
   ApprovalCreate,
   CheckResult,
@@ -26,7 +26,7 @@ import type {
 } from "@/features/governance/types";
 import { env } from "@/env";
 
-import { artifactLink, MODEL_ID, MV_ID } from "./fixtures";
+import { artifactLink, MODEL_ID, MV_ID, runDone } from "./fixtures";
 import { mockPersonaId, PERSONAS } from "./tenancy";
 import generated from "./workflows.gen.json";
 
@@ -328,6 +328,15 @@ export function createGovernanceHandlers(
     }),
 
     // ------------------------------------------------------------------ validations
+    // The governance run that computed a validation's checks (`workflow_run_id`).
+    http.get(`${API}/v1/runs/:id`, ({ params }) => {
+      settle(state);
+      const m = [...state.validations.values()].find((x) => x.v.workflow_run_id === params.id);
+      if (!m) return undefined;
+      const running = m.v.status === "checks_running";
+      const run: Run = { ...structuredClone(runDone), id: String(params.id), kind: "governance", state: running ? "running" : "succeeded", model_version_id: MV_ID, output_model_version_id: null, labels: {} };
+      return HttpResponse.json(run);
+    }),
     http.get(`${API}/v1/validations`, ({ request }) => {
       settle(state);
       const status = new URL(request.url).searchParams.get("status");

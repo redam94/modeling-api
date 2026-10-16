@@ -39,7 +39,6 @@ export const exploreKeys = {
   view: (p: string, t: ExplorerTarget, origin: string, section: string) => ["p", p, "explore", targetKey(t), origin, section] as const,
   plots: (p: string, t: ExplorerTarget, origin: string, section: string) => ["p", p, "explore", targetKey(t), origin, section, "plots"] as const,
   exploration: (p: string, runId: string) => ["p", p, "explorations", runId] as const,
-  validations: (p: string, modelId: string, version: number) => ["p", p, "models", modelId, "versions", version, "validations"] as const,
 };
 
 function artifactLink(t: ExplorerTarget, name: string): Promise<ArtifactLink> {
@@ -231,22 +230,4 @@ export function useSectionPlots(t: ExplorerTarget, state: SectionState | undefin
 /** The body of a recipe PlotSpec for the sandbox (its data is inline in `spec.datasets`). */
 export function recipeBody(plot: PlotSpec): JsonObject {
   return plot.spec as JsonObject;
-}
-
-// ------------------------------------------------------------------------------ governance
-
-export function useModelValidations(modelId: string, version: number) {
-  const s = useProjectScope();
-  return useQuery({
-    queryKey: exploreKeys.validations(s.key, modelId, version),
-    queryFn: ({ signal }) =>
-      unwrap(
-        api.GET("/v1/models/{model_id}/versions/{version}/validations", {
-          params: { path: { model_id: modelId, version } },
-          headers: s.headers,
-          signal,
-        }),
-      ),
-    staleTime: 30_000,
-  });
 }

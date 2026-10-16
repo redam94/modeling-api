@@ -313,6 +313,11 @@ function templateParam(v: unknown): string | undefined {
   return typeof v === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(v) ? v : undefined;
 }
 
+/** A dataset reference to bind a template's data to (`dataset://project/name@vN|@latest`). */
+function datasetRefParam(v: unknown): string | undefined {
+  return typeof v === "string" && v.length <= 300 && /^dataset:\/\/[^@\s]+@(latest|v[1-9]\d*)$/.test(v) ? v : undefined;
+}
+
 const workflowsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/workflows",
@@ -324,14 +329,14 @@ const newWorkflowRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/workflows/new",
   component: lazyRouteComponent(page.workflows, "NewWorkflowPage"),
-  validateSearch: (s: Record<string, unknown>): { template?: string | undefined } => ({ template: templateParam(s.template) }),
+  validateSearch: (s: Record<string, unknown>): { template?: string | undefined; data?: string | undefined } => ({ template: templateParam(s.template), data: datasetRefParam(s.data) }),
 });
 
 const recipeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/workflows/recipe",
   component: lazyRouteComponent(page.workflows, "RecipePage"),
-  validateSearch: (s: Record<string, unknown>): { template?: string | undefined } => ({ template: templateParam(s.template) }),
+  validateSearch: (s: Record<string, unknown>): { template?: string | undefined; data?: string | undefined } => ({ template: templateParam(s.template), data: datasetRefParam(s.data) }),
 });
 
 const workflowRoute = createRoute({
