@@ -459,7 +459,7 @@ WEEKLY_FORECAST = GuidedTemplate(
                                              map={"weekly": 52.18, "daily": 365.25})},
     scorecard_checks=["convergence.rhat", "convergence.ess", "convergence.divergences",
                       "holdout.mape", "holdout.coverage_90", "data.missing", "data.history"],
-    scorecard_thresholds={"data.history": CheckThresholds(warn=104, fail=26)},
+    scorecard_thresholds={"data.history": CheckThresholds(warn=2, fail=0.5)},  # years
     tasks=["forecast"],
     ui_levels={"/model/settings/max_extension": "basic", "/model/fit": "advanced",
                "/execution": "advanced"},

@@ -406,7 +406,7 @@ async def test_the_promotion_gate_reads_the_stored_scorecard(ctx: ServerContext)
 
     run_id = await queued_fit(ctx)
     run, att = await _finalizing(ctx, run_id)
-    card = rollup([evaluate_check("holdout.mape", 0.14), evaluate_check("data.history", 30)])
+    card = rollup([evaluate_check("holdout.mape", 0.14), evaluate_check("data.history", 0.5)])
     await simulate_outputs(
         ctx, run, att, add={"scorecard.json": (card.model_dump_json().encode(), "application/json")}
     )
@@ -416,7 +416,7 @@ async def test_the_promotion_gate_reads_the_stored_scorecard(ctx: ServerContext)
         mv = await s.get(m.ModelVersion, done.output_model_version_id)
         assert mv is not None
         decision = await promotion_decision(s, mv)
-        assert decision.outcome is GateOutcome.BLOCKED  # data.history fails (30 < 52)
+        assert decision.outcome is GateOutcome.BLOCKED  # data.history fails (0.5 < 1 year)
         assert set(decision.failing_checks) == {"holdout.mape", "data.history"}
         mv.scorecard = rollup([evaluate_check("holdout.mape", 0.14)]).model_dump(mode="json")
         assert (await promotion_decision(s, mv)).outcome is GateOutcome.NEEDS_OVERRIDE

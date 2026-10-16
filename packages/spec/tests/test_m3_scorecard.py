@@ -98,6 +98,23 @@ def test_messages_are_plain_and_formatted() -> None:
     assert "-15%" in evaluate_check("holdout.hit_rate", -0.15).message_plain
 
 
+def test_history_is_measured_in_years_whatever_the_frequency() -> None:
+    """104/52 *periods* assumed weekly data: 105 days of daily data passed as 'enough to
+    learn seasonality'. The check reads years of history."""
+    from mapi_spec.guided import GUIDED_TEMPLATES
+
+    check = SCORECARD_CHECKS["data.history"]
+    assert check.metric == "history_years" and (check.warn, check.fail) == (2.0, 1.0)
+    assert evaluate_check("data.history", 105 / 365).status == "fail"
+    assert evaluate_check("data.history", 104 / 52).status == "pass"
+    item = evaluate_check("data.history", 1.5)
+    assert item.status == "warn"
+    assert item.message_plain == "Only 1.5 years of history: seasonal effects are uncertain."
+    forecast = GUIDED_TEMPLATES["weekly_forecast"].scorecard_thresholds["data.history"]
+    assert evaluate_check("data.history", 105 / 365, thresholds=forecast).status == "fail"
+    assert evaluate_check("data.history", 30 / 52, thresholds=forecast).status == "warn"
+
+
 def test_template_thresholds_override_the_defaults() -> None:
     tight = CheckThresholds(warn=0.05, fail=0.1)
     assert evaluate_check("holdout.mape", 0.07).status == "pass"

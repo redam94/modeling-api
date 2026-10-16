@@ -12,7 +12,7 @@ holdout         holdout error (MAPE) and interval coverage on the evaluation spl
                 popular product
 plausibility    negative or absurd ROI, a channel taking most of the KPI, the baseline share,
                 parameters the data did not inform (prior-posterior overlap)
-data            missing values, history length, spend that never varies
+data            missing values, years of history, spend that never varies
 ==============  =========================================================================
 
 :func:`evaluate_check` turns a metric value into a :class:`ScorecardItem` with the check's
@@ -192,7 +192,7 @@ class CheckThresholds(StrictModel):
         return self
 
 
-ValueFormat = Literal["pct", "num", "int"]
+ValueFormat = Literal["pct", "num", "int", "years"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -347,13 +347,13 @@ SCORECARD_CHECKS: Final[dict[str, ScorecardCheck]] = {
                "{value} of the values are missing: too many to model reliably.",
                "Fill the gaps in the source data, or drop the affected series.",
            ), "pct"),
-        _c("data.history", "data", "DATA_HISTORY", "Enough history", "history_periods", _MIN,
-           104, 52, (
-               "There are {value} periods of history, enough to learn seasonality.",
-               "Only {value} periods of history: seasonal effects are uncertain.",
-               "Only {value} periods of history: too short to separate media from seasonality.",
+        _c("data.history", "data", "DATA_HISTORY", "Enough history", "history_years", _MIN,
+           2.0, 1.0, (
+               "There are {value} years of history, enough to learn seasonality.",
+               "Only {value} years of history: seasonal effects are uncertain.",
+               "Only {value} years of history: too short to separate media from seasonality.",
                "Add more history if you have it.",
-           ), "int"),
+           ), "years"),
         _c("data.spend_variation", "data", "SPEND_VARIATION", "Spend varies enough",
            "spend_cv_min", _MIN, 0.10, 0.02, (
                "Every channel's spend varies enough to measure its effect.",
@@ -372,6 +372,8 @@ def _fmt(value: float, fmt: ValueFormat) -> str:
         return f"{value:.0%}" if abs(value) >= 0.01 or value == 0 else f"{value:.1%}"
     if fmt == "int":
         return f"{round(value):,}"
+    if fmt == "years":
+        return f"{value:.1f}"
     return f"{value:.3g}"
 
 

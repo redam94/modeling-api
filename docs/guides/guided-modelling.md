@@ -254,7 +254,7 @@ template's checks with its thresholds; any other spec runs the whole catalog.
 | `max_channel_share`, `baseline_share` | a channel's (or the baseline's) share of baseline + every channel, posterior mean |
 | `prior_overlap_max` | the overlap of prior and posterior draws of the model's media parameters (`PyMCModel.prior_overlap_vars`, forward-sampled at fit time; cheap) |
 | `missing_fraction` | the raw dataset's numeric variables |
-| `history_periods` | the model stage's time dim |
+| `history_years` | the model stage's time dim, in years: its periods over the periods in a year at the dim's frequency (or the one its dates follow), so 105 days and 15 weeks both count as about 0.3 years |
 | `spend_cv_min` | the raw spend per channel over time |
 
 A check that cannot be measured - no holdout split, no response curves, a non-MCMC model - is

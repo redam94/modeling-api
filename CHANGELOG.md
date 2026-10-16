@@ -452,6 +452,11 @@ milestone releases are tagged on `main`.
   (`mapi_spec.sharing.MAX_RENDER_PIXELS`): `POST /v1/plots:render` refuses a bigger request
   with `413 PAYLOAD_TOO_LARGE`, and the runner checks the laid-out size (composite views
   included) before it rasterises.
+- **spec/runner**: the `data.history` check counted periods (warn below 104, fail below 52)
+  whatever the data's frequency, so 105 days of daily data passed as "enough to learn
+  seasonality". It now measures years (`history_years`: periods over the periods in a year
+  at the time dim's frequency, or the one its dates follow; warn below 2 years, fail below
+  1; the `weekly_forecast` template fails below 0.5).
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

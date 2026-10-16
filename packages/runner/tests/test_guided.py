@@ -115,7 +115,7 @@ def test_the_scorecard_measures_every_check_it_can(
         assert item.message_expert  # what was measured, on which parameter/channel
         assert (item.suggested_action is None) == (item.status == "pass")
     by = {i.check: i for i in card.items}
-    assert by["data.history"].value == 30  # weekly periods at the model stage
+    assert by["data.history"].value == pytest.approx(30 / 52)  # 30 weeks, in years
     # mapi_sdk reports MAPE in percent; the check's thresholds are fractions.
     assert by["holdout.mape"].value == pytest.approx(bundle.metrics.values["mape"] / 100)
     assert by["plausibility.negative_roi"].value == 0.0  # positive media effects
@@ -148,7 +148,7 @@ def test_a_guided_spec_runs_its_template_checks(
     }
     assert {i.check for i in card.items} | set(card.skipped) == wanted
     history = next(i for i in card.items if i.check == "data.history")
-    assert history.status == "warn" and history.threshold == 104  # template: fail below 26
+    assert history.status == "warn" and history.threshold == 2  # template: fail below 0.5
 
 
 def test_the_choice_template_checks_the_holdout_hit_rate(
