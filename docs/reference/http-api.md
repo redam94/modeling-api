@@ -500,14 +500,10 @@ guided templates and drafts, business priors and lift tests, what-if scenarios, 
 aliases, code snippets, webhooks, saved and rendered plots with embed links, and the trust
 lifecycle (sign-up, verification, tenant deletion and export). The endpoint table matches
 `mapi_spec.api.M3_ENDPOINTS`; `mapi_spec.api.ROUTE_ACCESS` gives each operation its scope and
-permission, and `mapi_spec.api.ALL_ENDPOINTS` is the whole v0.4 surface. The ideas behind them
-are explained in [Guided mode](../concepts/guided-mode.md) and
+permission, and `mapi_spec.api.ENDPOINTS` is the whole v0.4 surface (M1, M2 and M3; the
+server's route-table test checks that it serves every row). The ideas behind them are
+explained in [Guided mode](../concepts/guided-mode.md) and
 [Integrations](../concepts/integrations.md).
-
-!!! note "Contract first"
-    v0.4 is built in parallel by several components against these contracts. Until the
-    release, the server's route-table test covers `ENDPOINTS` (v0.3) and every component
-    checks its own rows of `M3_ENDPOINTS`.
 
 Project-scoped M3 routes take the project from `X-Mapi-Project`, like every v0.3 route.
 

@@ -4,7 +4,8 @@ The document is the server's own OpenAPI 3.1 output (FastAPI route table + the
 :mod:`mapi_spec.api` DTOs, plus the run-event payload components), produced without a
 database, object store or catalog by :func:`mapi_server.app.openapi_document` -- the same
 document a running server serves at ``/openapi.json``. Every operation of
-:data:`mapi_spec.api.ENDPOINTS` (M1 and M2) is served by the server, so nothing is overlaid.
+:data:`mapi_spec.api.ENDPOINTS` (M1, M2 and M3) is served by the server, so nothing is
+overlaid.
 
 ``src/api/access.gen.json`` exports the role order and the permission matrix
 (:data:`mapi_spec.tenancy.PERMISSIONS`) so the UI hides actions the caller's role cannot do

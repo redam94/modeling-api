@@ -1,5 +1,5 @@
 """Guided mode, data path (plan §11 tasks 1-2; M3): templates, role detection, drafts and
-the BayesInsight import.
+the BayesInsight import, plus the compiler behind "Run exact" (task 6).
 
 Everything here is JSON in, JSON out: the control plane never sees an upload's bytes.
 Role detection reads column *profiles* - sent by the browser (which profiles the file
@@ -17,7 +17,7 @@ from fastapi import APIRouter, Path
 from mapi_spec.api import Page
 from mapi_spec.bayesinsight import import_bayesinsight
 from mapi_spec.coords import DataSummary
-from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
+from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity, ValidationFailed
 from mapi_spec.guided import (
     GUIDED_TEMPLATES,
     BayesInsightImport,
@@ -34,8 +34,9 @@ from mapi_spec.guided import (
     suggest_roles,
 )
 from mapi_spec.schema import DataSchema
-from mapi_spec.spec import ModelSpec
+from mapi_spec.spec import ModelSpec, ScoreRequest
 from mapi_spec.validate import validate_spec
+from mapi_spec.whatif import GuidedCompile, compile_guided_request
 from pydantic import ValidationError
 
 from mapi_server.api.common import DEFAULT_LIMIT, Ctx, Limit, Session, decode_cursor, encode_cursor
@@ -43,7 +44,11 @@ from mapi_server.api.problems import AUTH_PROBLEMS, problem_responses
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
 from mapi_server.services.catalog import CatalogUnavailable
-from mapi_server.services.specs import resolve_dataset
+from mapi_server.services.specs import (
+    check_score_request,
+    resolve_dataset,
+    resolve_model_version,
+)
 
 __all__ = ["dataset_profiles", "router", "validate_draft"]
 
@@ -218,3 +223,36 @@ async def import_bayesinsight_model(
     if body.target == "mmm.bayesinsight":
         return draft
     return await validate_draft(session, ctx, draft, None)
+
+
+@router.post(
+    "/requests:compile",
+    response_model=ScoreRequest,
+    response_model_exclude_none=True,
+    operation_id="compile_guided_request",
+    summary="What-if scenario, forecast or preset -> the ScoreRequest it stands for ('Run exact')",
+    responses=problem_responses(
+        _E.SCHEMA_INVALID,
+        _E.NOT_FOUND,
+        _E.SCENARIO_OUT_OF_RANGE,
+        _E.MISSING_FUTURE_COVARIATE,
+        *AUTH_PROBLEMS,
+    ),
+)
+async def compile_guided(ctx: Ctx, session: Session, body: GuidedCompile) -> ScoreRequest:
+    """Compile a slider scenario (``whatif``), a forecast over a horizon or an intervention
+    preset (``counterfactual``: channel off, budget x k) into the exact ``ScoreRequest``
+    ("Run exact" submits it with ``POST /v1/models/{id}/versions/{v}:score``). The request
+    is checked statically against the model version's score metadata: an unknown model is
+    ``404``, and a request the version cannot score (unknown coordinates, missing future
+    covariates under ``future_covariates: supplied``) is ``422`` with JSON pointers.
+    Nothing is stored and no run starts."""
+    request = compile_guided_request(body.root)
+    mv, _ = await resolve_model_version(session, ctx.scope, request.model)
+    if mv is None:
+        raise NotFoundError("model", request.model)
+    issues: list[Issue] = []
+    await check_score_request(session, ctx.scope, request, mv, issues)
+    if any(i.severity == Severity.ERROR for i in issues):
+        raise ValidationFailed(issues)
+    return request

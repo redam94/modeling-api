@@ -999,6 +999,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/guided/requests:compile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What-if scenario, forecast or preset -> the ScoreRequest it stands for ('Run exact')
+         * @description Compile a slider scenario (``whatif``), a forecast over a horizon or an intervention
+         *     preset (``counterfactual``: channel off, budget x k) into the exact ``ScoreRequest``
+         *     ("Run exact" submits it with ``POST /v1/models/{id}/versions/{v}:score``). The request
+         *     is checked statically against the model version's score metadata: an unknown model is
+         *     ``404``, and a request the version cannot score (unknown coordinates, missing future
+         *     covariates under ``future_covariates: supplied``) is ``422`` with JSON pointers.
+         *     Nothing is stored and no run starts.
+         */
+        post: operations["compile_guided_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/guided/templates": {
         parameters: {
             query?: never;
@@ -2727,6 +2753,21 @@ export interface components {
          */
         BudgetPeriod: "day" | "month";
         /**
+         * BudgetScale
+         * @description Intervention preset: scale the budget by ``k`` (all channels, or the listed ones).
+         */
+        BudgetScale: {
+            /** Channels */
+            channels?: string[] | null;
+            /** K */
+            k: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "budget_scale";
+        };
+        /**
          * BundleManifest
          * @description The platform-signed manifest of a bundle (``manifest.json`` + ``manifest.sig``).
          *
@@ -3077,6 +3118,19 @@ export interface components {
             ] | null;
         };
         /**
+         * ChannelOff
+         * @description Intervention preset: what if this channel had spent nothing?
+         */
+        ChannelOff: {
+            /** Channel */
+            channel: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "channel_off";
+        };
+        /**
          * CheckThresholds
          * @description Warn and fail thresholds of a check (in the check's direction).
          */
@@ -3383,6 +3437,32 @@ export interface components {
              * @default 0
              */
             vcpu_seconds?: number;
+        };
+        /** CounterfactualCompile */
+        CounterfactualCompile: {
+            /**
+             * Channel Dim
+             * @default channel
+             */
+            channel_dim?: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "counterfactual";
+            /**
+             * Model
+             * @description endpoint://project/alias or model://project/name@vN
+             */
+            model: string;
+            output?: components["schemas"]["OutputSelector"] | null;
+            /** Preset */
+            preset: components["schemas"]["ChannelOff"] | components["schemas"]["BudgetScale"];
+            /**
+             * Spend Var
+             * @default spend
+             */
+            spend_var?: string;
         };
         /**
          * DataRef
@@ -5207,6 +5287,43 @@ export interface components {
          * @enum {string}
          */
         FitMode: "evaluate_then_refit" | "train_only";
+        /** ForecastCompile */
+        ForecastCompile: {
+            /**
+             * Channel Dim
+             * @default channel
+             */
+            channel_dim?: string;
+            /**
+             * Dim
+             * @default time
+             */
+            dim?: string;
+            /** @default carry_last */
+            future_covariates?: components["schemas"]["FutureCovariates"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "forecast";
+            /**
+             * Model
+             * @description endpoint://project/alias or model://project/name@vN
+             */
+            model: string;
+            output?: components["schemas"]["OutputSelector"] | null;
+            /** Periods */
+            periods: number;
+            /** Preset */
+            preset?: (components["schemas"]["ChannelOff"] | components["schemas"]["BudgetScale"]) | null;
+            /** Scenario */
+            scenario?: string | null;
+            /**
+             * Spend Var
+             * @default spend
+             */
+            spend_var?: string;
+        };
         /**
          * FutureCovariates
          * @description Where future values of ``future_required`` covariates come from in a forecast (M3).
@@ -5409,6 +5526,39 @@ export interface components {
             /** Template Id */
             template_id: string;
         };
+        /**
+         * GuidedCompile
+         * @description Body of ``POST /v1/guided/requests:compile``: one of ``whatif``, ``forecast`` or
+         *     ``counterfactual`` (by ``kind``); the response is the equivalent ``ScoreRequest``.
+         * @example {
+         *       "kind": "whatif",
+         *       "model": "model://growth/eu-geo-mmm@v3",
+         *       "scenario": {
+         *         "multipliers": {
+         *           "search": 1.3,
+         *           "tv": 0.8
+         *         }
+         *       }
+         *     }
+         * @example {
+         *       "kind": "forecast",
+         *       "model": "endpoint://growth/geo-mmm-prod",
+         *       "periods": 13,
+         *       "preset": {
+         *         "k": 1.1,
+         *         "kind": "budget_scale"
+         *       }
+         *     }
+         * @example {
+         *       "kind": "counterfactual",
+         *       "model": "endpoint://growth/geo-mmm-prod",
+         *       "preset": {
+         *         "channel": "tv",
+         *         "kind": "channel_off"
+         *       }
+         *     }
+         */
+        GuidedCompile: components["schemas"]["WhatIfCompile"] | components["schemas"]["ForecastCompile"] | components["schemas"]["CounterfactualCompile"];
         /**
          * GuidedDraft
          * @description The draft a template and its answers produce: how to ingest the upload, the spec,
@@ -11184,6 +11334,54 @@ export interface components {
             /** Url */
             url?: string | null;
         };
+        /** WhatIfCompile */
+        WhatIfCompile: {
+            /**
+             * Channel Dim
+             * @default channel
+             */
+            channel_dim?: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "whatif";
+            /**
+             * Model
+             * @description endpoint://project/alias or model://project/name@vN
+             */
+            model: string;
+            output?: components["schemas"]["OutputSelector"] | null;
+            scenario: components["schemas"]["WhatIfScenario"];
+            /**
+             * Spend Var
+             * @default spend
+             */
+            spend_var?: string;
+        };
+        /**
+         * WhatIfScenario
+         * @description Spend multipliers per channel over the fit window (``1`` = what was actually spent).
+         *
+         *     ``geo`` restricts the scenario to one geo's grid (needs a per-geo grid).
+         * @example {
+         *       "label": "Shift 20% of TV to search",
+         *       "multipliers": {
+         *         "search": 1.3,
+         *         "tv": 0.8
+         *       }
+         *     }
+         */
+        WhatIfScenario: {
+            /** Geo */
+            geo?: string | null;
+            /** Label */
+            label?: string | null;
+            /** Multipliers */
+            multipliers?: {
+                [key: string]: number;
+            };
+        };
         /**
          * WideVarMapping
          * @description One variable read from several columns, one per label of ``dim`` (a wide table).
@@ -13862,6 +14060,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compile_guided_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuidedCompile"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoreRequest"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, SCENARIO_OUT_OF_RANGE, MISSING_FUTURE_COVARIATE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

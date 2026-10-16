@@ -11,11 +11,13 @@ and the client share. The endpoints are listed in the
 [HTTP API reference](../reference/http-api.md#guided-and-integrations).
 
 !!! info "Status"
-    v0.4 defines these contracts first; the server, runner and web app implement them in
-    parallel. Anything not yet served says so in the reference. The data path - templates,
+    The server and the runner serve every contract on this page: the data path (templates,
     role detection, drafts, the sandboxed ingest presets, the BayesInsight import and the
-    persona lock - is served; [From a spreadsheet to a Guided draft](../guides/guided-data.md)
-    walks through it.
+    persona lock, walked through in
+    [From a spreadsheet to a Guided draft](../guides/guided-data.md)) and the modelling path
+    (business priors, lift tests, the scorecard, the what-if grids and the forecast and
+    counterfactual views, in [Guided modelling](../guides/guided-modelling.md)). The Guided
+    screens of the web app come next.
 
 ## The persona lock
 

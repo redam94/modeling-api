@@ -15,6 +15,7 @@ from mapi_spec.api import (
     M2_ENDPOINTS,
     M3_ENDPOINTS,
     ROUTE_ACCESS,
+    V03_ENDPOINTS,
     RouteScope,
 )
 from mapi_spec.audit import AuditAction
@@ -33,9 +34,10 @@ def _resolve(name: str) -> type[BaseModel]:
     return obj
 
 
-def test_the_served_table_is_unchanged_and_m3_is_additive() -> None:
-    assert ENDPOINTS == M1_ENDPOINTS + M2_ENDPOINTS
-    assert ALL_ENDPOINTS == ENDPOINTS + M3_ENDPOINTS
+def test_the_served_table_is_m1_m2_m3_and_m3_is_additive() -> None:
+    assert V03_ENDPOINTS == M1_ENDPOINTS + M2_ENDPOINTS
+    assert ENDPOINTS == V03_ENDPOINTS + M3_ENDPOINTS
+    assert ALL_ENDPOINTS == ENDPOINTS
     keys = [(e.method, e.path) for e in ALL_ENDPOINTS]
     assert len(keys) == len(set(keys))
     ops = [e.operation_id for e in ALL_ENDPOINTS]
