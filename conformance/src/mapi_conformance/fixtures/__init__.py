@@ -33,6 +33,7 @@ FIXTURES: list[str] = [
     "e33",
     "pymc_marketing",
     "e84_lite",
+    "guided_mmm",
 ]
 
 DEFERRED: dict[str, str] = {

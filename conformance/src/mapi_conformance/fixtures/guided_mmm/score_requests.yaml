@@ -1,0 +1,16 @@
+# Guided MMM: what the Guided report offers - a forecast and the channel-off preset.
+- name: forecast_4w
+  payload: future             # spend and price for the four weeks after the fit
+  request:
+    mode: forecast
+    horizon: {dim: time, periods: 4}
+    output: {kind: expected, summary: [mean, hdi_90], draws: 20}
+  expect: {groups: [summary, draws], vars: [y_hat], sizes: {week: 4}}
+
+- name: tv_off
+  payload: tail:8             # the last eight weeks of the fit data
+  request:
+    mode: counterfactual
+    interventions: [{var: spend, sel: {channel: tv}, set: 0.0}]
+    output: {kind: expected, summary: [mean]}
+  expect: {groups: [summary, baseline/summary, delta/summary]}

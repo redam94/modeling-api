@@ -1,0 +1,40 @@
+# Guided MMM: the geo_mmm template's draft (POST /v1/guided/drafts) for a weekly
+# Week/Region/Revenue/TV Spend/Search Spend/Avg Price table, with the calibration a Guided
+# user enters - ROI and contribution-share ranges, a baseline share and one lift test.
+# The ranges and the lift hold for the simulation at every seed and size (data.truth).
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: guided-geo, project: growth, labels: {family: mmm, guided: geo_mmm, corpus: guided_mmm}}
+data:
+  dataset: dataset://growth/upload@latest
+  bind:
+    dims: {geo: region, channel: channel, time: week}
+    vars: {y: revenue, spend: spend}
+  split: {after_step: weekly, kind: time_holdout, dim: time, last: 8}
+pipeline:
+  - {id: weekly,      use: core.resample@^1,   with: {dim: time, freq: W-SUN, how: sum, full_periods_only: true}}
+  - {id: scale_spend, use: core.mean_scale@^1, with: {vars: [spend], over: [time], unseen_levels: pooled}}
+  - {id: scale_y,     use: core.mean_scale@^1, with: {vars: [y], over: [time], unseen_levels: pooled}}
+  - {id: lags,        use: core.lag_tensor@^1, with: {vars: [spend], along: time, within: [geo], l_max: 6, pad: first}}
+  - {id: season,      use: core.fourier@^1,    with: {along: time, period: 52.18, order: 3, out: fourier}}
+model:
+  use: mmm.hierarchical_geo@^1
+  settings:
+    pooling: partial
+    adstock: {kind: geometric, l_max: 6}
+    saturation: {kind: logistic}
+  fit: {mode: evaluate_then_refit, tune: 500, draws: 500, chains: 4, seed: 20261015}
+calibration:
+  business_priors:
+    channels:
+      tv:     {roi: [1.5, 4.0], credibility: 0.8}
+      search: {contribution_share: [0.06, 0.2], credibility: 0.8}
+    baseline_share: {share: [0.6, 0.85], credibility: 0.8}
+  lift_tests:
+    - {id: tv-north, channel: tv, geo: north, start: 2024-03-03, end: 2024-03-24,
+       spend_delta: 4000, kpi_delta: 5400, se: 600}
+outputs:
+  derived: [contributions, response_curves, marginal_cost]
+  plots: [core.ppc_fan, core.convergence, mmm.decomposition, mmm.response_curves]
+evaluate: {metrics: [mape, coverage_90]}
+execution: {resource_class: M, timeout: 45m}
