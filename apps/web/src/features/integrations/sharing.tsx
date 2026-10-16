@@ -288,7 +288,7 @@ export function EmbedCreatedDialog({ created, title, onClose }: { created: PlotE
     >
       <div className="grid gap-2">
         <p className="text-[13px] font-medium">Embed code</p>
-        <CodeBlock code={iframeSnippet(created.url, title)} label="Embed code" language="html" />
+        <CodeBlock code={iframeSnippet(created.url, title)} label="Embed code" language="html" wrap />
         <a href={created.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[13px] text-primary hover:underline">
           <ExternalLink className="size-3.5" /> Open the link in a new tab
         </a>

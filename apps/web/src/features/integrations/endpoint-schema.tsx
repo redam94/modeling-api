@@ -18,17 +18,18 @@ import { useWorkspace } from "@/features/auth/workspace";
 import { env } from "@/env";
 import { formatBytes } from "@/lib/format";
 import { notebookSnippet, parseCallJson, SNIPPET_LANGUAGES } from "@/lib/integrations";
+import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
 
 // ----------------------------------------------------------------------- code block
 
-export function CodeBlock({ code, label, language }: { code: string; label: string; language?: string }) {
+export function CodeBlock({ code, label, language, wrap = false }: { code: string; label: string; language?: string; wrap?: boolean }) {
   return (
     <div className="relative min-w-0">
       <pre
         aria-label={label}
         data-language={language}
-        className="max-h-[28rem] overflow-auto rounded-md border bg-muted/50 p-3 pr-11 font-mono text-xs leading-5 whitespace-pre"
+        className={cn("max-h-[28rem] overflow-auto rounded-md border bg-muted/50 p-3 pr-11 font-mono text-xs leading-5", wrap ? "break-all whitespace-pre-wrap" : "whitespace-pre")}
       >
         {code}
       </pre>
