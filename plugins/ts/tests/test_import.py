@@ -12,3 +12,13 @@ def test_entry_point_registers_every_plugin() -> None:
         assert reg.model(f"{plugin.id}@^1") is plugin
     ids = {m.manifest.id for m in reg.catalog().models}
     assert {"ts.hsgp_trend", "ts.gaussian_hmm"} <= ids
+
+
+def test_every_plugin_has_a_complete_about_card() -> None:
+    """M3.5: built-in models carry plain-language About cards (mapi_spec.abouts)."""
+    from mapi_sdk.testing import check_about
+
+    report = check_about(*mapi_plugin_ts.PLUGINS)
+    assert report.ok and len(report.results) == len(mapi_plugin_ts.PLUGINS)
+    for plugin in mapi_plugin_ts.PLUGINS:
+        assert plugin.manifest().model_family == "ts"

@@ -25,6 +25,8 @@ from typing import Any, ClassVar, Literal, Protocol, runtime_checkable
 
 import numpy as np
 import xarray as xr
+from mapi_spec.about import About
+from mapi_spec.abouts import MODEL_ABOUTS
 from mapi_spec.calibration import Calibration, PriorTranslationJob, PriorTranslationResult
 from mapi_spec.capabilities import (
     Capabilities,
@@ -268,6 +270,8 @@ def build_manifest(
     resources: ResourceHint | None = None,
     artifact_format: str = "zarr.zip/v1",
     description: str | None = None,
+    about: About | None = None,
+    family: str | None = None,
 ) -> ModelManifest:
     """Assemble and validate a :class:`~mapi_spec.capabilities.ModelManifest`."""
     if isinstance(schema_template, DataSchema):
@@ -292,6 +296,8 @@ def build_manifest(
         resources=resources or ResourceHint(),
         artifact_format=artifact_format,
         description=description,
+        about=about,
+        family=family,
     )
 
 
@@ -315,6 +321,11 @@ class CustomModel[SettingsT: BaseModel]:
     fit_schema: ClassVar[Mapping[str, Any] | None] = None
     description: ClassVar[str | None] = None
     pad_extend: ClassVar[bool] = True
+    about: ClassVar[About | None] = None
+    """M3.5: the plain-language About card. Built-in models take theirs from
+    :data:`mapi_spec.abouts.MODEL_ABOUTS` when this is unset."""
+    family: ClassVar[str | None] = None
+    """M3.5: the family governance policies match (default: the id's namespace)."""
 
     @classmethod
     def manifest(cls) -> ModelManifest:
@@ -330,6 +341,8 @@ class CustomModel[SettingsT: BaseModel]:
             plots=cls.plots,
             resources=cls.resources,
             description=cls.description,
+            about=cls.about if cls.about is not None else MODEL_ABOUTS.get(cls.id),
+            family=cls.family,
         )
 
     @classmethod
