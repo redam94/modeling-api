@@ -110,11 +110,24 @@ def test_data_explorer_sections_validate_and_plot(facet: list[str] | None) -> No
         assert _sanitized(view) >= 1, name
 
 
+def _renamed_time(ds: xr.Dataset, schema: DataSchema) -> tuple[xr.Dataset, DataSchema]:
+    """The panel with its time dimension called ``time`` (as most uploads name it)."""
+    raw = schema.model_dump(mode="json")
+    raw["dims"]["time"] = raw["dims"].pop("week")
+    for v in raw["vars"].values():
+        v["dims"] = ["time" if d == "week" else d for d in v["dims"]]
+    return ds.rename({"week": "time"}), DataSchema.model_validate(raw)
+
+
 def test_data_explorer_numbers_make_sense() -> None:
     ds, schema = _panel()
     c = data_context(ds, schema)
     ov = DATA_SECTION_FUNCS["overview"](c)
     assert ov.n_cells == 156 * 3 * 4 and "sales" in ov.summary_plain  # type: ignore[attr-defined]
+    assert "over 156 weeks x 3 geo x 2 channel," in ov.summary_plain  # type: ignore[attr-defined]
+    # the time dimension is named by its frequency, whatever the dimension is called
+    renamed = DATA_SECTION_FUNCS["overview"](data_context(*_renamed_time(ds, schema)))
+    assert "over 156 weeks x 3 geo" in renamed.summary_plain  # type: ignore[attr-defined]
     corr = DATA_SECTION_FUNCS["correlation"](c)
     assert isinstance(corr, CorrelationView)
     assert set(corr.vars) == {"sales", "spend[tv]", "spend[search]", "price"}

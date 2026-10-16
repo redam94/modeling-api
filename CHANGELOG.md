@@ -353,6 +353,9 @@ milestone releases are tagged on `main`.
   `ReactFlowProvider`: Vite discovered the lazily loaded React Flow late, optimised it in a
   second pass and mixed two copies of React. It is now pre-bundled at start-up
   (`apps/web/dev-prebundle.ts`); production builds were not affected.
+- **runner** (found by the M3.5 live-stack verification): the Data Explorer's overview read
+  "2 variables over 156 time" for the most common upload, a time dimension called `time`;
+  the time dimension is now named by its frequency ("156 weeks", "36 months").
 - **client**: members could not be given the `reviewer` capability (needed to approve
   validations) without raw HTTP: `tenants.add_member(..., capabilities=[...])` and
   `tenants.set_capabilities(...)`.

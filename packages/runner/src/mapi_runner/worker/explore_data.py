@@ -344,6 +344,24 @@ def _need_time(c: DataContext) -> None:
 # ------------------------------------------------------------------------ sections
 
 
+_PERIOD_WORDS: Final = {
+    "B": "business day", "D": "day", "W": "week", "M": "month", "MS": "month", "ME": "month",
+    "Q": "quarter", "QS": "quarter", "QE": "quarter", "A": "year", "AS": "year", "Y": "year",
+    "YS": "year", "YE": "year", "h": "hour", "H": "hour",
+}  # fmt: skip
+"""Plain words for the time dimension by its pandas frequency (anchors such as ``-SUN``
+dropped); multiples (``2W``) and finer frequencies keep the dimension's name."""
+
+
+def _dim_phrase(d: DimOverview) -> str:
+    """``156 weeks`` for a weekly time dimension whatever it is called (a dimension named
+    ``time`` read "156 time"); ``3 geo`` for the others."""
+    word = _PERIOD_WORDS.get(d.freq.split("-", 1)[0]) if d.kind == "time" and d.freq else None
+    if word is None:
+        return f"{d.size} {d.name}"
+    return f"{d.size} {word}{'' if d.size == 1 else 's'}"
+
+
 def overview(c: DataContext) -> DataOverviewView:
     ds = c.ds
     dims: list[DimOverview] = []
@@ -395,7 +413,7 @@ def overview(c: DataContext) -> DataOverviewView:
     issues = quality_warnings(c)
     serious = sum(1 for w in issues if w.severity != "info")
     n_cells = int(sum(int(np.asarray(ds[v].values).size) for v in ds.data_vars))
-    shape = " x ".join(f"{d.size} {d.name}" for d in dims) or "no dimensions"
+    shape = " x ".join(_dim_phrase(d) for d in dims) or "no dimensions"
     period_txt = ""
     if c.time_dim is not None and dims:
         td = next((d for d in dims if d.name == c.time_dim), None)
