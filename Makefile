@@ -186,6 +186,7 @@ snapshots: ## Regenerate the contract snapshot (mapi_spec) and the Guided catalo
 .PHONY: web-check
 web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*
 	$(UV) run python apps/web/scripts/gen_openapi.py --check
+	$(UV) run python apps/web/scripts/gen_guided_fixtures.py --check
 	$(PNPM) -r lint
 	$(PNPM) -r typecheck
 	$(PNPM) -r test
