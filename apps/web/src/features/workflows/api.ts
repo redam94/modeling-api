@@ -212,21 +212,27 @@ export function useWorkflowRuns(workflowId: string | undefined, status?: Workflo
   });
 }
 
+/**
+ * Start a run of `workflowId`, or of the `workflowId` a call names: the Guided recipe creates
+ * the workflow in the same click and must run *that* one (the id it was rendered with is empty).
+ */
 export function useStartWorkflowRun(workflowId: string) {
   const qc = useQueryClient();
   const s = useProjectScope();
   return useMutation({
-    mutationFn: ({ body, key }: { body: WorkflowRunCreate; key: string }) =>
-      unwrapWithStatus(
+    mutationFn: ({ body, key, workflowId: id = workflowId }: { body: WorkflowRunCreate; key: string; workflowId?: string }) => {
+      if (!id) throw new Error("no workflow to run");
+      return unwrapWithStatus(
         api.POST("/v1/workflows/{workflow_id}/runs", {
-          params: { path: { workflow_id: workflowId }, header: { "Idempotency-Key": key } },
+          params: { path: { workflow_id: id }, header: { "Idempotency-Key": key } },
           headers: s.headers,
           body,
         }),
-      ),
+      );
+    },
     onSuccess: ({ data }) => {
       qc.setQueryData(wk.run(s.key, data.run_id), data);
-      void qc.invalidateQueries({ queryKey: wk.runs(s.key, workflowId) });
+      void qc.invalidateQueries({ queryKey: wk.runs(s.key, data.workflow_id) });
     },
   });
 }

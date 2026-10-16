@@ -269,7 +269,7 @@ export function RecipeRunner({ templateId, initialData }: { templateId: string; 
         }
         setWfId(id);
       }
-      const res = await start.mutateAsync({ body: { params, inputs: { [dataInput]: data }, use_cache: true }, key });
+      const res = await start.mutateAsync({ body: { params, inputs: { [dataInput]: data }, use_cache: true }, key, workflowId: id });
       await navigate({ to: "/workflow-runs/$runId", params: { runId: res.data.run_id } });
     } catch (err) {
       setError(err);

@@ -289,6 +289,16 @@ milestone releases are tagged on `main`.
   command in the CLI walkthrough is checked against the CLI, and the statsmodels page quotes
   the catalog's About cards (`conformance/tests/test_docs_v05.py`,
   `packages/server/tests/test_docs_client_v05.py`).
+- **tests, docs**: the M3.5 journeys through the running stack (`make dev`, then `make e2e`):
+  `tests/e2e/test_m35_stack.py` (the canonical readiness workflow on a series with a unit
+  root, governance null tests that block a model fitted on noise and a second-person
+  approval, mmm-framework with its explorer views and a budget plan, the Data Explorer, a
+  VAR's impulse responses, Help me choose, and `mapi workflows run --watch` on the
+  cookbook document) and `apps/web/e2e/m35-live.e2e.spec.ts` (the same screens in the
+  browser, Guided and Expert, seeded by `tests/e2e/m35_browser_seed.py`);
+  `docs/operations/m35-verification.md` records what they verified, the defects they found
+  and what remains. The M1 and M3 journeys were brought up to date with v0.5 (the E33 spec
+  on mmm-framework, the plan's KPI name, webhook deliveries verified as they arrive).
 
 ### Changed
 - **spec**: a dataset's generated summary shows dates without a midnight time
@@ -342,6 +352,11 @@ milestone releases are tagged on `main`.
 - **runner** (found by the M3.5 live-stack verification): the Data Explorer's overview read
   "2 variables over 156 time" for the most common upload, a time dimension called `time`;
   the time dimension is now named by its frequency ("156 weeks", "36 months").
+- **web** (found by the M3.5 live-stack verification): a Guided user's first run of a recipe
+  in a project - the workflow created from the template in the same click - failed with "The
+  recipe did not start: Not Found": the run was posted to `/v1/workflows//runs`, with the
+  workflow id the page was rendered with. Starting a run can now name its workflow, and the
+  recipe runs the one it just created.
 - **client**: members could not be given the `reviewer` capability (needed to approve
   validations) without raw HTTP: `tenants.add_member(..., capabilities=[...])` and
   `tenants.set_capabilities(...)`.
