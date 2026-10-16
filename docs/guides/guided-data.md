@@ -139,7 +139,7 @@ after parsing (`IngestJob` sets the limits; the server's defaults are below).
 | columns | 4,096 | the CSV header or Parquet schema; MFF: distinct variables |
 | characters per cell or column name | 4,096 (names: 256) | every header and text cell |
 | decompression ratio | 50 × the stored size | gzip CSV (streamed), Parquet, zip archives, netCDF (decoded bytes); files that decode to less than 64 MiB are never refused for their ratio |
-| uncompressed size | 8 GiB | the same, as an absolute size |
+| uncompressed size | the ingest run's scratch budget: 3 GiB (class S), 6 GiB (M), 12 GiB (L) | the same, as an absolute size; the class is the smallest whose dataset cap holds the upload |
 
 bzip2, xz and zstd compressed uploads are refused. Every refusal is one plain-language
 message and a suggested action, for example:
