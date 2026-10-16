@@ -48,7 +48,8 @@ test("a policy is edited and then gates promotion with NOT_VALIDATED", async ({ 
 
   // Add a check from the catalog: its About card shows before it is added.
   await editor.getByLabel("Add a check").selectOption("null.noise_regressors");
-  await expect(editor.getByTestId("about-card").filter({ hasText: "Ignores fake drivers" })).toContainText("Use it when");
+  // (Other checks' cards name it among their related items, so pick the card by its title.)
+  await expect(editor.getByRole("article", { name: "Ignores fake drivers" })).toContainText("Use it when");
   await editor.getByRole("button", { name: "Add check" }).click();
   await expect(editor.locator('li[data-check="null.noise_regressors"]')).toBeVisible();
 

@@ -139,6 +139,10 @@ function computedValidation(id: string, v: number): ModelValidation | null {
   if (!m.governance || (id !== fx.MODEL_ID && !(id === EXTRA_MODEL_IDS.arimax && v === 1))) return null;
   const failing = (m.governance as { check: string; status: string }[]).filter((r) => r.status === "fail" || r.status === "error").map((r) => r.check);
   const status = failing.length ? "checks_failed" : "validated";
+  // The MMM's computed validation is its first one: the governance mock's later validations
+  // of that version (failed, then awaiting approval) are the story the governance screens tell.
+  const submitted = id === fx.MODEL_ID ? "2026-10-12T09:00:00Z" : fx.T0;
+  const done = id === fx.MODEL_ID ? "2026-10-12T09:10:00Z" : "2026-10-15T09:40:00Z";
   const validation: ModelValidation = {
     id: `val_${id.slice(4, 16)}${v}`,
     tenant_id: "default",
@@ -154,12 +158,12 @@ function computedValidation(id: string, v: number): ModelValidation | null {
     approvals_required: 1,
     approvals: [],
     submitted_by: "usr_ana",
-    submitted_at: fx.T0,
-    updated_at: "2026-10-15T09:40:00Z",
+    submitted_at: submitted,
+    updated_at: done,
     history: [
-      { at: fx.T0, event: "submit", from_status: "draft", to_status: "checks_running", actor_id: "usr_ana" },
-      { at: "2026-10-15T09:40:00Z", event: failing.length ? "checks_failed" : "checks_passed", from_status: "checks_running", to_status: failing.length ? "checks_failed" : "checks_passed", actor_id: null },
-      ...(failing.length ? [] : [{ at: "2026-10-15T09:40:00Z", event: "validate", from_status: "checks_passed", to_status: "validated", actor_id: null }]),
+      { at: submitted, event: "submit", from_status: "draft", to_status: "checks_running", actor_id: "usr_ana" },
+      { at: done, event: failing.length ? "checks_failed" : "checks_passed", from_status: "checks_running", to_status: failing.length ? "checks_failed" : "checks_passed", actor_id: null },
+      ...(failing.length ? [] : [{ at: done, event: "validate", from_status: "checks_passed", to_status: "validated", actor_id: null }]),
     ] as ModelValidation["history"],
   };
   return validation;

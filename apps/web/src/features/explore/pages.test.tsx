@@ -110,8 +110,9 @@ describe("the Model Explorer", () => {
   it("lists what applies, with governance evidence and lineage", async () => {
     renderApp(`/models/${MODEL_ID}/versions/1/explore?section=governance`);
     const checks = await screen.findByRole("list", { name: "Check results" }, T);
-    expect(checks.querySelector('[data-check="convergence"]')).toHaveAttribute("data-status", "fail");
-    expect(screen.getAllByText("Checks failed").length).toBeGreaterThan(0);
+    // The latest validation of the version (the governance mock's, awaiting a reviewer).
+    expect(checks.querySelector('[data-check="null.permutation_target"]')).toHaveAttribute("data-status", "pass");
+    expect(screen.getAllByText("Awaiting approval").length).toBeGreaterThan(0);
     const nav = screen.getByRole("navigation", { name: "Model Explorer sections" });
     expect(nav.querySelector('[data-section="irf"]')).toHaveAttribute("data-status", "skipped");
     expect(nav.querySelector('[data-section="forecast"]')).toHaveAttribute("data-status", "missing");
