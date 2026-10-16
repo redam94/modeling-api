@@ -1,0 +1,1151 @@
+{
+ "items": [
+  {
+   "defaults": {},
+   "description_plain": "Understand which product customers pick on each shopping trip, and how price and promotions shift the choice.",
+   "family": "choice",
+   "id": "customer_choice",
+   "lookups": {},
+   "plugin": "choice.multinomial_logit@^1",
+   "plugin_available": true,
+   "plugin_note": null,
+   "questions": [
+    {
+     "accepts": [
+      "string"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": "Each value must name a product the same way as the price columns do (a column price_coke goes with the choice coke).",
+     "id": "choice",
+     "keywords": [
+      "choice",
+      "chosen",
+      "brand",
+      "product",
+      "purchase",
+      "bought"
+     ],
+     "kind": "column",
+     "maximum": null,
+     "minimum": null,
+     "missing": "allow",
+     "prompt_plain": "Which column says which product was chosen?",
+     "required": true,
+     "role": "target",
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [
+      "string",
+      "integer"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": "customer",
+     "dim_spec": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "hyperprior",
+      "ordered": false,
+      "policy": "new_levels"
+     },
+     "help_plain": null,
+     "id": "customer",
+     "keywords": [
+      "customer",
+      "household",
+      "hh",
+      "panelist",
+      "member",
+      "user"
+     ],
+     "kind": "column",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which column identifies the customer or household?",
+     "required": true,
+     "role": null,
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [
+      "integer"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": "trip",
+     "dim_spec": {
+      "description": null,
+      "freq": null,
+      "kind": "index",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     },
+     "help_plain": "Number every customer's trips 1, 2, 3, ... in the order they happened.",
+     "id": "occasion",
+     "keywords": [
+      "trip",
+      "visit",
+      "occasion",
+      "basket",
+      "purchase",
+      "number"
+     ],
+     "kind": "column",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which column numbers each customer's shopping trips?",
+     "required": true,
+     "role": null,
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [
+      "number",
+      "integer"
+     ],
+     "as_var": "price",
+     "choices": [],
+     "default": null,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": null,
+     "id": "prices",
+     "keywords": [
+      "price",
+      "cost"
+     ],
+     "kind": "columns",
+     "maximum": null,
+     "minimum": null,
+     "missing": "allow",
+     "prompt_plain": "Which columns hold the price of each product?",
+     "required": true,
+     "role": "covariate",
+     "ui_level": "basic",
+     "wide_dim": "product"
+    },
+    {
+     "accepts": [
+      "number",
+      "integer",
+      "boolean"
+     ],
+     "as_var": "promo",
+     "choices": [],
+     "default": null,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": null,
+     "id": "promos",
+     "keywords": [
+      "promo",
+      "promotion",
+      "display",
+      "feature",
+      "deal"
+     ],
+     "kind": "columns",
+     "maximum": null,
+     "minimum": null,
+     "missing": "allow",
+     "prompt_plain": "Which columns flag a promotion for each product?",
+     "required": false,
+     "role": "covariate",
+     "ui_level": "basic",
+     "wide_dim": "product"
+    }
+   ],
+   "scorecard_checks": [],
+   "scorecard_thresholds": {},
+   "spec_template": {
+    "apiVersion": "mapi/v1",
+    "data": {
+     "bind": {
+      "dims": {
+       "hh": "{{customer}}",
+       "product": "product",
+       "trip": "{{occasion}}"
+      },
+      "vars": {
+       "y": "{{choice}}"
+      }
+     },
+     "dataset": "{{dataset}}",
+     "split": {
+      "dim": "trip",
+      "kind": "last_per_group",
+      "last": 1,
+      "min_len": 3,
+      "within": [
+       "hh"
+      ]
+     }
+    },
+    "execution": {
+     "resource_class": "S",
+     "timeout": "20m"
+    },
+    "kind": "ModelSpec",
+    "metadata": {
+     "labels": {
+      "family": "choice",
+      "guided": "customer_choice"
+     },
+     "name": "{{name}}",
+     "project": "{{project}}"
+    },
+    "model": {
+     "fit": {
+      "draws": 100,
+      "mode": "evaluate_then_refit",
+      "seed": 20261015
+     },
+     "settings": {
+      "random_effects": [
+       "hh"
+      ]
+     },
+     "use": "choice.multinomial_logit@^1"
+    },
+    "outputs": {
+     "plots": [
+      "core.data_overview",
+      "core.posterior_forest"
+     ]
+    }
+   },
+   "tasks": [
+    "counterfactual"
+   ],
+   "title": "Customer choice",
+   "ui_levels": {
+    "/execution": "advanced",
+    "/model/fit": "advanced",
+    "/model/settings": "advanced"
+   },
+   "version": "1.1.0"
+  },
+  {
+   "defaults": {
+    "frequency": "weekly",
+    "holdout_periods": 8
+   },
+   "description_plain": "Find out how much each marketing channel adds to your results in each market, and what happens if you move budget between channels.",
+   "family": "mmm",
+   "id": "geo_mmm",
+   "lookups": {},
+   "plugin": "mmm.hierarchical_geo@^1",
+   "plugin_available": true,
+   "plugin_note": null,
+   "questions": [
+    {
+     "accepts": [
+      "number",
+      "integer"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": "Usually revenue, sales or sign-ups.",
+     "id": "kpi",
+     "keywords": [
+      "revenue",
+      "sales",
+      "kpi",
+      "conversions",
+      "orders",
+      "units",
+      "signups",
+      "turnover",
+      "volume",
+      "target"
+     ],
+     "kind": "column",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which column is the result you want to explain?",
+     "required": true,
+     "role": "target",
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [
+      "date"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": "time",
+     "dim_spec": {
+      "description": null,
+      "freq": null,
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     },
+     "help_plain": null,
+     "id": "date",
+     "keywords": [
+      "date",
+      "week",
+      "day",
+      "period",
+      "month",
+      "time",
+      "ds"
+     ],
+     "kind": "column",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which column holds the date or week?",
+     "required": true,
+     "role": null,
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [
+      "string",
+      "integer"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": "geo",
+     "dim_spec": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "pooled",
+      "ordered": false,
+      "policy": "new_levels"
+     },
+     "help_plain": null,
+     "id": "geo",
+     "keywords": [
+      "geo",
+      "geography",
+      "market",
+      "region",
+      "country",
+      "state",
+      "dma",
+      "city",
+      "area",
+      "territory",
+      "province",
+      "zone"
+     ],
+     "kind": "column",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which column names the market or region?",
+     "required": true,
+     "role": null,
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [
+      "number",
+      "integer"
+     ],
+     "as_var": "spend",
+     "choices": [],
+     "default": null,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": "Pick every column that holds money spent on a channel.",
+     "id": "spend",
+     "keywords": [
+      "spend",
+      "cost",
+      "budget",
+      "investment",
+      "media"
+     ],
+     "kind": "columns",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which columns are media spend (one per channel)?",
+     "required": true,
+     "role": "spend",
+     "ui_level": "basic",
+     "wide_dim": "channel"
+    },
+    {
+     "accepts": [
+      "number",
+      "integer"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": null,
+     "id": "controls",
+     "keywords": [
+      "price",
+      "promo",
+      "promotion",
+      "discount",
+      "weather",
+      "temperature",
+      "holiday",
+      "competitor",
+      "distribution"
+     ],
+     "kind": "columns",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which other columns might move the result (price, promotions)?",
+     "required": false,
+     "role": "control",
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [],
+     "as_var": null,
+     "choices": [
+      {
+       "label": "Weekly",
+       "value": "weekly"
+      },
+      {
+       "label": "Daily",
+       "value": "daily"
+      }
+     ],
+     "default": "weekly",
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": null,
+     "id": "frequency",
+     "keywords": [],
+     "kind": "choice",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "How often is your data recorded?",
+     "required": true,
+     "role": null,
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [],
+     "as_var": null,
+     "choices": [],
+     "default": 8,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": "The model is fitted without them first, to measure its forecast error, then refitted on everything.",
+     "id": "holdout_periods",
+     "keywords": [],
+     "kind": "number",
+     "maximum": 104.0,
+     "minimum": 1.0,
+     "prompt_plain": "How many of the latest periods should we hold back to test the model?",
+     "required": true,
+     "role": null,
+     "ui_level": "advanced",
+     "wide_dim": null
+    }
+   ],
+   "scorecard_checks": [
+    "convergence.rhat",
+    "convergence.ess",
+    "convergence.divergences",
+    "holdout.mape",
+    "holdout.coverage_90",
+    "plausibility.negative_roi",
+    "plausibility.roi_absurd",
+    "plausibility.share_outlier",
+    "plausibility.baseline_share",
+    "data.missing",
+    "data.history",
+    "data.spend_variation"
+   ],
+   "scorecard_thresholds": {},
+   "spec_template": {
+    "apiVersion": "mapi/v1",
+    "data": {
+     "bind": {
+      "dims": {
+       "channel": "channel",
+       "geo": "{{geo}}",
+       "time": "{{date}}"
+      },
+      "vars": {
+       "spend": "spend",
+       "y": "{{kpi}}"
+      }
+     },
+     "dataset": "{{dataset}}",
+     "split": {
+      "after_step": "weekly",
+      "dim": "time",
+      "kind": "time_holdout",
+      "last": "{{holdout_periods}}"
+     }
+    },
+    "evaluate": {
+     "metrics": [
+      "mape",
+      "coverage_90"
+     ]
+    },
+    "execution": {
+     "resource_class": "M",
+     "timeout": "45m"
+    },
+    "kind": "ModelSpec",
+    "metadata": {
+     "labels": {
+      "family": "mmm",
+      "guided": "geo_mmm"
+     },
+     "name": "{{name}}",
+     "project": "{{project}}"
+    },
+    "model": {
+     "fit": {
+      "chains": 4,
+      "draws": 500,
+      "mode": "evaluate_then_refit",
+      "seed": 20261015,
+      "tune": 500
+     },
+     "settings": {
+      "adstock": {
+       "kind": "geometric",
+       "l_max": 6
+      },
+      "pooling": "partial",
+      "saturation": {
+       "kind": "logistic"
+      }
+     },
+     "use": "mmm.hierarchical_geo@^1"
+    },
+    "outputs": {
+     "derived": [
+      "contributions",
+      "response_curves",
+      "marginal_cost"
+     ],
+     "plots": [
+      "core.ppc_fan",
+      "core.convergence",
+      "mmm.decomposition",
+      "mmm.response_curves"
+     ],
+     "ui_draws": 300
+    },
+    "pipeline": [
+     {
+      "id": "weekly",
+      "use": "core.resample@^1",
+      "with": {
+       "dim": "time",
+       "freq": "W-SUN",
+       "full_periods_only": true,
+       "how": "sum"
+      }
+     },
+     {
+      "id": "scale_spend",
+      "use": "core.mean_scale@^1",
+      "with": {
+       "over": [
+        "time"
+       ],
+       "unseen_levels": "pooled",
+       "vars": [
+        "spend"
+       ]
+      }
+     },
+     {
+      "id": "scale_y",
+      "use": "core.mean_scale@^1",
+      "with": {
+       "over": [
+        "time"
+       ],
+       "unseen_levels": "pooled",
+       "vars": [
+        "y"
+       ]
+      }
+     },
+     {
+      "id": "lags",
+      "use": "core.lag_tensor@^1",
+      "with": {
+       "along": "time",
+       "l_max": 6,
+       "pad": "first",
+       "vars": [
+        "spend"
+       ],
+       "within": [
+        "geo"
+       ]
+      }
+     },
+     {
+      "id": "season",
+      "use": "core.fourier@^1",
+      "with": {
+       "along": "time",
+       "order": 3,
+       "out": "fourier",
+       "period": 52.18
+      }
+     }
+    ]
+   },
+   "tasks": [
+    "whatif",
+    "forecast",
+    "counterfactual",
+    "business_priors",
+    "lift_tests"
+   ],
+   "title": "Geo marketing mix",
+   "ui_levels": {
+    "/execution": "advanced",
+    "/model/fit": "advanced",
+    "/model/settings/adstock": "advanced",
+    "/model/settings/pooling": "basic",
+    "/model/settings/saturation": "advanced",
+    "/pipeline": "hidden"
+   },
+   "version": "1.0.0"
+  },
+  {
+   "defaults": {
+    "holdout_periods": 12
+   },
+   "description_plain": "Predict how much each store will sell each week, with a low and a high estimate, from prices, promotions and the calendar.",
+   "family": "tabular",
+   "id": "store_demand",
+   "lookups": {},
+   "plugin": "tabular.regressor@^1",
+   "plugin_available": true,
+   "plugin_note": null,
+   "questions": [
+    {
+     "accepts": [
+      "number",
+      "integer"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": null,
+     "id": "kpi",
+     "keywords": [
+      "units",
+      "quantity",
+      "qty",
+      "sales",
+      "demand",
+      "volume",
+      "sold"
+     ],
+     "kind": "column",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which column is the quantity sold?",
+     "required": true,
+     "role": "target",
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [
+      "date"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": "time",
+     "dim_spec": {
+      "description": null,
+      "freq": null,
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     },
+     "help_plain": null,
+     "id": "date",
+     "keywords": [
+      "date",
+      "week",
+      "day",
+      "period",
+      "month",
+      "time",
+      "ds"
+     ],
+     "kind": "column",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which column holds the week?",
+     "required": true,
+     "role": null,
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [
+      "string",
+      "integer"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": "store",
+     "dim_spec": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "pooled",
+      "ordered": false,
+      "policy": "new_levels"
+     },
+     "help_plain": null,
+     "id": "store",
+     "keywords": [
+      "store",
+      "shop",
+      "outlet",
+      "branch",
+      "location",
+      "site"
+     ],
+     "kind": "column",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which column names the store?",
+     "required": true,
+     "role": null,
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [
+      "number",
+      "integer"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": null,
+     "id": "drivers",
+     "keywords": [
+      "price",
+      "promo",
+      "promotion",
+      "discount",
+      "stock",
+      "display"
+     ],
+     "kind": "columns",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which columns explain demand (price, promotions, stock)?",
+     "required": false,
+     "role": "covariate",
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [],
+     "as_var": null,
+     "choices": [],
+     "default": 12,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": "The model is fitted without them first, to measure its forecast error, then refitted on everything.",
+     "id": "holdout_periods",
+     "keywords": [],
+     "kind": "number",
+     "maximum": 104.0,
+     "minimum": 1.0,
+     "prompt_plain": "How many of the latest periods should we hold back to test the model?",
+     "required": true,
+     "role": null,
+     "ui_level": "advanced",
+     "wide_dim": null
+    }
+   ],
+   "scorecard_checks": [
+    "holdout.mape",
+    "data.missing",
+    "data.history"
+   ],
+   "scorecard_thresholds": {},
+   "spec_template": {
+    "apiVersion": "mapi/v1",
+    "data": {
+     "bind": {
+      "dims": {
+       "store": "{{store}}",
+       "time": "{{date}}"
+      },
+      "vars": {
+       "y": "{{kpi}}"
+      }
+     },
+     "dataset": "{{dataset}}",
+     "split": {
+      "dim": "time",
+      "kind": "time_holdout",
+      "last": "{{holdout_periods}}"
+     }
+    },
+    "evaluate": {
+     "metrics": [
+      "mape",
+      "coverage_80"
+     ]
+    },
+    "execution": {
+     "resource_class": "S",
+     "timeout": "20m"
+    },
+    "kind": "ModelSpec",
+    "metadata": {
+     "labels": {
+      "family": "tabular",
+      "guided": "store_demand"
+     },
+     "name": "{{name}}",
+     "project": "{{project}}"
+    },
+    "model": {
+     "fit": {
+      "mode": "evaluate_then_refit",
+      "seed": 7
+     },
+     "settings": {
+      "coord_features": {
+       "store": "category"
+      },
+      "rows": [
+       "store",
+       "time"
+      ]
+     },
+     "use": "tabular.regressor@^1"
+    },
+    "outputs": {
+     "plots": [
+      "core.fit_vs_actual",
+      "core.residuals_over_time",
+      "ml.feature_importance"
+     ]
+    },
+    "pipeline": [
+     {
+      "id": "cal",
+      "use": "core.calendar@^1",
+      "with": {
+       "along": "time",
+       "features": [
+        "week_of_year",
+        "month"
+       ]
+      }
+     }
+    ]
+   },
+   "tasks": [
+    "forecast"
+   ],
+   "title": "Demand by store",
+   "ui_levels": {
+    "/execution": "advanced",
+    "/model/settings": "advanced",
+    "/pipeline": "hidden"
+   },
+   "version": "1.0.0"
+  },
+  {
+   "defaults": {
+    "frequency": "weekly",
+    "holdout_periods": 8,
+    "horizon": 26
+   },
+   "description_plain": "Forecast one series - sales, visits, demand - a few weeks or months ahead, with a range of likely values.",
+   "family": "forecast",
+   "id": "weekly_forecast",
+   "lookups": {
+    "season_period": {
+     "map": {
+      "daily": 365.25,
+      "weekly": 52.18
+     },
+     "source": "frequency"
+    }
+   },
+   "plugin": "ts.hsgp_trend@^1",
+   "plugin_available": true,
+   "plugin_note": null,
+   "questions": [
+    {
+     "accepts": [
+      "number",
+      "integer"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": null,
+     "id": "kpi",
+     "keywords": [
+      "revenue",
+      "sales",
+      "kpi",
+      "conversions",
+      "orders",
+      "units",
+      "signups",
+      "turnover",
+      "volume",
+      "target"
+     ],
+     "kind": "column",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which column do you want to forecast?",
+     "required": true,
+     "role": "target",
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [
+      "date"
+     ],
+     "as_var": null,
+     "choices": [],
+     "default": null,
+     "dim": "time",
+     "dim_spec": {
+      "description": null,
+      "freq": null,
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     },
+     "help_plain": null,
+     "id": "date",
+     "keywords": [
+      "date",
+      "week",
+      "day",
+      "period",
+      "month",
+      "time",
+      "ds"
+     ],
+     "kind": "column",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "Which column holds the date or week?",
+     "required": true,
+     "role": null,
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [],
+     "as_var": null,
+     "choices": [],
+     "default": 26,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": null,
+     "id": "horizon",
+     "keywords": [],
+     "kind": "number",
+     "maximum": 520.0,
+     "minimum": 1.0,
+     "prompt_plain": "How many periods ahead do you need to forecast?",
+     "required": true,
+     "role": null,
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [],
+     "as_var": null,
+     "choices": [
+      {
+       "label": "Weekly",
+       "value": "weekly"
+      },
+      {
+       "label": "Daily",
+       "value": "daily"
+      }
+     ],
+     "default": "weekly",
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": null,
+     "id": "frequency",
+     "keywords": [],
+     "kind": "choice",
+     "maximum": null,
+     "minimum": null,
+     "prompt_plain": "How often is your data recorded?",
+     "required": true,
+     "role": null,
+     "ui_level": "basic",
+     "wide_dim": null
+    },
+    {
+     "accepts": [],
+     "as_var": null,
+     "choices": [],
+     "default": 8,
+     "dim": null,
+     "dim_spec": null,
+     "help_plain": "The model is fitted without them first, to measure its forecast error, then refitted on everything.",
+     "id": "holdout_periods",
+     "keywords": [],
+     "kind": "number",
+     "maximum": 104.0,
+     "minimum": 1.0,
+     "prompt_plain": "How many of the latest periods should we hold back to test the model?",
+     "required": true,
+     "role": null,
+     "ui_level": "advanced",
+     "wide_dim": null
+    }
+   ],
+   "scorecard_checks": [
+    "convergence.rhat",
+    "convergence.ess",
+    "convergence.divergences",
+    "holdout.mape",
+    "holdout.coverage_90",
+    "data.missing",
+    "data.history"
+   ],
+   "scorecard_thresholds": {
+    "data.history": {
+     "fail": 26.0,
+     "warn": 104.0
+    }
+   },
+   "spec_template": {
+    "apiVersion": "mapi/v1",
+    "data": {
+     "bind": {
+      "dims": {
+       "t": "{{date}}"
+      },
+      "vars": {
+       "y": "{{kpi}}"
+      }
+     },
+     "dataset": "{{dataset}}",
+     "split": {
+      "dim": "t",
+      "kind": "time_holdout",
+      "last": "{{holdout_periods}}"
+     }
+    },
+    "evaluate": {
+     "metrics": [
+      "mape",
+      "coverage_90"
+     ]
+    },
+    "execution": {
+     "resource_class": "S",
+     "timeout": "30m"
+    },
+    "kind": "ModelSpec",
+    "metadata": {
+     "labels": {
+      "family": "forecast",
+      "guided": "weekly_forecast"
+     },
+     "name": "{{name}}",
+     "project": "{{project}}"
+    },
+    "model": {
+     "fit": {
+      "chains": 4,
+      "draws": 500,
+      "mode": "evaluate_then_refit",
+      "seed": 20261015,
+      "tune": 500
+     },
+     "settings": {
+      "max_extension": "{{horizon}}",
+      "season_period": "{{season_period}}"
+     },
+     "use": "ts.hsgp_trend@^1"
+    },
+    "outputs": {
+     "plots": [
+      "core.ppc_fan",
+      "core.convergence"
+     ],
+     "ui_draws": 300
+    }
+   },
+   "tasks": [
+    "forecast"
+   ],
+   "title": "Weekly forecast",
+   "ui_levels": {
+    "/execution": "advanced",
+    "/model/fit": "advanced",
+    "/model/settings/max_extension": "basic"
+   },
+   "version": "1.0.0"
+  }
+ ],
+ "next_cursor": null
+}

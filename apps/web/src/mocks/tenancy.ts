@@ -104,6 +104,17 @@ export function setMockPersona(id: string | null): void {
   }
 }
 
+/** Projects locked to Guided mode (`Project.guided_locked`): localStorage `mapi.mock.guidedLocked`, comma separated. */
+export const MOCK_GUIDED_LOCK_KEY = "mapi.mock.guidedLocked";
+
+export function mockGuidedLocked(): Set<string> {
+  try {
+    return new Set((localStorage.getItem(MOCK_GUIDED_LOCK_KEY) ?? "").split(",").map((s) => s.trim()).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
 /** The mock session's CSRF token (what `/auth/session` hands out for this persona). */
 export function mockCsrfToken(p: Pick<Persona, "id">): string {
   return `csrf-${p.id}`;
@@ -551,7 +562,11 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
       return p ? HttpResponse.json(meFor(p, state)) : UNAUTH();
     }),
     http.get(`${API}/v1/tenants/:tenant/projects`, ({ params }) =>
-      page([...state.projects.values()].filter((x) => x.tenant_id === params.tenant).map((x) => ({ ...x }))),
+      page(
+        [...state.projects.values()]
+          .filter((x) => x.tenant_id === params.tenant)
+          .map((x) => ({ ...x, guided_locked: mockGuidedLocked().has(`${x.tenant_id}/${x.id}`) })),
+      ),
     ),
     http.post(`${API}/v1/tenants/:tenant/projects`, async ({ params, request }) => {
       const p = persona()!;
