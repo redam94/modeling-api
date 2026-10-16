@@ -41,8 +41,11 @@ def test_adf_matches_statsmodels_and_decides() -> None:
         assert r.critical_values["5%"] == pytest.approx(ref[4]["5%"])
         assert r.decision == expected
         assert out.result["reject"] is (expected == "stationary")
-    ct = _result(run_node("test.adf", {"regression": "ct", "autolag": "BIC"},
-                          data=series_ds(random_walk(150, 3))))  # fmt: skip
+    ct = _result(
+        run_node(
+            "test.adf", {"regression": "ct", "autolag": "BIC"}, data=series_ds(random_walk(150, 3))
+        )
+    )
     ref = adfuller(random_walk(150, 3), regression="ct", autolag="BIC")
     assert ct.statistic == pytest.approx(ref[0], rel=1e-12)
 
@@ -145,8 +148,9 @@ def test_engle_granger_matches_statsmodels() -> None:
     from statsmodels.tsa.stattools import coint
 
     y, x = _pair(seed=3)
-    r = _result(run_node("test.engle_granger", {"y": "y", "x": "x"},
-                         data=series_ds(y, extra={"x": x})))  # fmt: skip
+    r = _result(
+        run_node("test.engle_granger", {"y": "y", "x": "x"}, data=series_ds(y, extra={"x": x}))
+    )
     ref = coint(y, x, trend="c")
     assert r.statistic == pytest.approx(ref[0])
     assert r.p_value == pytest.approx(ref[1])
@@ -234,8 +238,9 @@ def test_granger_matches_statsmodels() -> None:
     y = np.zeros(300)
     for t in range(2, 300):
         y[t] = 0.3 * y[t - 1] + 0.8 * x[t - 2] + rng.normal(scale=0.5)
-    out = run_node("test.granger", {"y": "y", "x": "x", "maxlag": 3},
-                   data=series_ds(y, extra={"x": x}))  # fmt: skip
+    out = run_node(
+        "test.granger", {"y": "y", "x": "x", "maxlag": 3}, data=series_ds(y, extra={"x": x})
+    )
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ref = grangercausalitytests(np.column_stack([y, x]), maxlag=3)
@@ -335,8 +340,11 @@ def test_chow_matches_the_textbook_f_test() -> None:
     out = run_node("test.chow", {"y": "y", "x": ["x"], "break_at": at}, data=ds)
     assert out.result["break_index"] == 60
     assert out.result["decision"] == "break"
-    same = run_node("test.chow", {"y": "y", "x": ["x"], "break_at": 30},
-                    data=series_ds(1 + 2 * x + rng.normal(size=120), extra={"x": x}))  # fmt: skip
+    same = run_node(
+        "test.chow",
+        {"y": "y", "x": ["x"], "break_at": 30},
+        data=series_ds(1 + 2 * x + rng.normal(size=120), extra={"x": x}),
+    )
     assert same.result["decision"] == "no_break"
 
 

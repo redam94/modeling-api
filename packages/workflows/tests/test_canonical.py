@@ -74,8 +74,14 @@ def _runner(**kw: Any) -> LocalRunner:
     return LocalRunner(registry=registry(), governance=gov, **kw)
 
 
-PARAMS = {"drivers": ["price"], "n_folds": 4, "gap": 1, "horizons": [1, 4, 8], "max_p": 2,
-          "max_q": 2}  # fmt: skip
+PARAMS = {
+    "drivers": ["price"],
+    "n_folds": 4,
+    "gap": 1,
+    "horizons": [1, 4, 8],
+    "max_p": 2,
+    "max_q": 2,
+}
 
 
 def test_readiness_to_arimax_end_to_end() -> None:

@@ -24,9 +24,10 @@ def model_input_schema(
 ) -> DataSchema | None:
     """The model's input schema for ``settings`` (``None`` when it cannot be resolved)."""
     tmpl = (
-        template if isinstance(template, DataSchemaTemplate)
+        template
+        if isinstance(template, DataSchemaTemplate)
         else DataSchemaTemplate.model_validate(dict(template))
-    )  # fmt: skip
+    )
     schema, _ = tmpl.try_resolve(settings)
     return schema
 

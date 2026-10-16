@@ -67,8 +67,9 @@ def test_steps_record_a_replayable_pipeline() -> None:
     out = run_node(
         "transform.steps",
         {"steps": [{"id": "lp", "use": "core.log1p@^1", "with": {"vars": ["price"]}}]},
-        data=ds, registry=registry(),
-    )  # fmt: skip
+        data=ds,
+        registry=registry(),
+    )
     dv = out.outputs["data"]
     assert isinstance(dv, DatasetValue)
     assert np.allclose(dv.data["price"].values, np.log1p(ds["price"].values))
@@ -76,8 +77,7 @@ def test_steps_record_a_replayable_pipeline() -> None:
         {"id": "lp", "use": "core.log1p@^1", "with": {"vars": ["price"]}}
     ]
     assert dv.root is not None and dv.root.data is not None
-    sel = run_node("transform.select", {"start": "2022-03-06"},
-                   data=DatasetValue(data=ds))  # fmt: skip
+    sel = run_node("transform.select", {"start": "2022-03-06"}, data=DatasetValue(data=ds))
     sdv = sel.outputs["data"]
     assert isinstance(sdv, DatasetValue)
     assert str(sdv.data["time"].values[0])[:10] == "2022-03-06"
@@ -89,8 +89,12 @@ def test_a_model_fitted_on_selected_data_replays_the_selection() -> None:
     ds = weekly_series(120)
     sel = run_node("transform.select", {"start": "2022-07-03"}, data=DatasetValue(data=ds))
     dv = sel.outputs["data"]
-    out = run_node("model.fit", {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0]}},
-                   data=dv, registry=reg)  # fmt: skip
+    out = run_node(
+        "model.fit",
+        {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0]}},
+        data=dv,
+        registry=reg,
+    )
     mv = out.outputs["model"]
     assert isinstance(mv, ModelValue)
     steps = [s.id for s in mv.bundle.spec.pipeline]
@@ -104,8 +108,9 @@ def test_a_model_fitted_on_selected_data_replays_the_selection() -> None:
 
 def test_expanding_window_folds_match_the_pure_plan_and_carry_labels() -> None:
     ds = weekly_series(100)
-    out = run_node("split.expanding_window", {"horizons": [1, 4], "gap": 2, "n_folds": 5,
-                                              "step": 3}, data=ds)  # fmt: skip
+    out = run_node(
+        "split.expanding_window", {"horizons": [1, 4], "gap": 2, "n_folds": 5, "step": 3}, data=ds
+    )
     payload = SplitPlanPayload.model_validate(out.outputs["plan"])
     plan = ExpandingWindowPlan(kind="expanding_window", horizons=[1, 4], gap=2, n_folds=5, step=3)
     expect = plan_folds(plan, 100)
@@ -117,16 +122,16 @@ def test_expanding_window_folds_match_the_pure_plan_and_carry_labels() -> None:
 
 def test_holdout_and_kfold_and_geo_plans() -> None:
     ds = weekly_series(80)
-    hold = run_node("split.holdout", {"split": {"kind": "time_holdout", "dim": "time",
-                                                "last": 8}}, data=ds)  # fmt: skip
+    hold = run_node(
+        "split.holdout", {"split": {"kind": "time_holdout", "dim": "time", "last": 8}}, data=ds
+    )
     f = hold.outputs["plan"]["folds"][0]
     assert (f["train_stop"], f["test_start"], f["test_stop"]) == (72, 72, 80)
     kf = run_node("split.purged_kfold", {"k": 4, "purge": 2, "embargo": 1}, data=ds)
     folds = kf.outputs["plan"]["folds"]
     assert len(folds) == 4 and folds[1]["excluded"][1] == [18, 20]
     panel = panel_ds(np.ones((5, 30)), ["a", "b", "c", "d", "e"])
-    geo = run_node("split.geo_holdout", {"dim": "geo", "n": 2, "n_folds": 3, "seed": 1},
-                   data=panel)  # fmt: skip
+    geo = run_node("split.geo_holdout", {"dim": "geo", "n": 2, "n_folds": 3, "seed": 1}, data=panel)
     gf = geo.outputs["plan"]["folds"]
     assert len(gf) == 3 and all(len(x["test_groups"]) == 2 for x in gf)
     with pytest.raises(MapiError) as exc:
@@ -190,9 +195,13 @@ def test_baseline_forecasts_by_hand() -> None:
 
 
 def test_metrics_by_hand() -> None:
-    fc = FoldForecast(actual=np.array([[10.0], [20.0]]), point=np.array([[12.0], [16.0]]),
-                      lower=np.array([[9.0], [17.0]]), upper=np.array([[11.0], [25.0]]),
-                      scale=2.0)  # fmt: skip
+    fc = FoldForecast(
+        actual=np.array([[10.0], [20.0]]),
+        point=np.array([[12.0], [16.0]]),
+        lower=np.array([[9.0], [17.0]]),
+        upper=np.array([[11.0], [25.0]]),
+        scale=2.0,
+    )
     m = fold_metrics([fc])
     assert m["mae"] == pytest.approx(3.0)
     assert m["rmse"] == pytest.approx(math.sqrt((4 + 16) / 2))
@@ -205,9 +214,12 @@ def test_metrics_by_hand() -> None:
 def test_baseline_node_scores_the_same_folds_as_the_backtest() -> None:
     ds = weekly_series(120, beta=3.0)
     plan = run_node("split.expanding_window", {"horizons": [1, 4], "n_folds": 3}, data=ds)
-    out = run_node("evaluate.baseline", {"methods": ["naive", "seasonal_naive", "mean"],
-                                         "season": 52}, data=ds,
-                   split=plan.outputs["plan"])  # fmt: skip
+    out = run_node(
+        "evaluate.baseline",
+        {"methods": ["naive", "seasonal_naive", "mean"], "season": 52},
+        data=ds,
+        split=plan.outputs["plan"],
+    )
     mp = MetricsPayload.model_validate(out.outputs["metrics"])
     assert [c.name for c in mp.candidates] == ["naive", "seasonal_naive", "mean"]
     assert all(c.kind == "baseline" and c.n_folds == 3 for c in mp.candidates)
@@ -217,9 +229,13 @@ def test_baseline_node_scores_the_same_folds_as_the_backtest() -> None:
     err = y[f0["test_start"]] - y[f0["train_stop"] - 1]
     assert mp.candidates[0].errors is not None
     assert mp.candidates[0].errors[0][0] == pytest.approx(err)
-    bt = run_node("model.backtest", {"model": "ts.sarimax@^1",
-                                     "settings": {"order": [1, 0, 0], "exog": ["price"]}},
-                  data=ds, split=plan.outputs["plan"], registry=registry())  # fmt: skip
+    bt = run_node(
+        "model.backtest",
+        {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0], "exog": ["price"]}},
+        data=ds,
+        split=plan.outputs["plan"],
+        registry=registry(),
+    )
     cand = MetricsPayload.model_validate(bt.outputs["metrics"]).candidates[0]
     assert cand.n_folds == 3 and set(cand.by_horizon) == {"1", "4"}
     assert cand.metrics["coverage_90"] is not None
@@ -229,26 +245,46 @@ def test_baseline_node_scores_the_same_folds_as_the_backtest() -> None:
 def test_kfold_backtest_masks_and_predicts_the_block() -> None:
     ds = weekly_series(80)
     plan = run_node("split.blocked_kfold", {"k": 4, "gap": 1}, data=ds)
-    bt = run_node("model.backtest", {"model": "ts.sarimax@^1",
-                                     "settings": {"order": [1, 0, 0], "exog": ["price"]}},
-                  data=ds, split=plan.outputs["plan"], registry=registry())  # fmt: skip
+    bt = run_node(
+        "model.backtest",
+        {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0], "exog": ["price"]}},
+        data=ds,
+        split=plan.outputs["plan"],
+        registry=registry(),
+    )
     assert bt.result["n_folds"] == 4
     assert bt.result["metrics"]["mae"] < 3  # type: ignore[index,operator]
 
 
 def test_metrics_node_reads_a_backtest_or_a_model() -> None:
-    payload = MetricsPayload.model_validate({"candidates": [
-        {"name": "bt", "group": "bt", "metrics": {"mae": 1.0, "rmse": 2.0},
-         "by_horizon": {"1": {"mae": 0.5}}}]}).model_dump(mode="json")  # fmt: skip
+    payload = MetricsPayload.model_validate(
+        {
+            "candidates": [
+                {
+                    "name": "bt",
+                    "group": "bt",
+                    "metrics": {"mae": 1.0, "rmse": 2.0},
+                    "by_horizon": {"1": {"mae": 0.5}},
+                }
+            ]
+        }
+    ).model_dump(mode="json")
     out = run_node("evaluate.metrics", {"metrics": ["mae"]}, backtest=payload)
     assert out.result["mae"] == 1.0 and "rmse" not in out.result
     reg = registry()
-    fit = run_node("model.fit", {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0]},
-                                 "evaluate": {"metrics": ["mae", "rmse"]}},
-                   data=weekly_series(100), registry=reg,
-                   split={"plan": {"kind": "holdout",
-                                   "split": {"kind": "time_holdout", "dim": "time",
-                                             "last": 8}}})  # fmt: skip
+    fit = run_node(
+        "model.fit",
+        {
+            "model": "ts.sarimax@^1",
+            "settings": {"order": [1, 0, 0]},
+            "evaluate": {"metrics": ["mae", "rmse"]},
+        },
+        data=weekly_series(100),
+        registry=reg,
+        split={
+            "plan": {"kind": "holdout", "split": {"kind": "time_holdout", "dim": "time", "last": 8}}
+        },
+    )
     assert fit.result["metrics"]["mae"] is not None  # type: ignore[index]
     m = run_node("evaluate.metrics", model=fit.outputs["model"], registry=reg)
     assert m.result["mae"] == fit.result["metrics"]["mae"]  # type: ignore[index]
@@ -281,9 +317,18 @@ def test_diebold_mariano_by_hand_and_by_node() -> None:
     assert stat < 0 and p < 0.01 and n == 60
 
     def payload(errs: np.ndarray) -> dict[str, Any]:
-        return MetricsPayload.model_validate({"candidates": [{
-            "name": "m", "group": "m", "metrics": {"mae": float(np.mean(np.abs(errs)))},
-            "errors": [[float(x)] for x in errs]}]}).model_dump(mode="json")  # fmt: skip
+        return MetricsPayload.model_validate(
+            {
+                "candidates": [
+                    {
+                        "name": "m",
+                        "group": "m",
+                        "metrics": {"mae": float(np.mean(np.abs(errs)))},
+                        "errors": [[float(x)] for x in errs],
+                    }
+                ]
+            }
+        ).model_dump(mode="json")
 
     out = run_node("compare.diebold_mariano", {"horizon": 1}, a=payload(e1), b=payload(e2))
     assert out.result["decision"] == "a_better"
@@ -293,16 +338,27 @@ def test_diebold_mariano_by_hand_and_by_node() -> None:
 # ============================================================================ governance
 
 _POLICY = GovernancePolicy(
-    id="pol_1", tenant_id="acme", project_id="growth", scope="project", version=2,
-    name="ts", checks=[PolicyCheck(check="convergence"),
-                       PolicyCheck(check="data.quality", severity=CheckSeverity.WARNING)],
+    id="pol_1",
+    tenant_id="acme",
+    project_id="growth",
+    scope="project",
+    version=2,
+    name="ts",
+    checks=[
+        PolicyCheck(check="convergence"),
+        PolicyCheck(check="data.quality", severity=CheckSeverity.WARNING),
+    ],
     created_at=datetime(2026, 1, 1, tzinfo=UTC),
-)  # fmt: skip
+)
 
 
 def _mv() -> ModelValue:
-    out = run_node("model.fit", {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0]}},
-                   data=weekly_series(80), registry=registry())  # fmt: skip
+    out = run_node(
+        "model.fit",
+        {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0]}},
+        data=weekly_series(80),
+        registry=registry(),
+    )
     mv = out.outputs["model"]
     assert isinstance(mv, ModelValue)
     return mv
@@ -319,14 +375,20 @@ def test_policy_without_a_store_requires_nothing() -> None:
 
 def test_policy_runs_checks_and_missing_runners_block() -> None:
     def ok(ctx: Any) -> CheckResult:
-        return CheckResult(check=ctx.check.check, status=CheckStatus.PASS,
-                           severity=CheckSeverity.INFO, message_plain="ok")  # fmt: skip
+        return CheckResult(
+            check=ctx.check.check,
+            status=CheckStatus.PASS,
+            severity=CheckSeverity.INFO,
+            message_plain="ok",
+        )
 
     submitted: list[Any] = []
-    svc = GovernanceServices(resolver=lambda m, p: [_POLICY], runners={"convergence": ok},
-                             submit=lambda m, ev: submitted.append(ev))  # fmt: skip
-    out = run_node("governance.policy", {"submit": True}, model=_mv(),
-                   services={"governance": svc})  # fmt: skip
+    svc = GovernanceServices(
+        resolver=lambda m, p: [_POLICY],
+        runners={"convergence": ok},
+        submit=lambda m, ev: submitted.append(ev),
+    )
+    out = run_node("governance.policy", {"submit": True}, model=_mv(), services={"governance": svc})
     ev = EvidencePayload.model_validate(out.outputs["evidence"])
     # the runner's severity is replaced by the policy's
     assert ev.results[0]["severity"] == "blocking"
@@ -345,8 +407,12 @@ def test_one_check_and_the_evidence_pack() -> None:
 
     svc = GovernanceServices(runners={"null.permutation_target": crash})
     mv = _mv()
-    out = run_node("governance.check", {"check": "null.permutation_target"}, model=mv,
-                   services={"governance": svc})  # fmt: skip
+    out = run_node(
+        "governance.check",
+        {"check": "null.permutation_target"},
+        model=mv,
+        services={"governance": svc},
+    )
     assert out.result["status"] == "error"
     ev = out.outputs["evidence"]
     pack = run_node("report.evidence_pack", model=mv, evidence=ev)

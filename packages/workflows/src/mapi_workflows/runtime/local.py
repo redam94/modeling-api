@@ -211,6 +211,11 @@ class LocalRunner:
                     break
                 continue
             for action in actions:
+                if cancel.cancelled:
+                    if not engine.cancel_requested:
+                        engine.cancel()
+                    engine.cancelled(action.node_id)
+                    continue
                 self._execute(engine, action, values, cancel, deadline, spec)
                 self._drain(engine, events)
         engine.finish_events()
@@ -342,6 +347,8 @@ class LocalRunner:
         if "exc" in box:
             exc = box["exc"]
             if isinstance(exc, RunCancelled):
+                if cancel.cancelled and not engine.cancel_requested:
+                    engine.cancel()
                 engine.cancelled(nid)
                 return
             engine.failed(nid, _node_error(exc))
