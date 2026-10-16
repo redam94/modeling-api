@@ -145,6 +145,9 @@ export function GovernancePage() {
         description="Which checks a model must pass before it counts as validated - including null tests against random noise - who approves it, and whether endpoints may serve it."
         actions={
           <>
+            <Button variant="ghost" asChild>
+              <Link to="/validations">All validations</Link>
+            </Button>
             {reviewer.isReviewer ? (
               <Button variant="outline" asChild>
                 <Link to="/validations" search={{ status: "awaiting_approval" }}>

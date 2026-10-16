@@ -77,6 +77,36 @@ sliders, forecasts and sharing. The user guide is `docs/guides/guided-tutorial.m
   `uv run python apps/web/scripts/gen_guided_fixtures.py [--check]`). A project can be locked
   in mock mode with `localStorage["mapi.mock.guidedLocked"] = "acme/growth"`.
 
+## Workflows and governance (M3.5)
+
+`features/workflows` and `features/governance` hold the M3.5 screens (routes in
+`routes/workflows.tsx` and `routes/governance.tsx`); the user guides are the "In the web app"
+sections of `docs/guides/workflows.md` and `docs/guides/governance.md`.
+
+- **One document.** The canvas, the node editor and the YAML/JSON view all edit one
+  `WorkflowSpec` draft through the pure functions of `features/workflows/doc.ts`; the server
+  validates every draft (`POST /v1/workflows:validate`) and its issues are pinned to nodes by
+  their JSON pointers. Conditions and `$expr` values are only scanned for node ids, never
+  evaluated. Node positions are a per-browser preference (`localStorage`), not part of the
+  document.
+- **Typed ports.** `ports.ts` mirrors the server's port checks so an incompatible edge is refused
+  with its reason before anything is sent; `canvas-model.ts` turns a document into the graph
+  (data, gate and "reads" edges) without importing React Flow.
+- **React Flow** (`@xyflow/react`, MIT, pinned) loads with `canvas.tsx` only; `vite.config.ts`
+  forbids it in the entry closure. Selection flows one way: user selections arrive as `select`
+  node changes, the editor's own selection is pushed into the nodes.
+- **Runs.** `run-events.ts` follows `GET /v1/workflow-runs/{id}/events` (SSE, `Last-Event-ID`).
+  `cron.ts` ports `mapi_spec.cron` for the schedule preview; `workflows-lib.test.ts` replays the
+  server's firing times.
+- **DTO aliases** for these screens live beside them (`features/workflows/types.ts`,
+  `features/governance/types.ts`), built from `schema.d.ts` like `src/api/types.ts`.
+- **Mocks.** `src/mocks/workflows.ts`, `src/mocks/governance.ts` and the validator stand-in
+  `src/mocks/workflow-validate.ts` (checked against the server's answers for broken documents).
+  Their data, `src/mocks/workflows.gen.json`, comes from `mapi_spec` and a real local run of the
+  canonical template and two governed fits:
+  `uv run python apps/web/scripts/gen_workflow_fixtures.py [--check]`. Mock runs replay that
+  run's events, one every `localStorage["mapi.mock.wfStepMs"]` ms (150 by default).
+
 ## API client
 
 `openapi.json` drives `src/api/schema.d.ts` (openapi-typescript) and the typed client

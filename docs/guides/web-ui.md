@@ -23,12 +23,12 @@ This page walks through every page in navigation order. The screenshots come fro
 | Element | What it does |
 |---|---|
 | Project switcher | The tenant and project everything on the page acts in, with your role there; switch, create a project (tenant admins) or open its members. See [Authentication](authentication.md#browser-sign-in). |
-| Sidebar | Home, Guided, Datasets, Build, Runs, Models, Score, Integrations and Catalog (in Guided mode, Guided replaces Home); under **Project**, Usage, Members and Tokens; under **Platform**, Admin (operators only); Settings at the bottom. **Collapse** (++cmd+b++) narrows it to icons. |
+| Sidebar | Home, Guided, Datasets, Build, Runs, Models, Score, Workflows, Governance, Integrations and Catalog (in Guided mode, Guided replaces Home); under **Project**, Usage, Members and Tokens; under **Platform**, Admin (operators only); Settings at the bottom. **Collapse** (++cmd+b++) narrows it to icons. |
 | **Jump to…** (++cmd+k++ or ++slash++) | A command palette: go to any page, start a new spec, switch the theme, or paste an id (`run_…`, `mdl_…`, `ds_…`, `spc_…`) to open it. |
 | **API connected** | Polls `GET /readyz`: green when PostgreSQL, the object store and the catalog are ready, amber (*API degraded*) or red (*API unreachable*) otherwise. It links to **Settings**, which shows each check. |
 | **Guided / Expert** | The persona switch, remembered per user on this browser. Until you choose, a self-service (`public` tier) workspace starts in Guided mode and any other one (or a platform operator) in Expert; in Guided mode `/` opens the Guided start page. Hidden for members below admin of a project locked to Guided mode. |
 | Display icon | Light, dark or system theme. |
-| ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++g++ Guided, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++m++ Models, ++s++ Score, ++i++ Integrations, ++c++ Catalog, ++comma++ Settings. |
+| ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++g++ Guided, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++m++ Models, ++s++ Score, ++w++ Workflows, ++v++ Governance, ++i++ Integrations, ++c++ Catalog, ++comma++ Settings. |
 
 Text that came from a run or a plugin (log lines, tracebacks, warning messages, plot
 captions) is always rendered as plain text, with ANSI escapes and control and bidi
@@ -259,6 +259,13 @@ baseline for a counterfactual), the outputs with their sizes and signed links
 summary as a table with one row per coordinate and one column per statistic, and a quick
 chart you can re-plot by any column. A market the model has not seen, like FR above, is drawn
 from the fitted hierarchy, so its band is wider; the result's `issues` say so.
+
+## Workflows and governance <span class="mapi-badge">v0.5</span>
+
+**Workflows** builds, runs, schedules and watches workflows: a template gallery, a visual
+editor with a node palette, typed ports and a YAML view, and a live run monitor. See
+[In the web app](workflows.md#in-the-web-app). **Governance** edits policies, follows
+validations and holds the reviewers' queue; see [In the web app](governance.md#in-the-web-app).
 
 ## Catalog
 

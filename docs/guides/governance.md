@@ -11,7 +11,8 @@ auditor, and make endpoints refuse models that are not validated. The concepts a
 state machine are in [Governance](../concepts/governance.md); every operation is in the
 [HTTP API reference](../reference/http-api.md#m35).
 
-The examples use `curl` with an API token (see [Endpoints and webhooks](endpoints-and-webhooks.md)
+Everything here can also be done in the web app: see [In the web app](#in-the-web-app). The
+examples use `curl` with an API token (see [Endpoints and webhooks](endpoints-and-webhooks.md)
 for the `api` helper):
 
 ```bash
@@ -168,6 +169,71 @@ model's lineage and sanity scorecard, and a `digest` (sha256 of the canonical co
 With `format: html` it also carries `download`, a signed link to a static, self-contained HTML
 rendering: inline styles only, no scripts, no external assets (a Content-Security-Policy
 forbids them), every value escaped. Exports are audited (`model.evidence_export`).
+
+## In the web app
+
+**Governance** in the sidebar (++g++ then ++v++) has three tabs: **In force here** (the
+tenant-wide policies first, then the project's own, with what each covers, its number of
+checks, whether it needs a reviewer and whether it gates promotion), **Tenant-wide** and the
+**Check catalog**, where every check has its About card, what it measures and its default
+limits.
+
+### Editing a policy
+
+Open a policy (project admins edit project policies, tenant admins tenant-wide ones; everyone
+else sees them read-only) or press **New policy**:
+
+- **Covers**: model families, model ids and Guided templates; empty lists match every model.
+- **Required checks**: add a check from the catalog - its About card shows before you add it
+  - then set its severity (*Blocking*, *Warning*, *Information*), switch on **Custom** limits
+  to set its warn and fail values (the page refuses a fail limit that is looser than the warn
+  limit, as the server does) and adjust its settings, a form generated from the check's
+  parameters (for example the number of shuffles).
+- **Sign-off and promotion**: **Require approval by a reviewer** (and how many),
+  **Only validated models can be promoted to an endpoint**, and **Active**.
+
+**Save version N** stores the next version; a concurrent edit is refused and kept on screen.
+**Versions** lists every version and compares two side by side. **Retire policy** keeps its
+versions for audit.
+
+### Validating a model version
+
+A model version's page has a **Validation** button. It lists the version's validations and
+requests a new one: choose which of the policies in force it is held to (all of them by
+default), optionally the data to check against, and a note. The validation page then shows:
+
+- **Status**: where the validation is on its path (draft → checks running → checks passed →
+  awaiting approval → validated, or checks failed, rejected, deprecated) and the history of
+  every transition with who made it and their note.
+- **Checks**: failures first, each with its plain-language message, **What to do** when it
+  did not pass, the measured value against its limit and its evidence: small tables, numbers
+  and, for the shuffled-result test, the distribution of the shuffled fits' errors with the
+  real model's error marked (drawn in the plot sandbox).
+- **Approvals**, **Evidence pack** and **Held to** (the policy versions).
+
+Depending on its state the page offers **Cancel checks**, **Resubmit** (after failed checks or
+a rejection) and **Deprecate** (with a reason, for a validated version; project admins).
+**Export evidence pack** saves the readable HTML page or the JSON as a file; the HTML is never
+opened inside the app.
+
+### Reviewing
+
+Reviewers find **Review queue** on the Governance page (with the number waiting), or
+**Validations** filtered by *Awaiting approval*. The approval form appears only to members who
+may approve: project admins, and editors or runners who hold the **reviewer** capability.
+Rejecting needs a comment. On your own submission the form says that a second person has to
+review it and its buttons are disabled; the server refuses it anyway
+(`SELF_APPROVAL_FORBIDDEN`).
+
+Project admins grant and revoke the capability in the **Reviewer** column of **Members**
+(admins hold it implicitly; viewers cannot hold it).
+
+### Promotion in the app
+
+When a policy gates promotion, promoting a version that is not validated from **Integrations**
+is refused with *A governance policy requires a validated model*, the version's current
+validation status, and links to its validation (or to request one). No override is offered:
+none passes this rule.
 
 ## Audit and webhooks
 
