@@ -34,6 +34,7 @@ from mapi_sdk.metrics import point_estimate
 from mapi_sdk.registry import Registry
 from mapi_sdk.summarise import hdi, interp_quantile
 from mapi_spec.capabilities import Representation
+from mapi_spec.errors import MapiError
 from mapi_spec.governance import ModelKind, model_kind
 from mapi_spec.schema import DimPolicy, Role
 from mapi_spec.spec import AsOfSplit, ScoreRequest, TimeHoldoutSplit
@@ -113,10 +114,11 @@ def train_bundle(bundle: Bundle) -> Bundle:
 
 
 def holdout_mask(
-    bundle: Bundle, data: xr.Dataset, evaluation: Bundle | None = None
+    bundle: Bundle, data: xr.Dataset | xr.DataArray, evaluation: Bundle | None = None
 ) -> xr.DataArray | None:
-    """Boolean mask along the dataset's split dim: ``True`` for held-out periods (after the
-    training data's last label). ``None`` without a time-based split."""
+    """Boolean mask along the split dim of ``data`` (a dataset, or a prediction's observed
+    target at the model's stage): ``True`` for held-out periods (after the training data's
+    last label). ``None`` without a time-based split."""
     split = bundle.spec.data.split
     if not isinstance(split, TimeHoldoutSplit | AsOfSplit):
         return None
@@ -181,6 +183,19 @@ def _band(
     return None
 
 
+def supplied_tables(bundle: Bundle, side_tables: Mapping[str, xr.Dataset] | None) -> dict[str, str]:
+    """The ``side_tables`` of a score request on ``bundle``: the spec's ``score_policy:
+    supplied`` tables that are available (a score must name them to replay their steps)."""
+    from mapi_spec.spec import ScorePolicy
+
+    have = set(side_tables or {})
+    return {
+        name: str(st.ref)
+        for name, st in bundle.spec.data.side_tables.items()
+        if st.score_policy is ScorePolicy.SUPPLIED and name in have
+    }
+
+
 def predict(
     bundle: Bundle,
     data: xr.Dataset,
@@ -202,14 +217,30 @@ def predict(
             "data": "dataset://runner/explore@latest",
             "output": {"kind": kind},
             "seed": seed,
+            "side_tables": supplied_tables(bundle, side_tables),
         }
     )
-    tree = score_bundle(
-        bundle, request, data, side_tables=side_tables, registry=registry, return_full=True
-    )
+    try:  # ``metrics`` adds the observed targets in the predictions' space and stage
+        tree = score_bundle(
+            bundle,
+            request,
+            data,
+            side_tables=side_tables,
+            registry=registry,
+            return_full=True,
+            metrics=["rmse"],
+        )
+    except MapiError:
+        tree = score_bundle(
+            bundle, request, data, side_tables=side_tables, registry=registry, return_full=True
+        )
     node = tree["predictions"]
     assert isinstance(node, xr.DataTree)
     pred = node.to_dataset(inherit=False)
+    obs_node = tree.children.get("observed")
+    staged = (
+        obs_node.to_dataset(inherit=False) if isinstance(obs_node, xr.DataTree) else xr.Dataset()
+    )
     rep = bundle.model.manifest.capabilities.representation
     sources = _var_sources(bundle.model, bundle.resolved.model.input_schema)
     out: list[Prediction] = []
@@ -229,14 +260,17 @@ def predict(
         if "component" in da.dims:
             continue
         point = point_estimate(da, rep)
-        if set(point.dims) != set(data[target].dims):
+        # the observed target at the model's stage (after resampling, currency conversion,
+        # ...) when the pipeline reshapes it, else the data's own column
+        source = staged[target] if target in staged else data[target]
+        if set(point.dims) != set(source.dims):
             continue
         band = _band(da, rep, level)
         draws = None
         if rep is Representation.DRAWS:
             draws = da.stack(sample=list(_DRAW_DIMS)).transpose("sample", ...)
         used.add(target)
-        observed = data[target].astype(float)
+        observed = source.astype(float)
         out.append(
             Prediction(
                 target=target,

@@ -340,11 +340,15 @@ def _total_effect(full: Prediction, ablated: Prediction) -> tuple[float, float, 
     return float(np.nansum(np.abs(delta))), float(np.nansum(np.abs(base))), per_draw
 
 
+class _NoPrediction(ValueError):
+    """The model's predictions do not line up with a numeric target (choice models)."""
+
+
 def _first(preds: list[Prediction], target: str | None = None) -> Prediction:
     for p in preds:
         if target is None or p.target == target:
             return p
-    raise ValueError("the model produced no prediction of its target")
+    raise _NoPrediction("the model produced no prediction of its target")
 
 
 def _ablate(
@@ -595,10 +599,12 @@ def _placebo_drivers(
             )
         ).astype(float)
         spec_src = schema.vars.get(src)
-        vars_[nm] = VarSpec(
-            dims=tuple(str(d) for d in src_da.dims),
-            dtype="float64",
-            role=spec_src.role if spec_src else Role.COVARIATE,
+        vars_[nm] = (
+            spec_src.model_copy(update={"dtype": "float64", "units": None})
+            if spec_src is not None
+            else VarSpec(
+                dims=tuple(str(d) for d in src_da.dims), dtype="float64", role=Role.COVARIATE
+            )
         )
     new_schema = schema.model_copy(update={"vars": vars_})
     existing = {str(v) for v in data.data_vars} | {
@@ -742,7 +748,11 @@ def _coef_effect(env: GovernanceEnv, b: Bundle, data: xr.Dataset, var: str) -> f
     in-sample predictions follow the stored history rather than the scored drivers (the
     statsmodels models)."""
     names = {var, b.binding.to_canonical(var)}
-    betas = [abs(e.estimate) for _v, _c, e in _estimates(b) if e.name in names or _v in names]
+
+    def named(label: str) -> bool:  # ``price`` or a panel cell's ``north/price``
+        return label in names or label.rsplit("/", 1)[-1] in names
+
+    betas = [abs(e.estimate) for v, _c, e in _estimates(b) if named(e.name) or named(v)]
     if not betas:
         return None
     x = np.asarray(data[var].values, dtype=float)
@@ -853,6 +863,9 @@ def _beats_naive(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     t = env.time_dim
     preds = predict(trained, env.data, env.registry, side_tables=env.side_tables)
     p = _first(preds, env.targets[0] if env.targets else None)
+    mask = holdout_mask(env.bundle, p.observed, trained)  # on the model's periods
+    if mask is None:
+        return _skip(check, "the model has no held-out periods at the end of its data")
     held = np.asarray(mask.values)
     n_train = int((~held).sum())
     h = int(held.sum())
@@ -1024,12 +1037,16 @@ def _stability(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     names = [e.name for e in key]
     per: dict[str, list[float]] = {nm: [] for nm in names}
     used = 0
+    failed: list[str] = []
     for s in starts:
         part = env.data.isel({env.time_dim: slice(s, s + window)})
         try:
             b = env.refitter.fit(part, spec)
         except BudgetExhausted:
             break
+        except Exception as exc:  # a window the model cannot be fitted on (too short, ...)
+            failed.append(f"{type(exc).__name__}: {str(exc)[:300]}")
+            continue
         used += 1
         got = {e.name: e.estimate for _v, _c, e in _estimates(b)}
         for nm in names:
@@ -1044,6 +1061,13 @@ def _stability(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             scale = max(abs(float(a.mean())), base_sd.get(nm, 0.0), 1e-12)
             variation[nm] = float(a.std(ddof=1) / scale)
     if not variation:
+        if failed:
+            return _error(
+                check,
+                f"the model could not be refitted on windows of {window} periods; give a longer "
+                "'window' in the check's parameters",
+                failed[0],
+            )
         return _error(check, "no parameter could be estimated in two windows")
     worst = max(variation, key=lambda k_: variation[k_])
     value = variation[worst]
@@ -1442,6 +1466,9 @@ def _accuracy(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             predict(trained, env.data, env.registry, side_tables=env.side_tables),
             env.targets[0] if env.targets else None,
         )
+        mask = holdout_mask(env.bundle, p.observed, trained)  # on the model's periods
+        if mask is None:
+            return _skip(check, f"the fit did not evaluate {metric} on held-out data")
         dim = str(mask.dims[0])
         obs = p.observed.where(mask, drop=True)
         pt = p.point.where(mask, drop=True)
@@ -1547,6 +1574,12 @@ def measure(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         return impl(env, check)
     except BudgetExhausted as exc:
         return _error(check, f"{exc}; raise the budget or lower the check's sample sizes.")
+    except _NoPrediction:
+        return _skip(
+            check,
+            "the model's predictions are not numbers over its target (a choice or "
+            "classification model), which this check compares",
+        )
     except Exception as exc:
         env.log("".join(traceback.format_exception(type(exc), exc, exc.__traceback__))[-4000:])
         return _error(
