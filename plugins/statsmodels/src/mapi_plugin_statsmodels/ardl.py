@@ -41,6 +41,14 @@ __all__ = ["ArdlModel", "ArdlSettings", "EcmModel", "EcmSettings"]
 class ArdlSettings(StatsmodelsSettings, ExogMixin):
     """Settings of ``ts.ardl``."""
 
+    exog: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=64,
+        description="Driver variables (at least one); their future values are needed for "
+        "forecasts",
+        json_schema_extra={"x-ui-level": "basic"},
+    )
     lags: int = Field(1, ge=0, le=12, description="Past values of the result to use")
     order: int = Field(
         1, ge=0, le=12, description="Past values of each driver to use (0 = same period only)"
@@ -241,6 +249,14 @@ def _verify(got: Mapping[str, float], want: Mapping[str, float]) -> None:
 class EcmSettings(StatsmodelsSettings, ExogMixin):
     """Settings of ``ts.ecm`` (error-correction form of an ARDL)."""
 
+    exog: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=64,
+        description="Driver variables (at least one); their future values are needed for "
+        "forecasts",
+        json_schema_extra={"x-ui-level": "basic"},
+    )
     lags: int = Field(1, ge=1, le=12, description="Past values of the result in the levels ARDL")
     order: int = Field(1, ge=1, le=12, description="Past values of each driver in the levels ARDL")
     trend: Literal["n", "c", "ct"] = Field(

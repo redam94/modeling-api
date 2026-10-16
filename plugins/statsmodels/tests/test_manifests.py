@@ -112,3 +112,25 @@ def test_sarimax_settings_resolve_trend_and_season() -> None:
 def test_var_settings_defaults() -> None:
     s = VarSettings()
     assert s.lags is None and s.ic == "aic" and s.irf_horizon == 12
+
+
+def test_distributed_lag_models_need_a_driver_before_any_compute(registry: Registry) -> None:
+    from mapi_plugin_statsmodels.ardl import ArdlSettings, EcmSettings
+    from mapi_plugin_statsmodels.datasets import ECM_SCHEMA
+    from mapi_spec import load_model_spec, validate_spec
+
+    for settings in (ArdlSettings, EcmSettings):
+        with pytest.raises(ValidationError):
+            settings.model_validate({})
+    spec = load_model_spec(
+        """
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: ecm, project: tests}
+data: {dataset: "dataset://tests/ecm@latest", bind: {dims: {t: month}, vars: {y: sales}}}
+model: {use: "ts.ecm@^1", settings: {lags: 1}}
+"""
+    )
+    result = validate_spec(spec, registry.catalog(), ECM_SCHEMA)
+    assert not result.ok
+    assert {i.code.value for i in result.errors} == {"SETTINGS_INVALID"}
