@@ -157,7 +157,8 @@ it runs in the sandbox as a `translate_priors` run (`POST /v1/guided/prior-trans
 result (`PriorTranslationResult`) holds the priors to write at `/model/settings/priors`
 (`apply_prior_translation`) and a **prior-predictive preview in business units**: ROI and
 contribution-share distributions per channel, the baseline share and a KPI fan - so users see
-what their beliefs imply before fitting.
+what their beliefs imply before fitting. The math, the lift-test likelihood and the checks
+each layer runs are in [Guided modelling](../guides/guided-modelling.md).
 
 ## 4. Run, then the sanity scorecard { #scorecard }
 
@@ -199,7 +200,9 @@ The catalog is `mapi_spec.scorecard.SCORECARD_CHECKS`:
 | <a id="check-data-history"></a>`data.history` (Enough history) | `history_periods` | warn below 104, fail below 52 | Add more history if you have it. |
 | <a id="check-data-spend-variation"></a>`data.spend_variation` (Spend varies enough) | `spend_cv_min` | warn below 10%, fail below 2% | Add a lift test for the channel, or state its ROI in business priors. |
 
-The scorecard also gates promotion to an endpoint: see
+How the runner measures each check is in
+[Guided modelling](../guides/guided-modelling.md#the-sanity-scorecard). The scorecard also
+gates promotion to an endpoint: see
 [Integrations](integrations.md#promotion-gate).
 
 ## 5. What-if sliders

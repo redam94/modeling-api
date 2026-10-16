@@ -155,6 +155,7 @@ nav:
           - Bring a PyMC model: guides/pymc.md
           - Tabular models (scikit-learn, xgboost): guides/sklearn.md
           - Marketing-mix models: guides/mmm.md
+          - "Guided modelling: priors, lift tests, scorecard": guides/guided-modelling.md
           - Forecasting and sequential models: guides/time-series.md
           - Plots, recipes and templates: guides/plots.md
           - Conformance corpus: guides/conformance.md
