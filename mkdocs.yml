@@ -197,6 +197,7 @@ nav:
       - "Marketing-mix models (mmm-framework)": models/mmm-framework.md
       - Models catalog: reference/generated/models-catalog.md
       - Workflow nodes: reference/workflow-nodes.md
+      - Governance checks: reference/generated/governance-checks.md
       - Plots and the sanitizer: reference/plots.md
       - Plot recipes catalog: reference/generated/plots-catalog.md
       - Error codes: reference/generated/error-codes.md

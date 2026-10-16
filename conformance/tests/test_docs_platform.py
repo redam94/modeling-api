@@ -199,7 +199,8 @@ def test_configuration_reference_names_every_variable() -> None:
 def test_generated_platform_pages(tmp_path: Path) -> None:
     """Permissions, metrics, alerts, runbooks and the variable index come from the code."""
     from mapi_server.observability.metrics import Metrics
-    from mapi_spec.tenancy import PERMISSIONS, ResourceKind
+    from mapi_spec.tenancy import PERMISSIONS, Capability, ResourceKind
+    from mapi_spec.tokens import ScopeName
 
     gen = _load("gen_docs_platform.py")
     assert set(gen.RESOURCE_LABELS) == {r.value for r in ResourceKind}
@@ -210,7 +211,17 @@ def test_generated_platform_pages(tmp_path: Path) -> None:
     rows = [ln for ln in matrix.splitlines() if ln.startswith("| ") and "---" not in ln]
     assert len(rows) == len(PERMISSIONS) + 1  # the header
     assert "`kill_switch`" in matrix and "internal services only" in matrix
-    assert "`models:read`" in (frag / "token-scopes.md").read_text("utf-8")
+    scopes = (frag / "token-scopes.md").read_text("utf-8")
+    for scope in ScopeName:
+        if scope is not ScopeName.ADMIN:
+            assert ("`score:*`" if scope is ScopeName.SCORE else f"`{scope.value}`") in scopes
+    # M3.5: approving needs the reviewer capability, which the matrix and its section name
+    assert "✓ with `reviewer`" in matrix
+    assert set(gen.CAPABILITY_TEXT) == {c.value for c in Capability}
+    assert "| `reviewer` | `model` approve |" in (frag / "capabilities.md").read_text("utf-8")
+    resources = [ln.split("|")[1].strip() for ln in rows[1:]]
+    labelled = [r for r in resources if r]
+    assert len(labelled) == len(set(labelled)), "a resource's actions are not together"
     assert "`public` | isolation ≥ gvisor" in (frag / "trust-tiers.md").read_text("utf-8")
 
     metrics = (frag / "metrics.md").read_text("utf-8")

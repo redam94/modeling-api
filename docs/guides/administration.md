@@ -125,6 +125,21 @@ compute costs money, so someone can be trusted to edit a spec without being able
 | `runner` | **Spend compute**: submit, cancel and retry runs, score models and endpoints, render plots |
 | `admin` | Manage members, endpoints, plugins and other people's tokens; delete things |
 
+Since v0.5 the workflow and governance rules follow the same ladder: editors write
+workflows, runners run them and submit models for validation, project admins edit policies
+(tenant admins the tenant-wide ones) and deprecate validated versions.
+
+### Capabilities
+
+A **capability** is granted on top of a role, per project membership. The only one so far is
+`reviewer`: the second person who approves model validations when a governance policy asks
+for it ([Validate models with governance policies](governance.md#approve-as-a-second-person)).
+Admins grant it in the **Reviewer** column of **Members** (or with `capabilities` on the
+membership); project admins hold it implicitly, viewers cannot hold it, and nobody can
+approve their own submission or approve through an API token.
+
+<!-- generated: capabilities -->
+
 The complete matrix, generated from `mapi_spec.tenancy.PERMISSIONS` (the table every component
 checks). *tenant-wide* means only a tenant-wide grant counts; a pair that is not listed is
 denied to everyone:

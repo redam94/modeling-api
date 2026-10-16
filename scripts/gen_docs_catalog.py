@@ -7,6 +7,8 @@ Writes Markdown (and the exported JSON Schemas) into ``docs/reference/generated/
 * ``plots-catalog.md``  - every installed plot recipe (``mapi.plots`` entry points);
 * ``spec-schema.md``    - ModelSpec and ScoreRequest field tables (``mapi_spec.export_schemas``);
 * ``error-codes.md``    - every stable error code (``mapi_spec.ERROR_INFO``);
+* ``governance-checks.md`` - every governance check with its About card, limits and
+  parameters, and the seeded default policies (``mapi_spec.governance``);
 * ``schemas/*.json``    - the JSON Schemas themselves, served next to the pages.
 
 Run ``python scripts/gen_docs_catalog.py`` (``make docs-build`` does). The MkDocs hook in
@@ -382,6 +384,120 @@ def errors_page() -> str:
 # ----------------------------------------------------------------------------- driver
 
 
+def _num(value: float) -> str:
+    return f"{value:g}"
+
+
+def _limits(check: Any) -> str:
+    """The pass/warn/fail rule of a check in words (``CheckDirection``)."""
+    w, f = _num(check.warn), _num(check.fail)
+    if check.direction.value == "max":
+        return f"pass at ≤ {w}, warn up to {f}, fail above"
+    if check.direction.value == "min":
+        return f"pass at ≥ {w}, warn down to {f}, fail below"
+    t = _num(check.target)
+    return f"pass within {w} of {t}, warn within {f}, fail further away"
+
+
+def _about_lines(about: Any) -> list[str]:
+    out = [about.summary_plain, ""]
+    out.append(
+        f"*Difficulty:* {about.difficulty.value}. *Typical runtime:* "
+        f"{about.typical_runtime.value}.\n"
+    )
+    for label, items in (
+        ("Use it when", about.use_when),
+        ("Avoid it when", about.avoid_when),
+        ("It needs", about.data_needs),
+        ("It assumes", about.assumptions),
+        ("You get", about.outputs),
+    ):
+        if items:
+            out.append(f"**{label}:** " + "; ".join(items) + ".\n")
+    if about.example:
+        out.append(f"**Example:** {about.example}\n")
+    if about.related:
+        out.append("**Related:** " + ", ".join(f"`{r}`" for r in about.related) + ".\n")
+    expert = about.expert_notes or ""
+    refs = "; ".join(r.title for r in about.references)
+    if expert or refs:
+        body = expert + (f" References: {refs}." if refs else "")
+        out.append(f'??? note "Expert detail"\n    {body}\n')
+    return out
+
+
+def governance_page() -> str:
+    """Every governance check (``mapi_spec.governance.GOVERNANCE_CHECKS``) and the seeded
+    default policies (``DEFAULT_POLICIES``)."""
+    from mapi_spec.governance import _REQUIREMENT_PLAIN, DEFAULT_POLICIES, GOVERNANCE_CHECKS
+
+    checks = sorted(GOVERNANCE_CHECKS.values(), key=lambda c: c.id)
+    lines = [
+        HEADER,
+        "# Governance checks\n",
+        "Every check a [governance policy](../../guides/governance.md) can require, generated "
+        "from `mapi_spec.governance.GOVERNANCE_CHECKS` (the catalog behind "
+        "`GET /v1/catalog/governance-checks`, `mapi governance checks` and the web app's "
+        "*Check catalog*). Each entry starts with its plain-language About card. "
+        "[Can you trust this model?](../../guides/null-tests.md) explains the null tests in "
+        "plain words and in statistics.\n",
+        "A policy may set a check's severity (`blocking`, `warning`, `info`), its own `warn` "
+        "and `fail` limits (never looser than the order below allows) and its parameters. A "
+        "check whose requirement does not hold for a model is reported as `skipped` with the "
+        "reason; one that cannot be computed is `error`, which fails a blocking check.\n",
+        "| Check | Title | Measures | Default limits | Needs |",
+        "|---|---|---|---|---|",
+    ]
+    for c in checks:
+        needs = ", ".join(c.requires) or "–"
+        lines.append(
+            f"| [`{c.id}`](#{c.id.replace('.', '-')}) | {c.title} | `{c.metric}` | "
+            f"{_limits(c)} | {needs} |"
+        )
+    lines.append("")
+    for c in checks:
+        lines.append(f"## `{c.id}` - {c.title} {{#{c.id.replace('.', '-')}}}\n")
+        lines.extend(_about_lines(c.about))
+        facts = [
+            ("Category", c.category),
+            ("Metric", f"`{c.metric}`"),
+            ("Default limits", _limits(c)),
+            ("Default severity", c.default_severity.value),
+            (
+                "Applies to",
+                ", ".join(f"`{f}`" for f in c.families) if c.families else "every model family",
+            ),
+            (
+                "Skipped when",
+                "; ".join(_REQUIREMENT_PLAIN[r] for r in c.requires) or "never",
+            ),
+            ("Version", f"`{c.version}`"),
+        ]
+        lines.append("| | |\n|---|---|")
+        lines.extend(f"| {k} | {_cell(v)} |" for k, v in facts)
+        lines.append("")
+        if c.params_schema.get("properties"):
+            lines.append("**Parameters** (`params` in a policy)\n")
+            lines.append(properties_table(c.params_schema))
+    lines += [
+        "## The default policies {#default-policies}\n",
+        "Seeded as tenant-wide policies (version 1) the first time a tenant uses governance. "
+        "They decide what a validation checks per model family; they do **not** require "
+        "approval and do **not** gate promotion until an admin turns that on.\n",
+        "| Policy | Families | Checks (severity, parameters) |",
+        "|---|---|---|",
+    ]
+    for p in DEFAULT_POLICIES:
+        items = []
+        for pc in p.checks:
+            params = ", ".join(f"{k}={v}" for k, v in pc.params.items())
+            items.append(f"`{pc.check}` ({pc.severity.value}{', ' + params if params else ''})")
+        fams = ", ".join(f"`{f}`" for f in p.applies_to.families)
+        lines.append(f"| {_cell(p.name)} | {fams} | {'<br>'.join(items)} |")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _write(path: Path, text: str) -> bool:
     """Write ``text`` if it differs from what is on disk; return whether it changed."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -403,6 +519,7 @@ def generate(out: Path = OUT, *, only: Iterable[str] | None = None) -> list[Path
         "plots-catalog.md": plots_page,
         "spec-schema.md": lambda: spec_page(schemas),
         "error-codes.md": errors_page,
+        "governance-checks.md": governance_page,
     }
     changed = []
     for name, make in pages.items():

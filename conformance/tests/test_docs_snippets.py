@@ -125,4 +125,9 @@ def test_catalog_pages_cover_every_step_and_model(tmp_path: Path) -> None:
     assert "`ModelSpec`" in (tmp_path / "spec-schema.md").read_text("utf-8")
     assert "`HORIZON_EXCEEDS_FIT` | 409" in (tmp_path / "error-codes.md").read_text("utf-8")
     assert (tmp_path / "schemas" / "modelspec.json").exists()
+    from mapi_spec.governance import DEFAULT_POLICIES, GOVERNANCE_CHECKS
+
+    checks = (tmp_path / "governance-checks.md").read_text("utf-8")
+    assert all(f"## `{c}` - " in checks for c in GOVERNANCE_CHECKS)
+    assert all(p.name in checks for p in DEFAULT_POLICIES)
     assert gen.generate(tmp_path) == [], "regenerating unchanged content must not rewrite files"
