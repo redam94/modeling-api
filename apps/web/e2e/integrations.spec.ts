@@ -171,6 +171,8 @@ test("signing up goes to the inbox and the e-mail link creates the workspace", a
   await expect(page.getByText("northwind", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Choose who to sign in as" })).toBeVisible();
+  // the new workspace opens in Guided mode
+  await expect(page).toHaveURL(/return_to=%2Fguided$/);
 });
 
 test("an organisation admin exports the data and schedules, then cancels, the deletion", async ({ page }) => {

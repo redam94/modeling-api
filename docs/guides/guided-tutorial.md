@@ -19,8 +19,9 @@ mode (`pnpm --filter @mapi/web dev:mock`), so the numbers are illustrative.
 
 ## 1. Choose what you want to learn
 
-Switch the header to **Guided** (the choice is remembered for your account) or open
-**Guided** in the sidebar. Each card is a template: the question it answers, the data it
+A workspace you signed up for opens here. Elsewhere, switch the header to **Guided** (the
+choice is remembered for your account) or open **Guided** in the sidebar or from **Start a
+guided analysis** on Home. Each card is a template: the question it answers, the data it
 needs and what you can do with the result.
 
 ![Templates: geo marketing mix, weekly forecast, demand by store, customer choice](../assets/screenshots/guided-templates.png){ .mapi-shot }

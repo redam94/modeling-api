@@ -23,6 +23,8 @@ import { useApplyTheme } from "@/hooks/use-theme";
 
 import { VERIFY_TOKEN_RE, type PublicPath } from "./public-paths";
 
+/** A new workspace opens in Guided mode: its first page answers "What do you want to learn?". */
+const SIGNED_UP_LANDING = "/guided";
 const EMAIL_RE = /^[^@\s]{1,64}@[^@\s]{1,255}$/;
 const NAME_RE = /^[^\u0000-\u001f\u007f]+$/;
 
@@ -266,7 +268,7 @@ export function VerifyEmailPage() {
             <span className="font-medium text-foreground">{result.email}</span> is confirmed. Workspace <Mono>{result.tenant_id}</Mono> has a <Mono>{result.project_id}</Mono> project, and you are its admin.
           </p>
           <p className="text-[13px] text-muted-foreground">Free workspaces run the built-in models and declarative specs. Uploading your own model code needs identity verification.</p>
-          <Button size="lg" onClick={() => signIn("/", { login_url: result.login_url ?? "/auth/login" })}>
+          <Button size="lg" onClick={() => signIn(SIGNED_UP_LANDING, { login_url: result.login_url ?? "/auth/login" })}>
             <LogIn /> Sign in
           </Button>
         </div>

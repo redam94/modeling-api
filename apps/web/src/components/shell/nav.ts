@@ -50,8 +50,18 @@ export const INTEGRATIONS_NAV: NavItem = {
   description: "Endpoints, snippets, webhooks and share links",
 };
 
+export const GUIDED_NAV: NavItem = {
+  to: "/guided",
+  label: "Guided",
+  icon: Sparkles,
+  chord: "g",
+  description: "Task-based flows for analysts",
+};
+
+/** Expert navigation; Guided stays one click away (opening it switches the mode). */
 export const EXPERT_NAV: NavItem[] = [
   { to: "/", label: "Home", icon: Home, chord: "h", description: "Activity and health at a glance" },
+  GUIDED_NAV,
   { to: "/datasets", label: "Datasets", icon: Database, chord: "d", description: "Upload, map and inspect data" },
   { to: "/build", label: "Build", icon: FileCode2, chord: "b", description: "Write and validate model specs" },
   { to: "/runs", label: "Runs", icon: Activity, chord: "r", description: "Fits, dry-runs, ingests and scores" },
@@ -69,10 +79,5 @@ export const SETTINGS_NAV: NavItem = {
   description: "Theme, mode and connection",
 };
 
-export const GUIDED_NAV: NavItem = {
-  to: "/guided",
-  label: "Guided",
-  icon: Sparkles,
-  chord: "g",
-  description: "Task-based flows for analysts",
-};
+/** Guided mode's navigation: Guided first, then the Expert areas (without Expert Home). */
+export const GUIDED_MODE_NAV: NavItem[] = [GUIDED_NAV, ...EXPERT_NAV.filter((item) => item.to !== "/" && item !== GUIDED_NAV)];

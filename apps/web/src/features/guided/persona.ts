@@ -1,6 +1,6 @@
 /**
- * Guided or Expert (plan §11 "One shell, two modes"): the header toggle is remembered per user,
- * and a project admin can lock a project to Guided mode (`Project.guided_locked`). In a locked
+ * Guided or Expert (plan §11 "One shell, two modes"): the header toggle is remembered per user
+ * (a self-service workspace starts in Guided), and a project admin can lock a project to Guided mode (`Project.guided_locked`). In a locked
  * project, members below admin see Guided screens only and no Expert toggle; the API still
  * enforces what they may store.
  */
@@ -10,6 +10,7 @@ import { useCallback, useEffect } from "react";
 import { atLeast } from "@/api/access";
 import { api, unwrap } from "@/api/client";
 import { qk } from "@/api/queries";
+import type { TrustTier } from "@/api/types";
 import { useWorkspace } from "@/features/auth/workspace";
 import { personaOf, useUi, type Persona } from "@/stores/ui";
 
@@ -43,10 +44,20 @@ export function useGuidedLock(): GuidedLock {
   return { projectLocked, locked: projectLocked && !atLeast(current?.role, "admin") };
 }
 
+/**
+ * The persona of someone who has not chosen one yet: Guided in a self-service (`public` tier)
+ * workspace, whose people sign up to answer business questions; Expert elsewhere and for
+ * platform operators.
+ */
+export function defaultPersona(trustTier: TrustTier | null | undefined, operator: boolean): Persona {
+  return trustTier === "public" && !operator ? "guided" : "expert";
+}
+
 /** The persona the shell shows: the user's choice, or Guided when the lock applies. */
 export function useEffectivePersona(): Persona {
   const ws = useWorkspace();
-  const persona = useUi((s) => personaOf(s, ws.user.id));
+  const fallback = defaultPersona(ws.current?.tenant.trust_tier, ws.operator);
+  const persona = useUi((s) => personaOf(s, ws.user.id, fallback));
   const lock = useGuidedLock();
   return lock.locked ? "guided" : persona;
 }

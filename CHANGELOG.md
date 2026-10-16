@@ -418,6 +418,14 @@ milestone releases are tagged on `main`.
   --example`) asked quantile models for a `mean` they cannot serve; it now asks for the
   representation's default summary.
 
+### Fixed (M3 review: web)
+- **web**: a new self-service sign-up landed in Expert mode, with no way into Guided mode but
+  the header's Mode switch. Until a user chooses, a `public` tier workspace now starts in
+  Guided mode (other workspaces and platform operators in Expert; the browser's stored v2
+  default is forgotten, per-user choices are kept), "Sign in" after the e-mail link opens
+  `/guided`, `/` opens the Guided start page in Guided mode, and Expert navigation (`g g`)
+  and Home (**Start a guided analysis**) lead to Guided.
+
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
 The platform is now multi-tenant and ready for Google Cloud. Many teams can share one

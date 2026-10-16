@@ -11,14 +11,15 @@ import { WorkspaceGate } from "@/features/auth/gate";
 import { MOCK_SESSION_KEY } from "@/mocks/tenancy";
 import { routeTree } from "@/router";
 import { useAuth } from "@/stores/auth";
-import { useScope } from "@/stores/scope";
+import { useScope, type ProjectRef } from "@/stores/scope";
 
 export type Persona = "ana" | "rui" | "vic" | "signed-out";
 
-export function renderApp(url: string, persona: Persona = "ana") {
+/** `scope` picks the project the workspace opens (default: the user's first one). */
+export function renderApp(url: string, persona: Persona = "ana", scope: ProjectRef | null = null) {
   localStorage.setItem(MOCK_SESSION_KEY, persona);
   useAuth.setState({ mode: "unknown", expired: false, dismissed: false });
-  useScope.setState({ active: null, preferred: null, recent: [] });
+  useScope.setState({ active: null, preferred: scope, recent: [] });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: [url] }), context: { queryClient } });
   const view = render(
