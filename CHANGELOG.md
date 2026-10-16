@@ -349,6 +349,22 @@ milestone releases are tagged on `main`.
   Explorer views written at ingest name the dataset version and carry plot timestamps. Each
   ingest's views are now stored under its run (`t/<tenant>/datasets/<sha>/runs/<run>/ui/explore/`);
   the data and its sidecars keep the strict same-content check.
+- **client, cli** (found by the M3.5 live-stack verification): `explorations.view` (and `mapi
+  explore --show`) returned a section's plot list instead of its view for every section
+  whose name sorts after `plots` (`residuals`, `response_curves`, `stationarity`, `stl`,
+  ...): `ui/explore/plots/<section>.json` matched first, and the call failed with "the view
+  is not a JSON object". The exact view is now looked up first; plots never match.
+- **spec** (found by the M3.5 live-stack verification): *Help me choose* ranked `ts.sarimax`
+  sixth for "forecast weekly sales with drivers" although it is the only model that fits
+  all four answers: items silent on a question scored the same 1.0 and ties broke on
+  difficulty. Ties now break on the number of answers an item fits explicitly first.
+- **web** (found by the M3.5 live-stack verification): on the dev server (`make dev`), the
+  first page to open a workflow graph crashed with "Invalid hook call" in
+  `ReactFlowProvider`, and a lazy route loading while the editor's YAML worker first started
+  failed with "Failed to fetch dynamically imported module": Vite discovered React Flow and
+  the monaco-yaml worker's dependency late, optimised them in a second pass and reloaded. Both
+  are now pre-bundled at start-up (`apps/web/dev-prebundle.ts`, with a test that every
+  package a web worker imports is listed); production builds were not affected.
 - **runner** (found by the M3.5 live-stack verification): the Data Explorer's overview read
   "2 variables over 156 time" for the most common upload, a time dimension called `time`;
   the time dimension is now named by its frequency ("156 weeks", "36 months").
