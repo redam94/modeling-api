@@ -43,6 +43,8 @@ _VERSIONED = (
     "mapi-plugin-mmm",
     "mapi-plugin-ts",
     "mapi-plugin-tabular",
+    "mapi-plugin-statsmodels",
+    "statsmodels",
     "pymc",
     "pytensor",
     "nutpie",

@@ -34,6 +34,8 @@ FIXTURES: list[str] = [
     "mmm_frequentist",
     "e84_lite",
     "guided_mmm",
+    "sm_arimax",
+    "sm_vecm_macro",
 ]
 
 DEFERRED: dict[str, str] = {

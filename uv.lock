@@ -23,6 +23,7 @@ members = [
     "mapi-gcs-shim",
     "mapi-plots",
     "mapi-plugin-mmm",
+    "mapi-plugin-statsmodels",
     "mapi-plugin-tabular",
     "mapi-plugin-ts",
     "mapi-pymc",
@@ -2222,6 +2223,7 @@ dependencies = [
     { name = "mapi-client", extra = ["xarray"] },
     { name = "mapi-plots", extra = ["recipes"] },
     { name = "mapi-plugin-mmm" },
+    { name = "mapi-plugin-statsmodels" },
     { name = "mapi-plugin-tabular" },
     { name = "mapi-plugin-ts" },
     { name = "mapi-pymc" },
@@ -2235,6 +2237,7 @@ requires-dist = [
     { name = "mapi-client", extras = ["xarray"], editable = "packages/client" },
     { name = "mapi-plots", extras = ["recipes"], editable = "packages/plots-core" },
     { name = "mapi-plugin-mmm", editable = "plugins/mmm" },
+    { name = "mapi-plugin-statsmodels", editable = "plugins/statsmodels" },
     { name = "mapi-plugin-tabular", editable = "plugins/tabular" },
     { name = "mapi-plugin-ts", editable = "plugins/ts" },
     { name = "mapi-pymc", editable = "packages/sdk-pymc" },
@@ -2328,6 +2331,29 @@ requires-dist = [
     { name = "mapi-spec", editable = "packages/spec" },
     { name = "mapi-steps", editable = "packages/steps-core" },
     { name = "mmm-framework", specifier = "==1.5.0" },
+]
+
+[[package]]
+name = "mapi-plugin-statsmodels"
+version = "0.4.0"
+source = { editable = "plugins/statsmodels" }
+dependencies = [
+    { name = "mapi-sdk" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "scipy" },
+    { name = "statsmodels" },
+    { name = "xarray" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mapi-sdk", editable = "packages/sdk" },
+    { name = "numpy", specifier = ">=2.0" },
+    { name = "pandas", specifier = ">=2.2" },
+    { name = "scipy", specifier = ">=1.13" },
+    { name = "statsmodels", specifier = ">=0.15.0,<0.16" },
+    { name = "xarray", specifier = ">=2025.1" },
 ]
 
 [[package]]
@@ -3049,6 +3075,7 @@ dependencies = [
     { name = "mapi-gcs-shim" },
     { name = "mapi-plots", extra = ["recipes"] },
     { name = "mapi-plugin-mmm" },
+    { name = "mapi-plugin-statsmodels" },
     { name = "mapi-plugin-tabular" },
     { name = "mapi-plugin-ts" },
     { name = "mapi-pymc" },
@@ -3091,6 +3118,7 @@ requires-dist = [
     { name = "mapi-gcs-shim", editable = "packages/gcs-shim" },
     { name = "mapi-plots", extras = ["recipes"], editable = "packages/plots-core" },
     { name = "mapi-plugin-mmm", editable = "plugins/mmm" },
+    { name = "mapi-plugin-statsmodels", editable = "plugins/statsmodels" },
     { name = "mapi-plugin-tabular", editable = "plugins/tabular" },
     { name = "mapi-plugin-ts", editable = "plugins/ts" },
     { name = "mapi-pymc", editable = "packages/sdk-pymc" },

@@ -48,8 +48,22 @@ milestone releases are tagged on `main`.
     for all of it.
 - **sdk**: `Step.about` and `CustomModel.about`/`family`, and the contract kit's About check
   (`check_about`, and an `about` check in `check_step`/`check_model`).
+- **plugins**: `mapi-plugin-statsmodels` (Apache-2.0; statsmodels is BSD-3-Clause), twelve
+  `ts.*` models: `ts.sarimax` (ARIMAX/SARIMAX), `ts.arima`, `ts.unobserved_components`,
+  `ts.ets`, `ts.theta`, `ts.ardl`, `ts.ecm` (UECM with the Pesaran-Shin-Smith bounds test),
+  `ts.var`, `ts.vecm` (Johansen rank selection), `ts.varmax` (VARX), `ts.dynamic_factor` and
+  `ts.markov_switching`. Panels loop over `settings.series_dims`; outputs are
+  prediction-interval quantiles; forecasts need future drivers (`MISSING_FUTURE_COVARIATE`).
+  Bundles hold parameters and data only - no pickle - and scoring rebuilds the results
+  (Kalman filter/smoother with the stored parameters, or deterministic re-estimation checked
+  against them). Fits store parameter tables with standard errors and p-values, fit
+  statistics, residual tests, impulse responses with bands, variance decompositions, Granger
+  tests, the Johansen table, ECM bounds tests, smoothed components, factors and regime
+  probabilities; `explorer_views()` turns them into Model Explorer sections. Reference-value
+  tests against direct statsmodels calls and the statsmodels VAR documentation; conformance
+  fixtures `sm_arimax` and `sm_vecm_macro`. The plugin ships in `mapi/base-forecast`.
 - **docs**: Workflows, Governance and About cards concept pages; the v0.5 section of the HTTP
-  API reference.
+  API reference; the statsmodels time-series models page.
 - **plugins/mmm**: mmm-framework (`mmm-framework==1.5.0`) is the MMM engine.
   `mmm.bayesian` (mmm-framework's `BayesianMMM`: national, or partially pooled over geos
   and products; NUTS on nutpie, PyMC or NumPyro, or MAP/ADVI/Pathfinder/Laplace/SMC) and

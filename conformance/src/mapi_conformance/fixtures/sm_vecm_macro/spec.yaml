@@ -1,0 +1,15 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: us-macro-vecm, project: macro, labels: {corpus: sm_vecm_macro}}
+data:
+  dataset: dataset://macro/us_quarterly@latest
+  bind:
+    dims: {t: quarter, variable: series}
+    vars: {y: value}
+  split: {kind: time_holdout, dim: t, last: 8}
+model:
+  use: ts.vecm@^1
+  settings: {k_ar_diff: 2, deterministic: ci, irf_horizon: 16}
+  fit: {mode: evaluate_then_refit, seed: 1}
+evaluate: {metrics: [rmse, mae, coverage_90]}
+outputs: {plots: [core.ppc_fan, core.fit_vs_actual]}

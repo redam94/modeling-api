@@ -5,6 +5,11 @@ past what the model can represent, a state-space model that restarts from scratc
 score, a holdout scored without the history it depends on. modeling-api makes each of these
 explicit and checks them before any compute is spent.
 
+!!! tip "Classical models"
+    ARIMA/ARIMAX, exponential smoothing, theta, ARDL and error correction, VAR, VECM,
+    VARMAX, dynamic factors and Markov switching come from statsmodels; see
+    [statsmodels time-series models](../models/statsmodels.md).
+
 ## Horizons are part of the contract
 
 A time dim declares its policy `extend` and, optionally, a `max_extension`: how far past the
