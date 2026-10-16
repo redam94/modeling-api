@@ -263,14 +263,23 @@ def diebold_mariano(
     n = len(a)
     if n < 3:
         raise ValueError("needs at least three paired errors")
+    if n <= h:
+        # the long-run variance needs autocovariances up to lag h - 1, and the small-sample
+        # correction is not defined below h + 1 pairs: more folds are needed, not a NaN
+        raise ValueError(
+            f"needs more than {h} paired errors at horizon {h} (it has {n}): add folds"
+        )
     d = (a**2 - b**2) if loss == "squared" else (np.abs(a) - np.abs(b))
     dbar = float(d.mean())
     gamma = [float(np.mean((d[k:] - dbar) * (d[: n - k] - dbar))) for k in range(h)]
     var = (gamma[0] + 2 * sum(gamma[1:])) / n
-    if var <= 0:
+    if not math.isfinite(var) or var <= 0:
         raise ValueError("the loss differences have no variance")
     dm = dbar / math.sqrt(var)
-    hln = math.sqrt((n + 1 - 2 * h + h * (h - 1) / n) / n)
+    factor = (n + 1 - 2 * h + h * (h - 1) / n) / n
+    if factor <= 0:
+        raise ValueError(f"too few paired errors ({n}) for horizon {h}: add folds")
+    hln = math.sqrt(factor)
     stat = dm * hln
     p = float(2 * sps.t.sf(abs(stat), df=n - 1))
     return float(stat), p, n

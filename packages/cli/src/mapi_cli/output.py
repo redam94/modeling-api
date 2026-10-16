@@ -207,4 +207,33 @@ _HINTS: Final[dict[ErrorCode, str]] = {
     ),
     ErrorCode.RATE_LIMITED: "hint: too many requests; slow down or retry later",
     ErrorCode.SCHEMA_DYNAMIC: "hint: the schema needs a dry-run to resolve (data-dependent)",
+    # v0.5: workflows, governance, explorers, optimisation, the chooser
+    ErrorCode.WORKFLOW_INVALID: (
+        "hint: check the document with `mapi workflows validate FILE`; every problem has a "
+        "JSON pointer"
+    ),
+    ErrorCode.WORKFLOW_NOT_RUNNABLE: (
+        "hint: the revision has errors or the workflow is archived; fix it with `mapi "
+        "workflows apply FILE` (or `mapi workflows archive WF --undo`)"
+    ),
+    ErrorCode.SCHEDULE_INVALID: (
+        "hint: cron has five fields and may fire at most every 15 minutes; the time zone is "
+        "an IANA name such as Europe/Berlin"
+    ),
+    ErrorCode.CHOOSER_ANSWER_INVALID: "hint: `mapi choose` lists the questions and answers",
+    ErrorCode.SELF_APPROVAL_FORBIDDEN: (
+        "hint: a second person with the reviewer capability must approve; ask a project admin"
+    ),
+    ErrorCode.VALIDATION_TRANSITION_INVALID: (
+        "hint: see where it stands with `mapi validations get ID`; failed or rejected "
+        "validations can be resubmitted"
+    ),
+    ErrorCode.NOT_VALIDATED: (
+        "hint: a policy requires a validated version; run `mapi validate model MODEL_REF` "
+        "and have it approved first"
+    ),
+    ErrorCode.POLICY_INVALID: "hint: `mapi governance checks` lists the checks and parameters",
+    ErrorCode.OPTIMIZE_INFEASIBLE: (
+        "hint: the bounds cannot meet the budget; widen --channel bounds or change --budget"
+    ),
 }

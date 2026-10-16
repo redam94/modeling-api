@@ -11,8 +11,18 @@ auditor, and make endpoints refuse models that are not validated. The concepts a
 state machine are in [Governance](../concepts/governance.md); every operation is in the
 [HTTP API reference](../reference/http-api.md#m35).
 
-Everything here can also be done in the web app: see [In the web app](#in-the-web-app). The
-examples use `curl` with an API token (see [Endpoints and webhooks](endpoints-and-webhooks.md)
+Everything here can also be done in the web app: see [In the web app](#in-the-web-app).
+Why the null tests matter, in plain words and in statistics, is in
+[Can you trust this model?](null-tests.md). From Python, use `api.governance` and
+`api.validations` ([client guide](python-client.md#governance)); from a terminal,
+`mapi governance`, `mapi validate model`, `mapi validations` and `mapi approve`
+([CLI guide](cli.md#workflows-governance-and-explorers)):
+
+```bash
+--8<-- "cli_v05.sh:governance"
+```
+
+The examples below use `curl` with an API token (see [Endpoints and webhooks](endpoints-and-webhooks.md)
 for the `api` helper):
 
 ```bash

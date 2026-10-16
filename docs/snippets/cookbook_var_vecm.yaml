@@ -1,0 +1,55 @@
+# Workflow cookbook: do these series move together for good? VECM if they are tied in the
+# long run, else a VAR on the changes; Granger tests either way; a forecast of the winner.
+# (validated by conformance/tests/test_docs_v05.py)
+apiVersion: mapi/v1
+kind: Workflow
+metadata: {name: macro-system, project: growth}
+params:
+  target: {type: string, required: true, description: "The main result (one of the series)"}
+  driver: {type: string, required: true, description: "A series that may help predict it"}
+  maxlags: {type: integer, default: 8, minimum: 1, maximum: 52}
+  horizon: {type: integer, default: 8, minimum: 1, maximum: 104}
+inputs:
+  # one value per series and period: value(series, quarter), the layout of ts.var/ts.vecm
+  data: {type: dataset, description: "The series along one dimension"}
+nodes:
+# 1. Is there a long-run relationship? (Johansen trace test, every series of the dimension)
+- {id: johansen, use: test.johansen, inputs: {data: inputs.data}, with: {alpha: "0.05"}}
+- {id: tied, use: branch.if, with: {condition: "nodes.johansen.rank > 0"}}
+# 2a. Tied: choose the cointegration rank and fit an error-correction model on the levels.
+- {id: rank, use: search.coint_rank, inputs: {data: inputs.data}, when: tied.then}
+- id: vecm
+  use: model.fit
+  inputs: {data: inputs.data}
+  when: tied.then
+  with:
+    model: ts.vecm@^1
+    settings: {coint_rank: {$expr: nodes.rank.rank}, k_ar_diff: 1}
+# 2b. Not tied: difference the series, choose the VAR's lag length, fit a VAR on the changes.
+- {id: diff, use: transform.difference, inputs: {data: inputs.data}, when: tied.else}
+- {id: lags, use: search.var_lag_order, inputs: {data: diff.data},
+   with: {maxlags: {$param: maxlags}, criterion: aic}}
+- id: var
+  use: model.fit
+  inputs: {data: diff.data}
+  with:
+    model: ts.var@^1
+    settings: {lags: {$expr: nodes.lags.best_lag}}
+# 3. Does the driver help predict the target? (on the changes when they were taken)
+- id: granger
+  use: test.granger
+  inputs: {data: [diff.data, inputs.data]}
+  with: {y: {$param: target}, x: {$param: driver}, maxlag: {$param: maxlags}}
+# 4. Forecast with whichever system was fitted (the first alternative that ran).
+- id: forecast
+  use: model.forecast
+  inputs: {model: [vecm.model, var.model], data: [diff.data, inputs.data]}
+  with: {horizon: {$param: horizon}}
+- id: report
+  use: report.summary
+  inputs:
+    tests: [johansen.result, granger.result]
+    items: [rank.table, lags.table]
+    model: [vecm.model, var.model]
+  with: {title: Series that move together}
+outputs: {report: report.report, forecast: forecast.forecast}

@@ -1,6 +1,6 @@
 ---
 title: modeling-api
-description: Analysts go from a spreadsheet to a report and a what-if scenario in minutes, with honest uncertainty. Data scientists bring PyMC, scikit-learn and forecasting models whose preprocessing is replayed exactly, and put them behind an endpoint in one click.
+description: Analysts go from a spreadsheet to a report and a what-if scenario in minutes, with honest uncertainty. Data scientists automate whole analyses as tested workflows, prove every model against null tests before anyone uses it, and put it behind an endpoint in one click.
 hide:
   - navigation
   - toc
@@ -17,26 +17,28 @@ dimensions</strong> (market × channel × week, store × product × day, househo
 answers questions with them in the units your business uses. An analyst uploads a spreadsheet
 and gets a report, a sanity scorecard and instant what-if sliders. A data scientist writes a
 small spec or a few lines of Python and gets the same model behind a versioned endpoint,
-with the fitted preprocessing replayed exactly on every call. Every run happens in a fresh
-sandbox, and every result says how sure it is.</p>
+with the fitted preprocessing replayed exactly on every call. Whole analyses - tests,
+decisions, models, benchmarks - run as versioned **workflows**, and a model only goes live
+after it has beaten **shuffled data, fake drivers and a naive forecast**. Every run happens in
+a fresh sandbox, and every result says how sure it is.</p>
 
 [Your first MMM in Guided mode](guides/guided-tutorial.md){ .md-button .md-button--primary }
 [Quickstart for data scientists](getting-started/quickstart.md){ .md-button }
-[Why modeling-api?](why.md){ .md-button }
+[What's new in 0.5](whats-new-0.5.md){ .md-button }
 
 </div>
 ![modeling-api logo: a labelled data cube](assets/logo.svg)
 </div>
 
-!!! success "v0.4: Guided mode and integrations"
-    Analysts get **Guided mode**: templates, questions instead of a column mapper, beliefs as
-    ROI ranges and lift tests, a sanity scorecard, what-if sliders and forecasts. Other
-    applications get **endpoints** promoted through the scorecard, code snippets, signed
-    **webhooks**, **embeddable charts**, Google Sheets and **budget optimisation** from the
-    model itself (mmm-framework planning).
-    Every number on this page was measured on a laptop running the whole stack
-    ([M3 verification](operations/m3-verification.md)); the cloud pieces are tested against
-    fakes, and the study with five non-technical testers is still to come.
+!!! success "v0.5: workflows, governance, explorers, mmm-framework and statsmodels"
+    **Workflows** chain unit-root tests, differencing decisions, AR/MA order searches,
+    rolling-origin backtests against naive forecasts, model selection and governance into
+    one versioned, schedulable graph. **Governance policies** hold every model to null tests
+    - it must beat itself fitted on shuffled results and give fake noise drivers no credit -
+    with a second person's approval and an evidence pack. **Data and Model Explorers**,
+    **mmm-framework** marketing-mix models with budget optimisation, **twelve statsmodels**
+    time-series models, and an **About card on everything** with *Help me choose*.
+    [What's new in 0.5](whats-new-0.5.md).
 
 ## Two ways in, one model
 
@@ -54,6 +56,8 @@ sandbox, and every result says how sure it is.</p>
 - Drag **what-if sliders**: answers in your browser, with a range that stays honest when
   several channels move at once. "Run exact" asks the full model.
 - Share a live chart or put the model in a Google Sheet.
+- Not sure which model? **Help me choose** asks a few questions and explains its
+  recommendations; every option has an *About* card in plain words.
 
 [:octicons-arrow-right-24: Your first analysis in Guided mode](guides/guided-tutorial.md)
 
@@ -72,8 +76,11 @@ sandbox, and every result says how sure it is.</p>
   valid for each.
 - Promote a version to an **endpoint** through the scorecard gate; copy a snippet for
   Python, TypeScript, curl, R, Apps Script or a notebook.
+- Automate the statistics: **workflows** of tests, branches, searches, backtests and
+  governance checks, run live from `mapi workflows run --watch` or `api.workflows`.
 
-[:octicons-arrow-right-24: Quickstart: zero to first model](getting-started/quickstart.md)
+[:octicons-arrow-right-24: Quickstart: zero to first model](getting-started/quickstart.md) ·
+[Workflow cookbook](guides/workflow-cookbook.md)
 
 </div>
 </div>
@@ -167,7 +174,74 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
 </div>
 
-## What's new in v0.4
+## What's new in v0.5
+
+<div class="grid cards" markdown>
+
+-   :material-graph-outline:{ .lg .middle } **Workflows that think like a statistician**
+
+    ---
+
+    Unit roots → differencing → AR/MA orders → rolling-origin backtest → ARIMAX vs naive →
+    select → governance, as one versioned YAML graph with live node status, caching,
+    schedules and dataset triggers. Seventeen statistical tests, seven split plans,
+    Diebold-Mariano.
+
+    [:octicons-arrow-right-24: Workflow cookbook](guides/workflow-cookbook.md)
+
+-   :material-shield-check-outline:{ .lg .middle } **Models must beat noise**
+
+    ---
+
+    Governance policies: shuffled-target and placebo-regressor null tests, naive benchmarks,
+    residual whiteness, stability, signs, prior sensitivity. Second-person approval, evidence
+    packs, and endpoints that refuse unvalidated models.
+
+    [:octicons-arrow-right-24: Can you trust this model?](guides/null-tests.md)
+
+-   :material-magnify-scan:{ .lg .middle } **Data and Model Explorers**
+
+    ---
+
+    Stationarity, cross-correlation with the KPI, STL, VIF and quality warnings before you
+    model; parameters, residual tests, IRF/FEVD, forecasts, backtests and side-by-side
+    comparisons after.
+
+    [:octicons-arrow-right-24: Explore a dataset](guides/data-explorer.md)
+
+-   :material-chart-bell-curve-cumulative:{ .lg .middle } **mmm-framework MMMs and budget plans**
+
+    ---
+
+    `mmm.bayesian` pooled over geos and products, `mmm.frequentist` in seconds, business
+    priors, lift tests, and budgets optimised from the posterior with risk objectives.
+
+    [:octicons-arrow-right-24: Marketing-mix models](models/mmm-framework.md)
+
+-   :material-chart-timeline-variant:{ .lg .middle } **Twelve statsmodels models**
+
+    ---
+
+    SARIMAX to VECM and Markov switching, with future drivers, prediction intervals,
+    impulse responses and cointegration tests.
+
+    [:octicons-arrow-right-24: statsmodels models](models/statsmodels.md)
+
+-   :material-help-circle-outline:{ .lg .middle } **About cards and Help me choose**
+
+    ---
+
+    Every model, step, node, check and template explains itself in plain words; eight
+    questions turn into a ranked shortlist with reasons - in the web app, `mapi choose` or
+    `api.catalog.recommend()`.
+
+    [:octicons-arrow-right-24: Choosing a model](guides/choosing-a-model.md)
+
+</div>
+
+[:octicons-arrow-right-24: Everything that is new in 0.5](whats-new-0.5.md)
+
+## What came in v0.4
 
 <div class="grid cards" markdown>
 

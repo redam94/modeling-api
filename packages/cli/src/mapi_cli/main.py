@@ -19,10 +19,13 @@ from mapi_cli.commands import (
     auth,
     catalog,
     check,
+    choose,
     config,
     datasets,
     endpoints,
+    explore,
     fit,
+    governance,
     guided,
     new,
     plots,
@@ -36,6 +39,7 @@ from mapi_cli.commands import (
     tokens,
     usage,
     webhooks,
+    workflows,
 )
 from mapi_cli.commands import spec as spec_cmd
 from mapi_cli.output import Output
@@ -45,7 +49,8 @@ HELP = (
     "The modeling-api command line.\n\n"
     "Local commands (new, check, fit, score, catalog, plugin, spec) need no server. Remote "
     "commands (runs, datasets, tokens, usage, admin, endpoints, webhooks, plots, guided, "
-    "priors, tenant, signup, --remote) use the API from --url, "
+    "priors, tenant, signup, workflows, governance, validate, validations, approve, explore, "
+    "optimize, choose, about, --remote) use the API from --url, "
     "MAPI_URL or a profile in ~/.config/mapi/config.toml, signed in with `mapi login` (or "
     "--token / MAPI_TOKEN), in the project chosen with `mapi use` (or --project / "
     "MAPI_PROJECT). --json prints machine-readable output on stdout."
@@ -131,6 +136,16 @@ app.add_typer(plots.app, name="plots")
 app.add_typer(guided.app, name="guided")
 app.add_typer(priors.app, name="priors")
 app.add_typer(tenant.app, name="tenant")
+# v0.5: workflows, governance, explorers, optimisation, About cards
+app.add_typer(workflows.app, name="workflows")
+app.add_typer(governance.app, name="governance")
+app.add_typer(governance.validate_app, name="validate")
+app.add_typer(governance.validations, name="validations")
+app.command("approve")(governance.approve)
+app.add_typer(explore.app, name="explore")
+app.command("optimize")(explore.optimize)
+app.command("choose")(choose.choose)
+app.command("about")(choose.about)
 
 
 def run() -> None:  # pragma: no cover - console script entry point

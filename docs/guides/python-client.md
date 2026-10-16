@@ -359,6 +359,75 @@ and its YAML; nothing is stored), `compile({...})` (the `ScoreRequest` a what-if
 or preset stands for) and `preview_priors(business_priors, spec_id=…, revision=…)` (a
 sandboxed `translate_priors` run, waited for).
 
+## Workflows, governance and explorers <span class="mapi-badge">v0.5</span> { #workflows-governance-and-explorers }
+
+Everything v0.5 adds is on the same client, typed with the `mapi_spec` DTOs. The walkthrough
+below runs, unchanged, against a real server in the documentation tests.
+
+### Help me choose
+
+```python
+--8<-- "client_v05.py:choose"
+```
+
+### Run a workflow and follow it live
+
+```python
+--8<-- "client_v05.py:validate"
+```
+
+```python
+--8<-- "client_v05.py:run"
+```
+
+`stream_events` yields `WorkflowSnapshot` (the run with every node, first on each
+connection), `WorkflowEventFrame` (node queued, started, succeeded, cached, skipped, failed or
+retrying; branch decided) and `WorkflowEnd`; a dropped connection is resumed with
+`Last-Event-ID`. `api.workflows.wait(run_id)` polls instead, and raises the failing node's
+error.
+
+```python
+--8<-- "client_v05.py:inspect"
+```
+
+### Governance
+
+```python
+--8<-- "client_v05.py:governance"
+```
+
+```python
+--8<-- "client_v05_more.py:policies"
+```
+
+```python
+--8<-- "client_v05_more.py:validate"
+```
+
+```python
+--8<-- "client_v05_more.py:approve"
+```
+
+### Explorers and budget optimisation
+
+```python
+--8<-- "client_v05_more.py:data-explorer"
+```
+
+```python
+--8<-- "client_v05_more.py:model-explorer"
+```
+
+```python
+--8<-- "client_v05_more.py:optimize"
+```
+
+### Schedules and triggers
+
+```python
+--8<-- "client_v05.py:automate"
+```
+
 ## Async
 
 `AsyncClient` has the same resources and arguments; calls are awaited and lists are
@@ -366,6 +435,12 @@ iterated with `async for`:
 
 ```python
 --8<-- "client_tour.py:async"
+```
+
+The v0.5 resources work the same way:
+
+```python
+--8<-- "client_v05_more.py:async"
 ```
 
 ## Reference

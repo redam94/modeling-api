@@ -200,7 +200,6 @@ milestone releases are tagged on `main`.
     (`apps/web/scripts/gen_explorer_fixtures.py`, `--check` in CI) and generated
     TypeScript types of the explorer views; the guides' screenshots
     (`make docs-screenshots-explorers`).
-
 - **web**: workflows and governance screens (both personas).
   - Workflows: the list and the template gallery with About cards; a "use this template"
     wizard (name, parameter defaults, bound data); a Guided "run this recipe on my data"
@@ -231,6 +230,48 @@ milestone releases are tagged on `main`.
     policies, validations and approvals. `apps/web/scripts/gen_workflow_fixtures.py`
     writes their data from `mapi_spec` and a real local run of the canonical template and
     two governed fits (checked by `make web-check` and CI).
+- **client** (v0.5 calls): a request builder for every M3.5 operation of
+  `mapi_spec.api.ENDPOINTS` (checked against the contract; the strict coverage test is no
+  longer an expected failure) and sync and async resources: `Client.workflows` (documents
+  from a `WorkflowSpec`, a mapping, YAML text or a file; `upsert` by `metadata.name` that adds
+  a revision only when the document's hash changed; runs with `wait`; `stream_events`, an SSE
+  iterator of `WorkflowSnapshot`, `WorkflowEventFrame` and `WorkflowEnd` that resumes with
+  `Last-Event-ID` and never repeats an event; node outputs downloaded and CRC32C-verified;
+  schedules, triggers and the template gallery), `Client.governance` (the check catalog,
+  project and tenant-wide policies - a fetched policy can be edited and sent back as it is),
+  `Client.validations` (requests that wait for the checks, the review queue, evidence,
+  resubmission, `approve`/`reject` never resent after a lost response, evidence packs as
+  HTML or JSON), `Client.explorations`, and on `catalog` (`abouts`, `about`, `chooser`,
+  `recommend` with the answers checked before sending, workflow nodes, governance checks),
+  `datasets` (`about`, `describe`, `explore`) and `models` (`explore`, `compare`, `optimize`
+  with the keyed `Prefer: wait` long-poll, `validate`). Failed workflow runs raise the failing
+  node's error. Tested with respx and against the real server (embedded Postgres, the storage
+  front, children executed in-process).
+- **cli**: `mapi workflows` (`init` from a gallery template, `validate` a file on the server,
+  `apply`, `create`, `run` with `--watch` - a live node-status board fed by the SSE stream,
+  exit status 1 when the run fails - `watch`, `status`, `runs`, `nodes`, `node`, `output`,
+  `cancel`, `archive`, `rm`, `nodes-catalog`, `schedules`, `triggers`), `mapi governance`
+  (checks with their About cards, policies per project or tenant with versions and
+  retirement), `mapi validate model` (waits and prints every check in plain words with the
+  suggested action) and `validate workflow`, `mapi validations` (review queue, evidence,
+  resubmit, deprecate, evidence pack), `mapi approve` (`--reject` with a comment), `mapi
+  explore dataset|model|compare|get` (views written as JSON), `mapi optimize` (the plan, the
+  uplift and the frontier), `mapi choose` (Help me choose in the terminal, or `--answer` for
+  scripts) and `mapi about`. Tested with respx and against a real server over HTTP.
+- **docs**: "What's new in 0.5"; the workflow cookbook (the canonical unit roots ->
+  differencing -> AR/MA order search -> rolling-origin backtest -> ARIMAX vs naive ->
+  select -> governance document in full, with the client and CLI commands, plus VAR/VECM
+  cointegration and a forecast bake-off); "Can you trust this model?" (governance and null
+  tests for non-technical readers and for statisticians); "Choosing a model" (About cards
+  and the chooser); one section per statsmodels model (About card, minimal spec, forecast
+  with future drivers); budget optimisation end to end with the client; the client and CLI
+  guides and reference for v0.5; a home page that leads with the new capabilities; the
+  roadmap moves plugin upload and MCP to v0.6. The cookbook documents validate and run with
+  the local runner, the client walkthrough runs unchanged against a real server, every
+  command in the CLI walkthrough is checked against the CLI, and the statsmodels page quotes
+  the catalog's About cards (`conformance/tests/test_docs_v05.py`,
+  `packages/server/tests/test_docs_client_v05.py`).
+
 ### Changed
 - **spec**: a dataset's generated summary shows dates without a midnight time
   ("from 2023-01-01", not "from 2023-01-01T00:00:00").
@@ -244,6 +285,9 @@ milestone releases are tagged on `main`.
   stability is relative to the estimate's own uncertainty near zero and tolerates windows
   the model cannot be refitted on; checks that compare numeric predictions skip choice
   models instead of failing.
+
+- **spec**: `workflow_run_events` declares the `after` and `limit` query parameters the
+  server already serves for the JSON page of events.
 
 ### Removed
 - **spec**: BayesInsight (`mapi_spec.bayesinsight`, `mapi_spec.bayesinsight_model`, the
@@ -265,6 +309,10 @@ milestone releases are tagged on `main`.
 
 ### Fixed
 
+- **workflows**: `compare.diebold_mariano` with no more paired errors than the horizon
+  (three folds tested at horizon 4) returned a NaN p-value and failed the node with an
+  internal validation error; it is now a plain data error that says to add folds, and a
+  non-finite long-run variance is refused like a zero one.
 - Web dev server: opening the app as `http://localhost:5173` now redirects to `http://127.0.0.1:5173`.
   Before, the API's CORS allow-list and `SameSite=strict` session cookie only matched `127.0.0.1`, so
   every call failed and the home page said the API was not reachable.

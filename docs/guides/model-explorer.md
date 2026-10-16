@@ -65,6 +65,17 @@ request and result are those of
 
 ![A budget plan: the allocation, the expected result and the efficient frontier](../assets/screenshots/explorer-optimize.png){ .mapi-shot }
 
+## From Python and the command line
+
+```python
+--8<-- "client_v05_more.py:model-explorer"
+```
+
+```bash
+mapi explore model model://growth/sales-arimax@v2 -s params -s residuals -s irf --horizon 12
+mapi explore compare model://growth/sales-arimax@v2 model://growth/sales-ets@v1 --horizon 4
+```
+
 ## Views written at fit
 
 Every fit writes `params`, `diagnostics`, `fit`, `residuals`, `decomposition`,

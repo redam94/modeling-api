@@ -1,0 +1,55 @@
+# Workflow cookbook: a forecast bake-off. Four models and the naive benchmarks compete on the
+# same expanding-window folds; Diebold-Mariano tests say whether the winner's edge is more
+# than luck; the winner is refitted on all the data only if it beats naive.
+# (validated by conformance/tests/test_docs_v05.py)
+apiVersion: mapi/v1
+kind: Workflow
+metadata: {name: forecast-bakeoff, project: growth}
+params:
+  horizons: {type: array, default: [1, 4, 8]}
+  season: {type: integer, default: 52, minimum: 2, maximum: 400}
+  n_folds: {type: integer, default: 6, minimum: 2, maximum: 50}
+inputs:
+  data: {type: dataset}
+nodes:
+- id: folds
+  use: split.expanding_window
+  inputs: {data: inputs.data}
+  with: {horizons: {$param: horizons}, n_folds: {$param: n_folds}, step: 4, gap: 0}
+# the candidates, each backtested on the same plan
+- {id: sarimax, use: model.backtest, inputs: {data: inputs.data, split: folds.plan},
+   with: {model: ts.sarimax@^1, settings: {order: [1, 1, 1], seasonal_order: [0, 1, 0, 52]}}}
+- {id: arima, use: model.backtest, inputs: {data: inputs.data, split: folds.plan},
+   with: {model: ts.arima@^1, settings: {order: [0, 1, 1]}}}
+- {id: ets, use: model.backtest, inputs: {data: inputs.data, split: folds.plan},
+   with: {model: ts.ets@^1, settings: {trend: add, damped_trend: true}}}
+- {id: theta, use: model.backtest, inputs: {data: inputs.data, split: folds.plan},
+   with: {model: ts.theta@^1}}
+- {id: naive, use: evaluate.baseline, inputs: {data: inputs.data, split: folds.plan},
+   with: {methods: [naive, seasonal_naive, drift], season: {$param: season}}}
+# the league table, then two head-to-head tests against the benchmark
+- id: compare
+  use: compare.models
+  inputs: {candidates: [sarimax.metrics, arima.metrics, ets.metrics, theta.metrics, naive.metrics]}
+  with: {metric: mase}
+- {id: dm_ets, use: compare.diebold_mariano, inputs: {a: ets.metrics, b: naive.metrics},
+   with: {loss: absolute, horizon: 1}}
+- {id: dm_sarimax, use: compare.diebold_mariano, inputs: {a: sarimax.metrics, b: naive.metrics},
+   with: {loss: absolute, horizon: 1}}
+# the winner, if it beats naive by at least 5%, refitted on everything
+- {id: best, use: select.best, inputs: {table: compare.table},
+   with: {metric: mase, must_beat: [naive], margin: 0.05}}
+- {id: winner, use: branch.if, with: {condition: nodes.best.beats_baselines}}
+- id: refit
+  use: model.fit
+  inputs: {data: inputs.data}
+  when: winner.then
+  with: {model: {$expr: nodes.best.selected_model}}
+- id: report
+  use: report.summary
+  inputs:
+    tests: [dm_ets.result, dm_sarimax.result]
+    items: [compare.table]
+    model: [refit.model]
+  with: {title: Forecast bake-off}
+outputs: {model: refit.model, comparison: compare.table, report: report.report}

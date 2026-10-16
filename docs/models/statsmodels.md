@@ -10,8 +10,9 @@ other plugin.
 
 ## Which model should I use?
 
-Every model has an About card in the catalog (the web app's "Help me choose" uses them).
-In short:
+Every model has an About card in the catalog: the web app's *Help me choose*, `mapi choose`
+and `api.catalog.recommend()` rank them for your goal and data (see
+[Choosing a model](../guides/choosing-a-model.md)). In short:
 
 | Plugin | In plain words | Choose it when |
 |---|---|---|
@@ -94,86 +95,244 @@ value. Quantiles describe one cell each, so totals across geos or series are ref
 
 ## The models
 
-### `ts.sarimax` and `ts.arima`
+Each section starts with the model's About card (what the web app, `mapi about` and
+`api.catalog.about()` show; a docs test keeps the quotes identical to the catalog), then a
+minimal spec and, for models with drivers, a forecast from planned drivers. The specs all use
+this small wrapper - the data binding, a holdout of the last 8 periods scored before the
+model is refitted on everything - and synthetic or public data from
+`mapi_plugin_statsmodels.datasets`; the documentation tests run every one of them
+(`docs/snippets/statsmodels_catalog.py`):
 
-Seasonal ARIMA, with drivers (`ts.sarimax`, regression with ARIMA errors) or without
-(`ts.arima`), estimated by exact maximum likelihood with the Kalman filter. Missing target
-values are allowed (the filter skips them).
+```python
+--8<-- "statsmodels_catalog.py:common"
+```
+
+### `ts.sarimax` - forecast with past values and drivers
+
+> Forecasts a series from its own recent past, its seasonal pattern and outside drivers you know ahead, such as planned prices or holidays.
+
+**Use it when** you forecast one regular series a few periods ahead and known future drivers
+(prices, promotions, holidays) matter. **Pick something else when** you have less than about
+50 periods, or several series drive each other (use `ts.var`).
+
+```python
+--8<-- "statsmodels_catalog.py:sarimax"
+```
+
+Seasonal ARIMA with drivers - a regression with ARIMA errors - estimated by exact maximum
+likelihood with the Kalman filter. Missing target values are allowed (the filter skips them).
+The forecast needs the drivers' planned future values (here `plan` without `sales`); a missing
+one fails with `MISSING_FUTURE_COVARIATE` unless the request says how to extend it.
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `order` | `[1, 0, 0]` | `(p, d, q)`: past values, times differenced, past errors |
 | `seasonal_order` | `[0, 0, 0, 0]` | `(P, D, Q, s)` for a pattern repeating every `s` periods |
 | `trend` | `auto` | `n`, `c`, `t`, `ct`; `auto` is a constant unless the series is differenced |
-| `exog` | `[]` | drivers (`ts.sarimax` only) |
+| `exog` | `[]` | drivers |
+| `series_dims` | `[]` | panel dims: one model per series |
 
+Not sure about `order`? The [readiness workflow](../guides/workflow-cookbook.md#readiness-to-arimax)
+chooses it from unit-root tests and an information-criterion search, and keeps the model
+only if it beats a naive forecast.
+
+### `ts.arima` - forecast from past values
+
+> Forecasts a series from its own recent past and trend, without outside drivers.
+
+**Use it when** you have only the series itself and want a solid, well-known method. **Pick
+something else when** outside drivers explain most of the movement (use `ts.sarimax`).
+
+```python
+--8<-- "statsmodels_catalog.py:arima"
+```
+
+The same estimator as `ts.sarimax` without drivers; here one ARIMA(1,1,1) per geo of a panel.
 `ts.arima` refuses a constant together with differencing (use `trend: t` for a drift).
 
-### `ts.ets` and `ts.theta`
+### `ts.ets` - exponential smoothing
 
-`ts.ets` is the error-trend-season model (`ETSModel`): `error`, `trend` (`add`/`mul`),
-`damped_trend`, `seasonal` with `seasonal_periods`. Additive models have closed-form
-intervals; multiplicative ones are simulated (`simulate_repetitions` paths, seeded by the
-request's seed, so the same request gives the same quantiles). `ts.theta` is the theta
-method with optional seasonal adjustment (`period`, `deseasonalize`, `method`, `theta`).
+> Forecasts a series by giving recent values more weight than older ones, with optional trend and seasonality, and is quick and robust.
 
-### `ts.unobserved_components`
+**Use it when** you need a fast, reliable baseline and the level, trend and season shift
+slowly. **Pick something else when** outside drivers explain most of the movement.
+
+```python
+--8<-- "statsmodels_catalog.py:ets"
+```
+
+The error-trend-season model (`ETSModel`): `error`, `trend` (`add`/`mul`), `damped_trend`,
+`seasonal` with `seasonal_periods`. Additive models have closed-form intervals;
+multiplicative ones are simulated (`simulate_repetitions` paths, seeded by the request's
+seed, so the same request gives the same quantiles).
+
+### `ts.theta` - a simple, strong baseline
+
+> Forecasts a series by combining a straight-line trend with smoothed recent values, a simple method that is hard to beat.
+
+**Use it when** you want a strong, simple baseline to compare other models against. **Pick
+something else when** outside drivers matter a lot or you need detailed explanations.
+
+```python
+--8<-- "statsmodels_catalog.py:theta"
+```
+
+The theta method with optional seasonal adjustment (`period`, `deseasonalize`, `method`,
+`theta`). It is the benchmark to beat in a [forecast bake-off](../guides/workflow-cookbook.md#forecast-bake-off).
+
+### `ts.unobserved_components` - trend, season and noise
+
+> Splits a series into a slowly changing level and trend, a seasonal pattern and noise, and forecasts it from those parts.
+
+**Use it when** you want to see the underlying trend without the noise, and the trend and
+season change slowly. **Pick something else when** you only need a quick baseline.
+
+```python
+--8<-- "statsmodels_catalog.py:unobserved_components"
+```
 
 A structural model: `level` (`local level`, `local linear trend`, `smooth trend`, ...),
 optional stochastic `seasonal`, `cycle`, `autoregressive` noise and drivers. The smoothed
 level, trend and season are stored in the bundle's `components` group and shown in the Model
-Explorer's decomposition.
+Explorer's decomposition; with drivers, forecasts need their planned values.
 
-### `ts.ardl` and `ts.ecm`
+### `ts.ardl` - effects that build up over time
 
-`ts.ardl` regresses the result on its own `lags` and on `order` lags of each driver (least
-squares); `auto: true` chooses them per series by `ic` up to those maxima. `ts.ecm` writes
-the same model in error-correction form (statsmodels `UECM`): the coefficient on `y.L1` is
-the **speed of adjustment** (half-life in the `ecm` group), the `long_run.*` rows of the
-parameter table are the long-run effects with delta-method standard errors, and the
-Pesaran-Shin-Smith **bounds test** (case from the trend: `c` is case 3) says whether a
-long-run relationship exists - `levels_relationship`, `none` or `inconclusive`, also raised
-as a scorecard diagnostic (`ECM_BOUNDS_TEST`).
+> Explains a series from its own past and the current and past values of drivers, so you can see how an effect builds up over several periods.
 
-### `ts.var`, `ts.vecm` and `ts.varmax`
-
-`ts.var` fits a VAR by least squares; leave `lags` empty to choose the order by `ic` up to
-`max_lags`. `ts.vecm` fits a Johansen VECM; leave `coint_rank` empty and the Johansen
-`rank_test` (trace or max-eigenvalue) at `rank_signif` chooses it. A rank of 0 (no long-run
-relationship: model the changes with `ts.var`) or of the number of series (they are
-stationary: use `ts.var` on the levels) is refused with a plain-language
-`SETTINGS_INVALID`. `ts.varmax` is VARMA(p, q) with drivers in state-space form (VARX when
-`q = 0`).
+**Use it when** a driver's effect is spread over several periods. **Pick something else when**
+effects are immediate only (a simple regression is enough).
 
 ```python
---8<-- "statsmodels_models.py:vecm"
+--8<-- "statsmodels_catalog.py:ardl"
 ```
 
-Their bundles carry:
+Least squares on `lags` of the result and `order` lags of each driver; `auto: true` chooses
+them per series by `ic` up to those maxima. The parameter table shows each lag's effect, so
+you can read how a price change works through over the following weeks.
 
-* `irf` - orthogonalised impulse responses `irf(response, shock, horizon)` up to
-  `irf_horizon` (with asymptotic 95% bands for `ts.var`);
-* `fevd` - the forecast-error variance decomposition `share(variable, horizon, shock)`;
-* `granger` - pairwise Granger causality tests (`ts.var`, `ts.vecm`);
-* `cointegration` - the Johansen table (statistic and critical value per tested rank),
-  the chosen rank, `alpha` (speed of adjustment) and `beta` (the long-run relations,
-  normalised on the first series) (`ts.vecm`).
+### `ts.ecm` - long-run and short-run effects
 
-### `ts.dynamic_factor`
+> Separates the short-term effect of a driver from its long-term effect on one series, and tests whether a long-run relationship exists at all.
 
-A few hidden factors following a VAR drive many series (state space). The smoothed factors
-and loadings are in the `factors` group. Standardise the series first
-(`core.standardize`), as factor models assume comparable scales.
+**Use it when** one result and a few drivers trend together, and you want both the immediate
+and the lasting effect of a driver. **Pick something else when** neither the result nor the
+drivers trend.
 
-### `ts.markov_switching`
+```python
+--8<-- "statsmodels_catalog.py:ecm"
+```
 
-Hamilton's regime-switching regression (`order: 0`) or autoregression (`order > 0`): the
-level, driver effects and noise can switch between `k_regimes` hidden regimes. The
-`regimes` group holds the smoothed and filtered probability of each regime per period, the
-transition matrix, expected durations and each regime's mean level. Forecasts are regime
-mixtures: analytic for regressions, simulated (`simulations` seeded paths) for
-autoregressions. Start values come from a fit on the standardised series, which avoids the
-failures of statsmodels' default start values on series far from zero.
+The same model in error-correction form (statsmodels `UECM`): the coefficient on `y.L1` is
+the **speed of adjustment** (its half-life is in the `ecm` group), the `long_run.*` rows of
+the parameter table are the long-run effects with delta-method standard errors, and the
+Pesaran-Shin-Smith **bounds test** (the case from the trend: `c` is case 3) says whether a
+long-run relationship exists - `levels_relationship`, `none` or `inconclusive`, also raised as a
+scorecard diagnostic (`ECM_BOUNDS_TEST`).
+
+### `ts.var` - series that drive each other
+
+> Models several series that influence each other over time, such as prices and sales of two brands, and forecasts them together.
+
+**Use it when** several series move together and affect each other, and you want to see how a
+shock to one spreads to the others. **Pick something else when** you have one series, or the
+series trend together for good (use `ts.vecm`).
+
+```python
+--8<-- "statsmodels_catalog.py:var"
+```
+
+Least squares; leave `lags` empty to choose the order by `ic` up to `max_lags`. The data holds
+the series along one dimension (`y(variable, t)`). The bundle carries orthogonalised impulse
+responses with asymptotic 95% bands (`irf`), the forecast-error variance decomposition
+(`fevd`) and pairwise Granger causality tests (`granger`).
+
+### `ts.vecm` - series tied together for good
+
+> Models series that wander but stay tied together in the long run, such as prices of close substitutes, and shows how fast they snap back after a gap opens.
+
+**Use it when** series trend but keep a stable long-run relationship. **Pick something else
+when** the series do not trend, or the long-run tie is not plausible.
+
+```python
+--8<-- "statsmodels_catalog.py:vecm"
+```
+
+A Johansen VECM; leave `coint_rank` empty and the Johansen `rank_test` (trace or
+max-eigenvalue) at `rank_signif` chooses it. A rank of 0 (no long-run relationship: model the
+changes with `ts.var`) or of the number of series (they are stationary: use `ts.var` on the
+levels) is refused with a plain-language `SETTINGS_INVALID`. The `cointegration` group holds
+the Johansen table, the rank, `alpha` (speed of adjustment) and `beta` (the long-run
+relations, normalised on the first series). The
+[VAR/VECM recipe](../guides/workflow-cookbook.md#varvecm-cointegration) chooses between the two
+for you.
+
+### `ts.varmax` - series that drive each other, with drivers
+
+> Models several series that influence each other and also respond to outside drivers you know ahead, and forecasts them together.
+
+**Use it when** several series affect each other and outside drivers matter too. **Pick
+something else when** you have one series, or many series and little history.
+
+```python
+--8<-- "statsmodels_catalog.py:varmax"
+```
+
+VARMA(p, q) with drivers in state-space form (VARX when `q = 0`); `exog` drivers need their
+planned values to forecast, as with `ts.sarimax`.
+
+### `ts.dynamic_factor` - common movements across many series
+
+> Finds a few hidden forces that move many series together, such as the overall economy behind sales in many categories.
+
+**Use it when** you have many related series and want their shared drivers. **Pick something
+else when** you have one or two series.
+
+```python
+--8<-- "statsmodels_catalog.py:dynamic_factor"
+```
+
+A few hidden factors following a VAR drive many series (state space). The smoothed factors and
+loadings are in the `factors` group. Standardise the series first (`core.standardize`), as
+factor models assume comparable scales.
+
+### `ts.markov_switching` - switching between regimes
+
+> Detects whether a series switches between regimes, such as high-growth and low-growth periods, and estimates the behaviour in each.
+
+**Use it when** behaviour seems to jump between distinct modes and you want the probability of
+being in each mode now. **Pick something else when** changes are gradual or you have little
+history.
+
+```python
+--8<-- "statsmodels_catalog.py:markov_switching"
+```
+
+Hamilton's regime-switching regression (`order: 0`) or autoregression (`order > 0`): the level,
+driver effects and noise can switch between `k_regimes` hidden regimes. The `regimes` group
+holds the smoothed and filtered probability of each regime per period, the transition matrix,
+expected durations and each regime's mean level. Forecasts are regime mixtures: analytic for
+regressions, simulated (`simulations` seeded paths) for autoregressions. Start values come from
+a fit on the standardised series, which avoids the failures of statsmodels' default start
+values on series far from zero.
+
+### Forecasting through an endpoint, the client and the CLI
+
+Once a version is promoted, the same forecast comes from the endpoint, with the drivers' plan
+sent inline (an `xr.Dataset` with the future rows):
+
+```python
+from mapi_client import Client
+
+api = Client()
+fan = api.endpoint("weekly-sales").score(plan_ds, mode="forecast", horizon={"dim": "t", "periods": 8})
+print(fan["y_hat"].sel(stat="median").values)
+```
+
+```bash
+mapi endpoints score weekly-sales --data plan.json --periods 8 -o forecast.zarr.zip
+mapi explore model model://growth/weekly-sales@v3 -s forecast -s residuals --horizon 8
+```
 
 ## What is stored, and why there is no pickle
 

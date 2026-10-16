@@ -65,6 +65,7 @@ plugins:
             - packages/steps-core/src
             - packages/plots-core/src
             - packages/runner/src
+            - packages/client/src
           options:
             docstring_style: google
             docstring_options:
@@ -121,6 +122,7 @@ markdown_extensions:
 nav:
   - Home:
       - index.md
+      - "What's new in 0.5": whats-new-0.5.md
       - "Why modeling-api?": why.md
       - Use cases: use-cases.md
   - Getting started:
@@ -165,6 +167,8 @@ nav:
           - Explore a dataset: guides/data-explorer.md
           - Explore a model: guides/model-explorer.md
           - Validate models with governance policies: guides/governance.md
+          - "Can you trust this model? Null tests explained": guides/null-tests.md
+          - Choosing a model: guides/choosing-a-model.md
       - Running it for teams:
           - Authentication: guides/authentication.md
           - Administration: guides/administration.md
@@ -179,6 +183,7 @@ nav:
           - Forecasting and sequential models: guides/time-series.md
           - statsmodels time-series models: models/statsmodels.md
           - "Workflows: tests, decisions, models, automation": guides/workflows.md
+          - Workflow cookbook: guides/workflow-cookbook.md
           - Plots, recipes and templates: guides/plots.md
           - Sharing plots: guides/sharing-plots.md
           - Conformance corpus: guides/conformance.md
@@ -215,6 +220,7 @@ nav:
           - mapi_steps: reference/api/steps.md
           - mapi_plots: reference/api/plots.md
           - mapi_runner: reference/api/runner.md
+          - mapi_client: reference/api/client.md
   - Deployment:
       - operations/index.md
       - Local, without Docker: operations/local-development.md
@@ -236,7 +242,7 @@ nav:
       - The local platform (v0.2): roadmap/platform-api.md
       - Cloud and multi-tenant (v0.3): roadmap/cloud.md
       - Guided mode and integrations (v0.4): roadmap/guided-ui.md
-      - "Next: expert plugins, MCP and optimisation (v0.5)": roadmap/expert-plugins.md
+      - "Next: expert plugins, MCP and sweeps (v0.6)": roadmap/expert-plugins.md
   - Project:
       - Licensing: project/licensing.md
       - Contributing: project/contributing.md
