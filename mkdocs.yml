@@ -235,6 +235,7 @@ nav:
       - Security suite: operations/security-suite.md
       - M2 verification: operations/m2-verification.md
       - M3 verification: operations/m3-verification.md
+      - M3.5 verification: operations/m35-verification.md
       - Configuration reference: operations/configuration.md
       - Troubleshooting: operations/troubleshooting.md
   - Roadmap:

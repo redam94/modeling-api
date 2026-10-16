@@ -74,6 +74,7 @@ from mapi_spec.storage import (
     run_prefix,
 )
 from mapi_spec.validate import ResolvedSpec, ScoreMetadata
+from mapi_spec.views import EXPLORE_PREFIX
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -405,6 +406,8 @@ class Finalizer:
         return await self._commit(v)
 
     async def _copy(self, src: ObjectMeta, dst_bucket: str, dst_name: str) -> ObjectMeta:
+        """Copy once (``if_generation_match=0``); an existing destination must hold the same
+        content."""
         store = self.ctx.store
         try:
             return await store.copy(
@@ -792,7 +795,12 @@ class Finalizer:
         data_bucket = self.ctx.buckets.data
         stored: dict[str, Any] = {}
         for name, meta in sorted(v.objects.items()):
-            copied = await self._copy(meta, data_bucket, prefix + name)
+            # The prefix is the data's content hash: identical data uploaded again (the next
+            # version, another dataset or project) lands on the objects already there, which
+            # it must match exactly. The Data Explorer views are this ingest's own (computed
+            # by its runner, with timestamps): they live under the run, beside the data.
+            dst = prefix + (f"runs/{run.id}/{name}" if name.startswith(EXPLORE_PREFIX) else name)
+            copied = await self._copy(meta, data_bucket, dst)
             stored[name] = {
                 "bucket": data_bucket,
                 "name": copied.name,

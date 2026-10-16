@@ -83,7 +83,7 @@ from mapi_spec.quotas import QuotaLimits, QuotaScope
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
 from mapi_spec.spec import ScoreRequest
-from mapi_spec.tenancy import ProjectRole, TenantStatus, TrustTier
+from mapi_spec.tenancy import Capability, ProjectRole, TenantStatus, TrustTier
 from mapi_spec.tokens import DEFAULT_TOKEN_TTL_DAYS, BudgetPeriod, TokenStatus
 from pydantic import JsonValue
 
@@ -970,9 +970,16 @@ class Tenants(_Resource, TenantTrustMixin):
         project_id: str | None = None,
         principal_id: str | None = None,
         email: str | None = None,
+        capabilities: Sequence[Capability | str] = (),
     ) -> Membership:
-        """Grant ``role`` to a known principal or invite an ``email``."""
-        body = MembershipCreate(principal_id=principal_id, email=email, role=ProjectRole(role))
+        """Grant ``role`` to a known principal or invite an ``email``, with optional
+        capabilities on top of the role (``reviewer`` approves model validations)."""
+        body = MembershipCreate(
+            principal_id=principal_id,
+            email=email,
+            role=ProjectRole(role),
+            capabilities=[Capability(c) for c in capabilities],
+        )
         return self._c.send(calls.add_member(tenant_id, project_id, body))
 
     def set_role(
@@ -984,6 +991,18 @@ class Tenants(_Resource, TenantTrustMixin):
         project_id: str | None = None,
     ) -> Membership:
         body = MembershipUpdate(role=ProjectRole(role))
+        return self._c.send(calls.update_member(tenant_id, project_id, principal_id, body))
+
+    def set_capabilities(
+        self,
+        tenant_id: str,
+        principal_id: str,
+        capabilities: Sequence[Capability | str],
+        *,
+        project_id: str | None = None,
+    ) -> Membership:
+        """Replace a member's capabilities (``[]`` removes them all); the role is kept."""
+        body = MembershipUpdate(capabilities=[Capability(c) for c in capabilities])
         return self._c.send(calls.update_member(tenant_id, project_id, principal_id, body))
 
     def remove_member(

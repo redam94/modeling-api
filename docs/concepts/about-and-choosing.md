@@ -90,7 +90,9 @@ statistics knowledge", "Usually takes long"). Several answers to one question ar
 by commas. The ranking (`mapi_spec.about.recommend`) is deterministic: a matching answer adds
 the question's weight (the goal counts most), a mismatch subtracts it, items that do not mind
 a question are neutral, and items harder than your experience or slower than your patience
-lose points. When some items match your goal, the others are left out.
+lose points. At the same score, an item made for more of your answers comes first (one
+silent on a question ranks below one that says it fits). When some items match your goal,
+the others are left out.
 Without `kind` the candidates are the places a user starts from: models, guided templates
 and workflow templates; `kind=step`, `kind=node` or `kind=check` ranks one kind of
 building block. A question or answer the chooser does not know is `422

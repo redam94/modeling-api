@@ -128,4 +128,24 @@ describe("the Data Explorer and workflows", () => {
     await user.selectOptions(select, "");
     expect(select).toHaveValue("");
   });
+
+  it("runs a recipe the project has no workflow for yet: the workflow it just created", async () => {
+    // Found on the live stack: the run was started with the id the page was rendered with
+    // (none yet), as POST /v1/workflows//runs -> 404 "The recipe did not start".
+    useUi.setState({ persona: "guided", personas: {} });
+    const posted: string[] = [];
+    server.events.on("request:start", ({ request }) => {
+      if (request.method === "POST") posted.push(new URL(request.url).pathname);
+    });
+    const user = userEvent.setup();
+    const { router } = renderApp("/workflows/recipe?template=forecast_bakeoff&data=dataset://default/eu_media_daily@v1");
+    const select = await screen.findByLabelText("Dataset", undefined, T);
+    await waitFor(() => expect(select).toHaveValue("dataset://default/eu_media_daily"));
+    await user.click(screen.getByRole("button", { name: "Run this recipe" }));
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/workflow-runs\/run_/), T);
+    const created = posted.indexOf("/v1/workflows");
+    expect(created).toBeGreaterThanOrEqual(0);
+    expect(posted.slice(created + 1).find((path) => path.endsWith("/runs"))).toMatch(/^\/v1\/workflows\/wf_[a-z0-9]+\/runs$/);
+    server.events.removeAllListeners("request:start");
+  });
 });

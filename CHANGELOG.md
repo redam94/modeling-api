@@ -289,6 +289,16 @@ milestone releases are tagged on `main`.
   command in the CLI walkthrough is checked against the CLI, and the statsmodels page quotes
   the catalog's About cards (`conformance/tests/test_docs_v05.py`,
   `packages/server/tests/test_docs_client_v05.py`).
+- **tests, docs**: the M3.5 journeys through the running stack (`make dev`, then `make e2e`):
+  `tests/e2e/test_m35_stack.py` (the canonical readiness workflow on a series with a unit
+  root, governance null tests that block a model fitted on noise and a second-person
+  approval, mmm-framework with its explorer views and a budget plan, the Data Explorer, a
+  VAR's impulse responses, Help me choose, and `mapi workflows run --watch` on the
+  cookbook document) and `apps/web/e2e/m35-live.e2e.spec.ts` (the same screens in the
+  browser, Guided and Expert, seeded by `tests/e2e/m35_browser_seed.py`);
+  `docs/operations/m35-verification.md` records what they verified, the defects they found
+  and what remains. The M1 and M3 journeys were brought up to date with v0.5 (the E33 spec
+  on mmm-framework, the plan's KPI name, webhook deliveries verified as they arrive).
 
 ### Changed
 - **spec**: a dataset's generated summary shows dates without a midnight time
@@ -327,6 +337,45 @@ milestone releases are tagged on `main`.
 
 ### Fixed
 
+- **spec, server** (found by the M3.5 live-stack verification): a governance policy with
+  `applies_to: {families: [ts]}` - the example of every governance page - covered none of
+  the statsmodels models, which declare the family `forecast`, `ts_multivariate` or
+  `regime`; its checks, approval and promotion gate silently never applied. A family now
+  matches a model's declared family or the namespace of its id (`ts` for `ts.sarimax`).
+- **server** (found by the M3.5 live-stack verification): uploading data that was uploaded
+  before - the same file as the next version, or into another dataset or project - failed
+  its ingest with `INTEGRITY_FAILURE` ("ui/explore/index.json already holds different
+  content"). Ingest outputs are stored under the data's content hash, and the v0.5 Data
+  Explorer views written at ingest name the dataset version and carry plot timestamps. Each
+  ingest's views are now stored under its run (`t/<tenant>/datasets/<sha>/runs/<run>/ui/explore/`);
+  the data and its sidecars keep the strict same-content check.
+- **client, cli** (found by the M3.5 live-stack verification): `explorations.view` (and `mapi
+  explore --show`) returned a section's plot list instead of its view for every section
+  whose name sorts after `plots` (`residuals`, `response_curves`, `stationarity`, `stl`,
+  ...): `ui/explore/plots/<section>.json` matched first, and the call failed with "the view
+  is not a JSON object". The exact view is now looked up first; plots never match.
+- **spec** (found by the M3.5 live-stack verification): *Help me choose* ranked `ts.sarimax`
+  sixth for "forecast weekly sales with drivers" although it is the only model that fits
+  all four answers: items silent on a question scored the same 1.0 and ties broke on
+  difficulty. Ties now break on the number of answers an item fits explicitly first.
+- **web** (found by the M3.5 live-stack verification): on the dev server (`make dev`), the
+  first page to open a workflow graph crashed with "Invalid hook call" in
+  `ReactFlowProvider`, and a lazy route loading while the editor's YAML worker first started
+  failed with "Failed to fetch dynamically imported module": Vite discovered React Flow and
+  the monaco-yaml worker's dependency late, optimised them in a second pass and reloaded. Both
+  are now pre-bundled at start-up (`apps/web/dev-prebundle.ts`, with a test that every
+  package a web worker imports is listed); production builds were not affected.
+- **runner** (found by the M3.5 live-stack verification): the Data Explorer's overview read
+  "2 variables over 156 time" for the most common upload, a time dimension called `time`;
+  the time dimension is now named by its frequency ("156 weeks", "36 months").
+- **web** (found by the M3.5 live-stack verification): a Guided user's first run of a recipe
+  in a project - the workflow created from the template in the same click - failed with "The
+  recipe did not start: Not Found": the run was posted to `/v1/workflows//runs`, with the
+  workflow id the page was rendered with. Starting a run can now name its workflow, and the
+  recipe runs the one it just created.
+- **client**: members could not be given the `reviewer` capability (needed to approve
+  validations) without raw HTTP: `tenants.add_member(..., capabilities=[...])` and
+  `tenants.set_capabilities(...)`.
 - **workflows**: `compare.diebold_mariano` with no more paired errors than the horizon
   (three folds tested at horizon 4) returned a NaN p-value and failed the node with an
   internal validation error; it is now a plain data error that says to add folds, and a

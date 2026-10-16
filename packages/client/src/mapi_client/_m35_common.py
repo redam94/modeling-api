@@ -175,8 +175,13 @@ def section_link(exploration: Exploration, section: str) -> ArtifactLink:
     (the explorer index says when a section was skipped, e.g. "less than two seasons").
     """
     name = explore_view_name(section)
+    # the exact view first: ``ui/explore/plots/<section>.json`` (the section's PlotSpecs)
+    # also ends with ``/<section>.json`` and is not the view
     for link in exploration.views:
-        if link.name == name or link.name.endswith(f"/{section}.json"):
+        if link.name == name:
+            return link
+    for link in exploration.views:
+        if link.name.endswith(f"/{section}.json") and "/plots/" not in link.name:
             return link
     if exploration.index is not None:
         for ref in exploration.index.sections:

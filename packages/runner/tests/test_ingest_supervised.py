@@ -70,6 +70,32 @@ def test_mff_ingest_writes_the_dataset_and_column_profiles(gcs: ShimGcs) -> None
     assert {p.name for p in profiles if p.origin == "mff_variable"} >= {"Sales", "media_var_0"}
 
 
+def test_identical_data_writes_identical_content_outputs(gcs: ShimGcs) -> None:
+    """The data and its sidecars are stored content-addressed (``t/<tenant>/datasets/<sha>/``),
+    so the same file ingested again - as v2, or into another dataset or project - must write
+    them byte for byte the same. The Data Explorer views name the version and carry
+    timestamps; the finalizer keeps them under each ingest's run."""
+    gcs.put(gcs.buckets.quarantine, UPLOAD, MFF.read_bytes(), "text/csv")
+    outputs = []
+    for ref in ("dataset://default/mff@v1", "dataset://other/sales@v7"):
+        job = _job().model_copy(update={"dataset": ref})
+        result = run_supervisor(
+            make_run(
+                gcs,
+                RunKind.INGEST,
+                job.model_dump(mode="json"),
+                inputs={"upload": (gcs.buckets.quarantine, UPLOAD)},
+            )
+        )
+        assert result.code == RunnerExit.OK, [e.payload for e in result.of("error")]
+        outputs.append({n: result.output(n) for n in sorted(result.manifest().objects)})
+    first, second = outputs
+    content = sorted(n for n in first if not n.startswith("ui/explore/"))
+    assert content == sorted(DATASET_OUTPUTS)
+    assert [n for n in content if first[n] != second[n]] == []
+    assert json.loads(second["ui/explore/index.json"])["ref"] == "dataset://other/sales@v7"
+
+
 def test_a_refused_upload_explains_itself(gcs: ShimGcs) -> None:
     bomb = gzip.compress(b"Period,VariableName\n" + b"2020-01-06,x\n" * 2_000_000)
     gcs.put(gcs.buckets.quarantine, UPLOAD, bomb, "application/gzip")

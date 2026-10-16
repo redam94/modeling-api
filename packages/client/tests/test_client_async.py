@@ -193,3 +193,27 @@ async def test_async_score_outlasts_its_read_timeout(
     assert res.done and route.call_count == 4
     assert min(reads) >= 60 + 1.5
     assert len({call.request.headers["Idempotency-Key"] for call in route.calls}) == 1
+
+
+async def test_async_reviewer_capability(
+    aclient: AsyncClient, api: respx.MockRouter, example: Ex
+) -> None:
+    from mapi_spec.api import Membership
+
+    usr = "usr_01jaf3a9b8c7d6e5f4g3h2j1k0"
+    upd = api.patch(f"{V1}/tenants/acme/projects/growth/members/{usr}").respond(
+        200, json=example(Membership)
+    )
+    await aclient.tenants.set_capabilities("acme", usr, ["reviewer"], project_id="growth")
+    assert json.loads(upd.calls.last.request.content) == {"capabilities": ["reviewer"]}
+    add = api.post(f"{V1}/tenants/acme/projects/growth/members").respond(
+        201, json=example(Membership)
+    )
+    await aclient.tenants.add_member(
+        "acme", "editor", project_id="growth", principal_id=usr, capabilities=["reviewer"]
+    )
+    assert json.loads(add.calls.last.request.content) == {
+        "principal_id": usr,
+        "role": "editor",
+        "capabilities": ["reviewer"],
+    }

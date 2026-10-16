@@ -11199,9 +11199,17 @@ export interface components {
         /**
          * PolicyMatch
          * @description Which models a policy covers; an empty list matches everything on that axis.
+         *
+         *     A family matches a model's declared family (``forecast`` for the statsmodels
+         *     forecasters, ``ts_multivariate``, ``mmm``) *or* the namespace of its id (``ts`` for
+         *     ``ts.sarimax``), so ``families: [ts]`` covers every ``ts.*`` model whatever family its
+         *     plugin declares.
          */
         PolicyMatch: {
-            /** Families */
+            /**
+             * Families
+             * @description Model families or model-id namespaces (ts covers ts.sarimax)
+             */
             families?: string[];
             /**
              * Models

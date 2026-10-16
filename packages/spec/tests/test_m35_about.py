@@ -248,6 +248,20 @@ def test_recommendations_for_a_quick_beginner_forecast() -> None:
     assert recommend([], _models(), limit=2).items[0].score == 0.5  # nothing answered
 
 
+def test_forecast_weekly_sales_with_drivers_recommends_arimax() -> None:
+    """Items that fit every answer outrank items silent on some at the same score: the
+    model made for weekly forecasts *with drivers* comes first (found on the live stack,
+    where a smooth-trend model with no drivers came first on difficulty)."""
+    answers = chooser_answers_from_query(
+        {"goal": ["forecast"], "data_shape": ["one_series"], "frequency": ["weekly"],
+         "drivers": ["yes"]}
+    )  # fmt: skip
+    result = recommend(answers, _models(), limit=3)
+    assert result.items[0].id == "ts.sarimax"
+    assert len(result.items[0].reasons_plain) == 4 and not result.items[0].cautions_plain
+    assert "drivers" not in MODEL_ABOUTS["ts.hsgp_trend"].fits  # silent on drivers: below
+
+
 def test_recommendation_query_errors() -> None:
     with pytest.raises(MapiError) as exc:
         chooser_answers_from_query({"goal": ["forecast,teleport"]})

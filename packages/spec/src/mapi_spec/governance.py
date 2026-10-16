@@ -545,14 +545,24 @@ class PolicyCheck(StrictModel):
 
 
 class PolicyMatch(StrictModel):
-    """Which models a policy covers; an empty list matches everything on that axis."""
+    """Which models a policy covers; an empty list matches everything on that axis.
 
-    families: list[str] = Field(default_factory=list, max_length=32)
+    A family matches a model's declared family (``forecast`` for the statsmodels
+    forecasters, ``ts_multivariate``, ``mmm``) *or* the namespace of its id (``ts`` for
+    ``ts.sarimax``), so ``families: [ts]`` covers every ``ts.*`` model whatever family its
+    plugin declares."""
+
+    families: list[str] = Field(
+        default_factory=list,
+        max_length=32,
+        description="Model families or model-id namespaces (ts covers ts.sarimax)",
+    )
     models: list[str] = Field(default_factory=list, max_length=64, description="Model ids")
     templates: list[str] = Field(default_factory=list, max_length=32)
 
     def matches(self, *, family: str, model_id: str, template: str | None) -> bool:
-        if self.families and family not in self.families:
+        namespace = model_id.split(".", 1)[0]
+        if self.families and family not in self.families and namespace not in self.families:
             return False
         if self.models and model_id not in self.models:
             return False

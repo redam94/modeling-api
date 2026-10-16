@@ -40,7 +40,10 @@ an endpoint can refuse to serve a model that is not validated.
   project inherits them, and a project's own policy can add checks or tighten thresholds but
   never loosen them (`effective_checks` keeps the stricter severity and thresholds).
 - **Matching.** `applies_to` narrows a policy to model families (`mmm`, `ts`, `tabular`,
-  `choice`, ...), model ids or guided templates; empty lists match everything.
+  `choice`, ...), model ids or guided templates; empty lists match everything. A family
+  matches the family a model declares (the statsmodels forecasters declare `forecast`,
+  `ts_multivariate` or `regime`) or the namespace of its id, so `families: [ts]` covers
+  every `ts.*` model.
 - **Versions.** Editing a policy saves a new version; validations record the versions they
   were judged by.
 - **Severity.** A `blocking` check that fails (or cannot be computed) stops validation; a

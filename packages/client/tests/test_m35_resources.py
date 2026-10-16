@@ -215,6 +215,31 @@ def test_explore_waits_for_the_views_and_reads_them(api: respx.MockRouter, scope
         scoped.explorations.view(skipped.model_copy(update={"index": idx}), "stl")
 
 
+def test_a_view_is_never_confused_with_its_plots(api: respx.MockRouter, scoped: Client) -> None:
+    """A run's links are sorted by name, and ``ui/explore/plots/response_curves.json`` (the
+    section's PlotSpecs, a list) sorts before ``ui/explore/response_curves.json``: the
+    view, not the plots, must come back (found on the live stack with an MMM)."""
+    view = {"format": "mapi.response-curves/v1", "channels": ["tv"]}
+    blob, plots = json.dumps(view).encode(), b'[{"kind": "vega-lite"}]'
+    done = _exploration(
+        True,
+        [
+            link("ui/explore/plots/response_curves.json", plots, "x/plots-rc.json"),
+            link("ui/explore/response_curves.json", blob, "x/rc.json"),
+        ],
+    )
+    api.get(f"{STORAGE}/x/rc.json").respond(200, content=blob)
+    api.get(f"{STORAGE}/x/plots-rc.json").respond(200, content=plots)
+    got = Exploration.model_validate(done)
+    assert scoped.explorations.view(got, "response_curves") == view
+    assert (
+        scoped.explorations.link(got, "response_curves").name == "ui/explore/response_curves.json"
+    )
+    only_plots = got.model_copy(update={"views": got.views[:1]})
+    with pytest.raises(ValueError, match="has no section"):
+        scoped.explorations.link(only_plots, "response_curves")
+
+
 def test_a_failed_exploration_raises_its_problem(api: respx.MockRouter, scoped: Client) -> None:
     failed = _exploration(False)
     failed["run"] = _run(
