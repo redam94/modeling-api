@@ -192,6 +192,21 @@ See [Guided mode](../../concepts/guided-mode.md).
       members: [IngestMapping, DimMapping, VarMapping, WideVarMapping, IngestPreset, MFF_COLUMNS, MFF_KEY_COLUMNS, MffOptions, MeridianColumns, BayesInsightMetadata, BayesInsightVariable, BayesInsightModelDef, BayesInsightVarRef, bayesinsight_var_ref]
       heading_level: 3
 
+## BayesInsight models <span class="mapi-badge">v0.4</span>
+
+The importer (`import_bayesinsight`) and the settings of the built-in `mmm.bayesinsight`
+(see [Built-in models](../models.md#mmmbayesinsight-a-bayesinsight-model_defjson)).
+
+::: mapi_spec.bayesinsight
+    options:
+      members: [import_bayesinsight, dedicated_draft, BAYESINSIGHT_TARGET, DEDICATED_TARGET]
+      heading_level: 3
+
+::: mapi_spec.bayesinsight_model
+    options:
+      members: [BayesInsightSettings, BayesInsightModel, BIExog, BIMedia, BIControl, BISeason, BILocalTrend, Likelihood, CoeffPrior, DeterministicTransform, DelayedAdstockPrior, WeibullAdstockPrior, HillPrior, SShapedPrior, LocalTrendPrior, coeff_param_problem]
+      heading_level: 3
+
 ## Business priors and calibration <span class="mapi-badge">v0.4</span>
 
 ::: mapi_spec.calibration

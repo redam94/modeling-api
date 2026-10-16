@@ -131,6 +131,43 @@ A spec that carries `business_priors` **without** a recorded translation run is 
 fit time instead, with the same solve over the training data's scales; the priors used are in
 the model's `learned.calibration.translated_priors`.
 
+### Business priors for `mmm.pymc_marketing`
+
+The pymc-marketing adapter takes business priors too. pymc-marketing scales the KPI by its
+maximum (`target_scale`) and each channel by its maximum, and every curve it offers here is
+`beta * g(adstock(x))` (or `adstock(beta * g(x))` with `adstock_first: false`), `beta` being
+its `saturation_beta` prior over `(*dims, channel)`. A channel's contribution in KPI units is
+therefore
+
+```text
+C_c = target_scale * sum over panel cells k of beta[k, c] * A[k, c],
+A[k, c] = sum over periods t of g(...)[t, k, c]
+```
+
+and `A` depends on the adstock and curve priors only. The translation draws `A` from
+**pymc-marketing's own model** - prior draws of `channel_contribution / beta` - so its scaling,
+carry-over padding and curves are exactly the fit's, and then solves as above for a
+log-normal `saturation_beta` with one `mu` and `sigma` per channel (drawn independently per
+panel cell, as pymc-marketing draws it): a bisection on `sigma` matches the range's width at
+its credibility, `mu` centres it. The baseline share is linear in the intercept
+(`intercept ~ Normal(m, s)` per cell, `B = a (m + s zbar) + E` with `a = target_scale * T *
+cells / Y` and `E` the controls' and seasonality's share). pymc-marketing's default
+seasonality prior (`Laplace(0, 1)` on the scaled KPI) is wide, so when `E` alone spreads the
+baseline share over more than 80% of the range, the `gamma_control` and `gamma_fourier`
+priors are narrowed by a common factor first - their contributions are linear in them, so the
+spread shrinks by the same factor - and an `info` issue says by how much.
+
+The priors land in the adapter's `settings.priors` (`saturation_beta`, `intercept`,
+`gamma_control`, `gamma_fourier`, in pymc-marketing's scaled units), which it hands to
+pymc-marketing as `model_config` priors; the preview, coverage and plots are the same as for
+the geo MMM.
+
+### `mmm.bayesinsight`: no business priors
+
+The BayesInsight model's coefficient priors are already statements in the KPI's own units
+(`coeff_prior` in `model_def.json`), so it does not declare business priors: state the ROI
+you believe directly as the media coefficient's prior. It does take lift tests (below).
+
 ## Lift tests
 
 A lift test is calibration data: extra spend on one channel (optionally in one geo) during a
@@ -183,6 +220,22 @@ by the evaluation fit (logged) and used by the production refit.
 spend, lift and sigma *per period*, conditioned on the saturation curve (a Gamma on the
 absolute lift, pymc-marketing's model). With panel `dims`, a test must name its `geo`.
 
+`mmm.bayesinsight` observes each test under its own likelihood: `channel` names a media
+variable (its analytic name, `TV_Total_Total_Total`, or its model-stage name), `geo` a label
+of the first panel dim (the test then covers every level of the other panel dims there), and
+
+```text
+lift = sum over the test's cells p and periods t in W of
+       mean(eta[p, t] + d_eta[p, t]) - mean(eta[p, t]),
+d_eta[p, t] = coef[p] * sum over lags l of w[l] * (f(z + dz)[p, t, l] - f(z)[p, t, l])
+```
+
+with `mean` the likelihood's mean function (the identity for a Normal KPI, `exp` and the
+zero-inflation share for counts, `exp(. + sigma^2 / 2)` for a log-normal), `f` the media
+curve and `z` the indexed media - so the extra spend goes through BayesInsight's curve, then
+its carry-over, then the link. The extra spend is spread and carried over within the window
+as above; the implied lift is kept as `lift_tests__model`.
+
 ## The sanity scorecard
 
 At the end of every fit the runner measures each check of the
@@ -196,6 +249,7 @@ template's checks with its thresholds; any other spec runs the whole catalog.
 | `r_hat_max`, `ess_bulk_min` | the production posterior's free parameters (the plugin's convergence diagnostics) |
 | `divergence_rate` | `sample_stats.diverging`, as a share of all draws |
 | `mape`, `coverage_90` | the holdout, through the score path (needs them in `evaluate.metrics`) |
+| `accuracy_lift` | choice models: the holdout hit rate (the most likely product is the one bought) minus that of always guessing the holdout's most common product (`accuracy`, `accuracy_naive`; the `customer_choice` template evaluates them) |
 | `negative_roi_share`, `roi_max` | the `response_curves` grid at the actual spend: per channel the share of draws with a negative return, and the largest posterior-mean ROI |
 | `max_channel_share`, `baseline_share` | a channel's (or the baseline's) share of baseline + every channel, posterior mean |
 | `prior_overlap_max` | the overlap of prior and posterior draws of the model's media parameters (`PyMCModel.prior_overlap_vars`, forward-sampled at fit time; cheap) |

@@ -158,8 +158,19 @@ Fourier seasonality). Features without one - non-Normal likelihoods, coefficient
 KPI units, Weibull adstock, S-shaped curves, sign constraints - are listed as
 `IMPORT_UNSUPPORTED` warnings; models that cannot run (no single `exog` KPI, no media,
 names that do not match `row_ids`) are refused with `IMPORT_UNSUPPORTED`.
-`target: mmm.bayesinsight` keeps `model_def.json` verbatim for the planned dedicated plugin
-instead.
+
+`target: mmm.bayesinsight` imports for the dedicated built-in
+[`mmm.bayesinsight`](../reference/models.md#mmmbayesinsight-a-bayesinsight-model_defjson),
+which runs BayesInsight's model as `model_def.json` defines it: its likelihoods (Normal,
+log-normal, Poisson, negative binomial, zero-inflated), coefficient and intercept priors in
+the KPI's own units, Hill, linear and S-shaped curves before delayed, geometric or Weibull
+carry-over, enforced sign constraints, fixed and partially pooled effects per row id, Fourier
+seasons and local spline trends. Every row id becomes a panel dim of its own, variables keep
+their MFF names, and the draft is validated against the catalog like any other. What the
+plugin cannot run (an `MvNormal` likelihood, time transforms, unknown prior families) falls
+back to BayesInsight's default with an `IMPORT_UNSUPPORTED` warning; faithful but surprising
+behaviour (no likelihood means Poisson, random effects with `partial_pooling_sigma: 0` pool
+nothing) is an `info` issue.
 
 ## 3. Business priors and lift tests
 
