@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import hashlib
 import importlib.resources as resources
-import itertools
 import json
 import signal
 import subprocess
@@ -39,7 +38,13 @@ from mapi_spec.run import (
     verify_output_objects,
 )
 from mapi_spec.schema import DataSchema
-from runner_helpers import Result, assert_signed_stream, make_run, run_supervisor
+from runner_helpers import (
+    Result,
+    assert_progress_coalesced,
+    assert_signed_stream,
+    make_run,
+    run_supervisor,
+)
 from shimgcs import ShimGcs
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
@@ -159,9 +164,7 @@ def test_store_demand_csv_ingest_fit_and_forecast(gcs: ShimGcs) -> None:
     )
     phases = [e.payload["phase"] for e in fit.of("state")]
     assert phases[:3] == ["bootstrap", "load_inputs", "fit"] and phases[-2:] == ["upload", "done"]
-    progress = [e for e in fit.of("progress")]
-    gaps = [(b.ts - a.ts).total_seconds() for a, b in itertools.pairwise(progress)]
-    assert all(g >= 2.0 - 1e-3 for g in gaps), gaps  # coalesced to one per 2 s
+    assert_progress_coalesced(fit.of("progress"), 2.0)  # coalesced to one per 2 s
 
     # ---- score: 4-week forecast with a new store ------------------------------------
     future = xgb.payload_future(data, 0, "tiny").drop_vars("units_sold")
@@ -295,8 +298,7 @@ def test_e02_zarr_ingest_checkpointed_fit_sigterm_partial_resume_and_score(gcs: 
     _ok(second)
     progress = second.of("progress")
     assert progress, "sampling progress is streamed"
-    gaps = [(b.ts - a.ts).total_seconds() for a, b in itertools.pairwise(progress)]
-    assert all(g >= 2.0 - 1e-3 for g in gaps), gaps  # coalesced: at most one per 2 s
+    assert_progress_coalesced(progress, 2.0)  # coalesced: at most one per 2 s
     logs = [LogPayload.model_validate(e.payload).line for e in second.of("log")]
     assert any("resuming from a checkpoint" in line for line in logs), logs[-20:]
     tree = read_datatree_zip(second.output("bundle.zarr.zip"))

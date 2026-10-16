@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import base64
+import itertools
 import json
 import os
 import socket
 import struct
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -55,6 +57,7 @@ from mapi_spec.run import (
     verify_event,
 )
 from pydantic import BaseModel
+from runner_helpers import assert_progress_coalesced
 
 pytestmark = pytest.mark.unit
 
@@ -211,6 +214,50 @@ def test_progress_is_coalesced_to_one_per_interval() -> None:
     pc.offer(ProgressPayload(phase=RunnerPhase.SAMPLE, fraction=1.0))
     pc.flush()  # not due yet: dropped, never sent early
     assert len(sent) == 3 and pc.due_in() is None
+
+
+def test_coalesced_progress_check_tolerates_wall_clock_stamp_jitter() -> None:
+    """The coalescer spaces events on its monotonic clock; the emitter stamps ``ts`` from the
+    wall clock under a lock the log pump shares. A 30 ms lock wait on the first event makes
+    the stamped gap 1.97 s although the coalescer kept 2 s -- the chain tests must accept it
+    (they flaked on a 1 ms slack under ``-n 6``) yet still reject an uncoalesced stream."""
+    mono = _Clock()
+    wall = [datetime(2026, 1, 1, tzinfo=UTC)]
+    r, w = os.pipe()
+    stall = [timedelta(0)]
+    emitter = EventEmitter(
+        w,
+        run_id="run_x",
+        attempt=1,
+        key=b"k" * 32,
+        max_event_bytes=65536,
+        clock=lambda: wall[0] + stall[0],
+    )
+    waits = [timedelta(seconds=0.03)]  # the first emit waits 30 ms for the log pump's lock
+
+    def emit(p: BaseModel) -> int:
+        stall[0] = waits.pop() if waits else timedelta(0)
+        return emitter.emit(p)
+
+    pc = ProgressCoalescer(emit, 2.0, clock=mono)
+    for i in range(3):
+        pc.offer(ProgressPayload(phase=RunnerPhase.SAMPLE, fraction=i / 3))
+        mono.t += 2.0
+        wall[0] += timedelta(seconds=2.0)
+    events = [e for e in (decode_event_line(line) for line in _read_lines(r)) if e is not None]
+    os.close(r)
+    os.close(w)
+    assert len(events) == 3
+    gaps = [(b.ts - a.ts).total_seconds() for a, b in itertools.pairwise(events)]
+    assert min(gaps) < 2.0 - 1e-3  # the mechanism behind the flake
+    assert_progress_coalesced(events, 2.0)
+
+    burst = [
+        e.model_copy(update={"ts": events[0].ts + timedelta(seconds=0.05 * i)})
+        for i, e in enumerate(events)
+    ]
+    with pytest.raises(AssertionError):
+        assert_progress_coalesced(burst, 2.0)
 
 
 def test_log_gate_caps_lines_and_total() -> None:
