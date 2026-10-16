@@ -19,6 +19,9 @@ dependencies = [
   "pandas>=2.2",
   "pyarrow>=17",
   "xarray>=2025.1",
+  # M3.5: governance checks and explorer views (stat tests, STL, VIF) in the sandbox.
+  "scipy>=1.13",
+  "statsmodels>=0.14.4",
 ]
 
 [dependency-groups]

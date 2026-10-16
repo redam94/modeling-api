@@ -99,6 +99,9 @@ class RunKind(StrEnum):
     """M3.5: one sandbox node of a workflow (:class:`mapi_spec.workflow.WorkflowNodeJob`)."""
     EXPLORE = "explore"
     """M3.5: Data or Model Explorer views (:class:`mapi_spec.explore.ExploreJob`)."""
+    GOVERNANCE = "governance"
+    """M3.5: the governance checks of one model version in the sandbox
+    (:class:`mapi_spec.governance.GovernanceJob`; output ``governance.json``)."""
 
     @property
     def is_parent(self) -> bool:

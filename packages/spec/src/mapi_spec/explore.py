@@ -32,9 +32,14 @@ def _all_model_sections() -> list[ModelSection]:
     return list(get_args(ModelSection))
 
 
+def _comparison_only() -> list[ModelSection]:
+    return ["comparison"]
+
+
 __all__ = [
     "DataExploreRequest",
     "ExploreJob",
+    "ModelCompareRequest",
     "ModelExploreRequest",
 ]
 
@@ -111,6 +116,52 @@ class ModelExploreRequest(RequestModel):
         if len(set(self.sections)) != len(self.sections):
             raise ValueError("sections must be unique")
         return self
+
+
+class ModelCompareRequest(RequestModel):
+    """``POST /v1/models:compare``: several model versions of the project side by side.
+
+    Starts an ``explore`` run on the first version with the others as ``compare_with`` and
+    the ``comparison`` section (plus ``backtest`` when a split plan is given): a metrics
+    table, a ranking per metric and pairwise Diebold-Mariano tests on the shared holdout.
+    """
+
+    models: list[str] = Field(..., min_length=2, max_length=11, description="model:// refs")
+    sections: list[ModelSection] = Field(
+        default_factory=_comparison_only, min_length=1, max_length=11
+    )
+    backtest: SplitPlan | None = None
+    horizon: int | None = Field(None, ge=1, le=520)
+
+    model_config = dto_examples(
+        {
+            "models":["model://growth/sales-arimax@v3", "model://growth/sales-ets@v1"],
+            "sections": ["comparison", "params"],
+        }
+    )
+
+    @model_validator(mode="after")
+    def _refs(self) -> ModelCompareRequest:
+        from mapi_spec.refs import ModelVersionRef
+
+        for ref in self.models:
+            ModelVersionRef.parse(ref)
+        if len(set(self.models)) != len(self.models):
+            raise ValueError("compare each model version once")
+        if "comparison" not in self.sections:
+            raise ValueError("a comparison needs the comparison section")
+        if len(set(self.sections)) != len(self.sections):
+            raise ValueError("sections must be unique")
+        return self
+
+    def explore_request(self) -> ModelExploreRequest:
+        """The :class:`ModelExploreRequest` of the first version."""
+        return ModelExploreRequest(
+            sections=list(self.sections),
+            compare_with=list(self.models[1:]),
+            backtest=self.backtest,
+            horizon=self.horizon,
+        )
 
 
 class ExploreJob(StrictModel):

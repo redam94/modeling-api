@@ -703,6 +703,7 @@ validation status is not `validated` with `409 NOT_VALIDATED` (no override can p
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
 | `POST /v1/models/{model_id}/versions/{version}/explore` | Compute Model Explorer sections (an explore run) | `ModelExploreRequest` | `Exploration` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `EXPLORE_INVALID`, `CAPABILITY_UNSUPPORTED`, `QUOTA_EXCEEDED` |
+| `POST /v1/models:compare` | Compare several model versions side by side (an explore run: metrics, ranking, Diebold-Mariano tests) | `ModelCompareRequest` | `Exploration` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `EXPLORE_INVALID`, `QUOTA_EXCEEDED` |
 | `POST /v1/models/{model_id}/versions/{version}:optimize` | Optimise a budget across channels (Prefer: wait=N -> 200 if done, else 202) | `OptimizeRequest` | `Optimization` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `OPTIMIZE_INFEASIBLE`, `CAPABILITY_UNSUPPORTED`, `QUOTA_EXCEEDED` |
 | `GET /v1/optimizations/{run_id}` | An optimize run and, once done, its plan | — | `Optimization` | 200 | `NOT_FOUND` |
 
@@ -796,4 +797,4 @@ OpenAPI document and in `export_schemas()` as `api-<Name>.json`.
 | About cards (v0.5) | `About`, `CatalogAbout`, `ChooserQuestionnaire`, `ChooserResult`, `DatasetAbout`, `DatasetAboutUpdate` (`mapi_spec.about`) |
 | Workflows (v0.5) | `Workflow`, `WorkflowCreate`, `WorkflowUpdate`, `WorkflowRevision`, `WorkflowRevisionCreate`, `WorkflowValidateRequest`, `WorkflowValidation`, `WorkflowRun`, `WorkflowRunCreate`, `NodeRun`, `ScheduleCreate`, `ScheduleUpdate`, `WorkflowSchedule`, `TriggerCreate`, `WorkflowTrigger` (`mapi_spec.workflow`), `NodeImplementation` (`mapi_spec.workflow_nodes`), `WorkflowTemplate` (`mapi_spec.workflow_templates`) |
 | Governance (v0.5) | `GovernanceCheckDef`, `GovernancePolicy`, `GovernancePolicyCreate`, `GovernancePolicyUpdate`, `ValidationRequest`, `ValidationNote`, `ModelValidation`, `CheckResult`, `ApprovalCreate`, `EvidencePackRequest`, `EvidencePack` (`mapi_spec.governance`) |
-| Explorers and optimisation (v0.5) | `DataExploreRequest`, `ModelExploreRequest` (`mapi_spec.explore`), `Exploration`, `ExplorerIndex` (`mapi_spec.views`), `OptimizeRequest`, `OptimizeResult` (`mapi_spec.optimize`), `Optimization` |
+| Explorers and optimisation (v0.5) | `DataExploreRequest`, `ModelExploreRequest`, `ModelCompareRequest` (`mapi_spec.explore`), `Exploration`, `ExplorerIndex` (`mapi_spec.views`), `OptimizeRequest`, `OptimizeResult` (`mapi_spec.optimize`), `Optimization` |

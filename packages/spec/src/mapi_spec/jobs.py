@@ -30,6 +30,10 @@ explore    :class:`~mapi_spec.explore.ExploreJob`       ``dataset`` (+ ``schema`
                                                         ``compare.<k>``; output ``ui/explore/``
 optimize   :class:`~mapi_spec.optimize.OptimizeJob`     ``bundle``, ``bundle.manifest``; output
            (M3.5)                                       ``optimize.json``
+governance :class:`~mapi_spec.governance.Governance-    ``bundle``, ``bundle.manifest``,
+           Job` (M3.5)                                  ``dataset``, optional ``evaluation``
+                                                        (+ ``evaluation.manifest``); output
+                                                        ``governance.json``
 ========== ============================================ ======================================
 
 ``workflow`` runs are parents (the orchestrator walks the DAG) and never execute.
@@ -55,6 +59,7 @@ from mapi_spec.calibration import PRIOR_TRANSLATION_OUTPUT, PriorTranslationJob
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
 from mapi_spec.explore import ExploreJob
+from mapi_spec.governance import GOVERNANCE_OUTPUT, GovernanceJob
 from mapi_spec.ingest import MffOptions
 from mapi_spec.loader import parse_document
 from mapi_spec.optimize import OPTIMIZE_OUTPUT, OptimizeJob
@@ -69,13 +74,17 @@ __all__ = [
     "DESCRIBE_OUTPUT",
     "FIT_BUNDLE",
     "FIT_SIDECARS",
+    "GOVERNANCE_OUTPUT",
     "INGEST_COLUMNS",
     "INGEST_DATA",
     "INGEST_OPTIONAL",
     "INGEST_SCHEMA",
     "INPUT_BUNDLE",
     "INPUT_BUNDLE_MANIFEST",
+    "INPUT_COMPARE_PREFIX",
     "INPUT_DATASET",
+    "INPUT_EVALUATION",
+    "INPUT_EVALUATION_MANIFEST",
     "INPUT_HISTORY",
     "INPUT_PLOTS",
     "INPUT_SCENARIO",
@@ -94,6 +103,7 @@ __all__ = [
     "DescribeJob",
     "EvaluateJob",
     "ExploreJob",
+    "GovernanceJob",
     "IngestJob",
     "IngestSource",
     "Job",
@@ -120,6 +130,14 @@ INPUT_PLOTS: Final = "plots"
 INPUT_HISTORY: Final = "history"
 """Score input (M3): the model's fit dataset, from which a forecast extends the covariates
 its payload lacks (``ScoreRequest.future_covariates``: ``carry_last``, ``seasonal_naive``)."""
+INPUT_EVALUATION: Final = "evaluation"
+"""M3.5 (``governance``, ``explore``): the train-only evaluation bundle of an
+``evaluate_then_refit`` fit (``evaluation/bundle.zarr.zip``), which holdout benchmarks and
+backtests score with."""
+INPUT_EVALUATION_MANIFEST: Final = "evaluation.manifest"
+INPUT_COMPARE_PREFIX: Final = "compare."
+"""M3.5 (``explore``): ``compare.<k>`` (+ ``compare.<k>.manifest``) are the bundles of the
+other model versions in a comparison, in request order."""
 SIDE_TABLE_PREFIX: Final = "side."
 PLOT_DATA_INPUT_PREFIX: Final = "plotdata."
 """``render`` runs: a ``data_ref`` dataset whose ``path`` is ``plotdata.<n>`` is read from the
@@ -302,6 +320,7 @@ Job = (
     | WorkflowNodeJob
     | ExploreJob
     | OptimizeJob
+    | GovernanceJob
 )
 
 
@@ -394,6 +413,8 @@ def parse_job(kind: RunKind, spec: dict[str, Any]) -> Job:
             return ExploreJob.model_validate(spec)
         if kind is RunKind.OPTIMIZE:
             return OptimizeJob.model_validate(spec)
+        if kind is RunKind.GOVERNANCE:
+            return GovernanceJob.model_validate(spec)
     except (ValidationError, ValueError) as exc:
         raise _invalid(kind, exc) from None
     except MapiError:
