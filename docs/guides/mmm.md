@@ -273,15 +273,6 @@ spec's `calibration` block calibrate the adapter as they do the geo MMM; the bus
 are translated on pymc-marketing's own model (see
 [Guided modelling](guided-modelling.md#business-priors-for-mmmpymc_marketing)).
 
-## BayesInsight models
-
-`mmm.bayesinsight` fits a BayesInsight `model_def.json` as BayesInsight defines it -
-likelihoods, priors in KPI units, curves, carry-over, signs, effects per row id, seasons and
-local trends. Import a BayesInsight project with `"target": "mmm.bayesinsight"` (see
-[the import](guided-data.md#importing-for-mmmbayesinsight)); the
-[models reference](../reference/models.md#mmmbayesinsight-a-bayesinsight-model_defjson)
-documents every feature.
-
 ## Trust, but verify
 
 Both plugins pass the SDK contract kit (`mapi_sdk.testing.check_model`): bundle round

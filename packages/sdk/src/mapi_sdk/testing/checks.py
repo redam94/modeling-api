@@ -4,6 +4,10 @@
 without a sandbox and return a :class:`ContractReport` (raising
 :class:`ContractViolation` by default when any check fails). Each check is independent: one
 failure never hides the others.
+
+M3.5: both also check the item's plain-language About card (``about``): an incomplete card
+always fails; a missing one fails with ``require_about=True`` (what the catalog requires)
+and is skipped otherwise. :func:`check_about` checks cards on their own.
 """
 
 from __future__ import annotations
@@ -22,6 +26,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from jsonschema import Draft202012Validator
+from mapi_spec.about import About, about_issues
 from mapi_spec.capabilities import (
     REPRESENTATION_RULES,
     SCORE_MODES,
@@ -54,6 +59,7 @@ __all__ = [
     "ContractReport",
     "ContractViolation",
     "ModelFixture",
+    "check_about",
     "check_model",
     "check_step",
 ]
@@ -215,6 +221,57 @@ def _schema_metadata_problems(
     return problems
 
 
+def _about_check(about: About | None, require: bool) -> Callable[[], str | None]:
+    def run() -> str | None:
+        if about is None and not require:
+            raise _Skip(
+                "no About card: the catalog requires one (set `about`; see "
+                "docs/concepts/about-and-choosing.md)"
+            )
+        problems = about_issues(about)
+        if problems:
+            raise AssertionError("; ".join(problems))
+        assert about is not None
+        return f"About card {about.title!r} is complete"
+
+    return run
+
+
+def check_about(
+    *items: Any, known_ids: Sequence[str] | None = None, raise_on_failure: bool = True
+) -> ContractReport:
+    """Check that every item has a complete About card (the catalog rule).
+
+    Items are step or model classes (or instances), catalog entries or manifests;
+    ``known_ids`` additionally checks that ``related`` ids name known items.
+    """
+    report = ContractReport("about cards")
+    for item in items:
+        about: About | None
+        if isinstance(item, type) and issubclass(item, Step):
+            about, name = item.about_card(), item.ref()
+        elif isinstance(item, Step):
+            about, name = type(item).about_card(), type(item).ref()
+        elif hasattr(item, "manifest") and callable(item.manifest):
+            m = item.manifest()
+            about, name = m.about, f"{m.id}@{m.version}"
+        elif hasattr(item, "manifest"):
+            about, name = item.manifest.about, item.ref
+        else:
+            about, name = getattr(item, "about", None), str(getattr(item, "ref", item))
+
+        def run(about: About | None = about) -> str | None:
+            problems = about_issues(about, known_ids=known_ids)
+            if problems:
+                raise AssertionError("; ".join(problems))
+            return None
+
+        _run(report, f"about:{name}", run)
+    if raise_on_failure:
+        report.raise_for_failures()
+    return report
+
+
 def check_step(
     step: type[Step[Any, Any]] | Step[Any, Any],
     ds: xr.Dataset,
@@ -224,6 +281,7 @@ def check_step(
     side_tables: Mapping[str, xr.Dataset] | None = None,
     holdout: int = 2,
     raise_on_failure: bool = True,
+    require_about: bool = False,
 ) -> ContractReport:
     """Run the step contract checks on ``ds`` (the step's input) with ``settings``.
 
@@ -442,6 +500,7 @@ def check_step(
         return f"policies {done} behave on a new level of {dim!r}"
 
     _run(report, "catalog_entry", catalog)
+    _run(report, "about", _about_check(type(inst).about_card(), require_about))
     _run(report, "fit_deterministic", fit_deterministic)
     _run(report, "transform_pure_and_deterministic", transform_pure)
     _run(report, "transform_equals_fit_output", matches_fit_output)
@@ -517,6 +576,7 @@ def check_model(
     *,
     raise_on_failure: bool = True,
     checks: Sequence[str] | None = None,
+    require_about: bool = False,
 ) -> ContractReport:
     """Run the model contract checks: fit, bundle round trip, coordinate handling, typed
     errors for every dim policy (unseen levels; gaps and out-of-range coords on datetime and
@@ -1143,6 +1203,7 @@ def check_model(
 
     all_checks: list[tuple[str, Callable[[], str | None]]] = [
         ("manifest", c_manifest),
+        ("about", _about_check(manifest.about, require_about)),
         ("fit", c_fit),
         ("bundle_roundtrip_no_pickle", c_roundtrip),
         ("shuffled_scoring", c_shuffled),
@@ -1167,7 +1228,7 @@ def check_model(
         if checks is not None and name not in checks:
             continue
         fit_failed = any(r.name == "fit" and not r.passed for r in report.results)
-        if name not in ("manifest", "fit") and fit_failed:
+        if name not in ("manifest", "about", "fit") and fit_failed:
             report.results.append(CheckResult(name, True, "fit failed", skipped=True))
             continue
         _run(report, name, fn)

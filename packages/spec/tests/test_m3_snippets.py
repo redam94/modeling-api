@@ -95,10 +95,9 @@ def test_python_carries_the_exact_payload() -> None:
     assert ast.literal_eval(client.args[0]) == "https://api.mapi.example"
 
 
-def test_atlas_is_valid_python() -> None:
-    tree = ast.parse(render_snippet("atlas", HOSTILE_CTX).code)
-    model = _call(tree, "RemoteModel")
-    assert ast.literal_eval(model.keywords[0].value) == "geo-mmm-prod"
+def test_the_atlas_snippet_language_was_removed() -> None:
+    with pytest.raises(ValueError):
+        render_snippet("atlas", HOSTILE_CTX)
 
 
 def test_notebook_carries_the_exact_payload() -> None:

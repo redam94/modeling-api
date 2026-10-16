@@ -1,7 +1,7 @@
 [project]
 name = "mapi-plugin-mmm"
 version = "0.4.0"
-description = "Marketing-mix model plugins (hierarchical geo MMM, pymc-marketing adapter, BayesInsight)"
+description = "Marketing-mix model plugins (hierarchical geo MMM, pymc-marketing adapter)"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"

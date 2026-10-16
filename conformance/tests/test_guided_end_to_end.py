@@ -2,13 +2,12 @@
 sandboxed ingest writes them) → role detection → a draft → ingest with the draft's mapping
 → static validation against the real catalog → a fit.
 
-One synthetic table per template, the BayesInsight import on a slice of the BayesInsight
-example data, and fits for the choice model, the imported geo MMM and the dedicated
-mmm.bayesinsight import (tiny settings)."""
+One synthetic table per template and a fit for the choice model (tiny settings). Templates
+whose model is a v0.5 plugin not installed here (``mapi_spec.abouts.PLANNED_MODEL_IDS``) are
+skipped until that plugin lands."""
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -23,23 +22,19 @@ from mapi_runner.worker.tabular import IngestLimits, column_profiles, read_table
 from mapi_sdk.harness import fit_spec
 from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.schema import validate_dataset
-from mapi_spec.bayesinsight import import_bayesinsight
+from mapi_spec.abouts import PLANNED_MODEL_IDS
 from mapi_spec.guided import (
     GUIDED_TEMPLATES,
-    BayesInsightImport,
     GuidedAnswers,
     build_draft,
     suggest_roles,
 )
-from mapi_spec.ingest import BayesInsightMetadata, BayesInsightModelDef
 from mapi_spec.spec import ModelSpec
 from mapi_spec.validate import validate_spec
 
 pytestmark = [pytest.mark.conformance, pytest.mark.slow]
 
 ROOT = Path(__file__).resolve().parents[2]
-BI_FIXTURES = ROOT / "packages" / "spec" / "tests" / "fixtures" / "bayesinsight"
-BI_MFF = ROOT / "packages" / "runner" / "tests" / "fixtures" / "bayesinsight_mff.csv"
 
 
 @pytest.fixture(scope="module")
@@ -125,6 +120,12 @@ def _draft_and_ingest(template_id: str, tmp_path: Path, registry: Registry) -> t
 
 @pytest.mark.parametrize("template_id", sorted(TABLES))
 def test_a_table_becomes_a_valid_spec(template_id: str, tmp_path: Path, registry: Registry) -> None:
+    plugin = GUIDED_TEMPLATES[template_id].plugin
+    if (
+        plugin.split("@")[0] in PLANNED_MODEL_IDS
+        and registry.catalog().resolve_model(plugin) is None
+    ):
+        pytest.skip(f"{plugin} is a v0.5 plugin that is not installed here")
     _draft_and_ingest(template_id, tmp_path, registry)
 
 
@@ -141,67 +142,3 @@ def test_the_choice_draft_fits(tmp_path: Path, registry: Registry) -> None:
     card = fit_scorecard(bundle, ds)
     [item] = card.items
     assert item.check == "holdout.hit_rate" and item.message_plain
-
-
-def test_the_imported_bayesinsight_model_fits(registry: Registry) -> None:
-    md = json.loads((BI_FIXTURES / "complex_model_def.json").read_text())
-    extra = dict(md["variable_details"][2], variable_name="media_var_1_Total_Total_Total")
-    md["variable_details"].append(extra)
-    meta = json.loads((BI_FIXTURES / "complex_metadata.json").read_text())
-    req = BayesInsightImport(
-        name="bi",
-        dataset="bi",
-        model_def=BayesInsightModelDef.model_validate(md),
-        metadata=BayesInsightMetadata.model_validate(meta),
-    )
-    draft = import_bayesinsight(req, project="p")
-    ds, schema, _ = build_dataset(BI_MFF, IngestJob(mapping=draft.mapping))
-    spec = ModelSpec.model_validate(draft.spec)
-    result = validate_spec(spec, registry.catalog(), schema)
-    assert result.ok, [(i.pointer, i.message) for i in result.errors]
-    # BayesInsight's example media are standardised noise: make them spend-like to fit
-    ds["spend"] = abs(ds["spend"])
-    ds["stock"] = ds["stock"] + 1.0
-    doc = spec.model_dump(mode="json", by_alias=True, exclude_defaults=True)
-    doc["model"]["fit"] = {"mode": "train_only", "tune": 30, "draws": 30, "chains": 1,
-                           "seed": 1, "engine": "pymc"}  # fmt: skip
-    bundle = fit_spec(ModelSpec.model_validate(doc), ds, registry=registry, raw_schema=schema)
-    post = bundle.model.posterior
-    assert post["alpha"].sizes["channel"] == 2  # delayed adstock per channel, as imported
-    assert "half" in post and "slope" in post  # Hill saturation
-
-
-def test_the_dedicated_bayesinsight_plugin_fits_the_import(registry: Registry) -> None:
-    """``target: mmm.bayesinsight``: BayesInsight's own model (here a Poisson KPI with
-    random effects per geography and product) runs as model_def.json defines it."""
-    md = json.loads((BI_FIXTURES / "complex_model_def.json").read_text())
-    extra = dict(md["variable_details"][2], variable_name="media_var_1_Total_Total_Total",
-                 adstock="weibull", media_transform="sshaped")  # fmt: skip
-    md["variable_details"].append(extra)
-    meta = json.loads((BI_FIXTURES / "complex_metadata.json").read_text())
-    req = BayesInsightImport(
-        name="bi",
-        dataset="bi",
-        model_def=BayesInsightModelDef.model_validate(md),
-        metadata=BayesInsightMetadata.model_validate(meta),
-        target="mmm.bayesinsight",
-    )
-    draft = import_bayesinsight(req, project="p")
-    assert not [i for i in draft.issues if i.severity.value == "error"]
-    ds, schema, _ = build_dataset(BI_MFF, IngestJob(mapping=draft.mapping))
-    assert set(ds.dims) == {"date", "geo", "product"}  # every row id is a panel dim
-    spec = ModelSpec.model_validate(draft.spec)
-    result = validate_spec(spec, registry.catalog(), schema)
-    assert result.ok, [(i.pointer, i.message) for i in result.errors]
-    for name in ("media_var_0", "media_var_1"):  # standardised noise: make it spend-like
-        ds[name] = abs(ds[name])
-    doc = spec.model_dump(mode="json", by_alias=True, exclude_defaults=True)
-    doc["model"]["fit"] = {"mode": "evaluate_then_refit", "tune": 30, "draws": 30,
-                           "chains": 2, "seed": 1, "engine": "pymc"}  # fmt: skip
-    bundle = fit_spec(ModelSpec.model_validate(doc), ds, registry=registry, raw_schema=schema)
-    post = bundle.model.posterior
-    assert post["intercept__coef_z"].sizes == {"chain": 2, "draw": 30, "geo": 2, "product": 2}
-    assert "media_var_1__w_lam" in post and "media_var_1__s_alpha" in post
-    assert bundle.metrics.values.get("mape") is not None
-    card = fit_scorecard(bundle, ds)
-    assert {i.check for i in card.items} >= {"convergence.rhat", "holdout.mape", "data.history"}

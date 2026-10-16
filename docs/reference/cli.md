@@ -50,7 +50,7 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
 | `tokens` (v0.3) | `list`, `create`, `get`, `revoke` |
 | `usage` (v0.3) | `get` (the project), `tenant` |
 | `admin` (v0.3, operators) | `tenants`, `tenant`, `create_tenant`, `update_tenant`, `quotas`, `set_quota`, `delete_quota`, `kill_switches`, `set_kill_switches`, `executors`, `executor`, `audit`; v0.4: `signups`, `review_signup`, `set_verification`, `retry_deletion` |
-| `guided` (v0.4) | `templates`, `template`, `detect_roles`, `draft`, `import_bayesinsight`, `compile`, `translate_priors`, `prior_translation`, `wait_prior_translation`, `preview_priors` |
+| `guided` (v0.4) | `templates`, `template`, `detect_roles`, `draft`, `compile`, `translate_priors`, `prior_translation`, `wait_prior_translation`, `preview_priors` |
 | `endpoints` (v0.4) | `list`, `get`, `promote`, `delete`, `history`, `rollback`, `schema`, `validate`, `submit`, `score`, `snippets` |
 | `webhooks` (v0.4) | `list`, `create`, `get`, `update`, `delete`, `rotate_secret`, `deliveries`, `replay` |
 | `plots` sharing (v0.4) | `save`, `saved`, `get_saved`, `delete_saved`, `render`, `render_status`, `render_output`, `download_render`, `create_embed`, `embeds`, `revoke_embed`, `embed` |

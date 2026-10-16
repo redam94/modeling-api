@@ -29,8 +29,8 @@ timeline
       customer choice), a question flow with role detection, drafts with "View as YAML", the
       persona lock ([tutorial](../guides/guided-tutorial.md))
 - [x] **Sandboxed ingest** of CSV, Parquet, MFF and Meridian-shaped tables with plain-language
-      refusals; the **BayesInsight** import and the `mmm.bayesinsight` model
-      ([import tutorial](../tutorials/bayesinsight-import.md))
+      refusals; the **BayesInsight** import and the `mmm.bayesinsight` model (removed in
+      v0.5: mmm-framework is the only MMM engine)
 - [x] **Business priors** as ROI or share ranges, translated in a sandbox with a
       prior-predictive preview, and **lift tests** as calibration
       ([Guided modelling](../guides/guided-modelling.md))

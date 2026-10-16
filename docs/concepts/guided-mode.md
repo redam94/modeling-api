@@ -12,7 +12,7 @@ and the client share. The endpoints are listed in the
 
 !!! info "Status"
     The server and the runner serve every contract on this page: the data path (templates,
-    role detection, drafts, the sandboxed ingest presets, the BayesInsight import and the
+    role detection, drafts, the sandboxed ingest presets and the
     persona lock, walked through in
     [From a spreadsheet to a Guided draft](../guides/guided-data.md)) and the modelling path
     (business priors, lift tests, the scorecard, the what-if grids and the forecast and
@@ -130,11 +130,10 @@ Uploads are parsed only in a sandboxed ingest run. Besides an explicit column ma
 | `csv`, `parquet` | A column mapping: `dims`, `vars` and, for wide tables, `wide` (`WideVarMapping`: one variable from one column per label) |
 | `mff` (format or preset) | The MFF long table below |
 | `meridian` | Google Meridian's `CoordToColumns` wide table (`MeridianColumns`): `time`, `geo`, `kpi`, `controls`, and parallel `media`/`media_spend` (and reach/frequency) lists per channel |
-| `bayesinsight` | An MFF table plus BayesInsight's `metadata.json` (`BayesInsightMetadata`) |
 | `zarr_zip`, `netcdf` | Self-describing labelled datasets |
 
 The **MFF** ("model feature format") long table has one row per period, key combination and
-variable - the columns BayesInsight uses (`mapi_spec.ingest.MFF_COLUMNS`):
+variable - the MFF convention mmm-framework uses too (`mapi_spec.ingest.MFF_COLUMNS`):
 
 | Column | Meaning |
 |---|---|
@@ -144,36 +143,9 @@ variable - the columns BayesInsight uses (`mapi_spec.ingest.MFF_COLUMNS`):
 | `VariableValue` | The value |
 
 MFF tables can also be pivoted and then mapped like a CSV (the variables become columns),
-`MffOptions.combine` joins key columns into one dim, and the BayesInsight preset keeps only
-what `metadata.json` allows. The ingest enforces caps on rows, columns, cell length and
+and `MffOptions.combine` joins key columns into one dim. The ingest enforces caps on rows, columns, cell length and
 decompression and explains every refusal; see
 [File formats and presets](../guides/guided-data.md#file-formats-and-presets).
-
-### BayesInsight models
-
-A BayesInsight project imports as a draft (`POST /v1/guided/import/bayesinsight`,
-`mapi_spec.bayesinsight.import_bayesinsight`) for the built-in geo MMM
-`mmm.hierarchical_geo` (Q8): the data with the `bayesinsight` preset - media variables
-gathered into `spend` along `channel`, the `row_ids` key columns joined into one `geo` dim -
-and a spec that carries every feature with an equivalent (delayed or geometric adstock and
-its Beta/Exponential priors per channel, Hill saturation, pooling, standardised controls,
-Fourier seasonality). Features without one - non-Normal likelihoods, coefficient priors in
-KPI units, Weibull adstock, S-shaped curves, sign constraints - are listed as
-`IMPORT_UNSUPPORTED` warnings; models that cannot run (no single `exog` KPI, no media,
-names that do not match `row_ids`) are refused with `IMPORT_UNSUPPORTED`.
-
-`target: mmm.bayesinsight` imports for the dedicated built-in
-[`mmm.bayesinsight`](../reference/models.md#mmmbayesinsight-a-bayesinsight-model_defjson),
-which runs BayesInsight's model as `model_def.json` defines it: its likelihoods (Normal,
-log-normal, Poisson, negative binomial, zero-inflated), coefficient and intercept priors in
-the KPI's own units, Hill, linear and S-shaped curves before delayed, geometric or Weibull
-carry-over, enforced sign constraints, fixed and partially pooled effects per row id, Fourier
-seasons and local spline trends. Every row id becomes a panel dim of its own, variables keep
-their MFF names, and the draft is validated against the catalog like any other. What the
-plugin cannot run (an `MvNormal` likelihood, time transforms, unknown prior families) falls
-back to BayesInsight's default with an `IMPORT_UNSUPPORTED` warning; faithful but surprising
-behaviour (no likelihood means Poisson, random effects with `partial_pooling_sigma: 0` pool
-nothing) is an `info` issue.
 
 ## 3. Business priors and lift tests
 

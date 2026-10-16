@@ -181,9 +181,7 @@ def _catalog_with_calibration(catalog: Catalog, kinds: list[str]) -> Catalog:
 
     def walk(node: Any) -> None:
         if isinstance(node, dict):
-            if node.get("id") == "mmm.hierarchical_geo" and isinstance(
-                node.get("capabilities"), dict
-            ):
+            if node.get("id") == "mmm.bayesian" and isinstance(node.get("capabilities"), dict):
                 node["capabilities"]["calibration"] = kinds
             for v in node.values():
                 walk(v)

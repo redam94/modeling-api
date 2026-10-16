@@ -21,6 +21,7 @@ if TYPE_CHECKING:
         ContractReport,
         ContractViolation,
         ModelFixture,
+        check_about,
         check_model,
         check_step,
     )
@@ -31,6 +32,7 @@ _LAZY: dict[str, tuple[str, str | None]] = {
     "ContractReport": ("mapi_sdk.testing.checks", "ContractReport"),
     "ContractViolation": ("mapi_sdk.testing.checks", "ContractViolation"),
     "ModelFixture": ("mapi_sdk.testing.checks", "ModelFixture"),
+    "check_about": ("mapi_sdk.testing.checks", "check_about"),
     "check_model": ("mapi_sdk.testing.checks", "check_model"),
     "check_step": ("mapi_sdk.testing.checks", "check_step"),
     "panel_dataset": ("mapi_sdk.testing.toy", "panel_dataset"),
@@ -54,6 +56,7 @@ __all__ = [
     "ContractReport",
     "ContractViolation",
     "ModelFixture",
+    "check_about",
     "check_model",
     "check_step",
     "panel_dataset",

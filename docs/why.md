@@ -56,8 +56,6 @@ scenario tools for analysts, versioning and access control are up to you.
   business priors translated into its own `model_config` ([MMM guide](guides/mmm.md)).
 - Meridian-shaped tables (`time`, `geo`, `kpi`, `<channel>_spend`) are recognised by the
   ingest; the Meridian model itself is not shipped (it needs TensorFlow).
-- BayesInsight's `model_def.json` runs as a built-in model or maps onto the geo MMM
-  ([import tutorial](tutorials/bayesinsight-import.md)).
 - Robyn (R) is not supported.
 
 **Managed MMM services** typically bundle data collection from ad platforms, a methodology,
@@ -69,7 +67,7 @@ platform, and connect the result to your own tools.
 | | Typical managed MMM service | Open-source MMM library | modeling-api |
 |---|---|---|---|
 | Data collection from ad platforms | Often included | No | No: upload CSV, Parquet, MFF or Meridian-shaped tables |
-| The model | The vendor's | Yours, in code | A built-in hierarchical geo MMM, the PyMC-Marketing adapter, BayesInsight's model, or your own plugin |
+| The model | The vendor's | Yours, in code | A built-in hierarchical geo MMM, the PyMC-Marketing adapter, or your own plugin |
 | Priors and calibration | Varies, often hidden | Yours, in code | Business priors as ROI or share ranges, lift tests, all visible in the spec |
 | Analyst scenarios | Dashboards | You build them | What-if sliders with joint uncertainty, "Run exact", forecasts and counterfactuals |
 | Budget optimisation | Usually included | Library functions | Atlas against an endpoint today; an in-sandbox `optimize` job in v0.5 |

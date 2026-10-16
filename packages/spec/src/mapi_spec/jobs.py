@@ -23,7 +23,16 @@ derive     :class:`DeriveJob`                           ``bundle``, ``dataset``,
 render     :class:`RenderJob`                           ``plots`` (a ``plots.json``)
 translate_ :class:`~mapi_spec.calibration.Prior-         ``dataset``, optional ``schema``,
 priors     TranslationJob` (M3)                         ``side.<name>``; output ``priors.json``
+workflow_  :class:`~mapi_spec.workflow.WorkflowNode-    ``in.<port>.<k>`` (each bound input);
+node       Job` (M3.5)                                  output ``node_result.json``
+explore    :class:`~mapi_spec.explore.ExploreJob`       ``dataset`` (+ ``schema``) or
+           (M3.5)                                       ``bundle``, ``bundle.manifest``,
+                                                        ``compare.<k>``; output ``ui/explore/``
+optimize   :class:`~mapi_spec.optimize.OptimizeJob`     ``bundle``, ``bundle.manifest``; output
+           (M3.5)                                       ``optimize.json``
 ========== ============================================ ======================================
+
+``workflow`` runs are parents (the orchestrator walks the DAG) and never execute.
 
 Datasets are single-object ``*.zarr.zip`` files. A dataset's raw schema comes from the
 ``schema`` input, else the zarr root attribute ``mapi_schema`` (written by ingest), else it is
@@ -45,10 +54,13 @@ from mapi_spec.api import IngestMapping
 from mapi_spec.calibration import PRIOR_TRANSLATION_OUTPUT, PriorTranslationJob
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
+from mapi_spec.explore import ExploreJob
 from mapi_spec.ingest import MffOptions
 from mapi_spec.loader import parse_document
+from mapi_spec.optimize import OPTIMIZE_OUTPUT, OptimizeJob
 from mapi_spec.run import INPUT_BUNDLE, INPUT_DATASET
 from mapi_spec.spec import ModelSpec, ScoreRequest
+from mapi_spec.workflow import NODE_RESULT_OUTPUT, WorkflowNodeJob
 
 __all__ = [
     "BUNDLE_MANIFEST_OUTPUT",
@@ -70,6 +82,8 @@ __all__ = [
     "INPUT_SCHEMA",
     "INPUT_UPLOAD",
     "MAX_PLOT_DATA_INPUTS",
+    "NODE_RESULT_OUTPUT",
+    "OPTIMIZE_OUTPUT",
     "PLOT_DATA_INPUT_PREFIX",
     "PRIOR_TRANSLATION_OUTPUT",
     "RENDER_OUTPUT_PREFIX",
@@ -79,14 +93,17 @@ __all__ = [
     "DeriveJob",
     "DescribeJob",
     "EvaluateJob",
+    "ExploreJob",
     "IngestJob",
     "IngestSource",
     "Job",
     "MetricsSidecar",
     "MffOptions",
+    "OptimizeJob",
     "PriorTranslationJob",
     "RenderJob",
     "ScoreJob",
+    "WorkflowNodeJob",
     "parse_job",
     "parse_model_job_params",
     "plot_data_input",
@@ -181,8 +198,8 @@ class IngestSource(StrictModel):
 class IngestJob(StrictModel):
     """An ingest run: an explicit column mapping, or the MFF preset.
 
-    From M3 the mapping itself may name a preset (``mapping.preset``: ``mff``,
-    ``meridian`` or ``bayesinsight``, with its options in the mapping); the top-level
+    From M3 the mapping itself may name a preset (``mapping.preset``: ``mff`` or
+    ``meridian``, with its options in the mapping); the top-level
     ``preset``/``mff`` pair stays for v0.2 callers.
     """
 
@@ -282,6 +299,9 @@ Job = (
     | DeriveJob
     | RenderJob
     | PriorTranslationJob
+    | WorkflowNodeJob
+    | ExploreJob
+    | OptimizeJob
 )
 
 
@@ -368,10 +388,16 @@ def parse_job(kind: RunKind, spec: dict[str, Any]) -> Job:
             if not isinstance(doc, ModelSpec):
                 raise ValueError("expected a ModelSpec document")
             return job
+        if kind is RunKind.WORKFLOW_NODE:
+            return WorkflowNodeJob.model_validate(spec)
+        if kind is RunKind.EXPLORE:
+            return ExploreJob.model_validate(spec)
+        if kind is RunKind.OPTIMIZE:
+            return OptimizeJob.model_validate(spec)
     except (ValidationError, ValueError) as exc:
         raise _invalid(kind, exc) from None
     except MapiError:
         raise
     raise NotImplementedError(
-        f"the runner does not execute {kind.value!r} runs yet (optimize is M4)"
+        f"{kind.value!r} runs are fan-out parents: the orchestrator runs their children"
     )

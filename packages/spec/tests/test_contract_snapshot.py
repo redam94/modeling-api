@@ -29,7 +29,7 @@ def _digests() -> dict[str, str]:
 
 
 def test_contract_version_is_pinned_in_every_exported_schema() -> None:
-    assert CONTRACT_VERSION == "0.1"
+    assert CONTRACT_VERSION == "0.2"
     for name, schema in export_schemas().items():
         assert schema["x-mapi-contract-version"] == CONTRACT_VERSION, name
 

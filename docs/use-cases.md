@@ -10,7 +10,7 @@ share the platform: sandboxed runs, the scorecard, endpoints, snippets, webhooks
 
 | Use case | Guided template | Model | The question it answers |
 |---|---|---|---|
-| [Budget planning](#marketing-mix-budget-planning-with-atlas) | Geo marketing mix | `mmm.hierarchical_geo` (or `mmm.pymc_marketing`, `mmm.bayesinsight`) | What does each channel bring in, and where should the next euro go? |
+| [Budget planning](#marketing-mix-budget-planning-with-atlas) | Geo marketing mix | `mmm.hierarchical_geo` (or `mmm.pymc_marketing`) | What does each channel bring in, and where should the next euro go? |
 | [Weekly forecasting](#weekly-forecasting) | Weekly forecast | `ts.hsgp_trend` | What will this series do over the next weeks, and how sure are we? |
 | [Store demand](#demand-by-store) | Demand by store | `tabular.regressor` (xgboost, quantiles) | How much will each store sell, including a store that opens next month? |
 | [Customer choice](#customer-choice) | Customer choice | `choice.multinomial_logit` | Which product does a shopper pick, and how does a price change shift that? |
@@ -23,7 +23,7 @@ be split?
 
 **The data.** One row per week and market: revenue, spend per channel, and optional controls
 such as price or distribution. Two years of weekly data is a good start. MFF long tables
-(BayesInsight), Meridian-shaped tables and BayesInsight projects are recognised directly.
+and Meridian-shaped tables are recognised directly.
 
 **What you get.**
 
@@ -41,7 +41,6 @@ such as price or distribution. Two years of weekly data is a good start. MFF lon
 [Your first MMM in Guided mode](guides/guided-tutorial.md) →
 [Priors, lift tests and the scorecard](guides/guided-modelling.md) →
 [Optimise a budget with Atlas](guides/atlas.md).
-Coming from BayesInsight: [import a BayesInsight model](tutorials/bayesinsight-import.md).
 Writing your own MMM: [the marketing-mix guide](guides/mmm.md).
 
 ## Weekly forecasting

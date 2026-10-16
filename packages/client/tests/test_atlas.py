@@ -19,7 +19,6 @@ import xarray as xr
 from mapi_client import Client, ClientConfig
 from mapi_client.atlas import RemoteModel, register_with_atlas
 from mapi_spec.errors import ErrorCode, MapiError
-from mapi_spec.snippets import SnippetContext, render_snippet
 
 BASE = "http://api.test"
 CHANNELS = ("tv", "search", "social")
@@ -359,21 +358,6 @@ def test_an_optimizer_finds_the_optimum_through_the_endpoint(
     assert ep.score_calls == model.cache_info().requests
     assert ep.score_calls <= result.convergence_info["iterations"] + 3
     assert optimizer.evaluations >= 7 * ep.score_calls - 7
-
-
-def test_the_atlas_snippet_builds_a_remote_model(api: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    # constructing the model sends nothing: the schema is fetched on first use
-    ctx = SnippetContext(
-        base_url="https://api.example.com", project="acme/growth", alias="plan-prod"
-    )
-    code = render_snippet("atlas", ctx).code
-    monkeypatch.setenv("MAPI_TOKEN", "test-token")
-    scope: dict[str, Any] = {}
-    exec(compile(code, "<atlas snippet>", "exec"), scope)
-    model = scope["model"]
-    assert isinstance(model, RemoteModel) and model.endpoint == "plan-prod"
-    assert model.client.project == "acme/growth"
-    scope["api"].close()
 
 
 @pytest.mark.skipif(importlib.util.find_spec("atlas") is None, reason="Atlas is not installed")

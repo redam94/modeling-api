@@ -18,7 +18,6 @@ import httpx
 from mapi_spec.api import (
     MAX_PREFER_WAIT_SECONDS,
     ArtifactLink,
-    BayesInsightImport,
     DetectRolesRequest,
     EmailVerify,
     EmbedView,
@@ -221,10 +220,6 @@ class Guided(_Resource):
         )
         base.update(fields)
         return self._c.send(m3.create_guided_draft(GuidedAnswers.model_validate(base)))
-
-    def import_bayesinsight(self, body: BayesInsightImport | Mapping[str, Any]) -> GuidedDraft:
-        """A BayesInsight ``model_def.json`` project as a geo-MMM draft."""
-        return self._c.send(m3.import_bayesinsight(as_model(BayesInsightImport, body)))
 
     def compile(self, request: GuidedCompile | Mapping[str, Any]) -> ScoreRequest:
         """The ``ScoreRequest`` a what-if scenario, forecast or preset stands for."""

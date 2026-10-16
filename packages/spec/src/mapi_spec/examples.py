@@ -54,7 +54,7 @@ pipeline:
   - {id: hols,        use: core.holidays@^1,   with: {table: holidays, along: time}}
 
 model:
-  use: mmm.hierarchical_geo@^1.3
+  use: mmm.bayesian@^1.3
   settings:
     pooling: partial
     centred: false

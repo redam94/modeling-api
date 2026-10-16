@@ -18,6 +18,7 @@ from jsonschema.exceptions import SchemaError
 from pydantic import Field, JsonValue, field_validator, model_validator
 
 from mapi_spec._types import MetricName, Name, SortedFrozenSet, StrictModel
+from mapi_spec.about import About
 from mapi_spec.refs import UseRef, Version
 from mapi_spec.resources import ResourceClass
 from mapi_spec.schema import DataSchema, DataSchemaTemplate
@@ -314,6 +315,19 @@ class ModelManifest(StrictModel):
     resources: ResourceHint = Field(default_factory=ResourceHint)
     artifact_format: str = Field("zarr.zip/v1", max_length=64)
     description: str | None = Field(None, max_length=4000)
+    about: About | None = Field(
+        None,
+        description="M3.5: the plain-language About card (required by the catalog rule and "
+        "the contract kit; optional here so older manifests still parse)",
+        exclude_if=lambda v: v is None,
+    )
+    family: str | None = Field(
+        None,
+        pattern=r"^[a-z][a-z0-9_]{0,31}$",
+        description="M3.5: the model family governance policies match (mmm, forecast, "
+        "ts_multivariate, tabular, choice, regime); default: the id's namespace",
+        exclude_if=lambda v: v is None,
+    )
 
     @field_validator("id")
     @classmethod
@@ -350,6 +364,11 @@ class ModelManifest(StrictModel):
 
     def derived_names(self) -> set[str]:
         return {d.name for d in self.derived}
+
+    @property
+    def model_family(self) -> str:
+        """``family`` or, when unset, the id's namespace (``ts.sarimax`` -> ``ts``)."""
+        return self.family or self.id.split(".", 1)[0]
 
 
 # ----------------------------------------------------------------------- output selection

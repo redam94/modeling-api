@@ -508,4 +508,5 @@ def test_run_kind_parents() -> None:
         RunKind.BACKTEST,
         RunKind.SBC,
         RunKind.CAMPAIGN,
+        RunKind.WORKFLOW,  # M3.5: the orchestrator walks the DAG
     }

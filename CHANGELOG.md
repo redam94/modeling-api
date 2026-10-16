@@ -5,6 +5,61 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Added
+- **spec**: the M3.5 contracts for workflows, governance, explorers, budget optimisation and
+  About cards, shared by the server, runner, plugin, web and client components. The contract
+  version is now `0.2` (the removals below are breaking).
+  - `mapi_spec.about` and `mapi_spec.abouts`: the plain-language `About` card (summary, use
+    and avoid when, data needs, assumptions, outputs, difficulty, typical runtime, example,
+    related items, expert notes) on model manifests, step, split and plot catalog entries,
+    guided and workflow templates, workflow node kinds and implementations, governance checks,
+    and `DatasetAbout` for datasets (the owner's description plus a summary generated from the
+    schema); the catalog rule (`ABOUT_INCOMPLETE`) and cards for every built-in step, split,
+    model (including the mmm-framework and statsmodels ids of v0.5) and template; the
+    "Help me choose" questions and the deterministic `recommend` ranking.
+  - `mapi_spec.workflow`, `.workflow_nodes`, `.workflow_templates`: versioned `WorkflowSpec`
+    DAGs of typed nodes (test, transform, branch, split, search, model, evaluate, compare,
+    select, governance, report, subworkflow) with typed ports, parameters, alternatives and
+    branch gating; static validation with JSON pointers (types, references, parameters,
+    cycles, unreachable nodes); the node catalog (51 implementations with parameter schemas,
+    result fields and About cards); runs, node runs, branch decisions, cache keys, cron
+    schedules, dataset triggers and events; four gallery templates including the canonical
+    readiness-to-ARIMAX workflow.
+  - `mapi_spec.expr`: the safe condition language of branches (a hand-written parser and an
+    evaluator over JSON with hard limits; never `eval`). `mapi_spec.cron`: schedules.
+  - `mapi_spec.splitplan`: multi-fold split plans (holdout, rolling origin, expanding
+    window, blocked and purged k-fold, geo holdout, nested) with pure fold computation that
+    matches scikit-learn's splitters. `mapi_spec.stattests`: test results and decisions.
+  - `mapi_spec.governance`: versioned tenant and project policies, the twelve-check catalog
+    (null tests against shuffled targets, noise drivers and time-shifted placebos, naive
+    benchmarks, residual whiteness, stability, signs, prior sensitivity, simulated recovery,
+    convergence, holdout accuracy, data quality), evidence, the pure validation state
+    machine, approvals by a second person with the reviewer capability, and the evidence
+    pack. The promotion gate refuses unvalidated versions when a policy says so
+    (`NOT_VALIDATED`).
+  - Data Explorer and Model Explorer views (`mapi_spec.views`) and their requests
+    (`mapi_spec.explore`); `OptimizeRequest`/`OptimizeResult` for
+    `POST …:optimize` mapped onto mmm-framework planning (`mapi_spec.optimize`).
+  - `RunKind` `workflow` (a parent), `workflow_node` and `explore`; `M35_ENDPOINTS` (60
+    operations) merged into `ENDPOINTS`, with access rules; resources `workflow`, `policy`,
+    `tenant_policy`, actions `validate` and `approve`, the `reviewer` capability on
+    memberships; scopes `workflows:write`, `workflows:run`, `models:validate`,
+    `policies:manage` (no token can approve); audit actions, webhook events and problem codes
+    for all of it.
+- **sdk**: `Step.about` and `CustomModel.about`/`family`, and the contract kit's About check
+  (`check_about`, and an `about` check in `check_step`/`check_model`).
+- **docs**: Workflows, Governance and About cards concept pages; the v0.5 section of the HTTP
+  API reference.
+
+### Removed
+- **spec**: BayesInsight (`mapi_spec.bayesinsight`, `mapi_spec.bayesinsight_model`, the
+  `bayesinsight` ingest preset with `BayesInsightMetadata`/`BayesInsightModelDef`,
+  `BayesInsightImport`, `draft_from_bayesinsight`, `POST /v1/guided/import/bayesinsight`)
+  and the `atlas` snippet language. The `geo_mmm` guided template (2.0.0) targets
+  `mmm.bayesian` (mmm-framework). mmm-framework is the only MMM engine.
+- **server, runner, client, plugins**: the BayesInsight import route, ingest preset, client
+  calls and the `mmm.bayesinsight` plugin; the "Import a BayesInsight model" tutorial.
+
 ### Fixed
 
 - Web dev server: opening the app as `http://localhost:5173` now redirects to `http://127.0.0.1:5173`.

@@ -33,6 +33,7 @@ __all__ = [
     "UseRef",
     "Version",
     "VersionRange",
+    "WorkflowRef",
     "parse_model_target",
     "resolve_version",
 ]
@@ -335,7 +336,7 @@ class UseRef(_StrRef):
 
     json_pattern: ClassVar[str] = rf"^{_ID_BODY}(@[^@]{{1,256}})?$"
     json_description: ClassVar[str] = "Registered id with an optional semver range"
-    json_examples: ClassVar[tuple[str, ...]] = ("core.resample@^1", "mmm.hierarchical_geo@^1.3")
+    json_examples: ClassVar[tuple[str, ...]] = ("core.resample@^1", "mmm.bayesian@^1.3")
 
     @classmethod
     def parse(cls, text: str) -> UseRef:
@@ -484,6 +485,36 @@ class SpecRef(_StrRef):
 
     def __str__(self) -> str:
         return f"spec://{self.project}/{self.name}@{self.revision}"
+
+
+_WORKFLOW_RE = re.compile(rf"^workflow://({_SLUG})/({_SLUG})@(latest|r\d{{1,9}}|\d{{1,9}})$")
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowRef(_StrRef):
+    """``workflow://<project>/<name>@r3`` (or ``@latest``) — a workflow revision (M3.5)."""
+
+    project: str
+    name: str
+    revision: str
+
+    json_pattern: ClassVar[str] = _WORKFLOW_RE.pattern
+    json_description: ClassVar[str] = "Workflow revision workflow://project/name@rN|latest"
+    json_examples: ClassVar[tuple[str, ...]] = ("workflow://growth/ts-readiness@r2",)
+
+    @classmethod
+    def parse(cls, text: str) -> WorkflowRef:
+        m = _WORKFLOW_RE.match(text.strip())
+        if m is None:
+            raise ValueError("invalid workflow ref: expected workflow://<project>/<name>@rN|latest")
+        return cls(m.group(1), m.group(2), m.group(3))
+
+    @property
+    def revision_number(self) -> int | None:
+        return None if self.revision == "latest" else int(self.revision.removeprefix("r"))
+
+    def __str__(self) -> str:
+        return f"workflow://{self.project}/{self.name}@{self.revision}"
 
 
 def parse_model_target(value: Any) -> EndpointRef | ModelVersionRef:

@@ -125,7 +125,6 @@ are self-describing.
 |---|---|
 | `dims`, `vars`, `wide` | one column per dim and variable; `wide` gathers one column per label into one variable along a new dim. Wide variables sharing a dim must use the same labels |
 | `preset: mff` (or `format: mff`) | pivots the MFF long table: `Period` becomes the time dim, key columns with several values become dims, every `VariableName` a variable. With `vars`/`wide`, those pick and rename the pivoted variables like CSV columns. `mff.combine` joins key columns into one dim (`{"geo": ["Geography", "Product"]}` gives labels such as `US|Watches`) |
-| `preset: bayesinsight` | an MFF table restricted to what BayesInsight's `metadata.json` allows: the `allowed_*` key values and the `start_period`/`end_period` range; `necessary_variables` must be present. A weekly period's weekday comes from the data |
 | `preset: meridian` | Google Meridian's `CoordToColumns` contract on a wide table: `time`, `geo`, `kpi` (target), `revenue_per_kpi`, `population`, `controls`, and `media`/`media_spend` (and reach and frequency) along `channel` |
 
 ### Limits
@@ -162,74 +161,6 @@ A failed ingest marks the dataset version `failed`; its `issues` carry the messa
 run's events carry them as diagnostics with `message_plain` and `suggested_action`. Cell
 values are only ever quoted in `untrusted_text`.
 
-## Import a BayesInsight model
-
-A BayesInsight project imports as a draft for the built-in geo MMM (the default target) or,
-with `"target": "mmm.bayesinsight"`, for the dedicated BayesInsight model (below):
-
-```bash
-curl -s localhost:8000/v1/guided/import/bayesinsight -H 'content-type: application/json' -d "{
-  \"name\": \"bi-import\", \"dataset\": \"bi_mff\",
-  \"model_def\": $(cat model_def.json), \"metadata\": $(cat data/metadata.json)}"
-```
-
-The mapping uses the `bayesinsight` preset: the media variables become `spend` along
-`channel`, the controls and the KPI become variables, and the key columns of `row_ids`
-(without `Period`) are joined into one `geo` dim. The spec carries every feature that has an
-equivalent, with BayesInsight's own distributions where they exist:
-
-| BayesInsight | Geo MMM spec |
-|---|---|
-| `adstock: delayed` / `geometric` | `adstock.kind`, 12 lags (BayesInsight's `l_max`) |
-| `adstock_prior` (Delayed) | `alpha ~ Beta(mu=retention_rate_mean, nu=retention_rate_std)`, `theta ~ Exponential(lag_max)`, per channel |
-| `media_transform: hill` / `linear` | `saturation.kind: hill` / `none` |
-| `media_transform_prior` (Hill) | `half ~ LogNormal(log K_ave, log(K_std / K_ave + 1))`; `slope ~ Gamma` with the mean and sd of BayesInsight's `1 + Exponential` |
-| media `random_coeff_dims` | `pooling: partial` (`fixed_ind_coeff_dims`: `none`; neither: `complete`) |
-| `normalization: Global Standardize` | a `core.standardize` step over time and geo |
-| `season` | `core.fourier` with its `period` and `n_fourier` |
-| `localtrend` | a `core.trend` control (warned: an approximation) |
-
-Everything without an equivalent is listed as an `IMPORT_UNSUPPORTED` **warning** at its
-pointer, so nothing is dropped silently: non-Normal likelihoods, coefficient and intercept
-priors (stated in KPI units, which mean something else on the mean-scaled KPI - state them as
-business priors instead), Weibull adstock, S-shaped curves, sign constraints on controls,
-time and non-linear transforms, and per-dim random effects of controls. A model that cannot
-run at all is `422 IMPORT_UNSUPPORTED`: no single `exog` KPI, no media variable, variable
-names that do not match the metadata's `row_ids`, or variables split into several series by
-a key column that is not a row id.
-
-### Importing for `mmm.bayesinsight`
-
-`"target": "mmm.bayesinsight"` drafts the dedicated built-in model instead, which fits
-BayesInsight's model as `model_def.json` defines it - nothing above needs an equivalent:
-
-```bash
-curl -s localhost:8000/v1/guided/import/bayesinsight -H 'content-type: application/json' -d "{
-  \"name\": \"bi-sales\", \"dataset\": \"bi_mff\", \"target\": \"mmm.bayesinsight\",
-  \"model_def\": $(cat model_def.json), \"metadata\": $(cat data/metadata.json)}"
-```
-
-- **Data.** The `bayesinsight` preset with every row id besides `Period` as a panel dim of its
-  own (`Geography` → `geo`, `Product` → `product`, kept even with a single label, as
-  BayesInsight keeps it). A panel dim is `new_levels` (pooled), or `fixed` when some
-  coefficient is estimated separately per level of it (`fixed_ind_coeff_dims`). Variables
-  keep their MFF names, made safe (`Sales` → `sales`).
-- **Spec.** The KPI is bound to `y`, the media get a 12-lag `core.lag_tensor` with
-  `pad: nan`, and `model.settings` carries `model_def` plus the map from every analytic name
-  (`TV_Total_Total_Total`) to its variable. Priors stay in the KPI's own units.
-- **Issues.** What the plugin cannot run falls back to BayesInsight's own default with an
-  `IMPORT_UNSUPPORTED` **warning** at its pointer: an `MvNormal` likelihood (fitted with
-  independent Normal errors), time transforms, priors with unknown families or parameters,
-  coefficient dims that are not row ids, keys a variable type does not have. Faithful but
-  surprising behaviour is an **info** issue: a KPI without a likelihood is fitted as Poisson,
-  `random_coeff_dims` with `partial_pooling_sigma: 0` pool nothing, signs on controls are
-  enforced, and carry-overs and curves that BayesInsight's code cannot run are fitted as
-  documented in the [models reference](../reference/models.md#mmmbayesinsight-a-bayesinsight-model_defjson).
-- **Refusals** (`422 IMPORT_UNSUPPORTED`): no single `exog` KPI, no media or control
-  variable, names that do not match the row ids, a series split by a key column that is not
-  a row id, or a variable whose safe name is taken.
-
-The draft is validated against the catalog like the geo MMM's.
 
 ## Locking a project to Guided mode
 

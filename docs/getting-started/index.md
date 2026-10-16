@@ -136,6 +136,6 @@ xgb_store_demand  tabular.regressor@1.0.0  ok        ok   ok 6/6  ok        ok 1
 
 -   :material-connection: **[Tutorials](../tutorials/index.md)**
 
-    Google Sheets, embedded charts, webhook receivers, Atlas budgets, BayesInsight imports.
+    Google Sheets, embedded charts, webhook receivers, Atlas budgets.
 
 </div>

@@ -19,8 +19,6 @@ label of a new dim, or use a preset:
   is pivoted to one column per variable; key columns with several values become dims, and
   ``MffOptions.combine`` joins key columns into one dim. An explicit mapping then picks and
   renames variables (and may gather them into wide variables) exactly as for a CSV;
-* ``bayesinsight`` - an MFF table restricted to what BayesInsight's ``metadata.json``
-  allows (``allowed_*`` key values, ``start_period``/``end_period``);
 * ``meridian`` - Google Meridian's column contract on a wide CSV/Parquet table.
 
 Every byte of user data is parsed here, in the sandbox, under the caps of
@@ -49,7 +47,6 @@ from mapi_spec.guided import ColumnProfile, safe_name
 from mapi_spec.ingest import (
     COMBINE_SEPARATOR,
     MFF_COLUMNS,
-    BayesInsightMetadata,
     DimMapping,
     IngestMapping,
     IngestPreset,
@@ -470,21 +467,17 @@ def mff_table(
     opts: MffOptions,
     limits: IngestLimits = _UNLIMITED,
     *,
-    bayesinsight: BayesInsightMetadata | None = None,
     notes: Notes | None = None,
 ) -> tuple[pd.DataFrame, dict[str, str], list[str]]:
     """Pivot an MFF long table to one column per variable.
 
     Returns ``(table, dims, variables)``: the wide table (``Period``, the key columns that
     vary, combined dims, then one column per ``VariableName``), the dims it is indexed by
-    (``column -> dim name``) and the variable columns. With ``bayesinsight`` metadata, rows
-    outside its ``allowed_*`` values and period range are dropped first.
+    (``column -> dim name``) and the variable columns.
     """
     for col in (opts.period_column, opts.variable_column, opts.value_column):
         if col not in df.columns:
             raise _mff_error(f"MFF upload has no {col!r} column")
-    if bayesinsight is not None:
-        df = _bayesinsight_rows(df, opts, bayesinsight)
     names = df[opts.variable_column].astype(str).str.strip()
     variables = sorted(set(names) - {""})
     if (names == "").any():
@@ -559,59 +552,16 @@ def mff_table(
     return out, index, variables
 
 
-def _bayesinsight_rows(
-    df: pd.DataFrame, opts: MffOptions, meta: BayesInsightMetadata
-) -> pd.DataFrame:
-    allowed = {
-        "Geography": meta.allowed_geos,
-        "Product": meta.allowed_products,
-        "Outlet": meta.allowed_outlets,
-        "Campaign": meta.allowed_campaigns,
-        "Creative": meta.allowed_creatives,
-    }
-    keep = pd.Series(True, index=df.index)
-    for col, values in allowed.items():
-        if values is not None and col in df.columns:
-            keep &= df[col].astype("string").str.strip().isin([str(v) for v in values])
-    if meta.start_period or meta.end_period:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            period = pd.to_datetime(df[opts.period_column], errors="coerce")
-        if meta.start_period:
-            keep &= period >= pd.Timestamp(meta.start_period)
-        if meta.end_period:
-            keep &= period <= pd.Timestamp(meta.end_period)
-    out = df.loc[keep]
-    if out.empty:
-        raise _schema_error(
-            "no MFF rows match the BayesInsight metadata (allowed_* values and periods)",
-            "/mapping/bayesinsight",
-            action="Check that metadata.json belongs to this data file.",
-        )
-    if meta.necessary_variables:
-        present = set(out[opts.variable_column].astype(str).str.strip())
-        lacking = [v for v in meta.necessary_variables if v not in present]
-        if lacking:
-            raise _schema_error(
-                f"the MFF table lacks {len(lacking)} necessary variable(s), e.g. "
-                f"{lacking[0][:64]!r}",
-                "/mapping/bayesinsight/necessary_variables",
-                action="Upload the data file the BayesInsight model was built on.",
-            )
-    return out
-
-
 def dataset_from_mff(
     df: pd.DataFrame,
     opts: MffOptions,
     *,
     limits: IngestLimits = _UNLIMITED,
-    bayesinsight: BayesInsightMetadata | None = None,
 ) -> tuple[xr.Dataset, DataSchema]:
     """The MFF preset: long ``(period, keys..., variable) -> value`` rows, every variable
     kept under its own name."""
     notes: Notes = []
-    table, index, variables = mff_table(df, opts, limits, bayesinsight=bayesinsight, notes=notes)
+    table, index, variables = mff_table(df, opts, limits, notes=notes)
     frame = table.rename(columns=index)
     _check_cube(frame, list(index.values()), limits, "/mapping/mff")
     ds = frame.set_index(list(index.values())).sort_index().to_xarray()
@@ -641,8 +591,8 @@ def dataset_from_mff(
 
 def _mff_freq(opts: MffOptions, dates: Any) -> str | None:
     """The time dim's frequency: the declared one, unless the data has the same base
-    frequency with another anchor (BayesInsight's 'Weekly' is ``W``, i.e. Sundays, while
-    its periods are often Mondays)."""
+    frequency with another anchor (a declared weekly ``W`` means Sundays, while MFF periods
+    are often Mondays)."""
     inferred = infer_freq(dates)
     if opts.freq is None:
         return inferred
@@ -1005,19 +955,18 @@ def build_dataset(
         return ds, schema, None
     fmt = "parquet" if mapping.format == "parquet" else "csv"
     df = read_table(path, fmt, limits)
-    if preset in (IngestPreset.MFF, IngestPreset.BAYESINSIGHT):
+    if preset is IngestPreset.MFF:
         opts = mapping.effective_mff
         assert opts is not None
-        meta = mapping.bayesinsight if preset is IngestPreset.BAYESINSIGHT else None
         notes: Notes = []
-        table, index, variables = mff_table(df, opts, limits, bayesinsight=meta, notes=notes)
+        table, index, variables = mff_table(df, opts, limits, notes=notes)
         profiles = column_profiles(table, variables=variables)
         if mapping.vars or mapping.wide:
             ds, schema = dataset_from_table(
                 table, _mff_mapping(mapping, index, opts, table), limits=limits
             )
         else:
-            ds, schema = dataset_from_mff(df, opts, limits=limits, bayesinsight=meta)
+            ds, schema = dataset_from_mff(df, opts, limits=limits)
         if notes:
             ds.attrs[INGEST_NOTES_ATTR] = notes
         return ds, schema, profiles

@@ -1,22 +1,16 @@
 """M3 guided data path (pure parts): role detection on realistic column profiles, profiles
-of stored datasets, the schema a draft's mapping implies, MFF drafts and the BayesInsight
-``model_def.json`` adapter for ``mmm.hierarchical_geo``."""
+of stored datasets, the schema a draft's mapping implies and MFF drafts."""
 
 from __future__ import annotations
 
 import copy
-import json
-import math
-from pathlib import Path
 from typing import Any
 
 import pytest
-from mapi_spec.bayesinsight import BAYESINSIGHT_L_MAX, import_bayesinsight
 from mapi_spec.coords import CoordSummary, DataSummary
-from mapi_spec.errors import ErrorCode, MapiError, Severity
+from mapi_spec.errors import ErrorCode, Severity
 from mapi_spec.guided import (
     GUIDED_TEMPLATES,
-    BayesInsightImport,
     ColumnProfile,
     GuidedAnswers,
     build_draft,
@@ -27,8 +21,6 @@ from mapi_spec.guided import (
     suggest_roles,
 )
 from mapi_spec.ingest import (
-    BayesInsightMetadata,
-    BayesInsightModelDef,
     IngestMapping,
     IngestPreset,
     MffOptions,
@@ -39,8 +31,6 @@ from mapi_spec.views import ProfileView
 from pydantic import ValidationError
 
 pytestmark = pytest.mark.unit
-
-FIXTURES = Path(__file__).parent / "fixtures" / "bayesinsight"
 
 
 def _col(name: str, dtype: str, **kw: Any) -> ColumnProfile:
@@ -267,180 +257,6 @@ def test_index_coords_have_ordinals() -> None:
     assert CoordSummary(kind="categorical", size=1, values=["a"]).ordinal("a") is None
 
 
-# ======================================================================== BayesInsight
-
-
-def _load(name: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    md = json.loads((FIXTURES / f"{name}_model_def.json").read_text())
-    meta = json.loads((FIXTURES / f"{name}_metadata.json").read_text())
-    return md, meta
-
-
-def _import(md: dict[str, Any], meta: dict[str, Any], **kw: Any) -> BayesInsightImport:
-    return BayesInsightImport(
-        name="bi-import",
-        dataset="bi_mff",
-        model_def=BayesInsightModelDef.model_validate(md),
-        metadata=BayesInsightMetadata.model_validate(meta),
-        **kw,
-    )
-
-
-def _media(name: str, **over: Any) -> dict[str, Any]:
-    md, _ = _load("complex")
-    v = copy.deepcopy(md["variable_details"][2])
-    v["variable_name"] = name
-    v.update(over)
-    return v
-
-
-def test_complex_bayesinsight_model_imports_for_the_geo_mmm() -> None:
-    md, meta = _load("complex")
-    draft = import_bayesinsight(_import(md, meta), project="growth")
-    m = draft.mapping
-    assert m.preset is IngestPreset.BAYESINSIGHT and m.format == "mff"
-    assert m.effective_mff is not None and m.effective_mff.combine == {
-        "geo": ["Geography", "Product"]
-    }
-    assert set(m.dims) == {"date", "geo"} and m.dims["date"].column == "Period"
-    assert m.vars["stock"].column == "Stock" and m.vars["stock"].role.value == "target"
-    assert m.vars["promotion"].role.value == "control"
-    assert m.wide["spend"].columns == {"media_var_0": "media_var_0"}
-
-    spec = ModelSpec.model_validate(draft.spec)
-    assert str(spec.model.use) == "mmm.hierarchical_geo@^1"
-    assert spec.model.fit.mode.value == "evaluate_then_refit"
-    assert spec.data.bind.vars == {"y": "stock", "spend": "spend"}
-    steps = {s.id: s for s in spec.pipeline}
-    assert list(steps) == ["std_controls", "scale_spend", "scale_y", "lags", "season_fourier"]
-    assert steps["std_controls"].with_["vars"] == ["promotion"]
-    assert steps["lags"].with_["l_max"] == BAYESINSIGHT_L_MAX
-    assert steps["season_fourier"].with_["period"] == pytest.approx(365.25 / 7, abs=1e-5)
-    settings = spec.model.settings
-    assert settings["adstock"] == {"kind": "delayed", "l_max": 12}
-    assert settings["saturation"] == {"kind": "hill"}
-    assert settings["pooling"] == "complete"  # BayesInsight: one media coefficient
-    priors = settings["priors"]
-    assert isinstance(priors, dict)
-    # Beta(mu=0.05, nu=1.2) and Exponential(lag_max) exactly as BayesInsight samples them
-    # one independent parameter per channel, as BayesInsight builds one per media variable
-    assert priors["alpha"] == {
-        "distribution": "Beta", "dims": ["channel"], "alpha": 0.06, "beta": 1.14,
-    }  # fmt: skip
-    assert priors["theta"] == {"distribution": "Exponential", "dims": ["channel"], "lam": 3.0}
-    half = priors["half"]
-    assert isinstance(half, dict) and half["distribution"] == "LogNormal"
-    assert half["mu"] == pytest.approx(math.log(0.85))
-    assert half["sigma"] == pytest.approx(math.log(0.6 / 0.85 + 1))
-    assert priors["slope"] == {"distribution": "Gamma", "dims": ["channel"], "mu": 1.5,
-                               "sigma": 0.5}  # fmt: skip
-    by_ptr = {(i.pointer, i.severity) for i in draft.issues}
-    assert ("/model_def/variable_details/3/likelihood", Severity.WARNING) in by_ptr  # Poisson
-    assert ("/metadata/row_ids", Severity.INFO) in by_ptr  # Geography x Product joined
-    assert all(i.code is ErrorCode.IMPORT_UNSUPPORTED for i in draft.issues)
-    assert "mmm.hierarchical_geo" in draft.yaml
-
-
-def test_per_channel_priors_follow_the_channel_labels() -> None:
-    md, meta = _load("complex")
-    md["variable_details"] = [
-        md["variable_details"][3],
-        _media("tv_Total_Total_Total",
-               adstock_prior={"type": "Delayed", "retention_rate_mean": 0.5,
-                              "retention_rate_std": 4.0, "lag_max": 2.0},
-               random_coeff_dims=["Geography"]),
-        _media("radio_Total_Total_Total", random_coeff_dims=["Geography"]),
-    ]  # fmt: skip
-    spec = ModelSpec.model_validate(import_bayesinsight(_import(md, meta), project="p").spec)
-    priors = spec.model.settings["priors"]
-    assert isinstance(priors, dict)
-    # channels sort as radio, tv; their parameters follow that order
-    assert priors["alpha"] == {"distribution": "Beta", "dims": ["channel"],
-                               "alpha": [0.06, 2.0], "beta": [1.14, 2.0]}  # fmt: skip
-    assert priors["theta"] == {"distribution": "Exponential", "dims": ["channel"],
-                               "lam": [3.0, 2.0]}  # fmt: skip
-    assert priors["half"]["dims"] == ["channel"]  # type: ignore[index]
-    assert not isinstance(priors["half"]["mu"], list)  # type: ignore[index]  # shared value
-    assert spec.model.settings["pooling"] == "partial"
-
-
-def test_features_without_an_equivalent_are_warned_about() -> None:
-    md, meta = _load("complex")
-    md["variable_details"] += [
-        _media("radio_Total_Total_Total", adstock="weibull"),
-        _media("print_Total_Total_Total", media_transform="linear",
-               media_transform_prior={"type": "SShaped"}),
-        {"variable_name": "trend", "variable_type": "localtrend"},
-        {"variable_name": "Price_Total_Total_Total", "variable_type": "control",
-         "sign": "negative", "deterministic_transform": {"functional_form": "log"}},
-    ]  # fmt: skip
-    draft = import_bayesinsight(_import(md, meta), project="p")
-    text = " | ".join(i.message for i in draft.issues if i.severity is Severity.WARNING)
-    assert "'weibull' adstock has no equivalent" in text
-    assert "S-shaped curve has no equivalent" in text
-    assert "linear trend control" in text
-    assert "sign constraints" in text and "'log' transform" in text
-    spec = ModelSpec.model_validate(draft.spec)
-    assert any(s.id == "trend_0" for s in spec.pipeline)
-
-
-@pytest.mark.parametrize(
-    ("change", "pointer", "message"),
-    [
-        (lambda md, meta: md["variable_details"].pop(3), "/model_def/variable_details", "exog"),
-        (lambda md, meta: md["variable_details"].pop(2), "/model_def/variable_details", "media"),
-        (
-            lambda md, meta: meta["metadata"].update(allowed_outlets=["TV", "Radio"]),
-            "/model_def/variable_details/3/variable_name",  # the KPI is mapped first
-            "one series per variable",
-        ),
-        (
-            lambda md, meta: md["variable_details"].append(
-                {"variable_name": "spend_Total_Total_Total", "variable_type": "control"}
-            ),
-            "/model_def/variable_details/4/variable_name",
-            "taken",
-        ),
-    ],
-)
-def test_models_that_cannot_run_are_refused(change: Any, pointer: str, message: str) -> None:
-    md, meta = _load("complex")
-    change(md, meta)
-    with pytest.raises(MapiError) as exc:
-        import_bayesinsight(_import(md, meta), project="p")
-    assert exc.value.code is ErrorCode.IMPORT_UNSUPPORTED
-    assert exc.value.pointer == pointer and message in exc.value.detail
-
-
-def test_the_example_model_names_need_suffixes() -> None:
-    md, meta = _load("example")
-    with pytest.raises(MapiError) as exc:
-        import_bayesinsight(_import(md, meta), project="p")
-    assert exc.value.code is ErrorCode.IMPORT_UNSUPPORTED  # 'Placeholder Change Me'
-
-
-def test_the_planned_plugin_target_keeps_model_def_verbatim() -> None:
-    md, meta = _load("complex")
-    draft = import_bayesinsight(_import(md, meta, target="mmm.bayesinsight"), project="p")
-    assert draft.spec["model"]["use"] == "mmm.bayesinsight@^1"  # type: ignore[index]
-
-
-def test_national_models_keep_a_geo_dim() -> None:
-    md, meta = _load("complex")
-    meta["metadata"]["row_ids"] = ["Period"]
-    meta["metadata"]["allowed_geos"] = ["Total"]
-    meta["metadata"]["allowed_products"] = ["Total"]
-    for v in md["variable_details"]:
-        v["random_coeff_dims"] = []
-    md["variable_details"][1]["variable_name"] = "Promotion_Total_Total_Total_Total_Total"
-    md["variable_details"][2]["variable_name"] = "media_var_0_Total_Total_Total_Total_Total"
-    md["variable_details"][3]["variable_name"] = "Stock_Total_Total_Total_Total_Total"
-    draft = import_bayesinsight(_import(md, meta), project="p")
-    assert draft.mapping.effective_mff is not None
-    assert draft.mapping.effective_mff.combine == {"geo": ["Geography"]}
-    assert not [i for i in draft.issues if i.pointer == "/metadata/row_ids"]
-
-
 # ======================================================================== persona lock
 
 
@@ -467,7 +283,7 @@ def test_every_draft_passes_the_guided_lock(template: str) -> None:
 def test_the_guided_lock_keeps_advanced_and_hidden_fields() -> None:
     doc = _geo_draft()
     basic = copy.deepcopy(doc)
-    basic["model"]["settings"]["pooling"] = "complete"  # a basic setting
+    basic["model"]["settings"]["hierarchy"] = {"pool_over": []}  # a basic setting
     basic["calibration"] = {"business_priors": {"channels": {"tv": {"roi": [1.0, 3.0]}}}}
     assert guided_lock_issues(basic, parent=doc) == []
     fit = copy.deepcopy(doc)
@@ -476,12 +292,12 @@ def test_the_guided_lock_keeps_advanced_and_hidden_fields() -> None:
     assert issue.pointer == "/model/fit" and issue.code is ErrorCode.FORBIDDEN
     assert "advanced setting" in issue.message and issue.suggested_action
     hidden = copy.deepcopy(doc)
-    hidden["pipeline"] = hidden["pipeline"][:-1]
+    hidden["pipeline"][0]["with"]["how"] = "mean"
     assert [i.pointer for i in guided_lock_issues(hidden)] == ["/pipeline"]  # a new spec too
     plain = copy.deepcopy(doc)
     del plain["metadata"]["labels"]["guided"]
     assert [i.pointer for i in guided_lock_issues(plain)] == ["/metadata/labels/guided"]
     other = copy.deepcopy(doc)
-    other["model"]["use"] = "mmm.pymc_marketing@^1"
+    other["model"]["use"] = "tabular.regressor@^1"
     assert "/model/use" in {i.pointer for i in guided_lock_issues(other)}
     assert guided_lock_issues({"kind": "nonsense"})[0].pointer == ""

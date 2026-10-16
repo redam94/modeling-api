@@ -719,3 +719,45 @@ def test_returned_predictions_must_match_the_declared_outputs(
     short = results["test.shortdims"]
     assert not short.passed and "declared dims []" in short.detail, short.detail
     assert results["test.dimsof"].passed, results["test.dimsof"].detail
+
+
+# ---------------------------------------------------------------------------- About (M3.5)
+
+
+def test_the_about_check(
+    weekly: xr.Dataset, raw_target_schema: Callable[[xr.Dataset], DataSchema]
+) -> None:
+    from mapi_sdk.testing import check_about
+    from mapi_spec.about import About
+
+    settings = {"vars": ["y"]}
+    schema = raw_target_schema(weekly)
+    lenient = check_step(toy.Log1pStep, weekly, settings, schema=schema)
+    assert lenient.get("about").skipped and "requires one" in lenient.get("about").detail
+    strict = check_step(toy.Log1pStep, weekly, settings, schema=schema, require_about=True,
+                        raise_on_failure=False)  # fmt: skip
+    assert [r.name for r in strict.failures] == ["about"]
+
+    card = About.model_validate(About.model_json_schema()["examples"][0])
+
+    class _Described(toy.Log1pStep):
+        about: ClassVar[About | None] = card
+
+    described = check_step(_Described, weekly, settings, schema=schema, require_about=True)
+    assert described.get("about").passed and "complete" in described.get("about").detail
+
+    class _Jargon(toy.Log1pStep):
+        about: ClassVar[About | None] = card.model_copy(
+            update={"summary_plain": "Takes the posterior of a stationarity transform here."}
+        )
+
+    jargon = check_step(_Jargon, weekly, settings, schema=schema, raise_on_failure=False)
+    assert [r.name for r in jargon.failures] == ["about"]
+    assert "jargon" in jargon.get("about").detail
+
+    report = check_about(_Described, toy.Log1pStep, raise_on_failure=False)
+    assert [r.passed for r in report.results] == [True, False]
+    with pytest.raises(ContractViolation):
+        check_about(toy.LinearModel)
+    assert check_about(_Described, known_ids=["core.calendar"]).ok
+    assert not check_about(_Described, known_ids=[], raise_on_failure=False).ok

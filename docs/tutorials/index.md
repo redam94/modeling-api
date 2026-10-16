@@ -1,5 +1,5 @@
 ---
-description: Step-by-step tutorials for v0.4 - your first MMM in Guided mode, Google Sheets, embedded charts, webhook receivers, budget optimisation with Atlas and importing a BayesInsight model.
+description: Step-by-step tutorials for v0.4 - your first MMM in Guided mode, Google Sheets, embedded charts, webhook receivers, and budget optimisation with Atlas.
 ---
 
 # Tutorials
@@ -54,15 +54,6 @@ Apps Scripts run against stand-ins for Google's services.
     channels, with batching, caching and back-off.
 
     *For data scientists.* [:octicons-arrow-right-24: Start](../guides/atlas.md)
-
--   :material-import:{ .lg .middle } **Import a BayesInsight model**
-
-    ---
-
-    Bring a BayesInsight `model_def.json` and its MFF data: check the import, fit it on your
-    laptop, then run it on the platform.
-
-    *For data scientists.* [:octicons-arrow-right-24: Start](bayesinsight-import.md)
 
 </div>
 

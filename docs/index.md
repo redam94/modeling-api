@@ -84,7 +84,7 @@ changes come back to Guided mode intact. [Who it is for, and who it is not for](
 
 ```mermaid
 flowchart LR
-    D["Your data<br/>CSV · Parquet · MFF ·<br/>Meridian · BayesInsight"] --> I["Sandboxed ingest<br/>checked, profiled,<br/>dims and roles"]
+    D["Your data<br/>CSV · Parquet · MFF ·<br/>Meridian"] --> I["Sandboxed ingest<br/>checked, profiled,<br/>dims and roles"]
     Q["Guided answers<br/>or a YAML spec"] --> V{{"Static checks<br/>before any compute"}}
     I --> V
     V --> F["Fit in a fresh sandbox<br/>preprocessing learned<br/>on train only"]
@@ -243,15 +243,6 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     [:octicons-arrow-right-24: Optimise a budget](guides/atlas.md) ·
     [Connect Sheets](tutorials/google-sheets.md)
-
--   :material-import:{ .lg .middle } **BayesInsight and Meridian data**
-
-    ---
-
-    BayesInsight's `model_def.json` runs as a built-in model or maps onto the geo MMM, with
-    every unsupported feature reported, never dropped.
-
-    [:octicons-arrow-right-24: Import a BayesInsight model](tutorials/bayesinsight-import.md)
 
 -   :material-account-check-outline:{ .lg .middle } **Sign-up and the data lifecycle**
 

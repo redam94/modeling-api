@@ -1,6 +1,6 @@
-"""Guided ingest through the real supervisor and worker: a BayesInsight MFF upload with the
-imported mapping lands as a dataset plus ``columns.json``, and a refusal reaches the run's
-error event with its plain message and suggested action."""
+"""Guided ingest through the real supervisor and worker: an MFF upload with a geo-MMM draft's
+mapping lands as a dataset plus ``columns.json``, and a refusal reaches the run's error event
+with its plain message and suggested action."""
 
 from __future__ import annotations
 
@@ -10,10 +10,9 @@ from pathlib import Path
 
 import pytest
 from mapi_sdk.wire import read_zarr_zip
-from mapi_spec.bayesinsight import import_bayesinsight
 from mapi_spec.executor import RunKind
-from mapi_spec.guided import BayesInsightImport, ColumnProfile
-from mapi_spec.ingest import BayesInsightMetadata, BayesInsightModelDef
+from mapi_spec.guided import GUIDED_TEMPLATES, ColumnProfile, GuidedAnswers, build_draft
+from mapi_spec.ingest import MffOptions
 from mapi_spec.jobs import DATASET_OUTPUTS, IngestJob
 from mapi_spec.run import RunnerExit
 from mapi_spec.schema import DataSchema
@@ -27,25 +26,27 @@ UPLOAD = "t/default/uploads/upl_bi"
 
 
 def _job() -> IngestJob:
-    req = BayesInsightImport(
-        name="bi",
-        dataset="bi",
-        model_def=BayesInsightModelDef.model_validate(
-            {"variable_details": [
-                {"variable_name": "Sales_Total_Total_Total", "variable_type": "exog"},
-                {"variable_name": "media_var_0_Total_Total_Total", "variable_type": "media"},
-                {"variable_name": "media_var_1_Total_Total_Total", "variable_type": "media"},
-            ]}
-        ),
-        metadata=BayesInsightMetadata.model_validate(
-            {"allowed_outlets": ["Total"], "allowed_campaigns": ["Total"],
-             "allowed_creatives": ["Total"], "row_ids": ["Geography", "Product", "Period"]}
-        ),
+    cols = [
+        ColumnProfile(name="Period", dtype="date", n_rows=10, detected_freq="W-MON"),
+        ColumnProfile(name="Geography", dtype="string", n_rows=10, n_distinct=4),
+    ] + [
+        ColumnProfile(name=v, dtype="number", n_rows=10, min=0.0, origin="mff_variable")
+        for v in ("Sales", "media_var_0", "media_var_1")
+    ]
+    req = GuidedAnswers(
+        template_id="geo_mmm", name="mff", dataset="mff", format="mff",
+        answers={"kpi": "Sales", "date": "Period", "geo": "Geography",
+                 "spend": ["media_var_0", "media_var_1"]},
+        columns=cols,
     )  # fmt: skip
-    return IngestJob(mapping=import_bayesinsight(req, project="default").mapping)
+    mapping = build_draft(GUIDED_TEMPLATES["geo_mmm"], req, project="default").mapping
+    combined = mapping.model_copy(
+        update={"mff": MffOptions(combine={"Geography": ["Geography", "Product"]})}
+    )
+    return IngestJob(mapping=combined)
 
 
-def test_bayesinsight_ingest_writes_the_dataset_and_column_profiles(gcs: ShimGcs) -> None:
+def test_mff_ingest_writes_the_dataset_and_column_profiles(gcs: ShimGcs) -> None:
     gcs.put(gcs.buckets.quarantine, UPLOAD, MFF.read_bytes(), "text/csv")
     result = run_supervisor(
         make_run(
@@ -59,7 +60,7 @@ def test_bayesinsight_ingest_writes_the_dataset_and_column_profiles(gcs: ShimGcs
     assert_signed_stream(result)
     assert set(result.manifest().objects) == set(DATASET_OUTPUTS)
     ds = read_zarr_zip(result.output("data.zarr.zip"))
-    assert dict(ds.sizes) == {"date": 40, "geo": 4, "channel": 2}
+    assert dict(ds.sizes) == {"period": 40, "geography": 4, "channel": 2}
     schema = DataSchema.model_validate_json(result.output("schema.json"))
     assert schema.vars["spend"].role.value == "spend"
     profiles = [ColumnProfile.model_validate(c) for c in json.loads(result.output("columns.json"))]

@@ -191,6 +191,8 @@ SCOPE_EXPECTED: dict[str, set[tuple[str, str]]] = {
             "plot",
             "usage",
             "project",
+            "workflow",  # M3.5
+            "policy",  # M3.5
         )
     },
     "datasets:write": {("dataset", "read"), ("dataset", "create"), ("dataset", "update")},
@@ -217,6 +219,23 @@ SCOPE_EXPECTED["runs:create"] = SCOPE_EXPECTED["models:read"] | {
     ("endpoint", "run"),
     ("plot", "run"),
 }
+
+
+# M3.5
+SCOPE_EXPECTED["workflows:write"] = {
+    ("workflow", "read"), ("workflow", "create"), ("workflow", "update"), ("catalog", "read"),
+}  # fmt: skip
+SCOPE_EXPECTED["workflows:run"] = {
+    ("workflow", "read"), ("workflow", "run"), ("workflow", "cancel"), ("workflow", "update"),
+    ("run", "read"), ("run", "create"), ("run", "cancel"), ("model", "run"), ("dataset", "read"),
+}  # fmt: skip
+SCOPE_EXPECTED["models:validate"] = {
+    ("model", "read"), ("model", "validate"), ("policy", "read"), ("run", "read"),
+    ("run", "create"),
+}  # fmt: skip
+SCOPE_EXPECTED["policies:manage"] = {
+    ("policy", "read"), ("policy", "create"), ("policy", "update"), ("policy", "delete"),
+}  # fmt: skip
 
 
 @pytest.mark.parametrize("scope", sorted(SCOPE_EXPECTED))

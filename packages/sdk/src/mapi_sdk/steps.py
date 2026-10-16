@@ -29,6 +29,8 @@ from typing import Any, ClassVar, Literal
 
 import numpy as np
 import xarray as xr
+from mapi_spec.about import About
+from mapi_spec.abouts import SPLIT_ABOUTS, STEP_ABOUTS
 from mapi_spec.catalog import StepCatalogEntry
 from mapi_spec.effects import (
     ContextNeed,
@@ -257,6 +259,9 @@ class Step[SettingsT: StepSettings, StateT: StepState]:
     context_template: ClassVar[Mapping[str, JsonValue] | None] = None
     summary: ClassVar[str | None] = None
     summary_plain: ClassVar[str | None] = None
+    about: ClassVar[About | None] = None
+    """M3.5: the plain-language About card (``mapi_spec.about.About``). Built-in ``core.*``
+    steps take theirs from :mod:`mapi_spec.abouts` when this is unset."""
 
     # ------------------------------------------------------------------ metadata
     @classmethod
@@ -270,6 +275,13 @@ class Step[SettingsT: StepSettings, StateT: StepState]:
     @classmethod
     def settings_schema(cls) -> dict[str, Any]:
         return cls.Settings.model_json_schema(by_alias=True)
+
+    @classmethod
+    def about_card(cls) -> About | None:
+        """The step's About card: ``about``, else the built-in card of its id."""
+        if cls.about is not None:
+            return cls.about
+        return STEP_ABOUTS.get(cls.id) or SPLIT_ABOUTS.get(cls.id)
 
     @classmethod
     def catalog_entry(cls) -> StepCatalogEntry:
@@ -291,6 +303,7 @@ class Step[SettingsT: StepSettings, StateT: StepState]:
             provides=list(cls.provides),
             summary=cls.summary,
             summary_plain=cls.summary_plain,
+            about=cls.about_card(),
         )
 
     # ------------------------------------------------------------------ settings

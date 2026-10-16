@@ -237,7 +237,7 @@ STEPS.append({**STEPS[1], "version": "1.2.0"})
 STEPS.append({**STEPS[1], "version": "2.0.0"})
 
 MMM_MANIFEST: dict[str, Any] = {
-    "id": "mmm.hierarchical_geo",
+    "id": "mmm.bayesian",
     "version": "1.3.2",
     "capabilities": {
         "inference": "mcmc",
