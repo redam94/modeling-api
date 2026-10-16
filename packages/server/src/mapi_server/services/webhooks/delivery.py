@@ -322,8 +322,10 @@ class WebhookDeliverer:
         settings = self.ctx.settings
         ts = self.clock()
         async with self.ctx.db.session() as s:
-            d = await s.get(m.WebhookDelivery, claim.delivery_id, with_for_update=True)
+            # the webhook first, like the API's update and delete (whose cascade then locks
+            # the deliveries): one lock order, no deadlock
             hook = await s.get(m.Webhook, claim.webhook_id, with_for_update=True)
+            d = await s.get(m.WebhookDelivery, claim.delivery_id, with_for_update=True)
             if d is None or hook is None or d.attempt != claim.attempt:
                 return None  # deleted meanwhile (or another worker recorded this try)
             if d.status not in (DeliveryStatus.PENDING, DeliveryStatus.RETRYING):

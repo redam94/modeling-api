@@ -110,6 +110,11 @@ class Orchestrator:
                 with contextlib.suppress(asyncio.CancelledError, Exception):
                     await t
             stopper.cancel()
+            if isinstance(self.webhook_queue, InlineWebhookQueue):
+                # let tries in flight record their outcome (a cut-off try is retried later,
+                # but its receiver would see the event twice)
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(self.webhook_queue.drain(), 15)
             if self.procrastinate is not None:
                 await self.procrastinate.close()
             aclose = getattr(self.executor, "aclose", None)

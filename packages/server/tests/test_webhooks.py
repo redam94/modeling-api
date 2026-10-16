@@ -577,3 +577,36 @@ async def test_tenant_events_and_oversized_envelopes(ctx: ServerContext) -> None
         assert trimmed is not None
         assert trimmed.envelope["data"] == {"run_id": "run_1", "truncated": True}
         assert len(envelope_body(trimmed.envelope)) < MAX_ENVELOPE_BYTES
+
+
+async def test_the_orchestrator_delivers_on_its_own(
+    client: httpx.AsyncClient, dev_ctx: ServerContext
+) -> None:
+    """The worker process runs the relay loop: an event is delivered without anyone calling
+    the deliverer (single-process mode: the inline queue)."""
+    import asyncio
+
+    from mapi_server.orchestrator import Orchestrator
+    from mapi_server_testkit.fake_executor import FakeExecutor
+
+    dev_ctx.settings = dev_ctx.settings.model_copy(update={"webhook_poll_interval_s": 0.05})
+    async with http_receiver() as rec:
+        await _create(client, f"http://hooks.test:{rec.port}/in", ["run.failed"])
+        orch = Orchestrator(dev_ctx, FakeExecutor(), use_procrastinate=False)
+        task = asyncio.create_task(orch.run())
+        try:
+            await _emit(dev_ctx, WebhookEventType.RUN_FAILED, run_id="run_1")
+            for _ in range(200):
+                if rec.requests:
+                    break
+                await asyncio.sleep(0.05)
+            for _ in range(200):
+                if [d.status for d in await _deliveries(dev_ctx)] == ["succeeded"]:
+                    break
+                await asyncio.sleep(0.05)
+        finally:
+            orch.stop.set()
+            await asyncio.wait_for(task, 20)
+    assert len(rec.requests) == 1
+    (d,) = await _deliveries(dev_ctx)
+    assert d.status == "succeeded"

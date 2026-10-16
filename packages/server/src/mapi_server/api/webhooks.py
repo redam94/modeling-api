@@ -141,8 +141,10 @@ async def _check_url(ctx: ServerContext, url: str, stage: str, resource_id: str 
         raise
 
 
-async def _load(session: AsyncSession, ctx: ServerContext, webhook_id: str) -> m.Webhook:
-    row = await session.get(m.Webhook, webhook_id, with_for_update=True)
+async def _load(
+    session: AsyncSession, ctx: ServerContext, webhook_id: str, *, for_update: bool = False
+) -> m.Webhook:
+    row = await session.get(m.Webhook, webhook_id, with_for_update=for_update)
     if row is None or (row.tenant_id, row.project_id) != (
         ctx.scope.tenant_id,
         ctx.scope.project_id,
@@ -255,7 +257,7 @@ async def update_webhook(
 ) -> Webhook:
     """Re-activating a webhook (``active: true``) resets its consecutive-failure count and
     clears the reason it was disabled for."""
-    row = await _load(session, ctx, webhook_id)
+    row = await _load(session, ctx, webhook_id, for_update=True)
     changed: list[JsonValue] = []
     if body.url is not None and body.url != row.url:
         await _check_url(ctx, body.url, "update", row.id)
@@ -292,7 +294,7 @@ async def update_webhook(
     responses=responses_for("delete_webhook"),
 )
 async def delete_webhook(ctx: Ctx, session: Session, webhook_id: WebhookId) -> Response:
-    row = await _load(session, ctx, webhook_id)
+    row = await _load(session, ctx, webhook_id, for_update=True)
     await _audit(
         ctx,
         session,
@@ -315,7 +317,7 @@ async def rotate_webhook_secret(
     ctx: Ctx, session: Session, webhook_id: WebhookId
 ) -> WebhookCreated:
     """While the previous secret is still valid, deliveries carry two ``v1`` signatures."""
-    row = await _load(session, ctx, webhook_id)
+    row = await _load(session, ctx, webhook_id, for_update=True)
     out = rotate_secret(_box(ctx), row)
     await _audit(
         ctx,
@@ -376,7 +378,7 @@ async def replay_webhook_delivery(
 ) -> JSONResponse:
     """A new delivery of the same event (same event id, so receivers can deduplicate), sent
     by the worker within seconds; the webhook must be active."""
-    row = await _load(session, ctx, webhook_id)
+    row = await _load(session, ctx, webhook_id, for_update=True)
     original = await session.get(m.WebhookDelivery, delivery_id)
     if original is None or original.webhook_id != row.id:
         raise NotFoundError("delivery", delivery_id)

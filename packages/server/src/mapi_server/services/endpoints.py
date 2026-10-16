@@ -353,10 +353,18 @@ async def promote(
     if (
         row is not None
         and row.model_version_id == mv.id
-        and body.evaluation_policy is None
-        and (body.description is None or body.description == row.description)
+        and (
+            body.evaluation_policy is None
+            or policy.model_dump(mode="json") == row.evaluation_policy
+        )
     ):
-        return row, False  # an idempotent re-PUT: nothing changes
+        # the version it already serves: an idempotent re-PUT (or a new description) is no
+        # promotion - no new revision, and no second gate decision
+        if body.description is not None and body.description != row.description:
+            row.description = body.description
+            row.updated_at = _now()
+            return row, True
+        return row, False
     current = EndpointSchemaSnapshot.model_validate(row.schema_snapshot) if row else None
     if row is not None and row.model_version_id == mv.id:
         current = None  # same version: its contract is the one callers already use
