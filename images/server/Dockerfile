@@ -22,7 +22,7 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.5.13@sha256:ea61e006cfec0e8d81fae901ad703e09
 
 ARG MAPI_PACKAGES="mapi-server[docker]"
 ARG MAPI_ASSERT_PRESENT="mapi-server mapi-spec mapi-plots fastapi uvicorn sqlalchemy alembic psycopg procrastinate docker"
-ARG MAPI_ASSERT_ABSENT="numpy xarray pandas scipy pyarrow zarr pymc pytensor nutpie numba scikit-learn xgboost altair plotly mapi-sdk mapi-runner mapi-steps mapi-pymc mapi-sklearn mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular mapi-conformance"
+ARG MAPI_ASSERT_ABSENT="numpy xarray pandas scipy pyarrow zarr pymc pytensor nutpie numba scikit-learn xgboost altair plotly mapi-sdk mapi-runner mapi-steps mapi-pymc mapi-sklearn mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular mapi-plugin-statsmodels statsmodels mapi-conformance"
 ARG VERSION=0.0.0-dev
 ARG VCS_REF=unknown
 ARG BUILD_DATE=1970-01-01T00:00:00Z

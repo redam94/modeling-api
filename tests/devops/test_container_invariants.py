@@ -395,6 +395,8 @@ def test_control_plane_image_has_no_science_dependencies() -> None:
         "mapi-plugin-mmm",
         "mapi-plugin-ts",
         "mapi-plugin-tabular",
+        "mapi-plugin-statsmodels",
+        "statsmodels",
     }
     assert not names & forbidden
     contracts = stage("server", "contracts")

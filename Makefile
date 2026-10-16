@@ -85,7 +85,7 @@ STRICT_PY := packages/spec/src packages/gcs-shim/src packages/runner/src package
 typecheck: ## mypy over every type-checked package, the dev scripts and the image helpers
 	$(UV) run mypy packages/spec/src packages/sdk/src packages/steps-core/src packages/sdk-pymc/src \
 		packages/sdk-sklearn/src packages/plots-core/src plugins/mmm/src plugins/ts/src \
-		plugins/tabular/src conformance/src
+		plugins/tabular/src plugins/statsmodels/src conformance/src
 	@set -e; for pkg in $(STRICT_PY); do echo "mypy --strict $$pkg"; $(UV) run mypy --strict $$pkg; done
 	$(UV) run mypy $(DEVOPS_PY)
 	$(UV) run mypy images/common

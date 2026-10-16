@@ -16,6 +16,8 @@ CONTROL_PLANE_FORBIDDEN = {
     "mapi_plugin_mmm",
     "mapi_plugin_ts",
     "mapi_plugin_tabular",
+    "mapi_plugin_statsmodels",
+    "statsmodels",
     "mapi_plots.recipes",
     "mapi_plots.packs",
     "numpy",
