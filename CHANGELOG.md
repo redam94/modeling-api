@@ -483,6 +483,14 @@ milestone releases are tagged on `main`.
   label any spec `core.*` and get it onto public embed links. Plots of model versions fitted
   with uploaded code (an overlay in their lineage) are saved with `plugin` provenance, are
   never embeddable, and existing links stop serving them.
+- **server, runner, spec**: endpoint and model scores answered only with signed links to zarr
+  and Arrow files, so the Google Sheets card wrote the word "done" into `A1` and the curl, R
+  and TypeScript snippets printed links nobody could open without those libraries. Score runs
+  now write `summary.json` (the requested summary - mean and 90% HDI by default - as plain
+  tables: coordinate columns, then one column per statistic, at most 100,000 cells), and
+  `ScoreCallResult.summary` carries it inline once the run succeeded. The Apps Script builds
+  its payload from an `Input` sheet (long format) when there is one and writes the summary
+  tables to a `Result` sheet; the other snippets print the tables.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

@@ -18,3 +18,4 @@ curl -sS -X POST 'https://api.mapi.example/v1/endpoints/geo-mmm-prod/score' \
     ]
   }
 }'
+# The "summary" field of the answer holds the numbers (mean and HDI per coordinate).

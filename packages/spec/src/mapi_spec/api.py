@@ -173,6 +173,9 @@ __all__ = [
     "PROJECT_HEADER",
     "ROUTE_ACCESS",
     "RUN_CREATE_KINDS",
+    "SCORE_SUMMARY_MAX_BYTES",
+    "SCORE_SUMMARY_MAX_CELLS",
+    "SCORE_SUMMARY_OUTPUT",
     "SSE_HEARTBEAT",
     "SSE_HEARTBEAT_SECONDS",
     "SSE_RETRY_MS",
@@ -263,6 +266,8 @@ __all__ = [
     "SavedPlotCreate",
     "ScoreCall",
     "ScoreCallResult",
+    "ScoreSummary",
+    "ScoreSummaryTable",
     "Scorecard",
     "ScorecardItem",
     "SessionInfo",
@@ -1213,12 +1218,64 @@ class ScoreCall(_Request):
     )
 
 
+SCORE_SUMMARY_OUTPUT: Final = "summary.json"
+"""The score run output holding :class:`ScoreSummary` (plain JSON, read by the API)."""
+SCORE_SUMMARY_MAX_CELLS: Final = 100_000
+"""Cells a :class:`ScoreSummary` carries at most; larger results set ``truncated``."""
+SCORE_SUMMARY_MAX_BYTES: Final = 8 * 1024 * 1024
+"""The largest ``summary.json`` the API inlines in a :class:`ScoreCallResult`."""
+
+SummaryCell = str | int | float | bool | None
+
+
+class ScoreSummaryTable(_Response):
+    """One output variable's summary as a table: the coordinate columns (one per dim), then
+    one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text."""
+
+    variable: str = Field(..., max_length=256)
+    columns: list[str] = Field(..., max_length=256)
+    rows: list[list[SummaryCell]]
+
+    model_config = _examples(
+        {
+            "variable": "revenue",
+            "columns": ["geo", "time", "mean", "hdi_90_lower", "hdi_90_upper"],
+            "rows": [["de", "2026-01-05", 1520.4, 1402.1, 1633.9]],
+        }
+    )
+
+
+class ScoreSummary(_Response):
+    """The requested summary of a score run as plain tables (``summary.json``), inlined in
+    :class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without
+    zarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the
+    ``score.zarr.zip`` output for everything)."""
+
+    tables: list[ScoreSummaryTable] = Field(default_factory=list, max_length=1000)
+    truncated: bool = False
+
+    model_config = _examples(
+        {
+            "tables": [
+                {
+                    "variable": "revenue",
+                    "columns": ["geo", "time", "mean", "hdi_90_lower", "hdi_90_upper"],
+                    "rows": [["de", "2026-01-05", 1520.4, 1402.1, 1633.9]],
+                }
+            ],
+            "truncated": False,
+        }
+    )
+
+
 class ScoreCallResult(_Response):
-    """``done`` with output links (200), or the still-running run (202)."""
+    """``done`` with output links (200), or the still-running run (202). ``summary`` is the
+    requested summary (mean and HDI by default) inline, once the run succeeded."""
 
     done: bool
     run: Run
     outputs: list[ArtifactLink] = Field(default_factory=list)
+    summary: ScoreSummary | None = None
 
     model_config = _examples(
         {

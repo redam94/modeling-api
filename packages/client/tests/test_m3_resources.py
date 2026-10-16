@@ -29,6 +29,7 @@ from mapi_spec.api import (
     Run,
     SavedPlot,
     ScoreRequest,
+    ScoreSummary,
     SignupAccepted,
     SignupReview,
     SnippetSet,
@@ -230,13 +231,15 @@ def test_endpoint_score_replays_its_key_until_done(
         side_effect=[
             httpx.Response(202, json=_result(example, False)),
             httpx.Response(202, json=_result(example, False)),
-            httpx.Response(200, json=_result(example, True)),
+            httpx.Response(200, json=_result(example, True) | {"summary": example(ScoreSummary)}),
         ]
     )
     res = scoped.endpoints.score(
         "geo-mmm-prod", {"mode": "forecast", "horizon": {"dim": "time", "periods": 8}}, wait=30
     )
     assert res.done and route.call_count == 3
+    # the numbers, inline: no zarr reader needed
+    assert res.summary is not None and res.summary.tables[0].columns[-3] == "mean"
     keys = {c.request.headers["Idempotency-Key"] for c in route.calls}
     assert len(keys) == 1
     assert route.calls.last.request.headers["Prefer"] == "wait=30"

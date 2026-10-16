@@ -24,3 +24,6 @@ result = api.endpoints.score(
     wait=60,
 )
 print(result.run.state, [link.name for link in result.outputs])
+# the numbers: one table per output (coordinates, then mean and HDI)
+for table in result.summary.tables if result.summary else []:
+    print(table.variable, table.columns, table.rows[:5])

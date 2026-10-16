@@ -125,7 +125,18 @@ api "$API/v1/endpoints/geo-mmm-prod/schema" | jq .example
 ```
 
 Then score. `Prefer: wait=60` waits up to a minute: `200` with links to the outputs if the run
-finished, `202` with the run otherwise.
+finished, `202` with the run otherwise. A finished answer also carries the numbers inline in
+`summary`: one table per output, the coordinate columns then one column per statistic (the
+mean and the 90% HDI by default), so a spreadsheet or a shell script needs no zarr or Arrow
+reader. A result above 100,000 cells is cut short (`truncated`); `score.zarr.zip` always has
+everything.
+
+```json
+"summary": {"tables": [{"variable": "revenue",
+                        "columns": ["geo", "time", "mean", "hdi_90_lower", "hdi_90_upper"],
+                        "rows": [["de", "2026-01-05", 1520.4, 1402.1, 1633.9]]}],
+            "truncated": false}
+```
 
 ```bash
 api -X POST "$API/v1/endpoints/geo-mmm-prod/score" \

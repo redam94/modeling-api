@@ -229,7 +229,11 @@ async def test_ingest_fit_score_with_the_real_runner_and_shim(
         )
         assert replay.status_code == 200 and replay.json()["done"], replay.text
         outputs = {o["name"] for o in replay.json()["outputs"]}
-        assert "score.zarr.zip" in outputs
+        assert {"score.zarr.zip", "summary.json"} <= outputs
+        # the numbers inline: one table per output, coordinates then statistics
+        tables = replay.json()["summary"]["tables"]
+        assert [t["columns"][-3:] for t in tables] == [["median", "q10", "q90"]]  # quantiles
+        assert tables[0]["rows"] and isinstance(tables[0]["rows"][0][-1], float)
 
         # ----------------------------------------- evaluate (defaults to the fit dataset)
         ev = await client.post(f"/v1/models/{model_id}/versions/1:evaluate", json={"params": {}})

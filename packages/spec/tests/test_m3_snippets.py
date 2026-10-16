@@ -143,6 +143,130 @@ def test_javascript_carries_the_exact_payload(language: str) -> None:
     assert json.dumps(HOSTILE_CTX.url) in code
 
 
+_SHEETS_HARNESS = """
+const sent = [];
+const sheets = {};
+function sheet(name, values) {
+  const s = { name, values, cleared: false, cells: {},
+    getDataRange: () => ({ getValues: () => values }),
+    clear: () => { s.cleared = true; s.cells = {}; },
+    getRange: (r, c, nr, nc) => ({
+      setValue: (v) => { s.cells[r + "," + c] = v; },
+      setValues: (grid) => {
+        if (grid.length !== nr || grid.some((row) => row.length !== nc)) throw new Error("shape");
+        grid.forEach((row, i) => row.forEach((v, j) => { s.cells[(r + i) + "," + (c + j)] = v; }));
+      },
+    }),
+  };
+  sheets[name] = s;
+  return s;
+}
+const INPUT = JSON.parse(process.argv[2]);
+const ANSWER = JSON.parse(process.argv[3]);
+const asCell = (c) =>
+  typeof c === "string" && c.startsWith("date:") ? new Date(c.slice(5) + "T00:00:00Z") : c;
+if (INPUT) sheet("Input", INPUT.map((r) => r.map(asCell)));
+globalThis.PropertiesService = { getScriptProperties: () => ({ getProperty: () => "tok" }) };
+globalThis.SpreadsheetApp = { getActiveSpreadsheet: () => ({
+  getSheetByName: (n) => sheets[n] || null, insertSheet: (n) => sheet(n, []) }) };
+globalThis.Session = { getScriptTimeZone: () => "UTC" };
+globalThis.Utilities = { formatDate: (d) => d.toISOString().slice(0, 10) };
+globalThis.UrlFetchApp = { fetch: (url, opts) => {
+  sent.push({ url, opts, payload: JSON.parse(opts.payload) });
+  return { getResponseCode: () => 200, getContentText: () => JSON.stringify(ANSWER) };
+} };
+FUNC();
+console.log(JSON.stringify({ sent, result: sheets.Result ? sheets.Result.cells : null }));
+"""
+
+
+def _run_apps_script(ctx: SnippetContext, sheet: Any, answer: Any) -> Any:
+    import shutil
+    import subprocess
+    import tempfile
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    code = render_snippet("apps_script", ctx).code
+    name = re.search(r"function (score\w+)\(", code)
+    assert name is not None
+    script = code + _SHEETS_HARNESS.replace("FUNC()", name.group(1) + "()")
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "sheet.js"
+        path.write_text(script, "utf-8")
+        out = subprocess.run(
+            [node, str(path), json.dumps(sheet), json.dumps(answer)],
+            capture_output=True, text=True, timeout=60, check=False,
+        )  # fmt: skip
+    assert out.returncode == 0, out.stderr
+    return json.loads(out.stdout)
+
+
+SUMMARY_ANSWER = {
+    "done": True,
+    "run": {"id": "run_1", "state": "succeeded"},
+    "outputs": [],
+    "summary": {
+        "tables": [
+            {"variable": "revenue", "columns": ["geo", "time", "mean", "hdi_90_lower"],
+             "rows": [["de", "2026-01-05", 10.5, 9.0], ["fr", "2026-01-05", 7.25, None]]},
+            {"variable": "roi", "columns": ["mean"], "rows": [[1.5]]},
+        ],
+        "truncated": False,
+    },
+}  # fmt: skip
+
+
+def test_apps_script_writes_the_summary_table_to_the_sheet() -> None:
+    """The Google Sheets card delivers numbers: the answer's summary lands in a "Result"
+    sheet, one table per output (not just the word "done")."""
+    run = _run_apps_script(CTX, None, SUMMARY_ANSWER)
+    [call] = run["sent"]
+    assert call["payload"] == CTX.payload and call["url"] == CTX.url
+    assert call["opts"]["headers"]["Authorization"] == "Bearer tok"
+    cells = run["result"]
+    assert [cells[f"1,{c}"] for c in range(1, 6)] == ["variable", "geo", "time", "mean",
+                                                      "hdi_90_lower"]  # fmt: skip
+    assert [cells[f"2,{c}"] for c in range(1, 6)] == ["revenue", "de", "2026-01-05", 10.5, 9.0]
+    assert cells["3,5"] == "" and cells["3,4"] == 7.25
+    assert cells["4,1"] == "" and cells["5,1"] == "variable" and cells["6,2"] == 1.5
+    pending = _run_apps_script(CTX, None, {"done": False, "run": {"id": "run_9"}})
+    assert "Still running (run_9)" in pending["result"]["1,1"]
+
+
+def test_apps_script_builds_the_payload_from_the_input_sheet() -> None:
+    example = {
+        "mode": "predict",
+        "data": {
+            "coords": {"time": {"dims": ["time"], "data": ["2026-01-05"]},
+                       "geo": {"dims": ["geo"], "data": ["de"]}},
+            "data_vars": {"spend": {"dims": ["time", "geo"], "data": [[0.0]]},
+                          "price": {"dims": ["geo"], "data": [0.0]}},
+        },
+    }  # fmt: skip
+    ctx = CTX.model_copy(update={"payload": example})
+    sheet = [
+        ["time", "geo", "spend", "price", "ignored"],
+        ["date:2026-01-05", "de", 100, 2.5, "x"],
+        ["date:2026-01-05", "fr", 80, 3, "x"],
+        ["date:2026-01-12", "de", "", 2.5, "x"],
+        ["", "", "", "", ""],
+    ]
+    run = _run_apps_script(ctx, sheet, SUMMARY_ANSWER)
+    data = run["sent"][0]["payload"]["data"]
+    assert run["sent"][0]["payload"]["mode"] == "predict"
+    assert data["coords"] == {"time": {"dims": ["time"], "data": ["2026-01-05", "2026-01-12"]},
+                              "geo": {"dims": ["geo"], "data": ["de", "fr"]}}  # fmt: skip
+    assert data["data_vars"]["spend"] == {
+        "dims": ["time", "geo"],
+        "data": [[100, 80], [None, None]],
+    }
+    assert data["data_vars"]["price"] == {"dims": ["geo"], "data": [2.5, 3]}
+    # the payload is a valid endpoint call
+    EndpointScoreCall.model_validate(run["sent"][0]["payload"])
+
+
 def test_curl_carries_the_exact_payload() -> None:
     code = render_snippet("curl", HOSTILE_CTX).code
     words = shlex.split(code.replace("\\\n", " "))

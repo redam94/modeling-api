@@ -113,6 +113,43 @@ def test_inline_payload_scores_like_the_same_rows_uploaded(
     assert list(b["week"].values) == list(rows["week"].values)
 
 
+def test_score_writes_a_summary_table_integrations_can_read(
+    gcs: ShimGcs, fitted: dict[str, Any]
+) -> None:
+    """``summary.json``: the default summary as plain tables (coordinates, then one column per
+    statistic), so a spreadsheet or a curl caller gets numbers without zarr or Arrow."""
+    from mapi_spec.api import SCORE_SUMMARY_OUTPUT, ScoreSummary
+
+    rows = fitted["data"]
+    gcs.put(gcs.buckets.quarantine, "t/default/inline/rows.json", _inline(rows))
+    result = run_supervisor(
+        make_run(
+            gcs, RunKind.SCORE, REQUEST,
+            inputs={**fitted["bundle"],
+                    INPUT_INLINE_DATA: (gcs.buckets.quarantine, "t/default/inline/rows.json")},
+        )
+    )  # fmt: skip
+    _ok(result)
+    summary = ScoreSummary.model_validate_json(result.output(SCORE_SUMMARY_OUTPUT))
+    tree = read_datatree_zip(result.output("score.zarr.zip"))
+    node = tree["summary"].to_dataset()
+    assert summary.tables and not summary.truncated
+    assert {t.variable for t in summary.tables} == {str(v) for v in node.data_vars}
+    for table in summary.tables:
+        da = node[table.variable].transpose("stat", ...)
+        dims = [str(d) for d in da.dims if d != "stat"]
+        stats = [str(x) for x in da["stat"].values]
+        assert table.columns == [*dims, *stats]
+        assert len(table.rows) == int(np.prod([da.sizes[d] for d in dims]))
+        first = table.rows[0]
+        assert all(isinstance(c, str | int | float) for c in first[: len(dims)])
+        expected = da.values.reshape(len(stats), -1)[:, 0]
+        np.testing.assert_allclose([float(x) for x in first[len(dims) :]], expected)
+    weeks = [r[0] for r in summary.tables[0].rows if summary.tables[0].columns[0] == "week"]
+    if weeks:
+        assert str(weeks[0])[:4].isdigit()  # dates as ISO text
+
+
 def test_inline_payload_named_like_the_endpoint_contract_scores_the_same(
     gcs: ShimGcs, fitted: dict[str, Any]
 ) -> None:

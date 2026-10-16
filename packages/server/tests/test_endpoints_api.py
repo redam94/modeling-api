@@ -14,7 +14,7 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.finalizer import Finalizer
-from mapi_server.services.runs import apply_transition, load_run
+from mapi_server.services.runs import apply_transition, load_run, now
 from mapi_server_testkit.builders import queued_fit, simulate_outputs, submit_fit
 from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_server_testkit.identity import (
@@ -456,6 +456,60 @@ async def test_returned_draws_are_capped_per_tier(
     assert (await client.post("/v1/endpoints/trend-prod/score", json=call(500))).status_code == 202
     r = await client.post("/v1/endpoints/trend-prod/score", json=call(501))
     assert r.status_code >= 400 and "at most 500 draws" in r.text
+
+
+async def _finish_score(ctx: ServerContext, run_id: str, outputs: dict[str, bytes]) -> None:
+    """Mark a score run succeeded with these outputs stored (what the finalizer records)."""
+    stored = {}
+    for name, data in outputs.items():
+        meta = await ctx.store.put(ctx.buckets.runs, f"t/default/runs/{run_id}/1/{name}", data)
+        stored[name] = {"bucket": meta.bucket, "name": meta.name, "generation": meta.generation,
+                        "size": meta.size}  # fmt: skip
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, run_id)
+        assert run is not None
+        run.state, run.attempt, run.finished_at = "succeeded", 1, now()
+        s.add(
+            m.RunAttempt(
+                run_id=run_id, attempt=1, tenant_id=run.tenant_id, project_id=run.project_id,
+                nonce="n" + run_id, hmac_key="k" * 64, executor="fake", status="finished",
+                deadline=now(), outputs=stored,
+            )
+        )  # fmt: skip
+
+
+async def test_finished_scores_answer_with_the_summary_inline(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """Q2: a caller without zarr or Arrow (a spreadsheet, curl) gets the numbers - the mean
+    and HDI per coordinate - in the answer itself, next to the output links."""
+    from mapi_spec.api import SCORE_SUMMARY_MAX_BYTES, ScoreCallResult, ScoreSummary
+
+    await fitted_version(ctx)
+    await client.put("/v1/endpoints/trend-prod", json={"model": "model://default/trend@v1"})
+    body = {"mode": "forecast", "horizon": {"dim": "t", "periods": 2}}
+    headers = {"Idempotency-Key": "sheet-1", "Prefer": "wait=0"}
+    r = await client.post("/v1/endpoints/trend-prod/score", json=body, headers=headers)
+    assert r.status_code == 202 and r.json()["summary"] is None
+    summary = ScoreSummary.model_validate(ScoreSummary.model_json_schema()["examples"][0])
+    await _finish_score(ctx, r.json()["run"]["id"], {
+        "score.zarr.zip": b"PK\x05\x06" + b"\x00" * 18,
+        "summary.json": summary.model_dump_json().encode(),
+    })  # fmt: skip
+    r = await client.post("/v1/endpoints/trend-prod/score", json=body, headers=headers)
+    assert r.status_code == 200, r.text
+    done = ScoreCallResult.model_validate(r.json())
+    assert done.done and done.summary == summary
+    assert {o.name for o in done.outputs} == {"score.zarr.zip", "summary.json"}
+    # a summary that is not a ScoreSummary, or too large, is left out (the links remain)
+    r2 = await client.post("/v1/endpoints/trend-prod/score", json=body,
+                           headers={**headers, "Idempotency-Key": "sheet-2"})  # fmt: skip
+    await _finish_score(ctx, r2.json()["run"]["id"], {"summary.json": b'{"tables": "nope"}'})
+    r2 = await client.post("/v1/endpoints/trend-prod/score", json=body,
+                           headers={**headers, "Idempotency-Key": "sheet-2"})  # fmt: skip
+    assert r2.status_code == 200 and r2.json()["summary"] is None
+    assert r2.json()["outputs"][0]["name"] == "summary.json"
+    assert SCORE_SUMMARY_MAX_BYTES >= 1024 * 1024
 
 
 async def test_score_bodies_are_capped_and_depth_checked(

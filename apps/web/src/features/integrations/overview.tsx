@@ -57,7 +57,12 @@ function SheetsSteps({ endpoint }: { endpoint: Endpoint }) {
         <li>
           Project Settings → Script properties: add <Mono>MAPI_TOKEN</Mono> with the token.
         </li>
-        <li>Run the function; the result lands in cell A1.</li>
+        <li>
+          Optional: put your own rows in a sheet named <Mono>Input</Mono> (a header row with the endpoint&apos;s dims and inputs, one row per coordinate); otherwise the example call is scored.
+        </li>
+        <li>
+          Run the function; the forecast (mean and 90% interval per coordinate) lands in a sheet named <Mono>Result</Mono>.
+        </li>
       </ol>
       {snippets.isPending ? <LoadingRows rows={2} /> : script ? <CodeBlock code={script.code} label="Apps Script" language="apps_script" /> : <p className="text-[13px] text-muted-foreground">No Apps Script snippet for this endpoint.</p>}
     </div>
