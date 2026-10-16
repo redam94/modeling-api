@@ -21,14 +21,21 @@ from mapi_cli.commands import (
     check,
     config,
     datasets,
+    endpoints,
     fit,
+    guided,
     new,
+    plots,
     plugin,
+    priors,
     runs,
     score,
     serve,
+    signup,
+    tenant,
     tokens,
     usage,
+    webhooks,
 )
 from mapi_cli.commands import spec as spec_cmd
 from mapi_cli.output import Output
@@ -37,7 +44,8 @@ from mapi_cli.state import AppState
 HELP = (
     "The modeling-api command line.\n\n"
     "Local commands (new, check, fit, score, catalog, plugin, spec) need no server. Remote "
-    "commands (runs, datasets, tokens, usage, admin, --remote) use the API from --url, "
+    "commands (runs, datasets, tokens, usage, admin, endpoints, webhooks, plots, guided, "
+    "priors, tenant, signup, --remote) use the API from --url, "
     "MAPI_URL or a profile in ~/.config/mapi/config.toml, signed in with `mapi login` (or "
     "--token / MAPI_TOKEN), in the project chosen with `mapi use` (or --project / "
     "MAPI_PROJECT). --json prints machine-readable output on stdout."
@@ -105,6 +113,8 @@ app.command("logout")(auth.logout)
 app.command("whoami")(auth.whoami)
 app.command("use")(auth.use)
 app.command("usage")(usage.usage)
+app.command("signup")(signup.signup)
+app.command("verify-email")(signup.verify_email)
 app.command("serve", context_settings={"allow_extra_args": True, "ignore_unknown_options": True})(
     serve.serve
 )
@@ -115,6 +125,12 @@ app.add_typer(spec_cmd.app, name="spec")
 app.add_typer(config.app, name="config")
 app.add_typer(tokens.app, name="tokens")
 app.add_typer(admin.app, name="admin")
+app.add_typer(endpoints.app, name="endpoints")
+app.add_typer(webhooks.app, name="webhooks")
+app.add_typer(plots.app, name="plots")
+app.add_typer(guided.app, name="guided")
+app.add_typer(priors.app, name="priors")
+app.add_typer(tenant.app, name="tenant")
 
 
 def run() -> None:  # pragma: no cover - console script entry point

@@ -56,6 +56,7 @@ from mapi_spec.api import (
     RunRetry,
     ScoreCall,
     ScoreCallResult,
+    SignupAccepted,
     SpecCreate,
     SpecDoc,
     SpecRevision,
@@ -73,6 +74,7 @@ from mapi_spec.api import (
     UsageReport,
     ValidateRequest,
     ValidateResponse,
+    VerificationResult,
 )
 from mapi_spec.audit import AuditAction, AuditOutcome
 from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
@@ -104,6 +106,17 @@ from mapi_client._common import (
     version_done,
 )
 from mapi_client._http import Call, RetryPolicy, RetryState
+from mapi_client._m3_async import (
+    AsyncAdminTrustMixin,
+    AsyncEndpoints,
+    AsyncGuided,
+    AsyncPlotSharingMixin,
+    AsyncRemoteEndpoint,
+    AsyncTenantTrustMixin,
+    AsyncWebhooks,
+)
+from mapi_client._m3_async import signup as _signup
+from mapi_client._m3_async import verify_email as _verify_email
 from mapi_client.auth import default_auth
 from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
@@ -183,6 +196,9 @@ class AsyncClient:
         self.tokens = AsyncTokens(self)
         self.usage = AsyncUsage(self)
         self.admin = AsyncAdmin(self)
+        self.guided = AsyncGuided(self)
+        self.endpoints = AsyncEndpoints(self)
+        self.webhooks = AsyncWebhooks(self)
 
     async def aclose(self) -> None:
         await self._http.aclose()
@@ -216,6 +232,35 @@ class AsyncClient:
         """``GET /v1/me``: who you are and where you may act (v0.3)."""
         return await self.send(calls.get_me())
 
+    def endpoint(self, alias: str) -> AsyncRemoteEndpoint:
+        """An endpoint of the selected project as an object (see ``Client.endpoint``)."""
+        return AsyncRemoteEndpoint(self, alias)
+
+    async def signup(
+        self,
+        email: str,
+        name: str,
+        *,
+        accepted_terms: bool,
+        organisation: str | None = None,
+        terms_version: str | None = None,
+        challenge: str | None = None,
+    ) -> SignupAccepted:
+        """``POST /auth/signup`` (public; the same answer for known addresses)."""
+        return await _signup(
+            self,
+            email,
+            name,
+            accepted_terms=accepted_terms,
+            organisation=organisation,
+            terms_version=terms_version,
+            challenge=challenge,
+        )
+
+    async def verify_email(self, token: str) -> VerificationResult:
+        """``POST /auth/verify-email``: creates a public-tier tenant and its project."""
+        return await _verify_email(self, token)
+
     async def health(self) -> Health:
         return await self.send(calls.health())
 
@@ -235,6 +280,7 @@ class AsyncClient:
                     json=call.json,
                     headers=headers,
                     timeout=call_timeout(self.config, call.server_wait),
+                    auth=None if call.public else httpx.USE_CLIENT_DEFAULT,
                 )
             except httpx.TransportError as exc:
                 wait = self._retry.plan(call, state, None)
@@ -792,7 +838,9 @@ class AsyncModels(_Resource):
         return ScoreResult.from_call(res, tree)
 
 
-class AsyncPlots(_Resource):
+class AsyncPlots(_Resource, AsyncPlotSharingMixin):
+    """A model version's plots, and (v0.4) saved plots, static renders and embed links."""
+
     def list(
         self, model_id: str, version: int, *, limit: int | None = None
     ) -> AsyncPaginator[PlotListItem]:
@@ -809,7 +857,7 @@ class AsyncPlots(_Resource):
 # ====================================================================== M2 resources (v0.3)
 
 
-class AsyncTenants(_Resource):
+class AsyncTenants(_Resource, AsyncTenantTrustMixin):
     """Tenants the caller belongs to: projects, members, usage and audit (v0.3)."""
 
     def list(self, *, limit: int | None = None) -> AsyncPaginator[Tenant]:
@@ -995,7 +1043,7 @@ class AsyncUsage(_Resource):
         return await self._c.tenants.usage(tenant_id, period=period, start=start, group_by=group_by)
 
 
-class AsyncAdmin(_Resource):
+class AsyncAdmin(_Resource, AsyncAdminTrustMixin):
     """Platform operator endpoints (``/v1/admin``). Every change is audited."""
 
     def tenants(

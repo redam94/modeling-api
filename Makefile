@@ -110,6 +110,14 @@ test-fast: ## Unit tests only, skipping slow MCMC tests
 .PHONY: test-all
 test-all: test web-test ## Python suite + web (Vitest) suites
 
+# Atlas (the budget optimiser, AGPL) lives in its own repository; it is never a locked
+# dependency. The Atlas tests install it into a throwaway overlay of the environment.
+ATLAS_DIR ?= ../optimizer-framework
+
+.PHONY: test-atlas
+test-atlas: ## The mapi_client.atlas tests with Atlas installed from ATLAS_DIR (default ../optimizer-framework)
+	$(UV) run --with-editable $(ATLAS_DIR) python -m pytest -q -p no:cacheprovider packages/client/tests/test_atlas.py
+
 .PHONY: e2e
 e2e: ## End-to-end tests against a running stack (`make dev` first): API suite, then the browser @e2e suite
 	$(UV) run pytest -q -m e2e

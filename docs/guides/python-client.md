@@ -1,5 +1,5 @@
 ---
-description: Drive the platform from Python with mapi_client - upload datasets, validate and fit specs, follow runs live, inspect signed model versions and score them into xarray.
+description: Drive the platform from Python with mapi_client - upload datasets, validate and fit specs, follow runs live, inspect signed model versions, score them and their endpoints into xarray, and wire up webhooks and plot renders.
 ---
 
 # The Python client <span class="mapi-badge">v0.2</span>
@@ -250,6 +250,114 @@ waited out too):
 --8<-- "client_tenancy.py:retry"
 ```
 
+## Endpoints, webhooks and sharing <span class="mapi-badge">v0.4</span> { #endpoints-webhooks-and-sharing }
+
+The examples in this section come from `docs/snippets/client_integrations.py`, which runs
+offline against a stand-in API. The concepts are in [Integrations](../concepts/integrations.md).
+
+### Promote a model version to an endpoint
+
+```python
+--8<-- "client_integrations.py:promote"
+```
+
+```text
+endpoint://growth/geo-mmm-prod -> model://growth/eu-geo-mmm@v3 allowed
+```
+
+Promotion goes through the [promotion gate](../concepts/integrations.md#promotion-gate): a
+version whose scorecard warns raises `MapiError` with code `OVERRIDE_REQUIRED` until a
+signed-in project admin repeats the call with `override=True, reason="…"`; `PROMOTION_BLOCKED`
+cannot be overridden. `api.endpoints` also has `list`, `get`, `history`, `rollback(alias,
+reason, to_revision=…)` and `delete`.
+
+### Score an endpoint into xarray
+
+`api.endpoint(alias)` returns a `RemoteEndpoint`: `schema()` says what to send, `validate(ds)`
+checks a payload without running it, and `score(ds)` sends an `xr.Dataset` inline (as
+XrJSON, up to 5 MB) and returns the scored `xr.Dataset`:
+
+```python
+--8<-- "client_integrations.py:score"
+```
+
+```text
+['revenue_local', 'spend_local']
+[[13260.]]
+```
+
+`score` returns the `summary` group (a `stat` dim: `mean`, `hdi_90_lower`, `hdi_90_upper`,
+...); pass `group="draws"` with `output={"draws": 100}` for posterior draws along `sample`,
+or `group="delta/summary"` for a counterfactual. Any other `EndpointScoreCall` field is a
+keyword: `mode="forecast"`, `horizon={"dim": "time", "periods": 8}`, `scenario=plan_ds`,
+`future_covariates="carry_last"`. Like `models.score`, it sends `Prefer: wait=60` and
+repeats the call with the same idempotency key until the run is done (`timeout=` bounds the
+wait), so a slow score never creates two runs. `api.endpoints.score(alias, call)` is the
+lower-level call: it returns a `ScoreResult` with the run, the output links and the
+downloaded tree. Inline payloads need the `xarray` extra; larger data is uploaded as a
+dataset and sent as `data="dataset://growth/plan@v2"`.
+
+`mapi_client.xrjson.encode(ds)` and `decode(payload)` convert between `xr.Dataset` and the
+XrJSON payload (the SDK wire format: dates as ISO strings, `NaN` as `null`, size-checked
+before anything is sent).
+
+### Snippets
+
+```python
+--8<-- "client_integrations.py:snippets"
+```
+
+`api.endpoints.snippets(alias, languages)` returns the code the
+[Integrations hub](../concepts/integrations.md#snippets) shows, in Python, TypeScript, curl,
+R, Apps Script and Atlas. The Python snippet is exactly the `api.endpoints.score(...)` call
+above and runs as generated.
+
+### Webhooks
+
+```python
+--8<-- "client_integrations.py:webhook"
+```
+
+The signing secret is returned once (by `create` and `rotate_secret`) and kept out of
+`repr`. `api.webhooks` also has `list`, `get`, `update`, `delete`, `deliveries(id,
+status=…)` and `replay(id, delivery_id)`. To check deliveries on the receiving side, see
+[Receiving webhooks](webhook-receivers.md).
+
+### Render a plot
+
+```python
+--8<-- "client_integrations.py:render"
+```
+
+`plots.render` takes a PlotSpec, a saved plot (`saved_plot_id=`) or a model version's plot,
+waits for the sandboxed render like a score, and `download_render` fetches the file
+(CRC32C-checked). `plots.save`, `saved`, `get_saved` and `delete_saved` manage saved plots;
+`create_embed` returns a read-only embed link once (`embeds`, `revoke_embed`, and the public
+`embed(token)` view). See [Sharing plots](sharing-plots.md).
+
+### Sign-up, verification, deletion and export
+
+```python
+--8<-- "client_integrations.py:export"
+```
+
+`download_export` waits for the export to be ready, downloads it through the storage client
+(never with your API credentials) to a temporary file and renames it into place once its
+size matches. `api.tenants` also has `verification`, `request_deletion(tenant_id,
+confirm=tenant_id)`, `deletion` and `cancel_deletion`; `api.signup(...)` and
+`api.verify_email(token)` are the public sign-up calls (sent without credentials). Operators
+have `api.admin.signups`, `review_signup`, `set_verification` and `retry_deletion`. See
+[Deleting and exporting data](data-deletion.md).
+
+### Guided mode
+
+`api.guided` drives [Guided mode](../concepts/guided-mode.md) from code: `templates()` and
+`template(id)`, `detect_roles(template_id, columns=[…] | dataset="dataset://…")`,
+`draft(template_id=…, name=…, dataset=…, answers={…})` (the ingest mapping, the `ModelSpec`
+and its YAML; nothing is stored), `compile({...})` (the `ScoreRequest` a what-if, forecast
+or preset stands for) and `preview_priors(business_priors, spec_id=…, revision=…)` (a
+sandboxed `translate_priors` run, waited for).
+
 ## Async
 
 `AsyncClient` has the same resources and arguments; calls are awaited and lists are
@@ -269,14 +377,19 @@ iterated with `async for`:
 | `specs` | `validate`, `create`, `list`, `get`, `find`, `revise`, `upsert`, `revisions`, `revision`, `dry_run` |
 | `runs` | `create`, `fit`, `get`, `list`, `wait`, `stream_events`, `events`, `logs`, `plots`, `cancel`, `resume`, `retry` |
 | `models` | `list`, `get`, `versions`, `version`, `artifact`, `download`, `score` |
-| `plots` | `list`, `get`, `validate` |
-| `tenants` (v0.3) | `list`, `get`, `rename`, `projects`, `create_project`, `update_project`, `delete_project`, `members`, `add_member`, `set_role`, `remove_member`, `usage`, `audit` |
+| `plots` | `list`, `get`, `validate`; v0.4: `save`, `saved`, `get_saved`, `delete_saved`, `render`, `render_status`, `render_output`, `download_render`, `create_embed`, `embeds`, `revoke_embed`, `embed` |
+| `guided` (v0.4) | `templates`, `template`, `detect_roles`, `draft`, `import_bayesinsight`, `compile`, `translate_priors`, `prior_translation`, `wait_prior_translation`, `preview_priors` |
+| `endpoints` (v0.4) | `list`, `get`, `promote`, `delete`, `history`, `rollback`, `schema`, `validate`, `submit`, `score`, `snippets`; `api.endpoint(alias)`: `info`, `schema`, `history`, `snippets`, `validate`, `score`, `score_result` |
+| `webhooks` (v0.4) | `list`, `create`, `get`, `update`, `delete`, `rotate_secret`, `deliveries`, `replay` |
+| `tenants` (v0.3) | `list`, `get`, `rename`, `projects`, `create_project`, `update_project`, `delete_project`, `members`, `add_member`, `set_role`, `remove_member`, `usage`, `audit`; v0.4: `verification`, `request_deletion`, `deletion`, `cancel_deletion`, `export`, `export_status`, `wait_export`, `download_export` |
 | `tokens` (v0.3) | `list`, `create`, `get`, `revoke` |
 | `usage` (v0.3) | `get` (the project), `tenant` |
-| `admin` (v0.3, operators) | `tenants`, `tenant`, `create_tenant`, `update_tenant`, `quotas`, `set_quota`, `delete_quota`, `kill_switches`, `set_kill_switches`, `executors`, `executor`, `audit` |
+| `admin` (v0.3, operators) | `tenants`, `tenant`, `create_tenant`, `update_tenant`, `quotas`, `set_quota`, `delete_quota`, `kill_switches`, `set_kill_switches`, `executors`, `executor`, `audit`; v0.4: `signups`, `review_signup`, `set_verification`, `retry_deletion` |
 
 List calls return lazy paginators that follow `next_cursor`. `api.health()` and `api.ready()`
 call `/healthz` and `/readyz`; `api.me()` calls `/v1/me` and `api.use(project)` changes the
-selected project. The DTOs are documented in
+selected project; `api.signup()`, `api.verify_email()` and `api.endpoint(alias)` are v0.4.
+`mapi_client.webhooks` verifies deliveries, `mapi_client.atlas` adapts an endpoint to
+[Atlas](atlas.md) and `mapi_client.xrjson` encodes inline payloads. The DTOs are documented in
 [`mapi_spec`](../reference/api/spec.md#rest-dtos) and the endpoints in the
 [HTTP API reference](../reference/http-api.md).

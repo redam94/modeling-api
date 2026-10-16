@@ -177,7 +177,10 @@ api "$API/v1/endpoints/geo-mmm-prod/snippets?language=python&language=curl"
 returns ready-to-run code for Python, TypeScript, curl, R, Google Sheets (Apps Script) and
 Atlas, with this server's address and the endpoint's example payload. `base_url=` puts
 another address in (a public one, behind a proxy). Snippets read the token from `MAPI_TOKEN`
-and never contain a secret.
+and never contain a secret. From Python, `Client().endpoint("geo-mmm-prod").score(ds)`
+sends an `xr.Dataset` and returns one
+([The Python client](python-client.md#endpoints-webhooks-and-sharing)); the CLI has
+`mapi endpoints score`, and [Atlas](atlas.md) optimises budgets against an endpoint.
 
 ### Tokens for integrations
 
@@ -249,13 +252,18 @@ refuse timestamps more than five minutes away from your clock:
 === "Python"
 
     ```python
-    from mapi_spec.webhooks import verify_signature
+    from mapi_client.webhooks import verify
+    from mapi_spec.errors import MapiError
 
     def handle(raw_body: bytes, headers: dict[str, str]) -> int:
-        if not verify_signature(raw_body, headers.get("Mapi-Signature"), SECRET):
+        try:
+            event = verify(headers, raw_body, SECRET)  # a WebhookEnvelope
+        except MapiError:
             return 401
         ...
     ```
+
+    [Receiving webhooks](webhook-receivers.md) has complete FastAPI and Flask receivers.
 
 === "Node"
 

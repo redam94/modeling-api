@@ -150,6 +150,8 @@ nav:
           - "From a spreadsheet to a Guided draft": guides/guided-data.md
           - Endpoints and webhooks: guides/endpoints-and-webhooks.md
           - The Integrations hub: guides/integrations-hub.md
+          - Receiving webhooks: guides/webhook-receivers.md
+          - Optimise a budget with Atlas: guides/atlas.md
       - Running it for teams:
           - Authentication: guides/authentication.md
           - Administration: guides/administration.md

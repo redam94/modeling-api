@@ -55,6 +55,7 @@ from mapi_spec.api import (
     RunRetry,
     ScoreCall,
     ScoreCallResult,
+    SignupAccepted,
     SpecCreate,
     SpecDoc,
     SpecRevision,
@@ -72,6 +73,7 @@ from mapi_spec.api import (
     UsageReport,
     ValidateRequest,
     ValidateResponse,
+    VerificationResult,
 )
 from mapi_spec.audit import AuditAction, AuditOutcome
 from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
@@ -103,6 +105,17 @@ from mapi_client._common import (
     version_done,
 )
 from mapi_client._http import Call, RetryPolicy, RetryState
+from mapi_client._m3 import (
+    AdminTrustMixin,
+    Endpoints,
+    Guided,
+    PlotSharingMixin,
+    RemoteEndpoint,
+    TenantTrustMixin,
+    Webhooks,
+)
+from mapi_client._m3 import signup as _signup
+from mapi_client._m3 import verify_email as _verify_email
 from mapi_client.auth import default_auth
 from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
@@ -189,6 +202,9 @@ class Client:
         self.tokens = Tokens(self)
         self.usage = Usage(self)
         self.admin = Admin(self)
+        self.guided = Guided(self)
+        self.endpoints = Endpoints(self)
+        self.webhooks = Webhooks(self)
 
     # ---------------------------------------------------------------------- lifecycle
     def close(self) -> None:
@@ -224,6 +240,37 @@ class Client:
         """``GET /v1/me``: who you are and where you may act (v0.3)."""
         return self.send(calls.get_me())
 
+    def endpoint(self, alias: str) -> RemoteEndpoint:
+        """An endpoint of the selected project as an object (``.schema()``,
+        ``.validate(ds)``, ``.score(ds) -> xr.Dataset``)."""
+        return RemoteEndpoint(self, alias)
+
+    def signup(
+        self,
+        email: str,
+        name: str,
+        *,
+        accepted_terms: bool,
+        organisation: str | None = None,
+        terms_version: str | None = None,
+        challenge: str | None = None,
+    ) -> SignupAccepted:
+        """``POST /auth/signup`` (public; the answer is the same for known addresses). The
+        e-mail carries a link with the token for :meth:`verify_email`."""
+        return _signup(
+            self,
+            email,
+            name,
+            accepted_terms=accepted_terms,
+            organisation=organisation,
+            terms_version=terms_version,
+            challenge=challenge,
+        )
+
+    def verify_email(self, token: str) -> VerificationResult:
+        """``POST /auth/verify-email``: creates a public-tier tenant and its project."""
+        return _verify_email(self, token)
+
     # ------------------------------------------------------------------------ health
     def health(self) -> Health:
         """``GET /healthz`` (process liveness)."""
@@ -247,6 +294,7 @@ class Client:
                     json=call.json,
                     headers=headers,
                     timeout=call_timeout(self.config, call.server_wait),
+                    auth=None if call.public else httpx.USE_CLIENT_DEFAULT,
                 )
             except httpx.TransportError as exc:
                 wait = self._retry.plan(call, state, None)
@@ -835,7 +883,9 @@ class Models(_Resource):
         return ScoreResult.from_call(res, tree)
 
 
-class Plots(_Resource):
+class Plots(_Resource, PlotSharingMixin):
+    """A model version's plots, and (v0.4) saved plots, static renders and embed links."""
+
     def list(
         self, model_id: str, version: int, *, limit: int | None = None
     ) -> Paginator[PlotListItem]:
@@ -853,8 +903,9 @@ class Plots(_Resource):
 # ====================================================================== M2 resources (v0.3)
 
 
-class Tenants(_Resource):
-    """Tenants the caller belongs to: projects, members, usage and audit (v0.3)."""
+class Tenants(_Resource, TenantTrustMixin):
+    """Tenants the caller belongs to: projects, members, usage and audit (v0.3);
+    verification, deletion and GDPR export (v0.4)."""
 
     def list(self, *, limit: int | None = None) -> Paginator[Tenant]:
         return self._c.page_iter(lambda cur: calls.list_tenants(limit, cur))
@@ -1039,7 +1090,7 @@ class Usage(_Resource):
         return self._c.tenants.usage(tenant_id, period=period, start=start, group_by=group_by)
 
 
-class Admin(_Resource):
+class Admin(_Resource, AdminTrustMixin):
     """Platform operator endpoints (``/v1/admin``). Every change is audited."""
 
     def tenants(

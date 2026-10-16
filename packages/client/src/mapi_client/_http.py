@@ -50,7 +50,8 @@ class Call[T]:
     path: str
     parse: Callable[[httpx.Response], T]
     expect: frozenset[int] = frozenset({200})
-    params: Mapping[str, str | int] = field(default_factory=dict)
+    params: Mapping[str, str | int | list[str]] = field(default_factory=dict)
+    """Query parameters; a list value is sent as a repeated parameter (``?a=x&a=y``)."""
     json: Any = None
     headers: Mapping[str, str] = field(default_factory=dict)
     retry_safe: bool = False
@@ -62,6 +63,9 @@ class Call[T]:
     """The operation acts in the selected project (``X-Mapi-Project`` is sent). ``False``
     for platform, tenant and identity routes, and for routes whose path names the project
     (a header naming another project would be rejected)."""
+    public: bool = False
+    """A public route (sign-up, e-mail verification, embed views): sent **without** the
+    client's credentials, which those routes neither need nor read."""
 
     @property
     def idempotent(self) -> bool:
