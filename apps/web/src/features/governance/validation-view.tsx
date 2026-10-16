@@ -5,7 +5,7 @@
  * state allows: cancel, resubmit, deprecate and export the evidence pack.
  */
 import { Link } from "@tanstack/react-router";
-import { Ban, CheckCircle2, Download, FileCheck2, RotateCcw, ShieldOff, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Ban, CheckCircle2, Download, FileCheck2, RotateCcw, ShieldOff, Telescope, ThumbsDown, ThumbsUp, Workflow as WorkflowIcon } from "lucide-react";
 import { useState } from "react";
 
 import { can } from "@/api/access";
@@ -14,7 +14,7 @@ import { useModel } from "@/api/queries";
 import { ErrorNotice, KeyValues, LoadingRows, Mono, PageHeader, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/overlays";
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, NativeSelect, Textarea } from "@/components/ui/primitives";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Field, NativeSelect, Textarea } from "@/components/ui/primitives";
 import { PersonName } from "@/features/auth/people";
 import { useWorkspace } from "@/features/auth/workspace";
 import { fetchArtifactBytes } from "@/lib/artifacts";
@@ -23,19 +23,13 @@ import { absoluteTime, relativeTime, shortId } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
 
+import { ValidationBadge } from "./badge";
 import { useGovernanceChecks, usePolicies, useReviewer, useValidation, useValidationActions } from "./api";
 import { CheckResultList } from "./evidence";
-import { EVENT_LABEL, MAIN_PATH, TONE_BADGE, VALIDATION_META } from "./status";
+import { EVENT_LABEL, MAIN_PATH, VALIDATION_META } from "./status";
 import type { ModelValidation, ValidationStatus } from "./types";
 
-export function ValidationBadge({ status }: { status: ValidationStatus }) {
-  const meta = VALIDATION_META[status];
-  return (
-    <Badge variant={TONE_BADGE[meta.tone]} title={meta.plain} data-validation-status={status}>
-      {meta.label}
-    </Badge>
-  );
-}
+export { ValidationBadge };
 
 /** The happy path with the current state marked; side exits (failed, rejected, deprecated) beside it. */
 export function StatusTimeline({ validation }: { validation: ModelValidation }) {
@@ -306,6 +300,20 @@ export function ValidationView({ validationId }: { validationId: string }) {
             {v.status === "validated" && mayDeprecate ? (
               <Button variant="outline" onClick={() => setDialog("deprecate")}>
                 <ShieldOff /> Deprecate
+              </Button>
+            ) : null}
+            {/* The version's parameters, residuals, forecasts and lineage behind the evidence. */}
+            <Button variant="ghost" asChild>
+              <Link to="/models/$modelId/versions/$version/explore" params={{ modelId: v.model_id, version: String(v.version) }}>
+                <Telescope /> Explore the model
+              </Link>
+            </Button>
+            {v.workflow_run_id ? (
+              // The run that computed the checks (a governance run, or the workflow that recorded it).
+              <Button variant="ghost" asChild>
+                <Link to="/runs/$runId" params={{ runId: v.workflow_run_id }}>
+                  <WorkflowIcon /> Checks run
+                </Link>
               </Button>
             ) : null}
           </>

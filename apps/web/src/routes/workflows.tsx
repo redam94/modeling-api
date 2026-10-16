@@ -175,21 +175,21 @@ function BlankWorkflow() {
 }
 
 export function NewWorkflowPage() {
-  const { template } = newRoute.useSearch();
+  const { template, data } = newRoute.useSearch();
   return (
     <>
       <PageHeader title={template ? "New workflow from a template" : "New workflow"} description={template ? "Name it, set its defaults and bind your data." : "Name it, then add nodes from the palette."} />
-      {template ? <TemplateWizard templateId={template} /> : <BlankWorkflow />}
+      {template ? <TemplateWizard templateId={template} initialData={data} /> : <BlankWorkflow />}
     </>
   );
 }
 
 export function RecipePage() {
-  const { template } = recipeRoute.useSearch();
+  const { template, data } = recipeRoute.useSearch();
   return (
     <>
       <PageHeader title="Run a recipe on your data" description="Pick your data and press Run: every step is explained as it happens." />
-      {template ? <RecipeRunner templateId={template} /> : <RecipePicker />}
+      {template ? <RecipeRunner templateId={template} initialData={data} /> : <RecipePicker />}
     </>
   );
 }

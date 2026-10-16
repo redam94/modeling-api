@@ -403,6 +403,8 @@ function runStream(run: MockRun, request: Request): Response {
 /** Ordinary runs for the children of mock workflow runs (`GET /v1/runs/{id}` falls through otherwise). */
 function childRun(state: WorkflowsState, id: string): Run | null {
   for (const r of state.runs.values()) {
+    // The workflow run itself is a run too (kind `workflow`), as on the server.
+    if (r.final.run_id === id) return { ...clone(runDone), id, kind: "workflow", parent_run_id: null, labels: { workflow: r.final.workflow_id } };
     const node = (r.final.nodes ?? []).find((n) => n.run_id === id || (n.child_runs ?? []).includes(id));
     if (!node) continue;
     const kind = node.kind === "model" ? "fit" : node.kind === "governance" ? "governance" : "workflow_node";

@@ -16,6 +16,7 @@ import { runCostView } from "@/lib/cost";
 import { absoluteTime, elapsedSeconds, formatDuration, shortId } from "@/lib/format";
 
 import { implId, parseWhen } from "./doc";
+import { modelVersionRefs, ModelExplorerLinks } from "./model-link";
 import { OutputView, TestVerdict } from "./outputs";
 import type { Catalog } from "./ports";
 import { NODE_STATUS_META, TONE_BADGE } from "./status";
@@ -88,6 +89,8 @@ export function NodeDrawer({
   const docNode = node ? doc?.nodes.find((n) => n.id === node.node_id) : undefined;
   const isTest = node?.kind === "test" && node.result && typeof node.result.verdict_plain === "string";
   const isSub = node ? implId(node.use) === SUBWORKFLOW_NODE : false;
+  // A fit's child run produced a model version: it opens in the Model Explorer.
+  const fitted = node && node.status === "succeeded" ? modelVersionRefs(node.outputs) : [];
   const cost = runCostView(node?.cost);
   const logsRun = node?.run_id ?? node?.child_runs?.at(-1) ?? null;
   const live = node?.status === "running" || node?.status === "queued";
@@ -208,6 +211,13 @@ export function NodeDrawer({
                       </li>
                     ))}
                   </ul>
+                  {fitted.length ? (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {fitted.map((ref) => (
+                        <ModelExplorerLinks key={ref} modelRef={ref} compact />
+                      ))}
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
 
