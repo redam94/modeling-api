@@ -359,6 +359,8 @@ export const modelVersion: ModelVersion = {
     representation: "draws",
     score_modes: ["predict", "forecast", "counterfactual", "evaluate"],
     loo_valid: true,
+    // M3.5: an MMM optimises budgets (mmm-framework planning).
+    decision: true,
   },
   diagnostics: [
     { code: "RHAT_OK", severity: "info", metric: "r_hat_max", value: 1.004, threshold: 1.01, message_expert: "max r-hat 1.004", message_plain: "All chains agree.", var: "beta_channel" },
