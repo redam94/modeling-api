@@ -490,6 +490,37 @@ class Settings(BaseSettings):
     max_sidecar_bytes: int = Field(8 * 1024 * 1024, ge=1024)
     log_level: Literal["debug", "info", "warning", "error"] = "info"
 
+    # ------------------------------------------------------- plot rendering and embeds (M3)
+    render_timeout_s: int = Field(
+        300,
+        ge=30,
+        le=3600,
+        description="Wall-clock limit of a POST /v1/plots:render run (the sandbox kills it)",
+    )
+    render_plotly_enabled: bool = Field(
+        False,
+        description="Accept Plotly plots in POST /v1/plots:render. Plotly static export needs "
+        "kaleido and a Chrome/Chromium in the runner image, which the base images do not "
+        "ship; while off, Plotly renders are refused with MODE_NOT_SUPPORTED",
+    )
+    embed_rate_per_minute: int = Field(
+        300, ge=1, description="Public embed views per minute and embed link (429 beyond)"
+    )
+    embed_ip_rate_per_minute: int = Field(
+        120,
+        ge=1,
+        description="Public embed requests per minute and client address, valid or not",
+    )
+    embed_cache_s: float = Field(
+        60.0,
+        ge=0,
+        description="How long an API instance reuses an embed's resolved plot (revocation and "
+        "expiry are still checked on every request); also the response's max-age",
+    )
+    embed_image_url_ttl_s: int = Field(
+        900, ge=60, le=86400, description="Lifetime of the PNG fallback's signed URL"
+    )
+
     # ------------------------------------------------------------------- observability
     log_json: bool = Field(
         True, description="Emit JSON logs (structlog); off gives a human console renderer"

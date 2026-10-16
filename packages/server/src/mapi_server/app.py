@@ -39,6 +39,7 @@ from mapi_server.api import (
     internal,
     meta,
     models,
+    plots,
     runs,
     specs,
     tenancy,
@@ -351,6 +352,9 @@ def create_app(
         ],
         expose_headers=["Preference-Applied", "Location", "Retry-After", CSRF_HEADER],
     )
+    # Public embed views: no credentials, readable cross-origin by the plot sandbox only
+    # (outside the app's CORS policy, which is the web origin's, with credentials).
+    app.add_middleware(plots.EmbedCorsMiddleware, allowed_origin=settings.plots_origin)
     # Outermost: DNS rebinding makes a hostile page same-origin with 127.0.0.1, so CORS never
     # applies; the Host header is the only tell (plan §9). 400 for any unexpected host.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts())
@@ -369,6 +373,8 @@ def create_app(
         runs.router,
         models.router,
         models.plots_router,
+        plots.router,
+        plots.embeds_router,
         internal.router,
     ):
         app.include_router(router)

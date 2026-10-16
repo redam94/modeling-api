@@ -48,6 +48,7 @@ __all__ = [
     "ModelVersion",
     "PlatformSetting",
     "Plot",
+    "PlotEmbed",
     "Project",
     "QuotaPolicy",
     "RateCounter",
@@ -56,6 +57,7 @@ __all__ = [
     "RunEvent",
     "RunLog",
     "RunProgress",
+    "SavedPlot",
     "Spec",
     "SpecRevision",
     "Tenant",
@@ -84,6 +86,8 @@ TENANT_TABLES: tuple[str, ...] = (
     "idempotency_keys",
     "audit_events",
     "cost_ledger",
+    "saved_plots",
+    "plot_embeds",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -616,6 +620,77 @@ class Plot(_Scoped, Base):
     caption_plain: Mapped[str | None] = mapped_column(Text)
     spec: Mapped[dict[str, Any]] = mapped_column()  # sanitized PlotSpec
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+
+class SavedPlot(_Scoped, Base):
+    """A saved plot (``POST /v1/plots``, M3): a model version's plot or a user-authored spec.
+
+    ``spec`` is the sanitized PlotSpec at save time (sanitized again on every read). A plot
+    saved from a model version keeps ``model_version_id``: its ``data_ref`` datasets are
+    bundle objects of that version, verified against the signed manifest when used.
+    """
+
+    __tablename__ = "saved_plots"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str | None] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(String(16))
+    source_kind: Mapped[str] = mapped_column(String(16))
+    model_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("model_versions.id", ondelete="CASCADE")
+    )
+    source: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # ModelPlotRef JSON
+    recipe: Mapped[str | None] = mapped_column(String(128))
+    provenance: Mapped[str] = mapped_column(String(16))
+    spec: Mapped[dict[str, Any]] = mapped_column()
+    created_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column()
+    updated_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("source_kind in ('model_plot','spec')", name="source_kind"),
+        CheckConstraint("provenance in ('recipe','plugin','author')", name="provenance"),
+        CheckConstraint("kind in ('vega-lite','plotly')", name="kind"),
+        Index("ix_saved_plots_project", "tenant_id", "project_id", "id"),
+    )
+
+
+class PlotEmbed(_Scoped, Base):
+    """A tokenised read-only link to a saved plot. Only ``token_hash`` (HMAC-SHA256 under the
+    server pepper) is stored; ``image`` is the static PNG fallback once copied out of the
+    render run's scratch (``{bucket, name, generation}``)."""
+
+    __tablename__ = "plot_embeds"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    plot_id: Mapped[str] = mapped_column(ForeignKey("saved_plots.id", ondelete="CASCADE"))
+    label: Mapped[str | None] = mapped_column(String(200))
+    token_hash: Mapped[str] = mapped_column(String(80), unique=True)
+    display: Mapped[str] = mapped_column(String(16))
+    allowed_origins: Mapped[list[Any]] = mapped_column(default=list)
+    views: Mapped[int] = mapped_column(BigInteger, default=0)
+    last_viewed_at: Mapped[datetime | None] = mapped_column()
+    render_run_id: Mapped[str | None] = mapped_column(String(64))
+    image: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    created_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column()
+    expires_at: Mapped[datetime] = mapped_column()
+    revoked_at: Mapped[datetime | None] = mapped_column()
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        Index("ix_plot_embeds_plot", "tenant_id", "project_id", "plot_id"),
+    )
 
 
 # ===================================================================== catalogs

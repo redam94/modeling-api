@@ -2383,7 +2383,7 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "POST", "/v1/plots:render", "render_plot",
         "PNG, SVG or PDF in the sandbox (Prefer: wait=N -> 200 if done, else 202)",
         "PlotRender", 200, request="PlotRenderRequest",
-        errors=(*_BODY, *_NF, _E.PLOT_UNSAFE, _E.QUOTA_EXCEEDED),
+        errors=(*_BODY, *_NF, _E.PLOT_UNSAFE, _E.MODE_NOT_SUPPORTED, _E.QUOTA_EXCEEDED),
         headers=(*_PH, PREFER_HEADER, IDEMPOTENCY_KEY_HEADER),
     ),
     EndpointDecl(
