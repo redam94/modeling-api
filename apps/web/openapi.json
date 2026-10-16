@@ -746,7 +746,7 @@
           },
           "target": {
             "default": "mmm.hierarchical_geo",
-            "description": "M3: the plugin to import for. mmm.hierarchical_geo (default) maps every feature with an equivalent and warns about the rest (mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight keeps model_def verbatim for the planned dedicated plugin",
+            "description": "M3: the plugin to import for. mmm.hierarchical_geo (default) maps every feature with an equivalent and warns about the rest (mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight runs model_def as BayesInsight defines it (likelihoods, priors in KPI units, curves, carry-over, signs, random effects, seasons, local trends) and warns about what it cannot run",
             "enum": [
               "mmm.hierarchical_geo",
               "mmm.bayesinsight"
@@ -23444,7 +23444,7 @@
     },
     "/v1/guided/import/bayesinsight": {
       "post": {
-        "description": "Import a BayesInsight project (Q8). With the default ``target:\nmmm.hierarchical_geo`` the draft maps media transforms, priors, controls, seasonality\nand pooling to the built-in geo MMM and lists every feature without an equivalent as\nan ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` keeps ``model_def``\nverbatim for the planned dedicated plugin. ``422 IMPORT_UNSUPPORTED`` when the model\ncannot run at all (no single KPI, no media, split series).",
+        "description": "Import a BayesInsight project (Q8). With the default ``target:\nmmm.hierarchical_geo`` the draft maps media transforms, priors, controls, seasonality\nand pooling to the built-in geo MMM and lists every feature without an equivalent as\nan ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` drafts the dedicated\nplugin, which runs ``model_def`` as BayesInsight defines it (what it cannot run falls\nback to BayesInsight's defaults with a warning). Either draft is validated statically\nagainst the catalog. ``422 IMPORT_UNSUPPORTED`` when the model cannot run at all (no\nsingle KPI, no media, split series).",
         "operationId": "import_bayesinsight",
         "requestBody": {
           "content": {
@@ -23548,7 +23548,7 @@
             "description": "Problem: SCHEMA_INVALID, IMPORT_UNSUPPORTED"
           }
         },
-        "summary": "BayesInsight model_def.json + metadata.json -> a draft for the geo MMM",
+        "summary": "BayesInsight model_def.json + metadata.json -> a draft for a built-in MMM",
         "tags": [
           "guided"
         ]

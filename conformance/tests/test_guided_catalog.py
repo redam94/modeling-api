@@ -32,6 +32,7 @@ def registry() -> Registry:
 def _guided_catalog(registry: Registry) -> Catalog:
     full = registry.catalog()
     plugins = {t.plugin.split("@")[0] for t in GUIDED_TEMPLATES.values()}
+    plugins.add("mmm.bayesinsight")  # the dedicated BayesInsight import target
     models = [e for e in full.models if e.manifest.id in plugins]
     return full.model_copy(update={"models": models})
 

@@ -207,7 +207,7 @@ async def create_guided_draft(ctx: Ctx, session: Session, body: GuidedAnswers) -
     "/import/bayesinsight",
     response_model=GuidedDraft,
     operation_id="import_bayesinsight",
-    summary="BayesInsight model_def.json + metadata.json -> a draft for the geo MMM",
+    summary="BayesInsight model_def.json + metadata.json -> a draft for a built-in MMM",
     responses=problem_responses(_E.SCHEMA_INVALID, _E.IMPORT_UNSUPPORTED, *AUTH_PROBLEMS),
 )
 async def import_bayesinsight_model(
@@ -216,12 +216,12 @@ async def import_bayesinsight_model(
     """Import a BayesInsight project (Q8). With the default ``target:
     mmm.hierarchical_geo`` the draft maps media transforms, priors, controls, seasonality
     and pooling to the built-in geo MMM and lists every feature without an equivalent as
-    an ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` keeps ``model_def``
-    verbatim for the planned dedicated plugin. ``422 IMPORT_UNSUPPORTED`` when the model
-    cannot run at all (no single KPI, no media, split series)."""
+    an ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` drafts the dedicated
+    plugin, which runs ``model_def`` as BayesInsight defines it (what it cannot run falls
+    back to BayesInsight's defaults with a warning). Either draft is validated statically
+    against the catalog. ``422 IMPORT_UNSUPPORTED`` when the model cannot run at all (no
+    single KPI, no media, split series)."""
     draft = import_bayesinsight(body, project=ctx.scope.project_id)
-    if body.target == "mmm.bayesinsight":
-        return draft
     return await validate_draft(session, ctx, draft, None)
 
 

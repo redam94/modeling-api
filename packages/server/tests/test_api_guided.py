@@ -322,6 +322,9 @@ async def test_bayesinsight_import(client: httpx.AsyncClient) -> None:
                                                                     "target": "mmm.bayesinsight"})
     ).json()  # fmt: skip
     assert planned["spec"]["model"]["use"] == "mmm.bayesinsight@^1"
+    # the dedicated plugin is in the catalog: its draft is validated too, and is valid
+    assert not [i for i in planned["issues"] if i["severity"] == "error"], planned["issues"]
+    assert planned["spec"]["data"]["bind"]["vars"]["y"] == "sales"
     no_media = {**body, "model_def": {"variable_details": [BI_MODEL_DEF["variable_details"][0]]}}  # type: ignore[index]
     problem = _problem(
         await client.post("/v1/guided/import/bayesinsight", json=no_media),
