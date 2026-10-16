@@ -1,8 +1,9 @@
-"""``mapi webhooks ls|get|create|rotate|deliveries|replay|rm`` (v0.4).
+"""``mapi webhooks ls|get|create|update|rotate|deliveries|replay|rm`` (v0.4).
 
 A webhook's signing secret exists once, in the answer to ``create`` (and ``rotate``): it is
 written to stdout alone (``mapi webhooks create URL -e run.succeeded > hook.secret``
 captures exactly the secret) and never shown again; listings show ``whsec_…<last 4>``.
+``update --enable`` switches a paused or automatically disabled webhook back on.
 Rotating retires the current secret after 24 hours and deleting stops deliveries at once,
 so both ask for confirmation (``--yes`` skips it).
 """
@@ -130,6 +131,45 @@ def create(
     with st.client() as api:
         created = api.webhooks.create(url, events, description=description, active=not inactive)
     _print_secret(st.output, created, "Created")
+
+
+@app.command("update")
+@cli_errors
+def update(
+    ctx: typer.Context,
+    webhook_id: Annotated[str, typer.Argument(help="whk_… id")],
+    active: Annotated[
+        bool | None,
+        typer.Option(
+            "--enable/--disable",
+            help="Switch deliveries on (resets the failure count) or pause them",
+            show_default=False,
+        ),
+    ] = None,
+    events: Annotated[
+        list[WebhookEventType] | None,
+        typer.Option("--event", "-e", help="Replace the subscribed events (repeatable)"),
+    ] = None,
+    url: Annotated[str | None, typer.Option("--url", help="New https:// receiver URL")] = None,
+    description: Annotated[str | None, typer.Option("--description")] = None,
+) -> None:
+    """Change a webhook: switch it back on after it was paused or disabled automatically,
+    or change its events, URL or description. The secret is unchanged."""
+    if active is None and not events and url is None and description is None:
+        raise ValueError(
+            "give at least one change: --enable/--disable, --event, --url or --description"
+        )
+    st = state(ctx)
+    with st.client() as api:
+        w = api.webhooks.update(
+            webhook_id, url=url, events=events or None, description=description, active=active
+        )
+    out = st.output
+    if out.json_mode:
+        out.emit_json(w)
+        return
+    out.success(f"Updated {w.id}")
+    _show(out, w)
 
 
 @app.command("rotate")

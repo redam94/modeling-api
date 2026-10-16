@@ -111,8 +111,8 @@ A webhook's page has:
   receiver's answer (as untrusted text). **Replay** sends a delivery again; **Send test**
   replays the newest one, so you can check a receiver you just fixed.
 - A webhook that kept failing (20 consecutive failed events, or a `410 Gone`) is **disabled
-  automatically**: the page says why. Fix the receiver, then switch it back on; that resets
-  the failure count.
+  automatically**: the page says why. Fix the receiver, then switch it back on (here, or
+  with `mapi webhooks update WEBHOOK_ID --enable`); that resets the failure count.
 
 ## Plots and links
 
