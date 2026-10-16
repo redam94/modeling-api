@@ -478,6 +478,11 @@ milestone releases are tagged on `main`.
   data and PNG link) is now charged to the tenant's monthly egress, which `GET /v1/usage`
   reports; past the cap the link is refused with `429 QUOTA_EXCEEDED` (with `Retry-After`
   until the month resets). GDPR exports are never charged; a purge deletes the counter.
+- **server**: the embeds' "platform recipes only" rule trusted the provenance in
+  `plots.json`, which the worker writes while it runs plugin code, so uploaded code could
+  label any spec `core.*` and get it onto public embed links. Plots of model versions fitted
+  with uploaded code (an overlay in their lineage) are saved with `plugin` provenance, are
+  never embeddable, and existing links stop serving them.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

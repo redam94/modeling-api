@@ -126,6 +126,11 @@ plot's spec in a stranger's browser: even inside the sandbox a spec could naviga
 frame, so shared views only ever run specs the platform wrote. Share other plots inside the
 project, or render them to an image.
 
+A model version fitted with uploaded plugin code (a dev or vetted overlay) can embed none of
+its plots, whatever recipe they name: the same worker that writes the plot documents runs
+that code, so the server decides from the version's lineage, not from what a plot says about
+itself. Existing links to such plots stop serving them.
+
 An embed also carries its data inline, so a dataset larger than 1.5 MB cannot be embedded.
 
 ### The embed page

@@ -25,6 +25,7 @@ import json
 import logging
 import time
 from collections import OrderedDict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Final
@@ -125,6 +126,24 @@ def _dump(plot: PlotSpec) -> dict[str, Any]:
 # ----------------------------------------------------------------------------- resolving
 
 
+def ran_uploaded_code(mv: m.ModelVersion | None) -> bool:
+    """Was ``mv`` fitted with uploaded plugin code (an overlay)? Its worker wrote the plot
+    documents, provenance included, so none of them can count as a platform recipe (plan
+    §10.3 item 4): the server decides from the version's lineage, never from the plot."""
+    return mv is not None and bool((mv.lineage or {}).get("overlay_hash"))
+
+
+async def uploaded_code_versions(session: AsyncSession, ids: Iterable[str | None]) -> set[str]:
+    """Which of these model versions ran uploaded code (see :func:`ran_uploaded_code`)."""
+    wanted = {i for i in ids if i}
+    if not wanted:
+        return set()
+    rows = await session.execute(
+        select(m.ModelVersion.id, m.ModelVersion.lineage).where(m.ModelVersion.id.in_(wanted))
+    )
+    return {mv_id for mv_id, lineage in rows if (lineage or {}).get("overlay_hash")}
+
+
 @dataclass(frozen=True, slots=True)
 class ResolvedPlot:
     """A sanitized plot and where its ``data_ref`` datasets live (a verified model version)."""
@@ -139,7 +158,9 @@ class ResolvedPlot:
 
     @property
     def embeddable(self) -> bool:
-        return embeddable(self.source_kind, self.provenance, self.recipe)
+        return embeddable(self.source_kind, self.provenance, self.recipe) and not (
+            ran_uploaded_code(self.model_version)
+        )
 
 
 async def _model_version(
@@ -171,11 +192,14 @@ async def resolve_model_plot(
     if row is None:
         raise NotFoundError("plot", ref.plot_id)
     plot = _sanitized(row.spec, "/source")
+    provenance = plot.provenance.source
+    if provenance == "recipe" and ran_uploaded_code(mv):
+        provenance = "plugin"  # what the plot document claims cannot be trusted
     return ResolvedPlot(
         plot=plot,
         model_version=mv,
         source_kind="model_plot",
-        provenance=plot.provenance.source,
+        provenance=provenance,
         recipe=plot.provenance.recipe,
         source=ref,
     )
@@ -231,7 +255,8 @@ async def resolve_saved(
 # ----------------------------------------------------------------------------- saved plots
 
 
-def saved_plot_dto(row: m.SavedPlot, *, with_spec: bool) -> SavedPlot:
+def saved_plot_dto(row: m.SavedPlot, *, with_spec: bool, uploaded_code: bool = False) -> SavedPlot:
+    """``uploaded_code``: the plot's model version ran uploaded code (never embeddable)."""
     return SavedPlot(
         id=row.id,
         tenant_id=row.tenant_id,
@@ -243,7 +268,7 @@ def saved_plot_dto(row: m.SavedPlot, *, with_spec: bool) -> SavedPlot:
         source=ModelPlotRef.model_validate(row.source) if row.source else None,
         recipe=row.recipe,
         provenance=row.provenance,
-        embeddable=embeddable(row.source_kind, row.provenance, row.recipe),
+        embeddable=embeddable(row.source_kind, row.provenance, row.recipe) and not uploaded_code,
         spec=sanitize_plot(row.spec).plot if with_spec else None,
         created_by=row.created_by,
         created_at=row.created_at,
@@ -698,7 +723,9 @@ async def embed_view(ctx: ServerContext, token: str, client_ip: str | None) -> E
         if row is None or row.revoked_at is not None or row.expires_at <= at:
             raise _expired()
         saved = await session.get(m.SavedPlot, row.plot_id)
-        if saved is None:
+        if saved is None or ran_uploaded_code(
+            await session.get(m.ModelVersion, saved.model_version_id or "")
+        ):  # checked before the cache: plugin-written plots are never served
             raise NotFoundError("embed", "link")
         key = (row.id, saved.updated_at.isoformat())
         view = _cache_get(key, settings.embed_cache_s)
@@ -723,7 +750,7 @@ async def _build_view(
     if not embeddable(saved.source_kind, saved.provenance, saved.recipe):
         raise NotFoundError("embed", "link")  # defence in depth: never serve non-recipes
     mv = await session.get(m.ModelVersion, saved.model_version_id or "")
-    if mv is None:
+    if mv is None or ran_uploaded_code(mv):
         raise NotFoundError("embed", "link")
     plot = sanitize_plot(saved.spec).plot
     datasets: dict[str, Any] = {}

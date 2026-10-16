@@ -217,6 +217,34 @@ async def test_only_platform_recipes_are_embeddable(
     assert bad.status_code == 422 and bad.json()["code"] == "SCHEMA_INVALID"
 
 
+async def test_plugin_code_cannot_claim_a_platform_recipe(
+    ctx: ServerContext, client: httpx.AsyncClient, model: dict[str, Any]
+) -> None:
+    """``plots.json`` is written by the worker, which also runs plugin code: a model version
+    fitted with uploaded code (an overlay) may label any spec ``core.*`` with provenance
+    ``recipe``. Embeddability is decided from what the server knows - the version's
+    lineage - so those plots never reach a public embed."""
+    recipe = await _save(client, model, "core.ppc_fan")
+    created = await _embed(client, recipe.id)
+    assert (await client.get(f"/v1/embeds/{created.token}")).status_code == 200
+    async with ctx.db.session() as s:
+        mv = await s.get(m.ModelVersion, model["mv_id"])
+        assert mv is not None
+        mv.lineage = {**(mv.lineage or {}), "overlay_hash": "sha256:" + "ab" * 32}
+    clear_embed_cache()
+    # an existing link stops serving it
+    assert (await client.get(f"/v1/embeds/{created.token}")).status_code == 404
+    # and no new link, saved plot or not
+    r = await client.post(f"/v1/plots/{recipe.id}/embeds", json={})
+    assert r.status_code == 422 and r.json()["code"] == "EMBED_NOT_ALLOWED"
+    again = await _save(client, model, "core.ppc_fan")
+    assert again.provenance == "plugin" and not again.embeddable
+    r = await client.post(f"/v1/plots/{again.id}/embeds", json={})
+    assert r.status_code == 422 and r.json()["code"] == "EMBED_NOT_ALLOWED"
+    listed = (await client.get(f"/v1/plots/{recipe.id}")).json()
+    assert listed["embeddable"] is False
+
+
 async def test_embeds_ignore_credentials_and_answer_cors_for_the_plot_sandbox_only(
     client: httpx.AsyncClient, model: dict[str, Any]
 ) -> None:

@@ -70,6 +70,7 @@ from mapi_server.services.sharing import (
     revoke_embed,
     saved_plot_dto,
     submit_render,
+    uploaded_code_versions,
 )
 
 __all__ = ["EMBEDS_PATH", "EmbedCorsMiddleware", "embeds_router", "problem_responses", "router"]
@@ -131,7 +132,8 @@ async def create_saved_plot_route(ctx: Ctx, session: Session, body: SavedPlotCre
     or a user-authored PlotSpec (``spec``: sanitized; its provenance is recorded as
     ``author`` and it can never be embedded). ``PLOT_UNSAFE`` when the sanitizer refuses it."""
     row = await create_saved_plot(session, ctx, body)
-    return saved_plot_dto(row, with_spec=True)
+    flagged = await uploaded_code_versions(session, [row.model_version_id])
+    return saved_plot_dto(row, with_spec=True, uploaded_code=bool(flagged))
 
 
 @router.get("", response_model=Page[SavedPlot], **_op("list_saved_plots"))
@@ -151,8 +153,12 @@ async def list_saved_plots(
     )
     more = len(rows) > limit
     rows = rows[:limit]
+    flagged = await uploaded_code_versions(session, [r.model_version_id for r in rows])
     return Page[SavedPlot](
-        items=[saved_plot_dto(r, with_spec=False) for r in rows],
+        items=[
+            saved_plot_dto(r, with_spec=False, uploaded_code=r.model_version_id in flagged)
+            for r in rows
+        ],
         next_cursor=encode_cursor(rows[-1].id) if more and rows else None,
     )
 
@@ -161,7 +167,9 @@ async def list_saved_plots(
 async def get_saved_plot(ctx: Ctx, session: Session, plot_id: PlotId) -> SavedPlot:
     """A saved plot with its spec, sanitized again on the way out. Render it only in the
     plot-sandbox origin."""
-    return saved_plot_dto(await load_saved_plot(session, ctx, plot_id), with_spec=True)
+    row = await load_saved_plot(session, ctx, plot_id)
+    flagged = await uploaded_code_versions(session, [row.model_version_id])
+    return saved_plot_dto(row, with_spec=True, uploaded_code=bool(flagged))
 
 
 @router.delete(
