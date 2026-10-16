@@ -43,7 +43,7 @@ Without `DATABASE_URL` an embedded PostgreSQL 16 (`pgserver`) starts under
 | `MAPI_INTERNAL_TOKEN` | — | bearer required by `POST /internal/events` when set (Pub/Sub OIDC: `MAPI_PUBSUB_PUSH_AUDIENCE`, `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT`) |
 | `MAPI_OIDC_ISSUER`, `MAPI_OIDC_CLIENT_ID`, `MAPI_OIDC_CLIENT_SECRET` | — | browser sign-in (BFF, Authorization Code + PKCE) |
 | `MAPI_OPERATOR_EMAILS` | — | verified e-mails that sign in as platform operators |
-| `MAPI_SERVER_SECRET` | file next to the signing key | root of the API-token pepper and audit fingerprints |
+| `MAPI_SERVER_SECRET` | file next to the signing key | root of the API-token pepper, audit fingerprints and webhook-secret sealing key (api and worker share it) |
 | `MAPI_DATABASE_APP_URL`, `MAPI_DATABASE_SYSTEM_URL` | `DATABASE_URL` + `role=` | logins of the RLS-bound request role and the platform role |
 
 Every variable, and how to run multi-tenant: `docs/operations/configuration.md` and
@@ -57,7 +57,9 @@ Every variable, and how to run multi-tenant: `docs/operations/configuration.md` 
 | `mapi_server.auth` | per-request authentication and authorization (`ROUTE_ACCESS`, tokens, sessions, CSRF, rate limits), identities, OIDC relying party |
 | `mapi_server.devidp` | the offline OpenID provider of the `dev` profile |
 | `mapi_server.services.tenancy`, `.quotas`, `.cost`, `.audit` | memberships, quota admission and kill switches, the cost ledger, the audit log |
-| `mapi_server.api.*` | routers: meta/catalog, auth (BFF), tenancy, tokens, usage, admin, datasets, specs, runs (SSE), models/plots, internal |
+| `mapi_server.api.*` | routers: meta/catalog, auth (BFF), tenancy, tokens, usage, admin, datasets, specs, runs (SSE), models/plots, endpoints, webhooks, internal |
+| `mapi_server.services.endpoints` | endpoints and aliases: the promotion gate, revisions and rollback, input-contract checks of score calls, inline payloads as run inputs |
+| `mapi_server.services.webhooks` | the transactional outbox, the SSRF guard (resolve, check, pin), sealed secrets, signed deliveries with retries and auto-disable, the relay loop |
 | `mapi_server.services.runs` | the only writer of `runs.state` (via `mapi_spec.run.transition`) |
 | `mapi_server.services.dispatcher` | fair-share lease (priority classes, caps, kill switches) → intent row → bootstrap RunSpec → `executor.submit` |
 | `mapi_server.services.reconciler` | level-triggered liveness, exit classification, cancel, retries |
@@ -75,8 +77,10 @@ runner reads: for `fit`/`validate` the resolved `ModelSpec` (`use:` pinned to ex
 `model://project/name@vN`); for `ingest` an `IngestJob`; for `describe` a `DescribeJob`; for
 `evaluate`/`derive`/`render` the run's `params` validated as `EvaluateJob`/`DeriveJob`/
 `RenderJob`. Inputs: `dataset` (fit data, or a score request's `data`), `scenario`,
-`side.<name>`, `upload`, `bundle`, `bundle.manifest`, `plots`. `evaluate` and `derive`
-default to the dataset version the model was fitted on.
+`side.<name>`, `upload`, `bundle`, `bundle.manifest`, `plots`, and for score runs submitted
+through an endpoint with inline XrJSON `inline.data` / `inline.scenario` (the
+`XrJsonDataset` JSON, in the quarantine bucket). `evaluate` and `derive` default to the
+dataset version the model was fitted on.
 
 Outputs the finalizer reads (relative to the attempt prefix): `fit` → `bundle.zarr.zip`
 (required) plus optional `diagnostics.json` (`list[Diagnostic]`), `metrics.json`

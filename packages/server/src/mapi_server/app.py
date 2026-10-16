@@ -14,7 +14,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.routing import APIRoute
 from mapi_spec.api import IDEMPOTENCY_KEY_HEADER, LAST_EVENT_ID_HEADER, PREFER_HEADER
 from mapi_spec.capabilities import Diagnostic
-from mapi_spec.errors import MapiError
+from mapi_spec.errors import MapiError, Problem
 from mapi_spec.run import (
     CheckpointPayload,
     CompletePayload,
@@ -36,6 +36,7 @@ import mapi_server
 from mapi_server.api import (
     admin,
     datasets,
+    endpoints,
     guided,
     internal,
     meta,
@@ -46,8 +47,10 @@ from mapi_server.api import (
     tenancy,
     tokens,
     usage,
+    webhooks,
 )
 from mapi_server.api import auth as auth_routes
+from mapi_server.api.problems import JsonBodyLimit
 from mapi_server.auth.oidc import HttpOidcProvider, OidcClient
 from mapi_server.auth.request import CSRF_HEADER, access_for, authenticate
 from mapi_server.context import FinalizeQueue, ServerContext
@@ -97,9 +100,14 @@ EVENT_PAYLOAD_MODELS: tuple[type[BaseModel], ...] = (
 components so generated clients can type them (FastAPI cannot infer them from routes)."""
 
 
+PROBLEM_MODELS: tuple[type[BaseModel], ...] = (Problem,)
+"""The RFC 7807 problem document, referenced by the routes' documented error responses
+(:func:`mapi_server.api.problems.problem_responses`)."""
+
+
 def _with_event_payloads(doc: dict[str, Any]) -> dict[str, Any]:
     _, top = models_json_schema(
-        [(model, "serialization") for model in EVENT_PAYLOAD_MODELS],
+        [(model, "serialization") for model in (*EVENT_PAYLOAD_MODELS, *PROBLEM_MODELS)],
         ref_template="#/components/schemas/{model}",
     )
     schemas = doc.setdefault("components", {}).setdefault("schemas", {})
@@ -321,6 +329,8 @@ def create_app(
                 "guided",
                 "runs",
                 "models",
+                "endpoints",
+                "webhooks",
                 "plots",
                 "internal",
             )
@@ -354,6 +364,12 @@ def create_app(
         ],
         expose_headers=["Preference-Applied", "Location", "Retry-After", CSRF_HEADER],
     )
+    # endpoint score calls carry inline XrJSON: cap and depth-check them before parsing
+    app.add_middleware(
+        JsonBodyLimit,
+        paths=endpoints.SCORE_BODY_PATHS,
+        max_bytes=endpoints.SCORE_BODY_MAX_BYTES,
+    )
     # Outermost: DNS rebinding makes a hostile page same-origin with 127.0.0.1, so CORS never
     # applies; the Host header is the only tell (plan §9). 400 for any unexpected host.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts())
@@ -374,6 +390,8 @@ def create_app(
         models.router,
         models.plots_router,
         prior_translations.router,
+        endpoints.router,
+        webhooks.router,
         internal.router,
     ):
         app.include_router(router)

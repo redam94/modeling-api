@@ -8,7 +8,10 @@ independent, purpose-bound keys:
   (:func:`mapi_spec.tokens.hash_token`), so a database dump alone does not allow offline
   guessing; rotating the secret invalidates every token;
 * the **audit fingerprint key**: client IPs and user agents are stored as keyed digests
-  (:func:`mapi_spec.audit.client_fingerprint`).
+  (:func:`mapi_spec.audit.client_fingerprint`);
+* the **webhook sealing key**: webhook signing secrets are stored AES-GCM sealed
+  (:mod:`mapi_server.services.webhooks.crypto`), so a database dump alone cannot forge
+  deliveries; rotating the server secret makes every webhook secret unusable (rotate them).
 
 Every process that authenticates tokens (API instances) must share the secret.
 """
@@ -41,12 +44,17 @@ class ServerSecrets:
 
     token_pepper: bytes
     audit_key: bytes
+    webhook_key: bytes
 
     @classmethod
     def from_root(cls, root: bytes) -> ServerSecrets:
         if len(root) < 16:
             raise ValueError("the server secret must hold at least 16 bytes")
-        return cls(token_pepper=_derive(root, "token-pepper"), audit_key=_derive(root, "audit"))
+        return cls(
+            token_pepper=_derive(root, "token-pepper"),
+            audit_key=_derive(root, "audit"),
+            webhook_key=_derive(root, "webhook-secrets"),
+        )
 
     @classmethod
     def generate(cls) -> ServerSecrets:

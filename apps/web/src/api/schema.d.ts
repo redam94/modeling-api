@@ -564,6 +564,180 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/endpoints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Endpoints of the project
+         * @description Endpoints of the project, by alias.
+         */
+        get: operations["list_endpoints"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An endpoint and the version it serves */
+        get: operations["get_endpoint"];
+        /**
+         * Create or promote (gated on the scorecard; override = admin + reason, audited)
+         * @description Point the alias at a model version (creating the alias if needed).
+         *
+         *     The promotion gate decides: a version whose scorecard passes, that was fitted with
+         *     ``evaluate_then_refit`` (unless the endpoint's policy allows ``train_only``) and whose
+         *     input contract does not break the endpoint's callers is promoted. A ``warn`` scorecard
+         *     (or no scorecard) needs ``override=true`` with a ``reason`` from a signed-in project admin
+         *     (``409 OVERRIDE_REQUIRED`` otherwise; API tokens can never override); a ``fail``
+         *     scorecard, an interrupted fit or a ``train_only`` fit is ``409 PROMOTION_BLOCKED``.
+         *     The problem's ``errors`` list the gate's reasons.
+         */
+        put: operations["promote_endpoint"];
+        post?: never;
+        /** Delete the alias (model versions stay) */
+        delete: operations["delete_endpoint"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Promotions and rollbacks, newest first */
+        get: operations["list_endpoint_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Point the alias back at an earlier revision's version (audited) */
+        post: operations["rollback_endpoint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}/schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Input schema of the current version and an example payload
+         * @description What to send: the input contract frozen at promotion and an example call body that
+         *     validates against it.
+         */
+        get: operations["get_endpoint_schema"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Score the current version (Prefer: wait=N -> 200 if done, else 202 with the run)
+         * @description Score the version the alias serves now, with replayed preprocessing.
+         *
+         *     ``data``/``scenario`` are ``dataset://`` references or inline XrJSON (up to 5 MB each).
+         *     ``Prefer: wait=N`` (N <= 60) waits up to N seconds: ``200`` with links to the outputs if
+         *     the run finished, else ``202`` with the run. Repeat the call with the same
+         *     ``Idempotency-Key`` (and ``Prefer: wait``) to collect the result later: tokens scoped to
+         *     ``score:<alias>`` need nothing else. Per-token rate limits and vCPU budgets apply.
+         */
+        post: operations["score_endpoint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}/snippets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Python, TypeScript, curl, R, Apps Script and Atlas code for the endpoint
+         * @description Ready-to-run code that scores the endpoint with its example payload. The API token is
+         *     read from ``MAPI_TOKEN`` (an Apps Script property): snippets never contain a secret.
+         */
+        get: operations["list_endpoint_snippets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Static checks of a score call without running it
+         * @description The checks ``…/score`` runs before it submits anything: the inline payload against the
+         *     endpoint's input contract (variables, dims, coordinates), CoordPlan (modes, horizon,
+         *     unseen levels, future covariates) and dataset references. ``200`` even when invalid.
+         */
+        post: operations["validate_endpoint_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/guided/detect-roles": {
         parameters: {
             query?: never;
@@ -1558,6 +1732,114 @@ export interface paths {
         get: operations["get_usage"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Webhooks of the project */
+        get: operations["list_webhooks"];
+        put?: never;
+        /**
+         * Add a webhook (the secret is shown once)
+         * @description Subscribe ``url`` to ``events`` of this project. The answer holds the signing secret
+         *     (``whsec_…``) - the only time it is returned; deliveries are signed with it
+         *     (``Mapi-Signature: t=…,v1=…``). At most ``MAPI_WEBHOOK_MAX_PER_PROJECT`` webhooks per
+         *     project (``409 CONFLICT``).
+         */
+        post: operations["create_webhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhook_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A webhook (never its secret) */
+        get: operations["get_webhook"];
+        put?: never;
+        post?: never;
+        /** Delete a webhook and its delivery log */
+        delete: operations["delete_webhook"];
+        options?: never;
+        head?: never;
+        /**
+         * Change URL, events or active
+         * @description Re-activating a webhook (``active: true``) resets its consecutive-failure count and
+         *     clears the reason it was disabled for.
+         */
+        patch: operations["update_webhook"];
+        trace?: never;
+    };
+    "/v1/webhooks/{webhook_id}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Delivery log, newest first (filter: status)
+         * @description ``response_excerpt`` is the start of the receiver's answer: untrusted text.
+         */
+        get: operations["list_webhook_deliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhook_id}/deliveries/{delivery_id}:replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send an event again (a new delivery, replay_of set)
+         * @description A new delivery of the same event (same event id, so receivers can deduplicate), sent
+         *     by the worker within seconds; the webhook must be active.
+         */
+        post: operations["replay_webhook_delivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhook_id}:rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * New secret (shown once); the old one signs too for 24 h
+         * @description While the previous secret is still valid, deliveries carry two ``v1`` signatures.
+         */
+        post: operations["rotate_webhook_secret"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3027,6 +3309,11 @@ export interface components {
          */
         DatasetVersionStatus: "ingesting" | "ready" | "failed";
         /**
+         * DeliveryStatus
+         * @enum {string}
+         */
+        DeliveryStatus: "pending" | "succeeded" | "retrying" | "failed" | "blocked";
+        /**
          * DerivedDecl
          * @description A derived quantity (contributions, response curves, ...).
          */
@@ -3225,6 +3512,669 @@ export interface components {
             units?: string | null;
         };
         /**
+         * Endpoint
+         * @description A stable alias and the model version it serves now.
+         * @example {
+         *       "alias": "geo-mmm-prod",
+         *       "created_at": "2026-09-01T08:00:00Z",
+         *       "description": "Weekly EU MMM used by the budget planner",
+         *       "evaluation_policy": {
+         *         "fit_mode": "evaluate_then_refit",
+         *         "schema_change": "block"
+         *       },
+         *       "gate": {
+         *         "outcome": "allowed",
+         *         "scorecard_overall": "pass"
+         *       },
+         *       "id": "ep_01jaf3g1h2j3k4m5n6p7q8r9s0",
+         *       "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+         *       "model_ref": "model://growth/eu-geo-mmm@v3",
+         *       "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+         *       "overridden": false,
+         *       "project_id": "growth",
+         *       "promoted_at": "2026-10-15T09:30:00Z",
+         *       "promoted_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "ref": "endpoint://growth/geo-mmm-prod",
+         *       "revision": 4,
+         *       "schema_snapshot": {
+         *         "fit_coords": {
+         *           "channel": {
+         *             "kind": "categorical",
+         *             "size": 2,
+         *             "values": [
+         *               "search",
+         *               "tv"
+         *             ]
+         *           },
+         *           "date": {
+         *             "end": "2025-12-30",
+         *             "freq": "D",
+         *             "kind": "time",
+         *             "size": 730,
+         *             "start": "2024-01-01"
+         *           },
+         *           "market": {
+         *             "kind": "categorical",
+         *             "size": 2,
+         *             "values": [
+         *               "de",
+         *               "fr"
+         *             ]
+         *           }
+         *         },
+         *         "future_required": [
+         *           "spend_local"
+         *         ],
+         *         "horizon_dim": "time",
+         *         "input_schema": {
+         *           "dims": {
+         *             "channel": {
+         *               "kind": "categorical"
+         *             },
+         *             "date": {
+         *               "freq": "D",
+         *               "kind": "time",
+         *               "policy": "extend"
+         *             },
+         *             "market": {
+         *               "kind": "categorical",
+         *               "new_level_strategy": "pooled",
+         *               "policy": "new_levels"
+         *             }
+         *           },
+         *           "vars": {
+         *             "revenue_local": {
+         *               "dims": [
+         *                 "market",
+         *                 "date"
+         *               ],
+         *               "dtype": "float64",
+         *               "role": "target"
+         *             },
+         *             "spend_local": {
+         *               "dims": [
+         *                 "market",
+         *                 "channel",
+         *                 "date"
+         *               ],
+         *               "dtype": "float64",
+         *               "future_required": true,
+         *               "role": "spend"
+         *             }
+         *           }
+         *         },
+         *         "inputs_stage": "raw",
+         *         "representation": "draws",
+         *         "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *         "score_modes": [
+         *           "counterfactual",
+         *           "evaluate",
+         *           "forecast",
+         *           "predict"
+         *         ]
+         *       },
+         *       "tenant_id": "acme",
+         *       "updated_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        Endpoint: {
+            /** Alias */
+            alias: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description?: string | null;
+            evaluation_policy?: components["schemas"]["EvaluationPolicy"];
+            gate: components["schemas"]["PromotionGateDecision"];
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /**
+             * Model Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            model_id: string;
+            /**
+             * Model Ref
+             * @description model://project/name@vN
+             */
+            model_ref: string;
+            /**
+             * Model Version Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            model_version_id: string;
+            /**
+             * Overridden
+             * @description The current version was promoted by override
+             * @default false
+             */
+            overridden?: boolean;
+            /** Project Id */
+            project_id: string;
+            /**
+             * Promoted At
+             * Format: date-time
+             */
+            promoted_at: string;
+            /** Promoted By */
+            promoted_by?: string | null;
+            /**
+             * Ref
+             * @description endpoint://project/alias
+             */
+            ref: string;
+            /**
+             * Revision
+             * @description Increases with every promotion and rollback
+             */
+            revision: number;
+            schema_snapshot: components["schemas"]["EndpointSchemaSnapshot"];
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * EndpointPromote
+         * @description ``PUT /v1/endpoints/{alias}``: create the alias or point it at another version.
+         *
+         *     Name the version by id or by ``model://project/name@vN`` (exactly one). A version whose
+         *     gate says ``needs_override`` needs ``override=true`` and a ``reason`` from a signed-in
+         *     project admin (audited); ``blocked`` versions cannot be promoted. ``expected_revision``
+         *     guards against concurrent promotions (``409 CONFLICT`` when stale).
+         * @example {
+         *       "expected_revision": 3,
+         *       "model": "model://growth/eu-geo-mmm@v3"
+         *     }
+         * @example {
+         *       "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+         *       "override": true,
+         *       "reason": "Holdout MAPE is high because of the strike in week 41; accepted by CMO."
+         *     }
+         */
+        EndpointPromote: {
+            /** Description */
+            description?: string | null;
+            evaluation_policy?: components["schemas"]["EvaluationPolicy"] | null;
+            /**
+             * Expected Revision
+             * @description 0: the alias must be new
+             */
+            expected_revision?: number | null;
+            /** Model */
+            model?: string | null;
+            /** Model Version Id */
+            model_version_id?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override?: boolean;
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * EndpointRevision
+         * @description One entry of an endpoint's history (newest first in ``GET …/history``).
+         * @example {
+         *       "action": "promote",
+         *       "actor_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "alias": "geo-mmm-prod",
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "gate": {
+         *         "failing_checks": [
+         *           "holdout.mape"
+         *         ],
+         *         "outcome": "needs_override",
+         *         "reasons": [
+         *           {
+         *             "check": "holdout.mape",
+         *             "code": "SCORECARD_WARN",
+         *             "message_plain": "Holdout error: forecasts were off by 14%.",
+         *             "outcome": "needs_override"
+         *           }
+         *         ],
+         *         "scorecard_overall": "warn"
+         *       },
+         *       "model_ref": "model://growth/eu-geo-mmm@v3",
+         *       "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+         *       "overridden": true,
+         *       "previous_model_version_id": "mv_01jaf3e0f0g0h0j0k0m0n0p0q0",
+         *       "reason": "Holdout MAPE is high because of the strike in week 41.",
+         *       "revision": 4
+         *     }
+         */
+        EndpointRevision: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "promote" | "rollback";
+            /** Actor Id */
+            actor_id?: string | null;
+            /** Alias */
+            alias: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            gate: components["schemas"]["PromotionGateDecision"];
+            /** Model Ref */
+            model_ref: string;
+            /**
+             * Model Version Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            model_version_id: string;
+            /**
+             * Overridden
+             * @default false
+             */
+            overridden?: boolean;
+            /** Previous Model Version Id */
+            previous_model_version_id?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** Revision */
+            revision: number;
+            /** Token Id */
+            token_id?: string | null;
+        };
+        /**
+         * EndpointRollback
+         * @description ``POST /v1/endpoints/{alias}/rollback``: point the alias back at the version of an
+         *     earlier revision (default: the one before the current). The gate is not re-run - the
+         *     version was promoted before - but the rollback is audited with its reason.
+         * @example {
+         *       "reason": "v3 over-forecasts after the price change"
+         *     }
+         */
+        EndpointRollback: {
+            /** Reason */
+            reason: string;
+            /** To Revision */
+            to_revision?: number | null;
+        };
+        /**
+         * EndpointSchema
+         * @description ``GET /v1/endpoints/{alias}/schema``: what to send, with a ready example payload.
+         * @example {
+         *       "alias": "geo-mmm-prod",
+         *       "example": {
+         *         "future_covariates": "carry_last",
+         *         "horizon": {
+         *           "dim": "time",
+         *           "periods": 8
+         *         },
+         *         "mode": "forecast",
+         *         "output": {
+         *           "kind": "expected",
+         *           "summary": [
+         *             "mean",
+         *             "hdi_90"
+         *           ]
+         *         }
+         *       },
+         *       "model_ref": "model://growth/eu-geo-mmm@v3",
+         *       "ref": "endpoint://growth/geo-mmm-prod",
+         *       "revision": 4,
+         *       "snapshot": {
+         *         "fit_coords": {
+         *           "channel": {
+         *             "kind": "categorical",
+         *             "size": 2,
+         *             "values": [
+         *               "search",
+         *               "tv"
+         *             ]
+         *           },
+         *           "date": {
+         *             "end": "2025-12-30",
+         *             "freq": "D",
+         *             "kind": "time",
+         *             "size": 730,
+         *             "start": "2024-01-01"
+         *           },
+         *           "market": {
+         *             "kind": "categorical",
+         *             "size": 2,
+         *             "values": [
+         *               "de",
+         *               "fr"
+         *             ]
+         *           }
+         *         },
+         *         "future_required": [
+         *           "spend_local"
+         *         ],
+         *         "horizon_dim": "time",
+         *         "input_schema": {
+         *           "dims": {
+         *             "channel": {
+         *               "kind": "categorical"
+         *             },
+         *             "date": {
+         *               "freq": "D",
+         *               "kind": "time",
+         *               "policy": "extend"
+         *             },
+         *             "market": {
+         *               "kind": "categorical",
+         *               "new_level_strategy": "pooled",
+         *               "policy": "new_levels"
+         *             }
+         *           },
+         *           "vars": {
+         *             "revenue_local": {
+         *               "dims": [
+         *                 "market",
+         *                 "date"
+         *               ],
+         *               "dtype": "float64",
+         *               "role": "target"
+         *             },
+         *             "spend_local": {
+         *               "dims": [
+         *                 "market",
+         *                 "channel",
+         *                 "date"
+         *               ],
+         *               "dtype": "float64",
+         *               "future_required": true,
+         *               "role": "spend"
+         *             }
+         *           }
+         *         },
+         *         "inputs_stage": "raw",
+         *         "representation": "draws",
+         *         "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *         "score_modes": [
+         *           "counterfactual",
+         *           "evaluate",
+         *           "forecast",
+         *           "predict"
+         *         ]
+         *       }
+         *     }
+         */
+        EndpointSchema: {
+            /** Alias */
+            alias: string;
+            /**
+             * Example
+             * @description An EndpointScoreCall body that validates against this endpoint
+             */
+            example: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /**
+             * Max Inline Bytes
+             * @default 5242880
+             */
+            max_inline_bytes?: number;
+            /** Model Ref */
+            model_ref: string;
+            /** Ref */
+            ref: string;
+            /** Revision */
+            revision: number;
+            snapshot: components["schemas"]["EndpointSchemaSnapshot"];
+        };
+        /**
+         * EndpointSchemaSnapshot
+         * @description The input contract of the promoted version, frozen at promotion: what callers send.
+         *
+         *     ``input_schema`` is the raw (dataset-name) schema at ``inputs_stage``; ``horizon_dim``
+         *     the canonical name of the dim a forecast extends.
+         * @example {
+         *       "fit_coords": {
+         *         "channel": {
+         *           "kind": "categorical",
+         *           "size": 2,
+         *           "values": [
+         *             "search",
+         *             "tv"
+         *           ]
+         *         },
+         *         "date": {
+         *           "end": "2025-12-30",
+         *           "freq": "D",
+         *           "kind": "time",
+         *           "size": 730,
+         *           "start": "2024-01-01"
+         *         },
+         *         "market": {
+         *           "kind": "categorical",
+         *           "size": 2,
+         *           "values": [
+         *             "de",
+         *             "fr"
+         *           ]
+         *         }
+         *       },
+         *       "future_required": [
+         *         "spend_local"
+         *       ],
+         *       "horizon_dim": "time",
+         *       "input_schema": {
+         *         "dims": {
+         *           "channel": {
+         *             "kind": "categorical"
+         *           },
+         *           "date": {
+         *             "freq": "D",
+         *             "kind": "time",
+         *             "policy": "extend"
+         *           },
+         *           "market": {
+         *             "kind": "categorical",
+         *             "new_level_strategy": "pooled",
+         *             "policy": "new_levels"
+         *           }
+         *         },
+         *         "vars": {
+         *           "revenue_local": {
+         *             "dims": [
+         *               "market",
+         *               "date"
+         *             ],
+         *             "dtype": "float64",
+         *             "role": "target"
+         *           },
+         *           "spend_local": {
+         *             "dims": [
+         *               "market",
+         *               "channel",
+         *               "date"
+         *             ],
+         *             "dtype": "float64",
+         *             "future_required": true,
+         *             "role": "spend"
+         *           }
+         *         }
+         *       },
+         *       "inputs_stage": "raw",
+         *       "representation": "draws",
+         *       "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *       "score_modes": [
+         *         "counterfactual",
+         *         "evaluate",
+         *         "forecast",
+         *         "predict"
+         *       ]
+         *     }
+         */
+        EndpointSchemaSnapshot: {
+            /** Fit Coords */
+            fit_coords?: {
+                [key: string]: components["schemas"]["CoordSummary"];
+            };
+            /** Future Required */
+            future_required?: string[];
+            /** Horizon Dim */
+            horizon_dim?: string | null;
+            input_schema: components["schemas"]["DataSchema"];
+            /**
+             * Inputs Stage
+             * @default raw
+             */
+            inputs_stage?: string;
+            representation?: components["schemas"]["Representation"] | null;
+            /** Schema Hash */
+            schema_hash: string;
+            /** Score Modes */
+            score_modes?: ("predict" | "forecast" | "counterfactual" | "simulate" | "filter" | "evaluate")[];
+        };
+        /**
+         * EndpointScoreCall
+         * @description ``POST /v1/endpoints/{alias}/score`` (and ``…/validate``): a score request for the
+         *     endpoint's current version.
+         *
+         *     ``data``/``scenario`` are ``dataset://`` references or inline XrJSON datasets (up to
+         *     5 MB; :mod:`mapi_spec.xrjson`). Send ``Prefer: wait=N`` (N ≤ 60) to wait: 200 with the
+         *     result when the run finishes in time, else 202 with the run.
+         * @example {
+         *       "future_covariates": "carry_last",
+         *       "horizon": {
+         *         "dim": "time",
+         *         "periods": 8
+         *       },
+         *       "mode": "forecast",
+         *       "output": {
+         *         "kind": "expected",
+         *         "summary": [
+         *           "mean",
+         *           "hdi_90"
+         *         ]
+         *       }
+         *     }
+         * @example {
+         *       "data": {
+         *         "coords": {
+         *           "channel": {
+         *             "data": [
+         *               "search",
+         *               "tv"
+         *             ],
+         *             "dims": [
+         *               "channel"
+         *             ]
+         *           },
+         *           "date": {
+         *             "data": [
+         *               "2025-12-30"
+         *             ],
+         *             "dims": [
+         *               "date"
+         *             ]
+         *           },
+         *           "market": {
+         *             "data": [
+         *               "de"
+         *             ],
+         *             "dims": [
+         *               "market"
+         *             ]
+         *           }
+         *         },
+         *         "data_vars": {
+         *           "spend_local": {
+         *             "data": [
+         *               [
+         *                 [
+         *                   1200
+         *                 ],
+         *                 [
+         *                   5300
+         *                 ]
+         *               ]
+         *             ],
+         *             "dims": [
+         *               "market",
+         *               "channel",
+         *               "date"
+         *             ]
+         *           }
+         *         }
+         *       },
+         *       "mode": "predict"
+         *     }
+         */
+        EndpointScoreCall: {
+            /** Data */
+            data?: string | components["schemas"]["XrJsonDataset"] | null;
+            /** @default supplied */
+            future_covariates?: components["schemas"]["FutureCovariates"];
+            horizon?: components["schemas"]["Horizon"] | null;
+            /**
+             * Inputs Stage
+             * @default raw
+             */
+            inputs_stage?: string;
+            /** Interventions */
+            interventions?: components["schemas"]["Intervention"][];
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Mode
+             * @default predict
+             * @enum {string}
+             */
+            mode?: "predict" | "forecast" | "counterfactual" | "simulate" | "filter" | "evaluate";
+            output?: components["schemas"]["OutputSelector"];
+            resource_class?: components["schemas"]["ResourceClass"] | null;
+            /** Scenario */
+            scenario?: string | components["schemas"]["XrJsonDataset"] | null;
+            /** Seed */
+            seed?: number | null;
+            /** Select */
+            select?: {
+                [key: string]: (string | number | boolean)[];
+            };
+            /** Side Tables */
+            side_tables?: {
+                [key: string]: string;
+            };
+            /** Timeout */
+            timeout?: string | null;
+        };
+        /**
+         * EndpointValidation
+         * @description ``POST /v1/endpoints/{alias}/validate``: the static checks of a score call (CoordPlan,
+         *     capabilities, inline payload envelope) without running it.
+         * @example {
+         *       "issues": [
+         *         {
+         *           "code": "MISSING_FUTURE_COVARIATE",
+         *           "message": "forecasting needs future values of ['spend'] at stage 'raw'",
+         *           "pointer": "/scenario",
+         *           "severity": "error",
+         *           "suggested_action": "Provide them in a scenario dataset."
+         *         }
+         *       ],
+         *       "valid": false
+         *     }
+         */
+        EndpointValidation: {
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            request?: components["schemas"]["ScoreRequest"] | null;
+            /** Valid */
+            valid: boolean;
+        };
+        /**
          * ErrorCode
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
@@ -3258,6 +4208,29 @@ export interface components {
             params?: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * EvaluationPolicy
+         * @description What a model version must satisfy to be promoted to the endpoint (Q13).
+         *
+         *     ``fit_mode = evaluate_then_refit`` (default) requires versions whose production bundle
+         *     was refitted on all data after the holdout evaluation; ``train_only`` also accepts
+         *     exploration fits. ``schema_change`` decides what happens when the new version expects
+         *     input the endpoint's callers do not send (:func:`schema_breaks`).
+         * @example {
+         *       "fit_mode": "evaluate_then_refit",
+         *       "schema_change": "block"
+         *     }
+         */
+        EvaluationPolicy: {
+            /** @default evaluate_then_refit */
+            fit_mode?: components["schemas"]["FitMode"];
+            /**
+             * Schema Change
+             * @default block
+             * @enum {string}
+             */
+            schema_change?: "block" | "warn" | "allow";
         };
         /**
          * ExecutorAttestation
@@ -3756,6 +4729,11 @@ export interface components {
             values: (number | null)[][];
         };
         /**
+         * FitMode
+         * @enum {string}
+         */
+        FitMode: "evaluate_then_refit" | "train_only";
+        /**
          * FutureCovariates
          * @description Where future values of ``future_required`` covariates come from in a forecast (M3).
          *
@@ -3767,6 +4745,27 @@ export interface components {
          * @enum {string}
          */
         FutureCovariates: "supplied" | "carry_last" | "seasonal_naive" | "zero";
+        /**
+         * GateOutcome
+         * @enum {string}
+         */
+        GateOutcome: "allowed" | "needs_override" | "blocked";
+        /**
+         * GateReason
+         * @description Why the gate is not plainly ``allowed``: a stable code, plain text, and the check.
+         */
+        GateReason: {
+            /** Check */
+            check?: string | null;
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "SCORECARD_WARN" | "SCORECARD_FAIL" | "NO_SCORECARD" | "TRAIN_ONLY" | "PARTIAL_MODEL" | "SCHEMA_CHANGE";
+            /** Message Plain */
+            message_plain: string;
+            outcome: components["schemas"]["GateOutcome"];
+        };
         /**
          * GlobalSpend
          * @description Platform spend in the current window of the global spend cap: what the kill switch
@@ -5510,6 +6509,32 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[EndpointRevision]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_EndpointRevision_: {
+            /** Items */
+            items: components["schemas"]["EndpointRevision"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[Endpoint]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_Endpoint_: {
+            /** Items */
+            items: components["schemas"]["Endpoint"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[ExecutorHealth]
          * @example {
          *       "items": [],
@@ -5740,6 +6765,32 @@ export interface components {
         Page_Tenant_: {
             /** Items */
             items: components["schemas"]["Tenant"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WebhookDelivery]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WebhookDelivery_: {
+            /** Items */
+            items: components["schemas"]["WebhookDelivery"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[Webhook]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_Webhook_: {
+            /** Items */
+            items: components["schemas"]["Webhook"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -6534,6 +7585,34 @@ export interface components {
             guided_locked?: boolean | null;
             /** Name */
             name?: string | null;
+        };
+        /**
+         * PromotionGateDecision
+         * @description The gate's decision for promoting one model version to an endpoint.
+         * @example {
+         *       "failing_checks": [
+         *         "holdout.mape"
+         *       ],
+         *       "outcome": "needs_override",
+         *       "reasons": [
+         *         {
+         *           "check": "holdout.mape",
+         *           "code": "SCORECARD_WARN",
+         *           "message_plain": "Holdout error: forecasts were off by 14%.",
+         *           "outcome": "needs_override"
+         *         }
+         *       ],
+         *       "scorecard_overall": "warn"
+         *     }
+         */
+        PromotionGateDecision: {
+            /** Failing Checks */
+            failing_checks?: string[];
+            outcome: components["schemas"]["GateOutcome"];
+            /** Reasons */
+            reasons?: components["schemas"]["GateReason"][];
+            /** Scorecard Overall */
+            scorecard_overall?: ("pass" | "warn" | "fail") | null;
         };
         /** QuestionChoice */
         QuestionChoice: {
@@ -7606,6 +8685,52 @@ export interface components {
             url: string;
         };
         /**
+         * Snippet
+         * @description Ready-to-run code. ``code`` is platform-generated; it embeds the example payload.
+         * @example {
+         *       "code": "curl -sS -X POST 'https://api.example.com/v1/endpoints/geo-mmm-prod/score' \\\n  -H \"Authorization: Bearer $MAPI_TOKEN\" \\\n  ...",
+         *       "language": "curl",
+         *       "title": "curl"
+         *     }
+         */
+        Snippet: {
+            /** Code */
+            code: string;
+            language: components["schemas"]["SnippetLanguage"];
+            /**
+             * Requires
+             * @description What to install first
+             */
+            requires?: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * SnippetLanguage
+         * @enum {string}
+         */
+        SnippetLanguage: "python" | "typescript" | "curl" | "r" | "apps_script" | "atlas";
+        /**
+         * SnippetSet
+         * @description ``GET /v1/endpoints/{alias}/snippets`` (``?language=`` narrows it).
+         * @example {
+         *       "alias": "geo-mmm-prod",
+         *       "items": [
+         *         {
+         *           "code": "curl -sS -X POST 'https://api.example.com/v1/endpoints/geo-mmm-prod/score' \\\n  -H \"Authorization: Bearer $MAPI_TOKEN\" \\\n  ...",
+         *           "language": "curl",
+         *           "title": "curl"
+         *         }
+         *       ]
+         *     }
+         */
+        SnippetSet: {
+            /** Alias */
+            alias: string;
+            /** Items */
+            items?: components["schemas"]["Snippet"][];
+        };
+        /**
          * SpecCreate
          * @description Create a spec document with its first revision (YAML 1.2 or JSON text).
          * @example {
@@ -8578,6 +9703,222 @@ export interface components {
             untrusted_text?: string | null;
         };
         /**
+         * Webhook
+         * @description A webhook as listed (never its secret; ``secret_hint`` shows its last 4 characters).
+         * @example {
+         *       "active": true,
+         *       "created_at": "2026-10-01T08:00:00Z",
+         *       "events": [
+         *         "run.succeeded",
+         *         "run.failed",
+         *         "endpoint.promoted"
+         *       ],
+         *       "failure_count": 0,
+         *       "id": "whk_01jaf3h1j2k3m4n5p6q7r8s9t0",
+         *       "last_delivery_at": "2026-10-15T09:30:00Z",
+         *       "last_success_at": "2026-10-15T09:30:00Z",
+         *       "project_id": "growth",
+         *       "secret_hint": "whsec_…Q2x9",
+         *       "tenant_id": "acme",
+         *       "updated_at": "2026-10-15T09:30:00Z",
+         *       "url": "https://hooks.example.com/mapi"
+         *     }
+         */
+        Webhook: {
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description?: string | null;
+            /** Disabled Reason */
+            disabled_reason?: string | null;
+            /** Events */
+            events: components["schemas"]["WebhookEventType"][];
+            /**
+             * Failure Count
+             * @description Consecutive failed events
+             * @default 0
+             */
+            failure_count?: number;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Last Delivery At */
+            last_delivery_at?: string | null;
+            /** Last Success At */
+            last_success_at?: string | null;
+            /** Project Id */
+            project_id: string;
+            /** Secret Hint */
+            secret_hint: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Url */
+            url: string;
+        };
+        /**
+         * WebhookCreate
+         * @description ``POST /v1/webhooks``: the secret is generated by the server and shown once.
+         *
+         *     The server applies the SSRF policy to ``url`` (static checks, then every address the
+         *     host resolves to): ``422 WEBHOOK_URL_BLOCKED``. ``https`` only, ports 443 and 8443.
+         * @example {
+         *       "description": "Notify the planning service",
+         *       "events": [
+         *         "run.succeeded",
+         *         "run.failed",
+         *         "endpoint.promoted"
+         *       ],
+         *       "url": "https://hooks.example.com/mapi"
+         *     }
+         */
+        WebhookCreate: {
+            /**
+             * Active
+             * @default true
+             */
+            active?: boolean;
+            /** Description */
+            description?: string | null;
+            /** Events */
+            events: components["schemas"]["WebhookEventType"][];
+            /** Url */
+            url: string;
+        };
+        /**
+         * WebhookCreated
+         * @description ``201`` of ``POST /v1/webhooks`` and ``200`` of ``…:rotate-secret``: the only time the
+         *     secret is returned. After a rotation the previous secret keeps signing for 24 h.
+         * @example {
+         *       "secret": "whsec_b3dE5gH7jK9mN1pQ3sT5vW7yZ9bC1dE3fG5hJ7kQ2x9",
+         *       "webhook": {
+         *         "active": true,
+         *         "created_at": "2026-10-01T08:00:00Z",
+         *         "events": [
+         *           "run.succeeded",
+         *           "run.failed",
+         *           "endpoint.promoted"
+         *         ],
+         *         "failure_count": 0,
+         *         "id": "whk_01jaf3h1j2k3m4n5p6q7r8s9t0",
+         *         "last_delivery_at": "2026-10-15T09:30:00Z",
+         *         "last_success_at": "2026-10-15T09:30:00Z",
+         *         "project_id": "growth",
+         *         "secret_hint": "whsec_…Q2x9",
+         *         "tenant_id": "acme",
+         *         "updated_at": "2026-10-15T09:30:00Z",
+         *         "url": "https://hooks.example.com/mapi"
+         *       }
+         *     }
+         */
+        WebhookCreated: {
+            /** Secret */
+            secret: string;
+            webhook: components["schemas"]["Webhook"];
+        };
+        /**
+         * WebhookDelivery
+         * @description One delivery attempt chain of one event to one webhook (``attempt`` counts tries).
+         *
+         *     ``error`` is platform-authored; ``response_excerpt`` is the first bytes of the receiver's
+         *     answer (untrusted text: render as text only).
+         * @example {
+         *       "attempt": 2,
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "duration_ms": 412,
+         *       "error": "the receiver answered 503",
+         *       "event_id": "evt_01jaf3k1m2n3p4q5r6s7t8v9w0",
+         *       "event_type": "run.succeeded",
+         *       "id": "whd_01jaf3m1n2p3q4r5s6t7v8w9x0",
+         *       "next_retry_at": "2026-10-15T09:40:00Z",
+         *       "response_code": 503,
+         *       "status": "retrying",
+         *       "updated_at": "2026-10-15T09:35:00Z",
+         *       "webhook_id": "whk_01jaf3h1j2k3m4n5p6q7r8s9t0"
+         *     }
+         */
+        WebhookDelivery: {
+            /** Attempt */
+            attempt: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /** Error */
+            error?: string | null;
+            /**
+             * Event Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            event_id: string;
+            event_type: components["schemas"]["WebhookEventType"];
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Next Retry At */
+            next_retry_at?: string | null;
+            /** Replay Of */
+            replay_of?: string | null;
+            /** Response Code */
+            response_code?: number | null;
+            /** Response Excerpt */
+            response_excerpt?: string | null;
+            status: components["schemas"]["DeliveryStatus"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Webhook Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            webhook_id: string;
+        };
+        /**
+         * WebhookEventType
+         * @enum {string}
+         */
+        WebhookEventType: "run.succeeded" | "run.failed" | "model.version.ready" | "endpoint.promoted" | "score.completed" | "tenant.deletion.completed";
+        /**
+         * WebhookUpdate
+         * @description ``PATCH /v1/webhooks/{webhook_id}`` (re-activating resets the failure count).
+         * @example {
+         *       "active": true
+         *     }
+         * @example {
+         *       "events": [
+         *         "score.completed"
+         *       ]
+         *     }
+         */
+        WebhookUpdate: {
+            /** Active */
+            active?: boolean | null;
+            /** Description */
+            description?: string | null;
+            /** Events */
+            events?: components["schemas"]["WebhookEventType"][] | null;
+            /** Url */
+            url?: string | null;
+        };
+        /**
          * WideVarMapping
          * @description One variable read from several columns, one per label of ``dim`` (a wide table).
          *
@@ -8615,6 +9956,83 @@ export interface components {
             role?: components["schemas"]["Role"];
             /** Units */
             units?: string | null;
+        };
+        /**
+         * XrJsonDataset
+         * @description An inline dataset (``xr.Dataset.to_dict()`` shape). Dim lengths must agree across
+         *     variables; every dim of a data variable should have a coord (checked in the sandbox
+         *     against the model's schema).
+         * @example {
+         *       "coords": {
+         *         "channel": {
+         *           "data": [
+         *             "tv",
+         *             "search"
+         *           ],
+         *           "dims": [
+         *             "channel"
+         *           ]
+         *         },
+         *         "time": {
+         *           "data": [
+         *             "2026-11-01",
+         *             "2026-11-08"
+         *           ],
+         *           "dims": [
+         *             "time"
+         *           ]
+         *         }
+         *       },
+         *       "data_vars": {
+         *         "spend": {
+         *           "data": [
+         *             [
+         *               1000,
+         *               1200
+         *             ],
+         *             [
+         *               400,
+         *               380
+         *             ]
+         *           ],
+         *           "dims": [
+         *             "channel",
+         *             "time"
+         *           ]
+         *         }
+         *       }
+         *     }
+         */
+        XrJsonDataset: {
+            /** Attrs */
+            attrs?: {
+                [key: string]: string | number | boolean | null;
+            };
+            /** Coords */
+            coords?: {
+                [key: string]: components["schemas"]["XrJsonVariable"];
+            };
+            /** Data Vars */
+            data_vars: {
+                [key: string]: components["schemas"]["XrJsonVariable"];
+            };
+            /** Dims */
+            dims?: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * XrJsonVariable
+         * @description A coord or data variable: ``data`` nested ``len(dims)`` deep (a scalar for no dims).
+         */
+        XrJsonVariable: {
+            /** Attrs */
+            attrs?: {
+                [key: string]: string | number | boolean | null;
+            };
+            data: components["schemas"]["JsonValue"];
+            /** Dims */
+            dims?: string[];
         };
     };
     responses: never;
@@ -9782,6 +11200,766 @@ export interface operations {
             };
         };
     };
+    list_endpoints: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Endpoint_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Endpoint"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    promote_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndpointPromote"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Endpoint"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT, PROMOTION_BLOCKED, OVERRIDE_REQUIRED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_endpoint_history: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_EndpointRevision_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    rollback_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndpointRollback"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Endpoint"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_endpoint_schema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EndpointSchema"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    score_endpoint: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description wait=N (N <= 60): wait up to N s for the result */
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndpointScoreCall"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoreCallResult"];
+                };
+            };
+            /** @description Still running: the run */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoreCallResult"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: HORIZON_EXCEEDS_FIT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, MODE_NOT_SUPPORTED, UNSEEN_LEVELS, COORD_NOT_ALLOWED, MISSING_FUTURE_COVARIATE, NON_CONTIGUOUS_EXTENSION, CAPABILITY_UNSUPPORTED, RECURSIVE_UNSUPPORTED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_endpoint_snippets: {
+        parameters: {
+            query?: {
+                /** @description Only these languages (repeatable) */
+                language?: components["schemas"]["SnippetLanguage"][] | null;
+                /** @description The API base URL to embed (default: this server's) */
+                base_url?: string | null;
+            };
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SnippetSet"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    validate_endpoint_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndpointScoreCall"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EndpointValidation"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     detect_roles: {
         parameters: {
             query?: never;
@@ -9804,7 +11982,7 @@ export interface operations {
                     "application/json": components["schemas"]["RoleSuggestions"];
                 };
             };
-            /** @description Authentication required (UNAUTHENTICATED) */
+            /** @description Problem: UNAUTHENTICATED */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9813,7 +11991,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Not allowed (FORBIDDEN) */
+            /** @description Problem: FORBIDDEN */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -9822,7 +12000,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Not found (NOT_FOUND) */
+            /** @description Problem: NOT_FOUND */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9831,7 +12009,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description The document does not match its schema (SCHEMA_INVALID) */
+            /** @description Problem: SCHEMA_INVALID */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9864,7 +12042,7 @@ export interface operations {
                     "application/json": components["schemas"]["GuidedDraft"];
                 };
             };
-            /** @description Authentication required (UNAUTHENTICATED) */
+            /** @description Problem: UNAUTHENTICATED */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9873,7 +12051,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Not allowed (FORBIDDEN) */
+            /** @description Problem: FORBIDDEN */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -9882,7 +12060,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Not found (NOT_FOUND) */
+            /** @description Problem: NOT_FOUND */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9891,7 +12069,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description The document does not match its schema (SCHEMA_INVALID); The guided answers do not fit the template (GUIDED_ANSWERS_INVALID) */
+            /** @description Problem: SCHEMA_INVALID, GUIDED_ANSWERS_INVALID */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9924,7 +12102,7 @@ export interface operations {
                     "application/json": components["schemas"]["GuidedDraft"];
                 };
             };
-            /** @description Authentication required (UNAUTHENTICATED) */
+            /** @description Problem: UNAUTHENTICATED */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9933,7 +12111,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Not allowed (FORBIDDEN) */
+            /** @description Problem: FORBIDDEN */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -9942,7 +12120,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description The document does not match its schema (SCHEMA_INVALID); The imported model uses an unsupported feature (IMPORT_UNSUPPORTED) */
+            /** @description Problem: SCHEMA_INVALID, IMPORT_UNSUPPORTED */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -10076,7 +12254,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_GuidedTemplate_"];
                 };
             };
-            /** @description Authentication required (UNAUTHENTICATED) */
+            /** @description Problem: UNAUTHENTICATED */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10085,7 +12263,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Not allowed (FORBIDDEN) */
+            /** @description Problem: FORBIDDEN */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -10094,7 +12272,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description The document does not match its schema (SCHEMA_INVALID) */
+            /** @description Problem: SCHEMA_INVALID */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -10125,7 +12303,7 @@ export interface operations {
                     "application/json": components["schemas"]["GuidedTemplate"];
                 };
             };
-            /** @description Authentication required (UNAUTHENTICATED) */
+            /** @description Problem: UNAUTHENTICATED */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10134,7 +12312,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Not allowed (FORBIDDEN) */
+            /** @description Problem: FORBIDDEN */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -10143,7 +12321,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Not found (NOT_FOUND) */
+            /** @description Problem: NOT_FOUND */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -12039,6 +14217,570 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_webhooks: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Webhook_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_webhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookCreated"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, WEBHOOK_URL_BLOCKED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_webhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_webhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_webhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, WEBHOOK_URL_BLOCKED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_webhook_deliveries: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                status?: components["schemas"]["DeliveryStatus"] | null;
+            };
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WebhookDelivery_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    replay_webhook_delivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+                delivery_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDelivery"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: WEBHOOK_URL_BLOCKED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    rotate_webhook_secret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookCreated"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

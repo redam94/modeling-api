@@ -304,8 +304,13 @@ async def check_score_request(
     req: ScoreRequest,
     mv: m.ModelVersion,
     issues: list[Issue],
+    *,
+    inline: DataSummary | None = None,
 ) -> dict[str, m.DatasetVersion]:
-    """CoordPlan checks from metadata + resolution of the request's dataset refs."""
+    """CoordPlan checks from metadata + resolution of the request's dataset refs.
+
+    ``inline`` summarises a payload sent inline (endpoint score calls with XrJSON data):
+    it is used when the request names no dataset for ``data``/``scenario``."""
     datasets: dict[str, m.DatasetVersion] = {}
     for name, ref in (("data", req.data), ("scenario", req.scenario)):
         if ref is None:
@@ -332,7 +337,7 @@ async def check_score_request(
         return datasets
     meta = ScoreMetadata.model_validate(mv.score_meta)
     payload = datasets.get(INPUT_SCENARIO) or datasets.get(INPUT_DATASET)
-    summary = None
+    summary = inline
     if payload is not None and payload.summary is not None:
         summary = DataSummary.model_validate(payload.summary)
     issues.extend(validate_score_request(req, meta, summary))

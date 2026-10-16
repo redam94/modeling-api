@@ -519,6 +519,40 @@ class Settings(BaseSettings):
         "OTEL_EXPORTER_OTLP_ENDPOINT); unset means spans are created but not exported",
     )
 
+    # ------------------------------------------------------------ webhooks (M3, plan §9)
+    webhook_allow_http: bool = Field(
+        False,
+        description="Development only: allow http:// webhook URLs, for the hosts in "
+        "MAPI_WEBHOOK_DEV_ALLOWLIST only (refused in the multi-tenant profile)",
+    )
+    webhook_dev_allowlist: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Development only: webhook host names (comma-separated) exempt from the "
+        "SSRF address and port checks, e.g. a receiver on localhost (refused in the "
+        "multi-tenant profile)",
+    )
+    webhook_ca_file: Path | None = Field(
+        None,
+        description="Extra PEM CA bundle trusted for webhook receivers (a private CA); the "
+        "system trust store is always used",
+    )
+    webhook_poll_interval_s: float = Field(
+        2.0, gt=0, description="How often the worker looks for due webhook deliveries"
+    )
+    webhook_max_attempts: int = Field(
+        8, ge=1, le=8, description="Tries per delivery (the retry schedule allows up to 8)"
+    )
+    webhook_auto_disable_after: int = Field(
+        20,
+        ge=1,
+        le=1000,
+        description="Disable a webhook after this many consecutive events failed",
+    )
+    webhook_max_per_project: int = Field(25, ge=1, le=1000)
+    webhook_retention_days: int = Field(
+        30, ge=1, le=3650, description="Days webhook events and their delivery logs are kept"
+    )
+
     def obs_settings(self) -> Any:
         """The :class:`~mapi_server.observability.ObsSettings` for this process."""
         from mapi_server.observability import ObsSettings
@@ -553,6 +587,7 @@ class Settings(BaseSettings):
         "kms_trusted_key_versions",
         "signing_trusted_key_paths",
         "dispatch_tiers",
+        "webhook_dev_allowlist",
         mode="before",
     )
     @classmethod
@@ -591,6 +626,13 @@ class Settings(BaseSettings):
             raise ValueError(
                 "MAPI_OBJECT_STORE=gcs needs MAPI_URL_UPLOADER: a service account other than "
                 "MAPI_URL_SIGNER that may create objects but never delete them"
+            )
+        if self.profile is Profile.MULTI_TENANT and (
+            self.webhook_allow_http or self.webhook_dev_allowlist
+        ):
+            raise ValueError(
+                "MAPI_WEBHOOK_ALLOW_HTTP and MAPI_WEBHOOK_DEV_ALLOWLIST are for development; "
+                "the multi-tenant profile always applies the full SSRF policy"
             )
         weak = [a for a in self.oidc_algorithms if a.upper().startswith("HS") or a == "none"]
         if weak:
