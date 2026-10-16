@@ -214,7 +214,7 @@ export function ReportStep({ session }: { session: GuidedSession }) {
         <h2 id="headline-h" className="sr-only">
           Headline numbers
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {base ? <Figure label="Results driven by media" value={share(1 - base.mean)} detail={`between ${share(1 - base.quantiles[2]!)} and ${share(1 - base.quantiles[0]!)}`} /> : null}
           {best?.roi ? <Figure label="Best return on spend" value={best.channel} detail={`${ratio(best.roi.mean)} back per 1 spent`} /> : null}
           {mape != null ? <Figure label="Forecast error on held-back weeks" value={share(mape)} detail="on average, lower is better" /> : null}

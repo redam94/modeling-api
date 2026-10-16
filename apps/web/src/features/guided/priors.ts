@@ -45,7 +45,7 @@ export interface FormProblem {
   message: string;
 }
 
-export const ROI_LIMITS = { min: 0, max: 20, step: 0.1 } as const;
+export const ROI_LIMITS = { min: 0, max: 10, step: 0.1 } as const;
 export const SHARE_LIMITS = { min: 0, max: 1, step: 0.01 } as const;
 export const CREDIBILITY_CHOICES = [
   { value: 0.5, label: "A rough guess (50% sure)" },

@@ -88,6 +88,14 @@ function SuggestionNote({ suggestion, column }: { suggestion: QuestionSuggestion
   );
 }
 
+/** Which question already uses each column (`used for: Result`), excluding `self`. */
+export type TakenBy = Map<string, { qid: string; word: string }>;
+
+function usedElsewhere(takenBy: TakenBy, column: string, self: string): string | null {
+  const t = takenBy.get(column);
+  return t && t.qid !== self ? t.word : null;
+}
+
 function ColumnQuestion({
   q,
   value,
@@ -95,6 +103,7 @@ function ColumnQuestion({
   profiles,
   suggestion,
   error,
+  takenBy,
 }: {
   q: GuidedQuestion;
   value: unknown;
@@ -102,6 +111,7 @@ function ColumnQuestion({
   profiles: ColumnProfile[];
   suggestion: QuestionSuggestion | undefined;
   error: string | null;
+  takenBy: TakenBy;
 }) {
   const id = useId();
   const ranked = new Map((suggestion?.candidates ?? []).map((c) => [c.column, c.confidence]));
@@ -111,12 +121,15 @@ function ColumnQuestion({
       <Field label={q.prompt_plain} htmlFor={id} hint={q.help_plain ?? undefined} error={error ?? undefined}>
         <NativeSelect id={id} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)}>
           <option value="">Choose a column…</option>
-          {options.map((p) => (
-            <option key={p.name} value={p.name} disabled={!compatible(q, p)}>
-              {p.name}
-              {ranked.has(p.name) && (ranked.get(p.name) ?? 0) >= 0.5 ? " (suggested)" : ""}
-            </option>
-          ))}
+          {options.map((p) => {
+            const other = usedElsewhere(takenBy, p.name, q.id);
+            return (
+              <option key={p.name} value={p.name} disabled={!compatible(q, p) || other !== null}>
+                {p.name}
+                {other ? ` (used for: ${other})` : ranked.has(p.name) && (ranked.get(p.name) ?? 0) >= 0.5 ? " (suggested)" : ""}
+              </option>
+            );
+          })}
         </NativeSelect>
       </Field>
       {typeof value === "string" && value ? <SuggestionNote suggestion={suggestion} column={value} /> : null}
@@ -131,6 +144,7 @@ function ColumnsQuestion({
   profiles,
   suggestion,
   error,
+  takenBy,
 }: {
   q: GuidedQuestion;
   value: unknown;
@@ -138,15 +152,16 @@ function ColumnsQuestion({
   profiles: ColumnProfile[];
   suggestion: QuestionSuggestion | undefined;
   error: string | null;
-  taken: Set<string>;
+  takenBy: TakenBy;
 }) {
   const id = useId();
   const [all, setAll] = useState(false);
   const selected = new Set(Array.isArray(value) ? (value as string[]) : []);
   const cands = new Map((suggestion?.candidates ?? []).map((c) => [c.column, c]));
   const fits = profiles.filter((p) => compatible(q, p));
-  const shown = all ? fits : fits.filter((p) => cands.has(p.name) || selected.has(p.name));
-  const list = shown.length ? shown : fits;
+  const free = fits.filter((p) => usedElsewhere(takenBy, p.name, q.id) === null);
+  const likely = free.filter((p) => (cands.get(p.name)?.confidence ?? 0) >= 0.5 || selected.has(p.name));
+  const list = all ? fits : likely.length ? likely : free;
   const toggle = (name: string, on: boolean) => {
     const next = fits.map((p) => p.name).filter((n) => (n === name ? on : selected.has(n)));
     onChange(next);
@@ -158,31 +173,40 @@ function ColumnsQuestion({
         {q.required === false ? <span className="font-normal text-muted-foreground"> (optional)</span> : null}
       </legend>
       {q.help_plain ? <p className="text-xs text-muted-foreground">{q.help_plain}</p> : null}
-      <ul className="grid gap-1.5">
-        {list.map((p) => {
-          const c = cands.get(p.name);
-          const cid = `${id}-${p.name}`;
-          return (
-            <li key={p.name} className={cn("flex items-start gap-3 rounded-md border px-3 py-2", selected.has(p.name) && "border-primary/40 bg-accent/40")}>
-              <Checkbox id={cid} checked={selected.has(p.name)} onCheckedChange={(v) => toggle(p.name, v === true)} className="mt-0.5" />
-              <Label htmlFor={cid} className="grid min-w-0 flex-1 cursor-pointer gap-1 leading-snug">
-                <span className="flex flex-wrap items-center gap-2">
-                  <Mono className="break-all">{p.name}</Mono>
-                  {c && c.confidence >= 0.5 ? (
-                    <Badge variant="info">
-                      <Sparkles aria-hidden /> {confidenceWord(c.confidence)}
-                    </Badge>
+      {list.length ? (
+        <ul className="grid gap-1.5">
+          {list.map((p) => {
+            const c = cands.get(p.name);
+            const cid = `${id}-${p.name}`;
+            const other = usedElsewhere(takenBy, p.name, q.id);
+            return (
+              <li key={p.name} className={cn("flex items-start gap-3 rounded-md border px-3 py-2", selected.has(p.name) && "border-primary/40 bg-accent/40", other && "opacity-60")}>
+                <Checkbox id={cid} checked={selected.has(p.name)} disabled={other !== null} onCheckedChange={(v) => toggle(p.name, v === true)} className="mt-0.5" />
+                <Label htmlFor={cid} className="grid min-w-0 flex-1 cursor-pointer gap-1 leading-snug">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Mono className="break-all">{p.name}</Mono>
+                    {!other && c && c.confidence >= 0.5 ? (
+                      <Badge variant="info">
+                        <Sparkles aria-hidden /> {confidenceWord(c.confidence)}
+                      </Badge>
+                    ) : null}
+                  </span>
+                  {other ? (
+                    <span className="text-xs font-normal text-muted-foreground">Used for: {other}</span>
+                  ) : c ? (
+                    <span className="text-xs font-normal text-muted-foreground">{c.reason_plain}</span>
                   ) : null}
-                </span>
-                {c ? <span className="text-xs font-normal text-muted-foreground">{c.reason_plain}</span> : null}
-              </Label>
-            </li>
-          );
-        })}
-      </ul>
+                </Label>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted-foreground">No column looks like an answer.</p>
+      )}
       {fits.length > list.length || all ? (
         <Button variant="link" size="sm" className="h-auto justify-self-start px-0" onClick={() => setAll((v) => !v)}>
-          {all ? "Show suggestions only" : `Show all ${fits.length} number columns`}
+          {all ? "Show likely columns only" : `Show all ${fits.length} columns that could fit`}
         </Button>
       ) : null}
       {error ? (
@@ -403,7 +427,10 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
     () => (ready && format ? { template_id: template.id, name: slug, dataset: datasetName, format, answers: normalizeAnswers(template, answers), columns: profiles ?? [] } : null),
     [ready, format, template, slug, datasetName, answers, profiles],
   );
-  const draft = useGuidedDraft(useDebounced(body, 300));
+  const debounced = useDebounced(body, 300);
+  const draft = useGuidedDraft(debounced);
+  // The draft on screen belongs to the answers on screen (not to a moment ago).
+  const settled = body !== null && debounced === body && !draft.isPlaceholderData;
   const draftError = draft.error instanceof ApiError ? draft.error : null;
   const errorFor = (qid: string): string | null => {
     const issue = draftError?.problem?.errors?.find((e) => e.pointer === `/answers/${qid}`);
@@ -476,7 +503,12 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
   const basicOther = template.questions.filter((q) => q.kind !== "column" && q.kind !== "columns" && q.ui_level !== "advanced");
   const advancedOther = template.questions.filter((q) => q.kind !== "column" && q.kind !== "columns" && q.ui_level === "advanced");
   const suggestionFor = (qid: string) => detect.data?.questions.find((s) => s.question_id === qid);
-  const taken = new Set(Object.values(answers).flatMap((v) => (typeof v === "string" ? [v] : Array.isArray(v) ? (v as string[]) : [])));
+  const takenBy: TakenBy = new Map();
+  for (const q of template.questions) {
+    if (q.kind !== "column" && q.kind !== "columns") continue;
+    const v = answers[q.id];
+    for (const c of typeof v === "string" && v ? [v] : Array.isArray(v) ? (v as string[]) : []) takenBy.set(c, { qid: q.id, word: ROLE_WORD[q.id] ?? q.id });
+  }
 
   return (
     <div className="grid gap-6">
@@ -580,9 +612,9 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
             </div>
             {columnQs.map((q) =>
               q.kind === "column" ? (
-                <ColumnQuestion key={q.id} q={q} value={answers[q.id]} onChange={(v) => set(q.id, v)} profiles={profiles} suggestion={suggestionFor(q.id)} error={errorFor(q.id)} />
+                <ColumnQuestion key={q.id} q={q} value={answers[q.id]} onChange={(v) => set(q.id, v)} profiles={profiles} suggestion={suggestionFor(q.id)} error={errorFor(q.id)} takenBy={takenBy} />
               ) : (
-                <ColumnsQuestion key={q.id} q={q} value={answers[q.id]} onChange={(v) => set(q.id, v)} profiles={profiles} suggestion={suggestionFor(q.id)} error={errorFor(q.id)} taken={taken} />
+                <ColumnsQuestion key={q.id} q={q} value={answers[q.id]} onChange={(v) => set(q.id, v)} profiles={profiles} suggestion={suggestionFor(q.id)} error={errorFor(q.id)} takenBy={takenBy} />
               ),
             )}
             {basicOther.map((q) => (
@@ -657,7 +689,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
         </Button>
         <div className="flex flex-wrap items-center gap-3">
           {!canSave ? <span className="text-xs text-muted-foreground">Your role can look but not upload. Ask a project admin for editor access.</span> : null}
-          <Button onClick={() => void save()} disabled={!draft.data || !!draftError || busy || problems.length > 0 || !canSave || draft.isFetching}>
+          <Button onClick={() => void save()} disabled={!settled || !draft.data || !!draftError || busy || problems.length > 0 || !canSave || draft.isFetching}>
             <UploadCloud /> Upload and continue
           </Button>
         </div>

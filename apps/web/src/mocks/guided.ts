@@ -857,7 +857,7 @@ export function createGuidedHandlers(shared: SharedMockState, state: GuidedMockS
           const tick = () => {
             const r = current();
             if (terminal(r)) {
-              controller.enqueue(frame("state", { run_id: id, attempt: 1, seq: seq++, ts: now(), type: "state", payload: { state: r.state } }, seq));
+              controller.enqueue(frame("state", { id: seq, run_id: id, attempt: 1, seq: seq++, ts: now(), type: "state", payload: { state: r.state } }, seq));
               controller.enqueue(frame("end", r));
               clearInterval(timer);
               controller.close();
@@ -867,7 +867,7 @@ export function createGuidedHandlers(shared: SharedMockState, state: GuidedMockS
               const payload = progressPayload(f);
               if (payload.phase !== lastPhase) {
                 lastPhase = payload.phase;
-                controller.enqueue(frame("state", { run_id: id, attempt: 1, seq: seq++, ts: now(), type: "state", payload: { phase: payload.phase, state: r.state } }, seq));
+                controller.enqueue(frame("state", { id: seq, run_id: id, attempt: 1, seq: seq++, ts: now(), type: "state", payload: { phase: payload.phase, state: r.state } }, seq));
               }
               controller.enqueue(frame("progress", { run_id: id, attempt: 1, seq: seq++, ts: now(), type: "progress", payload }));
             }

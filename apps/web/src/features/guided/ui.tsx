@@ -203,6 +203,45 @@ export function ChangeBand({
   const width = (a: number, b: number) => `${(Math.abs(b - a) / (2 * extent)) * 100}%`;
   const tone = mid >= 0 ? "bg-success" : "bg-destructive";
   return (
+    <div className="grid gap-1">
+      <ChangeBandTrack lo={lo} mid={mid} hi={hi} exact={exact} label={label} x={x} width={width} tone={tone} />
+      <div aria-hidden className="flex flex-wrap items-center justify-between gap-x-3 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className={cn("h-2 w-4 rounded-full opacity-40", tone)} /> instant estimate
+        </span>
+        <span>| no change</span>
+        {exact ? (
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-4 rounded-full bg-foreground/40" /> exact run
+          </span>
+        ) : (
+          <span />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChangeBandTrack({
+  lo,
+  mid,
+  hi,
+  exact,
+  label,
+  x,
+  width,
+  tone,
+}: {
+  lo: number;
+  mid: number;
+  hi: number;
+  exact?: { lo: number; mid: number; hi: number } | null | undefined;
+  label: string;
+  x: (v: number) => string;
+  width: (a: number, b: number) => string;
+  tone: string;
+}) {
+  return (
     <div role="img" aria-label={label} className="relative h-12 w-full">
       <div aria-hidden className="absolute inset-x-0 top-5 h-px bg-border" />
       <div aria-hidden className="absolute top-2 bottom-2 w-px bg-muted-foreground/50" style={{ left: "50%" }} />

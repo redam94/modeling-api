@@ -34,7 +34,7 @@ const stepRoute = getRouteApi("/guided/$specId/$step");
 export function GuidedPage() {
   useEnterGuided();
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-10">
+    <div className="mx-auto grid w-full max-w-6xl gap-8">
       <PageHeader
         title="What do you want to learn?"
         description="Pick the question closest to yours. We'll ask a few plain questions about your spreadsheet, fit a model in a secure sandbox and explain what it found - no statistics needed."

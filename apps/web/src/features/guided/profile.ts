@@ -86,8 +86,19 @@ export function detectFrequency(dates: readonly string[]): string | null {
 
 /** Read the head of a local CSV file (or an MFF long table, pivoted). */
 export async function readLocalTable(file: Blob, maxBytes = PROFILE_BYTES): Promise<LocalTable> {
-  const text = await file.slice(0, maxBytes).text();
+  const text = await blobText(file.slice(0, maxBytes));
   return tableFromText(text, file.size > maxBytes);
+}
+
+/** `Blob.text()`, with a FileReader fallback for older engines. */
+function blobText(blob: Blob): Promise<string> {
+  if (typeof blob.text === "function") return blob.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = () => reject(reader.error ?? new Error("the file could not be read"));
+    reader.readAsText(blob);
+  });
 }
 
 export function tableFromText(text: string, cut = false, maxRows = PROFILE_ROWS): LocalTable {

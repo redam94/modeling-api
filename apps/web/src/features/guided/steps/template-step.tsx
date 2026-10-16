@@ -21,6 +21,14 @@ const FOR: Record<string, string[]> = {
   customer_choice: ["Shopping trips per household with prices per product", "Which product wins, and why"],
 };
 
+/** The plan's order (§11): the marketing mix first, then forecasts, demand and choice. */
+const ORDER = ["geo_mmm", "weekly_forecast", "store_demand", "customer_choice"];
+
+export function sortTemplates(items: readonly GuidedTemplate[]): GuidedTemplate[] {
+  const rank = (id: string) => (ORDER.includes(id) ? ORDER.indexOf(id) : ORDER.length);
+  return [...items].sort((a, b) => rank(a.id) - rank(b.id) || a.title.localeCompare(b.title));
+}
+
 function taskBadges(t: GuidedTemplate): string[] {
   const out: string[] = [];
   if (hasTask(t, "whatif")) out.push("What-if budgets");
@@ -89,7 +97,7 @@ export function TemplatePicker() {
   if (templates.isError) return <ErrorNotice error={templates.error} title="The templates could not be loaded" onRetry={() => void templates.refetch()} />;
   return (
     <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Templates">
-      {templates.data.items.map((t) => (
+      {sortTemplates(templates.data.items).map((t) => (
         <li key={t.id}>
           <TemplateCard template={t} />
         </li>

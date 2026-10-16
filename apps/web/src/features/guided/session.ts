@@ -63,8 +63,8 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 
 const ABSENT = Symbol("absent");
 
-/** The value at a JSON pointer (`ABSENT` when it is not there). */
-export function valueAt(doc: unknown, pointer: string): unknown {
+/** The value at a JSON pointer, or `ABSENT` when it is not there. */
+function lookup(doc: unknown, pointer: string): unknown {
   let node: unknown = doc;
   for (const part of parsePointer(pointer)) {
     if (isRecord(node) && part in node) node = node[part];
@@ -72,6 +72,12 @@ export function valueAt(doc: unknown, pointer: string): unknown {
     else return ABSENT;
   }
   return node;
+}
+
+/** The value at a JSON pointer (`undefined` when it is not there). */
+export function valueAt(doc: unknown, pointer: string): unknown {
+  const v = lookup(doc, pointer);
+  return v === ABSENT ? undefined : v;
 }
 
 /** `metadata.labels.guided`: the template a spec was drafted from. */
@@ -115,7 +121,7 @@ export function advancedChanges(template: Pick<GuidedTemplate, "ui_levels">, doc
   return Object.entries(template.ui_levels ?? {})
     .filter(([, level]) => level !== "basic")
     .map(([pointer]) => pointer)
-    .filter((pointer) => stable(valueAt(doc, pointer)) !== stable(valueAt(reference, pointer)))
+    .filter((pointer) => stable(lookup(doc, pointer)) !== stable(lookup(reference, pointer)))
     .sort();
 }
 

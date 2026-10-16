@@ -99,7 +99,7 @@ function LiveRun({ run, session }: { run: Run; session: GuidedSession }) {
       <CardContent className="grid gap-5 pt-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="grid gap-1" aria-live="polite">
-            <p className="text-xs font-medium text-muted-foreground">{stateText(current.state)}</p>
+            <p className="text-xs font-medium text-muted-foreground">{stateText(current.state, p !== null)}</p>
             <h2 className="text-[17px] font-semibold tracking-tight">{terminal ? (current.state === "cancelled" ? "The fit was stopped" : "The fit did not finish") : text.title}</h2>
             <p className="max-w-[60ch] text-[13px] text-muted-foreground">
               {terminal ? (advice ? `${advice.title}. ${advice.message}` : (current.problem?.detail ?? current.problem?.title ?? "You can start it again.")) : text.body}
@@ -123,7 +123,7 @@ function LiveRun({ run, session }: { run: Run; session: GuidedSession }) {
         {!terminal ? <PhaseChecklist phase={p?.phase ?? null} done={false} /> : null}
         <p className="text-xs text-muted-foreground">
           You can leave this page: the fit carries on and this step shows where it is when you come back.{" "}
-          <Link to="/runs/$runId" params={{ runId: current.id }} className="underline-offset-2 hover:underline">
+          <Link to="/runs/$runId" params={{ runId: current.id }} className="underline underline-offset-2 hover:text-foreground">
             Technical details
           </Link>
         </p>

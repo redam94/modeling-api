@@ -48,12 +48,13 @@ export function etaText(seconds: number | null | undefined): string | null {
   return `about ${hours} hours left`;
 }
 
-export function stateText(state: RunState): string {
+/** A run state in plain words (`reporting`: the worker already sends progress). */
+export function stateText(state: RunState, reporting = false): string {
   switch (state) {
     case "created":
     case "queued":
     case "dispatching":
-      return "Waiting to start";
+      return reporting ? "Running" : "Waiting to start";
     case "provisioning":
       return "Starting up";
     case "running":

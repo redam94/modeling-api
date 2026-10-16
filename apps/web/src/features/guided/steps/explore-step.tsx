@@ -351,7 +351,7 @@ export function ExploreStep({ session }: { session: GuidedSession }) {
       {hasTask(session.template, "forecast") ? <Forecast mv={mv} session={session} /> : null}
       <p className="text-xs text-muted-foreground">
         Results are in {grid.data?.kpi_units ?? "the units of your data"} and cover the {grid.data ? `${grid.data.periods} periods` : "period"} of your data; ranges are 90% likely.
-        {grid.data ? ` The sliders reach from ${share(sliderRange(grid.data).min)} to ${share(sliderRange(grid.data).max)} of what you actually spent; use "Run exact" for anything else.` : ""}
+        {grid.data ? ` The sliders reach from ${share(sliderRange(grid.data).min)} to ${share(sliderRange(grid.data).max)} of what you actually spent.` : ""}
       </p>
       <StepActions>
         <Button variant="ghost" onClick={() => void navigate({ to: "/guided/$specId/$step", params: { specId: session.spec.id, step: "report" } })}>
