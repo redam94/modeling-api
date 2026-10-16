@@ -26,6 +26,7 @@ from __future__ import annotations
 import hmac
 import logging
 import secrets
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -42,6 +43,7 @@ from mapi_spec.tenancy import (
     PROJECT_HEADER,
     Action,
     AuthContext,
+    Capability,
     Membership,
     PrincipalKind,
     ProjectRole,
@@ -454,6 +456,21 @@ async def _credentials(
     raise unauthenticated()
 
 
+def held_capabilities(
+    memberships: Sequence[Membership], principal_id: str, tenant_id: str, project_id: str
+) -> frozenset[Capability]:
+    """M3.5: the capabilities ``principal_id`` holds in a project (tenant-wide grants count
+    for every project)."""
+    return frozenset(
+        c
+        for mm in memberships
+        if mm.principal_id == principal_id
+        and mm.tenant_id == tenant_id
+        and mm.project_id in (None, project_id)
+        for c in mm.capabilities
+    )
+
+
 def _local_memberships(ctx: ServerContext, at: datetime) -> list[Membership]:
     return [
         Membership(
@@ -552,6 +569,7 @@ async def _resolve(
             project_id=project.id,
             role=role,
             tenant_role=effective_role(memberships, member_id, tenant.id, None),
+            capabilities=held_capabilities(memberships, member_id, tenant.id, project.id),
             tenant_status=TenantStatus(tenant.status),
             trust_tier=TrustTier(tenant.trust_tier),
         )

@@ -264,6 +264,11 @@ async def apply_transition(
         run.lease_expires_at = None
         if rule.target is not RunState.SUCCEEDED:
             await _ingest_failed(session, run)
+        if run.kind == RunKind.GOVERNANCE.value:
+            # M3.5: the validation advances in the transaction that ends its run
+            from mapi_server.services.governance import governance_run_finished
+
+            await governance_run_finished(session, run, rule.target)
     await session.flush()
     if rule.target.terminal or rule.new_attempt or rule.target is RunState.FINALIZING:
         # an attempt's execution is over: meter it into the cost ledger (idempotent)

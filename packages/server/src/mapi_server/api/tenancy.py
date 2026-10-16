@@ -452,7 +452,12 @@ async def update_tenant_member(
     body: MembershipUpdate,
 ) -> Membership:
     row = await change_role(
-        session, tenant_id=tenant_id, project_id=None, principal_id=principal_id, role=body.role
+        session,
+        tenant_id=tenant_id,
+        project_id=None,
+        principal_id=principal_id,
+        role=body.role,
+        capabilities=body.capabilities,
     )
     await _audit_member(
         ctx, auth, session, AuditAction.MEMBER_UPDATE, row, ResourceKind.TENANT_MEMBER
@@ -538,6 +543,7 @@ async def update_project_member(
         project_id=project_id,
         principal_id=principal_id,
         role=body.role,
+        capabilities=body.capabilities,
     )
     await _audit_member(ctx, auth, session, AuditAction.MEMBER_UPDATE, row, ResourceKind.MEMBER)
     return membership_dto(row)

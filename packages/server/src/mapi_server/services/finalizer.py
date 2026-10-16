@@ -334,7 +334,42 @@ class Finalizer:
             return await self._describe(v)
         if kind is RunKind.TRANSLATE_PRIORS:
             return await self._translate_priors(v)
+        if kind is RunKind.GOVERNANCE:
+            return await self._governance(v)
         return await self._outputs_only(v)
+
+    # ....................................................................... governance
+    async def _governance(self, v: _Verified) -> RunState | None:
+        """A governance run must upload a valid ``governance.json``; its results are stored
+        on the validation in the transaction that marks the run succeeded (M3.5)."""
+        from mapi_spec.governance import GOVERNANCE_OUTPUT
+
+        from mapi_server.services.governance import (
+            REPORT_MAX_BYTES,
+            parse_report,
+            record_report,
+        )
+
+        meta = v.objects.get(GOVERNANCE_OUTPUT)
+        if meta is None:
+            if v.partial:
+                return await self._commit(v)
+            raise IntegrityError(f"a governance run must upload {GOVERNANCE_OUTPUT}")
+        cap = min(self.ctx.settings.max_sidecar_bytes, REPORT_MAX_BYTES)
+        if meta.size > cap:
+            raise IntegrityError(f"{GOVERNANCE_OUTPUT} exceeds the {cap}-byte limit")
+        raw = await self.ctx.store.get(
+            meta.bucket, meta.name, generation=meta.generation, max_bytes=cap
+        )
+        try:
+            report = parse_report(raw)
+        except MapiError as exc:
+            raise IntegrityError(exc.detail, untrusted_text=exc.untrusted_text) from None
+
+        async def apply(session: AsyncSession, row: m.Run) -> None:
+            await record_report(session, row, report)
+
+        return await self._commit(v, apply)
 
     async def _commit(
         self,

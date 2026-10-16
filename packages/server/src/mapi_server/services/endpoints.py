@@ -215,6 +215,7 @@ async def evaluate_gate(
     policy: EvaluationPolicy,
     *,
     current: EndpointSchemaSnapshot | None,
+    ctx: ServerContext | None = None,
 ) -> tuple[PromotionGateDecision, EndpointSchemaSnapshot]:
     """The promotion gate for ``mv`` under ``policy`` (and the snapshot it would freeze).
 
@@ -223,7 +224,20 @@ async def evaluate_gate(
     version's fit run (Q13) and its status, plus the schema breaks against ``current``."""
     snapshot = snapshot_for(mv)
     breaks = schema_breaks(current.input_schema, snapshot.input_schema) if current else []
-    decision = await promotion_decision(session, mv, policy=policy, schema_breaks=breaks)
+    required, status = False, None
+    if ctx is not None:  # M3.5: governance policies may require a validated version
+        from mapi_server.services.governance import promotion_requirement
+
+        req = await promotion_requirement(session, ctx, mv)
+        required, status = req.require_validated, req.validation_status
+    decision = await promotion_decision(
+        session,
+        mv,
+        policy=policy,
+        schema_breaks=breaks,
+        require_validated=required,
+        validation_status=status,
+    )
     return decision, snapshot
 
 
@@ -379,7 +393,7 @@ async def promote(
     current = EndpointSchemaSnapshot.model_validate(row.schema_snapshot) if row else None
     if row is not None and row.model_version_id == mv.id:
         current = None  # same version: its contract is the one callers already use
-    decision, snapshot = await evaluate_gate(session, mv, policy, current=current)
+    decision, snapshot = await evaluate_gate(session, mv, policy, current=current, ctx=ctx)
     model_ref = await model_ref_of(session, mv)
     try:
         overridden = authorize_promotion(
@@ -388,9 +402,20 @@ async def promote(
     except MapiError as exc:
         outcome = {
             ErrorCode.PROMOTION_BLOCKED: "blocked",
+            ErrorCode.NOT_VALIDATED: "blocked",
             ErrorCode.OVERRIDE_REQUIRED: "needs_override",
             ErrorCode.FORBIDDEN: "forbidden",
         }.get(exc.code, "invalid")
+        if exc.code is ErrorCode.NOT_VALIDATED:
+            await _audit(
+                ctx,
+                None,
+                AuditAction.ENDPOINT_PROMOTE_NOT_VALIDATED,
+                row.id if row else None,
+                outcome=AuditOutcome.DENIED,
+                code=exc.code,
+                details={"alias": alias, "model_version_id": mv.id},
+            )
         obs_metrics.record_endpoint_promotion(outcome)
         await _audit(
             ctx,
@@ -408,7 +433,11 @@ async def promote(
                 "failing_checks": _checks(decision),
             },
         )
-        if exc.code is ErrorCode.PROMOTION_BLOCKED or exc.code is ErrorCode.OVERRIDE_REQUIRED:
+        if exc.code in (
+            ErrorCode.PROMOTION_BLOCKED,
+            ErrorCode.OVERRIDE_REQUIRED,
+            ErrorCode.NOT_VALIDATED,
+        ):
             exc.issues = [
                 Issue(
                     code=exc.code,

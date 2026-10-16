@@ -45,10 +45,12 @@ __all__ = [
     "EndpointRevision",
     "EndpointRun",
     "ExecutorReport",
+    "GovernancePolicyRow",
     "IdempotencyKey",
     "LoginTransactionRow",
     "Membership",
     "Model",
+    "ModelValidation",
     "ModelVersion",
     "PlatformSetting",
     "Plot",
@@ -71,6 +73,7 @@ __all__ = [
     "TenantVerification",
     "Upload",
     "User",
+    "ValidationApproval",
     "WebSession",
     "Webhook",
     "WebhookDelivery",
@@ -109,6 +112,10 @@ TENANT_TABLES: tuple[str, ...] = (
     "tenant_verifications",
     "tenant_deletions",
     "tenant_exports",
+    # M3.5 governance (0012_governance)
+    "governance_policies",
+    "model_validations",
+    "validation_approvals",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -245,6 +252,8 @@ class Membership(Base):
     role: Mapped[str] = mapped_column(String(16))
     email: Mapped[str | None] = mapped_column(String(320))
     display_name: Mapped[str | None] = mapped_column(String(200))
+    capabilities: Mapped[list[Any]] = mapped_column(default=list, server_default=text("'[]'"))
+    """M3.5: grants on top of the role (``reviewer``), see :class:`mapi_spec.tenancy.Capability`."""
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
     created_by: Mapped[str | None] = mapped_column(String(64))
 
@@ -1193,4 +1202,116 @@ class TenantExport(Base):
         CheckConstraint("state in ('queued','running','ready','expired','failed')", name="state"),
         Index("ix_tenant_exports_tenant", "tenant_id", "created_at"),
         Index("ix_tenant_exports_state", "state"),
+    )
+
+
+# ============================================================================ governance (M3.5)
+
+
+class GovernancePolicyRow(Base):
+    """One version of a governance policy (:class:`mapi_spec.governance.GovernancePolicy`).
+
+    ``(id, version)`` is the key: an update inserts the next version and the old ones stay
+    for audit; ``retired_at`` on the latest version retires the policy. ``project_id`` is
+    NULL for tenant-wide policies (every project's floor)."""
+
+    __tablename__ = "governance_policies"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"))
+    project_id: Mapped[str | None] = mapped_column(String(64))
+    scope: Mapped[str] = mapped_column(String(16))
+    name: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str | None] = mapped_column(Text)
+    applies_to: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    checks: Mapped[list[Any]] = mapped_column(default=list)
+    require_approval: Mapped[bool] = mapped_column(Boolean, default=False)
+    approvals_required: Mapped[int] = mapped_column(Integer, default=1)
+    require_validated_for_promotion: Mapped[bool] = mapped_column(Boolean, default=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    retired_at: Mapped[datetime | None] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    created_by: Mapped[str | None] = mapped_column(String(128))
+
+    __table_args__ = (
+        CheckConstraint("scope in ('tenant','project')", name="scope"),
+        CheckConstraint("(scope = 'tenant') = (project_id IS NULL)", name="scope_project"),
+        CheckConstraint("version >= 1", name="version"),
+        CheckConstraint("approvals_required between 1 and 3", name="approvals_required"),
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        Index("ix_governance_policies_scope", "tenant_id", "project_id"),
+    )
+
+
+class ModelValidation(_Scoped, Base):
+    """A validation of one model version (:class:`mapi_spec.governance.ModelValidation`):
+    status, the policies and checks it was held to, results, history. ``round`` counts
+    submissions (approvals belong to the current round)."""
+
+    __tablename__ = "model_validations"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    model_id: Mapped[str] = mapped_column(String(64))
+    model_version_id: Mapped[str] = mapped_column(
+        ForeignKey("model_versions.id", ondelete="CASCADE")
+    )
+    version: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(32))
+    round: Mapped[int] = mapped_column(Integer, default=1)
+    policies: Mapped[list[Any]] = mapped_column(default=list)
+    required_checks: Mapped[list[Any]] = mapped_column(default=list)
+    results: Mapped[list[Any]] = mapped_column(default=list)
+    failing_checks: Mapped[list[Any]] = mapped_column(default=list)
+    require_approval: Mapped[bool] = mapped_column(Boolean, default=False)
+    approvals_required: Mapped[int] = mapped_column(Integer, default=1)
+    history: Mapped[list[Any]] = mapped_column(default=list)
+    run_id: Mapped[str | None] = mapped_column(String(64))
+    dataset: Mapped[str | None] = mapped_column(String(512))
+    note: Mapped[str | None] = mapped_column(Text)
+    submitted_by: Mapped[str | None] = mapped_column(String(128))
+    submitted_at: Mapped[datetime | None] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('draft','checks_running','checks_passed','checks_failed',"
+            "'awaiting_approval','validated','rejected','deprecated')",
+            name="status",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        Index("ix_model_validations_version", "model_version_id", "created_at"),
+        Index("ix_model_validations_status", "tenant_id", "project_id", "status"),
+        Index("ix_model_validations_run", "run_id"),
+    )
+
+
+class ValidationApproval(_Scoped, Base):
+    """A reviewer's decision on one round of a validation (append-only for requests)."""
+
+    __tablename__ = "validation_approvals"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    validation_id: Mapped[str] = mapped_column(
+        ForeignKey("model_validations.id", ondelete="CASCADE")
+    )
+    round: Mapped[int] = mapped_column(Integer)
+    approver_id: Mapped[str] = mapped_column(String(128))
+    decision: Mapped[str] = mapped_column(String(16))
+    comment: Mapped[str | None] = mapped_column(Text)
+    decided_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (
+        CheckConstraint("decision in ('approve','reject')", name="decision"),
+        UniqueConstraint("validation_id", "round", "approver_id"),
+        Index("ix_validation_approvals_validation", "validation_id", "round"),
     )

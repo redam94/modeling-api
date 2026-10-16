@@ -33,6 +33,7 @@ from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.schema import DataSchema
 from mapi_spec.storage import DATASET_OBJECTS, NotFound, SignedPut, quarantine_key
 from mapi_spec.tenancy import ResourceKind
+from mapi_spec.views import EXPLORE_PREFIX
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError as DBIntegrityError
 
@@ -358,11 +359,25 @@ async def get_dataset_version(
     return version_dto(ds, dv)
 
 
+def _artifact_allowed(name: str) -> bool:
+    """The fixed ingest outputs, plus (M3.5) the Data Explorer views an ingest writes under
+    ``ui/explore/`` (JSON only)."""
+    if name in ARTIFACT_NAMES:
+        return True
+    parts = name.split("/")
+    return (
+        name.startswith(EXPLORE_PREFIX)
+        and name.endswith(".json")
+        and all(p and p not in (".", "..") for p in parts)
+        and len(name) <= 256
+    )
+
+
 async def _artifact(
     ctx: Ctx, session: Session, dataset_id: str, version: int, name: str, *, audit: bool = False
 ) -> ArtifactLink:
     _, dv = await _version(ctx, session, dataset_id, version)
-    obj = dv.objects.get(name) if name in ARTIFACT_NAMES else None
+    obj = dv.objects.get(name) if _artifact_allowed(name) else None
     if obj is None:
         raise NotFoundError("artifact", name)
     link = await artifact_link(
@@ -391,7 +406,7 @@ async def _artifact(
 
 
 @router.get(
-    "/{dataset_id}/versions/{version}/artifacts/{name}",
+    "/{dataset_id}/versions/{version}/artifacts/{name:path}",
     response_model=ArtifactLink,
     operation_id="get_dataset_artifact",
 )
@@ -403,7 +418,8 @@ async def get_dataset_artifact(
     name: str,
 ) -> ArtifactLink:
     """Signed, generation-pinned URL for ``data.zarr.zip``/``schema.json``/``profile.json``/
-    ``preview.json``/``summary.json``/``columns.json`` (15 min, HTTP Range works)."""
+    ``preview.json``/``summary.json``/``columns.json`` and (M3.5) the Data Explorer views
+    ``ui/explore/…`` written at ingest (15 min, HTTP Range works)."""
     return await _artifact(ctx, session, dataset_id, version, name, audit=True)
 
 
