@@ -144,7 +144,6 @@ milestone releases are tagged on `main`.
   helpers are validated against statsmodels/scipy reference values.
 - **docs**: guides "Validate models with governance policies", "Explore a dataset" and
   "Explore a model".
-
 - **integration** (M3.5 parts working together):
   - Workflow model nodes fit the real models: `mapi_workflows.testing.test_registry()`
     registers the statsmodels plugin (extra `mapi-workflows[testing]`), and the canonical
