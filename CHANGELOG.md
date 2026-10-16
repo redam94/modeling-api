@@ -339,6 +339,11 @@ milestone releases are tagged on `main`.
   Explorer views written at ingest named the dataset version and carry plot timestamps. The
   ingest's index now names no dataset, and the finalizer keeps the explorer views already
   stored for that data (the data and its sidecars must still match exactly).
+- **client, cli** (found by the M3.5 live-stack verification): `explorations.view` (and `mapi
+  explore --show`) returned a section's plot list instead of its view for every section
+  whose name sorts after `plots` (`residuals`, `response_curves`, `stationarity`, `stl`,
+  ...): `ui/explore/plots/<section>.json` matched first, and the call failed with "the view
+  is not a JSON object". The exact view is now looked up first; plots never match.
 - **client**: members could not be given the `reviewer` capability (needed to approve
   validations) without raw HTTP: `tenants.add_member(..., capabilities=[...])` and
   `tenants.set_capabilities(...)`.
