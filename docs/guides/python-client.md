@@ -379,7 +379,7 @@ iterated with `async for`:
 | `runs` | `create`, `fit`, `get`, `list`, `wait`, `stream_events`, `events`, `logs`, `plots`, `cancel`, `resume`, `retry` |
 | `models` | `list`, `get`, `versions`, `version`, `artifact`, `download`, `score` |
 | `plots` | `list`, `get`, `validate`; v0.4: `save`, `saved`, `get_saved`, `delete_saved`, `render`, `render_status`, `render_output`, `download_render`, `create_embed`, `embeds`, `revoke_embed`, `embed` |
-| `guided` (v0.4) | `templates`, `template`, `detect_roles`, `draft`, `import_bayesinsight`, `compile`, `translate_priors`, `prior_translation`, `wait_prior_translation`, `preview_priors` |
+| `guided` (v0.4) | `templates`, `template`, `detect_roles`, `draft`, `compile`, `translate_priors`, `prior_translation`, `wait_prior_translation`, `preview_priors` |
 | `endpoints` (v0.4) | `list`, `get`, `promote`, `delete`, `history`, `rollback`, `schema`, `validate`, `submit`, `score`, `snippets`; `api.endpoint(alias)`: `info`, `schema`, `history`, `snippets`, `validate`, `score`, `score_result` |
 | `webhooks` (v0.4) | `list`, `create`, `get`, `update`, `delete`, `rotate_secret`, `deliveries`, `replay` |
 | `tenants` (v0.3) | `list`, `get`, `rename`, `projects`, `create_project`, `update_project`, `delete_project`, `members`, `add_member`, `set_role`, `remove_member`, `usage`, `audit`; v0.4: `verification`, `request_deletion`, `deletion`, `cancel_deletion`, `export`, `export_status`, `wait_export`, `download_export` |

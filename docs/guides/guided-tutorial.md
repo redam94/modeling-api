@@ -50,8 +50,8 @@ answers which question. Nothing is uploaded until you press **Upload and continu
 - The preview on the right labels each column with its role and draws a small line per
   series you picked, added up per week, so a column of zeros or a broken week is easy to
   spot.
-- **MFF long tables** (`Period`, `Geography`, `VariableName`, `VariableValue`, as BayesInsight
-  uses) and **Google Meridian tables** (`time`, `geo`, `kpi`, `<channel>_spend`) are recognised
+- **MFF long tables** (`Period`, `Geography`, `VariableName`, `VariableValue`, as
+  mmm-framework uses) and **Google Meridian tables** (`time`, `geo`, `kpi`, `<channel>_spend`) are recognised
   automatically and the answers filled in from their standard names.
 - Parquet files are opened only inside the sandbox, so for them you type the column names.
 - **More options** holds the settings most people never change, such as how many of the

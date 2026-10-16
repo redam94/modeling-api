@@ -135,7 +135,6 @@ nav:
       - "Embed a chart in Notion, Slack or BI": tutorials/embed-a-chart.md
       - Receive webhooks: guides/webhook-receivers.md
       - Optimise a budget with Atlas: guides/atlas.md
-      - Import a BayesInsight model: tutorials/bayesinsight-import.md
   - Concepts:
       - concepts/index.md
       - Architecture overview: concepts/architecture.md
@@ -150,6 +149,9 @@ nav:
       - Quotas and cost: concepts/quotas-and-cost.md
       - Guided mode: concepts/guided-mode.md
       - Integrations: concepts/integrations.md
+      - Workflows: concepts/workflows.md
+      - Governance: concepts/governance.md
+      - About cards and choosing: concepts/about-and-choosing.md
   - Guides:
       - Using the platform:
           - The Expert web app: guides/web-ui.md

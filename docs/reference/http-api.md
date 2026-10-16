@@ -518,10 +518,8 @@ from `ColumnProfile`s computed in the browser (or from a stored dataset version:
 with a confidence and a `reason_plain`. A draft (`POST /v1/guided/drafts`) turns
 `GuidedAnswers` into an `IngestMapping` for the upload, a `ModelSpec` document and its YAML
 ("View as YAML") without storing anything, with the static validator's findings in `issues`;
-save it with `POST /v1/specs`. `POST /v1/guided/import/bayesinsight` does the same for a
-BayesInsight `model_def.json` and `metadata.json` (`BayesInsightImport`), for the built-in
-geo MMM unless `target` says `mmm.bayesinsight` (the dedicated BayesInsight model). Business
-priors become
+save it with `POST /v1/specs`. (The BayesInsight import of v0.4 was removed in v0.5.)
+Business priors become
 model-space priors in a sandboxed `translate_priors` run (`PriorTranslationRequest` →
 `PriorTranslation`, whose `result` is a `PriorTranslationResult` with a prior-predictive
 preview in business units). `POST /v1/guided/requests:compile` turns a what-if scenario, a
@@ -530,8 +528,8 @@ forecast or an intervention preset (`GuidedCompile`) into the `ScoreRequest` it 
 with `PATCH /v1/tenants/{tenant_id}/projects/{project_id}` (`ProjectUpdate.guided_locked`);
 in a locked project, `POST /v1/specs` and `POST /v1/specs/{spec_id}/revisions` by members
 below admin answer `403 FORBIDDEN` for anything but Guided specs that keep their template's
-advanced and hidden fields. Served in this release: the templates, role detection, drafts,
-the BayesInsight import and the lock (see
+advanced and hidden fields. Served in this release: the templates, role detection, drafts
+and the lock (see
 [From a spreadsheet to a Guided draft](../guides/guided-data.md)).
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
@@ -540,7 +538,6 @@ the BayesInsight import and the lock (see
 | `GET /v1/guided/templates/{template_id}` | One template: questions, spec template, scorecard checks, UI levels | — | `GuidedTemplate` | 200 | `NOT_FOUND` |
 | `POST /v1/guided/detect-roles` | Suggest a column for every question from column profiles | `DetectRolesRequest` | `RoleSuggestions` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
 | `POST /v1/guided/drafts` | Answers → ingest mapping + ModelSpec draft (+ YAML); stores nothing | `GuidedAnswers` | `GuidedDraft` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `GUIDED_ANSWERS_INVALID` |
-| `POST /v1/guided/import/bayesinsight` | BayesInsight model_def.json + metadata.json → draft for the geo MMM | `BayesInsightImport` | `GuidedDraft` | 200 | `SCHEMA_INVALID`, `IMPORT_UNSUPPORTED` |
 | `POST /v1/guided/requests:compile` | What-if scenario, forecast or preset → the ScoreRequest it stands for ('Run exact') | `GuidedCompile` | `ScoreRequest` | 200 | `SCHEMA_INVALID`, `MISSING_FUTURE_COVARIATE` |
 | `POST /v1/guided/prior-translations` | Business priors → model-space priors + prior predictive (a translate_priors run) | `PriorTranslationRequest` | `PriorTranslation` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `BUSINESS_PRIORS_INVALID`, `CALIBRATION_UNSUPPORTED`, `QUOTA_EXCEEDED` |
 | `GET /v1/guided/prior-translations/{run_id}` | The translation run and, once done, its priors and preview | — | `PriorTranslation` | 200 | `NOT_FOUND` |
@@ -641,6 +638,136 @@ stored.
 | `POST /v1/admin/signups/{signup_id}/review` | Approve or reject a sign-up (a rejection suspends its tenant; audited) | `SignupReviewDecision` | `SignupReview` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
 | `POST /v1/admin/tenants/{tenant_id}/deletion/retry` | Restart a failed tenant purge (operators; audited) | — | `TenantDeletion` | 202 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
 
+## Workflows, governance, explorers and About cards <span class="mapi-badge">v0.5</span> { #m35 }
+
+v0.5 (milestone M3.5) adds the contracts for automated **workflows** (statistical tests, data
+processing, splits, searches and models nested in one versioned DAG), model **governance**
+(policies, checks with evidence, validation and approval), the **Data Explorer** and
+**Model Explorer**, **budget optimisation** with mmm-framework, and the plain-language
+**About cards** with the **Help me choose** chooser. The endpoint table matches
+`mapi_spec.api.M35_ENDPOINTS`; `mapi_spec.api.ENDPOINTS` is the whole v0.5 surface
+(`V04_ENDPOINTS` + `M35_ENDPOINTS`) and `ROUTE_ACCESS` gives each operation its scope and
+permission. The ideas are explained in [Workflows](../concepts/workflows.md),
+[Governance](../concepts/governance.md) and
+[About cards and choosing](../concepts/about-and-choosing.md).
+
+v0.5 also **removes** the BayesInsight import (`POST /v1/guided/import/bayesinsight`,
+`BayesInsightImport`, the `bayesinsight` ingest preset) and the `atlas` snippet language:
+mmm-framework is the only MMM engine. The contract version is `0.2`.
+
+**Permissions.** Workflows are read by viewers, written by editors, run (and scheduled) by
+runners and deleted by admins. Project policies are managed by project admins, tenant-wide
+policies by tenant admins; everyone in the project reads them. Submitting a model version for
+validation needs `run` rights (`validate` on `model`); approving or rejecting needs the
+**reviewer** capability (`Membership.capabilities`, granted with `MembershipUpdate`; project
+admins hold it implicitly) and is refused to the person who submitted it
+(`403 SELF_APPROVAL_FORBIDDEN`). No API token can approve. New token scopes:
+`workflows:write`, `workflows:run`, `models:validate` and `policies:manage`.
+
+**Long-running work.** A workflow run, an explore run and an optimize run are runs like any
+other (`Idempotency-Key`, the quota checks, cost). `POST …:optimize` honours
+`Prefer: wait=N`. Workflow runs stream their node events on
+`GET /v1/workflow-runs/{run_id}/events` (SSE with `Last-Event-ID`, event types in
+`WorkflowEventType`), and the terminal ones also go to webhooks (`workflow.run.succeeded`,
+`workflow.run.failed`), as do validation transitions (`model.validated`, `model.rejected`,
+...), `dataset.version.created` and `optimize.completed`.
+
+**Promotion.** When a governance policy that applies to a model says
+`require_validated_for_promotion`, `PUT /v1/endpoints/{alias}` refuses a version whose
+validation status is not `validated` with `409 NOT_VALIDATED` (no override can pass it).
+
+### Endpoints { #m35-endpoints }
+
+#### About cards and the chooser
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/catalog/abouts` | About cards of catalog items (filter: kind) | — | `Page[CatalogAbout]` | 200 | — |
+| `GET /v1/catalog/chooser` | The Help-me-choose questions | — | `ChooserQuestionnaire` | 200 | — |
+| `GET /v1/catalog/recommendations` | Ranked recommendations for chooser answers (query: one parameter per question) | — | `ChooserResult` | 200 | `CHOOSER_ANSWER_INVALID` |
+| `GET /v1/catalog/workflow-nodes` | Workflow node implementations with ports, parameters and About cards | — | `Page[NodeImplementation]` | 200 | — |
+| `GET /v1/catalog/workflow-nodes/{node_id}` | One node implementation | — | `NodeImplementation` | 200 | `NOT_FOUND` |
+| `GET /v1/catalog/governance-checks` | The governance check catalog | — | `Page[GovernanceCheckDef]` | 200 | — |
+
+#### Datasets: About and the Data Explorer
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/datasets/{dataset_id}/about` | The owner's description and the generated summary of the latest version | — | `DatasetAbout` | 200 | `NOT_FOUND` |
+| `PATCH /v1/datasets/{dataset_id}/about` | Change the owner's description | `DatasetAboutUpdate` | `DatasetAbout` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN` |
+| `POST /v1/datasets/{dataset_id}/versions/{version}/explore` | Compute Data Explorer sections (an explore run) | `DataExploreRequest` | `Exploration` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `EXPLORE_INVALID`, `QUOTA_EXCEEDED` |
+| `GET /v1/explorations/{run_id}` | An explore run and, once done, links to its views | — | `Exploration` | 200 | `NOT_FOUND` |
+
+#### Models: the Model Explorer and budget optimisation
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `POST /v1/models/{model_id}/versions/{version}/explore` | Compute Model Explorer sections (an explore run) | `ModelExploreRequest` | `Exploration` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `EXPLORE_INVALID`, `CAPABILITY_UNSUPPORTED`, `QUOTA_EXCEEDED` |
+| `POST /v1/models/{model_id}/versions/{version}:optimize` | Optimise a budget across channels (Prefer: wait=N -> 200 if done, else 202) | `OptimizeRequest` | `Optimization` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `OPTIMIZE_INFEASIBLE`, `CAPABILITY_UNSUPPORTED`, `QUOTA_EXCEEDED` |
+| `GET /v1/optimizations/{run_id}` | An optimize run and, once done, its plan | — | `Optimization` | 200 | `NOT_FOUND` |
+
+#### Workflows
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/workflows` | Workflows of the project | — | `Page[Workflow]` | 200 | — |
+| `POST /v1/workflows` | Create a workflow from a document, YAML text or a gallery template | `WorkflowCreate` | `Workflow` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `WORKFLOW_INVALID`, `CONFLICT`, `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE` |
+| `POST /v1/workflows:validate` | Static checks of a workflow document (JSON pointers); stores nothing | `WorkflowValidateRequest` | `WorkflowValidation` | 200 | `SCHEMA_INVALID`, `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE` |
+| `GET /v1/workflows/{workflow_id}` | A workflow | — | `Workflow` | 200 | `NOT_FOUND` |
+| `PATCH /v1/workflows/{workflow_id}` | Change the description or archive it | `WorkflowUpdate` | `Workflow` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
+| `DELETE /v1/workflows/{workflow_id}` | Delete a workflow (its runs, schedules and triggers go with it) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `GET /v1/workflows/{workflow_id}/revisions` | Revisions, newest first | — | `Page[WorkflowRevision]` | 200 | `NOT_FOUND` |
+| `POST /v1/workflows/{workflow_id}/revisions` | Save a new revision (validated; errors make it unrunnable) | `WorkflowRevisionCreate` | `WorkflowRevision` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `CONFLICT`, `SPEC_PARSE_ERROR`, `PAYLOAD_TOO_LARGE` |
+| `GET /v1/workflows/{workflow_id}/revisions/{revision}` | A revision with its validation | — | `WorkflowRevision` | 200 | `NOT_FOUND` |
+| `POST /v1/workflows/{workflow_id}/runs` | Run a revision (a workflow parent run) | `WorkflowRunCreate` | `WorkflowRun` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `WORKFLOW_INVALID`, `WORKFLOW_NOT_RUNNABLE`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT` |
+| `GET /v1/workflows/{workflow_id}/runs` | Runs of a workflow, newest first | — | `Page[WorkflowRun]` | 200 | `NOT_FOUND` |
+| `GET /v1/workflow-runs/{run_id}` | A workflow run with every node, decision and output | — | `WorkflowRun` | 200 | `NOT_FOUND` |
+| `POST /v1/workflow-runs/{run_id}:cancel` | Cancel a workflow run and its running children | — | `WorkflowRun` | 202 | `NOT_FOUND`, `CONFLICT` |
+| `GET /v1/workflow-runs/{run_id}/events` | Workflow run events (SSE, Last-Event-ID) | — | SSE stream | 200 | `NOT_FOUND` |
+| `GET /v1/workflow-runs/{run_id}/nodes` | The node runs of a workflow run | — | `Page[NodeRun]` | 200 | `NOT_FOUND` |
+| `GET /v1/workflow-runs/{run_id}/nodes/{node_id}` | One node's status, result and outputs | — | `NodeRun` | 200 | `NOT_FOUND` |
+| `GET /v1/workflow-runs/{run_id}/nodes/{node_id}/outputs/{port}` | A signed link to a node output's object | — | `ArtifactLink` | 200 | `NOT_FOUND` |
+| `GET /v1/workflows/{workflow_id}/schedules` | Cron schedules | — | `Page[WorkflowSchedule]` | 200 | `NOT_FOUND` |
+| `POST /v1/workflows/{workflow_id}/schedules` | Run the workflow on a cron schedule | `ScheduleCreate` | `WorkflowSchedule` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `SCHEDULE_INVALID` |
+| `PATCH /v1/workflows/{workflow_id}/schedules/{schedule_id}` | Change or pause a schedule | `ScheduleUpdate` | `WorkflowSchedule` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `SCHEDULE_INVALID` |
+| `DELETE /v1/workflows/{workflow_id}/schedules/{schedule_id}` | Delete a schedule | — | — | 204 | `NOT_FOUND` |
+| `GET /v1/workflows/{workflow_id}/triggers` | Dataset triggers | — | `Page[WorkflowTrigger]` | 200 | `NOT_FOUND` |
+| `POST /v1/workflows/{workflow_id}/triggers` | Run the workflow when a dataset gets a new version | `TriggerCreate` | `WorkflowTrigger` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `SCHEDULE_INVALID` |
+| `DELETE /v1/workflows/{workflow_id}/triggers/{trigger_id}` | Delete a trigger | — | — | 204 | `NOT_FOUND` |
+| `GET /v1/workflow-templates` | The gallery of workflow templates | — | `Page[WorkflowTemplate]` | 200 | — |
+| `GET /v1/workflow-templates/{template_id}` | One gallery template | — | `WorkflowTemplate` | 200 | `NOT_FOUND` |
+
+#### Governance policies
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/governance/policies` | Policies in force in the project (its own and the tenant's) | — | `Page[GovernancePolicy]` | 200 | — |
+| `POST /v1/governance/policies` | Add a project policy (version 1) | `GovernancePolicyCreate` | `GovernancePolicy` | 201 | `SCHEMA_INVALID`, `FORBIDDEN`, `POLICY_INVALID` |
+| `GET /v1/governance/policies/{policy_id}` | The latest version of a policy | — | `GovernancePolicy` | 200 | `NOT_FOUND` |
+| `PUT /v1/governance/policies/{policy_id}` | Save a new version (expected_version guards concurrent edits) | `GovernancePolicyUpdate` | `GovernancePolicy` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `POLICY_INVALID` |
+| `DELETE /v1/governance/policies/{policy_id}` | Retire a policy (its versions stay for audit) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/governance/policies/{policy_id}/versions` | Every version of a policy, newest first | — | `Page[GovernancePolicy]` | 200 | `NOT_FOUND` |
+| `GET /v1/tenants/{tenant_id}/governance/policies` | Tenant-wide policies (every project's floor) | — | `Page[GovernancePolicy]` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `POST /v1/tenants/{tenant_id}/governance/policies` | Add a tenant-wide policy | `GovernancePolicyCreate` | `GovernancePolicy` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `POLICY_INVALID` |
+| `GET /v1/tenants/{tenant_id}/governance/policies/{policy_id}` | A tenant-wide policy | — | `GovernancePolicy` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `PUT /v1/tenants/{tenant_id}/governance/policies/{policy_id}` | Save a new version of a tenant-wide policy | `GovernancePolicyUpdate` | `GovernancePolicy` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `POLICY_INVALID` |
+| `DELETE /v1/tenants/{tenant_id}/governance/policies/{policy_id}` | Retire a tenant-wide policy | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
+
+#### Validations, approvals and evidence
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `POST /v1/models/{model_id}/versions/{version}/validations` | Submit a model version: runs the policy checks as a governance workflow | `ValidationRequest` | `ModelValidation` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `VALIDATION_TRANSITION_INVALID`, `POLICY_INVALID`, `QUOTA_EXCEEDED` |
+| `GET /v1/models/{model_id}/versions/{version}/validations` | Validations of a model version, newest first | — | `Page[ModelValidation]` | 200 | `NOT_FOUND` |
+| `GET /v1/validations` | Validations of the project (filter: status, e.g. the reviewers' queue) | — | `Page[ModelValidation]` | 200 | — |
+| `GET /v1/validations/{validation_id}` | A validation: status, results, approvals, history | — | `ModelValidation` | 200 | `NOT_FOUND` |
+| `GET /v1/validations/{validation_id}/evidence` | Every check result with its evidence | — | `Page[CheckResult]` | 200 | `NOT_FOUND` |
+| `POST /v1/validations/{validation_id}:cancel` | Stop running checks (back to draft) | `ValidationNote` | `ModelValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `VALIDATION_TRANSITION_INVALID` |
+| `POST /v1/validations/{validation_id}:resubmit` | Run the checks again after a failure or a rejection | `ValidationNote` | `ModelValidation` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `VALIDATION_TRANSITION_INVALID`, `QUOTA_EXCEEDED` |
+| `POST /v1/validations/{validation_id}/approvals` | A reviewer approves or rejects (never the submitter; audited) | `ApprovalCreate` | `ModelValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `SELF_APPROVAL_FORBIDDEN`, `VALIDATION_TRANSITION_INVALID`, `CONFLICT` |
+| `POST /v1/validations/{validation_id}:deprecate` | Retire a validated model version (audited with the reason) | `ValidationNote` | `ModelValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `VALIDATION_TRANSITION_INVALID` |
+| `POST /v1/validations/{validation_id}/evidence-pack` | The audit export (JSON, and a signed link to the HTML rendering) | `EvidencePackRequest` | `EvidencePack` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
+
 ## DTO index
 
 All of these models live in `mapi_spec.api` unless noted. Each one has a schema in the
@@ -660,9 +787,13 @@ OpenAPI document and in `export_schemas()` as `api-<Name>.json`.
 | Usage and cost (v0.3) | `UsageReport`, `CostTotals`, `RunCost`, `CostLedgerEntry`, `CostEstimate` (`mapi_spec.cost`), `QuotaLimitStatus` (`mapi_spec.quotas`) |
 | Operators (v0.3) | `QuotaPolicy`, `QuotaPolicyUpsert`, `QuotaDecision` (`mapi_spec.quotas`), `KillSwitches`, `KillSwitchUpdate`, `ExecutorHealth` (`mapi_spec.admin`), `AdminUsageReport`, `TenantCost`, `GlobalSpend`, `AuditEvent` (`mapi_spec.audit`), `ConformanceReport` (`mapi_spec.conformance_executor`) |
 | Session and internal (v0.3) | `SessionInfo`, `PubSubPushEnvelope` (`mapi_spec.auth`) |
-| Guided mode (v0.4) | `GuidedTemplate`, `DetectRolesRequest`, `ColumnProfile`, `RoleSuggestions`, `GuidedAnswers`, `GuidedDraft`, `BayesInsightImport` (`mapi_spec.guided`), `WideVarMapping`, `MeridianColumns`, `MffOptions`, `BayesInsightModelDef`, `BayesInsightMetadata` (`mapi_spec.ingest`) |
+| Guided mode (v0.4) | `GuidedTemplate`, `DetectRolesRequest`, `ColumnProfile`, `RoleSuggestions`, `GuidedAnswers`, `GuidedDraft` (`mapi_spec.guided`), `WideVarMapping`, `MeridianColumns`, `MffOptions` (`mapi_spec.ingest`) |
 | Calibration and what-if (v0.4) | `PriorTranslationRequest`, `PriorTranslation`, `BusinessPriors`, `LiftTest`, `Calibration`, `PriorTranslationResult` (`mapi_spec.calibration`), `GuidedCompile`, `WhatIfScenario`, `WhatIfResult` (`mapi_spec.whatif`), `ResponseGridView` (`mapi_spec.views`), `ScoreRequest` (`mapi_spec`) |
 | Endpoints (v0.4) | `Endpoint`, `EndpointPromote`, `EndpointRevision`, `EndpointRollback`, `EndpointScoreCall`, `EndpointSchema`, `EndpointValidation`, `EvaluationPolicy` (`mapi_spec.endpoints`), `PromotionGateDecision` (`mapi_spec.scorecard`), `Snippet`, `SnippetSet` (`mapi_spec.snippets`), `XrJsonDataset` (`mapi_spec.xrjson`) |
 | Webhooks (v0.4) | `Webhook`, `WebhookCreate`, `WebhookCreated`, `WebhookUpdate`, `WebhookDelivery`, `WebhookEnvelope` (`mapi_spec.webhooks`) |
 | Plots (v0.4) | `SavedPlot`, `SavedPlotCreate`, `PlotRenderRequest`, `PlotRender`, `PlotEmbed`, `PlotEmbedCreate`, `PlotEmbedCreated`, `EmbedView` (`mapi_spec.sharing`) |
 | Trust lifecycle (v0.4) | `SignupRequest`, `SignupAccepted`, `EmailVerify`, `VerificationResult`, `VerificationStatus`, `VerificationUpdate`, `SignupReview`, `SignupReviewDecision`, `TenantDeletionRequest`, `TenantDeletion`, `GdprExportRequest`, `GdprExport` (`mapi_spec.trust`) |
+| About cards (v0.5) | `About`, `CatalogAbout`, `ChooserQuestionnaire`, `ChooserResult`, `DatasetAbout`, `DatasetAboutUpdate` (`mapi_spec.about`) |
+| Workflows (v0.5) | `Workflow`, `WorkflowCreate`, `WorkflowUpdate`, `WorkflowRevision`, `WorkflowRevisionCreate`, `WorkflowValidateRequest`, `WorkflowValidation`, `WorkflowRun`, `WorkflowRunCreate`, `NodeRun`, `ScheduleCreate`, `ScheduleUpdate`, `WorkflowSchedule`, `TriggerCreate`, `WorkflowTrigger` (`mapi_spec.workflow`), `NodeImplementation` (`mapi_spec.workflow_nodes`), `WorkflowTemplate` (`mapi_spec.workflow_templates`) |
+| Governance (v0.5) | `GovernanceCheckDef`, `GovernancePolicy`, `GovernancePolicyCreate`, `GovernancePolicyUpdate`, `ValidationRequest`, `ValidationNote`, `ModelValidation`, `CheckResult`, `ApprovalCreate`, `EvidencePackRequest`, `EvidencePack` (`mapi_spec.governance`) |
+| Explorers and optimisation (v0.5) | `DataExploreRequest`, `ModelExploreRequest` (`mapi_spec.explore`), `Exploration`, `ExplorerIndex` (`mapi_spec.views`), `OptimizeRequest`, `OptimizeResult` (`mapi_spec.optimize`), `Optimization` |

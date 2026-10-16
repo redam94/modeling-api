@@ -162,12 +162,6 @@ The priors land in the adapter's `settings.priors` (`saturation_beta`, `intercep
 pymc-marketing as `model_config` priors; the preview, coverage and plots are the same as for
 the geo MMM.
 
-### `mmm.bayesinsight`: no business priors
-
-The BayesInsight model's coefficient priors are already statements in the KPI's own units
-(`coeff_prior` in `model_def.json`), so it does not declare business priors: state the ROI
-you believe directly as the media coefficient's prior. It does take lift tests (below).
-
 ## Lift tests
 
 A lift test is calibration data: extra spend on one channel (optionally in one geo) during a
@@ -220,22 +214,6 @@ by the evaluation fit (logged) and used by the production refit.
 `add_lift_test_measurements`: each test becomes rows of its window's average spend, extra
 spend, lift and sigma *per period*, conditioned on the saturation curve (a Gamma on the
 absolute lift, pymc-marketing's model). With panel `dims`, a test must name its `geo`.
-
-`mmm.bayesinsight` observes each test under its own likelihood: `channel` names a media
-variable (its analytic name, `TV_Total_Total_Total`, or its model-stage name), `geo` a label
-of the first panel dim (the test then covers every level of the other panel dims there), and
-
-```text
-lift = sum over the test's cells p and periods t in W of
-       mean(eta[p, t] + d_eta[p, t]) - mean(eta[p, t]),
-d_eta[p, t] = coef[p] * sum over lags l of w[l] * (f(z + dz)[p, t, l] - f(z)[p, t, l])
-```
-
-with `mean` the likelihood's mean function (the identity for a Normal KPI, `exp` and the
-zero-inflation share for counts, `exp(. + sigma^2 / 2)` for a log-normal), `f` the media
-curve and `z` the indexed media - so the extra spend goes through BayesInsight's curve, then
-its carry-over, then the link. The extra spend is spread and carried over within the window
-as above; the implied lift is kept as `lift_tests__model`.
 
 ## The sanity scorecard
 

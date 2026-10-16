@@ -32,7 +32,7 @@ journey
 | Shipped | Where to read about it |
 |---|---|
 | Four templates (geo marketing mix, weekly forecast, demand by store, customer choice) and a question flow with role detection | [Your first analysis in Guided mode](../guides/guided-tutorial.md) |
-| Sandboxed ingest of CSV, Parquet, MFF and Meridian-shaped tables; the BayesInsight import and the `mmm.bayesinsight` model | [From a spreadsheet to a Guided draft](../guides/guided-data.md), [Import a BayesInsight model](../tutorials/bayesinsight-import.md) |
+| Sandboxed ingest of CSV, Parquet, MFF and Meridian-shaped tables (the BayesInsight import of v0.4 was removed in v0.5) | [From a spreadsheet to a Guided draft](../guides/guided-data.md) |
 | Business priors (ROI or share ranges) translated in a sandbox, lift tests as calibration | [Guided modelling](../guides/guided-modelling.md) |
 | The sanity scorecard and the promotion gate | [Guided mode](../concepts/guided-mode.md#scorecard), [Integrations](../concepts/integrations.md#promotion-gate) |
 | What-if sliders over per-draw response grids, "Run exact", forecast and counterfactual views | [What if…](../guides/guided-tutorial.md#6-what-if) |
