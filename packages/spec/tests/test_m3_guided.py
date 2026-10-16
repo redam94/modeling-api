@@ -67,7 +67,8 @@ def test_the_four_built_in_templates() -> None:
     assert plugins["weekly_forecast"] == ("ts.hsgp_trend@^1", True)
     assert plugins["store_demand"] == ("tabular.regressor@^1", True)
     choice = GUIDED_TEMPLATES["customer_choice"]
-    assert not choice.plugin_available and "multinomial" in (choice.plugin_note or "")
+    assert (choice.plugin, choice.plugin_available) == ("choice.multinomial_logit@^1", True)
+    assert choice.plugin_note is None and choice.version == "1.1.0"
 
 
 @pytest.mark.parametrize("template", GUIDED_TEMPLATES.values(), ids=lambda t: t.id)
@@ -244,9 +245,11 @@ def test_store_demand_and_choice_drafts() -> None:
         },
     )
     draft = build_draft(GUIDED_TEMPLATES["customer_choice"], choice, project="retail")
-    assert draft.mapping.wide["price"].columns == {"price_a": "price_a", "price_b": "price_b"}
-    [warn] = draft.issues
-    assert warn.code is ErrorCode.REF_UNRESOLVED and warn.severity is Severity.WARNING
+    # labels drop the question's keywords: price_a and promo_a both label product "a"
+    assert draft.mapping.wide["price"].columns == {"a": "price_a", "b": "price_b"}
+    assert draft.mapping.wide["price"].missing == "allow"  # a ragged household panel
+    assert draft.mapping.vars["brand"].missing == "allow"
+    assert draft.issues == []  # the built-in choice model exists
 
 
 @pytest.mark.parametrize(

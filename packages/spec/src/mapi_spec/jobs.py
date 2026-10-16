@@ -55,6 +55,7 @@ __all__ = [
     "DESCRIBE_OUTPUT",
     "FIT_BUNDLE",
     "FIT_SIDECARS",
+    "INGEST_COLUMNS",
     "INGEST_DATA",
     "INGEST_OPTIONAL",
     "INGEST_SCHEMA",
@@ -117,10 +118,13 @@ otherwise ingest infers a schema (every dim ``fixed``, every variable a ``covari
 # ------------------------------------------------------------------------------ output names
 INGEST_DATA: Final = "data.zarr.zip"
 INGEST_SCHEMA: Final = "schema.json"
-INGEST_OPTIONAL: Final = ("summary.json", "profile.json", "preview.json")
+INGEST_COLUMNS: Final = "columns.json"
+INGEST_OPTIONAL: Final = ("summary.json", "profile.json", "preview.json", INGEST_COLUMNS)
 DATASET_OUTPUTS: Final = (INGEST_DATA, INGEST_SCHEMA, *INGEST_OPTIONAL)
 """What an ingest run uploads: the data, its ``DataSchema``, its ``DataSummary`` (used for
-CoordPlan checks of score payloads), the profile and the UI preview."""
+CoordPlan checks of score payloads), the profile, the UI preview and (M3) ``columns.json``:
+one :class:`~mapi_spec.guided.ColumnProfile` per column of the uploaded table (for MFF
+uploads: per pivoted ``VariableName``), which Guided role detection reads."""
 
 FIT_BUNDLE: Final = "bundle.zarr.zip"
 FIT_SIDECARS: Final = ("diagnostics.json", "metrics.json", "plots.json", "coords.json")
@@ -158,6 +162,22 @@ class IngestJob(StrictModel):
     mff: MffOptions = Field(default_factory=MffOptions)
     preview_rows: int = Field(50, ge=1, le=1000)
     max_rows: int = Field(50_000_000, ge=1)
+    max_columns: int = Field(
+        4096, ge=1, le=100_000, description="M3: columns of a tabular upload (MFF: variables)"
+    )
+    max_cell_chars: int = Field(
+        4096, ge=16, le=1_048_576, description="M3: characters in one text cell or header"
+    )
+    max_decompression_ratio: float = Field(
+        50.0,
+        gt=1,
+        le=10_000,
+        description="M3: uncompressed / stored bytes of a compressed upload (gzip CSV, "
+        "Parquet, zarr zip, netCDF)",
+    )
+    max_uncompressed_bytes: int = Field(
+        8 * 1024**3, ge=1, description="M3: uncompressed bytes of an upload, in any format"
+    )
     dataset: str | None = Field(
         None, max_length=512, description="dataset://project/name@vN being created (lineage)"
     )

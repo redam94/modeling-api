@@ -19,8 +19,9 @@ id                 plugin                      for
 ``geo_mmm``        ``mmm.hierarchical_geo``    marketing mix by market (what-if, priors)
 ``weekly_forecast````ts.hsgp_trend``           one weekly series, forecast ahead
 ``store_demand``   ``tabular.regressor``       demand per store and week (quantiles)
-``customer_choice````choice.multinomial_logit``which product customers choose; needs a
-                                               built-in choice model (planned, not shipped)
+``customer_choice````choice.multinomial_logit``which product customers choose on each
+                                               trip (a conditional logit with household
+                                               effects, in ``plugins/tabular``)
 =================  ==========================  =============================================
 """
 
@@ -36,6 +37,7 @@ from pydantic import Field, JsonValue, model_validator
 from mapi_spec._dto import RequestModel, ResponseModel, dto_examples
 from mapi_spec._types import Slug
 from mapi_spec.calibration import BusinessPriors, LiftTest
+from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
 from mapi_spec.ingest import (
     BAYESINSIGHT_PLUGIN,
@@ -51,9 +53,10 @@ from mapi_spec.ingest import (
 )
 from mapi_spec.loader import dump_yaml
 from mapi_spec.refs import DatasetRef
-from mapi_spec.schema import DimSpec, Role
+from mapi_spec.schema import DataSchema, DimSpec, Role, VarSpec
 from mapi_spec.scorecard import SCORECARD_CHECKS, CheckThresholds
 from mapi_spec.spec import API_VERSION, ModelSpec
+from mapi_spec.views import ProfileView
 
 __all__ = [
     "BUILDER_VALUES",
@@ -75,7 +78,9 @@ __all__ = [
     "build_draft",
     "channel_label",
     "draft_from_bayesinsight",
+    "draft_schema",
     "get_template",
+    "profiles_from_dataset",
     "render_template",
     "safe_name",
     "suggest_roles",
@@ -129,6 +134,12 @@ class GuidedQuestion(ResponseModel):
     minimum: float | None = None
     maximum: float | None = None
     ui_level: UiLevel = "basic"
+    missing: Literal["forbid", "allow", "mask"] | None = Field(
+        None,
+        description="M3: missing-value policy of the variables a column answer becomes "
+        "(default forbid; 'allow' for ragged panels such as shopping trips per household)",
+        exclude_if=lambda v: v is None,
+    )
 
     @model_validator(mode="after")
     def _shape(self) -> GuidedQuestion:
@@ -278,7 +289,8 @@ def render_template(obj: Any, values: Mapping[str, Any]) -> Any:
 _KPI_WORDS = ["revenue", "sales", "kpi", "conversions", "orders", "units", "signups",
               "turnover", "volume", "target"]  # fmt: skip
 _DATE_WORDS = ["date", "week", "day", "period", "month", "time", "ds"]
-_GEO_WORDS = ["geo", "market", "region", "country", "state", "dma", "city", "area"]
+_GEO_WORDS = ["geo", "geography", "market", "region", "country", "state", "dma", "city", "area",
+              "territory", "province", "zone"]  # fmt: skip
 _SPEND_WORDS = ["spend", "cost", "budget", "investment", "media"]
 
 _FREQ = GuidedQuestion(
@@ -511,20 +523,18 @@ STORE_DEMAND = GuidedTemplate(
 
 CUSTOMER_CHOICE = GuidedTemplate(
     id="customer_choice",
+    version="1.1.0",
     title="Customer choice",
     description_plain="Understand which product customers pick on each shopping trip, and how "
     "price and promotions shift the choice.",
     family="choice",
     plugin="choice.multinomial_logit@^1",
-    plugin_available=False,
-    plugin_note="Needs a built-in multinomial choice model (choice.multinomial_logit: "
-    "alternative-specific utilities over price and promotion, household random effects, "
-    "draws representation, predict and simulate modes). Planned; the template is published "
-    "so the question flow and the data contract can be reviewed.",
     questions=[
         GuidedQuestion(
             id="choice", prompt_plain="Which column says which product was chosen?",
-            kind="column", role=Role.TARGET, accepts=["string", "integer"],
+            help_plain="Each value must name a product the same way as the price columns do "
+            "(a column price_coke goes with the choice coke).",
+            kind="column", role=Role.TARGET, accepts=["string"], missing="allow",
             keywords=["choice", "chosen", "brand", "product", "purchase", "bought"],
         ),
         GuidedQuestion(
@@ -535,20 +545,21 @@ CUSTOMER_CHOICE = GuidedTemplate(
                              new_level_strategy="hyperprior"),
         ),
         GuidedQuestion(
-            id="occasion", prompt_plain="Which column numbers or dates each shopping trip?",
-            kind="column", dim="trip", accepts=["date", "integer"],
-            keywords=["trip", "visit", "occasion", "date", "week", "basket"],
+            id="occasion", prompt_plain="Which column numbers each customer's shopping trips?",
+            help_plain="Number every customer's trips 1, 2, 3, ... in the order they happened.",
+            kind="column", dim="trip", accepts=["integer"],
+            keywords=["trip", "visit", "occasion", "basket", "purchase", "number"],
             dim_spec=DimSpec(kind="index", policy="extend"),
         ),
         GuidedQuestion(
             id="prices", prompt_plain="Which columns hold the price of each product?",
             kind="columns", role=Role.COVARIATE, wide_dim="product", as_var="price",
-            accepts=["number"], keywords=["price", "cost"],
+            accepts=["number", "integer"], keywords=["price", "cost"], missing="allow",
         ),
         GuidedQuestion(
             id="promos", prompt_plain="Which columns flag a promotion for each product?",
             kind="columns", role=Role.COVARIATE, wide_dim="product", as_var="promo",
-            required=False, accepts=["number", "integer", "boolean"],
+            required=False, accepts=["number", "integer", "boolean"], missing="allow",
             keywords=["promo", "promotion", "display", "feature", "deal"],
         ),
     ],
@@ -561,23 +572,21 @@ CUSTOMER_CHOICE = GuidedTemplate(
             "dataset": "{{dataset}}",
             "bind": {"dims": {"hh": "{{customer}}", "trip": "{{occasion}}",
                               "product": "product"},
-                     "vars": {"y": "{{choice}}", "price": "price"}},
+                     "vars": {"y": "{{choice}}"}},
             "split": {"kind": "last_per_group", "dim": "trip", "within": ["hh"], "last": 1,
                       "min_len": 3},
         },
         "model": {
             "use": "choice.multinomial_logit@^1",
             "settings": {"random_effects": ["hh"]},
-            "fit": _FIT,
+            "fit": {"mode": "evaluate_then_refit", "draws": 100, "seed": 20261015},
         },
-        "outputs": {"plots": ["core.convergence", "core.ppc"]},
-        "evaluate": {"metrics": ["elpd_loo"]},
-        "execution": {"resource_class": "M", "timeout": "45m"},
+        "outputs": {"plots": ["core.data_overview", "core.posterior_forest"]},
+        "execution": {"resource_class": "S", "timeout": "20m"},
     },
-    scorecard_checks=["convergence.rhat", "convergence.ess", "convergence.divergences",
-                      "data.missing"],
     tasks=["counterfactual"],
-    ui_levels={"/model/settings": "advanced", "/execution": "advanced"},
+    ui_levels={"/model/settings": "advanced", "/model/fit": "advanced",
+               "/execution": "advanced"},
 )  # fmt: skip
 
 GUIDED_TEMPLATES: Final[dict[str, GuidedTemplate]] = {
@@ -614,6 +623,19 @@ class ColumnProfile(RequestModel):
     max_date: str | None = Field(None, max_length=40)
     detected_freq: str | None = Field(None, max_length=16, examples=["W-SUN", "D", "MS"])
     sample: list[str | int | float | bool | None] = Field(default_factory=list, max_length=20)
+    # M3 detection hints, left out of serialized profiles unless known
+    monotonic: bool | None = Field(
+        None,
+        description="Values never decrease in file order (dates of a single series, trip "
+        "numbers); repeated panels of dates are not monotonic",
+        exclude_if=lambda v: v is None,
+    )
+    origin: Literal["column", "mff_variable", "dim", "variable"] | None = Field(
+        None,
+        description="Where the profile comes from: a table column, a VariableName of an MFF "
+        "table, or a dim/variable of a stored dataset",
+        exclude_if=lambda v: v is None,
+    )
 
     model_config = dto_examples(
         {"name": "revenue_eur", "dtype": "number", "n_rows": 1040, "n_distinct": 1012,
@@ -715,6 +737,11 @@ def _tokens(name: str) -> list[str]:
 def _score(q: GuidedQuestion, col: ColumnProfile) -> tuple[float, list[str]]:
     if q.accepts and col.dtype not in q.accepts:
         return 0.0, []
+    # a stored dataset's dims answer dim questions only, its variables role questions only
+    if (q.dim is not None and col.origin == "variable") or (
+        q.role is not None and col.origin == "dim"
+    ):
+        return 0.0, []
     score, why = 0.1, []
     tokens = _tokens(col.name)
     flat = "".join(tokens)
@@ -728,13 +755,30 @@ def _score(q: GuidedQuestion, col: ColumnProfile) -> tuple[float, list[str]]:
     if q.dim_spec is not None and q.dim_spec.kind == "time" and col.dtype == "date":
         score += 0.3
         why.append("contains dates")
+        if col.detected_freq:
+            score += 0.05
+            why.append(f"evenly spaced ({col.detected_freq})")
     elif q.dim is not None and col.dtype in ("string", "integer") and col.n_distinct:
         if 2 <= col.n_distinct <= 1000 and col.n_distinct * 2 <= max(col.n_rows, 1):
             score += 0.2
             why.append(f"{col.n_distinct} repeated labels")
-    if q.role in (Role.SPEND, Role.TARGET, Role.MEDIA) and col.non_negative:
-        score += 0.1
-        why.append("never negative")
+    ordered = q.dim_spec is not None and q.dim_spec.kind in ("time", "index")
+    if q.dim is not None and ordered and col.monotonic:
+        score += 0.05
+        why.append("values in order")
+    if q.role in (Role.SPEND, Role.TARGET, Role.MEDIA) and col.dtype in ("number", "integer"):
+        if col.non_negative:
+            score += 0.1
+            why.append("never negative")
+        elif col.min is not None and col.min < 0 and q.role is not Role.TARGET:
+            score -= 0.2
+            why.append("has negative values")
+    if q.role is Role.TARGET and col.dtype == "string" and 2 <= (col.n_distinct or 0) <= 50:
+        score += 0.2
+        why.append(f"{col.n_distinct} distinct values")
+    if q.role is not None and col.n_distinct == 1 and col.n_rows > 1:
+        score -= 0.3
+        why.append("always the same value")
     if col.n_rows and col.n_missing / col.n_rows > 0.5:
         score -= 0.3
         why.append("mostly empty")
@@ -808,6 +852,108 @@ def suggest_roles(template: GuidedTemplate, columns: Sequence[ColumnProfile]) ->
     )
 
 
+_KIND_DTYPE: Final[dict[str, ColumnKind]] = {
+    "time": "date", "categorical": "string", "integer": "integer", "index": "integer",
+    "float": "number",
+}  # fmt: skip
+_VAR_DTYPE: Final[dict[str, ColumnKind]] = {
+    "float64": "number", "float32": "number", "int64": "integer", "int32": "integer",
+    "bool": "boolean", "str": "string", "datetime64[ns]": "date",
+}  # fmt: skip
+
+
+def profiles_from_dataset(
+    schema: DataSchema,
+    summary: DataSummary | None = None,
+    profile: ProfileView | None = None,
+) -> list[ColumnProfile]:
+    """Column profiles of a stored dataset version without ``columns.json`` (ingested
+    before v0.4, or a zarr/netCDF upload): one per dim (``origin: dim``) and per variable
+    (``origin: variable``), from its schema, summary and (optional) ``profile.json``.
+
+    Pure JSON: the control plane uses it without reading the data.
+    """
+    coords = summary.coords if summary is not None else {}
+    cells = 1
+    for name in schema.dims:
+        c = coords.get(name)
+        cells *= c.size if c is not None else 1
+    out: list[ColumnProfile] = []
+    for name, dim in schema.dims.items():
+        c = coords.get(name)
+        dtype = _KIND_DTYPE.get(dim.kind, "string")
+        out.append(
+            ColumnProfile(
+                name=name,
+                dtype=dtype,
+                n_rows=cells,
+                n_distinct=c.size if c is not None else None,
+                min_date=str(c.start)[:40]
+                if c is not None and dtype == "date" and c.start
+                else None,
+                max_date=str(c.end)[:40] if c is not None and dtype == "date" and c.end else None,
+                detected_freq=(dim.freq or (c.freq if c is not None else None) or None),
+                monotonic=dim.kind in ("time", "integer", "index") or None,
+                origin="dim",
+                sample=[v for v in (c.values or [])[:5] if isinstance(v, str | int | float)]
+                if c is not None
+                else [],
+            )
+        )
+    stats = profile.vars if profile is not None else {}
+    for name, var in schema.vars.items():
+        st = stats.get(name)
+        out.append(
+            ColumnProfile(
+                name=name,
+                dtype=_VAR_DTYPE.get(var.dtype, "string"),
+                n_rows=st.size if st is not None and st.size else cells,
+                n_missing=min(st.missing, st.size) if st is not None and st.size else 0,
+                min=st.min if st is not None else None,
+                max=st.max if st is not None else None,
+                origin="variable",
+            )
+        )
+    return out
+
+
+_DRAFT_DTYPE: Final[dict[str, str]] = {
+    "number": "float64", "integer": "float64", "boolean": "bool", "string": "str",
+    "date": "datetime64[ns]",
+}  # fmt: skip
+
+
+def draft_schema(
+    mapping: IngestMapping, columns: Sequence[ColumnProfile] | None = None
+) -> DataSchema:
+    """The ``DataSchema`` an ingest of ``mapping`` will produce (as far as a mapping tells:
+    dtypes come from ``columns`` when given, numbers otherwise). Used to validate a draft
+    statically before any data exists. Raises ``ValueError`` for a mapping without dims
+    (a plain preset decides them from the data)."""
+    if not mapping.dims:
+        raise ValueError("the mapping maps no dims; the preset decides them from the data")
+    by_name = {c.name: c for c in columns or []}
+    dims: dict[str, DimSpec] = {name: dm.spec for name, dm in mapping.dims.items()}
+    table = tuple(mapping.dims)
+    vars_: dict[str, VarSpec] = {}
+    for name, vm in mapping.vars.items():
+        prof = by_name.get(vm.column)
+        dtype = _DRAFT_DTYPE[prof.dtype] if prof is not None else "float64"
+        vars_[name] = VarSpec(
+            dims=table, dtype=dtype, role=vm.role, units=vm.units, missing=vm.missing,
+            description=vm.description,
+        )  # fmt: skip
+    for name, w in mapping.wide.items():
+        dims.setdefault(w.dim, w.dim_spec)
+        kinds = {by_name[c].dtype for c in w.columns.values() if c in by_name}
+        dtype = "bool" if kinds == {"boolean"} else "float64"
+        vars_[name] = VarSpec(
+            dims=(*table, w.dim), dtype=dtype, role=w.role, units=w.units, missing=w.missing,
+            description=w.description,
+        )  # fmt: skip
+    return DataSchema(layout=mapping.layout, dims=dims, vars=vars_)
+
+
 # ======================================================================================= drafts
 
 _SAFE = re.compile(r"[^a-z0-9_]+")
@@ -825,9 +971,12 @@ _CHANNEL_NOISE = {"spend", "cost", "costs", "budget", "investment", "media", "eu
                   "gbp", "amount", "total"}  # fmt: skip
 
 
-def channel_label(column: str) -> str:
-    """A channel label from a spend column name (``TV_Spend_EUR`` → ``tv``)."""
-    tokens = [t for t in _tokens(column) if t not in _CHANNEL_NOISE]
+def channel_label(column: str, noise: Sequence[str] = ()) -> str:
+    """A label from a wide column name (``TV_Spend_EUR`` → ``tv``): the name's words minus
+    money and unit words and minus ``noise`` (the question's keywords, so ``price_coke``
+    and ``promo_coke`` both become ``coke``)."""
+    drop = _CHANNEL_NOISE | {t for k in noise for t in _tokens(k)}
+    tokens = [t for t in _tokens(column) if t not in drop]
     return "_".join(tokens) or safe_name(column)
 
 
@@ -842,7 +991,11 @@ class GuidedAnswers(RequestModel):
     template_id: Slug
     name: Slug = Field(..., description="Name of the spec (and model) to create")
     dataset: Slug = Field(..., description="Name of the dataset the upload becomes")
-    format: Literal["csv", "parquet"] = "csv"
+    format: Literal["csv", "parquet", "mff"] = Field(
+        "csv",
+        description="The upload's format; for 'mff' (M3) column answers name VariableName "
+        "values, Period and the MFF key columns",
+    )
     answers: dict[str, JsonValue] = Field(default_factory=dict, max_length=32)
     columns: list[ColumnProfile] | None = Field(None, max_length=2048)
     business_priors: BusinessPriors | None = None
@@ -908,6 +1061,28 @@ def _columns_answer(q: GuidedQuestion, value: JsonValue) -> list[str]:
     return [str(v) for v in value]
 
 
+def _wide_label_issues(wide: Mapping[str, WideVarMapping]) -> list[Issue]:
+    """Wide variables sharing a dim must use the same labels (``price`` and ``promo`` along
+    ``product``): the ingest refuses them otherwise, so say so in the draft already."""
+    by_dim: dict[str, tuple[str, set[str]]] = {}
+    out: list[Issue] = []
+    for var, w in wide.items():
+        labels = set(w.columns)
+        if w.dim in by_dim and by_dim[w.dim][1] != labels:
+            other, theirs = by_dim[w.dim]
+            out.append(
+                Issue(
+                    code=ErrorCode.GUIDED_ANSWERS_INVALID,
+                    severity=Severity.WARNING,
+                    pointer=f"/mapping/wide/{var}",
+                    message=f"{var!r} and {other!r} label {w.dim!r} differently "
+                    f"({sorted(labels ^ theirs)[:5]}); pick one column per label for both",
+                )
+            )
+        by_dim.setdefault(w.dim, (var, labels))
+    return out
+
+
 def build_draft(
     template: GuidedTemplate,
     answers: GuidedAnswers,
@@ -962,19 +1137,22 @@ def build_draft(
                 dims[name] = DimMapping(column=cols[0], spec=spec)
                 values[q.id] = name
             elif q.wide_dim is not None and q.as_var is not None:
-                labels = [channel_label(c) for c in cols]
+                labels = [channel_label(c, q.keywords) for c in cols]
                 if len(set(labels)) != len(labels):
                     labels = [safe_name(c) for c in cols]
                 wide[q.as_var] = WideVarMapping(
                     dim=q.wide_dim,
                     columns=dict(zip(labels, cols, strict=True)),
                     role=q.role or Role.COVARIATE,
+                    missing=q.missing or "forbid",
                 )
                 values[q.id] = q.as_var
             else:
                 names = [safe_name(c) for c in cols]
                 for c, n in zip(cols, names, strict=True):
-                    vars_[n] = VarMapping(column=c, role=q.role or Role.COVARIATE)
+                    vars_[n] = VarMapping(
+                        column=c, role=q.role or Role.COVARIATE, missing=q.missing or "forbid"
+                    )
                 values[q.id] = names[0] if q.kind == "column" else names
         elif q.kind == "choice":
             if value not in {ch.value for ch in q.choices}:
@@ -1008,7 +1186,13 @@ def build_draft(
         if answers.lift_tests:
             cal["lift_tests"] = [t.model_dump(mode="json") for t in answers.lift_tests]
         doc["calibration"] = cal
-    mapping = IngestMapping(format=answers.format, dims=dims, vars=vars_, wide=wide)
+    issues.extend(_wide_label_issues(wide))
+    if answers.format == "mff":
+        mapping = IngestMapping(
+            format="mff", preset=IngestPreset.MFF, dims=dims, vars=vars_, wide=wide
+        )
+    else:
+        mapping = IngestMapping(format=answers.format, dims=dims, vars=vars_, wide=wide)
     try:
         model_spec = ModelSpec.model_validate(doc)
     except ValueError as exc:
@@ -1050,6 +1234,13 @@ class BayesInsightImport(RequestModel):
     model_def: BayesInsightModelDef
     metadata: BayesInsightMetadata
     holdout_periods: int = Field(8, ge=1, le=104)
+    target: Literal["mmm.hierarchical_geo", "mmm.bayesinsight"] = Field(
+        "mmm.hierarchical_geo",
+        description="M3: the plugin to import for. mmm.hierarchical_geo (default) maps every "
+        "feature with an equivalent and warns about the rest "
+        "(mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight keeps model_def "
+        "verbatim for the planned dedicated plugin",
+    )
 
     model_config = dto_examples(
         {

@@ -44,6 +44,7 @@ from mapi_spec.schema import DimSpec, Role
 __all__ = [
     "BAYESINSIGHT_PLUGIN",
     "BAYESINSIGHT_VARIABLE_TYPES",
+    "COMBINE_SEPARATOR",
     "MFF_COLUMNS",
     "MFF_KEY_COLUMNS",
     "BayesInsightMetadata",
@@ -106,6 +107,11 @@ class MffOptions(StrictModel):
     the value in ``value_column``. ``Period`` becomes the time dim; the other key columns
     become dims only when they hold more than one distinct value; ``VariableName`` values
     become data variables.
+
+    ``combine`` joins several key columns into one dim (``{"geo": ["Geography", "Product"]}``
+    gives labels such as ``US|Watches``) - a model with one panel dim can then fit a
+    geography x product panel. A combined dim is created even when it has a single label,
+    so ``{"geo": ["Geography"]}`` keeps a national table's geo dim.
     """
 
     period_column: str = "Period"
@@ -126,6 +132,28 @@ class MffOptions(StrictModel):
     roles: dict[str, str] = Field(default_factory=dict, description="Variable -> role")
     units: dict[str, str] = Field(default_factory=dict, description="Variable -> units")
     missing: Literal["forbid", "allow", "mask"] = "allow"
+    combine: dict[Name, list[str]] = Field(
+        default_factory=dict,
+        max_length=4,
+        description="M3: dim -> key columns whose labels are joined ('|') into that one dim",
+        exclude_if=lambda v: not v,
+    )
+
+    @field_validator("combine")
+    @classmethod
+    def _combine(cls, v: dict[str, list[str]]) -> dict[str, list[str]]:
+        seen: set[str] = set()
+        for dim, cols in v.items():
+            if not cols or len(cols) > len(MFF_KEY_COLUMNS):
+                raise ValueError(f"combine.{dim}: name 1-{len(MFF_KEY_COLUMNS)} key columns")
+            if seen & set(cols) or len(set(cols)) != len(cols):
+                raise ValueError(f"combine.{dim}: a key column is combined twice")
+            seen |= set(cols)
+        return v
+
+
+COMBINE_SEPARATOR: Final = "|"
+"""Separator of the labels of key columns joined by :attr:`MffOptions.combine`."""
 
 
 # ======================================================================================= wide
@@ -422,6 +450,12 @@ class IngestMapping(RequestModel):
 
     Tabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit
     ``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.
+
+    With the ``mff``/``bayesinsight`` presets the long table is first pivoted to one column
+    per ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then
+    pick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may
+    refine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and
+    ``wide`` every variable is kept under its own name.
     """
 
     format: IngestFormat
