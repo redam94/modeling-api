@@ -157,7 +157,7 @@ describe("webhooks", () => {
     expect(created?.body).toEqual({ url: "https://hooks.example.com/mapi", events: ["run.succeeded", "run.failed", "model.version.ready", "endpoint.promoted"] });
   });
 
-  it("logs deliveries, replays one and sends a test", async () => {
+  it("logs deliveries, replays one and resends the newest", async () => {
     const user = userEvent.setup();
     renderApp(`/integrations/webhooks/${WEBHOOK_ID}`);
     const table = await screen.findByRole("table", { name: "Deliveries" });
@@ -168,7 +168,9 @@ describe("webhooks", () => {
     expect(await screen.findByText(/Traceback \(most recent call last\)/)).toBeInTheDocument();
     await user.click(within(failedRow).getByRole("button", { name: /^Replay delivery/ }));
     await waitFor(() => expect(within(screen.getByRole("table", { name: "Deliveries" })).getAllByText("replay").length).toBe(1));
-    await user.click(screen.getByRole("button", { name: "Send test" }));
+    // a replay of a real event, not a synthetic test ping: the button says so
+    expect(screen.queryByRole("button", { name: "Send test" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Resend newest" }));
     await waitFor(() => expect(seen.filter((r) => r.path.endsWith(":replay")).length).toBe(2));
   });
 
@@ -176,7 +178,7 @@ describe("webhooks", () => {
     const user = userEvent.setup();
     renderApp(`/integrations/webhooks/${WEBHOOK_DISABLED_ID}`);
     expect(await screen.findByText("This webhook was disabled automatically")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Send test" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Resend newest" })).toBeDisabled();
     await user.click(screen.getByRole("switch", { name: "Webhook enabled" }));
     await waitFor(() => expect(screen.queryByText("This webhook was disabled automatically")).toBeNull());
     expect(seen.find((r) => r.method === "PATCH")?.body).toEqual({ active: true });

@@ -108,8 +108,10 @@ A webhook's page has:
 - **Delivery log**: every try, newest first - the event, its status (*Delivered*, *Retrying*,
   *Failed*, *Blocked*, *Pending*), the attempt number, your receiver's response code and the
   time it took. **Details** shows the error, the next retry and the first KiB of your
-  receiver's answer (as untrusted text). **Replay** sends a delivery again; **Send test**
-  replays the newest one, so you can check a receiver you just fixed.
+  receiver's answer (as untrusted text). **Replay** sends a delivery again; **Resend
+  newest** replays the newest one, so you can check a receiver you just fixed. There is no
+  synthetic test event: a new webhook gets its first delivery from the next subscribed event
+  in the project (a fit or score finishing, a version ready, a promotion).
 - A webhook that kept failing (20 consecutive failed events, or a `410 Gone`) is **disabled
   automatically**: the page says why. Fix the receiver, then switch it back on; that resets
   the failure count.

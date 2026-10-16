@@ -117,7 +117,7 @@ test("a webhook is created, its deliveries logged and replayed", async ({ page, 
 
   await page.goto(`/integrations/webhooks/${DISABLED_WEBHOOK}`);
   await expect(page.getByText("This webhook was disabled automatically")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Send test" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Resend newest" })).toBeDisabled();
 });
 
 test("an embed link is created for a saved plot and renders download", async ({ page }) => {

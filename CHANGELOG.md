@@ -12,7 +12,8 @@ milestone releases are tagged on `main`.
   server's reasons on `409` and the audited admin override), history and rollback, the frozen
   input contract with **Try it** (validate or score the example call), snippets for Python,
   TypeScript, curl, R, Apps Script and Atlas plus an Open-in-notebook cell; webhooks with an
-  event picker, the secret shown once, rotation, a test send, the delivery log (status,
+  event picker, the secret shown once, rotation, **Resend newest** (a replay of the newest
+  delivered event; there is no synthetic test event), the delivery log (status,
   attempts, response code) with replays and the auto-disabled notice; saved plots with
   PNG/SVG/PDF downloads (Plotly disabled with the server's reason on `MODE_NOT_SUPPORTED`) and
   expiring embed links with allowed sites and revocation; a **Share** button in the plot
@@ -432,6 +433,9 @@ milestone releases are tagged on `main`.
 - **web**: a project could be locked to Guided mode only through the API. Project admins now
   have **Lock … to Guided mode** under Settings > Mode (`PATCH …/projects/{project_id}`,
   audited as before).
+- **web**: a webhook's **Send test** button only replayed the newest delivery (and was
+  disabled until one existed). It is now **Resend newest**, and the empty delivery log says
+  how a new webhook gets its first delivery.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
