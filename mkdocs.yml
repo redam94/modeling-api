@@ -137,6 +137,8 @@ nav:
       - Capabilities and manifests: concepts/capabilities.md
       - Tenancy and authentication: concepts/tenancy-and-auth.md
       - Quotas and cost: concepts/quotas-and-cost.md
+      - Guided mode: concepts/guided-mode.md
+      - Integrations: concepts/integrations.md
   - Guides:
       - Using the platform:
           - The Expert web app: guides/web-ui.md
