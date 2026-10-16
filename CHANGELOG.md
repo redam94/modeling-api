@@ -212,6 +212,40 @@ milestone releases are tagged on `main`.
   verification links; `make dev` sets `MAPI_OUTBOX_DIR` and the plot sandbox's `VITE_API_URL`;
   compose keeps the outbox on a volume. `make api-types` and `make snapshots` regenerate the
   web API types and the snapshots.
+- **web**: Guided mode, the task flow for non-technical analysts (plan §11 Guided 1-7),
+  replacing the placeholder page.
+  - "What do you want to learn?": the templates as cards, and the analyses in progress. A
+    session is a stored spec (`metadata.labels.guided`); every step has its own URL
+    (`/guided/<spec>/<step>`) and is rebuilt from server state, so it can be resumed or shared.
+  - Your data: the upload (CSV, Parquet, MFF; Google Meridian tables recognised) is profiled in
+    the browser and only the column profiles go to role detection; questions with suggested
+    answers, confidence and reasons; a live preview with a sparkline per chosen series; plain
+    validation messages; then the dataset, the signed upload, the sandboxed ingest with the
+    draft's mapping and the spec.
+  - What you believe: ROI or contribution-share ranges per channel with a confidence, the
+    baseline share and lift tests, a `translate_priors` preview (prior ROI/share
+    distributions and a KPI fan in the plot sandbox) and the translated priors applied when
+    they match the beliefs saved.
+  - Fit the model: plain-language phases, progress, time left and cancel, live over SSE.
+  - Results: headline numbers, ROI and share per channel with 90% ranges, the fit and
+    response-curve plots, and the sanity scorecard grouped by question with what to do.
+  - What if…: per-channel spend sliders answered instantly from the per-draw response grid
+    (a TypeScript port of `mapi_spec.whatif.evaluate_scenario`, checked against golden
+    cases the spec tests export), "Run exact" next to the instant answer, scenario presets
+    (channel off, budget × k) and a forecast fan chart with its split line.
+  - Share: promotion to an endpoint with the gate explained (a warning needs a project
+    admin's reason), an embed link for a platform chart, and the way to the Integrations hub.
+  - "View as YAML" on every step (read-only Monaco) and "Edit in Expert" with
+    "Back to Guided mode"; settings Expert mode changed are kept and marked "advanced
+    settings applied". The Guided/Expert choice is remembered per user, and in a project
+    locked to Guided mode members below admin see Guided screens only.
+  - Mock-mode handlers for every Guided call (`src/mocks/guided.ts`), Vitest unit and route
+    tests and the Playwright smoke spec `e2e/guided.spec.ts` (the whole flow, the lock, the
+    persona and a 375 px phone).
+- **spec**: `tests/snapshots/whatif_golden.json`, golden what-if cases shared with the web
+  app (`make snapshots` regenerates it).
+- **docs**: "Your first analysis in Guided mode", a step-by-step tutorial with screenshots
+  (`make docs-screenshots-guided` recaptures them from mock mode).
 
 ### Changed
 - **spec**: `mapi_spec.api.ENDPOINTS` is the v0.4 surface (M1 + M2 + M3, every row served);

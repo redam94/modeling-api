@@ -146,6 +146,7 @@ nav:
           - The command line: guides/cli.md
           - The Python client: guides/python-client.md
           - The HTTP API: guides/http-api.md
+          - "Your first analysis in Guided mode": guides/guided-tutorial.md
           - "From a spreadsheet to a Guided draft": guides/guided-data.md
           - Endpoints and webhooks: guides/endpoints-and-webhooks.md
       - Running it for teams:
