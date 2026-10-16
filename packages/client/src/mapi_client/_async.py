@@ -117,6 +117,15 @@ from mapi_client._m3_async import (
 )
 from mapi_client._m3_async import signup as _signup
 from mapi_client._m3_async import verify_email as _verify_email
+from mapi_client._m35_async import (
+    AsyncCatalogAboutMixin,
+    AsyncDatasetAboutMixin,
+    AsyncExplorations,
+    AsyncGovernance,
+    AsyncModelInsightMixin,
+    AsyncValidations,
+    AsyncWorkflows,
+)
 from mapi_client.auth import default_auth
 from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
@@ -200,6 +209,10 @@ class AsyncClient:
         self.guided = AsyncGuided(self)
         self.endpoints = AsyncEndpoints(self)
         self.webhooks = AsyncWebhooks(self)
+        self.workflows = AsyncWorkflows(self)
+        self.governance = AsyncGovernance(self)
+        self.validations = AsyncValidations(self)
+        self.explorations = AsyncExplorations(self)
 
     async def aclose(self) -> None:
         await self._http.aclose()
@@ -363,7 +376,7 @@ class AsyncProjects(_Resource):
         return await self._c.send(calls.get_project(project_id))
 
 
-class AsyncCatalog(_Resource):
+class AsyncCatalog(_Resource, AsyncCatalogAboutMixin):
     async def get(self) -> CatalogResponse:
         return await self._c.send(calls.get_catalog())
 
@@ -383,7 +396,7 @@ class AsyncCatalog(_Resource):
         return await self._c.send(calls.get_schema(name))
 
 
-class AsyncDatasets(_Resource):
+class AsyncDatasets(_Resource, AsyncDatasetAboutMixin):
     async def create(
         self, name: str, *, description: str | None = None, labels: Mapping[str, str] | None = None
     ) -> Dataset:
@@ -758,7 +771,7 @@ class AsyncRuns(_Resource):
         return await self._c.send(calls.retry_run(run_id, body, idempotency_key))
 
 
-class AsyncModels(_Resource):
+class AsyncModels(_Resource, AsyncModelInsightMixin):
     def list(self, *, limit: int | None = None) -> AsyncPaginator[Model]:
         return self._c.page_iter(lambda cur: calls.list_models(limit, cur))
 

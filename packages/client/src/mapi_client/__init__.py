@@ -20,8 +20,14 @@
   :class:`RemoteEndpoint` whose ``score(ds)`` returns an ``xr.Dataset``), ``webhooks``, saved
   plots, renders and embeds on ``plots``, sign-up (:meth:`Client.signup`) and the trust
   lifecycle on ``tenants``/``admin``; :mod:`mapi_client.webhooks` verifies deliveries and
-  :mod:`mapi_client.xrjson` encodes inline payloads; budgets are optimised by the
-  platform (``POST …:optimize``).
+  :mod:`mapi_client.xrjson` encodes inline payloads;
+* from v0.5 ``workflows`` (documents, revisions, runs with :meth:`stream_events` - an SSE
+  iterator of :class:`WorkflowSnapshot`, :class:`WorkflowEventFrame` and
+  :class:`WorkflowEnd` - node outputs, schedules, triggers, the template gallery),
+  ``governance`` (check catalog, project and tenant policies), ``validations`` (requests,
+  the review queue, approvals, evidence packs), ``explorations`` and the Data/Model
+  Explorer, comparison and budget optimisation (``models.optimize``) methods, and About
+  cards with *Help me choose* on ``catalog`` (``abouts``, ``chooser``, ``recommend``).
 
 >>> from mapi_client import Client               # doctest: +SKIP
 >>> with Client("http://127.0.0.1:8000") as api:
@@ -48,7 +54,17 @@ from mapi_client.errors import (
 )
 from mapi_client.oidc import OidcError, OidcTokenProvider
 from mapi_client.pagination import AsyncPaginator, Paginator
-from mapi_client.sse import RunEnd, RunEventFrame, RunLiveFrame, RunSnapshot, RunStreamItem
+from mapi_client.sse import (
+    RunEnd,
+    RunEventFrame,
+    RunLiveFrame,
+    RunSnapshot,
+    RunStreamItem,
+    WorkflowEnd,
+    WorkflowEventFrame,
+    WorkflowSnapshot,
+    WorkflowStreamItem,
+)
 
 __all__ = [
     "AsyncClient",
@@ -77,6 +93,10 @@ __all__ = [
     "TokenProvider",
     "TransportError",
     "UnexpectedResponse",
+    "WorkflowEnd",
+    "WorkflowEventFrame",
+    "WorkflowSnapshot",
+    "WorkflowStreamItem",
     "__version__",
     "default_auth",
     "http_status_of",

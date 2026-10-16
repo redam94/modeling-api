@@ -6,6 +6,12 @@ events (``id:`` = :attr:`RunEventView.id`) after ``Last-Event-ID``, then live ev
 finally ``end`` (the final run) before closing. ``: keepalive`` comments are heartbeats.
 ``progress`` and ``log`` frames are live and unpersisted: they carry no ``id:`` and are
 never replayed after a reconnect (:class:`RunLiveFrame`).
+
+``GET /v1/workflow-runs/{run_id}/events`` follows the same pattern for workflow runs
+(v0.5): ``snapshot`` (the :class:`~mapi_spec.workflow.WorkflowRun` with every node), one
+frame per :class:`~mapi_spec.workflow.WorkflowEvent` (``event:`` is its type, ``id:`` its
+``seq``) and ``end`` (the run id and its final status), decoded by
+:func:`to_workflow_stream_item`.
 """
 
 from __future__ import annotations
@@ -16,6 +22,7 @@ from typing import Final
 
 from mapi_spec.api import Id, Run, RunEventView, SseEventName
 from mapi_spec.executor import RunEventType
+from mapi_spec.workflow import WorkflowEvent, WorkflowEventType, WorkflowRun, WorkflowRunStatus
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from mapi_client.errors import UnexpectedResponse
@@ -28,7 +35,12 @@ __all__ = [
     "RunStreamItem",
     "SseDecoder",
     "SseEvent",
+    "WorkflowEnd",
+    "WorkflowEventFrame",
+    "WorkflowSnapshot",
+    "WorkflowStreamItem",
     "to_stream_item",
+    "to_workflow_stream_item",
 ]
 
 MAX_EVENT_DATA_BYTES: Final = 1024 * 1024
@@ -184,5 +196,75 @@ def to_stream_item(frame: SseEvent) -> RunStreamItem | None:
     except ValidationError as exc:
         raise UnexpectedResponse(
             f"invalid {name.value!r} frame on the run event stream ({exc.error_count()} errors)",
+            untrusted_text=frame.data[:2000],
+        ) from None
+
+
+# ------------------------------------------------------------------- workflow run stream
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowSnapshot:
+    """First frame of every connection: the workflow run as it is now, with every node."""
+
+    run: WorkflowRun
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowEventFrame:
+    """One persisted workflow event (a node started, succeeded, was cached or skipped, a
+    branch was decided, ...); :attr:`id` is its ``seq`` (the ``Last-Event-ID`` cursor)."""
+
+    event: WorkflowEvent
+
+    @property
+    def id(self) -> int:
+        return self.event.seq
+
+    @property
+    def type(self) -> str:
+        return self.event.type.value
+
+    @property
+    def node_id(self) -> str | None:
+        return self.event.node_id
+
+
+_WORKFLOW_EVENT_TYPES: Final = frozenset(t.value for t in WorkflowEventType)
+
+
+class _WorkflowEndData(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="ignore")
+
+    run_id: Id
+    status: WorkflowRunStatus | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowEnd:
+    """The workflow run is terminal; the server closes the stream after this frame."""
+
+    run_id: str
+    status: WorkflowRunStatus | None
+
+
+WorkflowStreamItem = WorkflowSnapshot | WorkflowEventFrame | WorkflowEnd
+
+
+def to_workflow_stream_item(frame: SseEvent) -> WorkflowStreamItem | None:
+    """Decode a frame of the workflow run event stream (unknown event names are skipped)."""
+    try:
+        if frame.event == "snapshot":
+            return WorkflowSnapshot(WorkflowRun.model_validate_json(frame.data))
+        if frame.event == "end":
+            end = _WorkflowEndData.model_validate_json(frame.data)
+            return WorkflowEnd(end.run_id, end.status)
+        if frame.event not in _WORKFLOW_EVENT_TYPES:
+            return None  # a newer server's event type: skipped, like unknown names
+        return WorkflowEventFrame(WorkflowEvent.model_validate_json(frame.data))
+    except ValidationError as exc:
+        raise UnexpectedResponse(
+            f"invalid {frame.event[:40]!r} frame on the workflow event stream "
+            f"({exc.error_count()} errors)",
             untrusted_text=frame.data[:2000],
         ) from None

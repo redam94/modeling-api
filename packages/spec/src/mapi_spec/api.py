@@ -2872,7 +2872,7 @@ M35_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     EndpointDecl(
         "GET", _WFR + "/events", "workflow_run_events",
         "Workflow run events (SSE, Last-Event-ID)", None, 200, errors=_NF,
-        headers=(*_PH, LAST_EVENT_ID_HEADER), streaming=True,
+        headers=(*_PH, LAST_EVENT_ID_HEADER), streaming=True, query=("after", "limit"),
     ),
     EndpointDecl(
         "GET", _WFR + "/nodes", "list_workflow_node_runs", "The node runs of a workflow run",

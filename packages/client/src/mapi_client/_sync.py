@@ -116,6 +116,15 @@ from mapi_client._m3 import (
 )
 from mapi_client._m3 import signup as _signup
 from mapi_client._m3 import verify_email as _verify_email
+from mapi_client._m35 import (
+    CatalogAboutMixin,
+    DatasetAboutMixin,
+    Explorations,
+    Governance,
+    ModelInsightMixin,
+    Validations,
+    Workflows,
+)
 from mapi_client.auth import default_auth
 from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
@@ -206,6 +215,10 @@ class Client:
         self.guided = Guided(self)
         self.endpoints = Endpoints(self)
         self.webhooks = Webhooks(self)
+        self.workflows = Workflows(self)
+        self.governance = Governance(self)
+        self.validations = Validations(self)
+        self.explorations = Explorations(self)
 
     # ---------------------------------------------------------------------- lifecycle
     def close(self) -> None:
@@ -379,7 +392,7 @@ class Projects(_Resource):
         return self._c.send(calls.get_project(project_id))
 
 
-class Catalog(_Resource):
+class Catalog(_Resource, CatalogAboutMixin):
     def get(self) -> CatalogResponse:
         """The full catalog and its digest."""
         return self._c.send(calls.get_catalog())
@@ -401,7 +414,7 @@ class Catalog(_Resource):
         return self._c.send(calls.get_schema(name))
 
 
-class Datasets(_Resource):
+class Datasets(_Resource, DatasetAboutMixin):
     def create(
         self, name: str, *, description: str | None = None, labels: Mapping[str, str] | None = None
     ) -> Dataset:
@@ -793,7 +806,7 @@ class Runs(_Resource):
         return self._c.send(calls.retry_run(run_id, body, idempotency_key))
 
 
-class Models(_Resource):
+class Models(_Resource, ModelInsightMixin):
     def list(self, *, limit: int | None = None) -> Paginator[Model]:
         return self._c.page_iter(lambda cur: calls.list_models(limit, cur))
 
