@@ -446,6 +446,12 @@ milestone releases are tagged on `main`.
   with no cap, so a 2 MB CSV whose keys rarely repeat asked for ~80 GB and the run was
   OOM-killed. The cube is now checked before it is built (at most 250 million values, and
   within the class's scratch budget) and refused as `PAYLOAD_TOO_LARGE` with a hint.
+- **spec/server/runner**: static renders had no pixel cap, so `scale: 8` with a 4096 x 4096
+  size (or a plot that sets its own huge size) asked vl-convert for a ~4 GiB raster and the
+  run was OOM-killed. A PNG or PDF now holds at most 50 megapixels
+  (`mapi_spec.sharing.MAX_RENDER_PIXELS`): `POST /v1/plots:render` refuses a bigger request
+  with `413 PAYLOAD_TOO_LARGE`, and the runner checks the laid-out size (composite views
+  included) before it rasterises.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

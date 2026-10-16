@@ -11112,7 +11112,7 @@
       },
       "PlotRenderRequest": {
         "additionalProperties": false,
-        "description": "``POST /v1/plots:render``: exactly one of ``plot`` (an inline spec, sanitized),\n``saved_plot_id`` or ``source``. ``width``/``height`` are CSS pixels before ``scale``.\nSend ``Prefer: wait=N`` to get the file links in the response.",
+        "description": "``POST /v1/plots:render``: exactly one of ``plot`` (an inline spec, sanitized),\n``saved_plot_id`` or ``source``. ``width``/``height`` are CSS pixels before ``scale``;\nthe raster (``width x height x scale^2``, with the plot's own size where none is given)\nholds at most :data:`MAX_RENDER_PIXELS`. Send ``Prefer: wait=N`` to get the file links in\nthe response.",
         "examples": [
           {
             "format": "pdf",

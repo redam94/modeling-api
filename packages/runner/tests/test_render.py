@@ -118,6 +118,43 @@ def test_composite_views_take_the_size_per_cell() -> None:
     assert 50 <= h <= 56 and 200 <= w <= 240  # two 100x50 cells plus concat spacing/bounds
 
 
+def test_a_raster_larger_than_the_pixel_cap_is_refused_before_it_is_drawn(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """scale <= 8 and width/height <= 4096 allow a 32768^2 RGBA raster (4 GiB); the plot's
+    own size (here a composite of four 4000x4000 cells) counts too, and is only known once
+    Vega-Lite lays it out."""
+    from mapi_spec.sharing import MAX_RENDER_PIXELS
+
+    drawn: list[str] = []
+    real_png = vl_convert.vegalite_to_png
+    monkeypatch.setattr(
+        vl_convert, "vegalite_to_png", lambda *a, **k: drawn.append("png") or real_png(*a, **k)
+    )
+    with pytest.raises(MapiError) as info:
+        render_plot(_plot(BARE), "png", scale=8, width=4096, height=4096)
+    assert info.value.code is ErrorCode.PAYLOAD_TOO_LARGE and "megapixels" in info.value.detail
+    cell = {k: v for k, v in BARE.items() if k not in ("padding", "config")}
+    cell = {**cell, "width": 4000, "height": 4000}
+    grid = {"vconcat": [{"hconcat": [cell, cell]}, {"hconcat": [cell, cell]}], "padding": 0}
+    for fmt in ("png", "pdf"):
+        with pytest.raises(MapiError) as info:
+            render_plot(_plot(grid), fmt, scale=1)
+        assert info.value.code is ErrorCode.PAYLOAD_TOO_LARGE
+    assert drawn == []  # nothing was rasterised
+    # at the cap's edge a plain render still works
+    side = int((MAX_RENDER_PIXELS / 4) ** 0.5) - 8
+    assert _png_size(render_plot(_plot(BARE), "png", scale=2, width=side, height=50))[0] > side
+    with pytest.raises(MapiError) as info:
+        render_plot(
+            _plot({"data": [{"type": "scatter"}], "layout": {"width": 9000, "height": 9000}},
+                  kind="plotly", schema_version="3.1.0"),
+            "png",
+            scale=1,
+        )  # fmt: skip
+    assert info.value.code is ErrorCode.PAYLOAD_TOO_LARGE
+
+
 def test_data_ref_inputs_are_read_through_the_loader() -> None:
     plot = _plot(
         BARE,

@@ -7847,8 +7847,10 @@ export interface components {
         /**
          * PlotRenderRequest
          * @description ``POST /v1/plots:render``: exactly one of ``plot`` (an inline spec, sanitized),
-         *     ``saved_plot_id`` or ``source``. ``width``/``height`` are CSS pixels before ``scale``.
-         *     Send ``Prefer: wait=N`` to get the file links in the response.
+         *     ``saved_plot_id`` or ``source``. ``width``/``height`` are CSS pixels before ``scale``;
+         *     the raster (``width x height x scale^2``, with the plot's own size where none is given)
+         *     holds at most :data:`MAX_RENDER_PIXELS`. Send ``Prefer: wait=N`` to get the file links in
+         *     the response.
          * @example {
          *       "format": "pdf",
          *       "saved_plot_id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",
