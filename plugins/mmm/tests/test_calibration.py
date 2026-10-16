@@ -399,6 +399,35 @@ def test_tests_after_the_fitted_periods_are_skipped() -> None:
     assert isinstance(design, LiftDesign) and design.ids == ["now"] and design.skipped == ["later"]
 
 
+def test_tests_the_fit_window_cuts_are_skipped_not_squeezed() -> None:
+    """A test straddling the end of the training split (an evaluate_then_refit evaluation
+    fit) used to put all its spend into the periods left and compare them with the whole
+    test's KPI change, biasing the evaluation fit."""
+    sc = model_scales(model_stage(), SETTINGS, scaled())  # weekly, 2024-01-07 .. 2024-06-30
+    logged: list[str] = []
+    straddles = _test(start=date(2024, 6, 10), end=date(2024, 7, 7), id="straddles")
+    early = _test(start=date(2023, 12, 18), end=date(2024, 1, 14), id="early")
+    inside = _test(start=date(2024, 6, 3), end=date(2024, 6, 30), id="inside")
+    design = lift_design([straddles, early, inside], sc, log=logged.append)
+    assert isinstance(design, LiftDesign) and design.ids == ["inside"]
+    assert design.skipped == ["straddles", "early"]
+    assert any("straddles" in m and "partly" in m for m in logged)
+
+
+def test_the_pymc_marketing_lift_frame_leaves_out_a_cut_test() -> None:
+    import pandas as pd
+    from mapi_plugin_mmm.pymc_marketing import DATE, lift_frame
+    from mapi_plugin_mmm.settings import PyMCMarketingSettings
+
+    weeks = pd.date_range("2024-01-07", periods=26, freq="W-SUN")
+    frame = pd.DataFrame({DATE: weeks, "tv": 10.0, "search": 5.0})
+    s = PyMCMarketingSettings.model_validate({"adstock": {"l_max": 2}})
+    inside = _test(start=date(2024, 6, 3), end=date(2024, 6, 30), spend_delta=-20.0)
+    straddles = _test(start=date(2024, 6, 10), end=date(2024, 7, 7), spend_delta=-20.0)
+    out = lift_frame([inside, straddles], frame, s, ["tv", "search"])
+    assert len(out) == 1 and out["delta_x"].iloc[0] == pytest.approx(-20.0 / 4)
+
+
 def test_the_fit_graph_carries_the_lift_likelihood_and_score_does_not() -> None:
     ds = model_stage()
     sc = model_scales(ds, SETTINGS, scaled())

@@ -139,6 +139,7 @@ __all__ = [
     "TranslationOutcome",
     "draw_prior",
     "lift_design",
+    "lift_window_cut",
     "model_scales",
     "prior_preview",
     "translate_business_priors",
@@ -1221,6 +1222,20 @@ def _day(t: date) -> np.datetime64:
     return np.datetime64(t.isoformat(), "D")
 
 
+def lift_window_cut(days: np.ndarray, start: date, end: date) -> bool:
+    """Whether the data's periods (labelled by one date each, ``days``) cut the test window
+    ``[start, end]``: it reaches more than one period past the first or last label. A test
+    the fit window cuts (a holdout fit that ends inside it) cannot be split between the
+    periods kept and those cut, so it is left out, never squeezed into the periods kept."""
+    d = np.unique(np.asarray(days).astype("datetime64[D]"))
+    if not d.size:
+        return True
+    gaps = np.diff(d).astype(np.int64)
+    step = int(np.median(gaps)) if gaps.size else 1
+    slack = np.timedelta64(step - 1, "D")
+    return bool(_day(start) < d.min() - slack or _day(end) > d.max() + slack)
+
+
 def lift_design(
     tests: Sequence[LiftTest],
     scales: ModelScales,
@@ -1230,8 +1245,11 @@ def lift_design(
 ) -> LiftDesign | None:
     """The lift-test cells over the model-stage data (``None`` without any usable test).
 
-    Tests whose window starts after the data ends are skipped (a holdout fit sees only the
-    training periods); other problems raise ``SCHEMA_INVALID`` at the test's pointer.
+    Tests whose window is not wholly inside the data's periods are skipped and logged (a
+    holdout fit sees only the training periods, and a test the fit window cuts cannot be
+    split between the periods kept and those cut); other problems raise ``SCHEMA_INVALID``
+    at the test's pointer. A period is labelled by one date, so a test may reach up to one
+    period's length past the first or last label.
     """
     if not tests:
         return None
@@ -1284,6 +1302,14 @@ def lift_design(
                 code=ErrorCode.SCHEMA_INVALID,
                 pointer=here,
             )
+        if lift_window_cut(days, test.start, test.end):
+            skipped.append(label)
+            if log is not None:
+                log(
+                    f"lift test {label!r} lies partly outside the fitted periods "
+                    f"({days.min()} to {days.max()}); not used here"
+                )
+            continue
         base = scales.spend[np.ix_(geos, np.asarray([c]), window)][:, 0, :]  # (geos, window)
         total = float(base.sum())
         if test.spend_delta < 0 and -test.spend_delta > total * (1 + 1e-9):

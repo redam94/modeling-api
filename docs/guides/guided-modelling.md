@@ -212,7 +212,8 @@ Tests are checked three times, each time where the information is:
 3. **at the model stage**: the window must cover at least one model period, and a holdout
    (negative `spend_delta`) may remove at most the spend the data shows.
 
-During `evaluate_then_refit`, a test whose window lies after the training periods is skipped
+During `evaluate_then_refit`, a test whose window lies after the training periods, or that
+the end of the training periods cuts, is skipped
 by the evaluation fit (logged) and used by the production refit.
 
 `mmm.pymc_marketing` accepts lift tests too, through pymc-marketing's own

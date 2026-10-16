@@ -77,6 +77,7 @@ from mapi_plugin_mmm.bayesinsight_math import (
     media_curve,
     nonzero_index,
 )
+from mapi_plugin_mmm.calibration import lift_window_cut
 from mapi_plugin_mmm.settings import mcmc_fit_schema
 
 __all__ = ["SCHEMA_TEMPLATE", "BayesInsightMMM"]
@@ -907,6 +908,12 @@ class BayesInsightMMM(PyMCModel[BayesInsightSettings]):
                     "model's time axis",
                     here,
                 )
+            if lift_window_cut(days, test.start, test.end):
+                skipped.append(label)
+                ctx.info(
+                    f"lift test {label!r} lies partly outside the fitted periods; not used here"
+                )
+                continue
             x = self._array(ds, name, [*panel, TIME, s.lag_dim])
             spend_scale = _linear_scale(ctx.to_original, ones, name)
             in_test = mask[..., None] & np.isin(np.arange(times.size), window)

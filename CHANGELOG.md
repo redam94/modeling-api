@@ -457,6 +457,11 @@ milestone releases are tagged on `main`.
   seasonality". It now measures years (`history_years`: periods over the periods in a year
   at the time dim's frequency, or the one its dates follow; warn below 2 years, fail below
   1; the `weekly_forecast` template fails below 0.5).
+- **mmm**: a lift test cut by the fit window (one that straddles the end of an
+  `evaluate_then_refit` evaluation fit's training periods, or starts before the data) put
+  all of its spend into the periods left and compared them with the whole test's KPI change,
+  biasing the evaluation fit and the holdout scorecard. Such a test is now skipped and logged,
+  in `mmm.hierarchical_geo`, `mmm.bayesinsight` and `mmm.pymc_marketing`.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
