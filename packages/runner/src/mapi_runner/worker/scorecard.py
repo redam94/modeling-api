@@ -139,6 +139,10 @@ _HOLDOUT_METRICS: Final = tuple(
 )
 """Every metric a holdout check reads from ``metrics.json``."""
 
+_PERCENT_METRICS: Final = frozenset({"mape", "smape", "wape"})
+"""Metrics ``mapi_sdk.metrics`` reports in percent; the scorecard's thresholds and its ``pct``
+messages are fractions (``holdout.mape`` warns above 0.10), so these are divided by 100."""
+
 
 def _holdout(bundle: Bundle, out: dict[str, Measured], why: dict[str, str]) -> None:
     report = bundle.metrics
@@ -155,6 +159,9 @@ def _holdout(bundle: Bundle, out: dict[str, Measured], why: dict[str, str]) -> N
                         f"holdout hit rate {acc:.3f} vs {naive:.3f} for always guessing the "
                         f"holdout's most common label ({n} held-out values)"
                     )
+            if metric in _PERCENT_METRICS:
+                expert = f"{metric} {value:.4g}% over {n} held-out values"
+                value = value / 100.0
             out[metric] = (float(value), expert)
         elif metric == "accuracy_lift" and metric not in report.skipped:
             why[metric] = (

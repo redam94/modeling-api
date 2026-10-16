@@ -27,13 +27,13 @@ from mapi_runner.worker.guided import (
     forecast_view,
     response_grid_view,
 )
-from mapi_runner.worker.scorecard import _prior_overlap, fit_scorecard
+from mapi_runner.worker.scorecard import _holdout, _prior_overlap, fit_scorecard
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.harness import fit_spec, score_bundle
 from mapi_sdk.registry import Registry
 from mapi_spec import ScoreRequest, load_model_spec, load_score_request
 from mapi_spec.errors import ErrorCode, ValidationFailed
-from mapi_spec.scorecard import SCORECARD_CHECKS, GateOutcome, promotion_gate
+from mapi_spec.scorecard import SCORECARD_CHECKS, GateOutcome, evaluate_check, promotion_gate
 from mapi_spec.spec import ModelSpec
 from mapi_spec.whatif import (
     ChannelOff,
@@ -116,7 +116,8 @@ def test_the_scorecard_measures_every_check_it_can(
         assert (item.suggested_action is None) == (item.status == "pass")
     by = {i.check: i for i in card.items}
     assert by["data.history"].value == 30  # weekly periods at the model stage
-    assert by["holdout.mape"].value == pytest.approx(bundle.metrics.values["mape"])
+    # mapi_sdk reports MAPE in percent; the check's thresholds are fractions.
+    assert by["holdout.mape"].value == pytest.approx(bundle.metrics.values["mape"] / 100)
     assert by["plausibility.negative_roi"].value == 0.0  # positive media effects
     assert 0 < by["plausibility.baseline_share"].value < 1
     # the rollup and the gate it drives
@@ -316,3 +317,18 @@ def test_lift_tests_are_checked_against_the_raw_data(
     }
     assert {i.code for i in err.value.issues} == {ErrorCode.SCHEMA_INVALID}
     assert date(2023, 3, 6) < date(2023, 4, 2)
+
+
+@pytest.mark.unit
+def test_holdout_mape_in_percent_is_judged_as_a_fraction() -> None:
+    """metrics.json carries MAPE in percent; a 1.4% error passes, a 14% one warns."""
+    for pct, status, words in ((1.4, "pass", "1%"), (14.0, "warn", "14%"), (40.0, "fail", "40%")):
+        report = SimpleNamespace(values={"mape": pct}, n_holdout=8, skipped={})
+        out: dict[str, Any] = {}
+        _holdout(SimpleNamespace(metrics=report), out, {})  # type: ignore[arg-type]
+        value, expert = out["mape"]
+        assert value == pytest.approx(pct / 100)
+        assert f"mape {pct:.4g}% over 8" in expert
+        item = evaluate_check("holdout.mape", value, message_expert=expert)
+        assert item.status == status
+        assert f"off by {words}" in item.message_plain

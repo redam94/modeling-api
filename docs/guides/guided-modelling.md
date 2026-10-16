@@ -248,7 +248,7 @@ template's checks with its thresholds; any other spec runs the whole catalog.
 |---|---|
 | `r_hat_max`, `ess_bulk_min` | the production posterior's free parameters (the plugin's convergence diagnostics) |
 | `divergence_rate` | `sample_stats.diverging`, as a share of all draws |
-| `mape`, `coverage_90` | the holdout, through the score path (needs them in `evaluate.metrics`) |
+| `mape`, `coverage_90` | the holdout, through the score path (needs them in `evaluate.metrics`). `metrics.json` reports `mape` in percent (`1.4` is 1.4%); the check compares it as a fraction (`0.014` against `0.10`/`0.25`) |
 | `accuracy_lift` | choice models: the holdout hit rate (the most likely product is the one bought) minus that of always guessing the holdout's most common product (`accuracy`, `accuracy_naive`; the `customer_choice` template evaluates them) |
 | `negative_roi_share`, `roi_max` | the `response_curves` grid at the actual spend: per channel the share of draws with a negative return, and the largest posterior-mean ROI |
 | `max_channel_share`, `baseline_share` | a channel's (or the baseline's) share of baseline + every channel, posterior mean |
