@@ -258,6 +258,19 @@ milestone releases are tagged on `main`.
 - **docs**: the built-in models reference covers `mmm.bayesinsight` and every plugin's
   calibration; Guided modelling covers business priors for the pymc-marketing adapter and
   the BayesInsight lift likelihood.
+- **docs**: the v0.4 site. A new landing page (both personas, how it works, the Guided quick
+  path, the v0.4 feature grid and the numbers measured in the M3 verification), "Why
+  modeling-api?" (compared with notebooks and ad-hoc apps, MMM vendors and libraries, and
+  generic model serving, with when to use something else) and "Use cases"; a Tutorials
+  section with new tutorials "Connect Google Sheets" (an Apps Script that writes an
+  endpoint's forecast into a sheet, run in the tests against stand-ins for Apps Script),
+  "Embed a chart in Notion, Slack or BI" and "Import a BayesInsight model" (import, check and
+  a local fit that recovers the simulated parameters), and "Receive webhooks" as a
+  tutorial with a tested Flask receiver; the roadmap with v0.4 released and v0.5 (expert
+  plugins, MCP, optimise jobs) next; the security model and architecture pages for v0.4;
+  `make docs-screenshots-tutorials`.
+- **cli**: `mapi tokens create --scope` lists the endpoint, `endpoints:promote` and
+  `webhooks:manage` scopes.
 - **dev**: `make outbox` (`dev.py outbox`) prints the dev mailer's newest e-mails and
   verification links; `make dev` sets `MAPI_OUTBOX_DIR` and the plot sandbox's `VITE_API_URL`;
   compose keeps the outbox on a volume. `make api-types` and `make snapshots` regenerate the

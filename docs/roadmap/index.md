@@ -10,74 +10,71 @@ timeline
     title Releases
     v0.1 · M0 · contract layer : SDK, specs and schemas : 28 steps, PyMC and sklearn base classes : 11 built-in models, plots, sanitizer : conformance corpus
     v0.2 · M1 · local platform : HTTP API, queue, sandboxed runner : GCS shim, signed bundles : Expert web app, CLI, Python client : make dev and Docker Compose
-    v0.3 · M2 · cloud and multi-tenant (now) : tenants, OIDC sign-in, tokens, row-level security : quotas, fair share, cost ledger, kill switches : Cloud Run Jobs executor, Terraform : observability, security suite, chaos
-    v0.4 · M3 · Guided mode and integrations (next) : templates and question flow : business priors, scorecard, what-if sliders : endpoints, webhooks, embeds : public launch of specs and built-ins
+    v0.3 · M2 · cloud and multi-tenant : tenants, OIDC sign-in, tokens, row-level security : quotas, fair share, cost ledger, kill switches : Cloud Run Jobs executor, Terraform : observability, security suite, chaos
+    v0.4 · M3 · Guided mode and integrations (now) : templates, question flow, business priors : scorecard, what-if, forecasts : endpoints, snippets, webhooks, embeds, Atlas : sign-up, deletion, GDPR export
+    v0.5 · M4 · expert plugins (next) : plugin upload for allow-listed teams : curated MCP server : in-sandbox optimize jobs : sweeps, backtests, SBC
 ```
 
 | Release | Milestone | Theme | Status |
 |---|---|---|---|
 | **v0.1** | M0 | The contract layer: specs, the xarray runtime, steps, models, plots, the conformance corpus, all in your own Python process | <span class="mapi-badge">available</span> |
 | **v0.2** | M1 | [The local platform](platform-api.md): the same work as API calls and sandboxed runs, with the Expert web app, on a laptop or one Docker host | <span class="mapi-badge">available</span> |
-| **v0.3** | M2 | [Cloud and multi-tenant core](cloud.md): tenants, sign-in, tokens, quotas and cost; one fresh sandbox per run on Cloud Run; a private beta | <span class="mapi-badge">this release</span> |
-| **v0.4** | M3 | [Guided mode and integrations](guided-ui.md): analysts from CSV to report and scenario; endpoints for other apps; first public launch | <span class="mapi-badge mapi-badge--soon">next</span> |
+| **v0.3** | M2 | [Cloud and multi-tenant core](cloud.md): tenants, sign-in, tokens, quotas and cost; one fresh sandbox per run on Cloud Run; a private beta | <span class="mapi-badge">available</span> |
+| **v0.4** | M3 | [Guided mode and integrations](guided-ui.md): analysts from spreadsheet to report and scenario; endpoints, webhooks and embeds for other apps; the first public launch | <span class="mapi-badge">this release</span> |
+| **v0.5** | M4 | [Expert plugins, MCP and optimisation jobs](expert-plugins.md): plugin upload for allow-listed teams, a curated MCP server, in-sandbox `optimize`, sweeps and backtests | <span class="mapi-badge mapi-badge--soon">next</span> |
 
-## What v0.3 contains
+## What v0.4 contains
 
-- [x] **Tenants and projects** with trust tiers, data residency and suspension; four roles
-      checked at every request against one permission matrix; PostgreSQL row-level security on
-      every table, pinned per transaction and failing closed
-      ([Administration](../guides/administration.md))
-- [x] **Sign-in**: OpenID Connect for the browser through the API (no token in the browser), a
-      development identity provider for offline work, `mapi login` for the terminal, and scoped,
-      project-bound API tokens with expiry, rate limits and budgets
-      ([Authentication](../guides/authentication.md))
-- [x] **Quotas in vCPU-seconds** per token, tenant and platform; interactive work ahead of
-      batch with weighted fair sharing; a per-run **cost ledger** shown in the app and the CLI;
-      a global spend cap and a switch that stops all uploaded code
-- [x] An append-only **audit log**, readable by tenant admins (their tenant) and operators
-- [x] The **Cloud Run Jobs executor** (a fixed Job inventory, intent rows, orphan adoption,
-      `taskCount` fan-out, `jobs.run` rate limiting with back-off), **authenticated Pub/Sub
-      push** events, **Cloud KMS** manifest signatures and a hardened Cloud Storage driver,
-      tested against fakes
-- [x] **Terraform** for the control, exec, data and build projects and the VPC Service Controls
-      perimeter, deploy and rollback scripts, and a GitHub Actions workflow without service
-      account keys ([Deploy to Google Cloud](../operations/gcp-deployment.md))
-- [x] **Observability**: Prometheus metrics, JSON logs with trace ids, OpenTelemetry traces,
-      dashboards, alerts and runbooks ([Observability](../operations/observability.md))
-- [x] The **security suite** of sandbox-escape probes, chaos tests and a 100-fit load test
-      ([M2 verification](../operations/m2-verification.md))
-- [x] The web app's **Members, Tokens, Usage and Admin** screens and a project switcher; the CLI's
-      `login`, `use`, `tokens`, `usage` and `admin` commands
+- [x] **Guided mode**: four templates (geo marketing mix, weekly forecast, demand by store,
+      customer choice), a question flow with role detection, drafts with "View as YAML", the
+      persona lock ([tutorial](../guides/guided-tutorial.md))
+- [x] **Sandboxed ingest** of CSV, Parquet, MFF and Meridian-shaped tables with plain-language
+      refusals; the **BayesInsight** import and the `mmm.bayesinsight` model
+      ([import tutorial](../tutorials/bayesinsight-import.md))
+- [x] **Business priors** as ROI or share ranges, translated in a sandbox with a
+      prior-predictive preview, and **lift tests** as calibration
+      ([Guided modelling](../guides/guided-modelling.md))
+- [x] The **sanity scorecard** written by every fit, and the **promotion gate** that uses it
+- [x] **What-if sliders** over per-draw response grids, "Run exact", forecast and
+      counterfactual views
+- [x] **Endpoints and aliases**, `score:<alias>` tokens, **snippets** in seven languages, a
+      **Google Sheets** card ([Connect Google Sheets](../tutorials/google-sheets.md))
+- [x] **Signed webhooks** with an outbox, retries, a delivery log, replays and an SSRF guard
+      ([Receive webhooks](../guides/webhook-receivers.md))
+- [x] **Saved plots, static renders and embed links** ([Embed a chart](../tutorials/embed-a-chart.md))
+- [x] The Python client's endpoints and **Atlas `RemoteModel`**
+      ([Optimise a budget](../guides/atlas.md)); new CLI commands
+- [x] **Sign-up** with e-mail verification and abuse controls, **tenant deletion**, the
+      **GDPR export**, and a **Cloud Armor** policy
+- [x] The Integrations hub, trust pages and admin additions in the web app
 
-Still to do against a real Google Cloud project: the
-[[verify M0] checklist](../operations/gcp-deployment.md#before-you-start-the-verify-m0-checklist)
-(above all, that the DNS response policy applies to Cloud Run Jobs), cold-start and
-time-to-`RUNNING` measurements, and the security suite run inside an execution. Until the DNS
-check passes, `verified` and `public` tenants are not placed on Cloud Run.
+Verified end to end on a laptop ([M3 verification](../operations/m3-verification.md)). Still
+to come for M3's exit: the sessions with five non-technical testers. Still to do against a
+real Google Cloud project, as for v0.3: the
+[[verify M0] checklist](../operations/gcp-deployment.md#before-you-start-the-verify-m0-checklist),
+cold-start measurements, and public workspaces running on an executor that enforces egress
+and DNS.
 
-## Next: v0.4 · M3, Guided mode and integrations
+## Next: v0.5 · M4, expert plugins, MCP and optimisation jobs
 
-Analysts get **Guided mode**: templates, a question flow instead of a column mapper,
-sandboxed CSV, Parquet and MFF ingest, business priors and lift-test input, the sanity
-scorecard and **what-if sliders** over response curves precomputed per posterior draw, and
-forecast and counterfactual screens. Other applications get **endpoints and aliases**
-promoted on the scorecard, the Python client's Atlas `RemoteModel`, generated snippets,
-signed **webhooks**, static plot rendering and embed links. The platform adds Cloud Armor,
-sign-up verification and tenant deletion. The exit criterion: five non-technical testers go
-from upload to report to scenario unaided in under 30 minutes. It is the first public launch:
-declarative specs and built-in models (untrusted data, trusted code).
-[More](guided-ui.md). The journey and the integrations pass end to end on a local stack, and
-the protocol for the five testers is written
-([M3 verification](../operations/m3-verification.md)); the testers themselves are still to
-come.
+**Allow-listed teams upload their own model plugins**: built into hash-pinned overlays (with
+native wheels from a curated mirror), checked by the contract kit on upload, with fast dev
+overlays and a vetted tier of ported sibling models. A **curated MCP server** gives agents a
+small, injection-safe set of tools. Atlas optimisations run as **in-sandbox `optimize`
+jobs**, and **`Sweep`, `Backtest` and `SBC`** run as one parent each.
+[More](expert-plugins.md).
 
-## After v0.4
+## After v0.5
 
-Further out, in the order they are planned: uploading **your own plugins** to the hosted
-platform (first for allow-listed teams, built into hash-pinned overlays and checked by the
-contract kit on upload), then **public code upload** behind a separate execution project,
-signed base images, abuse controls and an external penetration test, then scale features
-(warm scorers, GPU executors, other clouds, model composition) when real usage asks for them.
+In the order they are planned:
+
+1. **Public code upload** (M5): uploaded plugins for every tenant, behind a separate
+   execution project, signed base images, verification before any code runs, Sybil controls,
+   a takedown process, a rehearsed kill-switch drill and an external penetration test, with
+   the security suite green for two weeks first.
+2. **Scale and depth** (M6), each when real usage asks for it: warm scorers for sub-second
+   exact answers, GPU and large-data executors, other clouds, recursive forecasting, chained
+   models (full-funnel and KPI graphs), and a plugin marketplace with a consent model.
 
 !!! note "Dates"
     Releases are cut when their exit criteria pass, not on a calendar. Follow the
