@@ -628,6 +628,30 @@ async def test_schedules_fire_once_per_due_time(
     assert (await client.get(url)).json()["items"] == []
 
 
+async def test_a_schedule_fires_once_after_the_fall_back_hour(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """Regression: a run missed in the first pass of a repeated (fall-back) hour used to
+    leave next_run_at in the past, so the schedule fired on every loop tick."""
+    await put_dataset(ctx, "sales", weekly_series(80))
+    wf = await _create(client, _doc(SMALL))
+    url = f"/v1/workflows/{wf['id']}/schedules"
+    r = await client.post(
+        url, json={"cron": "15 1 * * *", "timezone": "America/New_York", "inputs": {"data": DATA}}
+    )
+    assert r.status_code == 201, r.text
+    async with ctx.db.session() as s:
+        row = await s.get(m.WorkflowScheduleRow, r.json()["id"])
+        assert row is not None
+        row.next_run_at = datetime(2026, 11, 1, 5, 15, tzinfo=UTC)  # 01:15 EDT
+    # the loop was down 05:00Z-06:05Z (01:00 EDT - 01:05 EST)
+    t = datetime(2026, 11, 1, 6, 5, tzinfo=UTC)
+    fires = [await fire_due_schedules(ctx, at=t + timedelta(seconds=5 * i)) for i in range(5)]
+    assert fires == [1, 0, 0, 0, 0]
+    listed = (await client.get(url)).json()["items"][0]
+    assert datetime.fromisoformat(listed["next_run_at"]) == datetime(2026, 11, 2, 6, 15, tzinfo=UTC)
+
+
 async def test_dataset_triggers_debounce_new_versions(
     client: httpx.AsyncClient, ctx: ServerContext
 ) -> None:

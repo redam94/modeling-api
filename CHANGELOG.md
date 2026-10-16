@@ -384,6 +384,15 @@ milestone releases are tagged on `main`.
   Before, the API's CORS allow-list and `SameSite=strict` session cookie only matched `127.0.0.1`, so
   every call failed and the home page said the API was not reachable.
 
+### Fixed (M3.5 review: modeling and statistics)
+
+- **spec, server**: a schedule whose run was missed during the repeated hour of a
+  daylight-saving fall-back (or that was created or edited in that hour) fired on every
+  workflow-loop tick: `next_fire` compared local times and returned the first occurrence of
+  the hour, which was already in the past. It now returns only times strictly after the
+  given instant (a repeated local time still fires once), and the schedule loop refuses a
+  `next_run_at` that is not in the future.
+
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
 Analysts who do not write code can now build a model from a spreadsheet, read it and try
