@@ -55,7 +55,7 @@ export function recommend(
   const expRank = exp ? Math.min(...[...exp].map((v) => DIFFICULTY_RANK[v as keyof typeof DIFFICULTY_RANK])) : null;
   const speed = given.get("speed");
   const speedCap = speed ? Math.min(...[...speed].map((v) => SPEED_MAX[v as keyof typeof SPEED_MAX])) : null;
-  const scored: { score: number; diff: number; id: string; rec: Recommendation; goal: boolean }[] = [];
+  const scored: { score: number; matches: number; diff: number; id: string; rec: Recommendation; goal: boolean }[] = [];
   for (const { kind, id, about } of candidates) {
     let points = 0;
     let total = 0;
@@ -100,6 +100,7 @@ export function recommend(
     const score = total === 0 ? 0.5 : Math.max(0, Math.min(1, 0.5 + points / (2 * total)));
     scored.push({
       score: round4(score),
+      matches: reasons.length,
       diff: DIFFICULTY_RANK[about.difficulty],
       id,
       goal: goalMatch,
@@ -119,7 +120,8 @@ export function recommend(
   }
   let pool = scored;
   if (given.has("goal") && scored.some((s) => s.goal)) pool = scored.filter((s) => s.goal);
-  pool.sort((a, b) => b.score - a.score || a.diff - b.diff || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  // ties: more answers fitted explicitly first, then the easier item, then the id
+  pool.sort((a, b) => b.score - a.score || b.matches - a.matches || a.diff - b.diff || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return {
     items: pool.slice(0, Math.max(0, opts.limit ?? 10)).map((s) => s.rec),
     answered: questions.filter((q) => given.has(q.id)).map((q) => q.id),
