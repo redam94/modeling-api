@@ -3,7 +3,8 @@ sandboxed ingest writes them) → role detection → a draft → ingest with the
 → static validation against the real catalog → a fit.
 
 One synthetic table per template, the BayesInsight import on a slice of the BayesInsight
-example data, and fits for the choice model and the imported geo MMM (tiny settings)."""
+example data, and fits for the choice model, the imported geo MMM and the dedicated
+mmm.bayesinsight import (tiny settings)."""
 
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ import pytest
 from mapi_plugin_tabular.datasets import CHOICE_TRUTH
 from mapi_runner.jobs import IngestJob
 from mapi_runner.worker.ingest import build_dataset
+from mapi_runner.worker.scorecard import fit_scorecard
 from mapi_runner.worker.tabular import IngestLimits, column_profiles, read_table
 from mapi_sdk.harness import fit_spec
 from mapi_sdk.registry import Registry, default_registry
@@ -134,6 +136,11 @@ def test_the_choice_draft_fits(tmp_path: Path, registry: Registry) -> None:
     beta = bundle.model.posterior["beta"].mean().item()
     assert beta < 0  # price lowers the choice probability
     assert bundle.evaluation is not None  # evaluate, then refit on everything
+    # the template's scorecard: the holdout hit rate against always guessing one product
+    assert {"accuracy", "accuracy_naive", "log_score", "brier"} <= set(bundle.metrics.values)
+    card = fit_scorecard(bundle, ds)
+    [item] = card.items
+    assert item.check == "holdout.hit_rate" and item.message_plain
 
 
 def test_the_imported_bayesinsight_model_fits(registry: Registry) -> None:
@@ -162,3 +169,39 @@ def test_the_imported_bayesinsight_model_fits(registry: Registry) -> None:
     post = bundle.model.posterior
     assert post["alpha"].sizes["channel"] == 2  # delayed adstock per channel, as imported
     assert "half" in post and "slope" in post  # Hill saturation
+
+
+def test_the_dedicated_bayesinsight_plugin_fits_the_import(registry: Registry) -> None:
+    """``target: mmm.bayesinsight``: BayesInsight's own model (here a Poisson KPI with
+    random effects per geography and product) runs as model_def.json defines it."""
+    md = json.loads((BI_FIXTURES / "complex_model_def.json").read_text())
+    extra = dict(md["variable_details"][2], variable_name="media_var_1_Total_Total_Total",
+                 adstock="weibull", media_transform="sshaped")  # fmt: skip
+    md["variable_details"].append(extra)
+    meta = json.loads((BI_FIXTURES / "complex_metadata.json").read_text())
+    req = BayesInsightImport(
+        name="bi",
+        dataset="bi",
+        model_def=BayesInsightModelDef.model_validate(md),
+        metadata=BayesInsightMetadata.model_validate(meta),
+        target="mmm.bayesinsight",
+    )
+    draft = import_bayesinsight(req, project="p")
+    assert not [i for i in draft.issues if i.severity.value == "error"]
+    ds, schema, _ = build_dataset(BI_MFF, IngestJob(mapping=draft.mapping))
+    assert set(ds.dims) == {"date", "geo", "product"}  # every row id is a panel dim
+    spec = ModelSpec.model_validate(draft.spec)
+    result = validate_spec(spec, registry.catalog(), schema)
+    assert result.ok, [(i.pointer, i.message) for i in result.errors]
+    for name in ("media_var_0", "media_var_1"):  # standardised noise: make it spend-like
+        ds[name] = abs(ds[name])
+    doc = spec.model_dump(mode="json", by_alias=True, exclude_defaults=True)
+    doc["model"]["fit"] = {"mode": "evaluate_then_refit", "tune": 30, "draws": 30,
+                           "chains": 2, "seed": 1, "engine": "pymc"}  # fmt: skip
+    bundle = fit_spec(ModelSpec.model_validate(doc), ds, registry=registry, raw_schema=schema)
+    post = bundle.model.posterior
+    assert post["intercept__coef_z"].sizes == {"chain": 2, "draw": 30, "geo": 2, "product": 2}
+    assert "media_var_1__w_lam" in post and "media_var_1__s_alpha" in post
+    assert bundle.metrics.values.get("mape") is not None
+    card = fit_scorecard(bundle, ds)
+    assert {i.check for i in card.items} >= {"convergence.rhat", "holdout.mape", "data.history"}

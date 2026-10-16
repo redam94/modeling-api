@@ -520,7 +520,8 @@ with a confidence and a `reason_plain`. A draft (`POST /v1/guided/drafts`) turns
 ("View as YAML") without storing anything, with the static validator's findings in `issues`;
 save it with `POST /v1/specs`. `POST /v1/guided/import/bayesinsight` does the same for a
 BayesInsight `model_def.json` and `metadata.json` (`BayesInsightImport`), for the built-in
-geo MMM unless `target` says `mmm.bayesinsight`. Business priors become
+geo MMM unless `target` says `mmm.bayesinsight` (the dedicated BayesInsight model). Business
+priors become
 model-space priors in a sandboxed `translate_priors` run (`PriorTranslationRequest` →
 `PriorTranslation`, whose `result` is a `PriorTranslationResult` with a prior-predictive
 preview in business units). `POST /v1/guided/requests:compile` turns a what-if scenario, a

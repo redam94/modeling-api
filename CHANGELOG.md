@@ -227,6 +227,37 @@ milestone releases are tagged on `main`.
   metadata ("Run exact").
 - **runner**: score runs read an endpoint call's inline XrJSON payloads (`inline.data`,
   `inline.scenario`) with the wire-format caps and the model's dim types.
+- **mmm**: `mmm.bayesinsight`, a BayesInsight `model_def.json` as a built-in model (Q8):
+  Normal, log-normal, Poisson, negative binomial and zero-inflated likelihoods; coefficient
+  and intercept priors in the KPI's own units; Hill, linear and S-shaped curves before
+  delayed, geometric, Weibull or no carry-over; enforced sign constraints; fixed and
+  partially pooled effects per row id (new levels pooled); Fourier seasons and local spline
+  trends. Contributions sum to the expected KPI (a log-mean Divisia split for log links);
+  lift tests observe the incremental KPI under the model's own likelihood. It passes the
+  contract kit; `mapi_plugin_mmm.bayesinsight_examples` simulates a project with known
+  parameters.
+- **spec**: `mapi_spec.bayesinsight_model` types `model_def.json` as the plugin runs it (the
+  `mmm.bayesinsight` settings); `import_bayesinsight(target="mmm.bayesinsight")` now drafts a
+  runnable spec - every row id a panel dim, the KPI bound to `y`, lagged media - falling back
+  to BayesInsight's defaults with `IMPORT_UNSUPPORTED` warnings (and `info` issues for
+  faithful but surprising behaviour).
+- **mmm**: business-prior translation for `mmm.pymc_marketing` (1.1.0): ROI and share ranges
+  become per-channel log-normal `saturation_beta` priors and a baseline share an `intercept`
+  prior (narrowing the control and seasonality priors when needed), solved on prior draws of
+  pymc-marketing's own model; `settings.priors` hands them to pymc-marketing's
+  `model_config`; a `translate_priors` hook previews them and a fit without a translation
+  run translates them itself.
+- **sdk**: categorical holdout metrics - `accuracy`, `accuracy_naive`, `accuracy_lift`,
+  `log_score` and `brier` - for a text target scored as one probability per category.
+- **spec/runner**: the `holdout.hit_rate` scorecard check (the holdout hit rate against
+  always guessing the most popular product, in plain words) for the `customer_choice`
+  template.
+- **conformance**: the `guided_mmm` fixture (the `geo_mmm` Guided draft with business
+  priors and a lift test, true to its simulation); `e84_lite` evaluates the categorical
+  metrics; the dedicated BayesInsight import ingests, validates and fits end to end.
+- **docs**: the built-in models reference covers `mmm.bayesinsight` and every plugin's
+  calibration; Guided modelling covers business priors for the pymc-marketing adapter and
+  the BayesInsight lift likelihood.
 - **dev**: `make outbox` (`dev.py outbox`) prints the dev mailer's newest e-mails and
   verification links; `make dev` sets `MAPI_OUTBOX_DIR` and the plot sandbox's `VITE_API_URL`;
   compose keeps the outbox on a volume. `make api-types` and `make snapshots` regenerate the
@@ -301,6 +332,14 @@ milestone releases are tagged on `main`.
   `choice.multinomial_logit`; wide column labels drop the question's keywords
   (`price_cola` → `cola`); a draft refuses answers that would give two columns the same
   dataset name.
+- **spec**: the `customer_choice` template (1.2.0) evaluates the categorical metrics and
+  runs `holdout.hit_rate`; `BayesInsightImport(target="mmm.bayesinsight")` drafts the
+  shipped plugin's settings (`variables` maps analytic names to variables; the KPI is `y`)
+  instead of keeping `model_def` verbatim.
+- **server**: `POST /v1/guided/import/bayesinsight` validates `mmm.bayesinsight` drafts
+  against the catalog too.
+- **conformance**: the corpus runner compares fit-time and evaluate-run metrics only when it
+  rebuilt the holdout (a `last_per_group` split is scored in sample).
 
 ### Fixed
 - **web**: the New token dialog's budget period showed "pe" instead of "per day"/"per month":

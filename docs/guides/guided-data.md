@@ -158,7 +158,8 @@ values are only ever quoted in `untrusted_text`.
 
 ## Import a BayesInsight model
 
-A BayesInsight project imports as a draft for the built-in geo MMM:
+A BayesInsight project imports as a draft for the built-in geo MMM (the default target) or,
+with `"target": "mmm.bayesinsight"`, for the dedicated BayesInsight model (below):
 
 ```bash
 curl -s localhost:8000/v1/guided/import/bayesinsight -H 'content-type: application/json' -d "{
@@ -191,8 +192,38 @@ run at all is `422 IMPORT_UNSUPPORTED`: no single `exog` KPI, no media variable,
 names that do not match the metadata's `row_ids`, or variables split into several series by
 a key column that is not a row id.
 
-`"target": "mmm.bayesinsight"` keeps `model_def.json` verbatim for the planned dedicated
-plugin instead (not shipped yet; its drafts are not validated).
+### Importing for `mmm.bayesinsight`
+
+`"target": "mmm.bayesinsight"` drafts the dedicated built-in model instead, which fits
+BayesInsight's model as `model_def.json` defines it - nothing above needs an equivalent:
+
+```bash
+curl -s localhost:8000/v1/guided/import/bayesinsight -H 'content-type: application/json' -d "{
+  \"name\": \"bi-sales\", \"dataset\": \"bi_mff\", \"target\": \"mmm.bayesinsight\",
+  \"model_def\": $(cat model_def.json), \"metadata\": $(cat data/metadata.json)}"
+```
+
+- **Data.** The `bayesinsight` preset with every row id besides `Period` as a panel dim of its
+  own (`Geography` → `geo`, `Product` → `product`, kept even with a single label, as
+  BayesInsight keeps it). A panel dim is `new_levels` (pooled), or `fixed` when some
+  coefficient is estimated separately per level of it (`fixed_ind_coeff_dims`). Variables
+  keep their MFF names, made safe (`Sales` → `sales`).
+- **Spec.** The KPI is bound to `y`, the media get a 12-lag `core.lag_tensor` with
+  `pad: nan`, and `model.settings` carries `model_def` plus the map from every analytic name
+  (`TV_Total_Total_Total`) to its variable. Priors stay in the KPI's own units.
+- **Issues.** What the plugin cannot run falls back to BayesInsight's own default with an
+  `IMPORT_UNSUPPORTED` **warning** at its pointer: an `MvNormal` likelihood (fitted with
+  independent Normal errors), time transforms, priors with unknown families or parameters,
+  coefficient dims that are not row ids, keys a variable type does not have. Faithful but
+  surprising behaviour is an **info** issue: a KPI without a likelihood is fitted as Poisson,
+  `random_coeff_dims` with `partial_pooling_sigma: 0` pool nothing, signs on controls are
+  enforced, and carry-overs and curves that BayesInsight's code cannot run are fitted as
+  documented in the [models reference](../reference/models.md#mmmbayesinsight-a-bayesinsight-model_defjson).
+- **Refusals** (`422 IMPORT_UNSUPPORTED`): no single `exog` KPI, no media or control
+  variable, names that do not match the row ids, a series split by a key column that is not
+  a row id, or a variable whose safe name is taken.
+
+The draft is validated against the catalog like the geo MMM's.
 
 ## Locking a project to Guided mode
 

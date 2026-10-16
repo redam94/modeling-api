@@ -14,6 +14,8 @@ metric                    measured on
 ``ess_bulk_min``          convergence diagnostics, else the posterior itself)
 ``divergence_rate``       ``sample_stats.diverging`` (share of all draws)
 ``mape``, ``coverage_90`` the holdout, through the score path (``metrics.json``)
+``accuracy_lift``         the holdout hit rate of a choice model minus that of always guessing
+                          the most common label (``metrics.json``)
 ``negative_roi_share``    the ``response_curves`` grid at multiplier 1: per channel, the share of
 ``roi_max``               draws with a negative return, and the largest posterior-mean ROI
 ``max_channel_share``     channel contribution / (baseline + every channel), posterior mean
@@ -132,13 +134,33 @@ def _scan_posterior(post: xr.Dataset) -> tuple[Measured | None, Measured | None]
     return worst_r, worst_e
 
 
+_HOLDOUT_METRICS: Final = tuple(
+    dict.fromkeys(c.metric for c in SCORECARD_CHECKS.values() if c.category == "holdout")
+)
+"""Every metric a holdout check reads from ``metrics.json``."""
+
+
 def _holdout(bundle: Bundle, out: dict[str, Measured], why: dict[str, str]) -> None:
     report = bundle.metrics
     n = report.n_holdout
-    for metric in ("mape", "coverage_90"):
+    for metric in _HOLDOUT_METRICS:
         value = report.values.get(metric)
         if value is not None and math.isfinite(value):
-            out[metric] = (float(value), f"{metric} {value:.4g} over {n} held-out values")
+            expert = f"{metric} {value:.4g} over {n} held-out values"
+            if metric == "accuracy_lift":
+                acc = report.values.get("accuracy")
+                naive = report.values.get("accuracy_naive")
+                if acc is not None and naive is not None:
+                    expert = (
+                        f"holdout hit rate {acc:.3f} vs {naive:.3f} for always guessing the "
+                        f"holdout's most common label ({n} held-out values)"
+                    )
+            out[metric] = (float(value), expert)
+        elif metric == "accuracy_lift" and metric not in report.skipped:
+            why[metric] = (
+                "only models of a categorical target (choice models) report a hit rate; "
+                "evaluate accuracy_lift on one"
+            )
         else:
             why[metric] = report.skipped.get(
                 metric,

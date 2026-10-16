@@ -87,6 +87,7 @@ KNOWN_METRICS: tuple[re.Pattern[str], ...] = tuple(
         r"^coverage_[1-9][0-9]?$",
         r"^interval_width_[1-9][0-9]?$",
         r"^(mape|smape|wape|rmse|mae|mase|crps|r2|bias|log_score|accuracy|auc|brier)$",
+        r"^accuracy_(naive|lift)$",
     )
 )
 _UNCERTAINTY_METRICS = re.compile(r"^(coverage_|interval_width_|crps$|elpd_|log_score$)")

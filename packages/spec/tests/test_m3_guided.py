@@ -68,7 +68,7 @@ def test_the_four_built_in_templates() -> None:
     assert plugins["store_demand"] == ("tabular.regressor@^1", True)
     choice = GUIDED_TEMPLATES["customer_choice"]
     assert (choice.plugin, choice.plugin_available) == ("choice.multinomial_logit@^1", True)
-    assert choice.plugin_note is None and choice.version == "1.1.0"
+    assert choice.plugin_note is None and choice.version == "1.2.0"
 
 
 @pytest.mark.parametrize("template", GUIDED_TEMPLATES.values(), ids=lambda t: t.id)
@@ -422,20 +422,23 @@ def test_bayesinsight_import_draft() -> None:
     assert draft.mapping.effective_mff.roles == {
         "Promotion": "control", "media_var_0": "spend", "Stock": "target",
     }  # fmt: skip
+    # every row id is a panel dim of its own
+    assert draft.mapping.effective_mff.combine == {"geo": ["Geography"], "product": ["Product"]}
     spec = ModelSpec.model_validate(draft.spec)
     assert str(spec.model.use) == "mmm.bayesinsight@^1"
+    assert spec.data.bind.vars["y"] == "stock"
     settings = spec.model.settings
-    assert settings["kpi"] == "Stock"
-    assert settings["variables"]["media_var_0_Total_Total_Total"] == {  # type: ignore[index]
-        "var": "media_var_0", "sel": {},
-    }  # fmt: skip
+    assert settings["variables"]["media_var_0_Total_Total_Total"] == "media_var_0"  # type: ignore[index]
+    assert settings["variables"]["Stock_Total_Total_Total"] == "y"  # type: ignore[index]
+    assert settings["panel"] == ["geo", "product"] and settings["media"] == ["media_var_0"]
     kept = settings["model_def"]["variable_details"][2]  # type: ignore[index]
-    assert kept["media_transform_prior"] == {"type": "Hill", "K_ave": 0.85}  # extras kept
+    assert kept["media_transform_prior"] == {"type": "Hill", "K_ave": 0.85}
     assert "VOF" not in settings["model_def"]  # type: ignore[operator]
     example = BayesInsightImport.model_validate(
         BayesInsightImport.model_json_schema()["examples"][0]
     )
-    assert draft_from_bayesinsight(example, project="p").spec["model"]["settings"]["kpi"] == "Sales"  # type: ignore[index]
+    draft = draft_from_bayesinsight(example, project="p")
+    assert draft.spec["data"]["bind"]["vars"]["y"] == "sales"  # type: ignore[index]
 
 
 def test_bayesinsight_import_needs_one_kpi_and_matching_names() -> None:
@@ -459,6 +462,8 @@ def test_bayesinsight_import_needs_one_kpi_and_matching_names() -> None:
         ]
     }
     req = req.model_copy(update={"model_def": BayesInsightModelDef.model_validate(trend)})
-    assert [i.code for i in draft_from_bayesinsight(req, project="p").issues] == [
-        ErrorCode.IMPORT_UNSUPPORTED
+    draft = draft_from_bayesinsight(req, project="p")
+    # local trends are fitted; only the faithful-but-surprising pooling default is noted
+    assert [(i.severity.value, i.pointer) for i in draft.issues] == [
+        ("info", "/model_def/variable_details/1/partial_pooling_sigma")
     ]

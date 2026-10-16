@@ -1,14 +1,30 @@
-"""BayesInsight ``model_def.json`` as a spec for the built-in geo MMM (Q8, M3).
+"""BayesInsight ``model_def.json`` as a spec for a built-in MMM (Q8, M3).
 
 :func:`import_bayesinsight` turns a BayesInsight project (``model_def.json`` plus the
-``metadata.json`` of its MFF data) into a :class:`~mapi_spec.guided.GuidedDraft`:
+``metadata.json`` of its MFF data) into a :class:`~mapi_spec.guided.GuidedDraft` for one
+of two targets.
 
-* an ingest mapping with the ``bayesinsight`` preset that gathers the media variables into
-  one ``spend`` variable along ``channel`` and joins the panel key columns (``row_ids``
-  without ``Period``) into one ``geo`` dim;
-* a ``ModelSpec`` for ``mmm.hierarchical_geo`` whose pipeline and settings carry every
-  BayesInsight feature that has an equivalent, and an ``IMPORT_UNSUPPORTED`` *warning* for
-  each one that has none (nothing is dropped silently).
+**``target: mmm.bayesinsight``** - the dedicated plugin, which runs BayesInsight's model
+as ``model_def.json`` defines it (semantics in :mod:`mapi_spec.bayesinsight_model`):
+
+* the ingest mapping uses the ``bayesinsight`` preset; every row id besides ``Period``
+  becomes a panel dim of its own (``Geography`` -> ``geo``, ``Product`` -> ``product``,
+  even with one label, as BayesInsight keeps it), ``new_levels`` (pooled) unless some
+  coefficient is estimated separately per level (then ``fixed``); variables keep their
+  MFF names (made safe: ``Sales`` -> ``sales``);
+* the spec binds the KPI to ``y``, lags the media (``core.lag_tensor``, ``pad: nan`` - the
+  zero-padded convolution) and carries ``model_def`` in the settings, with every
+  analytic name mapped to its variable;
+* what the plugin cannot run falls back to BayesInsight's own default with an
+  ``IMPORT_UNSUPPORTED`` **warning** (an ``MvNormal`` likelihood, time transforms,
+  priors with unknown distributions or parameters, coefficient dims that are not row
+  ids); faithful but surprising behaviour is an ``info`` issue (no likelihood means
+  Poisson, random effects with ``partial_pooling_sigma: 0`` pool nothing, signs are
+  enforced, carry-overs and curves BayesInsight's code cannot run).
+
+**``target: mmm.hierarchical_geo``** (default) - the built-in geo MMM, whose pipeline and
+settings carry every BayesInsight feature that has an equivalent, and an
+``IMPORT_UNSUPPORTED`` *warning* for each one that has none (nothing is dropped silently):
 
 ======================================  ===========================================================
 BayesInsight                            ``mmm.hierarchical_geo`` spec
@@ -28,15 +44,14 @@ BayesInsight                            ``mmm.hierarchical_geo`` spec
 ``localtrend``                          ``core.trend`` (a linear trend control; warned)
 ======================================  ===========================================================
 
-Coefficient and intercept priors are **not** carried over: BayesInsight states them in the
-KPI's own units while the geo MMM works on the mean-scaled KPI, so the same numbers would
-mean something else (state them as business priors instead). Likelihoods other than
-``Normal``, ``Weibull`` adstock, S-shaped saturation, time transforms and non-linear
-deterministic transforms have no equivalent and are reported.
+Coefficient and intercept priors are **not** carried over to the geo MMM: BayesInsight
+states them in the KPI's own units while the geo MMM works on the mean-scaled KPI, so the
+same numbers would mean something else (state them as business priors instead, or import
+for ``mmm.bayesinsight``, which keeps them). Likelihoods other than ``Normal``, ``Weibull``
+adstock, S-shaped saturation, time transforms and non-linear deterministic transforms have
+no equivalent there and are reported.
 
 Pure JSON → JSON (no numpy): the control plane runs it on the uploaded documents.
-``target: mmm.bayesinsight`` keeps the original draft for the planned dedicated plugin
-(:func:`mapi_spec.guided.draft_from_bayesinsight`).
 """
 
 from __future__ import annotations
@@ -45,13 +60,27 @@ import math
 from collections import Counter
 from typing import Any, Final
 
-from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
-from mapi_spec.guided import (
-    BayesInsightImport,
-    GuidedDraft,
-    draft_from_bayesinsight,
-    safe_name,
+from pydantic import TypeAdapter, ValidationError
+
+from mapi_spec.bayesinsight_model import (
+    BAYESINSIGHT_ROW_IDS,
+    RESERVED_NAMES,
+    AdstockPrior,
+    BayesInsightSettings,
+    BIControl,
+    BIExog,
+    BILocalTrend,
+    BIMedia,
+    BISeason,
+    BIVariable,
+    CoeffPrior,
+    DeterministicTransform,
+    Likelihood,
+    LocalTrendPrior,
+    MediaPrior,
 )
+from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
+from mapi_spec.guided import BayesInsightImport, GuidedDraft, safe_name
 from mapi_spec.ingest import (
     MFF_KEY_COLUMNS,
     BayesInsightVariable,
@@ -72,6 +101,8 @@ __all__ = [
     "BAYESINSIGHT_L_MAX",
     "BAYESINSIGHT_TARGET",
     "BAYESINSIGHT_TIME_DIM",
+    "DEDICATED_TARGET",
+    "dedicated_draft",
     "import_bayesinsight",
 ]
 
@@ -89,10 +120,10 @@ _FIT = {"mode": "evaluate_then_refit", "tune": 500, "draws": 500, "chains": 4, "
 def import_bayesinsight(req: BayesInsightImport, *, project: str) -> GuidedDraft:
     """The draft of a BayesInsight project for ``req.target`` (default
     ``mmm.hierarchical_geo``). Raises ``IMPORT_UNSUPPORTED`` when the model cannot run there
-    at all (no single KPI, no media variable, variables split by key columns that are not
-    row ids, names that clash)."""
+    at all (no single KPI, no media variable - or, for ``mmm.bayesinsight``, no media or
+    control - variables split by key columns that are not row ids, names that clash)."""
     if req.target == "mmm.bayesinsight":
-        return draft_from_bayesinsight(req, project=project)
+        return dedicated_draft(req, project=project)
     return _Adapter(req, project).draft()
 
 
@@ -532,3 +563,389 @@ def _channel_prior(dist: str, channels: list[str], **params: list[float]) -> dic
         k: v[0] if len(set(v)) == 1 else list(v) for k, v in params.items()
     }
     return {"distribution": dist, "dims": ["channel"], **values}
+
+
+# ======================================================================= mmm.bayesinsight
+
+DEDICATED_TARGET: Final = "mmm.bayesinsight@^1"
+"""The dedicated plugin (``target: mmm.bayesinsight``)."""
+
+_KEYS_BY_TYPE: Final[dict[str, frozenset[str]]] = {
+    t: frozenset(cls.model_fields)
+    for t, cls in (
+        ("control", BIControl),
+        ("media", BIMedia),
+        ("exog", BIExog),
+        ("season", BISeason),
+        ("localtrend", BILocalTrend),
+    )
+}
+_PARTS: Final[tuple[tuple[str, Any, str], ...]] = (
+    ("deterministic_transform", DeterministicTransform, "the variable enters linearly"),
+    ("coeff_prior", CoeffPrior, "BayesInsight's default prior is used"),
+    ("intercept_prior", CoeffPrior, "BayesInsight's default prior is used"),
+    ("media_transform_prior", MediaPrior, "BayesInsight's default prior is used"),
+    ("adstock_prior", AdstockPrior, "BayesInsight's default prior is used"),
+    ("llt_prior", LocalTrendPrior, "BayesInsight's default prior is used"),
+)
+_VARIABLE: Final[TypeAdapter[Any]] = TypeAdapter(BIVariable)
+
+
+def dedicated_draft(req: BayesInsightImport, *, project: str) -> GuidedDraft:
+    """The draft of a BayesInsight project for ``mmm.bayesinsight`` (see the module doc)."""
+    return _Dedicated(req, project).draft()
+
+
+def _first_error(exc: Exception) -> str:
+    if isinstance(exc, ValidationError) and exc.errors():
+        return str(exc.errors()[0].get("msg", exc))[:300]
+    return str(exc).splitlines()[0][:300]
+
+
+class _Dedicated:
+    """``model_def.json`` -> a spec for ``mmm.bayesinsight``: every row id becomes a panel
+    dim, the data keeps BayesInsight's variables, and what the plugin cannot run falls back
+    to BayesInsight's default with a warning."""
+
+    def __init__(self, req: BayesInsightImport, project: str) -> None:
+        self.req = req
+        self.project = project
+        self.meta = req.metadata
+        self.issues: list[Issue] = []
+        self.mff = MffOptions()
+
+    def warn(self, pointer: str, message: str, *, info: bool = False) -> None:
+        self.issues.append(
+            Issue(
+                code=ErrorCode.IMPORT_UNSUPPORTED,
+                severity=Severity.INFO if info else Severity.WARNING,
+                pointer=pointer,
+                message=message[:2000],
+            )
+        )
+
+    @staticmethod
+    def ptr(i: int, *rest: str) -> str:
+        return "/".join(["/model_def/variable_details", str(i), *rest])
+
+    # ------------------------------------------------------------------ names
+    def series(self, i: int, analytic: str) -> str:
+        """The MFF ``VariableName`` behind an analytic name (one series, else refused)."""
+        suffix = self.meta.suffix_columns
+        if not suffix:
+            return analytic
+        parts = analytic.rsplit("_", len(suffix))
+        if len(parts) != len(suffix) + 1 or not parts[0]:
+            raise _unsupported(
+                f"{analytic!r} does not end with one '_<value>' per column of {list(suffix)}",
+                self.ptr(i, "variable_name"),
+            )
+        allowed = {
+            "Geography": self.meta.allowed_geos,
+            "Product": self.meta.allowed_products,
+            "Outlet": self.meta.allowed_outlets,
+            "Campaign": self.meta.allowed_campaigns,
+            "Creative": self.meta.allowed_creatives,
+        }
+        for col in suffix:
+            values = allowed[col]
+            if values is None:
+                self.warn(
+                    "/metadata",
+                    f"metadata.json does not list the allowed values of {col}; the import "
+                    "assumes a single one, as the variable names' suffixes say",
+                    info=True,
+                )
+            elif len(values) > 1:
+                raise _unsupported(
+                    f"{analytic!r} is one of several series of {parts[0]!r} (split by {col}, "
+                    "which is not a row id); mmm.bayesinsight needs one series per variable - "
+                    f"add {col} to row_ids or aggregate it in the MFF first",
+                    self.ptr(i, "variable_name"),
+                )
+        return parts[0]
+
+    # ------------------------------------------------------------------ sanitising
+    def clean(self, i: int, v: BayesInsightVariable, row_ids: set[str]) -> dict[str, Any]:
+        """One variable as ``mmm.bayesinsight`` accepts it (warnings for what changed)."""
+        raw = v.model_dump(mode="json", by_alias=True)
+        kind = v.variable_type
+        allowed = _KEYS_BY_TYPE[kind]
+        name = v.variable_name
+        out: dict[str, Any] = {}
+        for key, value in raw.items():
+            if key not in allowed:
+                if value not in (None, [], {}):
+                    self.warn(
+                        self.ptr(i, key),
+                        f"{name}: {key!r} is not part of a {kind} variable and was dropped",
+                    )
+                continue
+            if value is None and key not in ("intercept_prior", "random_coeff_dims"):
+                continue  # BayesInsight's 'use the default'
+            out[key] = value
+        if out.pop("time_transform", None) is not None:
+            self.warn(
+                self.ptr(i, "time_transform"),
+                f"{name}: time transforms (moving averages) are not implemented in "
+                "BayesInsight either; the variable enters without one",
+            )
+        for key in ("fixed_ind_coeff_dims", "random_coeff_dims"):
+            dims = out.get(key)
+            if isinstance(dims, list) and (bad := [d for d in dims if d not in row_ids]):
+                self.warn(
+                    self.ptr(i, key),
+                    f"{name}: {bad} are not row ids of the model ({sorted(row_ids)}); "
+                    "dropped from its coefficient dims",
+                )
+                out[key] = [d for d in dims if d in row_ids]
+        if kind == "media":
+            self.media(i, name, out)
+        elif kind == "exog":
+            self.kpi(i, name, out)
+        for key, model, then in _PARTS:
+            if out.get(key) is None:
+                continue
+            try:
+                TypeAdapter(model).validate_python(out[key])
+            except ValidationError as exc:
+                self.warn(self.ptr(i, key), f"{name}: {key} cannot be used "
+                          f"({_first_error(exc)}); {then}")  # fmt: skip
+                out.pop(key)
+        pooling_default = 1.0 if kind == "season" else 0.0
+        if out.get("random_coeff_dims") and not out.get("partial_pooling_sigma", pooling_default):
+            self.warn(
+                self.ptr(i, "partial_pooling_sigma"),
+                f"{name}: random_coeff_dims with partial_pooling_sigma 0 (BayesInsight's "
+                "default) pool nothing; set partial_pooling_sigma to estimate them",
+                info=True,
+            )
+        if kind == "control" and out.get("sign"):
+            self.warn(
+                self.ptr(i, "sign"),
+                f"{name}: the {out['sign']} sign is enforced (BayesInsight declares signs "
+                "without enforcing them)",
+                info=True,
+            )
+        try:
+            _VARIABLE.validate_python(out)
+        except ValidationError as exc:
+            raise _unsupported(
+                f"{name}: mmm.bayesinsight cannot run this variable ({_first_error(exc)})",
+                self.ptr(i),
+            ) from None
+        return out
+
+    def media(self, i: int, name: str, out: dict[str, Any]) -> None:
+        adstock = out.get("adstock", "delayed")
+        if adstock not in ("delayed", "geometric", "weibull", "none"):
+            self.warn(self.ptr(i, "adstock"),
+                      f"{name}: {adstock!r} carry-over is unknown; delayed is used")  # fmt: skip
+            out["adstock"] = "delayed"
+        elif adstock != "delayed":
+            self.warn(
+                self.ptr(i, "adstock"),
+                f"{name}: BayesInsight's code cannot run {adstock!r} carry-over; "
+                "mmm.bayesinsight fits it as documented (weights normalised to sum to one)",
+                info=True,
+            )
+        curve = out.get("media_transform", "hill")
+        prior = out.get("media_transform_prior")
+        if isinstance(prior, dict) and prior.get("type") == "SShaped":
+            curve = "sshaped"
+        if curve not in ("hill", "linear", "sshaped"):
+            self.warn(self.ptr(i, "media_transform"),
+                      f"{name}: the {curve!r} curve is unknown; hill is used")  # fmt: skip
+            out["media_transform"] = "hill"
+        elif curve != "hill":
+            self.warn(
+                self.ptr(i, "media_transform"),
+                f"{name}: BayesInsight's code cannot run the {curve} curve; mmm.bayesinsight "
+                "fits it on the indexed media as documented",
+                info=True,
+            )
+
+    def kpi(self, i: int, name: str, out: dict[str, Any]) -> None:
+        for key in ("normalization", "deterministic_transform"):
+            value = out.get(key)
+            linear = isinstance(value, dict) and value.get("functional_form", "linear") == "linear"
+            if value not in (None, "none") and not linear:
+                self.warn(
+                    self.ptr(i, key),
+                    f"{name}: BayesInsight does not apply a {key} to the KPI, so neither does "
+                    "mmm.bayesinsight",
+                    info=True,
+                )
+                out.pop(key)
+        lik = out.get("likelihood")
+        if lik is None:
+            self.warn(
+                self.ptr(i, "likelihood"),
+                f"{name}: no likelihood is given, so BayesInsight - and mmm.bayesinsight - "
+                "fit a Poisson model of the KPI",
+                info=True,
+            )
+            return
+        if isinstance(lik, dict) and lik.get("type") == "MvNormal":
+            self.warn(
+                self.ptr(i, "likelihood"),
+                f"{name}: the MvNormal likelihood is not supported; the KPI is fitted with "
+                "independent Normal errors",
+            )
+            out["likelihood"] = {"type": "Normal"}
+            return
+        try:
+            Likelihood.model_validate(lik)
+        except ValidationError as exc:
+            self.warn(
+                self.ptr(i, "likelihood"),
+                f"{name}: the likelihood cannot be used ({_first_error(exc)}); BayesInsight's "
+                "default Poisson likelihood is used",
+            )
+            out.pop("likelihood")
+
+    # ------------------------------------------------------------------ draft
+    def draft(self) -> GuidedDraft:
+        req, meta = self.req, self.meta
+        if req.model_def.kpi is None:
+            raise _unsupported(
+                "model_def.json needs exactly one 'exog' variable (the KPI)",
+                "/model_def/variable_details",
+            )
+        row_keys = [c for c in meta.row_ids if c != "Period"]
+        row_dims = {c: self.mff.key_columns[c] for c in row_keys}
+        panel = [row_dims[c] for c in BAYESINSIGHT_ROW_IDS if c in row_dims]
+        details: list[dict[str, Any]] = []
+        variables: dict[str, str] = {}
+        columns: dict[str, str] = {}  # dataset name -> MFF VariableName
+        roles: dict[str, str] = {}
+        media: list[str] = []
+        controls: list[str] = []
+        kpi_name = "y"
+        taken = {"time", BAYESINSIGHT_TIME_DIM, "lag", *panel}
+        fixed_dims: set[str] = set()
+        role_of = {"exog": Role.TARGET, "media": Role.SPEND, "control": Role.CONTROL}
+        for i, v in enumerate(req.model_def.variable_details):
+            cleaned = self.clean(i, v, set(row_keys))
+            details.append(cleaned)
+            fixed_dims |= set(cleaned.get("fixed_ind_coeff_dims") or [])
+            if v.variable_type not in role_of:
+                continue
+            column = self.series(i, v.variable_name)
+            name = safe_name(column)
+            reserved = v.variable_type != "exog" and name in RESERVED_NAMES
+            if name in taken or name in columns or reserved:
+                raise _unsupported(
+                    f"{v.variable_name!r} would be named {name!r}, which is taken",
+                    self.ptr(i, "variable_name"),
+                )
+            taken.add(name)
+            columns[name] = column
+            roles[column] = role_of[v.variable_type].value
+            if v.variable_type == "exog":
+                kpi_name = name
+                variables[v.variable_name] = "y"
+                continue
+            variables[v.variable_name] = name
+            (media if v.variable_type == "media" else controls).append(name)
+        if not media and not controls:
+            raise _unsupported(
+                "mmm.bayesinsight needs at least one media or control variable",
+                "/model_def/variable_details",
+            )
+        if "y" in columns and kpi_name != "y":
+            raise _unsupported(
+                "a media or control variable would be named 'y', the KPI's canonical name",
+                "/model_def/variable_details",
+            )
+        settings: dict[str, Any] = {
+            "model_def": {"variable_details": details},
+            "variables": variables,
+            "media": media,
+            "controls": controls,
+            "row_dims": row_dims,
+            "panel": panel,
+            "l_max": BAYESINSIGHT_L_MAX,
+        }
+        try:
+            BayesInsightSettings.model_validate(settings)
+        except ValidationError as exc:
+            raise MapiError(
+                f"the imported model does not make valid mmm.bayesinsight settings: "
+                f"{_first_error(exc)}",
+                code=ErrorCode.IMPORT_UNSUPPORTED,
+                pointer="/model_def",
+                untrusted_text=str(exc)[:4000],
+            ) from None
+        pipeline: list[dict[str, Any]] = []
+        if media:
+            pipeline.append(
+                {"id": "media_lags", "use": "core.lag_tensor@^1",
+                 "with": {"vars": media, "along": "time", "within": panel,
+                          "l_max": BAYESINSIGHT_L_MAX, "pad": "nan"}}
+            )  # fmt: skip
+        dims: dict[str, DimMapping] = {
+            BAYESINSIGHT_TIME_DIM: DimMapping(
+                column="Period", spec=DimSpec(kind="time", policy="extend")
+            )
+        }
+        for col in row_keys:
+            # a coefficient estimated per level has nothing for a new level: keep it fixed
+            dim_spec = (
+                DimSpec(kind="categorical", policy="fixed")
+                if col in fixed_dims
+                else DimSpec(kind="categorical", policy="new_levels", new_level_strategy="pooled")
+            )
+            dims[row_dims[col]] = DimMapping(column=row_dims[col], spec=dim_spec)
+        mff = MffOptions(
+            freq=None,
+            time_dim=BAYESINSIGHT_TIME_DIM,
+            combine={row_dims[c]: [c] for c in row_keys},
+            roles=roles,
+        )
+        mapping = IngestMapping(
+            format=req.format,
+            preset=IngestPreset.BAYESINSIGHT,
+            mff=mff,
+            bayesinsight=meta,
+            dims=dims,
+            vars={name: VarMapping(column=column, role=Role(roles[column]))
+                  for name, column in columns.items()},
+        )  # fmt: skip
+        dataset_ref = f"dataset://{self.project}/{req.dataset}@latest"
+        bind_vars = {"y": kpi_name, **{n: n for n in [*media, *controls]}}
+        doc: dict[str, Any] = {
+            "apiVersion": API_VERSION,
+            "kind": "ModelSpec",
+            "metadata": {"name": req.name, "project": self.project,
+                         "labels": {"family": "mmm", "imported": "bayesinsight"}},
+            "data": {
+                "dataset": dataset_ref,
+                "bind": {"dims": {"time": BAYESINSIGHT_TIME_DIM, **{d: d for d in panel}},
+                         "vars": bind_vars},
+                "split": {"kind": "time_holdout", "dim": "time", "last": req.holdout_periods},
+            },
+            "pipeline": pipeline,
+            "model": {"use": DEDICATED_TARGET, "settings": settings, "fit": dict(_FIT)},
+            "outputs": {"plots": ["core.ppc_fan", "core.convergence", "core.posterior_forest"],
+                        "ui_draws": 300},
+            "evaluate": {"metrics": ["mape", "coverage_90"]},
+            "execution": {"resource_class": "M", "timeout": "45m"},
+        }  # fmt: skip
+        try:
+            spec = ModelSpec.model_validate(doc)
+        except ValueError as exc:  # pragma: no cover - the adapter builds valid documents
+            raise MapiError(
+                "the imported model does not make a valid spec",
+                code=ErrorCode.IMPORT_UNSUPPORTED,
+                untrusted_text=str(exc)[:4000],
+            ) from None
+        return GuidedDraft(
+            template_id="bayesinsight_import",
+            template_version="2.0.0",
+            dataset_ref=dataset_ref,
+            mapping=mapping,
+            spec=spec.model_dump(mode="json", by_alias=True, exclude_defaults=True),
+            yaml=dump_yaml(spec),
+            issues=self.issues,
+        )

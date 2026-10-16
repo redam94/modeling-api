@@ -940,13 +940,15 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * BayesInsight model_def.json + metadata.json -> a draft for the geo MMM
+         * BayesInsight model_def.json + metadata.json -> a draft for a built-in MMM
          * @description Import a BayesInsight project (Q8). With the default ``target:
          *     mmm.hierarchical_geo`` the draft maps media transforms, priors, controls, seasonality
          *     and pooling to the built-in geo MMM and lists every feature without an equivalent as
-         *     an ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` keeps ``model_def``
-         *     verbatim for the planned dedicated plugin. ``422 IMPORT_UNSUPPORTED`` when the model
-         *     cannot run at all (no single KPI, no media, split series).
+         *     an ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` drafts the dedicated
+         *     plugin, which runs ``model_def`` as BayesInsight defines it (what it cannot run falls
+         *     back to BayesInsight's defaults with a warning). Either draft is validated statically
+         *     against the catalog. ``422 IMPORT_UNSUPPORTED`` when the model cannot run at all (no
+         *     single KPI, no media, split series).
          */
         post: operations["import_bayesinsight"];
         delete?: never;
@@ -2640,7 +2642,7 @@ export interface components {
             name: string;
             /**
              * Target
-             * @description M3: the plugin to import for. mmm.hierarchical_geo (default) maps every feature with an equivalent and warns about the rest (mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight keeps model_def verbatim for the planned dedicated plugin
+             * @description M3: the plugin to import for. mmm.hierarchical_geo (default) maps every feature with an equivalent and warns about the rest (mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight runs model_def as BayesInsight defines it (likelihoods, priors in KPI units, curves, carry-over, signs, random effects, seasons, local trends) and warns about what it cannot run
              * @default mmm.hierarchical_geo
              * @enum {string}
              */

@@ -103,7 +103,10 @@ def test_the_scorecard_measures_every_check_it_can(
         "data.history",
         "data.spend_variation",
     }
-    assert not card.skipped  # the MMM keeps cheap prior draws of its media parameters
+    # the MMM keeps cheap prior draws of its media parameters; only choice models have a
+    # hit rate
+    assert set(card.skipped) == {"holdout.hit_rate"}
+    assert "categorical target" in card.skipped["holdout.hit_rate"]
     overlap = next(i for i in card.items if i.check == "plausibility.prior_overlap")
     assert overlap.message_expert is not None
     assert any(p in overlap.message_expert for p in ("beta_channel", "alpha", "lam"))
@@ -145,6 +148,25 @@ def test_a_guided_spec_runs_its_template_checks(
     assert {i.check for i in card.items} | set(card.skipped) == wanted
     history = next(i for i in card.items if i.check == "data.history")
     assert history.status == "warn" and history.threshold == 104  # template: fail below 26
+
+
+def test_the_choice_template_checks_the_holdout_hit_rate(
+    bundle: Bundle, e33: tuple[xr.Dataset, dict[str, xr.Dataset]]
+) -> None:
+    labels = {**bundle.spec.metadata.labels, "guided": "customer_choice"}
+    spec = bundle.spec.model_copy(
+        update={"metadata": bundle.spec.metadata.model_copy(update={"labels": labels})}
+    )
+    values = {"accuracy": 0.48, "accuracy_naive": 0.55, "accuracy_lift": -0.07}
+    report = bundle.metrics.model_copy(update={"values": values, "n_holdout": 40})
+    card = fit_scorecard(dataclasses.replace(bundle, spec=spec, metrics=report), e33[0])
+    [item] = card.items
+    assert item.check == "holdout.hit_rate" and item.status == "warn"
+    assert item.message_plain.endswith("(-7% difference).")
+    assert item.message_expert is not None and "0.480 vs 0.550" in item.message_expert
+    empty = report.model_copy(update={"values": {}})
+    missing = dataclasses.replace(bundle, spec=spec, metrics=empty)
+    assert "holdout.hit_rate" in fit_scorecard(missing, e33[0]).skipped
 
 
 def test_prior_posterior_overlap() -> None:

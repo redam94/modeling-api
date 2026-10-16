@@ -12,4 +12,5 @@ model:
   settings: {random_effects: [hh]}
   fit: {mode: evaluate_then_refit, draws: 200, seed: 5}
 outputs: {plots: [core.posterior_forest]}
+evaluate: {metrics: [accuracy, accuracy_naive, accuracy_lift, log_score, brier]}
 execution: {resource_class: S, timeout: 10m}

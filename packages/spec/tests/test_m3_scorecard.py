@@ -65,6 +65,11 @@ def test_catalog_ids_codes_and_anchors_are_unique_and_well_formed() -> None:
         ("holdout.coverage_90", 0.75, "warn"),
         ("holdout.coverage_90", 0.99, "pass"),
         ("holdout.coverage_90", 0.5, "fail"),
+        ("holdout.hit_rate", 0.15, "pass"),
+        ("holdout.hit_rate", 0.02, "pass"),
+        ("holdout.hit_rate", 0.0, "warn"),
+        ("holdout.hit_rate", -0.08, "warn"),
+        ("holdout.hit_rate", -0.2, "fail"),
         ("plausibility.baseline_share", 0.5, "pass"),
         ("plausibility.baseline_share", 0.95, "warn"),
         ("plausibility.baseline_share", 0.01, "fail"),
@@ -84,6 +89,13 @@ def test_messages_are_plain_and_formatted() -> None:
     assert item.threshold == 0.10 and item.metric == "mape"
     assert "4" in evaluate_check("convergence.ess", 3.6).message_plain
     assert "1.2" in evaluate_check("convergence.rhat", 1.2).message_plain
+    hit = evaluate_check("holdout.hit_rate", 0.12)
+    assert hit.message_plain == (
+        "On held-out trips the model's top pick beat always guessing the most popular "
+        "product by 12%."
+    )
+    assert hit.metric == "accuracy_lift" and hit.category == "holdout"
+    assert "-15%" in evaluate_check("holdout.hit_rate", -0.15).message_plain
 
 
 def test_template_thresholds_override_the_defaults() -> None:

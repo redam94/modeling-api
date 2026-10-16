@@ -159,8 +159,19 @@ Fourier seasonality). Features without one - non-Normal likelihoods, coefficient
 KPI units, Weibull adstock, S-shaped curves, sign constraints - are listed as
 `IMPORT_UNSUPPORTED` warnings; models that cannot run (no single `exog` KPI, no media,
 names that do not match `row_ids`) are refused with `IMPORT_UNSUPPORTED`.
-`target: mmm.bayesinsight` keeps `model_def.json` verbatim for the planned dedicated plugin
-instead.
+
+`target: mmm.bayesinsight` imports for the dedicated built-in
+[`mmm.bayesinsight`](../reference/models.md#mmmbayesinsight-a-bayesinsight-model_defjson),
+which runs BayesInsight's model as `model_def.json` defines it: its likelihoods (Normal,
+log-normal, Poisson, negative binomial, zero-inflated), coefficient and intercept priors in
+the KPI's own units, Hill, linear and S-shaped curves before delayed, geometric or Weibull
+carry-over, enforced sign constraints, fixed and partially pooled effects per row id, Fourier
+seasons and local spline trends. Every row id becomes a panel dim of its own, variables keep
+their MFF names, and the draft is validated against the catalog like any other. What the
+plugin cannot run (an `MvNormal` likelihood, time transforms, unknown prior families) falls
+back to BayesInsight's default with an `IMPORT_UNSUPPORTED` warning; faithful but surprising
+behaviour (no likelihood means Poisson, random effects with `partial_pooling_sigma: 0` pool
+nothing) is an `info` issue.
 
 ## 3. Business priors and lift tests
 
@@ -220,6 +231,15 @@ The catalog is `mapi_spec.scorecard.SCORECARD_CHECKS`:
 |---|---|---|---|
 | <a id="check-holdout-mape"></a>`holdout.mape` (Holdout error) | `mape` | warn above 10%, fail above 25% | Check the last periods of data for gaps or one-off events, and add holidays or controls that explain them. |
 | <a id="check-holdout-coverage-90"></a>`holdout.coverage_90` (Uncertainty is honest) | `coverage_90` | warn when more than 10% away from 90%, fail when more than 25% away | Look for trends or shifts the model does not capture. |
+| <a id="check-holdout-hit-rate"></a>`holdout.hit_rate` (Beats a naive guess) | `accuracy_lift` | warn below +2 points, fail below -10 points | Add what drives the choice for every product (price, promotions, displays), or collect more trips per customer. |
+
+`holdout.hit_rate` is the check of the `customer_choice` template: on each household's
+held-out trip, the model's most likely product is compared with the product bought
+(`accuracy`, the hit rate) and with always guessing the most popular product of the held-out
+trips (`accuracy_naive` - a strict baseline, since it knows the holdout's own shares).
+`accuracy_lift` is the difference in percentage points. The template also reports the
+`log_score` (mean log probability of the bought product; higher is better) and the
+multi-class `brier` score (0 is perfect) in the model's metrics.
 
 #### Plausibility
 

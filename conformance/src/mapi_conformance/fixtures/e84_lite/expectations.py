@@ -1,5 +1,6 @@
-"""E84-lite checks: recovered price and promotion effects, more uncertainty for a new
-household, and a price rise that moves shares away from the product."""
+"""E84-lite checks: recovered price and promotion effects, categorical holdout metrics (hit
+rate, naive baseline, log score, Brier), more uncertainty for a new household, and a price
+rise that moves shares away from the product."""
 
 from __future__ import annotations
 
@@ -17,6 +18,12 @@ def check_fit(bundle: Bundle, data: xr.Dataset) -> None:
     assert abs(price - CHOICE_TRUTH["price"]) < 0.8, f"price effect {price:.2f}"
     assert float(post["beta"].sel(covariate="promo").mean()) > 0
     assert post["u"].sizes["hh"] == data.sizes["household"]
+    # categorical holdout metrics: the last trip of every household
+    m = bundle.metrics.values
+    assert {"accuracy", "accuracy_naive", "accuracy_lift", "log_score", "brier"} <= set(m), m
+    assert 0 <= m["accuracy"] <= 1 and 0 < m["accuracy_naive"] <= 1  # type: ignore[operator]
+    assert m["log_score"] < 0 and 0 <= m["brier"] <= 2  # type: ignore[operator]
+    assert bundle.metrics.n_holdout == data.sizes["household"]
 
 
 def check_score(name: str, tree: xr.DataTree, bundle: Bundle, data: xr.Dataset) -> None:

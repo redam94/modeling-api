@@ -63,7 +63,7 @@ from mapi_sdk.coords import (
 )
 from mapi_sdk.errors import SchemaValidationError, StepError, plugin_error
 from mapi_sdk.future import fill_future_covariates
-from mapi_sdk.metrics import compute_metrics, elpd
+from mapi_sdk.metrics import categorical_dim, compute_metrics, elpd
 from mapi_sdk.models import PREDICTIONS, FitContext, FitOutput, Fitted, ModelPlugin, ScoreContext
 from mapi_sdk.pipeline import RAW, FitTrace, Pipeline, ReplayTrace
 from mapi_sdk.registry import Registry, default_registry
@@ -711,6 +711,22 @@ def _var_sources(fitted: Fitted, schema: DataSchema | None) -> dict[str, str]:
             out[name] = decl.units_of
         elif decl.units is None and len(targets) == 1:
             out[name] = targets[0]
+    return out
+
+
+def _categorical_sources(
+    fitted: Fitted, schema: DataSchema | None, pred: xr.Dataset, observed: xr.Dataset
+) -> list[tuple[str, str]]:
+    """``(output, target)`` pairs where the output holds one probability per category of a
+    text target (choice models; :func:`mapi_sdk.metrics.categorical_dim`)."""
+    targets = schema.targets if schema is not None else []
+    out: list[tuple[str, str]] = []
+    for name in fitted.manifest.outputs:
+        if name not in pred:
+            continue
+        for target in targets:
+            if target in observed and categorical_dim(pred[name], observed[target]) is not None:
+                out.append((name, target))
     return out
 
 
@@ -1370,13 +1386,18 @@ def _score_metrics(
             side_tables=tables,
         )
         pred_data, pred_spaces = inv.data, inv.space
-    for var, src in sources.items():
+    pairs = list(sources.items()) + _categorical_sources(
+        bundle.model, bundle.resolved.model.input_schema, pred_data, observed
+    )
+    for var, src in pairs:
         if var not in pred_data or src not in observed:
             continue
         values, skipped = compute_metrics(pred_data[var], observed[src], rep, names, mask=mask)
         report.values.update(values)
         report.skipped.update(skipped)
         counted = observed[src].notnull()
+        if observed[src].dtype.kind in "USO":
+            counted = counted & (observed[src].astype(str) != "")
         if mask is not None:
             counted = counted & mask.broadcast_like(counted).astype(bool)
         report.n_holdout = int(counted.sum())
