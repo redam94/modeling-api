@@ -914,19 +914,43 @@ def _seasonal_strength(ctx: NodeContext) -> NodeOutcome:
 def _vif(ctx: NodeContext) -> NodeOutcome:
     from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-    names = _vars(ctx, "vars", 2)
+    raw = ctx.params.get("vars")
+    given = [str(v) for v in raw] if isinstance(raw, list) else []
+    if not given:
+        raise data_error("name the drivers to check in 'vars'")
     limit = float(_f(ctx.params.get("limit")) or 10.0)
     dv = ctx.dataset("data")
     assert dv is not None
     schema = schema_of(dv)
-    tdim = time_dim(dv.data, schema)
+    ds = dv.data
+    tdim = time_dim(ds, schema)
+    try:  # rows are the target's cells (periods x panel); other dims become columns
+        rows_dims = [str(d) for d in ds[target_var(ds, schema)].dims]
+    except MapiError:
+        rows_dims = [tdim]
+    names: list[str] = []
     cols = []
-    for n in names:
-        if n not in dv.data.data_vars:
+    for n in given:
+        if n not in ds.data_vars:
             raise data_error(f"the data has no variable {n!r}")
-        da = dv.data[n]
-        others = [d for d in da.dims if d != tdim]
-        cols.append(np.asarray(da.transpose(tdim, *others).values, dtype=float).reshape(-1))
+        da = ds[n]
+        lead = [d for d in rows_dims if d in da.dims] or [tdim]
+        extra = [str(d) for d in da.dims if d not in lead]
+        if not extra:
+            names.append(n)
+            cols.append(np.asarray(da.transpose(*lead).values, dtype=float).reshape(-1))
+            continue
+        # spend(channel, ...) -> one column per channel: spend[tv], spend[search]
+        stacked = da.transpose(*lead, *extra).stack(_col=extra)
+        for j in range(stacked.sizes["_col"]):
+            label = stacked["_col"].values[j]
+            parts = label if isinstance(label, tuple) else (label,)
+            names.append(f"{n}[{','.join(str(label_of(x)) for x in parts)}]")
+            cols.append(np.asarray(stacked.isel(_col=j).values, dtype=float).reshape(-1))
+    if len(names) < 2:
+        raise data_error(
+            "test.vif needs at least two drivers (variables, or a variable with a channel dim)"
+        )
     mat = np.column_stack(cols)
     mat = mat[np.all(np.isfinite(mat), axis=1)]
     if mat.shape[0] <= len(names) + 1:

@@ -264,3 +264,69 @@ def test_backtest_metrics_carry_the_candidate_model() -> None:
     assert cand.model == "ts.ets@^1" and cand.settings == {"trend": "add"}
     cov = cand.metrics["coverage_90"]  # the real ETS gives 90% prediction intervals
     assert cov is not None and 0.0 <= cov <= 1.0
+
+
+@pytest.mark.slow
+def test_mmm_governed_template_fits_mmm_framework_and_runs_governance() -> None:
+    """The gallery's marketing-mix workflow on a geo panel: the VIF test, a holdout, the
+    real mmm.bayesian fit (mmm-framework, tiny sampler settings), the policy's checks with
+    the runner's implementations, a report and an evidence pack. The model's ``geo``,
+    ``time`` and ``y`` names are bound to the data's ``region``, ``week`` and ``revenue``."""
+    from datetime import UTC, datetime
+
+    from mapi_conformance.runner import load_fixture
+    from mapi_sdk.registry import default_registry
+    from mapi_spec.governance import GovernancePolicy, PolicyCheck
+    from mapi_spec.workflow_templates import MMM_GOVERNED
+    from mapi_workflows.runtime.governance import GovernanceServices
+
+    fx = load_fixture("guided_mmm")
+    data, _tables = fx.generate(0, "tiny")
+    data = data.copy()
+    data.attrs["mapi_schema"] = fx.raw_schema(data).model_dump_json(exclude_none=True)
+    doc = copy.deepcopy(MMM_GOVERNED.document)
+    for n in doc["nodes"]:  # type: ignore[union-attr]
+        if n["id"] == "fit":  # type: ignore[index]
+            n["with"]["fit"] = {"engine": "pymc", "tune": 60, "draws": 40, "chains": 2}  # type: ignore[index]
+    spec = WorkflowSpec.model_validate(doc)
+    policy = GovernancePolicy(
+        id="pol_01jaf3h1j2k3m4n5p6q7r8s9t0",
+        tenant_id="acme",
+        project_id=None,
+        scope="tenant",
+        version=1,
+        name="MMM",
+        checks=[
+            PolicyCheck(check="data.quality", severity="warning"),
+            PolicyCheck(check="holdout.accuracy", severity="warning"),
+            PolicyCheck(check="plausibility.signs"),
+            PolicyCheck(check="residuals.whiteness", severity="info"),
+        ],
+        created_at=datetime(2026, 10, 1, tzinfo=UTC),
+    )
+    submitted: list[Any] = []
+    gov = GovernanceServices(
+        resolver=lambda _m, _p: [policy], submit=lambda m, e: submitted.append(e)
+    )
+    res = LocalRunner(registry=default_registry(), governance=gov).run(
+        spec, inputs={"data": data}, params={"drivers": ["spend"], "holdout_weeks": 6}
+    )
+    assert res.status is WorkflowRunStatus.SUCCEEDED, res.error
+    model = res.values["model"]
+    assert isinstance(model, ModelValue)
+    assert model.bundle.model.manifest.id == "mmm.bayesian"
+    b = model.bundle.binding
+    assert (b.to_dataset("geo"), b.to_dataset("time"), b.to_dataset("y")) == (
+        "region",
+        "week",
+        "revenue",
+    )
+    ev = res.values["evidence"]
+    assert isinstance(ev, dict)
+    statuses = {r["check"]: r["status"] for r in ev["results"]}
+    assert set(statuses) == {c.check for c in policy.checks}
+    assert "error" not in statuses.values(), ev["results"]
+    assert statuses["plausibility.signs"] == "pass"
+    assert ev["passed"] is True and submitted
+    pack = res.values["pack"]
+    assert isinstance(pack, dict) and pack["format"] == "mapi.report/v1"

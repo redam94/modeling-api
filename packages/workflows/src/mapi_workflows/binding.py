@@ -3,11 +3,12 @@
 Gallery workflows name models (``ts.sarimax@^1``) but not how a user's columns map onto the
 model's canonical variables, because they must work on anyone's data. A model node
 therefore completes the spec's ``data.bind`` from the dataset's roles: the model's target
-variable is bound to the dataset's (single) target, the model's time dim to the
-dataset's time dim and a multivariate model's series dim (``variable``) to the one other
-dim of that target, when the spec does not bind them and the names differ. Explicit
-bindings always win. The control plane (static, from the stored schema and the catalog)
-and the runtime compute the same binding.
+variable is bound to the dataset's (single) target, another model variable to the one
+dataset variable of its role, the model's time dim to the dataset's time dim, and a
+categorical model dim (a panel's ``geo``, a multivariate model's ``variable``) to the one
+unbound dim of the data variables bound to the model variables that carry it, when the spec
+does not bind them and the names differ. Explicit bindings always win. The control plane
+(static, from the stored schema and the catalog) and the runtime compute the same binding.
 """
 
 from __future__ import annotations
@@ -57,16 +58,25 @@ def auto_bind(
         if len(free) == 1:
             dims[canon] = free[0]
             used.add(free[0])
-    # a series dim of a multivariate model (``y(variable, t)``): the one other dim of the
-    # data's target (``value(series, quarter)`` binds ``variable`` to ``series``)
+    # other roles: a model variable with one same-role variable in the data (``spend`` ->
+    # ``spend_local``)
+    for canon, spec in model.vars.items():
+        if spec.role is Role.TARGET or canon in vars_ or canon in data.vars:
+            continue
+        same = [
+            v
+            for v, s in data.vars.items()
+            if s.role is spec.role and v not in used and v not in model.vars
+        ]
+        if len(same) == 1:
+            vars_[canon] = same[0]
+            used.add(same[0])
+    # categorical dims (a panel's ``geo``, a multivariate model's ``variable``): the one
+    # unbound, non-time dim of the data variables bound to the model variables that carry it
     for canon, dspec in model.dims.items():
         if dspec.kind == "time" or canon in dims or canon in data.dims:
             continue
-        carriers = [
-            vars_.get(v, v)
-            for v, s in model.vars.items()
-            if s.role is Role.TARGET and canon in s.dims
-        ]
+        carriers = [vars_.get(v, v) for v, s in model.vars.items() if canon in s.dims]
         free_dims = {
             str(d)
             for v in carriers
