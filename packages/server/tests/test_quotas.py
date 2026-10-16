@@ -231,6 +231,35 @@ async def test_storage_quota_blocks_uploads_only(
     assert (await client.get(f"/v1/datasets/{ds['id']}")).status_code == 200
 
 
+async def test_storage_counts_model_bundles(ctx: ServerContext, client: httpx.AsyncClient) -> None:
+    """``storage_bytes`` counts datasets, uploads *and* model bundles (their artifacts)."""
+    from mapi_server.services.quotas import quota_usage
+    from mapi_server_testkit.integrations import fitted_version
+    from mapi_spec.quotas import QuotaScope
+
+    async def stored() -> int:
+        async with ctx.db.session() as s:
+            usage = await quota_usage(s, QuotaScope.TENANT, "default", now=now())
+        return usage.storage_bytes
+
+    mv = await fitted_version(ctx)
+    before = await stored()
+    sizes = [int(a["size"]) for a in mv.artifacts]
+    assert sizes and sum(sizes) > 0
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.ModelVersion)
+            .where(m.ModelVersion.id == mv.id)
+            .values(artifacts=[{"name": "fit.bundle", "size": 10_000_000}])
+        )
+    assert await stored() == before - sum(sizes) + 10_000_000
+    await _policy(ctx, "tenant", "default", storage_bytes=before - sum(sizes) + 10_000_000)
+    ds = (await client.post("/v1/datasets", json={"name": "more"})).json()
+    body = {"filename": "x.csv", "content_type": "text/csv", "size_bytes": 10}
+    r = await client.post(f"/v1/datasets/{ds['id']}/uploads", json=body)
+    assert r.status_code == 429 and "storage_bytes" in r.json()["detail"]
+
+
 async def test_concurrent_uploads_cannot_overrun_the_storage_quota(
     ctx: ServerContext, client: httpx.AsyncClient
 ) -> None:

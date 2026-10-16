@@ -470,6 +470,8 @@ milestone releases are tagged on `main`.
   while it ran). New `GET /v1/tenants/{tenant_id}/exports` (newest first, paged, tenant
   admins); Settings > Data shows the newest export from it, and the Python client has
   `tenants.exports(tenant_id)`.
+- **server**: the `storage_bytes` quota left out model bundles although the docs count them;
+  a tenant's storage now adds the size of every model version's stored objects.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

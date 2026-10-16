@@ -22,7 +22,7 @@ an unset limit means "no limit at this level".
 | `concurrent_runs` | Live count | Runs between `queued` and a terminal state |
 | `max_fanout_tasks` | Per submission | Caps one sweep, backtest or SBC (`taskCount`) |
 | `max_resource_class` | Per submission | For example, the free tier runs on class S only |
-| `storage_bytes` | Cumulative | Datasets, bundles and uploads |
+| `storage_bytes` | Cumulative | Dataset versions, uploads in progress and model bundles (every model version's stored objects) |
 | `egress_bytes_per_month` | Cumulative, UTC month | Downloads through signed URLs |
 | `requests_per_minute` | Rate | API calls |
 

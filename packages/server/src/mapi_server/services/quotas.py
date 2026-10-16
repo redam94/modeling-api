@@ -36,7 +36,7 @@ from mapi_spec.quotas import (
 from mapi_spec.run import RunState
 from mapi_spec.tenancy import TrustTier
 from mapi_spec.tokens import TokenRecord
-from sqlalchemy import BigInteger, ColumnElement, Float, cast, delete, func, select
+from sqlalchemy import BigInteger, ColumnElement, Float, cast, delete, func, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -221,6 +221,21 @@ async def quota_usage(
                         (m.Upload.status == "uploaded")
                         | ((m.Upload.status == "pending") & (m.Upload.expires_at > now)),
                     )
+                )
+            ).scalar_one()
+        )
+        # model bundles: the stored objects of every model version (``artifacts`` lists them
+        # with their sizes, copied from the signed manifest at finalisation)
+        storage += int(
+            (
+                await s.execute(
+                    text(
+                        "SELECT coalesce(sum((a->>'size')::bigint), 0) FROM model_versions mv "
+                        "CROSS JOIN LATERAL jsonb_array_elements(coalesce(mv.artifacts, "
+                        "'[]'::jsonb)) AS a WHERE mv.tenant_id = :t "
+                        "AND jsonb_typeof(a->'size') = 'number'"
+                    ),
+                    {"t": subject_id},
                 )
             ).scalar_one()
         )
