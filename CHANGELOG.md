@@ -45,6 +45,7 @@ milestone releases are tagged on `main`.
     spend is carried over through the lag tensor and the implied lift is kept as
     `lift_tests__model`.
   - `response_curves` carries the baseline (intercepts and controls), closing the expected KPI.
+  - `mmm.pymc_marketing` takes lift tests through pymc-marketing's `add_lift_test_measurements`.
 - **runner**: `translate_priors` runs (`priors.json` and the `mmm.prior_beliefs` /
   `core.prior_predictive` plots); every fit writes `scorecard.json` (the whole check catalog,
   or the guided template's, each measured or skipped with a reason) and the what-if grid

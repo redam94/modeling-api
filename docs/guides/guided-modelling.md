@@ -178,6 +178,11 @@ Tests are checked three times, each time where the information is:
 During `evaluate_then_refit`, a test whose window lies after the training periods is skipped
 by the evaluation fit (logged) and used by the production refit.
 
+`mmm.pymc_marketing` accepts lift tests too, through pymc-marketing's own
+`add_lift_test_measurements`: each test becomes rows of its window's average spend, extra
+spend, lift and sigma *per period*, conditioned on the saturation curve (a Gamma on the
+absolute lift, pymc-marketing's model). With panel `dims`, a test must name its `geo`.
+
 ## The sanity scorecard
 
 At the end of every fit the runner measures each check of the
