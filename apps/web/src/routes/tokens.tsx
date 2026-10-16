@@ -210,7 +210,7 @@ export function TokensPage() {
                 ) : null
               }
             >
-              Create a token to call the API from a notebook, the <Mono>mapi</Mono> CLI, Atlas or another service. Use the narrowest scopes that work, and give it an expiry.
+              Create a token to call the API from a notebook, the <Mono>mapi</Mono> CLI or another service. Use the narrowest scopes that work, and give it an expiry.
             </EmptyState>
           ) : (
             <DataTable label="API tokens" data={page.items} columns={columns} getRowId={(t) => t.id} empty="No tokens match these filters." filterPlaceholder="Filter tokens" />
@@ -326,7 +326,7 @@ function CreateTokenDialog({ role, preset, onClose, onCreated }: { role: Project
           {preset ? ` This one may only read and score the endpoint ${preset.slice("score:".length)}.` : ""}
         </DialogDescription>
         <form className="grid gap-5" onSubmit={submit} noValidate>
-          <Field label="Name" htmlFor="tok-name" error={shown.name} hint="For example the program that will use it: atlas-optimiser, nightly-refit.">
+          <Field label="Name" htmlFor="tok-name" error={shown.name} hint="For example the program that will use it: budget-planner, nightly-refit.">
             <Input id="tok-name" autoFocus maxLength={100} value={form.name} onChange={(e) => set("name", e.target.value)} />
           </Field>
           <fieldset className="grid gap-2" aria-describedby={shown.scopes ? "tok-scopes-error" : undefined}>

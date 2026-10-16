@@ -106,6 +106,10 @@
       "level": "project",
       "min_role": "admin"
     },
+    "model:approve": {
+      "level": "project",
+      "min_role": "editor"
+    },
     "model:delete": {
       "level": "project",
       "min_role": "admin"
@@ -115,6 +119,14 @@
       "min_role": "viewer"
     },
     "model:run": {
+      "level": "project",
+      "min_role": "runner"
+    },
+    "model:update": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "model:validate": {
       "level": "project",
       "min_role": "runner"
     },
@@ -145,6 +157,22 @@
     "plugin:read": {
       "level": "project",
       "min_role": "viewer"
+    },
+    "policy:create": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "policy:delete": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "policy:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "policy:update": {
+      "level": "project",
+      "min_role": "admin"
     },
     "project:create": {
       "level": "tenant",
@@ -262,6 +290,22 @@
       "level": "tenant",
       "min_role": "admin"
     },
+    "tenant_policy:create": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "tenant_policy:delete": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "tenant_policy:read": {
+      "level": "tenant",
+      "min_role": "viewer"
+    },
+    "tenant_policy:update": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
     "token:create": {
       "level": "project",
       "min_role": "viewer"
@@ -297,6 +341,30 @@
     "webhook:update": {
       "level": "project",
       "min_role": "admin"
+    },
+    "workflow:cancel": {
+      "level": "project",
+      "min_role": "runner"
+    },
+    "workflow:create": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "workflow:delete": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "workflow:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "workflow:run": {
+      "level": "project",
+      "min_role": "runner"
+    },
+    "workflow:update": {
+      "level": "project",
+      "min_role": "editor"
     }
   },
   "roles": [
@@ -313,6 +381,10 @@
     "datasets:write",
     "endpoints:promote",
     "webhooks:manage",
+    "workflows:write",
+    "workflows:run",
+    "models:validate",
+    "policies:manage",
     "admin"
   ]
 }

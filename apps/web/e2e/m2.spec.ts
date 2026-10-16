@@ -94,7 +94,7 @@ test("a token is minted with scopes, its secret shown once, then revoked", async
   await as(page, "ana");
   await page.goto("/tokens");
   const table = page.getByRole("table", { name: "API tokens" });
-  await expect(table.getByText("atlas-optimiser")).toBeVisible();
+  await expect(table.getByText("budget-planner")).toBeVisible();
   await expect(table.getByLabel("Expires within a week")).toBeVisible();
 
   await page.getByRole("button", { name: "New token" }).click();
@@ -163,7 +163,7 @@ test("usage shows cost charts and quota warnings", async ({ page }) => {
   const today = page.getByRole("meter", { name: "Compute today (organisation)" });
   await expect(today).toHaveAttribute("data-tone", "critical");
   await expect(page.getByText(/Almost used up/)).toBeVisible();
-  await expect(page.getByRole("list", { name: "Cost by token" }).getByText("atlas-optimiser")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Cost by token" }).getByText("budget-planner")).toBeVisible();
   await page.getByRole("radio", { name: "Organisation" }).click();
   await expect(page.getByRole("list", { name: "Cost by project" }).getByText("Growth")).toBeVisible();
 });

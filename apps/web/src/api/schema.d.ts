@@ -847,7 +847,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint
+         * Python, TypeScript, curl, R, Apps Script and notebook code for the endpoint
          * @description Ready-to-run code that scores the endpoint with its example payload. The API token is
          *     read from ``MAPI_TOKEN`` (an Apps Script property): snippets never contain a secret.
          */
@@ -924,33 +924,6 @@ export interface paths {
          *     answer; problems the validator finds come back as ``issues`` (200).
          */
         post: operations["create_guided_draft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/guided/import/bayesinsight": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * BayesInsight model_def.json + metadata.json -> a draft for a built-in MMM
-         * @description Import a BayesInsight project (Q8). With the default ``target:
-         *     mmm.hierarchical_geo`` the draft maps media transforms, priors, controls, seasonality
-         *     and pooling to the built-in geo MMM and lists every feature without an equivalent as
-         *     an ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` drafts the dedicated
-         *     plugin, which runs ``model_def`` as BayesInsight defines it (what it cannot run falls
-         *     back to BayesInsight's defaults with a warning). Either draft is validated statically
-         *     against the catalog. ``422 IMPORT_UNSUPPORTED`` when the model cannot run at all (no
-         *     single KPI, no media, split series).
-         */
-        post: operations["import_bayesinsight"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1253,6 +1226,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/models/{model_id}/versions/{version}:optimize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Optimise a budget across channels (Prefer: wait=N -> 200 if done, else 202)
+         * @description How should the budget be split across channels (and geos)? The plan comes from the
+         *     model's posterior: the allocation with its expected KPI and interval, the uplift over the
+         *     current plan and the chance it is positive, the expected regret of committing to one
+         *     plan, the marginal return of every channel and, on request, the efficient frontier.
+         *     Static problems (a model that cannot optimise, a version that is not ready) are refused
+         *     before any run starts; bounds the data cannot meet fail the run with
+         *     ``OPTIMIZE_INFEASIBLE``.
+         */
+        post: operations["optimize_model_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/models/{model_id}/versions/{version}:score": {
         parameters: {
             query?: never;
@@ -1268,6 +1267,27 @@ export interface paths {
          *     200 with output links if the run finished, else 202 with the run.
          */
         post: operations["score_model"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/optimizations/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An optimize run and, once done, its plan
+         * @description ``done`` once the run is terminal; ``result`` only when it succeeded (a failed run's
+         *     problem, e.g. ``OPTIMIZE_INFEASIBLE``, is on ``run.problem``).
+         */
+        get: operations["get_optimization"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2265,6 +2285,102 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * About
+         * @description The plain-language card of one catalog item.
+         *
+         *     Every field except the expert ones is required, so an About that validates is
+         *     structurally complete; :func:`about_issues` adds the editorial rules (one or two
+         *     sentences, no jargon in the summary, known chooser tags, related ids that exist).
+         * @example {
+         *       "assumptions": [
+         *         "Numbers can be added up (spend, sales); averages are averaged"
+         *       ],
+         *       "avoid_when": [
+         *         "Your data already has one row per week"
+         *       ],
+         *       "data_needs": [
+         *         "A date column"
+         *       ],
+         *       "difficulty": "beginner",
+         *       "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+         *       "fits": {
+         *         "goal": [
+         *           "check_data"
+         *         ]
+         *       },
+         *       "outputs": [
+         *         "The same columns, one row per week"
+         *       ],
+         *       "related": [
+         *         "core.calendar"
+         *       ],
+         *       "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+         *       "title": "Weekly totals",
+         *       "typical_runtime": "instant",
+         *       "use_when": [
+         *         "Your data is daily but you want to plan or report by week"
+         *       ]
+         *     }
+         */
+        About: {
+            /** Assumptions */
+            assumptions: string[];
+            /** Avoid When */
+            avoid_when: string[];
+            /** Data Needs */
+            data_needs: string[];
+            difficulty: components["schemas"]["Difficulty"];
+            /**
+             * Example
+             * @description A tiny example
+             */
+            example: string;
+            /**
+             * Expert Notes
+             * @description Maths, estimator details, caveats for experts
+             */
+            expert_notes?: string | null;
+            /**
+             * Fits
+             * @description Chooser tags: question id -> the answers this item suits
+             */
+            fits?: {
+                [key: string]: string[];
+            };
+            /** Outputs */
+            outputs: string[];
+            /** References */
+            references?: components["schemas"]["AboutReference"][];
+            /**
+             * Related
+             * @description Ids of related catalog items (models, steps, nodes, checks, templates)
+             */
+            related?: string[];
+            /**
+             * Summary Plain
+             * @description One or two sentences without jargon: what it does for you
+             */
+            summary_plain: string;
+            /**
+             * Title
+             * @description A human name
+             */
+            title: string;
+            typical_runtime: components["schemas"]["TypicalRuntime"];
+            /** Use When */
+            use_when: string[];
+        };
+        /**
+         * AboutReference
+         * @description A source for the expert detail (a paper, a book chapter, library documentation).
+         */
+        AboutReference: {
+            /** Title */
+            title: string;
+            /** Url */
+            url?: string | null;
+        };
+        /**
          * AdminUsageReport
          * @description ``GET /v1/admin/usage`` (operators): cost by tenant for one UTC period, biggest spender
          *     first, and the current spend against the global spend cap.
@@ -2363,7 +2479,7 @@ export interface components {
          *       "expires_at": "2026-11-14T09:30:00Z",
          *       "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
          *       "last_used_at": "2026-10-16T08:00:00Z",
-         *       "name": "atlas-optimiser",
+         *       "name": "budget-planner",
          *       "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
          *       "prefix": "7k2m9q4x",
          *       "project_id": "growth",
@@ -2476,7 +2592,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -2572,173 +2688,6 @@ export interface components {
          * @enum {string}
          */
         AuditOutcome: "success" | "denied" | "error";
-        /**
-         * BayesInsightImport
-         * @description ``POST /v1/guided/import/bayesinsight``: a BayesInsight project as a draft (Q8: an
-         *     ingest adapter plus the ``mmm.bayesinsight`` plugin, not a separate spec kind).
-         * @example {
-         *       "dataset": "bi_mff",
-         *       "format": "mff",
-         *       "metadata": {
-         *         "allowed_campaigns": [
-         *           "Total"
-         *         ],
-         *         "allowed_creatives": [
-         *           "Total"
-         *         ],
-         *         "allowed_geos": [
-         *           "US",
-         *           "DE"
-         *         ],
-         *         "allowed_outlets": [
-         *           "Total"
-         *         ],
-         *         "allowed_products": [
-         *           "Total"
-         *         ],
-         *         "periodicity": "Weekly",
-         *         "row_ids": [
-         *           "Geography",
-         *           "Product",
-         *           "Period"
-         *         ]
-         *       },
-         *       "model_def": {
-         *         "variable_details": [
-         *           {
-         *             "likelihood": {
-         *               "type": "Normal"
-         *             },
-         *             "variable_name": "Sales_Total_Total_Total",
-         *             "variable_type": "exog"
-         *           },
-         *           {
-         *             "adstock": "delayed",
-         *             "media_transform": "hill",
-         *             "variable_name": "TV_Total_Total_Total",
-         *             "variable_type": "media"
-         *           },
-         *           {
-         *             "variable_name": "annual_seasonality",
-         *             "variable_type": "season"
-         *           }
-         *         ]
-         *       },
-         *       "name": "bi-import"
-         *     }
-         */
-        BayesInsightImport: {
-            /**
-             * Dataset
-             * @description Name of the dataset the MFF upload becomes
-             */
-            dataset: string;
-            /**
-             * Format
-             * @default mff
-             * @enum {string}
-             */
-            format?: "csv" | "parquet" | "mff";
-            /**
-             * Holdout Periods
-             * @default 8
-             */
-            holdout_periods?: number;
-            metadata: components["schemas"]["BayesInsightMetadata"];
-            model_def: components["schemas"]["BayesInsightModelDef"];
-            /** Name */
-            name: string;
-            /**
-             * Target
-             * @description M3: the plugin to import for. mmm.hierarchical_geo (default) maps every feature with an equivalent and warns about the rest (mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight runs model_def as BayesInsight defines it (likelihoods, priors in KPI units, curves, carry-over, signs, random effects, seasons, local trends) and warns about what it cannot run
-             * @default mmm.hierarchical_geo
-             * @enum {string}
-             */
-            target?: "mmm.hierarchical_geo" | "mmm.bayesinsight";
-        };
-        /**
-         * BayesInsightMetadata
-         * @description BayesInsight's ``metadata.json`` (``{"metadata": {...}}`` is accepted too).
-         *
-         *     ``row_ids`` are the MFF key columns the model is indexed by (``Period`` always last);
-         *     the key columns *not* in ``row_ids`` are aggregated away and suffix variable names
-         *     (``Promotion_Total_Total_Total``).
-         */
-        BayesInsightMetadata: {
-            /** Allowed Campaigns */
-            allowed_campaigns?: string[] | null;
-            /** Allowed Creatives */
-            allowed_creatives?: string[] | null;
-            /** Allowed Geos */
-            allowed_geos?: string[] | null;
-            /** Allowed Outlets */
-            allowed_outlets?: string[] | null;
-            /** Allowed Products */
-            allowed_products?: string[] | null;
-            /** End Period */
-            end_period?: string | null;
-            /** Necessary Variables */
-            necessary_variables?: string[] | null;
-            /**
-             * Periodicity
-             * @default Weekly
-             * @enum {string}
-             */
-            periodicity?: "Weekly" | "Daily";
-            /**
-             * Row Ids
-             * @default [
-             *       "Period"
-             *     ]
-             */
-            row_ids?: string[];
-            /** Start Period */
-            start_period?: string | null;
-        };
-        /**
-         * BayesInsightModelDef
-         * @description BayesInsight's ``model_def.json``. ``artifact``, ``fitted`` and ``VOF`` describe a
-         *     local fit and are ignored by the import.
-         */
-        BayesInsightModelDef: {
-            VOF?: components["schemas"]["JsonValue"] | null;
-            /** Artifact */
-            artifact?: string | null;
-            /**
-             * Fitted
-             * @default false
-             */
-            fitted?: boolean;
-            /** Variable Details */
-            variable_details: components["schemas"]["BayesInsightVariable"][];
-        };
-        /**
-         * BayesInsightVariable
-         * @description One entry of ``model_def.json``'s ``variable_details``.
-         *
-         *     The fields the import interprets are typed; everything else (priors, transforms,
-         *     likelihood parameters) is kept verbatim for the ``mmm.bayesinsight`` plugin, which
-         *     validates it in the sandbox.
-         */
-        BayesInsightVariable: {
-            /** Fixed Ind Coeff Dims */
-            fixed_ind_coeff_dims?: string[] | null;
-            /** Normalization */
-            normalization?: string | null;
-            /** Random Coeff Dims */
-            random_coeff_dims?: string[] | null;
-            /** Sign */
-            sign?: ("positive" | "negative") | null;
-            /** Variable Name */
-            variable_name: string;
-            /**
-             * Variable Type
-             * @enum {string}
-             */
-            variable_type: "control" | "media" | "exog" | "localtrend" | "season";
-        } & {
-            [key: string]: unknown;
-        };
         /**
          * Binding
          * @description Canonical name → dataset name, for dims and variables (``geo: market``).
@@ -3029,6 +2978,12 @@ export interface components {
             score_modes: unknown[];
         };
         /**
+         * Capability
+         * @description Grants on top of a role (M3.5). Project admins hold every capability implicitly.
+         * @enum {string}
+         */
+        Capability: "reviewer";
+        /**
          * CaseOutcome
          * @enum {string}
          */
@@ -3091,6 +3046,45 @@ export interface components {
             tuning?: boolean;
         };
         /**
+         * ChannelAllocation
+         * @description The plan for one channel (and geo): spend now and at the optimum, shares, the
+         *     expected contribution, the marginal return at the plan and how stable the
+         *     recommendation is across draws.
+         */
+        ChannelAllocation: {
+            /** Change Pct */
+            change_pct?: number | null;
+            /** Channel */
+            channel: string;
+            /** Current Share */
+            current_share: number;
+            /** Current Spend */
+            current_spend: number;
+            expected_contribution?: components["schemas"]["DistributionSummary"] | null;
+            /**
+             * Extrapolated
+             * @description Beyond the spend range seen in the data
+             * @default false
+             */
+            extrapolated?: boolean;
+            /** Geo */
+            geo?: string | null;
+            /**
+             * Marginal Roi
+             * @description Next unit of money's KPI return
+             */
+            marginal_roi?: number | null;
+            /** Optimal Share */
+            optimal_share: number;
+            /** Optimal Spend */
+            optimal_spend: number;
+            /**
+             * Stability
+             * @description Share of draws whose own optimum moves the same way
+             */
+            stability?: number | null;
+        };
+        /**
          * ChannelBelief
          * @description What the user believes about one channel: exactly one of ``roi`` or
          *     ``contribution_share``, held with ``credibility``.
@@ -3128,6 +3122,27 @@ export interface components {
                 number,
                 number
             ] | null;
+        };
+        /**
+         * ChannelBounds
+         * @description Bounds on one channel: as multiples of its current spend and/or in money (money
+         *     bounds override multiples, as in mmm-framework).
+         */
+        ChannelBounds: {
+            /**
+             * Locked
+             * @description Keep the channel at its current spend
+             * @default false
+             */
+            locked?: boolean;
+            /** Max Multiplier */
+            max_multiplier?: number | null;
+            /** Max Spend */
+            max_spend?: number | null;
+            /** Min Multiplier */
+            min_multiplier?: number | null;
+            /** Min Spend */
+            min_spend?: number | null;
         };
         /**
          * ChannelOff
@@ -3571,6 +3586,8 @@ export interface components {
          *     }
          */
         Dataset: {
+            /** @description M3.5: the description plus a summary generated from the schema */
+            about?: components["schemas"]["DatasetAbout"] | null;
             /**
              * Created At
              * Format: date-time
@@ -3605,6 +3622,35 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * DatasetAbout
+         * @description The About of a dataset: the owner's description plus a generated summary.
+         *
+         *     ``summary_generated`` and ``highlights`` come from the version's schema and coordinate
+         *     summary (:func:`describe_dataset`); ``warnings_plain`` from its ingest issues and profile.
+         * @example {
+         *       "description_user": "Weekly media spend and revenue from the finance warehouse.",
+         *       "highlights": [
+         *         "104 weeks of history",
+         *         "10 markets",
+         *         "3 channels"
+         *       ],
+         *       "summary_generated": "Weekly data from 2023-01-01 to 2024-12-29 (104 weeks) for 10 markets and 3 channels, with 3 measures: revenue (the result you want to explain), spend (marketing spend) and price.",
+         *       "warnings_plain": []
+         *     }
+         */
+        DatasetAbout: {
+            /** Description User */
+            description_user?: string | null;
+            /** Generated At */
+            generated_at?: string | null;
+            /** Highlights */
+            highlights?: string[];
+            /** Summary Generated */
+            summary_generated: string;
+            /** Warnings Plain */
+            warnings_plain?: string[];
         };
         /**
          * DatasetCreate
@@ -3902,6 +3948,12 @@ export interface components {
              */
             path: string;
         };
+        /**
+         * Difficulty
+         * @description How much statistical background an item needs to use well.
+         * @enum {string}
+         */
+        Difficulty: "beginner" | "intermediate" | "expert";
         /**
          * DimMapping
          * @description A dim of the dataset, read from one column of a tabular upload.
@@ -4747,7 +4799,7 @@ export interface components {
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
          */
-        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED";
+        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE";
         /**
          * ErrorPayload
          * @description ``error``: the run failed; ``message`` is platform-authored, plugin text is untrusted.
@@ -5339,6 +5391,42 @@ export interface components {
             spend_var?: string;
         };
         /**
+         * FrontierPoint
+         * @description The best plan at one total budget.
+         */
+        FrontierPoint: {
+            /** Allocation */
+            allocation?: {
+                [key: string]: number;
+            };
+            /** Expected Kpi */
+            expected_kpi: number;
+            /** Kpi P5 */
+            kpi_p5?: number | null;
+            /** Kpi P95 */
+            kpi_p95?: number | null;
+            /** Marginal Roi */
+            marginal_roi?: number | null;
+            /** Total Budget */
+            total_budget: number;
+        };
+        /**
+         * FrontierRequest
+         * @description Also sweep budgets from ``budget_min`` to ``budget_max`` (default 40%-200% of the
+         *     current total) in ``n_points`` steps.
+         */
+        FrontierRequest: {
+            /** Budget Max */
+            budget_max?: number | null;
+            /** Budget Min */
+            budget_min?: number | null;
+            /**
+             * N Points
+             * @default 12
+             */
+            n_points?: number;
+        };
+        /**
          * FutureCovariates
          * @description Where future values of ``future_required`` covariates come from in a forecast (M3).
          *
@@ -5366,7 +5454,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "SCORECARD_WARN" | "SCORECARD_FAIL" | "NO_SCORECARD" | "TRAIN_ONLY" | "PARTIAL_MODEL" | "SCHEMA_CHANGE" | "NOT_EVALUATED";
+            code: "SCORECARD_WARN" | "SCORECARD_FAIL" | "NO_SCORECARD" | "TRAIN_ONLY" | "PARTIAL_MODEL" | "SCHEMA_CHANGE" | "NOT_EVALUATED" | "NOT_VALIDATED";
             /** Message Plain */
             message_plain: string;
             outcome: components["schemas"]["GateOutcome"];
@@ -5787,6 +5875,8 @@ export interface components {
          *     }
          */
         GuidedTemplate: {
+            /** @description M3.5: the plain-language About card (every built-in has one) */
+            about?: components["schemas"]["About"] | null;
             /** Defaults */
             defaults?: {
                 [key: string]: components["schemas"]["JsonValue"];
@@ -5862,7 +5952,7 @@ export interface components {
          *           "status": "ok"
          *         }
          *       },
-         *       "contract_version": "0.1",
+         *       "contract_version": "0.2",
          *       "status": "ok",
          *       "version": "0.2.0"
          *     }
@@ -5880,7 +5970,7 @@ export interface components {
             };
             /**
              * Contract Version
-             * @default 0.1
+             * @default 0.2
              */
             contract_version?: string;
             /**
@@ -5923,7 +6013,7 @@ export interface components {
          *     Tabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit
          *     ``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.
          *
-         *     With the ``mff``/``bayesinsight`` presets the long table is first pivoted to one column
+         *     With the ``mff`` preset the long table is first pivoted to one column
          *     per ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then
          *     pick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may
          *     refine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and
@@ -6022,8 +6112,6 @@ export interface components {
          *     }
          */
         IngestMapping: {
-            /** @description BayesInsight's metadata.json (the bayesinsight preset) */
-            bayesinsight?: components["schemas"]["BayesInsightMetadata"] | null;
             /** Dims */
             dims?: {
                 [key: string]: components["schemas"]["DimMapping"];
@@ -6041,7 +6129,7 @@ export interface components {
             layout?: "dense" | "long";
             /** @description The meridian preset's columns */
             meridian?: components["schemas"]["MeridianColumns"] | null;
-            /** @description Options of the mff/bayesinsight presets */
+            /** @description Options of the mff preset */
             mff?: components["schemas"]["MffOptions"] | null;
             /**
              * @description M3: a file contract instead of (or refined by) the column mapping
@@ -6064,7 +6152,7 @@ export interface components {
          * IngestPreset
          * @enum {string}
          */
-        IngestPreset: "none" | "mff" | "meridian" | "bayesinsight";
+        IngestPreset: "none" | "mff" | "meridian";
         /** IngestResponse */
         IngestResponse: {
             result: components["schemas"]["IngestResult"];
@@ -6323,7 +6411,7 @@ export interface components {
          *       "lib_versions": {
          *         "pymc": "5.25.1"
          *       },
-         *       "plugin": "mmm.hierarchical_geo@1.3.2",
+         *       "plugin": "mmm.bayesian@1.3.2",
          *       "resource_class": "M",
          *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
          *       "seed": 20261014,
@@ -6356,7 +6444,7 @@ export interface components {
             overlay_hash?: string | null;
             /**
              * Plugin
-             * @example mmm.hierarchical_geo@1.3.2
+             * @example mmm.bayesian@1.3.2
              */
             plugin?: string | null;
             resource_class?: components["schemas"]["ResourceClass"] | null;
@@ -6579,6 +6667,11 @@ export interface components {
          */
         Membership: {
             /**
+             * Capabilities
+             * @description M3.5: e.g. reviewer (approves model validations)
+             */
+            capabilities?: components["schemas"]["Capability"][];
+            /**
              * Created At
              * Format: date-time
              */
@@ -6620,6 +6713,11 @@ export interface components {
          *     }
          */
         MembershipCreate: {
+            /**
+             * Capabilities
+             * @description M3.5: e.g. reviewer (approves model validations)
+             */
+            capabilities?: components["schemas"]["Capability"][];
             /** Email */
             email?: string | null;
             /** Principal Id */
@@ -6628,13 +6726,21 @@ export interface components {
         };
         /**
          * MembershipUpdate
-         * @description Change a member's role (the last admin of a tenant or project cannot be demoted).
+         * @description Change a member's role (the last admin of a tenant or project cannot be demoted)
+         *     and, from M3.5, their capabilities (``reviewer``).
          * @example {
          *       "role": "editor"
          *     }
+         * @example {
+         *       "capabilities": [
+         *         "reviewer"
+         *       ]
+         *     }
          */
         MembershipUpdate: {
-            role: components["schemas"]["ProjectRole"];
+            /** Capabilities */
+            capabilities?: components["schemas"]["Capability"][] | null;
+            role?: components["schemas"]["ProjectRole"] | null;
         };
         /**
          * MeridianColumns
@@ -6884,6 +6990,8 @@ export interface components {
          * @description Everything the control plane knows about a model plugin version (static JSON).
          */
         ModelManifest: {
+            /** @description M3.5: the plain-language About card (required by the catalog rule and the contract kit; optional here so older manifests still parse) */
+            about?: components["schemas"]["About"] | null;
             /**
              * Artifact Format
              * @default zarr.zip/v1
@@ -6894,6 +7002,11 @@ export interface components {
             derived?: components["schemas"]["DerivedDecl"][];
             /** Description */
             description?: string | null;
+            /**
+             * Family
+             * @description M3.5: the model family governance policies match (mmm, forecast, ts_multivariate, tabular, choice, regime); default: the id's namespace
+             */
+            family?: string | null;
             /** Fit Schema */
             fit_schema?: {
                 [key: string]: components["schemas"]["JsonValue"];
@@ -6963,7 +7076,7 @@ export interface components {
          *         "lib_versions": {
          *           "pymc": "5.25.1"
          *         },
-         *         "plugin": "mmm.hierarchical_geo@1.3.2",
+         *         "plugin": "mmm.bayesian@1.3.2",
          *         "resource_class": "M",
          *         "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
          *         "seed": 20261014,
@@ -7113,6 +7226,326 @@ export interface components {
             name: string;
             /** Size */
             size: number;
+        };
+        /**
+         * Optimization
+         * @description ``POST …:optimize`` (``Prefer: wait=N``: ``200`` when done, else ``202``) and
+         *     ``GET /v1/optimizations/{run_id}``: the ``optimize`` run and, once done, the plan.
+         * @example {
+         *       "done": true,
+         *       "request": {
+         *         "channels": {
+         *           "search": {
+         *             "min_spend": 50000
+         *           },
+         *           "tv": {
+         *             "max_multiplier": 1.5,
+         *             "min_multiplier": 0.5
+         *           }
+         *         },
+         *         "frontier": {
+         *           "n_points": 10
+         *         },
+         *         "groups": [
+         *           {
+         *             "channels": [
+         *               "search",
+         *               "social"
+         *             ],
+         *             "min_share": 0.4,
+         *             "name": "digital"
+         *           }
+         *         ],
+         *         "objective": "p10",
+         *         "total_budget": 1000000
+         *       },
+         *       "result": {
+         *         "allocation": [
+         *           {
+         *             "change_pct": -25,
+         *             "channel": "tv",
+         *             "current_share": 0.6,
+         *             "current_spend": 600000,
+         *             "marginal_roi": 1.4,
+         *             "optimal_share": 0.45,
+         *             "optimal_spend": 450000,
+         *             "stability": 0.82
+         *           },
+         *           {
+         *             "change_pct": 37.5,
+         *             "channel": "search",
+         *             "current_share": 0.4,
+         *             "current_spend": 400000,
+         *             "marginal_roi": 1.4,
+         *             "optimal_share": 0.55,
+         *             "optimal_spend": 550000,
+         *             "stability": 0.9
+         *           }
+         *         ],
+         *         "current_total": 1000000,
+         *         "expected_kpi": {
+         *           "mean": 3400000,
+         *           "quantiles": {
+         *             "0.05": 3060000,
+         *             "0.95": 3750000
+         *           },
+         *           "sd": 210000
+         *         },
+         *         "expected_regret": 8000,
+         *         "kpi": "revenue",
+         *         "kpi_units": "EUR",
+         *         "n_draws": 200,
+         *         "objective": "p10",
+         *         "objective_label": "cautious plan (10th percentile of the KPI)",
+         *         "prob_positive_uplift": 0.97,
+         *         "spend_units": "EUR",
+         *         "total_budget": 1000000,
+         *         "uplift": {
+         *           "mean": 120000,
+         *           "quantiles": {
+         *             "0.05": 25000,
+         *             "0.95": 220000
+         *           },
+         *           "sd": 60000
+         *         }
+         *       },
+         *       "run": {
+         *         "attempt": 1,
+         *         "cost": {
+         *           "estimated": true
+         *         },
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "executor": "local-process",
+         *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *         "kind": "optimize",
+         *         "project_id": "default",
+         *         "queued_at": "2026-10-15T09:30:00Z",
+         *         "resource_class": "M",
+         *         "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *         "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+         *         "spec_revision": 2,
+         *         "started_at": "2026-10-15T09:30:05Z",
+         *         "state": "succeeded",
+         *         "tenant_id": "default",
+         *         "timeout": "45m",
+         *         "updated_at": "2026-10-15T09:31:00Z"
+         *       }
+         *     }
+         */
+        Optimization: {
+            /** Done */
+            done: boolean;
+            request: components["schemas"]["OptimizeRequest"];
+            result?: components["schemas"]["OptimizeResult"] | null;
+            run: components["schemas"]["Run"];
+        };
+        /**
+         * OptimizeRequest
+         * @description ``POST …:optimize``: how should the budget be split?
+         *
+         *     ``objective``: ``mean`` (expected KPI), ``p<q>`` (the q-th percentile across posterior
+         *     draws, a cautious plan) or ``cvar<a>`` (mean of the worst a% of draws). ``mode``:
+         *     ``fixed`` spends the budget; ``free`` funds each channel to break-even (marginal value
+         *     = 1 per unit of money, with ``value_per_kpi`` converting KPI to money) and makes the
+         *     total an output. ``horizon`` is the number of future periods the plan covers (default:
+         *     the fit window's length, as the response grid).
+         * @example {
+         *       "channels": {
+         *         "search": {
+         *           "min_spend": 50000
+         *         },
+         *         "tv": {
+         *           "max_multiplier": 1.5,
+         *           "min_multiplier": 0.5
+         *         }
+         *       },
+         *       "frontier": {
+         *         "n_points": 10
+         *       },
+         *       "groups": [
+         *         {
+         *           "channels": [
+         *             "search",
+         *             "social"
+         *           ],
+         *           "min_share": 0.4,
+         *           "name": "digital"
+         *         }
+         *       ],
+         *       "objective": "p10",
+         *       "total_budget": 1000000
+         *     }
+         * @example {
+         *       "budget_change_pct": -10,
+         *       "objective": "mean"
+         *     }
+         * @example {
+         *       "mode": "free",
+         *       "value_per_kpi": 1
+         *     }
+         */
+        OptimizeRequest: {
+            /** Budget Change Pct */
+            budget_change_pct?: number | null;
+            /**
+             * By Geo
+             * @description Allocate per (geo, channel) jointly
+             * @default false
+             */
+            by_geo?: boolean;
+            /** Channels */
+            channels?: {
+                [key: string]: components["schemas"]["ChannelBounds"];
+            };
+            /** @description Bounds of channels not listed in channels */
+            default_bounds?: components["schemas"]["ChannelBounds"];
+            frontier?: components["schemas"]["FrontierRequest"] | null;
+            /** Groups */
+            groups?: components["schemas"]["SpendGroup"][];
+            /** Horizon */
+            horizon?: number | null;
+            /**
+             * Max Draws
+             * @default 200
+             */
+            max_draws?: number;
+            /**
+             * Min Channel Spend
+             * @description Keep every channel funded at least this much
+             */
+            min_channel_spend?: number | null;
+            /**
+             * Mode
+             * @default fixed
+             * @enum {string}
+             */
+            mode?: "fixed" | "free";
+            /**
+             * N Steps
+             * @default 400
+             */
+            n_steps?: number;
+            /**
+             * Objective
+             * @default mean
+             * @example mean
+             * @example p10
+             * @example cvar5
+             */
+            objective?: string;
+            /** Seed */
+            seed?: number | null;
+            /** Total Budget */
+            total_budget?: number | null;
+            /** Value Per Kpi */
+            value_per_kpi?: number | null;
+        };
+        /**
+         * OptimizeResult
+         * @description ``optimize.json``: the recommended plan and its uncertainty.
+         * @example {
+         *       "allocation": [
+         *         {
+         *           "change_pct": -25,
+         *           "channel": "tv",
+         *           "current_share": 0.6,
+         *           "current_spend": 600000,
+         *           "marginal_roi": 1.4,
+         *           "optimal_share": 0.45,
+         *           "optimal_spend": 450000,
+         *           "stability": 0.82
+         *         },
+         *         {
+         *           "change_pct": 37.5,
+         *           "channel": "search",
+         *           "current_share": 0.4,
+         *           "current_spend": 400000,
+         *           "marginal_roi": 1.4,
+         *           "optimal_share": 0.55,
+         *           "optimal_spend": 550000,
+         *           "stability": 0.9
+         *         }
+         *       ],
+         *       "current_total": 1000000,
+         *       "expected_kpi": {
+         *         "mean": 3400000,
+         *         "quantiles": {
+         *           "0.05": 3060000,
+         *           "0.95": 3750000
+         *         },
+         *         "sd": 210000
+         *       },
+         *       "expected_regret": 8000,
+         *       "kpi": "revenue",
+         *       "kpi_units": "EUR",
+         *       "n_draws": 200,
+         *       "objective": "p10",
+         *       "objective_label": "cautious plan (10th percentile of the KPI)",
+         *       "prob_positive_uplift": 0.97,
+         *       "spend_units": "EUR",
+         *       "total_budget": 1000000,
+         *       "uplift": {
+         *         "mean": 120000,
+         *         "quantiles": {
+         *           "0.05": 25000,
+         *           "0.95": 220000
+         *         },
+         *         "sd": 60000
+         *       }
+         *     }
+         */
+        OptimizeResult: {
+            /** Allocation */
+            allocation: components["schemas"]["ChannelAllocation"][];
+            /** Computed At */
+            computed_at?: string | null;
+            current_kpi?: components["schemas"]["DistributionSummary"] | null;
+            /** Current Total */
+            current_total: number;
+            expected_kpi: components["schemas"]["DistributionSummary"];
+            /** Expected Regret */
+            expected_regret?: number | null;
+            /**
+             * Format
+             * @default mapi.optimize/v1
+             * @constant
+             */
+            format?: "mapi.optimize/v1";
+            /** Frontier */
+            frontier?: components["schemas"]["FrontierPoint"][];
+            /** Horizon */
+            horizon?: number | null;
+            /** Kpi */
+            kpi: string;
+            /** Kpi Units */
+            kpi_units?: string | null;
+            /**
+             * Mode
+             * @default fixed
+             * @enum {string}
+             */
+            mode?: "fixed" | "free";
+            /** N Draws */
+            n_draws: number;
+            /** Notes Plain */
+            notes_plain?: string[];
+            /** Objective */
+            objective: string;
+            /** Objective Label */
+            objective_label: string;
+            /** Prob Positive Uplift */
+            prob_positive_uplift?: number | null;
+            /**
+             * Shadow Price
+             * @description KPI value of the next unit of money
+             */
+            shadow_price?: number | null;
+            /** Spend Units */
+            spend_units?: string | null;
+            /** Total Budget */
+            total_budget: number;
+            /** @description Plan minus current plan */
+            uplift?: components["schemas"]["DistributionSummary"] | null;
         };
         /**
          * OutputDecl
@@ -7606,6 +8039,8 @@ export interface components {
          * @description A plot recipe the runner can produce.
          */
         PlotCatalogEntry: {
+            /** @description M3.5: optional About card (plots are chosen from a model, not a catalog) */
+            about?: components["schemas"]["About"] | null;
             /** Id */
             id: string;
             /**
@@ -8156,21 +8591,23 @@ export interface components {
          *           }
          *         },
          *         "priors": {
-         *           "beta_channel": {
-         *             "dims": [
-         *               "channel"
-         *             ],
-         *             "distribution": "LogNormal",
-         *             "mu": [
-         *               -1.2,
-         *               -0.9,
-         *               -2.1
-         *             ],
-         *             "sigma": [
-         *               0.38,
-         *               0.33,
-         *               0.5
-         *             ]
+         *           "intercept": {
+         *             "mu": 0.2,
+         *             "sigma": 0.3
+         *           },
+         *           "roi": {
+         *             "search": {
+         *               "mu": 1.2,
+         *               "sigma": 0.33
+         *             },
+         *             "social": {
+         *               "mu": 0.1,
+         *               "sigma": 0.5
+         *             },
+         *             "tv": {
+         *               "mu": 0.9,
+         *               "sigma": 0.38
+         *             }
          *           }
          *         },
          *         "seed": 7
@@ -8284,8 +8721,9 @@ export interface components {
          * PriorTranslationResult
          * @description ``priors.json`` of a ``translate_priors`` run.
          *
-         *     ``priors`` are model-space priors in the plugin's ``settings.priors`` form (pymc-marketing
-         *     ``Prior`` dicts; per-channel parameters are lists in ``channels`` order), to be written
+         *     ``priors`` are model-space priors in the plugin's ``settings.priors`` form (engine-neutral
+         *     ``{distribution, <params>, dims}`` dicts; per-channel parameters are lists in ``channels``
+         *     order), to be written
          *     at :data:`PRIORS_POINTER`. ``coverage`` is the prior mass inside each stated range
          *     (close to the stated credibility when the translation is faithful).
          * @example {
@@ -8356,21 +8794,23 @@ export interface components {
          *         }
          *       },
          *       "priors": {
-         *         "beta_channel": {
-         *           "dims": [
-         *             "channel"
-         *           ],
-         *           "distribution": "LogNormal",
-         *           "mu": [
-         *             -1.2,
-         *             -0.9,
-         *             -2.1
-         *           ],
-         *           "sigma": [
-         *             0.38,
-         *             0.33,
-         *             0.5
-         *           ]
+         *         "intercept": {
+         *           "mu": 0.2,
+         *           "sigma": 0.3
+         *         },
+         *         "roi": {
+         *           "search": {
+         *             "mu": 1.2,
+         *             "sigma": 0.33
+         *           },
+         *           "social": {
+         *             "mu": 0.1,
+         *             "sigma": 0.5
+         *           },
+         *           "tv": {
+         *             "mu": 0.9,
+         *             "sigma": 0.38
+         *           }
          *         }
          *       },
          *       "seed": 7
@@ -8862,7 +9302,7 @@ export interface components {
          * ResourceKind
          * @enum {string}
          */
-        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export";
+        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export" | "workflow" | "policy" | "tenant_policy";
         /**
          * Role
          * @description What a variable means to a model.
@@ -9211,7 +9651,7 @@ export interface components {
          *     M4): they own child runs and never execute on an executor themselves.
          * @enum {string}
          */
-        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors";
+        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors" | "workflow" | "workflow_node" | "explore";
         /**
          * RunRetry
          * @description ``POST /runs/{id}:retry``: a *new* run from a failed one, optionally one class up.
@@ -10037,7 +10477,7 @@ export interface components {
          * SnippetLanguage
          * @enum {string}
          */
-        SnippetLanguage: "python" | "typescript" | "curl" | "r" | "apps_script" | "atlas" | "notebook";
+        SnippetLanguage: "python" | "typescript" | "curl" | "r" | "apps_script" | "notebook";
         /**
          * SnippetSet
          * @description ``GET /v1/endpoints/{alias}/snippets`` (``?language=`` narrows it).
@@ -10063,7 +10503,7 @@ export interface components {
          * @description Create a spec document with its first revision (YAML 1.2 or JSON text).
          * @example {
          *       "message": "first draft",
-         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
          *     }
          */
         SpecCreate: {
@@ -10157,7 +10597,7 @@ export interface components {
          *       "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
          *       "tenant_id": "default",
          *       "valid": true,
-         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
          *     }
          */
         SpecRevision: {
@@ -10210,7 +10650,7 @@ export interface components {
          * @example {
          *       "message": "tune",
          *       "parent_revision": 1,
-         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
          *     }
          */
         SpecRevisionCreate: {
@@ -10220,6 +10660,24 @@ export interface components {
             parent_revision: number;
             /** Yaml */
             yaml: string;
+        };
+        /**
+         * SpendGroup
+         * @description A portfolio constraint over several channels (shares of the total and/or money).
+         */
+        SpendGroup: {
+            /** Channels */
+            channels: string[];
+            /** Max Share */
+            max_share?: number | null;
+            /** Max Spend */
+            max_spend?: number | null;
+            /** Min Share */
+            min_share?: number | null;
+            /** Min Spend */
+            min_spend?: number | null;
+            /** Name */
+            name: string;
         };
         /**
          * StageSchema
@@ -10285,6 +10743,8 @@ export interface components {
          *     ``side_table_params`` name fields that refer to ``data.side_tables`` entries.
          */
         StepCatalogEntry: {
+            /** @description M3.5: the plain-language About card (the catalog rule requires one) */
+            about?: components["schemas"]["About"] | null;
             /** Context */
             context?: {
                 [key: string]: components["schemas"]["JsonValue"];
@@ -10655,7 +11115,7 @@ export interface components {
          * @example {
          *       "budget_period": "month",
          *       "expires_in_days": 30,
-         *       "name": "atlas-optimiser",
+         *       "name": "budget-planner",
          *       "rate_limit_per_minute": 120,
          *       "scopes": [
          *         "score:geo-mmm-prod",
@@ -10693,7 +11153,7 @@ export interface components {
          *         "expires_at": "2026-11-14T09:30:00Z",
          *         "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
          *         "last_used_at": "2026-10-16T08:00:00Z",
-         *         "name": "atlas-optimiser",
+         *         "name": "budget-planner",
          *         "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
          *         "prefix": "7k2m9q4x",
          *         "project_id": "growth",
@@ -10762,6 +11222,12 @@ export interface components {
          * @enum {string}
          */
         TrustTier: "internal" | "verified" | "public" | "self-hosted-trusted";
+        /**
+         * TypicalRuntime
+         * @description Rough wall-clock time on typical data (``S`` resource class).
+         * @enum {string}
+         */
+        TypicalRuntime: "instant" | "seconds" | "minutes" | "long";
         /**
          * UploadCreate
          * @description Ask for a signed PUT URL into the quarantine bucket for one file.
@@ -10966,7 +11432,7 @@ export interface components {
          *     ``dataset`` overrides the dataset version whose stored schema is the raw input schema
          *     (default: the spec's own ``data.dataset`` reference, resolved now).
          * @example {
-         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
          *     }
          */
         ValidateRequest: {
@@ -11414,7 +11880,7 @@ export interface components {
          * WebhookEventType
          * @enum {string}
          */
-        WebhookEventType: "run.succeeded" | "run.failed" | "model.version.ready" | "endpoint.promoted" | "score.completed" | "tenant.deletion.completed";
+        WebhookEventType: "run.succeeded" | "run.failed" | "model.version.ready" | "endpoint.promoted" | "score.completed" | "tenant.deletion.completed" | "workflow.run.succeeded" | "workflow.run.failed" | "model.validation.checks_passed" | "model.validation.checks_failed" | "model.validation.awaiting_approval" | "model.validated" | "model.rejected" | "model.deprecated" | "dataset.version.created" | "optimize.completed";
         /**
          * WebhookUpdate
          * @description ``PATCH /v1/webhooks/{webhook_id}`` (re-activating resets the failure count).
@@ -14014,57 +14480,6 @@ export interface operations {
             };
         };
     };
-    import_bayesinsight: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BayesInsightImport"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GuidedDraft"];
-                };
-            };
-            /** @description Problem: UNAUTHENTICATED */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description Problem: FORBIDDEN */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description Problem: SCHEMA_INVALID, IMPORT_UNSUPPORTED */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
     create_prior_translation: {
         parameters: {
             query?: never;
@@ -14663,6 +15078,72 @@ export interface operations {
             };
         };
     };
+    optimize_model_version: {
+        parameters: {
+            query?: never;
+            header?: {
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OptimizeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Optimization"];
+                };
+            };
+            /** @description Still running (poll the optimization) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Optimization"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `OPTIMIZE_INFEASIBLE`: The budget constraints cannot all be met; `CAPABILITY_UNSUPPORTED`: The model lacks this capability */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     score_model: {
         parameters: {
             query?: never;
@@ -14698,6 +15179,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScoreCallResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_optimization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Optimization"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
             /** @description Validation Error */

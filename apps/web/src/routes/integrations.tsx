@@ -38,7 +38,7 @@ export function IntegrationsPage() {
   const sharePick = search.model ? { model: search.model, version: search.version, plot: search.plot } : undefined;
   return (
     <>
-      <PageHeader title="Integrations" description="Use your models outside the platform: spreadsheets, dashboards, notebooks, Atlas and your own services." />
+      <PageHeader title="Integrations" description="Use your models outside the platform: spreadsheets, dashboards, notebooks and your own services." />
       <Tabs value={tab} onValueChange={(v) => goTo(v as HubTab)}>
         <TabsList aria-label="Integrations sections">
           {INTEGRATION_TABS.map((t) => (

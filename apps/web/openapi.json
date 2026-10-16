@@ -1,6 +1,202 @@
 {
   "components": {
     "schemas": {
+      "About": {
+        "additionalProperties": false,
+        "description": "The plain-language card of one catalog item.\n\nEvery field except the expert ones is required, so an About that validates is\nstructurally complete; :func:`about_issues` adds the editorial rules (one or two\nsentences, no jargon in the summary, known chooser tags, related ids that exist).",
+        "examples": [
+          {
+            "assumptions": [
+              "Numbers can be added up (spend, sales); averages are averaged"
+            ],
+            "avoid_when": [
+              "Your data already has one row per week"
+            ],
+            "data_needs": [
+              "A date column"
+            ],
+            "difficulty": "beginner",
+            "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+            "fits": {
+              "goal": [
+                "check_data"
+              ]
+            },
+            "outputs": [
+              "The same columns, one row per week"
+            ],
+            "related": [
+              "core.calendar"
+            ],
+            "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+            "title": "Weekly totals",
+            "typical_runtime": "instant",
+            "use_when": [
+              "Your data is daily but you want to plan or report by week"
+            ]
+          }
+        ],
+        "properties": {
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Assumptions",
+            "type": "array"
+          },
+          "avoid_when": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Avoid When",
+            "type": "array"
+          },
+          "data_needs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Data Needs",
+            "type": "array"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/Difficulty"
+          },
+          "example": {
+            "description": "A tiny example",
+            "maxLength": 600,
+            "minLength": 10,
+            "title": "Example",
+            "type": "string"
+          },
+          "expert_notes": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Maths, estimator details, caveats for experts",
+            "title": "Expert Notes"
+          },
+          "fits": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "Chooser tags: question id -> the answers this item suits",
+            "maxProperties": 16,
+            "title": "Fits",
+            "type": "object"
+          },
+          "outputs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Outputs",
+            "type": "array"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/AboutReference"
+            },
+            "maxItems": 10,
+            "title": "References",
+            "type": "array"
+          },
+          "related": {
+            "description": "Ids of related catalog items (models, steps, nodes, checks, templates)",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Related",
+            "type": "array"
+          },
+          "summary_plain": {
+            "description": "One or two sentences without jargon: what it does for you",
+            "maxLength": 400,
+            "minLength": 20,
+            "title": "Summary Plain",
+            "type": "string"
+          },
+          "title": {
+            "description": "A human name",
+            "maxLength": 80,
+            "minLength": 3,
+            "title": "Title",
+            "type": "string"
+          },
+          "typical_runtime": {
+            "$ref": "#/components/schemas/TypicalRuntime"
+          },
+          "use_when": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Use When",
+            "type": "array"
+          }
+        },
+        "required": [
+          "title",
+          "summary_plain",
+          "use_when",
+          "avoid_when",
+          "data_needs",
+          "assumptions",
+          "outputs",
+          "difficulty",
+          "typical_runtime",
+          "example"
+        ],
+        "title": "About",
+        "type": "object"
+      },
+      "AboutReference": {
+        "additionalProperties": false,
+        "description": "A source for the expert detail (a paper, a book chapter, library documentation).",
+        "properties": {
+          "title": {
+            "maxLength": 300,
+            "minLength": 3,
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "pattern": "^https://\\S+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "AboutReference",
+        "type": "object"
+      },
       "AdminUsageReport": {
         "description": "``GET /v1/admin/usage`` (operators): cost by tenant for one UTC period, biggest spender\nfirst, and the current spend against the global spend cap.\n\nQuery: ``period=day|month`` (default ``month``) and ``start`` (an instant inside the\nperiod; default: now). Tenants without ledger entries in the period are not listed;\n``totals`` has one row per currency. ``spend_cap`` always covers the cap's current window.",
         "examples": [
@@ -142,7 +338,7 @@
             "expires_at": "2026-11-14T09:30:00Z",
             "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
             "last_used_at": "2026-10-16T08:00:00Z",
-            "name": "atlas-optimiser",
+            "name": "budget-planner",
             "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
             "prefix": "7k2m9q4x",
             "project_id": "growth",
@@ -429,7 +625,29 @@
           "webhook.disabled",
           "webhook.url_blocked",
           "plot.embed_create",
-          "plot.embed_revoke"
+          "plot.embed_revoke",
+          "workflow.create",
+          "workflow.revision",
+          "workflow.update",
+          "workflow.delete",
+          "workflow.run",
+          "workflow.run_cancel",
+          "workflow.schedule_create",
+          "workflow.schedule_update",
+          "workflow.schedule_delete",
+          "workflow.trigger_create",
+          "workflow.trigger_delete",
+          "policy.create",
+          "policy.update",
+          "policy.delete",
+          "model.validation_request",
+          "model.validation_transition",
+          "model.approve",
+          "model.reject",
+          "model.deprecate",
+          "model.evidence_export",
+          "endpoint.promote_not_validated",
+          "dataset.about_update"
         ],
         "title": "AuditAction",
         "type": "string"
@@ -653,388 +871,6 @@
         ],
         "title": "AuditOutcome",
         "type": "string"
-      },
-      "BayesInsightImport": {
-        "additionalProperties": false,
-        "description": "``POST /v1/guided/import/bayesinsight``: a BayesInsight project as a draft (Q8: an\ningest adapter plus the ``mmm.bayesinsight`` plugin, not a separate spec kind).",
-        "examples": [
-          {
-            "dataset": "bi_mff",
-            "format": "mff",
-            "metadata": {
-              "allowed_campaigns": [
-                "Total"
-              ],
-              "allowed_creatives": [
-                "Total"
-              ],
-              "allowed_geos": [
-                "US",
-                "DE"
-              ],
-              "allowed_outlets": [
-                "Total"
-              ],
-              "allowed_products": [
-                "Total"
-              ],
-              "periodicity": "Weekly",
-              "row_ids": [
-                "Geography",
-                "Product",
-                "Period"
-              ]
-            },
-            "model_def": {
-              "variable_details": [
-                {
-                  "likelihood": {
-                    "type": "Normal"
-                  },
-                  "variable_name": "Sales_Total_Total_Total",
-                  "variable_type": "exog"
-                },
-                {
-                  "adstock": "delayed",
-                  "media_transform": "hill",
-                  "variable_name": "TV_Total_Total_Total",
-                  "variable_type": "media"
-                },
-                {
-                  "variable_name": "annual_seasonality",
-                  "variable_type": "season"
-                }
-              ]
-            },
-            "name": "bi-import"
-          }
-        ],
-        "properties": {
-          "dataset": {
-            "description": "Name of the dataset the MFF upload becomes",
-            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
-            "title": "Dataset",
-            "type": "string"
-          },
-          "format": {
-            "default": "mff",
-            "enum": [
-              "csv",
-              "parquet",
-              "mff"
-            ],
-            "title": "Format",
-            "type": "string"
-          },
-          "holdout_periods": {
-            "default": 8,
-            "maximum": 104.0,
-            "minimum": 1.0,
-            "title": "Holdout Periods",
-            "type": "integer"
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/BayesInsightMetadata"
-          },
-          "model_def": {
-            "$ref": "#/components/schemas/BayesInsightModelDef"
-          },
-          "name": {
-            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
-            "title": "Name",
-            "type": "string"
-          },
-          "target": {
-            "default": "mmm.hierarchical_geo",
-            "description": "M3: the plugin to import for. mmm.hierarchical_geo (default) maps every feature with an equivalent and warns about the rest (mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight runs model_def as BayesInsight defines it (likelihoods, priors in KPI units, curves, carry-over, signs, random effects, seasons, local trends) and warns about what it cannot run",
-            "enum": [
-              "mmm.hierarchical_geo",
-              "mmm.bayesinsight"
-            ],
-            "title": "Target",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "dataset",
-          "model_def",
-          "metadata"
-        ],
-        "title": "BayesInsightImport",
-        "type": "object"
-      },
-      "BayesInsightMetadata": {
-        "description": "BayesInsight's ``metadata.json`` (``{\"metadata\": {...}}`` is accepted too).\n\n``row_ids`` are the MFF key columns the model is indexed by (``Period`` always last);\nthe key columns *not* in ``row_ids`` are aggregated away and suffix variable names\n(``Promotion_Total_Total_Total``).",
-        "properties": {
-          "allowed_campaigns": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 10000,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Allowed Campaigns"
-          },
-          "allowed_creatives": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 10000,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Allowed Creatives"
-          },
-          "allowed_geos": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 10000,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Allowed Geos"
-          },
-          "allowed_outlets": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 10000,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Allowed Outlets"
-          },
-          "allowed_products": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 10000,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Allowed Products"
-          },
-          "end_period": {
-            "anyOf": [
-              {
-                "maxLength": 40,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "End Period"
-          },
-          "necessary_variables": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 4096,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Necessary Variables"
-          },
-          "periodicity": {
-            "default": "Weekly",
-            "enum": [
-              "Weekly",
-              "Daily"
-            ],
-            "title": "Periodicity",
-            "type": "string"
-          },
-          "row_ids": {
-            "default": [
-              "Period"
-            ],
-            "items": {
-              "type": "string"
-            },
-            "title": "Row Ids",
-            "type": "array"
-          },
-          "start_period": {
-            "anyOf": [
-              {
-                "maxLength": 40,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Start Period"
-          }
-        },
-        "title": "BayesInsightMetadata",
-        "type": "object"
-      },
-      "BayesInsightModelDef": {
-        "description": "BayesInsight's ``model_def.json``. ``artifact``, ``fitted`` and ``VOF`` describe a\nlocal fit and are ignored by the import.",
-        "properties": {
-          "VOF": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/JsonValue"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "artifact": {
-            "anyOf": [
-              {
-                "maxLength": 1024,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Artifact"
-          },
-          "fitted": {
-            "default": false,
-            "title": "Fitted",
-            "type": "boolean"
-          },
-          "variable_details": {
-            "items": {
-              "$ref": "#/components/schemas/BayesInsightVariable"
-            },
-            "maxItems": 1024,
-            "minItems": 1,
-            "title": "Variable Details",
-            "type": "array"
-          }
-        },
-        "required": [
-          "variable_details"
-        ],
-        "title": "BayesInsightModelDef",
-        "type": "object"
-      },
-      "BayesInsightVariable": {
-        "additionalProperties": true,
-        "description": "One entry of ``model_def.json``'s ``variable_details``.\n\nThe fields the import interprets are typed; everything else (priors, transforms,\nlikelihood parameters) is kept verbatim for the ``mmm.bayesinsight`` plugin, which\nvalidates it in the sandbox.",
-        "properties": {
-          "fixed_ind_coeff_dims": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 6,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fixed Ind Coeff Dims"
-          },
-          "normalization": {
-            "anyOf": [
-              {
-                "maxLength": 64,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Normalization"
-          },
-          "random_coeff_dims": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 6,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Random Coeff Dims"
-          },
-          "sign": {
-            "anyOf": [
-              {
-                "enum": [
-                  "positive",
-                  "negative"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sign"
-          },
-          "variable_name": {
-            "maxLength": 512,
-            "minLength": 1,
-            "title": "Variable Name",
-            "type": "string"
-          },
-          "variable_type": {
-            "enum": [
-              "control",
-              "media",
-              "exog",
-              "localtrend",
-              "season"
-            ],
-            "title": "Variable Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "variable_name",
-          "variable_type"
-        ],
-        "title": "BayesInsightVariable",
-        "type": "object"
       },
       "Binding": {
         "additionalProperties": false,
@@ -1570,6 +1406,14 @@
         "title": "Capabilities",
         "type": "object"
       },
+      "Capability": {
+        "description": "Grants on top of a role (M3.5). Project admins hold every capability implicitly.",
+        "enum": [
+          "reviewer"
+        ],
+        "title": "Capability",
+        "type": "string"
+      },
       "CaseOutcome": {
         "enum": [
           "passed",
@@ -1688,6 +1532,110 @@
         "title": "ChainProgress",
         "type": "object"
       },
+      "ChannelAllocation": {
+        "description": "The plan for one channel (and geo): spend now and at the optimum, shares, the\nexpected contribution, the marginal return at the plan and how stable the\nrecommendation is across draws.",
+        "properties": {
+          "change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Pct"
+          },
+          "channel": {
+            "title": "Channel",
+            "type": "string"
+          },
+          "current_share": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Current Share",
+            "type": "number"
+          },
+          "current_spend": {
+            "minimum": 0.0,
+            "title": "Current Spend",
+            "type": "number"
+          },
+          "expected_contribution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DistributionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extrapolated": {
+            "default": false,
+            "description": "Beyond the spend range seen in the data",
+            "title": "Extrapolated",
+            "type": "boolean"
+          },
+          "geo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo"
+          },
+          "marginal_roi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Next unit of money's KPI return",
+            "title": "Marginal Roi"
+          },
+          "optimal_share": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Optimal Share",
+            "type": "number"
+          },
+          "optimal_spend": {
+            "minimum": 0.0,
+            "title": "Optimal Spend",
+            "type": "number"
+          },
+          "stability": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Share of draws whose own optimum moves the same way",
+            "title": "Stability"
+          }
+        },
+        "required": [
+          "channel",
+          "current_spend",
+          "optimal_spend",
+          "current_share",
+          "optimal_share"
+        ],
+        "title": "ChannelAllocation",
+        "type": "object"
+      },
       "ChannelBelief": {
         "additionalProperties": false,
         "description": "What the user believes about one channel: exactly one of ``roi`` or\n``contribution_share``, held with ``credibility``.\n\n* ``roi``: KPI units gained per spend unit over the fit window (``[1.5, 4]`` = \"every\n  euro returns between 1.5 and 4 euros of revenue\");\n* ``contribution_share``: the channel's share of the KPI over the fit window.",
@@ -1756,6 +1704,70 @@
           }
         },
         "title": "ChannelBelief",
+        "type": "object"
+      },
+      "ChannelBounds": {
+        "additionalProperties": false,
+        "description": "Bounds on one channel: as multiples of its current spend and/or in money (money\nbounds override multiples, as in mmm-framework).",
+        "properties": {
+          "locked": {
+            "default": false,
+            "description": "Keep the channel at its current spend",
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "max_multiplier": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Multiplier"
+          },
+          "max_spend": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Spend"
+          },
+          "min_multiplier": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Multiplier"
+          },
+          "min_spend": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Spend"
+          }
+        },
+        "title": "ChannelBounds",
         "type": "object"
       },
       "ChannelOff": {
@@ -2721,6 +2733,17 @@
           }
         ],
         "properties": {
+          "about": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatasetAbout"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3.5: the description plus a summary generated from the schema"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2800,6 +2823,73 @@
           "updated_at"
         ],
         "title": "Dataset",
+        "type": "object"
+      },
+      "DatasetAbout": {
+        "description": "The About of a dataset: the owner's description plus a generated summary.\n\n``summary_generated`` and ``highlights`` come from the version's schema and coordinate\nsummary (:func:`describe_dataset`); ``warnings_plain`` from its ingest issues and profile.",
+        "examples": [
+          {
+            "description_user": "Weekly media spend and revenue from the finance warehouse.",
+            "highlights": [
+              "104 weeks of history",
+              "10 markets",
+              "3 channels"
+            ],
+            "summary_generated": "Weekly data from 2023-01-01 to 2024-12-29 (104 weeks) for 10 markets and 3 channels, with 3 measures: revenue (the result you want to explain), spend (marketing spend) and price.",
+            "warnings_plain": []
+          }
+        ],
+        "properties": {
+          "description_user": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description User"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "highlights": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Highlights",
+            "type": "array"
+          },
+          "summary_generated": {
+            "maxLength": 1000,
+            "title": "Summary Generated",
+            "type": "string"
+          },
+          "warnings_plain": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Warnings Plain",
+            "type": "array"
+          }
+        },
+        "required": [
+          "summary_generated"
+        ],
+        "title": "DatasetAbout",
         "type": "object"
       },
       "DatasetCreate": {
@@ -3443,6 +3533,16 @@
         ],
         "title": "DiffEntry",
         "type": "object"
+      },
+      "Difficulty": {
+        "description": "How much statistical background an item needs to use well.",
+        "enum": [
+          "beginner",
+          "intermediate",
+          "expert"
+        ],
+        "title": "Difficulty",
+        "type": "string"
       },
       "DimMapping": {
         "additionalProperties": false,
@@ -4914,7 +5014,21 @@
           "EMAIL_NOT_ALLOWED",
           "TERMS_NOT_ACCEPTED",
           "EMAIL_NOT_VERIFIED",
-          "IDENTITY_VERIFICATION_REQUIRED"
+          "IDENTITY_VERIFICATION_REQUIRED",
+          "ABOUT_INCOMPLETE",
+          "CHOOSER_ANSWER_INVALID",
+          "WORKFLOW_INVALID",
+          "EXPRESSION_INVALID",
+          "EXPRESSION_ERROR",
+          "NODE_UNKNOWN",
+          "SCHEDULE_INVALID",
+          "WORKFLOW_NOT_RUNNABLE",
+          "POLICY_INVALID",
+          "VALIDATION_TRANSITION_INVALID",
+          "SELF_APPROVAL_FORBIDDEN",
+          "NOT_VALIDATED",
+          "EXPLORE_INVALID",
+          "OPTIMIZE_INFEASIBLE"
         ],
         "title": "ErrorCode",
         "type": "string"
@@ -5909,6 +6023,105 @@
         "title": "ForecastCompile",
         "type": "object"
       },
+      "FrontierPoint": {
+        "description": "The best plan at one total budget.",
+        "properties": {
+          "allocation": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Allocation",
+            "type": "object"
+          },
+          "expected_kpi": {
+            "title": "Expected Kpi",
+            "type": "number"
+          },
+          "kpi_p5": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kpi P5"
+          },
+          "kpi_p95": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kpi P95"
+          },
+          "marginal_roi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marginal Roi"
+          },
+          "total_budget": {
+            "minimum": 0.0,
+            "title": "Total Budget",
+            "type": "number"
+          }
+        },
+        "required": [
+          "total_budget",
+          "expected_kpi"
+        ],
+        "title": "FrontierPoint",
+        "type": "object"
+      },
+      "FrontierRequest": {
+        "additionalProperties": false,
+        "description": "Also sweep budgets from ``budget_min`` to ``budget_max`` (default 40%-200% of the\ncurrent total) in ``n_points`` steps.",
+        "properties": {
+          "budget_max": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Max"
+          },
+          "budget_min": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Min"
+          },
+          "n_points": {
+            "default": 12,
+            "maximum": 50.0,
+            "minimum": 3.0,
+            "title": "N Points",
+            "type": "integer"
+          }
+        },
+        "title": "FrontierRequest",
+        "type": "object"
+      },
       "FutureCovariates": {
         "description": "Where future values of ``future_required`` covariates come from in a forecast (M3).\n\n``supplied`` (default) needs them in the request's data or scenario\n(``MISSING_FUTURE_COVARIATE`` otherwise). The other policies let the runner extend them\nover the horizon, per series, inside the sandbox: ``carry_last`` repeats the last\nobserved value, ``seasonal_naive`` repeats the value one season earlier (the time dim's\nyearly period), ``zero`` sets them to zero (e.g. \"no spend planned\").",
         "enum": [
@@ -5951,7 +6164,8 @@
               "TRAIN_ONLY",
               "PARTIAL_MODEL",
               "SCHEMA_CHANGE",
-              "NOT_EVALUATED"
+              "NOT_EVALUATED",
+              "NOT_VALIDATED"
             ],
             "title": "Code",
             "type": "string"
@@ -6738,6 +6952,17 @@
           }
         ],
         "properties": {
+          "about": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/About"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3.5: the plain-language About card (every built-in has one)"
+          },
           "defaults": {
             "additionalProperties": {
               "$ref": "#/components/schemas/JsonValue"
@@ -6902,7 +7127,7 @@
                 "status": "ok"
               }
             },
-            "contract_version": "0.1",
+            "contract_version": "0.2",
             "status": "ok",
             "version": "0.2.0"
           }
@@ -6922,7 +7147,7 @@
             "type": "object"
           },
           "contract_version": {
-            "default": "0.1",
+            "default": "0.2",
             "title": "Contract Version",
             "type": "string"
           },
@@ -7019,7 +7244,7 @@
       },
       "IngestMapping": {
         "additionalProperties": false,
-        "description": "How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).\n\nTabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit\n``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.\n\nWith the ``mff``/``bayesinsight`` presets the long table is first pivoted to one column\nper ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then\npick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may\nrefine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and\n``wide`` every variable is kept under its own name.",
+        "description": "How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).\n\nTabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit\n``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.\n\nWith the ``mff`` preset the long table is first pivoted to one column\nper ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then\npick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may\nrefine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and\n``wide`` every variable is kept under its own name.",
         "examples": [
           {
             "dims": {
@@ -7115,17 +7340,6 @@
           }
         ],
         "properties": {
-          "bayesinsight": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/BayesInsightMetadata"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "BayesInsight's metadata.json (the bayesinsight preset)"
-          },
           "dims": {
             "additionalProperties": {
               "$ref": "#/components/schemas/DimMapping"
@@ -7174,7 +7388,7 @@
                 "type": "null"
               }
             ],
-            "description": "Options of the mff/bayesinsight presets"
+            "description": "Options of the mff preset"
           },
           "preset": {
             "$ref": "#/components/schemas/IngestPreset",
@@ -7209,8 +7423,7 @@
         "enum": [
           "none",
           "mff",
-          "meridian",
-          "bayesinsight"
+          "meridian"
         ],
         "title": "IngestPreset",
         "type": "string"
@@ -7793,7 +8006,7 @@
             "lib_versions": {
               "pymc": "5.25.1"
             },
-            "plugin": "mmm.hierarchical_geo@1.3.2",
+            "plugin": "mmm.bayesian@1.3.2",
             "resource_class": "M",
             "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
             "seed": 20261014,
@@ -7908,7 +8121,7 @@
               }
             ],
             "examples": [
-              "mmm.hierarchical_geo@1.3.2"
+              "mmm.bayesian@1.3.2"
             ],
             "title": "Plugin"
           },
@@ -8305,6 +8518,14 @@
           }
         ],
         "properties": {
+          "capabilities": {
+            "description": "M3.5: e.g. reviewer (approves model validations)",
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -8410,6 +8631,14 @@
           }
         ],
         "properties": {
+          "capabilities": {
+            "description": "M3.5: e.g. reviewer (approves model validations)",
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
           "email": {
             "anyOf": [
               {
@@ -8450,20 +8679,43 @@
       },
       "MembershipUpdate": {
         "additionalProperties": false,
-        "description": "Change a member's role (the last admin of a tenant or project cannot be demoted).",
+        "description": "Change a member's role (the last admin of a tenant or project cannot be demoted)\nand, from M3.5, their capabilities (``reviewer``).",
         "examples": [
           {
             "role": "editor"
+          },
+          {
+            "capabilities": [
+              "reviewer"
+            ]
           }
         ],
         "properties": {
+          "capabilities": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Capability"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities"
+          },
           "role": {
-            "$ref": "#/components/schemas/ProjectRole"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectRole"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
-        "required": [
-          "role"
-        ],
         "title": "MembershipUpdate",
         "type": "object"
       },
@@ -8932,6 +9184,17 @@
         "additionalProperties": false,
         "description": "Everything the control plane knows about a model plugin version (static JSON).",
         "properties": {
+          "about": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/About"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3.5: the plain-language About card (required by the catalog rule and the contract kit; optional here so older manifests still parse)"
+          },
           "artifact_format": {
             "default": "zarr.zip/v1",
             "maxLength": 64,
@@ -8959,6 +9222,19 @@
               }
             ],
             "title": "Description"
+          },
+          "family": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z][a-z0-9_]{0,31}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3.5: the model family governance policies match (mmm, forecast, ts_multivariate, tabular, choice, regime); default: the id's namespace",
+            "title": "Family"
           },
           "fit_schema": {
             "additionalProperties": {
@@ -9078,7 +9354,7 @@
               "lib_versions": {
                 "pymc": "5.25.1"
               },
-              "plugin": "mmm.hierarchical_geo@1.3.2",
+              "plugin": "mmm.bayesian@1.3.2",
               "resource_class": "M",
               "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
               "seed": 20261014,
@@ -9341,6 +9617,578 @@
           "size"
         ],
         "title": "ObjectRef",
+        "type": "object"
+      },
+      "Optimization": {
+        "description": "``POST …:optimize`` (``Prefer: wait=N``: ``200`` when done, else ``202``) and\n``GET /v1/optimizations/{run_id}``: the ``optimize`` run and, once done, the plan.",
+        "examples": [
+          {
+            "done": true,
+            "request": {
+              "channels": {
+                "search": {
+                  "min_spend": 50000
+                },
+                "tv": {
+                  "max_multiplier": 1.5,
+                  "min_multiplier": 0.5
+                }
+              },
+              "frontier": {
+                "n_points": 10
+              },
+              "groups": [
+                {
+                  "channels": [
+                    "search",
+                    "social"
+                  ],
+                  "min_share": 0.4,
+                  "name": "digital"
+                }
+              ],
+              "objective": "p10",
+              "total_budget": 1000000
+            },
+            "result": {
+              "allocation": [
+                {
+                  "change_pct": -25,
+                  "channel": "tv",
+                  "current_share": 0.6,
+                  "current_spend": 600000,
+                  "marginal_roi": 1.4,
+                  "optimal_share": 0.45,
+                  "optimal_spend": 450000,
+                  "stability": 0.82
+                },
+                {
+                  "change_pct": 37.5,
+                  "channel": "search",
+                  "current_share": 0.4,
+                  "current_spend": 400000,
+                  "marginal_roi": 1.4,
+                  "optimal_share": 0.55,
+                  "optimal_spend": 550000,
+                  "stability": 0.9
+                }
+              ],
+              "current_total": 1000000,
+              "expected_kpi": {
+                "mean": 3400000.0,
+                "quantiles": {
+                  "0.05": 3060000.0,
+                  "0.95": 3750000.0
+                },
+                "sd": 210000.0
+              },
+              "expected_regret": 8000.0,
+              "kpi": "revenue",
+              "kpi_units": "EUR",
+              "n_draws": 200,
+              "objective": "p10",
+              "objective_label": "cautious plan (10th percentile of the KPI)",
+              "prob_positive_uplift": 0.97,
+              "spend_units": "EUR",
+              "total_budget": 1000000,
+              "uplift": {
+                "mean": 120000.0,
+                "quantiles": {
+                  "0.05": 25000.0,
+                  "0.95": 220000.0
+                },
+                "sd": 60000.0
+              }
+            },
+            "run": {
+              "attempt": 1,
+              "cost": {
+                "estimated": true
+              },
+              "created_at": "2026-10-15T09:30:00Z",
+              "executor": "local-process",
+              "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+              "kind": "optimize",
+              "project_id": "default",
+              "queued_at": "2026-10-15T09:30:00Z",
+              "resource_class": "M",
+              "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+              "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+              "spec_revision": 2,
+              "started_at": "2026-10-15T09:30:05Z",
+              "state": "succeeded",
+              "tenant_id": "default",
+              "timeout": "45m",
+              "updated_at": "2026-10-15T09:31:00Z"
+            }
+          }
+        ],
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          },
+          "request": {
+            "$ref": "#/components/schemas/OptimizeRequest"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OptimizeResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "run": {
+            "$ref": "#/components/schemas/Run"
+          }
+        },
+        "required": [
+          "run",
+          "done",
+          "request"
+        ],
+        "title": "Optimization",
+        "type": "object"
+      },
+      "OptimizeRequest": {
+        "additionalProperties": false,
+        "description": "``POST …:optimize``: how should the budget be split?\n\n``objective``: ``mean`` (expected KPI), ``p<q>`` (the q-th percentile across posterior\ndraws, a cautious plan) or ``cvar<a>`` (mean of the worst a% of draws). ``mode``:\n``fixed`` spends the budget; ``free`` funds each channel to break-even (marginal value\n= 1 per unit of money, with ``value_per_kpi`` converting KPI to money) and makes the\ntotal an output. ``horizon`` is the number of future periods the plan covers (default:\nthe fit window's length, as the response grid).",
+        "examples": [
+          {
+            "channels": {
+              "search": {
+                "min_spend": 50000
+              },
+              "tv": {
+                "max_multiplier": 1.5,
+                "min_multiplier": 0.5
+              }
+            },
+            "frontier": {
+              "n_points": 10
+            },
+            "groups": [
+              {
+                "channels": [
+                  "search",
+                  "social"
+                ],
+                "min_share": 0.4,
+                "name": "digital"
+              }
+            ],
+            "objective": "p10",
+            "total_budget": 1000000
+          },
+          {
+            "budget_change_pct": -10,
+            "objective": "mean"
+          },
+          {
+            "mode": "free",
+            "value_per_kpi": 1.0
+          }
+        ],
+        "properties": {
+          "budget_change_pct": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": -100.0,
+                "maximum": 1000.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Change Pct"
+          },
+          "by_geo": {
+            "default": false,
+            "description": "Allocate per (geo, channel) jointly",
+            "title": "By Geo",
+            "type": "boolean"
+          },
+          "channels": {
+            "maxProperties": 64,
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "$ref": "#/components/schemas/ChannelBounds"
+              }
+            },
+            "title": "Channels",
+            "type": "object"
+          },
+          "default_bounds": {
+            "$ref": "#/components/schemas/ChannelBounds",
+            "description": "Bounds of channels not listed in channels"
+          },
+          "frontier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FrontierRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/SpendGroup"
+            },
+            "maxItems": 16,
+            "title": "Groups",
+            "type": "array"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "maximum": 520.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          },
+          "max_draws": {
+            "default": 200,
+            "maximum": 2000.0,
+            "minimum": 20.0,
+            "title": "Max Draws",
+            "type": "integer"
+          },
+          "min_channel_spend": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Keep every channel funded at least this much",
+            "title": "Min Channel Spend"
+          },
+          "mode": {
+            "default": "fixed",
+            "enum": [
+              "fixed",
+              "free"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "n_steps": {
+            "default": 400,
+            "maximum": 5000.0,
+            "minimum": 50.0,
+            "title": "N Steps",
+            "type": "integer"
+          },
+          "objective": {
+            "default": "mean",
+            "examples": [
+              "mean",
+              "p10",
+              "cvar5"
+            ],
+            "title": "Objective",
+            "type": "string"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 4294967296.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "total_budget": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Budget"
+          },
+          "value_per_kpi": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Per Kpi"
+          }
+        },
+        "title": "OptimizeRequest",
+        "type": "object"
+      },
+      "OptimizeResult": {
+        "description": "``optimize.json``: the recommended plan and its uncertainty.",
+        "examples": [
+          {
+            "allocation": [
+              {
+                "change_pct": -25,
+                "channel": "tv",
+                "current_share": 0.6,
+                "current_spend": 600000,
+                "marginal_roi": 1.4,
+                "optimal_share": 0.45,
+                "optimal_spend": 450000,
+                "stability": 0.82
+              },
+              {
+                "change_pct": 37.5,
+                "channel": "search",
+                "current_share": 0.4,
+                "current_spend": 400000,
+                "marginal_roi": 1.4,
+                "optimal_share": 0.55,
+                "optimal_spend": 550000,
+                "stability": 0.9
+              }
+            ],
+            "current_total": 1000000,
+            "expected_kpi": {
+              "mean": 3400000.0,
+              "quantiles": {
+                "0.05": 3060000.0,
+                "0.95": 3750000.0
+              },
+              "sd": 210000.0
+            },
+            "expected_regret": 8000.0,
+            "kpi": "revenue",
+            "kpi_units": "EUR",
+            "n_draws": 200,
+            "objective": "p10",
+            "objective_label": "cautious plan (10th percentile of the KPI)",
+            "prob_positive_uplift": 0.97,
+            "spend_units": "EUR",
+            "total_budget": 1000000,
+            "uplift": {
+              "mean": 120000.0,
+              "quantiles": {
+                "0.05": 25000.0,
+                "0.95": 220000.0
+              },
+              "sd": 60000.0
+            }
+          }
+        ],
+        "properties": {
+          "allocation": {
+            "items": {
+              "$ref": "#/components/schemas/ChannelAllocation"
+            },
+            "maxItems": 16384,
+            "minItems": 1,
+            "title": "Allocation",
+            "type": "array"
+          },
+          "computed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computed At"
+          },
+          "current_kpi": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DistributionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "current_total": {
+            "minimum": 0.0,
+            "title": "Current Total",
+            "type": "number"
+          },
+          "expected_kpi": {
+            "$ref": "#/components/schemas/DistributionSummary"
+          },
+          "expected_regret": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Regret"
+          },
+          "format": {
+            "const": "mapi.optimize/v1",
+            "default": "mapi.optimize/v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "frontier": {
+            "items": {
+              "$ref": "#/components/schemas/FrontierPoint"
+            },
+            "maxItems": 50,
+            "title": "Frontier",
+            "type": "array"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          },
+          "kpi": {
+            "maxLength": 128,
+            "title": "Kpi",
+            "type": "string"
+          },
+          "kpi_units": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kpi Units"
+          },
+          "mode": {
+            "default": "fixed",
+            "enum": [
+              "fixed",
+              "free"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "n_draws": {
+            "minimum": 1.0,
+            "title": "N Draws",
+            "type": "integer"
+          },
+          "notes_plain": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Notes Plain",
+            "type": "array"
+          },
+          "objective": {
+            "title": "Objective",
+            "type": "string"
+          },
+          "objective_label": {
+            "maxLength": 200,
+            "title": "Objective Label",
+            "type": "string"
+          },
+          "prob_positive_uplift": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prob Positive Uplift"
+          },
+          "shadow_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "KPI value of the next unit of money",
+            "title": "Shadow Price"
+          },
+          "spend_units": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spend Units"
+          },
+          "total_budget": {
+            "minimum": 0.0,
+            "title": "Total Budget",
+            "type": "number"
+          },
+          "uplift": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DistributionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Plan minus current plan"
+          }
+        },
+        "required": [
+          "objective",
+          "objective_label",
+          "total_budget",
+          "current_total",
+          "kpi",
+          "allocation",
+          "expected_kpi",
+          "n_draws"
+        ],
+        "title": "OptimizeResult",
         "type": "object"
       },
       "OutputDecl": {
@@ -10638,6 +11486,17 @@
         "additionalProperties": false,
         "description": "A plot recipe the runner can produce.",
         "properties": {
+          "about": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/About"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3.5: optional About card (plots are chosen from a model, not a catalog)"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -11613,21 +12472,23 @@
                 }
               },
               "priors": {
-                "beta_channel": {
-                  "dims": [
-                    "channel"
-                  ],
-                  "distribution": "LogNormal",
-                  "mu": [
-                    -1.2,
-                    -0.9,
-                    -2.1
-                  ],
-                  "sigma": [
-                    0.38,
-                    0.33,
-                    0.5
-                  ]
+                "intercept": {
+                  "mu": 0.2,
+                  "sigma": 0.3
+                },
+                "roi": {
+                  "search": {
+                    "mu": 1.2,
+                    "sigma": 0.33
+                  },
+                  "social": {
+                    "mu": 0.1,
+                    "sigma": 0.5
+                  },
+                  "tv": {
+                    "mu": 0.9,
+                    "sigma": 0.38
+                  }
                 }
               },
               "seed": 7
@@ -11835,7 +12696,7 @@
         "type": "object"
       },
       "PriorTranslationResult": {
-        "description": "``priors.json`` of a ``translate_priors`` run.\n\n``priors`` are model-space priors in the plugin's ``settings.priors`` form (pymc-marketing\n``Prior`` dicts; per-channel parameters are lists in ``channels`` order), to be written\nat :data:`PRIORS_POINTER`. ``coverage`` is the prior mass inside each stated range\n(close to the stated credibility when the translation is faithful).",
+        "description": "``priors.json`` of a ``translate_priors`` run.\n\n``priors`` are model-space priors in the plugin's ``settings.priors`` form (engine-neutral\n``{distribution, <params>, dims}`` dicts; per-channel parameters are lists in ``channels``\norder), to be written\nat :data:`PRIORS_POINTER`. ``coverage`` is the prior mass inside each stated range\n(close to the stated credibility when the translation is faithful).",
         "examples": [
           {
             "channels": [
@@ -11905,21 +12766,23 @@
               }
             },
             "priors": {
-              "beta_channel": {
-                "dims": [
-                  "channel"
-                ],
-                "distribution": "LogNormal",
-                "mu": [
-                  -1.2,
-                  -0.9,
-                  -2.1
-                ],
-                "sigma": [
-                  0.38,
-                  0.33,
-                  0.5
-                ]
+              "intercept": {
+                "mu": 0.2,
+                "sigma": 0.3
+              },
+              "roi": {
+                "search": {
+                  "mu": 1.2,
+                  "sigma": 0.33
+                },
+                "social": {
+                  "mu": 0.1,
+                  "sigma": 0.5
+                },
+                "tv": {
+                  "mu": 0.9,
+                  "sigma": 0.38
+                }
               }
             },
             "seed": 7
@@ -13165,7 +14028,10 @@
           "webhook",
           "embed",
           "tenant_deletion",
-          "tenant_export"
+          "tenant_export",
+          "workflow",
+          "policy",
+          "tenant_policy"
         ],
         "title": "ResourceKind",
         "type": "string"
@@ -13965,7 +14831,10 @@
           "backtest",
           "sbc",
           "campaign",
-          "translate_priors"
+          "translate_priors",
+          "workflow",
+          "workflow_node",
+          "explore"
         ],
         "title": "RunKind",
         "type": "string"
@@ -15689,7 +16558,6 @@
           "curl",
           "r",
           "apps_script",
-          "atlas",
           "notebook"
         ],
         "title": "SnippetLanguage",
@@ -15734,7 +16602,7 @@
         "examples": [
           {
             "message": "first draft",
-            "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+            "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
           }
         ],
         "properties": {
@@ -15919,7 +16787,7 @@
             "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
             "tenant_id": "default",
             "valid": true,
-            "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+            "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
           }
         ],
         "properties": {
@@ -16041,7 +16909,7 @@
           {
             "message": "tune",
             "parent_revision": 1,
-            "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+            "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
           }
         ],
         "properties": {
@@ -16074,6 +16942,84 @@
           "parent_revision"
         ],
         "title": "SpecRevisionCreate",
+        "type": "object"
+      },
+      "SpendGroup": {
+        "additionalProperties": false,
+        "description": "A portfolio constraint over several channels (shares of the total and/or money).",
+        "properties": {
+          "channels": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "title": "Channels",
+            "type": "array"
+          },
+          "max_share": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Share"
+          },
+          "max_spend": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Spend"
+          },
+          "min_share": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Share"
+          },
+          "min_spend": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Spend"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "channels"
+        ],
+        "title": "SpendGroup",
         "type": "object"
       },
       "StageSchema": {
@@ -16166,6 +17112,17 @@
         "additionalProperties": false,
         "description": "Everything static validation needs to know about one step version.\n\n``effect`` and ``context`` are JSON templates over the step's settings (see\n:mod:`mapi_spec.template`). ``var_params``/``dim_params`` name settings fields whose\nvalues are variable/dim names that must exist at the step's input stage, and\n``side_table_params`` name fields that refer to ``data.side_tables`` entries.",
         "properties": {
+          "about": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/About"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3.5: the plain-language About card (the catalog rule requires one)"
+          },
           "context": {
             "anyOf": [
               {
@@ -16987,7 +17944,7 @@
           {
             "budget_period": "month",
             "expires_in_days": 30,
-            "name": "atlas-optimiser",
+            "name": "budget-planner",
             "rate_limit_per_minute": 120,
             "scopes": [
               "score:geo-mmm-prod",
@@ -17075,7 +18032,7 @@
               "expires_at": "2026-11-14T09:30:00Z",
               "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
               "last_used_at": "2026-10-16T08:00:00Z",
-              "name": "atlas-optimiser",
+              "name": "budget-planner",
               "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
               "prefix": "7k2m9q4x",
               "project_id": "growth",
@@ -17196,6 +18153,17 @@
           "self-hosted-trusted"
         ],
         "title": "TrustTier",
+        "type": "string"
+      },
+      "TypicalRuntime": {
+        "description": "Rough wall-clock time on typical data (``S`` resource class).",
+        "enum": [
+          "instant",
+          "seconds",
+          "minutes",
+          "long"
+        ],
+        "title": "TypicalRuntime",
         "type": "string"
       },
       "UploadCreate": {
@@ -17548,7 +18516,7 @@
         "description": "Synchronous static validation of a document (exactly one of ``yaml``/``document``).\n\n``dataset`` overrides the dataset version whose stored schema is the raw input schema\n(default: the spec's own ``data.dataset`` reference, resolved now).",
         "examples": [
           {
-            "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.hierarchical_geo@^1.3\n"
+            "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\ndata:\n  dataset: dataset://default/eu_media_daily@latest\nmodel:\n  use: mmm.bayesian@^1.3\n"
           }
         ],
         "properties": {
@@ -18551,7 +19519,17 @@
           "model.version.ready",
           "endpoint.promoted",
           "score.completed",
-          "tenant.deletion.completed"
+          "tenant.deletion.completed",
+          "workflow.run.succeeded",
+          "workflow.run.failed",
+          "model.validation.checks_passed",
+          "model.validation.checks_failed",
+          "model.validation.awaiting_approval",
+          "model.validated",
+          "model.rejected",
+          "model.deprecated",
+          "dataset.version.created",
+          "optimize.completed"
         ],
         "title": "WebhookEventType",
         "type": "string"
@@ -18962,7 +19940,7 @@
     }
   },
   "info": {
-    "description": "Contract version 0.1. Errors are RFC 7807 problem documents (`application/problem+json`) with stable `code`s. Programs authenticate with `Authorization: Bearer mapi_…` API tokens, browsers with the BFF session (`/auth/login`); project-scoped routes act in the project named by the `X-Mapi-Project: <tenant>/<project>` header (or the token's project). The single-tenant profile accepts credential-less requests on loopback as the local administrator.",
+    "description": "Contract version 0.2. Errors are RFC 7807 problem documents (`application/problem+json`) with stable `code`s. Programs authenticate with `Authorization: Bearer mapi_…` API tokens, browsers with the BFF session (`/auth/login`); project-scoped routes act in the project named by the `X-Mapi-Project: <tenant>/<project>` header (or the token's project). The single-tenant profile accepts credential-less requests on loopback as the local administrator.",
     "summary": "Typed xarray modelling runtime: control plane API (v1)",
     "title": "modeling-api",
     "version": "0.4.0"
@@ -23149,7 +24127,7 @@
             "description": "Problem: RATE_LIMITED"
           }
         },
-        "summary": "Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint",
+        "summary": "Python, TypeScript, curl, R, Apps Script and notebook code for the endpoint",
         "tags": [
           "endpoints"
         ]
@@ -23596,118 +24574,6 @@
           }
         },
         "summary": "Answers -> ingest mapping + ModelSpec draft (+ YAML); stores nothing",
-        "tags": [
-          "guided"
-        ]
-      }
-    },
-    "/v1/guided/import/bayesinsight": {
-      "post": {
-        "description": "Import a BayesInsight project (Q8). With the default ``target:\nmmm.hierarchical_geo`` the draft maps media transforms, priors, controls, seasonality\nand pooling to the built-in geo MMM and lists every feature without an equivalent as\nan ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` drafts the dedicated\nplugin, which runs ``model_def`` as BayesInsight defines it (what it cannot run falls\nback to BayesInsight's defaults with a warning). Either draft is validated statically\nagainst the catalog. ``422 IMPORT_UNSUPPORTED`` when the model cannot run at all (no\nsingle KPI, no media, split series).",
-        "operationId": "import_bayesinsight",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BayesInsightImport"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GuidedDraft"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "UNAUTHENTICATED": {
-                    "summary": "Authentication required",
-                    "value": {
-                      "code": "UNAUTHENTICATED",
-                      "detail": "Authentication required",
-                      "errors": [],
-                      "status": 401,
-                      "title": "Authentication required",
-                      "type": "urn:mapi:error:UNAUTHENTICATED"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Problem: UNAUTHENTICATED"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "FORBIDDEN": {
-                    "summary": "Not allowed",
-                    "value": {
-                      "code": "FORBIDDEN",
-                      "detail": "Not allowed",
-                      "errors": [],
-                      "status": 403,
-                      "title": "Not allowed",
-                      "type": "urn:mapi:error:FORBIDDEN"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Problem: FORBIDDEN"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "IMPORT_UNSUPPORTED": {
-                    "summary": "The imported model uses an unsupported feature",
-                    "value": {
-                      "code": "IMPORT_UNSUPPORTED",
-                      "detail": "The imported model uses an unsupported feature",
-                      "errors": [],
-                      "status": 422,
-                      "title": "The imported model uses an unsupported feature",
-                      "type": "urn:mapi:error:IMPORT_UNSUPPORTED"
-                    }
-                  },
-                  "SCHEMA_INVALID": {
-                    "summary": "The document does not match its schema",
-                    "value": {
-                      "code": "SCHEMA_INVALID",
-                      "detail": "The document does not match its schema",
-                      "errors": [],
-                      "status": 422,
-                      "title": "The document does not match its schema",
-                      "type": "urn:mapi:error:SCHEMA_INVALID"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Problem: SCHEMA_INVALID, IMPORT_UNSUPPORTED"
-          }
-        },
-        "summary": "BayesInsight model_def.json + metadata.json -> a draft for a built-in MMM",
         "tags": [
           "guided"
         ]
@@ -24855,6 +25721,175 @@
         ]
       }
     },
+    "/v1/models/{model_id}/versions/{version}:optimize": {
+      "post": {
+        "description": "How should the budget be split across channels (and geos)? The plan comes from the\nmodel's posterior: the allocation with its expected KPI and interval, the uplift over the\ncurrent plan and the chance it is positive, the expected regret of committing to one\nplan, the marginal return of every channel and, on request, the efficient frontier.\nStatic problems (a model that cannot optimise, a version that is not ready) are refused\nbefore any run starts; bounds the data cannot meet fail the run with\n``OPTIMIZE_INFEASIBLE``.",
+        "operationId": "optimize_model_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Model Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Version",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Prefer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "example0": {
+                  "value": {
+                    "channels": {
+                      "search": {
+                        "min_spend": 50000
+                      },
+                      "tv": {
+                        "max_multiplier": 1.5,
+                        "min_multiplier": 0.5
+                      }
+                    },
+                    "frontier": {
+                      "n_points": 10
+                    },
+                    "groups": [
+                      {
+                        "channels": [
+                          "search",
+                          "social"
+                        ],
+                        "min_share": 0.4,
+                        "name": "digital"
+                      }
+                    ],
+                    "objective": "p10",
+                    "total_budget": 1000000
+                  }
+                },
+                "example1": {
+                  "value": {
+                    "budget_change_pct": -10,
+                    "objective": "mean"
+                  }
+                },
+                "example2": {
+                  "value": {
+                    "mode": "free",
+                    "value_per_kpi": 1.0
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/OptimizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Optimization"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Optimization"
+                }
+              }
+            },
+            "description": "Still running (poll the optimization)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem document (application/problem+json) - `NOT_FOUND`: Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `OPTIMIZE_INFEASIBLE`: The budget constraints cannot all be met; `CAPABILITY_UNSUPPORTED`: The model lacks this capability"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded"
+          }
+        },
+        "summary": "Optimise a budget across channels (Prefer: wait=N -> 200 if done, else 202)",
+        "tags": [
+          "models"
+        ]
+      }
+    },
     "/v1/models/{model_id}/versions/{version}:score": {
       "post": {
         "description": "Score with replayed preprocessing. ``Prefer: wait=N`` (≤ 60) waits up to N s:\n200 with output links if the run finished, else 202 with the run.",
@@ -24957,6 +25992,60 @@
           }
         },
         "summary": "Score Model",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/v1/optimizations/{run_id}": {
+      "get": {
+        "description": "``done`` once the run is terminal; ``result`` only when it succeeded (a failed run's\nproblem, e.g. ``OPTIMIZE_INFEASIBLE``, is on ``run.problem``).",
+        "operationId": "get_optimization",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Optimization"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem document (application/problem+json) - `NOT_FOUND`: Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "An optimize run and, once done, its plan",
         "tags": [
           "models"
         ]

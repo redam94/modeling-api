@@ -104,12 +104,6 @@
     "requires": null
    },
    {
-    "language": "atlas",
-    "title": "Atlas (RemoteModel)",
-    "code": "import os\n\nfrom mapi_client import Client\nfrom mapi_client.atlas import RemoteModel\n\napi = Client(\n    'http://127.0.0.1:8000',\n    token=os.environ['MAPI_TOKEN'],\n    project='acme/growth',\n)\n# An Atlas model backed by the endpoint: Atlas's optimiser scores budgets against it.\nmodel = RemoteModel(api, endpoint='geo-mmm-prod')\n",
-    "requires": "pip install 'mapi-client[atlas]'"
-   },
-   {
     "language": "notebook",
     "title": "Notebook (mapi-client, xarray)",
     "code": "# A notebook cell (Jupyter or marimo): the endpoint as an object, results as xarray.\nimport os\n\nfrom mapi_client import Client\n\napi = Client(\n    'http://127.0.0.1:8000',\n    token=os.environ['MAPI_TOKEN'],\n    project='acme/growth',\n)\nendpoint = api.endpoint('geo-mmm-prod')\nschema = endpoint.schema()  # the input contract and an example call\n\n# The example call. For your own inputs, pass an xarray.Dataset shaped like\n# schema.snapshot.input_schema as `data`.\ndata = None\ncall = {\n    'mode': 'forecast',\n    'horizon': {\n        'dim': 'date',\n        'periods': 8,\n    },\n    'scenario': None,\n    'output': {\n        'summary': ['mean', 'hdi_90'],\n    },\n    'future_covariates': 'carry_last',\n}\nds = endpoint.score(data, wait=60, **call)\nds  # the summary: one variable per output, with a `stat` dim (mean, hdi_90_lower, ...)\n",
