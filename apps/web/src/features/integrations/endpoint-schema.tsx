@@ -319,7 +319,7 @@ export function EndpointSnippetsPanel({ endpoint }: { endpoint: Endpoint }) {
   const schema = useEndpointSchema(endpoint.alias, endpoint.revision);
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex-wrap">
         <div>
           <CardTitle>Snippets</CardTitle>
           <CardDescription>Ready-to-run code with the example call. Snippets never contain a secret: they read the token from MAPI_TOKEN (a script property in Apps Script).</CardDescription>

@@ -413,11 +413,11 @@ function SavedPlotCard({ plot, plotlyRefusal, onPlotlyRefused }: { plot: SavedPl
   const [created, setCreated] = useState<PlotEmbedCreated | null>(null);
   const [deleting, setDeleting] = useState(false);
   return (
-    <Card data-testid="saved-plot">
-      <CardHeader>
+    <Card data-testid="saved-plot" className="min-w-0">
+      <CardHeader className="flex-wrap">
         <div className="min-w-0">
           <CardTitle>{plot.title}</CardTitle>
-          <CardDescription>
+          <CardDescription className="break-all">
             {plot.source ? (
               <>
                 <Mono>{plot.source.plot_id}</Mono> of <Mono>{plot.source.model_id}</Mono> v{plot.source.version}

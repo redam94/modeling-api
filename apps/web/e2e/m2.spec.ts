@@ -223,5 +223,7 @@ test("operators manage tenants, kill switches, executors and the audit log", asy
   await expect(log.getByText("token.create")).toHaveCount(0);
 
   await page.getByRole("tab", { name: "Promotions" }).click();
-  await expect(page.getByText("No promotions waiting")).toBeVisible();
+  await expect(page.getByText("No promotion queue")).toBeVisible();
+  await page.getByRole("tab", { name: "Sign-ups" }).click();
+  await expect(page.getByRole("table", { name: "Sign-ups" }).getByText("domain_burst")).toBeVisible();
 });
