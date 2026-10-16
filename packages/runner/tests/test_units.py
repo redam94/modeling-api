@@ -261,9 +261,14 @@ def test_parse_job_rejects_bad_specs(kind: RunKind, spec: dict[str, object]) -> 
     assert exc.value.code is ErrorCode.SCHEMA_INVALID
 
 
-def test_optimize_is_not_implemented_yet() -> None:
-    with pytest.raises(NotImplementedError):
+def test_optimize_jobs_parse_and_parents_never_run() -> None:
+    """M3.5: ``optimize`` runs carry an OptimizeJob; workflow parents have no job."""
+    with pytest.raises(MapiError):
         parse_job(RunKind.OPTIMIZE, {})
+    job = parse_job(RunKind.OPTIMIZE, {"request": {"total_budget": 1}, "model": "model://p/m@v1"})
+    assert job.request.total_budget == 1  # type: ignore[union-attr]
+    with pytest.raises(NotImplementedError):
+        parse_job(RunKind.WORKFLOW, {})
 
 
 # ======================================================================== outputs

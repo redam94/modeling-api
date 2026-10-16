@@ -67,7 +67,7 @@ async def test_templates_are_listed_and_paged(client: httpx.AsyncClient) -> None
     ).json()
     assert [t["id"] for t in rest["items"]] == ["weekly_forecast"] and rest["next_cursor"] is None
     one = GuidedTemplate.model_validate((await client.get("/v1/guided/templates/geo_mmm")).json())
-    assert one.plugin == "mmm.hierarchical_geo@^1" and one.ui_levels["/pipeline"] == "hidden"
+    assert one.plugin == "mmm.bayesian@^1" and one.ui_levels["/pipeline"] == "hidden"
     choice = (await client.get("/v1/guided/templates/customer_choice")).json()
     assert choice["plugin_available"] is True
     _problem(await client.get("/v1/guided/templates/nope"), 404, "NOT_FOUND")
@@ -203,6 +203,12 @@ def _geo_answers() -> dict[str, Any]:
     }  # fmt: skip
 
 
+_NEEDS_MMM_FRAMEWORK = pytest.mark.xfail(
+    reason="geo_mmm targets mmm.bayesian (v0.5), which the mmm-framework plugin provides"
+)
+
+
+@_NEEDS_MMM_FRAMEWORK
 async def test_a_geo_mmm_draft_is_validated_against_the_catalog(
     client: httpx.AsyncClient,
 ) -> None:
@@ -211,7 +217,7 @@ async def test_a_geo_mmm_draft_is_validated_against_the_catalog(
     draft = GuidedDraft.model_validate(r.json())
     assert draft.dataset_ref == "dataset://default/eu_media@latest"
     assert draft.mapping.wide["spend"].columns == {"tv": "TV_Spend", "search": "Search_Spend"}
-    assert draft.spec["model"]["use"] == "mmm.hierarchical_geo@^1"  # type: ignore[index]
+    assert draft.spec["model"]["use"] == "mmm.bayesian@^1"  # type: ignore[index]
     assert "kind: ModelSpec" in draft.yaml
     assert not [i for i in draft.issues if i.severity.value == "error"], draft.issues
     # the stored spec round-trips: save the YAML as the user would
@@ -219,6 +225,7 @@ async def test_a_geo_mmm_draft_is_validated_against_the_catalog(
     assert saved.status_code == 201, saved.text
 
 
+@_NEEDS_MMM_FRAMEWORK
 async def test_draft_validation_reports_what_the_model_cannot_use(
     client: httpx.AsyncClient,
 ) -> None:

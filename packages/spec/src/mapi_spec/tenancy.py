@@ -567,7 +567,9 @@ class Membership(ResponseModel):
     principal_kind: Literal[PrincipalKind.USER, PrincipalKind.SERVICE_ACCOUNT] = PrincipalKind.USER
     role: ProjectRole
     capabilities: list[Capability] = Field(
-        default_factory=list, description="M3.5: e.g. reviewer (approves model validations)"
+        default_factory=list,
+        description="M3.5: e.g. reviewer (approves model validations)",
+        exclude_if=lambda v: not v,
     )
     email: str | None = Field(None, max_length=320)
     display_name: str | None = Field(None, max_length=200)

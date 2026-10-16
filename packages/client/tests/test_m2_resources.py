@@ -167,7 +167,7 @@ def test_tokens(scoped: Client, api: respx.MockRouter, example: Ex) -> None:
     assert tokens[0].display.startswith("mapi_")
     assert listing.calls.last.request.url.params["all"] == "true"
     api.get(f"{V1}/tokens/tok_1").respond(200, json=example(ApiToken))
-    assert scoped.tokens.get("tok_1").name == "atlas-optimiser"
+    assert scoped.tokens.get("tok_1").name == "budget-planner"
     revoke = api.delete(f"{V1}/tokens/tok_1").respond(204)
     scoped.tokens.revoke("tok_1")
     assert revoke.calls.last.request.headers[HEADER] == "acme/growth"

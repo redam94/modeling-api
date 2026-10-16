@@ -17,6 +17,7 @@ from mapi_spec.api import (
     IDEMPOTENCY_KEY_HEADER,
     PREFER_HEADER,
     ROUTE_ACCESS,
+    V04_ENDPOINTS,
     DatasetCreate,
     DatasetVersionCreate,
     DetectRolesRequest,
@@ -266,8 +267,10 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "admin_retry_tenant_deletion": lambda: m3.admin_retry_tenant_deletion("acme"),
 }
 
-CLIENT_ENDPOINTS = ENDPOINTS
-"""The table the client covers: every row of the v0.4 API."""
+CLIENT_ENDPOINTS = V04_ENDPOINTS
+"""The table the client covers: every row of the v0.4 API. The M3.5 rows
+(``mapi_spec.api.M35_ENDPOINTS``) arrive with the v0.5 client
+(``test_the_client_covers_the_m35_table`` turns red when they do)."""
 PROGRAM_ENDPOINTS = tuple(d for d in CLIENT_ENDPOINTS if d.operation_id not in NOT_FOR_PROGRAMS)
 
 
@@ -276,6 +279,11 @@ def _pattern(decl: EndpointDecl) -> re.Pattern[str]:
     return re.compile(
         "^" + "".join("[^/]+" if p.startswith("{") else re.escape(p) for p in parts) + "$"
     )
+
+
+@pytest.mark.xfail(strict=True, reason="the v0.5 client adds the M3.5 calls")
+def test_the_client_covers_the_m35_table() -> None:
+    assert {d.operation_id for d in ENDPOINTS} - NOT_FOR_PROGRAMS <= set(BUILDERS)
 
 
 def test_every_endpoint_has_a_builder() -> None:
@@ -412,8 +420,10 @@ def test_m3_waits_are_capped() -> None:
 
 
 def test_m3_snippet_languages_are_repeated_and_checked() -> None:
-    call = m3.list_endpoint_snippets("a", ["python", "atlas"])
-    assert call.params == {"language": ["python", "atlas"]}
+    call = m3.list_endpoint_snippets("a", ["python", "notebook"])
+    assert call.params == {"language": ["python", "notebook"]}
+    with pytest.raises(ValueError):  # the atlas snippet language was removed in v0.5
+        m3.list_endpoint_snippets("a", ["atlas"])
     assert m3.list_endpoint_snippets("a").params == {}
     with pytest.raises(ValueError):
         m3.list_endpoint_snippets("a", ["cobol"])

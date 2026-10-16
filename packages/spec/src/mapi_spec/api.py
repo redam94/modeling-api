@@ -1865,7 +1865,9 @@ class MembershipCreate(_Request):
     email: str | None = Field(None, max_length=320, pattern=_EMAIL_RE)
     role: ProjectRole
     capabilities: list[Capability] = Field(
-        default_factory=list, description="M3.5: e.g. reviewer (approves model validations)"
+        default_factory=list,
+        description="M3.5: e.g. reviewer (approves model validations)",
+        exclude_if=lambda v: not v,
     )
 
     model_config = _examples(
