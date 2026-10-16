@@ -494,3 +494,86 @@ async def test_deliveries_run_on_procrastinate(
             await queue.close()
     (d,) = await _deliveries(dev_ctx)
     assert d.status == "succeeded" and len(rec.requests) == 1
+
+
+async def test_webhooks_manage_tokens_and_role_checks(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """``webhooks:manage`` tokens of an admin manage webhooks; other scopes cannot even list
+    them (deliveries reveal what a project is doing), and neither can non-admins."""
+    from mapi_server_testkit.identity import (
+        grant_role,
+        make_token,
+        make_user,
+        session_caller,
+        token_caller,
+    )
+
+    ctx.webhook_resolver = StaticResolver({"hooks.example.com": [PUBLIC]})
+    admin = await make_user(ctx, "owner@default.test")
+    await grant_role(ctx, admin, "default", "default", "admin")
+    tok = token_caller(
+        client, await make_token(ctx, admin, "default", "default", ["webhooks:manage"])
+    )
+    body = {"url": "https://hooks.example.com/x", "events": ["run.failed"]}
+    r = await tok.post("/v1/webhooks", json=body)
+    assert r.status_code == 201, r.text
+    assert (await tok.get("/v1/webhooks")).status_code == 200
+    reader = token_caller(
+        client, await make_token(ctx, admin, "default", "default", ["models:read", "runs:create"])
+    )
+    assert (await reader.get("/v1/webhooks")).status_code == 403
+    assert (await reader.post("/v1/webhooks", json=body)).status_code == 403
+    editor = await make_user(ctx, "editor@default.test")
+    await grant_role(ctx, editor, "default", "default", "editor")
+    ed = await session_caller(ctx, client, editor)
+    assert (await ed.get("/v1/webhooks")).status_code == 403
+
+
+async def test_tenant_events_and_oversized_envelopes(ctx: ServerContext) -> None:
+    from mapi_server.services.webhooks.crypto import SecretBox
+    from mapi_server.services.webhooks.manage import new_webhook
+    from mapi_server.services.webhooks.outbox import MAX_ENVELOPE_BYTES, emit_tenant_event
+    from mapi_server_testkit.identity import make_tenant
+
+    await make_tenant(ctx, "gamma", projects=("a", "b"))
+    box = SecretBox(ctx.secrets.webhook_key)
+    events = [WebhookEventType.TENANT_DELETION_COMPLETED, WebhookEventType.RUN_FAILED]
+    async with ctx.db.session() as s:
+        for project in ("a", "b"):
+            row, _ = new_webhook(
+                box,
+                tenant_id="gamma",
+                project_id=project,
+                url="https://hooks.example.com/x",
+                events=events,
+                description=None,
+                active=True,
+                created_by=None,
+            )
+            s.add(row)
+        await s.flush()
+        event_id = await emit_tenant_event(
+            s,
+            tenant_id="gamma",
+            event_type=WebhookEventType.TENANT_DELETION_COMPLETED,
+            data={"deletion_id": "del_1", "completed_at": "2026-10-15T09:30:00Z"},
+        )
+        big = await emit_event(
+            s,
+            tenant_id="gamma",
+            project_id="a",
+            event_type=WebhookEventType.RUN_FAILED,
+            data={"run_id": "run_1", "note": "x" * (MAX_ENVELOPE_BYTES + 10)},
+        )
+    async with ctx.db.session() as s:
+        ev = await s.get(m.WebhookEvent, event_id)
+        assert ev is not None and ev.project_id is None and ev.envelope["project"] is None
+        n = (
+            await s.execute(select(func.count()).where(m.WebhookDelivery.event_id == event_id))
+        ).scalar_one()
+        assert n == 2  # one per project's webhook
+        trimmed = await s.get(m.WebhookEvent, big)
+        assert trimmed is not None
+        assert trimmed.envelope["data"] == {"run_id": "run_1", "truncated": True}
+        assert len(envelope_body(trimmed.envelope)) < MAX_ENVELOPE_BYTES

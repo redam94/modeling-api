@@ -35,6 +35,36 @@ milestone releases are tagged on `main`.
     actions, problem codes and `Project.guided_locked`.
 - **docs**: Guided mode and Integrations concept pages; the v0.4 section of the HTTP API
   reference.
+- **server**: endpoints and aliases (`/v1/endpoints`, migration `0008_endpoints_webhooks`).
+  - `PUT /v1/endpoints/{alias}` promotes a model version through the promotion gate: the
+    sanity scorecard, the endpoint's evaluation policy (`evaluate_then_refit` by default, so
+    endpoints serve versions refitted on all data after their holdout evaluation) and
+    input-schema breaks. A `warn` needs a signed-in project admin's override with a reason
+    (audited `endpoint.promote_override`; no API token can override); a `fail` blocks.
+    `expected_revision` guards concurrent promotions.
+  - History, rollback (audited with its reason) and delete; `GET …/schema` with an example
+    payload, `POST …/validate`, and `GET …/snippets` rendered with the server's base URL.
+  - `POST /v1/endpoints/{alias}/score`: inline XrJSON payloads are checked against the
+    endpoint's input contract and the CoordPlan rules, stored as run inputs and decoded only
+    in the sandbox; `Prefer: wait`, `Idempotency-Key` (repeat the call to collect a result),
+    `score:<alias>` tokens, and the per-token rate limit and vCPU budget. Bodies are capped
+    (`413`) and depth-checked before parsing.
+- **server**: webhooks (`/v1/webhooks`).
+  - CRUD with the signing secret shown once and stored sealed (AES-GCM under a key derived
+    from the server secret); rotation keeps the old secret signing for 24 hours.
+  - A transactional outbox: `run.succeeded`, `run.failed`, `model.version.ready`,
+    `score.completed` and `endpoint.promoted` are written in the transaction of the change;
+    `emit_tenant_event` serves `tenant.deletion.completed`.
+  - Deliveries from the worker on a `webhooks` procrastinate queue: signed
+    (`Mapi-Signature`), retried with exponential backoff and jitter, auto-disabled after
+    `MAPI_WEBHOOK_AUTO_DISABLE_AFTER` consecutive failed events or a `410` (audited), with a
+    delivery log and replays.
+  - The SSRF guard: static URL checks, one resolution with every address checked, a pinned
+    connection with the original name as SNI and `Host`, no redirects, time and size caps;
+    `MAPI_WEBHOOK_ALLOW_HTTP` and `MAPI_WEBHOOK_DEV_ALLOWLIST` for development only.
+  - Metrics for promotions, endpoint calls, events, delivery tries, SSRF refusals and
+    disabled webhooks; every new operation documents its RFC 7807 problems in OpenAPI.
+- **docs**: the Endpoints and webhooks guide and the webhook settings.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

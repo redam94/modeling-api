@@ -96,7 +96,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | Variable | Default | Meaning |
 |---|---|---|
 | `MAPI_AUTH_REQUIRED` | on, except `single-tenant` | Require a session or API token on every non-public route. Cannot be turned off in a multi-tenant profile |
-| `MAPI_SERVER_SECRET` | from `MAPI_SERVER_SECRET_PATH` | Root secret of the API-token pepper and the audit fingerprints. Every API instance must share it; changing it invalidates every token |
+| `MAPI_SERVER_SECRET` | from `MAPI_SERVER_SECRET_PATH` | Root secret of the API-token pepper, the audit fingerprints and the key that seals webhook secrets. Every API and worker instance must share it; changing it invalidates every token and webhook secret |
 | `MAPI_SERVER_SECRET_PATH` | `server-secret` next to the bundle-signing key | File holding the root secret (`0600`, created by `mapi-server migrate`; Compose keeps it on the `keys` volume) |
 | `MAPI_COOKIE_SECURE` | on when `MAPI_API_URL` is `https` | `__Host-` prefixed, `Secure` session cookies. Off: `mapi_session`/`mapi_csrf` for plain-HTTP development |
 | `MAPI_OIDC_ISSUER` | unset | The OpenID provider (for example `https://accounts.google.com`). Unset outside the `dev` profile: browser sign-in is off, tokens still work |
@@ -199,6 +199,22 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_CLOUDRUN_EGRESS_ENFORCED` | `true` | The exec network denies all egress except the restricted Google APIs VIP |
 | `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified to apply to Jobs (the M0 DNS red-team gate). `verified` and `public` tenants (`verified` is the default tier) are placed only when both are `true` **and** passing suite evidence is recorded ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)); until then their runs are refused at submission |
 | `MAPI_CLOUDRUN_ADOPT_LOOKBACK_S` | `93600` | How far back orphan adoption lists executions |
+
+**Webhooks (v0.4)** (see [Endpoints and webhooks](../guides/endpoints-and-webhooks.md))
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_WEBHOOK_POLL_INTERVAL_S` | `2` | How often the worker's relay looks for due deliveries and hands them to the `webhooks` procrastinate queue |
+| `MAPI_WEBHOOK_MAX_ATTEMPTS` | `8` | Tries per delivery (1 to 8; retries wait 1 min, 5 min, 30 min, 2 h, 6 h, 12 h and 24 h, plus up to 10% jitter) |
+| `MAPI_WEBHOOK_AUTO_DISABLE_AFTER` | `20` | Disable a webhook after this many consecutive events could not be delivered (a `410 Gone` disables at once); audited as `webhook.disabled` |
+| `MAPI_WEBHOOK_MAX_PER_PROJECT` | `25` | Webhooks one project may have (`409` beyond) |
+| `MAPI_WEBHOOK_RETENTION_DAYS` | `30` | Days events and their delivery logs are kept |
+| `MAPI_WEBHOOK_CA_FILE` | unset | An extra PEM CA bundle trusted for receivers (a private CA); the system trust store is always used |
+| `MAPI_WEBHOOK_ALLOW_HTTP` | `false` | Development only: accept `http://` URLs for the hosts in `MAPI_WEBHOOK_DEV_ALLOWLIST`. Refused in the `multi-tenant` profile |
+| `MAPI_WEBHOOK_DEV_ALLOWLIST` | none | Development only: host names (comma-separated, optionally `host:port`) exempt from the SSRF address and port checks, such as a receiver on `localhost`. Refused in the `multi-tenant` profile |
+
+Webhook signing secrets are sealed with a key derived from `MAPI_SERVER_SECRET`: changing the
+server secret makes every webhook secret unusable (rotate them afterwards).
 
 **Pub/Sub push events** (`POST /internal/events`)
 

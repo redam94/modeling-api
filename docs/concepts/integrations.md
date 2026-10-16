@@ -4,7 +4,8 @@ A fitted model is only useful once other applications can use it: a planning too
 budgets, a spreadsheet pulls a forecast, a dashboard embeds a chart, a pipeline hears when a
 fit finishes. This page explains the integration concepts of v0.4 and the contracts in
 `mapi_spec` behind them; the endpoints are in the
-[HTTP API reference](../reference/http-api.md#guided-and-integrations).
+[HTTP API reference](../reference/http-api.md#guided-and-integrations), and
+[Endpoints and webhooks](../guides/endpoints-and-webhooks.md) walks through them with `curl`.
 
 ## Endpoints and aliases
 
