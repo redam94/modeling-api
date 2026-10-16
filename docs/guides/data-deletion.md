@@ -25,7 +25,7 @@ The orchestrator builds the archive in the background (usually within a minute).
 | Path | Content |
 |---|---|
 | `README.txt`, `manifest.json` | What is inside, with the size and SHA-256 of every file |
-| `metadata/<table>.jsonl` | Every record of the workspace, one JSON object per line: projects, members, API tokens, datasets and versions (schemas, profiles), specs and revisions (YAML), runs, models and versions, plots, endpoints, webhooks… |
+| `metadata/<table>.jsonl` | Every record of the workspace, one JSON object per line: projects, members, API tokens, datasets and versions (schemas, profiles), specs and revisions (YAML), runs, models and versions, plots, endpoints, webhooks…, up to `MAPI_EXPORT_MAX_METADATA_BYTES` (256 MiB) in total; a table cut short is listed under `skipped` with the rows written |
 | `datasets/<dataset>/v<n>/...` | The stored dataset objects, byte for byte, up to `MAPI_EXPORT_MAX_INLINE_BYTES` (256 MiB) in total; the rest is listed in `manifest.json` under `skipped` with sizes and checksums |
 | `models/<model>/v<n>/manifest.json`, `model_version.json` | The signed bundle manifest, lineage, diagnostics, scorecard and metrics of every model version |
 | `audit/audit_events.jsonl`, `usage/cost_ledger.jsonl` | The workspace's audit log and metered usage |
@@ -137,6 +137,12 @@ The purge is idempotent: a retry starts where the last pass stopped.
 * The scheduler runs in the orchestrator (`mapi-server worker`) every
   `MAPI_LIFECYCLE_INTERVAL_S`; purges and exports run as procrastinate jobs on the
   `lifecycle` queue, one at a time per deletion or export, and are re-queued if a worker dies.
+* An export build may take `MAPI_EXPORT_BUILD_TIMEOUT_S` (one hour) and then fails. An
+  export still `running` five minutes after that belongs to a process that died (an OOM
+  kill, a lost orchestrator): the scheduler builds it once more, and fails it if that build
+  dies too, so a workspace can always ask for a new export. The archive is built in memory,
+  so size the orchestrator for `MAPI_EXPORT_MAX_INLINE_BYTES` plus
+  `MAPI_EXPORT_MAX_METADATA_BYTES`.
 * Database rows are deleted through the tenant's own row-level-security session wherever the
   request-path role may delete them, so a purge cannot touch another tenant's rows.
 * Components that own credentials or links of a tenant register a

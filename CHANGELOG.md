@@ -448,6 +448,12 @@ milestone releases are tagged on `main`.
   `dataset://` reference (and probe which exist through `…/validate`) without dataset read
   access. Callers without it now send inline data or name the endpoint's own fit dataset;
   any other reference, existing or not, gets the same `403 FORBIDDEN`.
+- **server**: a GDPR export whose build process died stayed `running` forever and blocked
+  every later export of the tenant. A build now holds a lease (`MAPI_EXPORT_BUILD_TIMEOUT_S`,
+  after which it fails, plus five minutes); a `running` export past its lease is built once
+  more, then failed, and only the build holding the lease may mark it ready. Metadata rows
+  are capped at `MAPI_EXPORT_MAX_METADATA_BYTES` (tables cut short are listed under
+  `skipped`), so the in-memory archive stays bounded.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

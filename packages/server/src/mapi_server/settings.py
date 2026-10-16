@@ -730,6 +730,18 @@ class Settings(BaseSettings):
         900.0, gt=0, le=7 * 86400, description="Lifetime of an export's signed download link"
     )
     exports_per_day: int = Field(3, ge=1, description="GDPR exports a tenant may request per day")
+    export_max_metadata_bytes: int = Field(
+        256 * 1024 * 1024,
+        ge=0,
+        description="Bytes of metadata rows (runs, logs, events, audit, ...) a GDPR export "
+        "archive includes; the tables cut short are listed in its manifest",
+    )
+    export_build_timeout_s: float = Field(
+        3600.0,
+        gt=0,
+        description="How long one GDPR export build may take; a build still marked running "
+        "5 minutes after that (its process died) is built again once, then failed",
+    )
 
     def obs_settings(self) -> Any:
         """The :class:`~mapi_server.observability.ObsSettings` for this process."""

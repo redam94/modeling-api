@@ -154,3 +154,82 @@ async def test_a_failed_build_is_reported(
     assert r.json()["state"] == "failed"
     # a failed export does not hold the "one at a time" slot
     assert (await owner.post("/v1/tenants/alpha/exports", json={})).status_code == 202
+
+
+async def test_an_interrupted_build_is_retried_once_then_failed(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """A build whose process died (OOM kill, a lost orchestrator) leaves its row
+    ``running``: once its lease (MAPI_EXPORT_BUILD_TIMEOUT_S) is over the scheduler builds it
+    again, and a second interruption fails it, so the tenant is never blocked for good."""
+    ctx.settings = ctx.settings.model_copy(update={"export_build_timeout_s": 600.0})
+    alpha = await seed_tenant(ctx, "alpha")
+    owner = await session_caller(ctx, client, alpha.user)
+    exp_id = (await owner.post("/v1/tenants/alpha/exports", json={})).json()["id"]
+
+    async def died(minutes: float) -> None:
+        async with ctx.db.session() as s:
+            await s.execute(
+                update(m.TenantExport)
+                .where(m.TenantExport.id == exp_id)
+                .values(state="running", started_at=now() - timedelta(minutes=minutes))
+            )
+
+    builder = ExportBuilder(ctx)
+    await died(5)  # still within its lease: it may be building
+    assert await builder.due() == []
+    assert (await owner.post("/v1/tenants/alpha/exports", json={})).status_code == 429
+    await died(30)  # the lease is over: built again
+    assert await builder.due() == [exp_id]
+    jobs = InlineLifecycleJobs(ctx)
+    assert (await LifecycleScheduler(ctx, jobs).tick())["exports"] == 1
+    await jobs.drain()
+    r = await owner.get(f"/v1/tenants/alpha/exports/{exp_id}")
+    assert r.json()["state"] == "ready", r.text
+    # a build that is interrupted twice fails (it would likely die again)
+    exp2 = (await owner.post("/v1/tenants/alpha/exports", json={})).json()["id"]
+    exp_id = exp2
+    await died(30)
+    assert await builder.due() == [exp2]
+    await died(30)
+    assert await builder.due() == []
+    r = await owner.get(f"/v1/tenants/alpha/exports/{exp2}")
+    assert r.json()["state"] == "failed"
+    assert (await owner.post("/v1/tenants/alpha/exports", json={})).status_code == 202
+
+
+async def test_a_build_that_overruns_its_lease_fails(
+    ctx: ServerContext, client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+
+    ctx.settings = ctx.settings.model_copy(update={"export_build_timeout_s": 0.2})
+    alpha = await seed_tenant(ctx, "alpha")
+    owner = await session_caller(ctx, client, alpha.user)
+    exp_id = (await owner.post("/v1/tenants/alpha/exports", json={})).json()["id"]
+    builder = ExportBuilder(ctx)
+
+    async def hang(*args: object, **kw: object) -> object:
+        await asyncio.sleep(5)
+        raise AssertionError("not reached")
+
+    monkeypatch.setattr(builder, "_build", hang)
+    assert await builder.run(exp_id) == "failed"
+    async with ctx.db.session() as s:
+        row = await s.get(m.TenantExport, exp_id)
+        assert row is not None and row.state == "failed" and "time" in (row.error or "")
+
+
+async def test_metadata_is_capped_and_the_overflow_listed(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    ctx.settings = ctx.settings.model_copy(update={"export_max_metadata_bytes": 1})
+    alpha = await seed_tenant(ctx, "alpha")
+    owner = await session_caller(ctx, client, alpha.user)
+    r = await owner.post("/v1/tenants/alpha/exports", json={"include": ["metadata"]})
+    exp_id = r.json()["id"]
+    assert await ExportBuilder(ctx).run(exp_id) == "ready"
+    manifest = json.loads((await _archive(ctx, "alpha", exp_id)).read("manifest.json"))
+    capped = [x for x in manifest["skipped"] if x["reason"] == "export size limit"]
+    assert capped and all(x["path"].startswith("metadata/") for x in capped)
+    assert all("rows_written" in x for x in capped)

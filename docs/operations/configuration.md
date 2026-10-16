@@ -279,6 +279,8 @@ server secret makes every webhook secret unusable (rotate them afterwards).
 | `MAPI_EXPORT_RETENTION_S` | `604800` (7 days) | How long an export archive is kept |
 | `MAPI_EXPORT_LINK_TTL_S` | `900` | Lifetime of an export's signed download link (a fresh one on every `GET`) |
 | `MAPI_EXPORTS_PER_DAY` | `3` | Exports a tenant may request per day (one at a time) |
+| `MAPI_EXPORT_MAX_METADATA_BYTES` | 256 MiB | Metadata rows an export archive includes; tables cut short are listed in its manifest |
+| `MAPI_EXPORT_BUILD_TIMEOUT_S` | `3600` | How long an export build may take; a build still `running` five minutes later (its process died) is built again once, then failed |
 
 ## The runner (per run)
 
