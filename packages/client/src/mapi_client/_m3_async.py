@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any, Literal, overload
 import httpx
 from mapi_spec.api import (
     MAX_PREFER_WAIT_SECONDS,
+    ArtifactLink,
     BayesInsightImport,
     DetectRolesRequest,
     EmailVerify,
@@ -683,6 +684,10 @@ class AsyncPlotSharingMixin(_Resource):
 
     async def render_status(self, run_id: str) -> PlotRender:
         return await self._c.send(m3.get_plot_render(run_id))
+
+    def render_output(self, render: PlotRender) -> ArtifactLink:
+        """The signed link of a finished render's file (its ``name`` is the file name)."""
+        return render_link(render)
 
     @overload
     async def download_render(self, render: PlotRender, dest: None = None) -> bytes: ...
