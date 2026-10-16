@@ -17,6 +17,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "apache-arrow": "21.1.0",
     "plotly.js-strict-dist-min": "3.7.0",
     "vega": "6.4.0",
     "vega-embed": "7.2.0",

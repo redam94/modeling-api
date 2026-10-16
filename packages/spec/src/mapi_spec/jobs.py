@@ -69,7 +69,10 @@ __all__ = [
     "INPUT_SCENARIO",
     "INPUT_SCHEMA",
     "INPUT_UPLOAD",
+    "MAX_PLOT_DATA_INPUTS",
+    "PLOT_DATA_INPUT_PREFIX",
     "PRIOR_TRANSLATION_OUTPUT",
+    "RENDER_OUTPUT_PREFIX",
     "SCORE_INPUTS",
     "SCORE_OUTPUT",
     "SIDE_TABLE_PREFIX",
@@ -86,6 +89,8 @@ __all__ = [
     "ScoreJob",
     "parse_job",
     "parse_model_job_params",
+    "plot_data_input",
+    "render_output",
     "side_table_input",
 ]
 
@@ -99,11 +104,29 @@ INPUT_HISTORY: Final = "history"
 """Score input (M3): the model's fit dataset, from which a forecast extends the covariates
 its payload lacks (``ScoreRequest.future_covariates``: ``carry_last``, ``seasonal_naive``)."""
 SIDE_TABLE_PREFIX: Final = "side."
+PLOT_DATA_INPUT_PREFIX: Final = "plotdata."
+"""``render`` runs: a ``data_ref`` dataset whose ``path`` is ``plotdata.<n>`` is read from the
+run input of the same name (the control plane pins the bundle object it points at)."""
+MAX_PLOT_DATA_INPUTS: Final = 64
+RENDER_OUTPUT_PREFIX: Final = "renders/"
+"""``render`` runs write ``renders/<plot id>.<format>``."""
 
 SCORE_INPUTS: Final = {"data": INPUT_DATASET, "scenario": INPUT_SCENARIO}
 """``ScoreRequest`` dataset fields → the input name the runner reads them from."""
 
 _SIDE_NAME = re.compile(r"^[a-z][a-z0-9_\-]{0,57}$")
+
+
+def plot_data_input(index: int) -> str:
+    """The run input (and ``data_ref`` path) of a render run's ``index``-th external dataset."""
+    if not 0 <= index < MAX_PLOT_DATA_INPUTS:
+        raise ValueError(f"a render run takes at most {MAX_PLOT_DATA_INPUTS} data inputs")
+    return f"{PLOT_DATA_INPUT_PREFIX}{index}"
+
+
+def render_output(plot_id: str, fmt: str) -> str:
+    """``renders/<plot id>.<format>``: the object a render run writes for one plot."""
+    return f"{RENDER_OUTPUT_PREFIX}{plot_id}.{fmt}"
 
 
 def side_table_input(name: str) -> str:
@@ -237,7 +260,7 @@ class DeriveJob(StrictModel):
 
 
 class RenderJob(StrictModel):
-    """Render plots from a ``plots.json`` to static images (``render/<plot id>.<format>``).
+    """Render plots from a ``plots.json`` to static images (``renders/<plot id>.<format>``).
 
     ``pdf`` (M3) and an explicit ``width``/``height`` in CSS pixels (before ``scale``) are
     for reports; Vega-Lite renders with vl-convert, Plotly with kaleido, in the sandbox.

@@ -36,6 +36,27 @@ response (see `sandboxHeaders()` in `src/csp.ts`):
   public, static and credential-free.
 - `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`.
 
+## The embed page (`/embed/<token>`)
+
+`embed.html` (entry `src/embed-main.ts`, logic in `src/embed.ts`) shows a plot shared with a
+tokenised link (plan §10.3 items 4-5). It is the only page that talks to the API:
+
+- it fetches `GET <api>/v1/embeds/<token>` with `credentials: "omit"` and no referrer; its CSP
+  is the sandbox policy with `connect-src` extended to `<api>/v1/embeds/` only
+  (`buildEmbedCsp` in `src/csp.ts`), and the API answers cross-origin reads from the sandbox
+  origin only;
+- the answer is validated (`parseEmbedView`: inline Arrow datasets only, plain JSON, the same
+  `findUnsafeConstructs` check as the frames), decoded with apache-arrow and drawn with the
+  same renderers; every text goes through `textContent`;
+- framed by a site outside the link's `allowed_origins` (from `location.ancestorOrigins`, else
+  the referrer; no evidence fails closed) it shows a notice instead of the plot;
+- it links to the static PNG fallback (`image_url`, a short-lived signed URL) when there is one.
+
+`VITE_API_URL` (default `http://127.0.0.1:8000`) is the API origin baked into the page. The
+`mapi/web` image builds with the placeholder `__MAPI_API_URL__`, which nginx replaces with
+`MAPI_API_URL` when it serves `/embed/<token>` (with the embed headers:
+`frame-ancestors 'self' https:` and the extended `connect-src`).
+
 ## Message protocol (`mapi.plot/v1`)
 
 `src/protocol.ts` is shared with the web app (`@mapi/plot-sandbox/protocol`). Both sides validate

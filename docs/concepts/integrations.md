@@ -135,14 +135,17 @@ security signal (`webhook.url_blocked`).
 
 - **Saved plots** keep a model version's plot, or a plot you wrote, under a name.
 - **Static rendering** (`POST /v1/plots:render`) produces PNG, SVG or PDF in the sandbox
-  (vl-convert for Vega-Lite, kaleido for Plotly) for reports.
+  for reports: vl-convert for Vega-Lite, with network access off; Plotly needs kaleido and a
+  Chrome in the runner image and is refused with `MODE_NOT_SUPPORTED` until an operator
+  enables it.
 - **Embed links** are tokenised, read-only and expiring, for BI tools, Slack and Notion. The
   token is shown once, links can be revoked, and `allowed_origins` limits which sites may
   frame them. Only **platform recipes** can be embedded - plots the platform's own recipes
   rendered from a model version - never plots written by a plugin or a user: a sandboxed
   iframe can still navigate itself, so shared views only ever run code the platform wrote.
   Requests for anything else get `422 EMBED_NOT_ALLOWED`; expired or revoked links answer
-  `410 LINK_EXPIRED`.
+  `410 LINK_EXPIRED`. The link opens the plot sandbox's embed page, which may fetch nothing
+  but the API's public embed view. See [Sharing plots](../guides/sharing-plots.md).
 
 ## The trust lifecycle
 

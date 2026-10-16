@@ -45,6 +45,8 @@ APP_TABLES = (
     "api_tokens",
     "memberships",
     "users",
+    "plot_embeds",
+    "saved_plots",
     "plots",
     "model_versions",
     "models",

@@ -564,6 +564,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/embeds/{embed_token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public: the embedded plot with inline data (410 when expired or revoked)
+         * @description Public: the embedded plot with every dataset inline (``410 LINK_EXPIRED`` once
+         *     expired or revoked, ``404`` for an unknown token, ``429`` past the per-link or
+         *     per-address rate). Cookies and ``Authorization`` are ignored; browsers may read it only
+         *     from the plot-sandbox origin (CORS), which renders it under its own CSP.
+         */
+        get: operations["get_embed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/endpoints": {
         parameters: {
             query?: never;
@@ -1093,6 +1116,150 @@ export interface paths {
          *     200 with output links if the run finished, else 202 with the run.
          */
         post: operations["score_model"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Saved plots
+         * @description Saved plots of the project, newest first (without their specs).
+         */
+        get: operations["list_saved_plots"];
+        put?: never;
+        /**
+         * Save a model version's plot or a user-authored PlotSpec
+         * @description Save a model version's plot (``source``: verified against the signed bundle manifest)
+         *     or a user-authored PlotSpec (``spec``: sanitized; its provenance is recorded as
+         *     ``author`` and it can never be embedded). ``PLOT_UNSAFE`` when the sanitizer refuses it.
+         */
+        post: operations["create_saved_plot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots/renders/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A render run and links to its files
+         * @description A render run and, once it succeeded, signed links to its files.
+         */
+        get: operations["get_plot_render"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots/{plot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A saved plot with its sanitized spec
+         * @description A saved plot with its spec, sanitized again on the way out. Render it only in the
+         *     plot-sandbox origin.
+         */
+        get: operations["get_saved_plot"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a saved plot (revokes its embeds)
+         * @description Delete a saved plot. Its embed links stop working (404) and their images are removed.
+         */
+        delete: operations["delete_saved_plot"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots/{plot_id}/embeds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Embed links of a plot
+         * @description Embed links of a saved plot, newest first (never their tokens).
+         */
+        get: operations["list_plot_embeds"];
+        put?: never;
+        /**
+         * Tokenised read-only link (platform recipes only; shown once)
+         * @description Mint a read-only link (the token is in the response once; only its HMAC is stored).
+         *     Only plots a model version drew with a platform recipe can be embedded
+         *     (``EMBED_NOT_ALLOWED`` for plugin- and user-authored plots). When the caller may start
+         *     render runs, a PNG of the plot is rendered in the sandbox as the embed page's fallback.
+         *     Audited.
+         */
+        post: operations["create_plot_embed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots/{plot_id}/embeds/{embed_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke an embed link (idempotent)
+         * @description Revoke an embed link: it answers ``410 LINK_EXPIRED`` from now on. Idempotent.
+         */
+        delete: operations["revoke_plot_embed"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots:render": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * PNG, SVG or PDF in the sandbox (Prefer: wait=N -> 200 if done, else 202)
+         * @description Render one plot to PNG, SVG or PDF in the sandbox (Vega-Lite through vl-convert with
+         *     network access disabled; Plotly only where the platform enables it, else
+         *     ``MODE_NOT_SUPPORTED``). The plot is sanitized first and its data is passed to the run
+         *     as pinned inputs: rendering never fetches a URL. ``Prefer: wait=N`` (≤ 60) waits up to
+         *     N s: 200 with signed links to ``renders/<plot>.<format>`` when done, else 202 with the
+         *     run (poll ``GET /v1/plots/renders/{run_id}``).
+         */
+        post: operations["render_plot"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3510,6 +3677,86 @@ export interface components {
             sd: number;
             /** Units */
             units?: string | null;
+        };
+        /**
+         * EmbedView
+         * @description ``GET /v1/embeds/{token}`` (public, rate-limited, cacheable until ``expires_at``):
+         *     a platform-recipe plot with every dataset inlined. Expired or revoked tokens answer
+         *     ``410 LINK_EXPIRED``; unknown ones ``404``.
+         * @example {
+         *       "allowed_origins": [
+         *         "https://acme.notion.site"
+         *       ],
+         *       "expires_at": "2027-01-13T09:30:00Z",
+         *       "generated_at": "2026-10-15T09:30:00Z",
+         *       "image_url": "https://storage.googleapis.com/mapi-prod-bundles/t/acme/embeds/emb_01jaf3p1q2r3s4t5v6w7x8y9z0/plot.png?X-Goog-Signature=…",
+         *       "plot": {
+         *         "caption_plain": "The shaded band is where the model expects 90% of weeks.",
+         *         "datasets": {
+         *           "fan": {
+         *             "data": "QVJST1cx",
+         *             "kind": "inline_arrow",
+         *             "rows": 2
+         *           }
+         *         },
+         *         "id": "core.ppc_fan",
+         *         "kind": "vega-lite",
+         *         "persona": "both",
+         *         "provenance": {
+         *           "generated_at": "2026-10-15T09:40:00Z",
+         *           "recipe": "core.ppc_fan@1.0.0"
+         *         },
+         *         "schema_version": "v5",
+         *         "spec": {
+         *           "data": {
+         *             "name": "fan"
+         *           },
+         *           "encoding": {
+         *             "x": {
+         *               "field": "time",
+         *               "type": "temporal"
+         *             },
+         *             "y": {
+         *               "field": "lo",
+         *               "type": "quantitative"
+         *             },
+         *             "y2": {
+         *               "field": "hi"
+         *             }
+         *           },
+         *           "mark": "area"
+         *         },
+         *         "title": "Posterior predictive fan"
+         *       },
+         *       "title": "EU response curves (v3)"
+         *     }
+         */
+        EmbedView: {
+            /**
+             * Allowed Origins
+             * @description The embed's PlotEmbedCreate.allowed_origins: sites that may frame the embed page (empty: any). The embed page refuses to render elsewhere.
+             */
+            allowed_origins?: string[];
+            /** Caption Plain */
+            caption_plain?: string | null;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Image Url
+             * @description Short-lived signed URL of a static PNG of the plot (the embed page's fallback link), once the sandbox has rendered one
+             */
+            image_url?: string | null;
+            plot: components["schemas"]["PlotSpec"];
+            /** Title */
+            title: string;
         };
         /**
          * Endpoint
@@ -6208,6 +6455,21 @@ export interface components {
             version: string;
         };
         /**
+         * ModelPlotRef
+         * @description A plot a model version rendered (``GET /v1/models/{id}/versions/{v}/plots``).
+         */
+        ModelPlotRef: {
+            /**
+             * Model Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            model_id: string;
+            /** Plot Id */
+            plot_id: string;
+            /** Version */
+            version: number;
+        };
+        /**
          * ModelVersion
          * @description A verified bundle: signed manifest, diagnostics, scorecard, lineage and metrics.
          * @example {
@@ -6639,6 +6901,19 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[PlotEmbed]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_PlotEmbed_: {
+            /** Items */
+            items: components["schemas"]["PlotEmbed"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[PlotListItem]
          * @example {
          *       "items": [],
@@ -6713,6 +6988,19 @@ export interface components {
         Page_Run_: {
             /** Items */
             items: components["schemas"]["Run"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[SavedPlot]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_SavedPlot_: {
+            /** Items */
+            items: components["schemas"]["SavedPlot"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -6857,6 +7145,132 @@ export interface components {
             yanked?: boolean;
         };
         /**
+         * PlotEmbed
+         * @description An embed link as listed (never its token).
+         * @example {
+         *       "allowed_origins": [
+         *         "https://acme.notion.site"
+         *       ],
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "display": "mpe_7k2m9q…",
+         *       "expires_at": "2027-01-13T09:30:00Z",
+         *       "id": "emb_01jaf3p1q2r3s4t5v6w7x8y9z0",
+         *       "label": "Q4 board deck",
+         *       "plot_id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",
+         *       "project_id": "growth",
+         *       "status": "active",
+         *       "tenant_id": "acme",
+         *       "views": 12
+         *     }
+         */
+        PlotEmbed: {
+            /** Allowed Origins */
+            allowed_origins?: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /**
+             * Display
+             * @description Redacted token, mpe_<first 6>…
+             */
+            display: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Label */
+            label?: string | null;
+            /** Last Viewed At */
+            last_viewed_at?: string | null;
+            /**
+             * Plot Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            plot_id: string;
+            /** Project Id */
+            project_id: string;
+            /** Revoked At */
+            revoked_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "expired" | "revoked";
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Views
+             * @default 0
+             */
+            views?: number;
+        };
+        /**
+         * PlotEmbedCreate
+         * @description ``POST /v1/plots/{plot_id}/embeds``. ``allowed_origins`` (https origins) become the
+         *     embed page's ``frame-ancestors``; empty allows any site to frame it.
+         * @example {
+         *       "allowed_origins": [
+         *         "https://acme.notion.site"
+         *       ],
+         *       "expires_in_days": 90,
+         *       "label": "Q4 board deck"
+         *     }
+         */
+        PlotEmbedCreate: {
+            /** Allowed Origins */
+            allowed_origins?: string[];
+            /**
+             * Expires In Days
+             * @default 30
+             */
+            expires_in_days?: number;
+            /** Label */
+            label?: string | null;
+        };
+        /**
+         * PlotEmbedCreated
+         * @description ``201`` of ``POST …/embeds``: the only time the URL (with its token) is returned.
+         * @example {
+         *       "embed": {
+         *         "allowed_origins": [
+         *           "https://acme.notion.site"
+         *         ],
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "display": "mpe_7k2m9q…",
+         *         "expires_at": "2027-01-13T09:30:00Z",
+         *         "id": "emb_01jaf3p1q2r3s4t5v6w7x8y9z0",
+         *         "label": "Q4 board deck",
+         *         "plot_id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",
+         *         "project_id": "growth",
+         *         "status": "active",
+         *         "tenant_id": "acme",
+         *         "views": 12
+         *       },
+         *       "token": "mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz",
+         *       "url": "https://plots.mapi.example/e/mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz"
+         *     }
+         */
+        PlotEmbedCreated: {
+            embed: components["schemas"]["PlotEmbed"];
+            /** Token */
+            token: string;
+            /**
+             * Url
+             * @description Public read-only URL; paste it into the BI tool
+             */
+            url: string;
+        };
+        /**
          * PlotListItem
          * @description A plot available for a model version; fetch the sanitized :class:`PlotSpec` at href.
          * @example {
@@ -6909,6 +7323,101 @@ export interface components {
             plugin?: string | null;
             /** Recipe */
             recipe?: string | null;
+        };
+        /**
+         * PlotRender
+         * @description ``POST /v1/plots:render`` (``Prefer: wait=N``) and ``GET /v1/plots/renders/{run_id}``:
+         *     the ``render`` run and, when done, signed links to ``renders/<plot>.<format>``.
+         * @example {
+         *       "done": true,
+         *       "format": "pdf",
+         *       "outputs": [
+         *         {
+         *           "content_type": "application/pdf",
+         *           "crc32c": "4waSgw==",
+         *           "expires_at": "2026-10-15T09:45:00Z",
+         *           "generation": 7,
+         *           "name": "renders/mmm.response_curves.pdf",
+         *           "size": 2097152,
+         *           "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault%2Fmodels%2Fmdl_01%2F1%2Fbundle.zarr.zip?generation=7&X-Goog-Signature=…"
+         *         }
+         *       ],
+         *       "run": {
+         *         "attempt": 1,
+         *         "cost": {
+         *           "estimated": true
+         *         },
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "executor": "local-process",
+         *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *         "kind": "render",
+         *         "project_id": "default",
+         *         "queued_at": "2026-10-15T09:30:00Z",
+         *         "resource_class": "M",
+         *         "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *         "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+         *         "spec_revision": 2,
+         *         "started_at": "2026-10-15T09:30:05Z",
+         *         "state": "succeeded",
+         *         "tenant_id": "default",
+         *         "timeout": "45m",
+         *         "updated_at": "2026-10-15T09:31:00Z"
+         *       }
+         *     }
+         */
+        PlotRender: {
+            /** Done */
+            done: boolean;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "png" | "svg" | "pdf";
+            /** Outputs */
+            outputs?: components["schemas"]["ArtifactLink"][];
+            run: components["schemas"]["Run"];
+        };
+        /**
+         * PlotRenderRequest
+         * @description ``POST /v1/plots:render``: exactly one of ``plot`` (an inline spec, sanitized),
+         *     ``saved_plot_id`` or ``source``. ``width``/``height`` are CSS pixels before ``scale``.
+         *     Send ``Prefer: wait=N`` to get the file links in the response.
+         * @example {
+         *       "format": "pdf",
+         *       "saved_plot_id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",
+         *       "scale": 1
+         *     }
+         * @example {
+         *       "format": "png",
+         *       "height": 600,
+         *       "source": {
+         *         "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+         *         "plot_id": "mmm.response_curves",
+         *         "version": 3
+         *       },
+         *       "width": 1200
+         *     }
+         */
+        PlotRenderRequest: {
+            /**
+             * Format
+             * @default png
+             * @enum {string}
+             */
+            format?: "png" | "svg" | "pdf";
+            /** Height */
+            height?: number | null;
+            plot?: components["schemas"]["PlotSpec"] | null;
+            /** Saved Plot Id */
+            saved_plot_id?: string | null;
+            /**
+             * Scale
+             * @default 2
+             */
+            scale?: number;
+            source?: components["schemas"]["ModelPlotRef"] | null;
+            /** Width */
+            width?: number | null;
         };
         /**
          * PlotSpec
@@ -8242,6 +8751,102 @@ export interface components {
          * @enum {string}
          */
         RunnerPhase: "bootstrap" | "load_inputs" | "validate" | "preprocess" | "fit" | "sample" | "score" | "evaluate" | "derive" | "plots" | "upload" | "done";
+        /**
+         * SavedPlot
+         * @description A saved plot. ``spec`` is the sanitized PlotSpec (on ``GET /v1/plots/{plot_id}``;
+         *     omitted in lists). ``embeddable`` is :func:`embeddable` of this plot.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "embeddable": true,
+         *       "id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",
+         *       "kind": "vega-lite",
+         *       "project_id": "growth",
+         *       "provenance": "recipe",
+         *       "recipe": "mmm.response_curves@1.0.0",
+         *       "source": {
+         *         "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+         *         "plot_id": "mmm.response_curves",
+         *         "version": 3
+         *       },
+         *       "source_kind": "model_plot",
+         *       "tenant_id": "acme",
+         *       "title": "EU response curves (v3)",
+         *       "updated_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        SavedPlot: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Embeddable */
+            embeddable: boolean;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "vega-lite" | "plotly";
+            /** Project Id */
+            project_id: string;
+            /**
+             * Provenance
+             * @enum {string}
+             */
+            provenance: "recipe" | "plugin" | "author";
+            /**
+             * Recipe
+             * @description provenance.recipe, if any
+             */
+            recipe?: string | null;
+            source?: components["schemas"]["ModelPlotRef"] | null;
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "model_plot" | "spec";
+            spec?: components["schemas"]["PlotSpec"] | null;
+            /** Tenant Id */
+            tenant_id: string;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * SavedPlotCreate
+         * @description ``POST /v1/plots``: exactly one of ``source`` (a model version's plot) or ``spec``
+         *     (a user-authored plot, sanitized first; never embeddable).
+         * @example {
+         *       "source": {
+         *         "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+         *         "plot_id": "mmm.response_curves",
+         *         "version": 3
+         *       },
+         *       "title": "EU response curves (v3)"
+         *     }
+         */
+        SavedPlotCreate: {
+            /** Description */
+            description?: string | null;
+            source?: components["schemas"]["ModelPlotRef"] | null;
+            spec?: components["schemas"]["PlotSpec"] | null;
+            /** Title */
+            title: string;
+        };
         /**
          * ScoreCall
          * @description Body of ``POST /v1/models/{model_id}/versions/{version}:score``.
@@ -11200,6 +11805,64 @@ export interface operations {
             };
         };
     };
+    get_embed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                embed_token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbedView"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`LINK_EXPIRED`) */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_endpoints: {
         parameters: {
             query?: {
@@ -12713,6 +13376,648 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_saved_plots: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_SavedPlot_"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_saved_plot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedPlotCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedPlot"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`SCHEMA_INVALID`, `PLOT_UNSAFE`) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`INTEGRITY_FAILURE`) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_plot_render: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotRender"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_saved_plot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedPlot"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_saved_plot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_plot_embeds: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                plot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PlotEmbed_"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_plot_embed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlotEmbedCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotEmbedCreated"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`SCHEMA_INVALID`, `EMBED_NOT_ALLOWED`, `PLOT_UNSAFE`) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`INTEGRITY_FAILURE`) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revoke_plot_embed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plot_id: string;
+                embed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    render_plot: {
+        parameters: {
+            query?: never;
+            header?: {
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlotRenderRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotRender"];
+                };
+            };
+            /** @description Still rendering */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotRender"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`SCHEMA_INVALID`, `PLOT_UNSAFE`, `MODE_NOT_SUPPORTED`) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`QUOTA_EXCEEDED`, `RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`INTEGRITY_FAILURE`) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

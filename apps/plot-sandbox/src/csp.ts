@@ -71,3 +71,60 @@ export function sandboxHeaders(opts: CspOptions): Record<string, string> {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   };
 }
+
+// ------------------------------------------------------------------------------- embed page
+
+/** The only API path the embed page may fetch (`GET /v1/embeds/{token}`). */
+export const EMBED_API_PATH = "/v1/embeds/";
+/**
+ * Stands in for the API origin in a production build: the static host substitutes the real
+ * one at serve time (see images/web), so one image works for every deployment.
+ */
+export const API_URL_PLACEHOLDER = "__MAPI_API_URL__";
+
+export interface EmbedCspOptions {
+  /** Origin of the API (scheme://host[:port]) or {@link API_URL_PLACEHOLDER}. */
+  apiUrl: string;
+  dev?: boolean;
+  selfOrigin?: string;
+  /** Include `frame-ancestors` (header only). */
+  includeFrameAncestors?: boolean;
+  /** Extra framing origins besides any https site (e.g. the local web app over http). */
+  frameOrigins?: readonly string[];
+}
+
+export function parseApiUrl(value: string | undefined, fallback: string): string {
+  const url = (value ?? "").trim().replace(/\/+$/, "") || fallback;
+  if (url !== API_URL_PLACEHOLDER && !ORIGIN_RE.test(url)) {
+    throw new Error(`invalid API origin ${JSON.stringify(url)} (scheme://host[:port], no path)`);
+  }
+  return url;
+}
+
+/**
+ * The embed page's policy: the sandbox policy with `connect-src` extended to the API's embed
+ * path only (a CSP source with a path ending in `/` matches that prefix). Embed pages are
+ * meant to be framed by BI tools, wikis and chat apps, so any https site may frame them; the
+ * page itself refuses to render outside the link's `allowed_origins`.
+ */
+export function buildEmbedCsp(opts: EmbedCspOptions): string {
+  const base = buildCsp({ appOrigins: [], dev: opts.dev, selfOrigin: opts.selfOrigin });
+  const connect = `${opts.apiUrl}${EMBED_API_PATH}`;
+  let csp = base.replace(/connect-src ([^;]*)/, (_m, values: string) => `connect-src ${values} ${connect}`);
+  if (opts.includeFrameAncestors) {
+    csp += `; frame-ancestors ${["'self'", "https:", ...(opts.frameOrigins ?? [])].join(" ")}`;
+  }
+  return csp;
+}
+
+/** HTTP headers of the embed page (`/embed/<token>`). */
+export function embedHeaders(opts: EmbedCspOptions): Record<string, string> {
+  return {
+    "Content-Security-Policy": buildEmbedCsp({ ...opts, includeFrameAncestors: true }),
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "X-Robots-Tag": "noindex, nofollow",
+    "Cross-Origin-Resource-Policy": "cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  };
+}

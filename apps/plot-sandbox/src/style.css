@@ -70,3 +70,59 @@ body[data-standalone="true"] #plot::before {
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
+
+/* ---------------------------------------------------------------- embed page (/embed/<token>) */
+
+:root {
+  --page-bg: #ffffff;
+  --error: #b42318;
+}
+
+:root[data-theme="dark"] {
+  --page-bg: #11151d;
+  --error: #f97066;
+}
+
+body.embed {
+  background: var(--page-bg);
+}
+
+body.embed main {
+  box-sizing: border-box;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 16px;
+}
+
+body.embed h1 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+body.embed h1:empty,
+body.embed #caption:empty,
+body.embed #status:empty {
+  display: none;
+}
+
+body.embed #caption,
+body.embed footer {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+body.embed #status[data-kind="error"] {
+  color: var(--error);
+}
+
+body.embed footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+body.embed footer a {
+  color: inherit;
+}

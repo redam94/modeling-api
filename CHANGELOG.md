@@ -130,6 +130,34 @@ milestone releases are tagged on `main`.
   - Metrics for promotions, endpoint calls, events, delivery tries, SSRF refusals and
     disabled webhooks; every new operation documents its RFC 7807 problems in OpenAPI.
 - **docs**: the Endpoints and webhooks guide and the webhook settings.
+- **server**: saved plots, static rendering and embed links (plan §10.3 items 4-5).
+  - `POST/GET/DELETE /v1/plots[/{plot_id}]`: a model version's plot (after its signed
+    manifest verifies) or a user-authored PlotSpec, sanitized on save and on every read.
+    User-authored plots are recorded with `author` provenance whatever they claim.
+  - `POST /v1/plots:render` (`Prefer: wait`, `Idempotency-Key`) and
+    `GET /v1/plots/renders/{run_id}`: a `render` run of one sanitized plot. The API writes
+    its `plots.json` input and pins each bundle dataset as a `plotdata.<n>` input. Plotly is
+    refused with `MODE_NOT_SUPPORTED` unless `MAPI_RENDER_PLOTLY_ENABLED`.
+  - `POST/GET/DELETE /v1/plots/{plot_id}/embeds[/{embed_id}]`: tokenised links for platform
+    recipes only (`EMBED_NOT_ALLOWED` otherwise), stored as keyed hashes, with expiry,
+    revocation, view counts and audit events. A PNG fallback is rendered when the caller may
+    start render runs, and copied write-once into the bundles bucket on first use.
+  - The public `GET /v1/embeds/{token}`: no credential is read (cookies and `Authorization`
+    are dropped), CORS for the plot-sandbox origin only, rate limits per link and per
+    address, every dataset inlined from the verified bundle without decoding it.
+  - Migration `0009_plots_embeds`: `saved_plots` and `plot_embeds` with forced row-level
+    security; the gateway role may read only the embed lookup columns.
+  - Every new operation documents its RFC 7807 problems in the OpenAPI document.
+- **runner**: `render` runs draw PNG, SVG and PDF with vl-convert (pinned in the new
+  `mapi-plots[render]` extra) with network access off, refuse anything that could fetch a
+  resource, read `plotdata.<n>` inputs, apply `width`/`height` and cap images at 32 MiB.
+  Plotly needs kaleido and a system Chrome (`MODE_NOT_SUPPORTED` otherwise; no browser is
+  ever downloaded).
+- **plot-sandbox**: the embed page `/embed/<token>`. It fetches the embed view with no
+  credentials under its own CSP (`connect-src` adds only the API's `/v1/embeds/` path),
+  validates and decodes it, honours the link's allowed origins and offers the PNG fallback.
+  The `mapi/web` image serves it with the API origin filled in at start-up.
+- **docs**: the "Sharing plots" guide and the new settings in the configuration reference.
 ### Changed
 - **spec**: the `customer_choice` template (1.1.0) targets the built-in
   `choice.multinomial_logit`; wide column labels drop the question's keywords

@@ -22,6 +22,10 @@ recipes = [
   "pyarrow>=17",
   "xarray>=2025.1",
 ]
+# Static rendering in the sandbox (``render`` runs): Vega-Lite -> PNG/SVG/PDF. Pinned exactly:
+# the renderer is part of the image's attack surface (it embeds Deno/V8). Plotly static
+# export needs kaleido plus a system Chrome/Chromium and is not part of the extra.
+render = ["vl-convert-python==1.9.0.post1"]
 
 [project.entry-points."mapi.plots"]
 core = "mapi_plots.recipes:standard_recipes"
