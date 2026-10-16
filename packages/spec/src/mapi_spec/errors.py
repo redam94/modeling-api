@@ -93,6 +93,24 @@ class ErrorCode(StrEnum):
     TERMS_NOT_ACCEPTED = "TERMS_NOT_ACCEPTED"
     EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED"
     IDENTITY_VERIFICATION_REQUIRED = "IDENTITY_VERIFICATION_REQUIRED"
+    # --- M3.5: About cards and the chooser -------------------------------------------------
+    ABOUT_INCOMPLETE = "ABOUT_INCOMPLETE"
+    CHOOSER_ANSWER_INVALID = "CHOOSER_ANSWER_INVALID"
+    # --- M3.5: workflows ----------------------------------------------------------------------
+    WORKFLOW_INVALID = "WORKFLOW_INVALID"
+    EXPRESSION_INVALID = "EXPRESSION_INVALID"
+    EXPRESSION_ERROR = "EXPRESSION_ERROR"
+    NODE_UNKNOWN = "NODE_UNKNOWN"
+    SCHEDULE_INVALID = "SCHEDULE_INVALID"
+    WORKFLOW_NOT_RUNNABLE = "WORKFLOW_NOT_RUNNABLE"
+    # --- M3.5: governance -----------------------------------------------------------------------
+    POLICY_INVALID = "POLICY_INVALID"
+    VALIDATION_TRANSITION_INVALID = "VALIDATION_TRANSITION_INVALID"
+    SELF_APPROVAL_FORBIDDEN = "SELF_APPROVAL_FORBIDDEN"
+    NOT_VALIDATED = "NOT_VALIDATED"
+    # --- M3.5: explorers and optimisation -----------------------------------------------------
+    EXPLORE_INVALID = "EXPLORE_INVALID"
+    OPTIMIZE_INFEASIBLE = "OPTIMIZE_INFEASIBLE"
 
 
 Category = Literal["spec", "coords", "capability", "quota", "api", "run", "internal"]
@@ -179,6 +197,35 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ErrorCode.EMAIL_NOT_VERIFIED: ErrorInfo(403, "The e-mail address is not verified", "api"),
     ErrorCode.IDENTITY_VERIFICATION_REQUIRED: ErrorInfo(
         403, "Identity verification is required", "api"
+    ),
+    # M3.5 (additive)
+    ErrorCode.ABOUT_INCOMPLETE: ErrorInfo(422, "A catalog item has no complete About card", "spec"),
+    ErrorCode.CHOOSER_ANSWER_INVALID: ErrorInfo(422, "A chooser answer is not valid", "api"),
+    ErrorCode.WORKFLOW_INVALID: ErrorInfo(422, "The workflow is not valid", "spec"),
+    ErrorCode.EXPRESSION_INVALID: ErrorInfo(
+        422, "A branch condition is not a valid expression", "spec"
+    ),
+    ErrorCode.EXPRESSION_ERROR: ErrorInfo(422, "A branch condition could not be evaluated", "run"),
+    ErrorCode.NODE_UNKNOWN: ErrorInfo(
+        422, "A workflow node names an unknown implementation", "spec"
+    ),
+    ErrorCode.SCHEDULE_INVALID: ErrorInfo(422, "The schedule or trigger is not valid", "spec"),
+    ErrorCode.WORKFLOW_NOT_RUNNABLE: ErrorInfo(
+        409, "The workflow revision cannot be run (it has errors)", "api"
+    ),
+    ErrorCode.POLICY_INVALID: ErrorInfo(422, "The governance policy is not valid", "spec"),
+    ErrorCode.VALIDATION_TRANSITION_INVALID: ErrorInfo(
+        409, "The model's validation status does not allow this", "api"
+    ),
+    ErrorCode.SELF_APPROVAL_FORBIDDEN: ErrorInfo(
+        403, "Approver and submitter must be different people", "api"
+    ),
+    ErrorCode.NOT_VALIDATED: ErrorInfo(
+        409, "The governance policy requires a validated model", "api"
+    ),
+    ErrorCode.EXPLORE_INVALID: ErrorInfo(422, "The explorer request is not valid", "spec"),
+    ErrorCode.OPTIMIZE_INFEASIBLE: ErrorInfo(
+        422, "The budget constraints cannot all be met", "capability"
     ),
 }
 

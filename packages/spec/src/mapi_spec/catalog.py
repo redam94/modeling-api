@@ -12,6 +12,7 @@ from typing import Any, Literal
 from pydantic import Field, JsonValue, field_validator, model_validator
 
 from mapi_spec._types import StrictModel
+from mapi_spec.about import About, about_issues
 from mapi_spec.capabilities import ModelManifest, Representation, check_json_schema
 from mapi_spec.effects import (
     ContextNeed,
@@ -21,6 +22,7 @@ from mapi_spec.effects import (
     resolve_context,
     resolve_effect,
 )
+from mapi_spec.errors import ErrorCode, Issue, Severity, json_pointer
 from mapi_spec.refs import UseRef, Version
 
 __all__ = [
@@ -28,6 +30,7 @@ __all__ = [
     "ModelCatalogEntry",
     "PlotCatalogEntry",
     "StepCatalogEntry",
+    "catalog_about_issues",
 ]
 
 
@@ -77,6 +80,11 @@ class StepCatalogEntry(StrictModel):
     summary: str | None = Field(None, max_length=500)
     summary_plain: str | None = Field(None, max_length=500)
     yanked: bool = False
+    about: About | None = Field(
+        None,
+        description="M3.5: the plain-language About card (the catalog rule requires one)",
+        exclude_if=lambda v: v is None,
+    )
 
     @field_validator("id")
     @classmethod
@@ -130,6 +138,11 @@ class ModelCatalogEntry(StrictModel):
     def ref(self) -> str:
         return f"{self.id}@{self.version}"
 
+    @property
+    def about(self) -> About | None:
+        """The manifest's About card (M3.5)."""
+        return self.manifest.about
+
 
 class PlotCatalogEntry(StrictModel):
     """A plot recipe the runner can produce."""
@@ -141,6 +154,11 @@ class PlotCatalogEntry(StrictModel):
     requires_representation: list[Representation] = Field(default_factory=list)
     requires_groups: list[str] = Field(default_factory=list)
     yanked: bool = False
+    about: About | None = Field(
+        None,
+        description="M3.5: optional About card (plots are chosen from a model, not a catalog)",
+        exclude_if=lambda v: v is None,
+    )
 
     @property
     def ref(self) -> str:
@@ -203,3 +221,46 @@ class Catalog(StrictModel):
         }
         entries = by_kind[kind]
         return sorted((e.version for e in entries if e.id == id_), key=Version.parse)
+
+    def about_issues(self, *, extra_ids: Iterable[str] = ()) -> list[Issue]:
+        """The catalog rule (M3.5): every non-yanked step and model has a complete About.
+
+        See :func:`catalog_about_issues`."""
+        return catalog_about_issues(self, extra_ids=extra_ids)
+
+
+def catalog_about_issues(catalog: Catalog, *, extra_ids: Iterable[str] = ()) -> list[Issue]:
+    """``ABOUT_INCOMPLETE`` errors for every non-yanked step and model of ``catalog`` whose
+    About is missing or incomplete (:func:`mapi_spec.about.about_issues`), located by a JSON
+    pointer into the catalog document. ``related`` ids must name catalog items or
+    ``extra_ids`` (templates, workflow nodes, governance checks)."""
+    known = (
+        {e.id for e in catalog.steps}
+        | {e.id for e in catalog.models}
+        | {e.id for e in catalog.plots}
+        | set(extra_ids)
+    )
+    out: list[Issue] = []
+    entries: list[tuple[str, int, str, About | None, bool]] = [
+        ("steps", i, e.ref, e.about, e.yanked) for i, e in enumerate(catalog.steps)
+    ] + [("models", i, e.ref, e.manifest.about, e.yanked) for i, e in enumerate(catalog.models)]
+    for group, i, ref, about, yanked in entries:
+        if yanked:
+            continue
+        pointer = (
+            json_pointer(group, i, "about")
+            if group == "steps"
+            else json_pointer(group, i, "manifest", "about")
+        )
+        for problem in about_issues(about, known_ids=known):
+            out.append(
+                Issue(
+                    code=ErrorCode.ABOUT_INCOMPLETE,
+                    severity=Severity.ERROR,
+                    pointer=pointer,
+                    message=f"{ref}: {problem}",
+                    suggested_action="Write the About card in plain language (see "
+                    "docs/concepts/about-and-choosing.md).",
+                )
+            )
+    return out
