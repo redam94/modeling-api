@@ -50,7 +50,10 @@ from mapi_workflows.runtime.values import (
 )
 from pydantic import JsonValue
 
-__all__ = ["LocalRunResult", "LocalRunner", "as_value"]
+__all__ = ["MAX_SUBWORKFLOW_DEPTH", "LocalRunResult", "LocalRunner", "as_value"]
+
+MAX_SUBWORKFLOW_DEPTH = 8
+"""How deeply sub-workflows may nest (a workflow that runs itself stops here)."""
 
 SubworkflowResolver = Callable[[WorkflowRef], WorkflowSpec | None]
 
@@ -126,6 +129,7 @@ class LocalRunner:
         self.log = log
         self.cache: dict[str, _Cached] = {}
         self._values: dict[str, Value] = {}
+        self._depth = 0
 
     # ------------------------------------------------------------------------- run
     def run(
@@ -400,10 +404,24 @@ class LocalRunner:
             for port, refs in action.inputs.items()
             if refs and _key(refs[0]) in values
         }
+        if self._depth >= MAX_SUBWORKFLOW_DEPTH:
+            engine.failed(
+                nid,
+                NodeError(
+                    code=ErrorCode.WORKFLOW_INVALID,
+                    message=f"sub-workflows are nested more than {MAX_SUBWORKFLOW_DEPTH} deep "
+                    "(does a workflow run itself?)",
+                ),
+            )
+            return
         raw_params = action.params.get("params")
-        res = self.run(
-            sub, inputs=sub_inputs, params=raw_params if isinstance(raw_params, dict) else None
-        )
+        self._depth += 1
+        try:
+            res = self.run(
+                sub, inputs=sub_inputs, params=raw_params if isinstance(raw_params, dict) else None
+            )
+        finally:
+            self._depth -= 1
         if res.status is not WorkflowRunStatus.SUCCEEDED:
             msg = res.error.message if res.error else res.status.value
             engine.failed(

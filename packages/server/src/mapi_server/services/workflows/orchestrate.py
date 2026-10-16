@@ -108,6 +108,8 @@ _PHASE_NODE: Final = "node"
 _PHASE_FIT: Final = "fit"
 _PHASE_FIT_BEST: Final = "fit_best"
 _PHASE_SUB: Final = "subworkflow"
+MAX_SUBWORKFLOW_DEPTH: Final = 8
+"""How deeply sub-workflows may nest (a guard against runaway recursion)."""
 _LIVE = frozenset({RunState.PROVISIONING, RunState.RUNNING, RunState.STALLED, RunState.FINALIZING})
 
 
@@ -781,6 +783,25 @@ class WorkflowOrchestrator:
         ).scalar_one_or_none()
         if wf is None:
             raise _NodeFailure(ErrorCode.REF_UNRESOLVED, f"workflow {ref} was not found")
+        # a workflow may not (indirectly) run itself: walk the chain of parent runs
+        chain: list[str] = []
+        cur: m.WorkflowRunRow | None = env.wr
+        while cur is not None and len(chain) <= MAX_SUBWORKFLOW_DEPTH:
+            chain.append(cur.workflow_id)
+            cur = (
+                await env.session.get(m.WorkflowRunRow, cur.parent_run_id)
+                if cur.parent_run_id
+                else None
+            )
+        if wf.id in chain:
+            raise _NodeFailure(
+                ErrorCode.WORKFLOW_INVALID, f"workflow {ref} would run itself (a cycle)"
+            )
+        if len(chain) >= MAX_SUBWORKFLOW_DEPTH:
+            raise _NodeFailure(
+                ErrorCode.WORKFLOW_INVALID,
+                f"sub-workflows are nested more than {MAX_SUBWORKFLOW_DEPTH} deep",
+            )
         inputs: dict[str, str] = {}
         for port, values in action.inputs.items():
             if not values or values[0].ref is None:

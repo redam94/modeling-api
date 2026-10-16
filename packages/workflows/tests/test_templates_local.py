@@ -143,6 +143,30 @@ def test_subworkflows_run_recursively() -> None:
     assert seen and seen[0].name == "checks"
 
 
+def test_a_workflow_that_runs_itself_stops() -> None:
+    loop = WorkflowSpec.model_validate(
+        {
+            "apiVersion": "mapi/v1",
+            "kind": "Workflow",
+            "metadata": {"name": "loop", "project": "growth"},
+            "inputs": {"data": {"type": "dataset"}},
+            "nodes": [
+                {
+                    "id": "again",
+                    "use": "subworkflow.run",
+                    "inputs": {"data": "inputs.data"},
+                    "with": {"workflow": "workflow://growth/loop@r1"},
+                }
+            ],
+        }
+    )
+    res = LocalRunner(registry=registry(), subworkflows=lambda ref: loop).run(
+        loop, inputs={"data": weekly_series(40)}
+    )
+    assert res.status is WorkflowRunStatus.FAILED
+    assert res.error is not None and "nested more than" in res.error.message
+
+
 def _slow(ctx: NodeContext) -> NodeOutcome:
     for _ in range(200):
         ctx.check()

@@ -386,11 +386,36 @@ async def test_subworkflows_run_as_child_workflow_runs(
     assert child["status"] == "succeeded"
 
 
+async def test_a_workflow_cannot_run_itself(client: httpx.AsyncClient, ctx: ServerContext) -> None:
+    await put_dataset(ctx, "sales", weekly_series(80))
+    first = _doc([{"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}}], name="loop")
+    wf = await _create(client, first)
+    looped = _doc(
+        [
+            {
+                "id": "again",
+                "use": "subworkflow.run",
+                "inputs": {"data": "inputs.data"},
+                "with": {"workflow": "workflow://default/loop@latest"},
+            }
+        ],
+        name="loop",
+    )
+    r = await client.post(f"/v1/workflows/{wf['id']}/revisions", json={"document": looped})
+    assert r.status_code == 201, r.text
+    run = await _start(client, wf["id"])
+    assert await drive(ctx, run["run_id"]) is WorkflowRunStatus.FAILED
+    view = (await client.get(f"/v1/workflow-runs/{run['run_id']}")).json()
+    assert view["error"]["code"] == "WORKFLOW_INVALID" and "cycle" in view["error"]["message"]
+    assert view["nodes"][0]["child_runs"] == []
+
+
 async def test_governance_policies_gate_the_run(
     client: httpx.AsyncClient, ctx: ServerContext
 ) -> None:
     """A resolved policy whose blocking check cannot run (no check runner is installed)
-    fails the governance node, and the run with it."""
+    records a failed governance result (``passed: false``) with its evidence; the run itself
+    finishes, so a branch on ``nodes.gov.passed`` decides what happens next."""
     await put_dataset(ctx, "sales", weekly_series(100))
     doc = _doc(
         [
