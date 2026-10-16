@@ -1,19 +1,23 @@
 ---
-description: Four problems modeling-api is built for - marketing-mix budget planning on mmm-framework, weekly forecasting, demand by store and customer choice - with the data each needs, what you get and the tutorials that walk through them.
+description: Six problems modeling-api is built for - marketing-mix budget planning on mmm-framework, a governed forecasting pipeline, macro and VAR/VECM analysis, weekly forecasting, demand by store and customer choice - with the data each needs, what you get and the tutorials that walk through them.
 ---
 
 # Use cases
 
-Each use case below is a Guided template, so an analyst can start it from a spreadsheet, and
-a built-in model that a data scientist can configure, extend or replace in a spec. All four
-share the platform: sandboxed runs, the scorecard, endpoints, snippets, webhooks and embeds.
+Each use case below starts from something ready-made - a Guided template an analyst can run
+from a spreadsheet, or a gallery workflow that automates the whole analysis - and a built-in
+model that a data scientist can configure, extend or replace in a spec. All of them share the
+platform: sandboxed runs, the scorecard, governance policies, the explorers, endpoints,
+snippets, webhooks and embeds.
 
-| Use case | Guided template | Model | The question it answers |
+| Use case | Start from | Model | The question it answers |
 |---|---|---|---|
-| [Budget planning](#marketing-mix-budget-planning) | Geo marketing mix | `mmm.bayesian` (or `mmm.frequentist`), on mmm-framework | What does each channel bring in, and where should the next euro go? |
-| [Weekly forecasting](#weekly-forecasting) | Weekly forecast | `ts.hsgp_trend` | What will this series do over the next weeks, and how sure are we? |
-| [Store demand](#demand-by-store) | Demand by store | `tabular.regressor` (xgboost, quantiles) | How much will each store sell, including a store that opens next month? |
-| [Customer choice](#customer-choice) | Customer choice | `choice.multinomial_logit` | Which product does a shopper pick, and how does a price change shift that? |
+| [Budget planning](#marketing-mix-budget-planning) | Guided *Geo marketing mix*, or the `mmm_governed` workflow | `mmm.bayesian` (or `mmm.frequentist`), on mmm-framework | What does each channel bring in, and where should the next euro go? |
+| [Governed forecasting pipeline](#governed-forecasting-pipeline) | The `ts_readiness_arimax` workflow, scheduled | `ts.sarimax` (ARIMAX), checked against naive forecasts | Can we publish this forecast every Monday - and prove it beats doing nothing clever? |
+| [Macro and VAR analysis](#macro-and-var-analysis) | The `var_vecm_cointegration` workflow | `ts.vecm` or `ts.var` (also `ts.varmax`, `ts.dynamic_factor`) | Do these series move together, and what happens to one when another is shocked? |
+| [Weekly forecasting](#weekly-forecasting) | Guided *Weekly forecast* | `ts.hsgp_trend` | What will this series do over the next weeks, and how sure are we? |
+| [Store demand](#demand-by-store) | Guided *Demand by store* | `tabular.regressor` (xgboost, quantiles) | How much will each store sell, including a store that opens next month? |
+| [Customer choice](#customer-choice) | Guided *Customer choice* | `choice.multinomial_logit` | Which product does a shopper pick, and how does a price change shift that? |
 
 ## Marketing-mix budget planning
 
@@ -36,12 +40,99 @@ and Meridian-shaped tables are recognised directly.
 - **Budget plans** from the model itself (`POST …:optimize`, mmm-framework planning): the
   allocation within your bounds, the uplift and the chance it helps, how stable each move
   is, and the efficient frontier - and an **endpoint** a planning tool calls.
+- **Proof before the plan.** The default marketing-mix policy refits the model on shuffled
+  sales and with fake noise channels, checks the effect signs and the holdout error, and
+  records the evidence; the `mmm_governed` workflow does it all - collinearity check, fit,
+  policy, report, evidence pack - in one run.
 
 **Start here.**
 [Your first MMM in Guided mode](guides/guided-tutorial.md) →
 [Priors, lift tests and the scorecard](guides/guided-modelling.md) →
 [Optimise a budget](tutorials/optimise-a-budget.md).
 Writing your own MMM spec: [the marketing-mix guide](guides/mmm.md) and [mmm-framework on the platform](models/mmm-framework.md).
+
+## Governed forecasting pipeline
+
+**The question.** Finance publishes a weekly demand forecast that other teams plan on. Every
+Monday it has to be refreshed on the latest data, and whoever signs it off wants to know that
+the model was chosen by the data, beats a naive forecast on weeks it never saw, and is not
+just fitting noise.
+
+**The data.** One weekly KPI with at least two years of history, plus drivers you know ahead
+(prices, promotions, holidays), uploaded as a new dataset version every week.
+
+**What you get.**
+
+- The `ts_readiness_arimax` workflow, run by a **schedule** (`0 6 * * 1`, Europe/Berlin) or a
+  **trigger** on each new dataset version: ADF, KPSS, Phillips-Perron and Zivot-Andrews decide
+  the differencing, an information-criterion search picks the AR and MA orders, an
+  expanding-window backtest scores ARIMAX against naive and seasonal-naive on the same folds
+  at 1, 4 and 8 weeks, and the model is kept only if it beats them.
+- A **governance policy** for forecasts you publish - null tests, benchmarks, residual
+  whiteness, holdout accuracy - with a **second person's approval** and
+  `require_validated_for_promotion`, so the endpoint the planners call can only ever serve a
+  validated version (`409 NOT_VALIDATED` otherwise).
+- Every week's run on the record: each test's verdict, each branch with the values it read,
+  the chosen orders, the backtest table, the Diebold-Mariano verdict, the governance evidence
+  and an evidence pack for the auditor. Unchanged steps are reused from the cache, so a
+  rerun costs only what changed.
+
+The canonical run on a wandering weekly KPI, captured on a laptop: all four tests say
+"difference once", the search picks ARIMA(1, 1, 1), the model beats "same as last week" by
+25% on 13 held-out weeks - and the record also says that the one-week edge over naive *may be
+luck* and that two of twenty shuffled fits did as well. That is the kind of honesty a
+sign-off needs ([the full output](whats-new-0.5.md#the-canonical-example-three-ways)).
+
+**Start here.**
+[Workflow cookbook: readiness to ARIMAX](guides/workflow-cookbook.md#readiness-to-arimax) →
+[Validate models with governance policies](guides/governance.md) →
+[Schedules and triggers](guides/workflows.md#schedules-and-triggers) →
+[Endpoints and webhooks](guides/endpoints-and-webhooks.md).
+
+## Macro and VAR analysis
+
+**The question.** Several series drive each other - income and consumption, prices of close
+substitutes, sales, distribution and search interest. Are they tied together in the long run?
+If one is shocked, how do the others respond, and for how long? Does one help predict
+another?
+
+**The data.** Two to five series at the same frequency, one value per series and period
+(`value(series, quarter)`; a wide sheet is ingested with the `wide` mapping), ideally 50
+periods or more.
+
+**What you get.**
+
+- The `var_vecm_cointegration` workflow: a Johansen trace test decides the branch. Tied
+  series get a cointegration-rank search and a **VECM** on the levels; untied ones are
+  differenced, the lag order is chosen by AIC and a **VAR** is fitted on the changes.
+  Granger tests run either way, and a forecast comes from whichever system was fitted.
+- **Impulse responses with bands** and **variance decompositions** in the Model Explorer,
+  the Johansen table, the speed of adjustment (`alpha`: how fast a gap closes) and the
+  long-run relations (`beta`), and Granger tables.
+- `ts.varmax` when outside drivers matter, `ts.dynamic_factor` for many series moving with a
+  few common factors, `ts.ecm` (ARDL bounds test) for one equation with long-run drivers.
+
+On three simulated weekly series where `a` and `b` share one stochastic trend and `c`
+wanders on its own (160 weeks), the cookbook's workflow found exactly that, run on a laptop:
+
+```text
+johansen  The series share at least one long-run relationship.
+          (trace statistic 69.1, rank 1)
+tied      took the then arm   {'nodes.johansen.rank': 1}
+rank      1
+vecm      model://growth/wf-macro-system-vecm@v1
+granger   Past values of the driver help predict the result.
+          (b -> a, lag 1, p = 0.0015)
+forecast  8 weeks: dataset://growth/wf-macro-system-forecast-forecast@v1
+skipped   diff, lags, var   (the VAR branch was not needed)
+```
+
+(A summary of the run's node results; the cookbook shows the client calls that read them.)
+
+**Start here.**
+[Workflow cookbook: VAR/VECM cointegration](guides/workflow-cookbook.md#varvecm-cointegration) →
+[statsmodels time-series models](models/statsmodels.md) →
+[Explore a model: impulse responses](guides/model-explorer.md).
 
 ## Weekly forecasting
 
@@ -111,7 +202,7 @@ promotion, with the household and the trip identified.
 
 ## Your own model
 
-None of the four fits? A PyMC model is one `build()` method and an sklearn model one
+None of these fits? A PyMC model is one `build()` method and an sklearn model one
 `estimator()`; the platform handles the coordinates, splits, replayed preprocessing,
 summaries, bundles, endpoints and integrations.
 [Port a model in 15 minutes](guides/port-a-model.md) ·

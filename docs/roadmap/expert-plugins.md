@@ -1,12 +1,12 @@
-# Expert plugins, MCP and optimisation jobs <span class="mapi-badge mapi-badge--soon">next: v0.6</span>
+# Expert plugins and MCP <span class="mapi-badge mapi-badge--soon">next: v0.6</span>
 
 !!! abstract "Status: next (milestone M4)"
     v0.4 opened the hosted platform to declarative specs and built-in models; v0.5 added
-    workflows, governance and the explorers ([what's new](../whats-new-0.5.md)). v0.6 lets
-    **allow-listed teams upload their own model plugins**, gives AI agents a curated **MCP
-    server**, and moves budget optimisation and model sweeps **into the sandbox**. Public code
-    upload for everyone comes after it, behind its own controls (see the
-    [roadmap](index.md#after-v06)).
+    workflows, governance, the explorers and in-sandbox budget optimisation
+    ([what's new](../whats-new-0.5.md)). v0.6 lets **allow-listed experts upload their own
+    model plugins** and gives AI assistants and agents a curated **MCP server**; sweeps and
+    simulation-based calibration become single parent runs. Public code upload for everyone
+    comes after it, behind its own controls (see the [roadmap](index.md#after-v06)).
 
 ## Plugin upload for allow-listed experts
 
@@ -43,7 +43,7 @@ run and fetching a plot, for AI assistants and agents. Every string that came fr
 a plugin is returned as clearly delimited untrusted text, so a model name cannot smuggle
 instructions into an agent. Tokens and scopes work as for any other client.
 
-## Optimisation and sweeps as jobs
+## Sweeps as jobs, and what v0.5 already delivered
 
 - **`optimize` runs** (delivered in v0.5). Budgets are optimised *next to the model* in the
   sandbox with mmm-framework's planning module, from the posterior's response curves

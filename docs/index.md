@@ -97,8 +97,10 @@ flowchart LR
     I --> V
     V --> F["Fit in a fresh sandbox<br/>preprocessing learned<br/>on train only"]
     F --> B[("Signed bundle<br/>states · posterior ·<br/>scorecard · grids")]
-    B --> R["Report and<br/>what-if sliders"]
-    B --> E["Endpoint<br/>gated on the scorecard"]
+    W["Workflow<br/>tests → decisions →<br/>search → backtest"] -.-> F
+    B --> R["Report, explorers,<br/>what-if, budget plans"]
+    B --> G{{"Governance<br/>null tests · benchmarks ·<br/>second-person approval"}}
+    G --> E["Endpoint<br/>gated on the scorecard<br/>and the validation"]
     E --> S["Sheets · BI embeds ·<br/>webhooks ·<br/>Python, TS, R"]
 ```
 
@@ -111,8 +113,14 @@ flowchart LR
    your units.
 4. **Results are checked twice.** Outputs are verified against the storage's own checksums
    and signed; the scorecard checks convergence, holdout error and plausibility.
-5. **Other tools connect to an endpoint, not a file.** Promote a better model and every
+5. **Models earn their place.** A governance policy holds each version to null tests and
+   benchmarks, records the evidence and, if you ask, waits for a second person; endpoints
+   can refuse anything that is not validated.
+6. **Other tools connect to an endpoint, not a file.** Promote a better model and every
    integration uses it; roll back with one call.
+7. **Whole analyses repeat themselves.** A workflow re-runs the tests, decisions, fits and
+   checks every Monday or whenever the data changes, reusing every step whose inputs did not
+   change.
 
 ## Your first MMM in Guided mode
 
@@ -239,6 +247,42 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
 </div>
 
+### See it at work
+
+<div class="mapi-shots" markdown>
+
+<figure markdown>
+[![The visual workflow editor with the readiness-to-ARIMAX graph](assets/screenshots/workflows-editor.png){ .mapi-shot loading=lazy }](guides/workflows.md#the-editor)
+<figcaption>Workflows: tests, decisions, searches, backtests and governance as one graph, with typed ports.</figcaption>
+</figure>
+
+<figure markdown>
+[![A workflow run followed live, every step done](assets/screenshots/workflows-run-monitor.png){ .mapi-shot loading=lazy }](guides/workflows.md#running-and-watching)
+<figcaption>Run monitor: every step, decision and verdict live, with the run's cost.</figcaption>
+</figure>
+
+<figure markdown>
+[![A validation awaiting a reviewer's approval](assets/screenshots/governance-validation.png){ .mapi-shot loading=lazy }](guides/governance.md#validating-a-model-version)
+<figcaption>Governance: checks, evidence and a second person's sign-off.</figcaption>
+</figure>
+
+<figure markdown>
+[![The real model's error against nineteen fits on shuffled results](assets/screenshots/governance-evidence.png){ .mapi-shot loading=lazy }](guides/null-tests.md)
+<figcaption>Null tests: the real model must beat itself fitted on shuffled results.</figcaption>
+</figure>
+
+<figure markdown>
+[![Stationarity per series in the Data Explorer](assets/screenshots/explorer-data-stationarity.png){ .mapi-shot loading=lazy }](guides/data-explorer.md)
+<figcaption>Data Explorer: does each series wander, with a plain verdict.</figcaption>
+</figure>
+
+<figure markdown>
+[![A budget plan with the efficient frontier](assets/screenshots/explorer-optimize.png){ .mapi-shot loading=lazy }](tutorials/optimise-a-budget.md)
+<figcaption>Budget plans: mmm-framework planning from the posterior, with the frontier.</figcaption>
+</figure>
+
+</div>
+
 [:octicons-arrow-right-24: Everything that is new in 0.5](whats-new-0.5.md)
 
 ## What came in v0.4
@@ -309,15 +353,14 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     [:octicons-arrow-right-24: Embed a chart](tutorials/embed-a-chart.md)
 
--   :material-target:{ .lg .middle } **Budget plans and Google Sheets**
+-   :material-google-spreadsheet:{ .lg .middle } **Google Sheets**
 
     ---
 
-    `POST …:optimize` splits a budget across channels from the model's posterior
-    (mmm-framework planning); an Apps Script writes a forecast into a sheet every morning.
+    A card on every endpoint generates an Apps Script that writes a forecast into a sheet
+    every morning, with a token scoped to that one endpoint.
 
-    [:octicons-arrow-right-24: Optimise a budget](tutorials/optimise-a-budget.md) ·
-    [Connect Sheets](tutorials/google-sheets.md)
+    [:octicons-arrow-right-24: Connect Sheets](tutorials/google-sheets.md)
 
 -   :material-account-check-outline:{ .lg .middle } **Sign-up and the data lifecycle**
 
@@ -350,21 +393,30 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
 ## Measured, not promised
 
-Measured on an 8-core laptop against the whole stack, on the data and settings described in
-[M3 verification](operations/m3-verification.md).
+Measured on an 8-core laptop against the whole stack, with real fits in the sandboxed runner.
+The v0.5 journeys, on the data and settings of [M3.5 verification](operations/m35-verification.md):
+
+<div class="mapi-stats" markdown>
+<div class="mapi-stat"><strong>37–40 s</strong><span>the canonical workflow, 19 nodes from unit-root tests to governance, through the orchestrator and the sandboxed runner</span></div>
+<div class="mapi-stat"><strong>p = 0.7–0.95</strong><span>an ARIMAX fitted on pure noise against 19 shuffled refits: validation fails, promotion answers NOT_VALIDATED</span></div>
+<div class="mapi-stat"><strong>0.1 %</strong><span>of the result credited to three fake noise drivers by a model fitted on real signal</span></div>
+<div class="mapi-stat"><strong>26 s</strong><span>a validation with the null tests: 19 shuffled refits plus 3 fake drivers</span></div>
+<div class="mapi-stat"><strong>10–16 s</strong><span>an mmm-framework budget plan with a 5-point efficient frontier, in the sandbox</span></div>
+</div>
+
+Those runs found eight defects that no unit, integration or mocked-browser test could see;
+each was fixed with a regression test before release. The v0.4 journey, on the data of
+[M3 verification](operations/m3-verification.md):
 
 <div class="mapi-stats" markdown>
 <div class="mapi-stat"><strong>135 s</strong><span>upload → report → scenario, clicked through by a script; 79 s of it is the fit</span></div>
 <div class="mapi-stat"><strong>0.08 %</strong><span>instant slider vs the exact model for TV at half budget (−454,590 vs −454,241; exact sd 14,003)</span></div>
 <div class="mapi-stat"><strong>0.01 %</strong><span>"TV off" from the grid vs an exact counterfactual run (−1,046,519 vs −1,046,414)</span></div>
 <div class="mapi-stat"><strong>76–81 %</strong><span>of each translated prior inside the analyst's stated 80% ROI range</span></div>
-<div class="mapi-stat"><strong>&lt; 1 %</strong><span>holdout error of the endpoint's model, with every plausibility check passing</span></div>
 <div class="mapi-stat"><strong>0 objects</strong><span>left in five buckets after a tenant deletion (285 before); only the audit log and cost ledger are kept</span></div>
-<div class="mapi-stat"><strong>15 / 15</strong><span>end-to-end API tests of the M3 journey passing against a live stack</span></div>
 </div>
 
-The same runs found six usability defects, two of them dead ends, which were fixed before
-release. Not yet measured: real testers, a real Google Cloud project, Docker-isolated public
+Not yet measured: real testers, a real Google Cloud project, Docker-isolated public
 workspaces ([what remains](operations/m3-verification.md#what-remains-unverified)).
 
 ## Connect it to everything
@@ -454,7 +506,7 @@ flowchart LR
 
     - Forecasts in **weekly EUR**, not "model units": the model reports its own units, and
       they stop at the weekly resample because daily values cannot be recovered from weekly sums.
-      The output says so in its `output_space` attribute.
+      The output says so in its `output_space` (`model-owned`) and `units` attributes.
     - A new market drawn from the fitted **hyperprior**, honestly wider than a known one.
     - What-if deltas that share their noise with the baseline (common random numbers), so
       the delta reflects the change, not sampling noise.
