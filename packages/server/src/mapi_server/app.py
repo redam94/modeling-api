@@ -51,6 +51,7 @@ from mapi_server.api import (
     trust,
     usage,
     webhooks,
+    workflows,
 )
 from mapi_server.api import auth as auth_routes
 from mapi_server.api.problems import JsonBodyLimit
@@ -339,6 +340,7 @@ def create_app(
                 "models",
                 "endpoints",
                 "webhooks",
+                "workflows",
                 "plots",
                 "internal",
             )
@@ -412,6 +414,10 @@ def create_app(
         webhooks.router,
         plots.router,
         plots.embeds_router,
+        workflows.router,
+        workflows.runs_router,
+        workflows.templates_router,
+        workflows.catalog_router,
         internal.router,
         *trust.ROUTERS,
     ):

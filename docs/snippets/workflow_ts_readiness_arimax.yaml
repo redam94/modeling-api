@@ -1,0 +1,146 @@
+# The canonical workflow: time-series readiness -> ARIMAX (template ts_readiness_arimax).
+# Kept identical to mapi_spec.workflow_templates.TS_READINESS_ARIMAX by a test.
+apiVersion: mapi/v1
+kind: Workflow
+metadata: {name: ts-readiness-arimax, project: templates}
+params:
+  alpha: {type: number, default: 0.05, minimum: 0.001, maximum: 0.2, description: Significance level of the tests}
+  season: {type: integer, default: 52, minimum: 2, maximum: 400, description: Season length in periods (52 for weekly data)}
+  horizons:
+    type: array
+    default: [1, 4, 8]
+    description: Forecast horizons scored in the backtest
+  gap: {type: integer, default: 0, minimum: 0, maximum: 52, description: Periods between training and test (late data)}
+  n_folds: {type: integer, default: 6, minimum: 2, maximum: 50}
+  max_p: {type: integer, default: 3, minimum: 0, maximum: 8}
+  max_q: {type: integer, default: 3, minimum: 0, maximum: 8}
+  drivers:
+    type: array
+    default: []
+    description: Driver columns known for the future
+inputs:
+  data: {type: dataset, description: The weekly (or daily) series to model}
+nodes:
+- id: adf
+  use: test.adf
+  inputs: {data: inputs.data}
+  with:
+    alpha: {$param: alpha}
+  label: Does it wander? (ADF)
+- id: kpss
+  use: test.kpss
+  inputs: {data: inputs.data}
+  with:
+    alpha: {$param: alpha}
+  label: Is it stable? (KPSS)
+- id: pp
+  use: test.pp
+  inputs: {data: inputs.data}
+  with:
+    alpha: {$param: alpha}
+- id: za
+  use: test.zivot_andrews
+  inputs: {data: inputs.data}
+  with:
+    alpha: {$param: alpha}
+- id: seas
+  use: test.seasonal_strength
+  inputs: {data: inputs.data}
+  with:
+    period: {$param: season}
+- id: wanders
+  use: branch.if
+  label: Difference?
+  with: {condition: (not nodes.adf.reject or nodes.kpss.reject) and not (nodes.pp.reject and nodes.za.reject)}
+- id: seasonal
+  use: branch.if
+  label: Seasonal difference?
+  with: {condition: nodes.seas.seasonal}
+- id: sdiff
+  use: transform.seasonal_difference
+  inputs: {data: inputs.data}
+  when: seasonal.then
+  with:
+    period: {$param: season}
+- id: diff
+  use: transform.difference
+  inputs:
+    data: [sdiff.data, inputs.data]
+  when: wanders.then
+- id: acf
+  use: test.acf_pacf
+  inputs:
+    data: [diff.data, sdiff.data, inputs.data]
+  with:
+    max_order: {$param: max_p}
+- id: order
+  use: search.arma_order
+  inputs: {data: inputs.data}
+  with:
+    d: {$expr: 'if(nodes.wanders.value, 1, 0)'}
+    max_p: {$param: max_p}
+    max_q: {$param: max_q}
+    exog: {$param: drivers}
+    criterion: aic
+  label: AR and MA orders
+- id: folds
+  use: split.expanding_window
+  inputs: {data: inputs.data}
+  with:
+    horizons: {$param: horizons}
+    gap: {$param: gap}
+    n_folds: {$param: n_folds}
+    step: 4
+- id: backtest
+  use: model.backtest
+  inputs: {data: inputs.data, split: folds.plan}
+  with:
+    model: ts.sarimax@^1
+    settings:
+      order: {$expr: '[nodes.order.best_p, if(nodes.wanders.value, 1, 0), nodes.order.best_q]'}
+      seasonal_order: {$expr: '[0, if(nodes.seasonal.value, 1, 0), 0, params.season]'}
+      exog: {$param: drivers}
+    metrics: [mae, rmse, mape, mase]
+- id: naive
+  use: evaluate.baseline
+  inputs: {data: inputs.data, split: folds.plan}
+  with:
+    methods: [naive, seasonal_naive]
+    season: {$param: season}
+- id: compare
+  use: compare.models
+  inputs:
+    candidates: [backtest.metrics, naive.metrics]
+  with: {metric: mae}
+- id: fit
+  use: model.fit
+  inputs: {data: inputs.data}
+  with:
+    model: ts.sarimax@^1
+    settings:
+      order: {$expr: '[nodes.order.best_p, if(nodes.wanders.value, 1, 0), nodes.order.best_q]'}
+      seasonal_order: {$expr: '[0, if(nodes.seasonal.value, 1, 0), 0, params.season]'}
+      exog: {$param: drivers}
+    evaluate:
+      metrics: [mape, coverage_90]
+- id: select
+  use: select.best
+  inputs:
+    table: compare.table
+    models: [fit.model]
+  with:
+    metric: mae
+    must_beat: [naive]
+    margin: 0.0
+- id: governance
+  use: governance.policy
+  inputs: {model: select.model, data: inputs.data}
+- id: report
+  use: report.summary
+  inputs:
+    tests: [adf.result, kpss.result, pp.result, za.result, seas.result, acf.result]
+    metrics: [backtest.metrics, naive.metrics]
+    items: [order.table, compare.table]
+    model: select.model
+  with: {title: Time-series readiness and ARIMAX}
+outputs: {model: select.model, report: report.report, evidence: governance.evidence}

@@ -28,6 +28,13 @@ from mapi_server_testkit.builders import CATALOG, EXEC_TOKEN
 IMAGE_DIGEST = "sha256:" + "ab" * 32
 
 APP_TABLES = (
+    "workflow_events",
+    "workflow_node_runs",
+    "workflow_runs",
+    "workflow_schedules",
+    "workflow_triggers",
+    "workflow_revisions",
+    "workflows",
     "webhook_deliveries",
     "webhook_events",
     "webhooks",

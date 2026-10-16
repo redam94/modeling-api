@@ -86,6 +86,33 @@ milestone releases are tagged on `main`.
 - **docs**: "Marketing-mix models on mmm-framework" (data contract, how the spec maps onto
   mmm-framework, priors, lift tests, optimisation, limits), the rewritten marketing-mix guide
   and the "Optimise a budget" tutorial.
+- **workflows** (new distribution `mapi-workflows`): the workflow engine and its nodes.
+  - A JSON-only engine (`mapi_workflows.engine`) that both the control plane and a local
+    runner drive: topological scheduling with `max_parallel`, branches evaluated with the
+    safe expression language, input alternatives, skips, retries, `on_failure: continue`,
+    cancellation, deadlines, cache keys and an event log; orchestrator nodes
+    (`compare.models`, `select.best`, `select.threshold`, `report.summary`,
+    `report.evidence_pack`) computed on JSON results only.
+  - The data nodes (`mapi_workflows.runtime`, extra `runtime`): 17 statistical tests
+    checked against statsmodels, scipy and arch reference values (Phillips-Perron included),
+    transforms, the seven train/test plans, ARMA/SARIMA/VAR-lag/cointegration-rank searches,
+    grid searches, backtests (window plans, masked k-fold, geo hold-outs), forecasts,
+    benchmarks, metrics, residual diagnostics, Diebold-Mariano with the HLN correction and
+    governance nodes over pluggable check runners (`mapi.governance_checks`).
+  - `LocalRunner`: runs a workflow in-process (threads, timeouts, cancellation, an in-memory
+    cache, sub-workflows); the canonical `ts_readiness_arimax` template runs end to end.
+  - The generated node reference (`docs/reference/workflow-nodes.md`).
+- **runner**: the `workflow_node` run kind executes one node in the sandbox, with model
+  inputs loaded from their bundles.
+- **server**: workflows (migration `0011_workflows`, seven tables under forced row-level
+  security): documents and revisions validated at every save, runs as `workflow` parent runs
+  driven by the orchestrator's workflow loop, nodes as `workflow_node`, `fit` and child
+  workflow runs, derived datasets registered as `wf-<workflow>-<node>` versions, cache reuse
+  across runs, cancellation through the run state machine, SSE events, output links, cost
+  roll-up, cron schedules, `dataset.version.created` triggers with debounce, webhooks and
+  audit; the dispatcher and reconciler skip parent runs.
+- **docs**: the workflows guide (`docs/guides/workflows.md`) with the canonical document and a
+  cookbook whose fragments are validated by a test.
 
 ### Removed
 - **spec**: BayesInsight (`mapi_spec.bayesinsight`, `mapi_spec.bayesinsight_model`, the

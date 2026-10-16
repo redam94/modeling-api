@@ -33,6 +33,7 @@ members = [
     "mapi-sklearn",
     "mapi-spec",
     "mapi-steps",
+    "mapi-workflows",
     "modeling-api",
 ]
 
@@ -2432,6 +2433,7 @@ dependencies = [
     { name = "mapi-plots", extra = ["recipes", "render"] },
     { name = "mapi-sdk" },
     { name = "mapi-spec" },
+    { name = "mapi-workflows", extra = ["runtime"] },
     { name = "numpy" },
     { name = "pandas" },
     { name = "pyarrow" },
@@ -2450,6 +2452,7 @@ requires-dist = [
     { name = "mapi-plots", extras = ["recipes", "render"], editable = "packages/plots-core" },
     { name = "mapi-sdk", editable = "packages/sdk" },
     { name = "mapi-spec", editable = "packages/spec" },
+    { name = "mapi-workflows", extras = ["runtime"], editable = "packages/workflows" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "pyarrow", specifier = ">=17" },
@@ -2513,6 +2516,7 @@ dependencies = [
     { name = "mapi-gcs-shim" },
     { name = "mapi-plots" },
     { name = "mapi-spec" },
+    { name = "mapi-workflows" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation-fastapi" },
     { name = "opentelemetry-instrumentation-httpx" },
@@ -2558,6 +2562,7 @@ requires-dist = [
     { name = "mapi-gcs-shim", editable = "packages/gcs-shim" },
     { name = "mapi-plots", editable = "packages/plots-core" },
     { name = "mapi-spec", editable = "packages/spec" },
+    { name = "mapi-workflows", editable = "packages/workflows" },
     { name = "opentelemetry-api", specifier = ">=1.27" },
     { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'otlp'", specifier = ">=1.27" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.48b0" },
@@ -2639,6 +2644,39 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.0" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "xarray", specifier = ">=2025.1" },
+]
+
+[[package]]
+name = "mapi-workflows"
+version = "0.4.0"
+source = { editable = "packages/workflows" }
+dependencies = [
+    { name = "jsonschema" },
+    { name = "mapi-spec" },
+]
+
+[package.optional-dependencies]
+runtime = [
+    { name = "mapi-sdk" },
+    { name = "mapi-steps" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "scipy" },
+    { name = "statsmodels" },
+    { name = "xarray" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "jsonschema", specifier = ">=4.23" },
+    { name = "mapi-sdk", marker = "extra == 'runtime'", editable = "packages/sdk" },
+    { name = "mapi-spec", editable = "packages/spec" },
+    { name = "mapi-steps", marker = "extra == 'runtime'", editable = "packages/steps-core" },
+    { name = "numpy", marker = "extra == 'runtime'", specifier = ">=2.0" },
+    { name = "pandas", marker = "extra == 'runtime'", specifier = ">=2.2" },
+    { name = "scipy", marker = "extra == 'runtime'", specifier = ">=1.13" },
+    { name = "statsmodels", marker = "extra == 'runtime'", specifier = ">=0.14.4" },
+    { name = "xarray", marker = "extra == 'runtime'", specifier = ">=2025.1" },
 ]
 
 [[package]]
@@ -3085,6 +3123,7 @@ dependencies = [
     { name = "mapi-sklearn" },
     { name = "mapi-spec" },
     { name = "mapi-steps" },
+    { name = "mapi-workflows", extra = ["runtime"] },
 ]
 
 [package.dev-dependencies]
@@ -3128,6 +3167,7 @@ requires-dist = [
     { name = "mapi-sklearn", editable = "packages/sdk-sklearn" },
     { name = "mapi-spec", editable = "packages/spec" },
     { name = "mapi-steps", editable = "packages/steps-core" },
+    { name = "mapi-workflows", extras = ["runtime"], editable = "packages/workflows" },
 ]
 
 [package.metadata.requires-dev]

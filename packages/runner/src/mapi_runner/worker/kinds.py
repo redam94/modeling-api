@@ -75,5 +75,12 @@ def run_kind(ctx: WorkerContext) -> None:
 
         assert isinstance(job, OptimizeJob)
         run_optimize(ctx, job)
+    elif kind is RunKind.WORKFLOW_NODE:
+        from mapi_spec.workflow import WorkflowNodeJob
+
+        from mapi_runner.worker.workflow import run_workflow_node
+
+        assert isinstance(job, WorkflowNodeJob)
+        run_workflow_node(ctx, job)
     else:  # pragma: no cover - parse_job raises first
         raise NotImplementedError(f"the runner does not execute {kind.value!r} runs")

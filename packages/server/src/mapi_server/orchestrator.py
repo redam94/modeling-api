@@ -1,6 +1,6 @@
 """The orchestrator process (``mapi-server worker``): dispatcher + reconciler + event pump +
-housekeeper + webhook relay + trust-lifecycle scheduler + procrastinate worker, all on one
-event loop."""
+housekeeper + webhook relay + trust-lifecycle scheduler + workflow loop + procrastinate
+worker, all on one event loop."""
 
 from __future__ import annotations
 
@@ -31,6 +31,7 @@ from mapi_server.services.webhooks.delivery import (
     WebhookQueue,
     WebhookRelay,
 )
+from mapi_server.services.workflows.automation import WorkflowLoop
 
 __all__ = ["Orchestrator"]
 
@@ -70,6 +71,7 @@ class Orchestrator:
             else InlineLifecycleJobs(ctx)
         )
         self.lifecycle = LifecycleScheduler(ctx, jobs)
+        self.workflows = WorkflowLoop(ctx)
         self.stop = asyncio.Event()
 
     async def ensure_catalog(self) -> None:
@@ -105,6 +107,7 @@ class Orchestrator:
             asyncio.create_task(self.housekeeper.run_forever(self.stop), name="housekeeping"),
             asyncio.create_task(self.webhooks.run_forever(self.stop), name="webhooks"),
             asyncio.create_task(self.lifecycle.run_forever(self.stop), name="lifecycle"),
+            asyncio.create_task(self.workflows.run_forever(self.stop), name="workflows"),
         ]
         if self.procrastinate is not None:
             tasks.append(

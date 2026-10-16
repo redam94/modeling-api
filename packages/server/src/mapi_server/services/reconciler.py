@@ -33,7 +33,7 @@ import logging
 from datetime import datetime, timedelta
 
 from mapi_spec.errors import ErrorCode, Problem
-from mapi_spec.executor import ExecState, ExecStatus, Executor, Handle, RunEventType
+from mapi_spec.executor import ExecState, ExecStatus, Executor, Handle, RunEventType, RunKind
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import (
     Actor,
@@ -120,7 +120,11 @@ class Reconciler:
             rows = (
                 await session.execute(
                     select(m.Run.id, m.Run.state)
-                    .where(m.Run.state.in_([s.value for s in _ACTIVE]))
+                    .where(
+                        m.Run.state.in_([s.value for s in _ACTIVE]),
+                        # parents have no execution; the workflow loop owns them (M3.5)
+                        m.Run.kind.notin_([k.value for k in RunKind if k.is_parent]),
+                    )
                     .order_by(m.Run.updated_at)
                 )
             ).all()

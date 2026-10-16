@@ -14,6 +14,7 @@ dependencies = [
   "mapi-spec",
   "mapi-sdk",
   "mapi-plots[recipes,render]",
+  "mapi-workflows[runtime]",
   "httpx>=0.27",
   "numpy>=2.0",
   "pandas>=2.2",
@@ -42,3 +43,4 @@ mapi-gcs-shim = { workspace = true }
 mapi-conformance = { workspace = true }
 mapi-sdk = { workspace = true }
 mapi-plots = { workspace = true }
+mapi-workflows = { workspace = true }

@@ -10,6 +10,7 @@ dependencies = [
   "mapi-spec",
   "mapi-plots",
   "mapi-gcs-shim",
+  "mapi-workflows",
   "fastapi>=0.115",
   "uvicorn[standard]>=0.30",
   "pydantic-settings>=2.4",
@@ -56,3 +57,4 @@ packages = ["src/mapi_server"]
 mapi-spec = { workspace = true }
 mapi-plots = { workspace = true }
 mapi-gcs-shim = { workspace = true }
+mapi-workflows = { workspace = true }
