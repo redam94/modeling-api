@@ -1,6 +1,6 @@
 ---
 title: modeling-api
-description: Fit, score and share labelled multi-dimensional models, and replay the exact fitted preprocessing every time you score.
+description: Analysts go from a spreadsheet to a report and a what-if scenario in minutes, with honest uncertainty. Data scientists bring PyMC, scikit-learn and forecasting models whose preprocessing is replayed exactly, and put them behind an endpoint in one click.
 hide:
   - navigation
   - toc
@@ -8,149 +8,340 @@ hide:
 
 <div class="mapi-hero" markdown>
 <div markdown>
-<p class="mapi-tagline">Labelled models · replayed preprocessing · typed, honest answers · many teams, one safe platform</p>
+<p class="mapi-tagline">Guided for analysts · exact for data scientists · honest uncertainty · one safe platform</p>
 
-# Fit with preprocessing.<br>Score with the *same* preprocessing.
+# Trustworthy models,<br>from spreadsheet to endpoint.
 
-<p>modeling-api is a platform for Bayesian and classical models whose data has <strong>named
-dimensions</strong>: geo × channel × week, store × sku × day, household × trip. Describe a model
-in a small YAML spec or a few lines of Python. The platform checks your data, learns every
-preprocessing step on the training data only, and replays exactly that work whenever you
-forecast, add a new market or ask "what if". Many organisations share one deployment, each
-in its own tenant, and every run executes in a fresh sandbox whose outputs are verified before
-anyone can download them.</p>
+<p>modeling-api fits Bayesian and classical models of data with <strong>named
+dimensions</strong> (market × channel × week, store × product × day, household × trip) and
+answers questions with them in the units your business uses. An analyst uploads a spreadsheet
+and gets a report, a sanity scorecard and instant what-if sliders. A data scientist writes a
+small spec or a few lines of Python and gets the same model behind a versioned endpoint,
+with the fitted preprocessing replayed exactly on every call. Every run happens in a fresh
+sandbox, and every result says how sure it is.</p>
 
-[Quickstart: 10 minutes](getting-started/quickstart.md){ .md-button .md-button--primary }
-[Get started](getting-started/index.md){ .md-button }
-[Run it for your teams](guides/administration.md){ .md-button }
+[Your first MMM in Guided mode](guides/guided-tutorial.md){ .md-button .md-button--primary }
+[Quickstart for data scientists](getting-started/quickstart.md){ .md-button }
+[Why modeling-api?](why.md){ .md-button }
 
 </div>
 ![modeling-api logo: a labelled data cube](assets/logo.svg)
 </div>
 
-!!! info "Where the project is today: v0.3, multi-tenant, with a cloud backend for a private beta"
-    `make install && make dev && make seed` starts the whole platform on your laptop, without
-    Docker: an HTTP API, a job queue, a sandboxed runner, an object store that behaves like
-    Google Cloud Storage, the web app and an isolated plot sandbox, with sign-in through a
-    development identity provider. v0.3 adds **tenants, roles, sign-in and API tokens**,
-    **quotas and a cost ledger**, an audit log and kill switches, a **Cloud Run Jobs executor**
-    with Terraform for every Google Cloud project, and metrics, alerts and runbooks. The cloud
-    pieces are tested against fakes; a [short checklist](operations/gcp-deployment.md#before-you-start-the-verify-m0-checklist)
-    of cloud behaviours waits for a real project. Guided mode for analysts comes next: see the
-    [roadmap](roadmap/index.md).
+!!! success "v0.4: Guided mode and integrations"
+    Analysts get **Guided mode**: templates, questions instead of a column mapper, beliefs as
+    ROI ranges and lift tests, a sanity scorecard, what-if sliders and forecasts. Other
+    applications get **endpoints** promoted through the scorecard, code snippets, signed
+    **webhooks**, **embeddable charts**, Google Sheets and an **Atlas** budget optimiser.
+    Every number on this page was measured on a laptop running the whole stack
+    ([M3 verification](operations/m3-verification.md)); the cloud pieces are tested against
+    fakes, and the study with five non-technical testers is still to come.
 
-## See it run
+## Two ways in, one model
 
-These are screenshots of the [quickstart](getting-started/quickstart.md), taken from a fresh
-`make dev` stack: the E33 geo marketing-mix demo, fitted and scored from the browser.
+<div class="mapi-personas" markdown>
+<div class="mapi-persona" markdown>
+
+### :material-compass-outline: Analysts
+
+<p class="mapi-promise">Upload → report → scenario in minutes, with honest uncertainty.</p>
+
+- Pick what you want to learn; answer "which column is revenue?" (the platform suggests
+  the answer and says why).
+- Say what you already believe ("TV returns 1.5 to 4 per euro") or enter a lift test.
+- Read a report in plain words, with a **sanity scorecard** that tells you whether to trust it.
+- Drag **what-if sliders**: answers in your browser, with a range that stays honest when
+  several channels move at once. "Run exact" asks the full model.
+- Share a live chart or put the model in a Google Sheet.
+
+[:octicons-arrow-right-24: Your first analysis in Guided mode](guides/guided-tutorial.md)
+
+</div>
+<div class="mapi-persona mapi-persona--expert" markdown>
+
+### :material-code-braces: Data scientists
+
+<p class="mapi-promise">Any PyMC, scikit-learn or forecasting model. Preprocessing replayed exactly. Endpoints in one click.</p>
+
+- A PyMC model is one `build()` method, an sklearn model one `estimator()`; built-in
+  marketing-mix, forecasting, demand and choice models are ready to use.
+- Steps **learn on the training data only** and are **replayed**, never refitted, at score
+  time: forecasts, new markets, counterfactuals.
+- Uncertainty is first-class: draws, quantiles or intervals, with the aggregations that are
+  valid for each.
+- Promote a version to an **endpoint** through the scorecard gate; copy a snippet for
+  Python, TypeScript, curl, R, Apps Script, Atlas or a notebook.
+
+[:octicons-arrow-right-24: Quickstart: zero to first model](getting-started/quickstart.md)
+
+</div>
+</div>
+
+Both edit the same `ModelSpec`: every Guided screen has **View as YAML**, and an expert's
+changes come back to Guided mode intact. [Who it is for, and who it is not for](why.md).
+
+## How it works
+
+```mermaid
+flowchart LR
+    D["Your data<br/>CSV · Parquet · MFF ·<br/>Meridian · BayesInsight"] --> I["Sandboxed ingest<br/>checked, profiled,<br/>dims and roles"]
+    Q["Guided answers<br/>or a YAML spec"] --> V{{"Static checks<br/>before any compute"}}
+    I --> V
+    V --> F["Fit in a fresh sandbox<br/>preprocessing learned<br/>on train only"]
+    F --> B[("Signed bundle<br/>states · posterior ·<br/>scorecard · grids")]
+    B --> R["Report and<br/>what-if sliders"]
+    B --> E["Endpoint<br/>gated on the scorecard"]
+    E --> S["Sheets · BI embeds ·<br/>webhooks · Atlas ·<br/>Python, TS, R"]
+```
+
+1. **Your data stays labelled.** The upload becomes an `xr.Dataset` with named dims, roles and
+   units; nothing downstream is positional.
+2. **Mistakes fail early.** A spec that would leak the holdout, a forecast past what the
+   model supports, a market the model has never seen: typed errors, before any compute.
+3. **Fitting learns, scoring replays.** Every preprocessing step stores what it learned, so a
+   forecast or a new market goes through exactly the same transformations, then back into
+   your units.
+4. **Results are checked twice.** Outputs are verified against the storage's own checksums
+   and signed; the scorecard checks convergence, holdout error and plausibility.
+5. **Other tools connect to an endpoint, not a file.** Promote a better model and every
+   integration uses it; roll back with one call.
+
+## Your first MMM in Guided mode
+
+The whole journey of a geo marketing-mix model, from a spreadsheet of weekly spend and
+revenue by region to a budget scenario. The times are what an automated "tester" took on a
+laptop, almost all of it the platform working: **137 seconds** from upload to scenario.
+
+<div class="mapi-path" markdown>
+
+1. **Choose "Geo marketing mix"** and drop your CSV on the page. Each column is profiled *in
+   your browser*; the platform suggests which column is revenue, which are spend, and why.
+   *(5 s)*
+2. **Say what you believe**, if anything: an ROI range per channel, a lift test. *Preview
+   what this means* shows it in business units before any fitting. *(22 s, optional)*
+3. **Fit the model.** Plain-language progress; the model is tested on weeks it has not seen,
+   then refitted on everything. *(80 s)*
+4. **Read the results**: ROI and share per channel with 90% ranges, and the sanity scorecard,
+   each check with what to do next. *(instant)*
+5. **Ask "what if"**: move search +20% and see the change in revenue with its range at once;
+   *Run exact* confirms it with the full model. *(30 s with the exact run and a forecast)*
+6. **Share it**: put the model live as an endpoint, or share a chart by link.
+
+</div>
+
+[:octicons-arrow-right-24: The full tutorial, with screenshots](guides/guided-tutorial.md) ·
+[From a spreadsheet to a draft, with curl](guides/guided-data.md)
 
 <div class="mapi-shots" markdown>
 
 <figure markdown>
-[![The home dashboard](assets/screenshots/dashboard.png){ .mapi-shot loading=lazy }](guides/web-ui.md#home)
-<figcaption>Home: what is running, what needs attention, recent runs and models.</figcaption>
+[![The Guided templates](assets/screenshots/guided-templates.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#1-choose-what-you-want-to-learn)
+<figcaption>Templates: start from the question, not the model.</figcaption>
 </figure>
 
 <figure markdown>
-[![The spec editor with live validation and the pipeline](assets/screenshots/editor.png){ .mapi-shot loading=lazy }](guides/web-ui.md#build)
-<figcaption>Build: YAML with live validation, and the schema after every pipeline step.</figcaption>
+[![The question flow with role detection](assets/screenshots/guided-data.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#2-your-data)
+<figcaption>Your data: suggested answers, each with its reason.</figcaption>
 </figure>
 
 <figure markdown>
-[![A fit run while the sampler draws](assets/screenshots/run-progress.png){ .mapi-shot loading=lazy }](guides/web-ui.md#run-detail)
-<figcaption>Runs: the sampler's own progress, streamed live from the sandbox.</figcaption>
+[![Beliefs as ROI ranges with a preview](assets/screenshots/guided-priors.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#3-what-you-believe)
+<figcaption>Beliefs: ROI ranges and lift tests, previewed in business units.</figcaption>
 </figure>
 
 <figure markdown>
-[![The sanity scorecard of a fitted model](assets/screenshots/scorecard.png){ .mapi-shot loading=lazy }](guides/web-ui.md#overview)
-<figcaption>Inspect: a scorecard of convergence and holdout checks, each with a next step.</figcaption>
+[![The report with ROI and share per channel](assets/screenshots/guided-report.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#5-results-and-the-sanity-scorecard)
+<figcaption>Results: every number with the range it could really be in.</figcaption>
 </figure>
 
 <figure markdown>
-[![Revenue decomposed into baseline and channels](assets/screenshots/decomposition.png){ .mapi-shot loading=lazy }](guides/web-ui.md#plots)
-<figcaption>Plots: rendered in a sandboxed iframe on a separate origin.</figcaption>
+[![The sanity scorecard](assets/screenshots/guided-scorecard.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#5-results-and-the-sanity-scorecard)
+<figcaption>Scorecard: can you trust it, and what to do if not.</figcaption>
 </figure>
 
 <figure markdown>
-[![An 8-week forecast per market](assets/screenshots/score-forecast.png){ .mapi-shot loading=lazy }](guides/web-ui.md#score)
-<figcaption>Score: an 8-week forecast with the fitted preprocessing replayed exactly.</figcaption>
+[![What-if sliders with the exact run](assets/screenshots/guided-whatif.png){ .mapi-shot loading=lazy }](guides/guided-tutorial.md#6-what-if)
+<figcaption>What if: instant answers from per-draw response curves.</figcaption>
 </figure>
 
 </div>
 
-## Run it for many teams
+## What's new in v0.4
 
-One deployment serves many organisations. People sign in with their own identity provider,
-work in the projects they have a role in, and see what their compute costs; operators look
-after the platform without ever reading a tenant's data. These screenshots come from a `make
-dev` stack with a few tenants.
+<div class="grid cards" markdown>
+
+-   :material-compass-outline:{ .lg .middle } **Guided mode**
+
+    ---
+
+    Four templates (geo marketing mix, weekly forecast, demand by store, customer choice),
+    role detection, MFF and Meridian presets, drafts you can open as YAML, and a lock that
+    keeps a project Guided-only.
+
+    [:octicons-arrow-right-24: Tutorial](guides/guided-tutorial.md)
+
+-   :material-scale-balance:{ .lg .middle } **Business priors and lift tests**
+
+    ---
+
+    ROI or contribution-share ranges translated into model priors in a sandbox, with a
+    prior-predictive preview; experiments enter the likelihood as calibration.
+
+    [:octicons-arrow-right-24: Guided modelling](guides/guided-modelling.md)
+
+-   :material-clipboard-check-outline:{ .lg .middle } **Sanity scorecard and promotion gate**
+
+    ---
+
+    Convergence, holdout error and coverage, plausibility and data checks, each in plain
+    words. Pass goes live, warn needs an admin's audited reason, fail is blocked.
+
+    [:octicons-arrow-right-24: The gate](concepts/integrations.md#promotion-gate)
+
+-   :material-tune-variant:{ .lg .middle } **What-if, forecasts, counterfactuals**
+
+    ---
+
+    Sliders over response curves precomputed per posterior draw, so bands stay joint and
+    honest; "Run exact" scores the full model with common random numbers.
+
+    [:octicons-arrow-right-24: What if…](guides/guided-tutorial.md#6-what-if)
+
+-   :material-api:{ .lg .middle } **Endpoints, aliases and snippets**
+
+    ---
+
+    A stable alias per use, history and rollback, a frozen input contract with an example
+    call, `score:<alias>` tokens, and generated code in seven flavours.
+
+    [:octicons-arrow-right-24: Integrations hub](guides/integrations-hub.md)
+
+-   :material-webhook:{ .lg .middle } **Signed webhooks**
+
+    ---
+
+    `run.*`, `model.version.ready`, `endpoint.promoted`, `score.completed`: HMAC-signed,
+    retried, logged and replayable, through an SSRF guard.
+
+    [:octicons-arrow-right-24: Receive webhooks](guides/webhook-receivers.md)
+
+-   :material-chart-box-plus-outline:{ .lg .middle } **Embeds and static renders**
+
+    ---
+
+    Read-only, expiring chart links for Notion, Slack, Looker Studio or Power BI, and PNG,
+    SVG or PDF rendered in the sandbox.
+
+    [:octicons-arrow-right-24: Embed a chart](tutorials/embed-a-chart.md)
+
+-   :material-target:{ .lg .middle } **Atlas and Google Sheets**
+
+    ---
+
+    `RemoteModel` makes an endpoint an Atlas model for budget optimisation; an Apps Script
+    writes a forecast into a sheet every morning.
+
+    [:octicons-arrow-right-24: Optimise a budget](guides/atlas.md) ·
+    [Connect Sheets](tutorials/google-sheets.md)
+
+-   :material-import:{ .lg .middle } **BayesInsight and Meridian data**
+
+    ---
+
+    BayesInsight's `model_def.json` runs as a built-in model or maps onto the geo MMM, with
+    every unsupported feature reported, never dropped.
+
+    [:octicons-arrow-right-24: Import a BayesInsight model](tutorials/bayesinsight-import.md)
+
+-   :material-account-check-outline:{ .lg .middle } **Sign-up and the data lifecycle**
+
+    ---
+
+    Self-service workspaces with e-mail verification and abuse controls, GDPR export, tenant
+    deletion that purges every store, and a Cloud Armor policy.
+
+    [:octicons-arrow-right-24: Deleting and exporting data](guides/data-deletion.md)
+
+-   :material-cart-outline:{ .lg .middle } **A customer-choice model**
+
+    ---
+
+    `choice.multinomial_logit`, a conditional logit with household effects, and categorical
+    holdout metrics: hit rate against always guessing the favourite, log score, Brier.
+
+    [:octicons-arrow-right-24: Use cases](use-cases.md#customer-choice)
+
+-   :material-console:{ .lg .middle } **Client and CLI for all of it**
+
+    ---
+
+    `api.endpoint("…").score(ds)` returns an `xarray.Dataset`; `mapi endpoints`, `webhooks`,
+    `plots`, `guided`, `priors` and `tenant` cover the rest from a terminal.
+
+    [:octicons-arrow-right-24: The Python client](guides/python-client.md)
+
+</div>
+
+## Measured, not promised
+
+Measured on an 8-core laptop against the whole stack, on the data and settings described in
+[M3 verification](operations/m3-verification.md).
+
+<div class="mapi-stats" markdown>
+<div class="mapi-stat"><strong>137 s</strong><span>upload → report → scenario, clicked through by a script; 80 s of it is the fit</span></div>
+<div class="mapi-stat"><strong>0.08 %</strong><span>instant slider vs the exact model for TV at half budget (−454,590 vs −454,241; exact sd 14,003)</span></div>
+<div class="mapi-stat"><strong>0.01 %</strong><span>"TV off" from the grid vs an exact counterfactual run (−1,046,519 vs −1,046,414)</span></div>
+<div class="mapi-stat"><strong>76–81 %</strong><span>of each translated prior inside the analyst's stated 80% ROI range</span></div>
+<div class="mapi-stat"><strong>&lt; 1 %</strong><span>holdout error of the endpoint's model, with every plausibility check passing</span></div>
+<div class="mapi-stat"><strong>+0.22 %</strong><span>revenue at the same budget, found by Atlas against the live endpoint (25 candidates, 22 requests)</span></div>
+<div class="mapi-stat"><strong>0 objects</strong><span>left in five buckets after a tenant deletion (285 before); only the audit log and cost ledger are kept</span></div>
+<div class="mapi-stat"><strong>15 / 15</strong><span>end-to-end API tests of the M3 journey passing against a live stack</span></div>
+</div>
+
+The same runs found six usability defects, two of them dead ends, which were fixed before
+release. Not yet measured: real testers, a real Google Cloud project, Docker-isolated public
+workspaces ([what remains](operations/m3-verification.md#what-remains-unverified)).
+
+## Connect it to everything
 
 <div class="mapi-shots" markdown>
 
 <figure markdown>
-[![The sign-in page](assets/screenshots/signin.png){ .mapi-shot loading=lazy }](guides/authentication.md#browser-sign-in)
-<figcaption>Sign in with your organisation's identity provider; the app never holds a token.</figcaption>
+[![The Integrations overview](assets/screenshots/integrations-overview.png){ .mapi-shot loading=lazy }](guides/integrations-hub.md)
+<figcaption>Integrations: Sheets, BI and webhooks in a few steps.</figcaption>
 </figure>
 
 <figure markdown>
-[![The project switcher with two tenants](assets/screenshots/project-switcher.png){ .mapi-shot loading=lazy }](guides/authentication.md#browser-sign-in)
-<figcaption>Tenants and projects: your role in each, and each tenant's trust tier.</figcaption>
+[![An endpoint with its history](assets/screenshots/integrations-endpoint.png){ .mapi-shot loading=lazy }](guides/integrations-hub.md#an-endpoints-page)
+<figcaption>Endpoints: one alias, every promotion and rollback with its reason.</figcaption>
 </figure>
 
 <figure markdown>
-[![The Members page](assets/screenshots/members.png){ .mapi-shot loading=lazy }](guides/administration.md#projects-and-members)
-<figcaption>Members: viewer, editor, runner, admin. Running sits above editing: compute costs money.</figcaption>
+[![Generated snippets](assets/screenshots/integrations-snippets.png){ .mapi-shot loading=lazy }](guides/integrations-hub.md#an-endpoints-page)
+<figcaption>Snippets: Python, TypeScript, curl, R, Apps Script, Atlas, notebook.</figcaption>
 </figure>
 
 <figure markdown>
-[![A new token's secret, shown once](assets/screenshots/token-created.png){ .mapi-shot loading=lazy }](guides/administration.md#api-tokens)
-<figcaption>API tokens: scoped, bound to one project, shown once, revoked at once.</figcaption>
-</figure>
-
-<figure markdown>
-[![Usage and cost of a project](assets/screenshots/usage.png){ .mapi-shot loading=lazy }](guides/administration.md#cost-and-usage)
-<figcaption>Usage: metered cost per run, by token and resource class, against every quota.</figcaption>
-</figure>
-
-<figure markdown>
-[![The kill switches](assets/screenshots/admin-kill-switches.png){ .mapi-shot loading=lazy }](guides/administration.md#kill-switches)
-<figcaption>Operators: tenants, quotas, a global spend cap and a switch that stops uploaded code.</figcaption>
+[![A shared chart on its embed page](assets/screenshots/embed-page.png){ .mapi-shot loading=lazy }](tutorials/embed-a-chart.md)
+<figcaption>Embeds: a read-only chart for a dashboard or a doc, revocable at any time.</figcaption>
 </figure>
 
 </div>
 
-## Why labelled, multi-dimensional models?
+```python
+--8<-- "client_integrations.py:score"
+```
 
-Most model-serving stacks see a matrix: rows in, numbers out. Real business models do not
-live in a matrix.
+[:octicons-arrow-right-24: Tutorials](tutorials/index.md) ·
+[Use cases](use-cases.md) ·
+[The Python client](guides/python-client.md)
 
-<div class="grid" markdown>
-
-!!! failure "What goes wrong with positional data"
-    - Column 7 used to be *search spend*; after a schema change it is *social*.
-    - The forecast starts in week 53, but the lag features were built from week 1.
-    - A market opens. Is it row 12? Does the model even know it is new?
-    - Revenue was scaled by the mean, so the prediction came back in "1.37".
-    - Someone sums the 90% quantiles of 40 stores and calls it the 90% quantile of the total.
-
-!!! success "What modeling-api does instead"
-    - Every array is an **`xr.Dataset` with named dims and coordinates**; nothing is
-      positional, so shuffled, subset or reordered data scores the same.
-    - Each dim declares what may happen at score time: **`fixed`**, **`extend`** (time) or
-      **`new_levels`** (markets, stores, counties) with a declared strategy.
-    - Every output says what it is: its **representation** (draws, quantiles, interval, point,
-      moments), its **units** and its **output space**.
-    - Requests that cannot be answered honestly fail **before any compute**, with a typed
-      error code and a JSON pointer.
-
-</div>
-
-## The whole story in one picture
+## The core idea: fit with preprocessing, score with the *same* preprocessing
 
 The same pipeline object runs at fit time and at score time. At fit time each step
-**learns** its state from the training data; at score time it **replays** that state. Steps that
-look back in time store a small per-group tail, so a forecast sees exactly the history the
-model was fitted on.
+**learns** its state from the training data; at score time it **replays** that state. Steps
+that look back in time store a small per-group tail, so a forecast sees exactly the history
+the model was fitted on.
 
 ```mermaid
 flowchart LR
@@ -204,6 +395,17 @@ flowchart LR
     - What-if deltas that share their noise with the baseline (common random numbers), so
       the delta reflects the change, not sampling noise.
 
+The same model in plain Python, without any server; every snippet on this site is executed
+by the test suite:
+
+```python
+--8<-- "quickstart.py:fit"
+```
+
+```python
+--8<-- "quickstart.py:errors"
+```
+
 ## Secure by design
 
 The platform is built to run models and data from people it does not trust. The controls that
@@ -217,9 +419,9 @@ verified in the cloud.
 
     ---
 
-    Every fit and score runs in its own sandbox (a microVM on Cloud Run Jobs), with no
-    secrets, no network but signed URLs to its own objects, and the model code under its own
-    user. Placement by trust tier is enforced in code.
+    Every ingest, fit, score and render runs in its own sandbox (a microVM on Cloud Run
+    Jobs), with no secrets and no network but signed URLs to its own objects. Placement by
+    trust tier is enforced in code.
 
 -   :material-domain:{ .lg .middle } **Tenants never see each other**
 
@@ -237,230 +439,56 @@ verified in the cloud.
     runs cannot write, and signed. Download links are minted only after the signature
     verifies.
 
+-   :material-shield-link-variant-outline:{ .lg .middle } **Integrations that cannot be turned against you**
+
+    ---
+
+    Webhooks are HMAC-signed and sent through an SSRF guard that pins the checked address;
+    embed links show platform recipes only, carry no credential and can be revoked; snippets
+    never contain a secret.
+
 -   :material-cash-lock:{ .lg .middle } **Compute you can see and cap**
 
     ---
 
-    Quotas in vCPU-seconds per token, tenant and platform, fair sharing between interactive
-    and batch work, a cost on every run, a global spend cap and an audited kill switch.
+    Quotas in vCPU-seconds per token, tenant and platform, per-token budgets for endpoint
+    callers, a cost on every run, a global spend cap and an audited kill switch.
 
 -   :material-file-lock-outline:{ .lg .middle } **No pickle, anywhere**
 
     ---
 
-    Bundles are single zarr zips plus JSON sidecars. Native models are stored as skops
-    (allow-listed types) or xgboost JSON. Every file carries CRC32C, MD5 and SHA-256, and
-    reading verifies them.
-
--   :material-shield-check-outline:{ .lg .middle } **Contracts are pure JSON**
-
-    ---
-
-    `mapi-spec` never imports numpy or xarray, and the control plane never imports plugin
-    code. Specs are validated from **exported static JSON**: settings schemas and schema
-    effects. An import-linter contract enforces it.
-
--   :material-chart-box-outline:{ .lg .middle } **Plots are sanitized**
-
-    ---
-
-    Vega-Lite and Plotly specs are checked against pinned schemas. URL data, links, external
-    images, tile maps, prototype keys and unsafe expressions are rejected before anyone sees
-    a chart.
-
--   :material-alert-octagon-outline:{ .lg .middle } **Typed errors, early**
-
-    ---
-
-    `UNSEEN_LEVELS`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`,
-    `CAPABILITY_UNSUPPORTED`, … Stable codes, HTTP statuses and JSON pointers, raised before
-    any compute is spent.
+    Bundles are single zarr zips plus JSON sidecars; native models are skops (allow-listed
+    types) or xgboost JSON. Every file carries CRC32C, MD5 and SHA-256, and reading verifies
+    them.
 
 </div>
 
-## Built for two kinds of people
+## Run it for many teams
 
-<div class="grid cards" markdown>
+One deployment serves many organisations. People sign up or sign in with their own identity
+provider, work in the projects they have a role in, and see what their compute costs;
+operators look after the platform without ever reading a tenant's data.
 
--   :material-compass-outline:{ .lg .middle } **Guided: analysts**
+<div class="mapi-shots" markdown>
 
-    ---
+<figure markdown>
+[![The project switcher with two tenants](assets/screenshots/project-switcher.png){ .mapi-shot loading=lazy }](guides/authentication.md#browser-sign-in)
+<figcaption>Tenants and projects: your role in each, and each tenant's trust tier.</figcaption>
+</figure>
 
-    Marketing and finance analysts pick a template, answer questions in business terms
-    ("which column is revenue?"), enter priors as ROI ranges, and get a report with a sanity
-    scorecard, plain-language captions on every plot and instant what-if sliders.
+<figure markdown>
+[![Usage and cost of a project](assets/screenshots/usage.png){ .mapi-shot loading=lazy }](guides/administration.md#cost-and-usage)
+<figcaption>Usage: metered cost per run, by token and resource class, against every quota.</figcaption>
+</figure>
 
-    Every plot recipe already ships a `caption_plain` and a `persona`, every model setting an
-    `x-ui-level`, and every scorecard item a plain-language message. The Guided UI arrives in
-    [v0.4](roadmap/guided-ui.md).
-
--   :material-code-braces:{ .lg .middle } **Expert: data scientists**
-
-    ---
-
-    Write specs and plugins, inspect posteriors and preprocessing state, and pull any bundle
-    into a notebook. The Expert web app, the `mapi` CLI and the Python client work today, and
-    so does everything in plain Python.
-
-    [:octicons-arrow-right-24: The Expert web app](guides/web-ui.md)
-
--   :material-puzzle-outline:{ .lg .middle } **Plugin authors**
-
-    ---
-
-    A PyMC model is one `build()` method; an sklearn model is one `estimator()`. The
-    contract kit tells you, before anyone runs your code, whether you followed the rules.
-
-    [:octicons-arrow-right-24: Port a model](guides/port-a-model.md)
-
--   :material-shield-account-outline:{ .lg .middle } **Administrators and operators**
-
-    ---
-
-    Tenant admins invite people and set their roles, mint and revoke tokens, and read their
-    organisation's usage and audit log. Operators run the platform: tenants, quotas, kill
-    switches, executors, dashboards and runbooks.
-
-    [:octicons-arrow-right-24: Administration](guides/administration.md)
-
--   :material-connection:{ .lg .middle } **Integrators**
-
-    ---
-
-    A versioned HTTP API with an OpenAPI 3.1 document, RFC 7807 errors, idempotency keys and
-    server-sent events, scoped API tokens with budgets, and a typed Python client. Endpoints,
-    webhooks and MCP tools follow in [v0.4](roadmap/guided-ui.md).
-
-    [:octicons-arrow-right-24: HTTP API guide](guides/http-api.md)
+<figure markdown>
+[![Settings > Data: export and deletion](assets/screenshots/settings-data.png){ .mapi-shot loading=lazy }](guides/data-deletion.md)
+<figcaption>Your data: a GDPR export, and a deletion that purges every store.</figcaption>
+</figure>
 
 </div>
 
-## What you get in v0.3
-
-<div class="grid cards" markdown>
-
--   :material-account-group-outline: **Tenants, projects and roles** <span class="mapi-badge">new</span>
-
-    Trust tiers, data residency, four roles and one permission matrix, row-level security on
-    every table. [:octicons-arrow-right-24: Administration](guides/administration.md)
-
--   :material-login: **Sign-in and API tokens** <span class="mapi-badge">new</span>
-
-    OpenID Connect through the API, a development IdP, `mapi login`, and scoped, project-bound
-    tokens with budgets. [:octicons-arrow-right-24: Authentication](guides/authentication.md)
-
--   :material-gauge: **Quotas, cost and kill switches** <span class="mapi-badge">new</span>
-
-    vCPU-second quotas, fair share, a cost ledger shown on every run, a spend cap and an audit
-    log. [:octicons-arrow-right-24: Quotas and cost](concepts/quotas-and-cost.md)
-
--   :material-google-cloud: **Cloud Run Jobs and Terraform** <span class="mapi-badge">new</span>
-
-    A sandbox per run in a zero-egress project, Pub/Sub events, KMS signatures, deploy and
-    rollback scripts. [:octicons-arrow-right-24: Google Cloud](operations/gcp-deployment.md)
-
--   :material-chart-line: **Observability** <span class="mapi-badge">new</span>
-
-    Prometheus metrics, traces, dashboards, alerts, runbooks, and a security suite of
-    sandbox-escape probes. [:octicons-arrow-right-24: Observability](operations/observability.md)
-
--   :material-monitor-dashboard: **The Expert web app**
-
-    Datasets, a YAML editor with live validation, live runs, a model inspector and scoring,
-    with every plot in a sandboxed iframe. [:octicons-arrow-right-24: Web app guide](guides/web-ui.md)
-
--   :material-api: **An HTTP API and its clients**
-
-    `/v1` with OpenAPI 3.1, RFC 7807 errors, idempotency and SSE; the `mapi` CLI and a typed
-    Python client. [:octicons-arrow-right-24: HTTP API](guides/http-api.md)
-
--   :material-shield-lock-outline: **Sandboxed, verified runs**
-
-    A supervisor and worker per run, HMAC-signed events, outputs checked against the store's
-    own checksums and a signed manifest. [:octicons-arrow-right-24: Security model](concepts/security.md)
-
--   :material-laptop: **Runs on a laptop**
-
-    `make dev` without Docker (embedded PostgreSQL, a Cloud Storage emulator), or the same
-    stack in containers. [:octicons-arrow-right-24: Deployment](operations/index.md)
-
--   :material-cube-outline: **Labelled data contract**
-
-    `DataSchema`, dim policies, roles, units, ragged layouts and plain-language data checks.
-    [:octicons-arrow-right-24: Labelled data](concepts/labelled-data.md)
-
--   :material-pipe: **Stateful pipelines**
-
-    28 built-in steps with fitted state, stages, splits, context tails and inverse transforms.
-    [:octicons-arrow-right-24: Steps catalog](reference/generated/steps-catalog.md)
-
--   :material-sigma: **PyMC and scikit-learn**
-
-    nutpie, PyMC (segmented and resumable), MAP, ADVI; allow-listed sklearn and xgboost
-    estimators with quantile, bootstrap and conformal uncertainty.
-    [:octicons-arrow-right-24: Guides](guides/pymc.md)
-
--   :material-bullhorn-outline: **Marketing-mix models**
-
-    A hierarchical geo MMM with response curves, marginal costs and a budget objective, and
-    an adapter for pymc-marketing. [:octicons-arrow-right-24: MMM guide](guides/mmm.md)
-
--   :material-chart-timeline-variant: **Forecasting**
-
-    HSGP trends with horizon contracts, HMMs with terminal state and filtering.
-    [:octicons-arrow-right-24: Time series](guides/time-series.md)
-
--   :material-check-decagram-outline: **A conformance corpus**
-
-    Six reference problems run end to end on every change: validate, fit, score, evaluate,
-    contract kit, plots. [:octicons-arrow-right-24: Corpus](guides/conformance.md)
-
-</div>
-
-## How it compares
-
-MLflow and BentoML are excellent at what they target: packaging a trained model from almost
-any framework and serving it behind an API. modeling-api targets a narrower problem, labelled
-statistical models whose preprocessing, coordinates and uncertainty must survive the trip to
-production, and makes different trade-offs.
-
-<div class="mapi-compare" markdown>
-
-| | Tabular model serving (MLflow / BentoML style) | modeling-api |
-|---|---|---|
-| Input contract | Column or tensor signatures: names and shapes, no dimensions | `xr.Dataset` with named dims, coordinates, roles, units and per-dim score policies |
-| Preprocessing at score time | Up to you: bundle it into the model artifact, or re-implement it in the service | Declared steps with **fitted state**, replayed exactly; stage-aware splits and per-group context tails |
-| New groups and horizons | Whatever the model happens to do with an unseen row | Declared per dim (`fixed`, `extend`, `new_levels` + strategy); checked before compute |
-| Uncertainty | Point predictions by default; intervals are a custom output | A first-class **representation** that decides which summaries and aggregations are valid |
-| Units of the answer | Whatever space the model was trained in | Inverted to original units, with the output space recorded on every variable |
-| Serialization | Framework-native; pickle and cloudpickle are common | Zarr zip + JSON, skops or xgboost JSON; **pickle is rejected** on write and on read |
-| Validating a request | At call time, inside the model | Statically, from JSON, before a run starts: typed errors with JSON pointers |
-| Who it is for | Any model, any framework | Bayesian and classical models of panels, time series and hierarchies; analysts and data scientists |
-
-</div>
-
-## A taste
-
-The same model in plain Python, without any server. The [Python guide](getting-started/first-model.md)
-builds it end to end; every snippet on this site is executed by the test suite.
-
-```python
---8<-- "quickstart.py:fit"
-```
-
-```python
---8<-- "quickstart.py:errors"
-```
-
-<div class="grid cards" markdown>
-
--   **Next: run the platform and fit your first model**
-
-    [:octicons-arrow-right-24: Quickstart](getting-started/quickstart.md)
-
--   **Understand the moving parts**
-
-    [:octicons-arrow-right-24: Architecture](concepts/architecture.md) ·
-    [Concepts](concepts/index.md)
-
-</div>
+[:octicons-arrow-right-24: Administration](guides/administration.md) ·
+[Deploy on your laptop or Google Cloud](operations/index.md) ·
+[Roadmap: what comes next](roadmap/index.md)

@@ -1,8 +1,8 @@
 ---
-description: How the platform is put together - the control plane, the run sandbox, storage and integrity, and the event path - with diagrams.
+description: How the platform is put together - the control plane, the run sandbox, storage and integrity, the event path and the integration paths (endpoints, webhooks, embeds) - with diagrams.
 ---
 
-# Architecture overview <span class="mapi-badge">v0.2</span>
+# Architecture overview <span class="mapi-badge">v0.4</span>
 
 modeling-api is three layers, built in this order: a typed modelling runtime (the SDK, the
 steps and the model plugins), a job platform around it (the API, the queue, the executors and
@@ -54,7 +54,7 @@ flowchart TB
 | **SDK and plugins** | `mapi-sdk`, `mapi-steps`, `mapi-pymc`, `mapi-sklearn`, `mapi-plugin-*` | The modelling runtime: pipelines with fitted state, models, coord plans, summaries, bundles | Run anywhere but in the worker (on the platform) or your own process (as a library) |
 | **Contracts** | `mapi-spec` | Every shape both sides agree on: specs, schemas, DTOs, the run protocol, error codes | Import numpy, xarray or pandas |
 | **Object store** | `mapi-gcs-shim` locally, Cloud Storage later | Buckets with object generations, server-computed CRC32C and MD5, signed URLs and POST policies, per-principal permissions | — |
-| **Web app**, **plot sandbox** | `apps/web`, `apps/plot-sandbox` | The Expert UI, and the only place Vega-Lite and Plotly specs render | Render a plot on the app's own origin |
+| **Web app**, **plot sandbox** | `apps/web`, `apps/plot-sandbox` | The Guided and Expert UI and the Integrations hub; the plot sandbox is the only place Vega-Lite and Plotly specs render, including shared embed pages | Render a plot on the app's own origin |
 
 ## The control plane
 
@@ -210,6 +210,48 @@ verification is the same. Progress is coalesced to one event every couple of sec
 as a single row, so a long fit does not write thousands of rows; only state changes,
 warnings, diagnostics, checkpoints, metrics and terminal events are persisted and replayed to
 a reconnecting client.
+
+## The integration paths (v0.4)
+
+Three paths take a model's results out of the platform. None of them gives the outside world
+more than it needs: an endpoint call runs in a sandbox like any score, a webhook carries ids
+and states only, and an embed link shows one chart.
+
+```mermaid
+flowchart LR
+    subgraph out["Outside"]
+        app["Sheets · BI · Atlas ·<br/>your app"]
+        rcv["Your webhook<br/>receiver"]
+        viewer["A viewer's browser<br/>(Notion, Looker Studio, …)"]
+    end
+    subgraph cp["Control plane"]
+        ep["POST /v1/endpoints/{alias}/score<br/>score:&lt;alias&gt; token · input contract ·<br/>CoordPlan · rate limit and budget"]
+        outbox[("events outbox<br/>written in the same<br/>transaction as the change")]
+        relay["Worker relay<br/>retries · SSRF guard ·<br/>HMAC signature"]
+        embed["GET /v1/embeds/{token}<br/>no credentials ·<br/>one platform-recipe plot"]
+    end
+    sb["Score run<br/>(fresh sandbox)"]
+    bun[("Verified bundles")]
+    page["Plot sandbox origin<br/>/embed/&lt;token&gt;"]
+
+    app -->|"inline XrJSON"| ep --> sb --> bun
+    ep -->|"signed links to the outputs"| app
+    sb -. "score.completed" .-> outbox
+    outbox --> relay -->|"Mapi-Signature"| rcv
+    viewer --> page -->|"fetch, CSP-limited"| embed
+    embed -->|"data inlined from the<br/>verified bundle"| bun
+```
+
+- **Endpoints** freeze the model version's input contract when it is promoted, so a call is
+  checked statically (dims, coordinates, future covariates) before a run is started; the
+  payload is stored as a run input and decoded only in the sandbox. Promotion goes through
+  the [scorecard gate](integrations.md#promotion-gate).
+- **Webhooks** are written to an outbox in the same transaction as the change they report
+  (a finished run, a ready model version, a promotion), then delivered by the worker through
+  the [SSRF guard](integrations.md#ssrf-protection), signed, retried and logged.
+- **Embeds** are served to a page on the plot sandbox's origin, which may fetch nothing but
+  the public embed view; the API inlines the plot's data from the verified bundle without
+  decoding it ([Sharing plots](../guides/sharing-plots.md#the-embed-page)).
 
 ## Where to read more
 
