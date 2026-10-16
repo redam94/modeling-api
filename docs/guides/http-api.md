@@ -34,7 +34,7 @@ authorization. See [authentication](../operations/authentication.md).
 ```
 
 ```text
-{"status":"ok","version":"0.3.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
+{"status":"ok","version":"0.4.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
 mmm.hierarchical_geo@1.3.0  draws
 mmm.pymc_marketing@1.0.0  draws
 sklearn.tabular_bootstrap@1.0.0  draws

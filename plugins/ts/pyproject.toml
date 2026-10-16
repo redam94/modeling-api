@@ -1,6 +1,6 @@
 [project]
 name = "mapi-plugin-ts"
-version = "0.3.0"
+version = "0.4.0"
 description = "Time-series / state-space model plugins"
 readme = "README.md"
 requires-python = ">=3.12"
