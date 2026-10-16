@@ -27,6 +27,13 @@ The math of the translation and of each lift likelihood is in
 | `tabular.hierarchical_glm@1` | `mapi-plugin-tabular` | draws | predict, counterfactual, evaluate | `e02` |
 | `tabular.regressor@1` | `mapi-plugin-tabular` | quantiles | predict, forecast, counterfactual, evaluate | `xgb_store_demand` |
 | `choice.multinomial_logit@1` | `mapi-plugin-tabular` | draws (Bayesian bootstrap) | predict, forecast, counterfactual, evaluate | `e84_lite` |
+| `ts.sarimax@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | `sm_arimax` |
+| `ts.vecm@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | `sm_vecm_macro` |
+| `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
+
+The statsmodels plugins (ARIMA family, exponential smoothing, theta, ARDL and error
+correction, VAR, VECM, VARMAX, dynamic factors and Markov switching) are described in
+[statsmodels time-series models](../models/statsmodels.md).
 
 Plugins use **canonical names** for their inputs; bind your dataset's names onto them in the
 spec's `data.bind` block. Outputs come back under your names (reverse binding) unless they
