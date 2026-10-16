@@ -1,0 +1,32 @@
+const payload = {
+  "future_covariates": "carry_last",
+  "horizon": {
+    "dim": "time",
+    "periods": 8
+  },
+  "mode": "forecast",
+  "output": {
+    "kind": "expected",
+    "summary": [
+      "mean",
+      "hdi_90"
+    ]
+  }
+};
+
+const response = await fetch("https://api.mapi.example/v1/endpoints/geo-mmm-prod/score", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env["MAPI_TOKEN"]}`,
+    "Content-Type": "application/json",
+    "X-Mapi-Project": "acme/growth",
+    "Prefer": "wait=60",
+  },
+  body: JSON.stringify(payload),
+});
+if (!response.ok) {
+  throw new Error(`${response.status}: ${await response.text()}`);
+}
+const result = await response.json(); // 200: done with outputs; 202: still running
+// the numbers: one table per output (coordinates, then mean and HDI)
+console.log(result.done ? result.summary?.tables : result.run.id);

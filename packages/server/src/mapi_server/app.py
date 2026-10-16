@@ -14,7 +14,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.routing import APIRoute
 from mapi_spec.api import IDEMPOTENCY_KEY_HEADER, LAST_EVENT_ID_HEADER, PREFER_HEADER
 from mapi_spec.capabilities import Diagnostic
-from mapi_spec.errors import MapiError
+from mapi_spec.errors import MapiError, Problem
 from mapi_spec.run import (
     CheckpointPayload,
     CompletePayload,
@@ -36,18 +36,26 @@ import mapi_server
 from mapi_server.api import (
     admin,
     datasets,
+    endpoints,
+    guided,
     internal,
     meta,
     models,
+    plots,
+    prior_translations,
     runs,
     specs,
     tenancy,
     tokens,
+    trust,
     usage,
+    webhooks,
 )
 from mapi_server.api import auth as auth_routes
+from mapi_server.api.problems import JsonBodyLimit
 from mapi_server.auth.oidc import HttpOidcProvider, OidcClient
 from mapi_server.auth.request import CSRF_HEADER, access_for, authenticate
+from mapi_server.clientaddr import ClientAddressMiddleware, parse_trusted_proxies
 from mapi_server.context import FinalizeQueue, ServerContext
 from mapi_server.db import Database, acting_as_gateway, resolve_database_url
 from mapi_server.devidp import DevIdP, mount_devidp
@@ -63,7 +71,9 @@ from mapi_server.services.tenancy import (
     invite_admins,
     seed_dev_accounts,
 )
-from mapi_server.settings import Profile, Settings, SignerKind
+from mapi_server.services.tenant_hooks import install_tenant_hooks
+from mapi_server.services.trust import TrustServices
+from mapi_server.settings import MailerKind, Profile, Settings, SignerKind
 from mapi_server.storage import build_object_store
 
 __all__ = [
@@ -95,9 +105,14 @@ EVENT_PAYLOAD_MODELS: tuple[type[BaseModel], ...] = (
 components so generated clients can type them (FastAPI cannot infer them from routes)."""
 
 
+PROBLEM_MODELS: tuple[type[BaseModel], ...] = (Problem,)
+"""The RFC 7807 problem document, referenced by the routes' documented error responses
+(:func:`mapi_server.api.problems.problem_responses`)."""
+
+
 def _with_event_payloads(doc: dict[str, Any]) -> dict[str, Any]:
     _, top = models_json_schema(
-        [(model, "serialization") for model in EVENT_PAYLOAD_MODELS],
+        [(model, "serialization") for model in (*EVENT_PAYLOAD_MODELS, *PROBLEM_MODELS)],
         ref_template="#/components/schemas/{model}",
     )
     schemas = doc.setdefault("components", {}).setdefault("schemas", {})
@@ -208,7 +223,9 @@ def build_context(
         price_table=price_table,
         devidp=devidp,
         oidc=build_oidc(settings, devidp),
+        trust=TrustServices.from_settings(settings),
     )
+    install_tenant_hooks(ctx)
     aclose = getattr(ctx.store, "aclose", None)
     if owned_store and callable(aclose):
         ctx.on_shutdown.append(aclose)
@@ -316,8 +333,11 @@ def create_app(
                 "catalog",
                 "datasets",
                 "specs",
+                "guided",
                 "runs",
                 "models",
+                "endpoints",
+                "webhooks",
                 "plots",
                 "internal",
             )
@@ -351,12 +371,26 @@ def create_app(
         ],
         expose_headers=["Preference-Applied", "Location", "Retry-After", CSRF_HEADER],
     )
+    # endpoint score calls carry inline XrJSON: cap and depth-check them before parsing
+    app.add_middleware(
+        JsonBodyLimit,
+        paths=endpoints.SCORE_BODY_PATHS,
+        max_bytes=endpoints.SCORE_BODY_MAX_BYTES,
+    )
+    # Public embed views: no credentials, readable cross-origin by the plot sandbox only
+    # (outside the app's CORS policy, which is the web origin's, with credentials).
+    app.add_middleware(plots.EmbedCorsMiddleware, allowed_origin=settings.plots_origin)
     # Outermost: DNS rebinding makes a hostile page same-origin with 127.0.0.1, so CORS never
     # applies; the Host header is the only tell (plan §9). 400 for any unexpected host.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts())
     # Every request's platform sessions run as the gateway role, never the bypass role
     # (plan §9): what a handler reads before (or besides) its tenant stays under RLS.
     app.add_middleware(GatewayRoleMiddleware)
+    # Outermost of all: the caller's address behind trusted proxies (MAPI_TRUSTED_PROXIES),
+    # before the access log, rate limits, audit or the Sybil checks read request.client.
+    app.add_middleware(
+        ClientAddressMiddleware, trusted=parse_trusted_proxies(settings.trusted_proxies or [])
+    )
     for router in (
         meta.router,
         auth_routes.router,
@@ -366,14 +400,23 @@ def create_app(
         admin.router,
         datasets.router,
         specs.router,
+        guided.router,
         runs.router,
         models.router,
         models.plots_router,
+        prior_translations.router,
+        endpoints.router,
+        webhooks.router,
+        plots.router,
+        plots.embeds_router,
         internal.router,
+        *trust.ROUTERS,
     ):
         app.include_router(router)
     if settings.devidp_enabled:
         mount_devidp(app, settings)
+    if settings.profile is Profile.DEV and settings.effective_mailer is MailerKind.OUTBOX:
+        trust.mount_dev_outbox(app, settings)
     check_route_access(app)
     return app
 

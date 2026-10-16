@@ -12,6 +12,7 @@ from urllib.parse import urlsplit, urlunsplit
 import psycopg
 import pytest
 from alembic import command
+from alembic.script import ScriptDirectory
 from mapi_server.__main__ import main
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
@@ -58,6 +59,29 @@ def test_migrations_round_trip_and_match_the_models(scratch_db: str) -> None:
     assert _tables(scratch_db) <= {"alembic_version"}
     upgrade(scratch_db)
     assert "runs" in _tables(scratch_db)
+
+
+M3_CHAIN = ("0007_guided", "0008_endpoints_webhooks", "0009_plots_embeds", "0010_trust_lifecycle")
+
+
+def test_m3_migrations_are_linear_and_step_down_and_up(scratch_db: str) -> None:
+    """The four M3 revisions chain off 0006 in order, and each steps down and up cleanly."""
+    script = ScriptDirectory.from_config(alembic_config(scratch_db))
+    assert script.get_heads() == [M3_CHAIN[-1]]
+    down = "0006_executor_disable"
+    for rev in M3_CHAIN:
+        assert script.get_revision(rev).down_revision == down
+        down = rev
+    upgrade(scratch_db)
+    m3_tables = {"endpoints", "webhooks", "saved_plots", "plot_embeds", "tenant_deletions"}
+    assert m3_tables <= _tables(scratch_db)
+    for target in reversed(("0006_executor_disable", *M3_CHAIN[:-1])):
+        downgrade(scratch_db, target)
+    assert not m3_tables & _tables(scratch_db)
+    for rev in M3_CHAIN:
+        upgrade(scratch_db, rev)
+    assert m3_tables <= _tables(scratch_db)
+    command.check(alembic_config(scratch_db))
 
 
 def test_tenancy_migration_adopts_v02_rows_and_enables_rls(scratch_db: str) -> None:

@@ -1,4 +1,4 @@
-# CLI and Python client <span class="mapi-badge">v0.3</span>
+# CLI and Python client <span class="mapi-badge">v0.4</span>
 
 Two Apache-2.0 packages talk to the `/v1` [HTTP API](http-api.md):
 
@@ -49,7 +49,21 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
 | `tenants` (v0.3) | `list`, `get`, `rename`, `projects`, `create_project`, `update_project`, `delete_project`, `members`, `add_member`, `set_role`, `remove_member`, `usage`, `audit` |
 | `tokens` (v0.3) | `list`, `create`, `get`, `revoke` |
 | `usage` (v0.3) | `get` (the project), `tenant` |
-| `admin` (v0.3, operators) | `tenants`, `tenant`, `create_tenant`, `update_tenant`, `quotas`, `set_quota`, `delete_quota`, `kill_switches`, `set_kill_switches`, `executors`, `executor`, `audit` |
+| `admin` (v0.3, operators) | `tenants`, `tenant`, `create_tenant`, `update_tenant`, `quotas`, `set_quota`, `delete_quota`, `kill_switches`, `set_kill_switches`, `executors`, `executor`, `audit`; v0.4: `signups`, `review_signup`, `set_verification`, `retry_deletion` |
+| `guided` (v0.4) | `templates`, `template`, `detect_roles`, `draft`, `import_bayesinsight`, `compile`, `translate_priors`, `prior_translation`, `wait_prior_translation`, `preview_priors` |
+| `endpoints` (v0.4) | `list`, `get`, `promote`, `delete`, `history`, `rollback`, `schema`, `validate`, `submit`, `score`, `snippets` |
+| `webhooks` (v0.4) | `list`, `create`, `get`, `update`, `delete`, `rotate_secret`, `deliveries`, `replay` |
+| `plots` sharing (v0.4) | `save`, `saved`, `get_saved`, `delete_saved`, `render`, `render_status`, `render_output`, `download_render`, `create_embed`, `embeds`, `revoke_embed`, `embed` |
+| `tenants` trust (v0.4) | `verification`, `request_deletion`, `deletion`, `cancel_deletion`, `export`, `export_status`, `wait_export`, `download_export` |
+
+**v0.4.** `api.endpoint(alias)` is a `RemoteEndpoint` (`schema()`, `validate(ds)`,
+`score(ds) -> xr.Dataset` with inline XrJSON); `api.signup()` and `api.verify_email()` are
+public calls sent without credentials. `mapi_client.webhooks.verify(headers, body, secret)`
+checks a delivery's `Mapi-Signature` ([Receiving webhooks](../guides/webhook-receivers.md));
+`mapi_client.atlas.RemoteModel` is an Atlas model backed by an endpoint
+([Atlas](../guides/atlas.md)); `mapi_client.xrjson` encodes and decodes inline payloads.
+Every operation of the v0.4 endpoint table has a request builder, checked against the
+contract by the client's tests.
 
 - `AsyncClient` has the same resources with `await` and `async for`.
 - List calls return lazy paginators that follow `next_cursor`.
@@ -141,6 +155,35 @@ mapi admin audit [--tenant] [--action] [--since] ...
 | `usage` | Exact cost (micro-units, price table named), vCPU- and GiB-seconds, groups, and each quota's use and reset time |
 | `runs get`, `runs ls` | Show the run's metered cost (`~` while estimated) |
 | `admin ...` | Every change prints a before/after table on stderr and asks for confirmation; `--yes` skips it. `quotas set` replaces the whole policy |
+
+Guided mode and integrations (v0.4; walked through in the
+[command-line guide](../guides/cli.md#endpoints-webhooks-and-sharing)):
+
+```bash
+mapi endpoints ls | get ALIAS | history ALIAS | schema ALIAS [--example] | snippets ALIAS [-l LANG]
+mapi endpoints promote ALIAS MODEL_REF [--override --reason TEXT] [--expected-revision N]
+mapi endpoints rollback ALIAS --reason TEXT [--to-revision N]
+mapi endpoints score ALIAS [CALL.json | --example] [--mode M] [--periods N] [--data FILE|REF] [-o OUT]
+mapi webhooks ls | get ID | create URL -e EVENT... [--inactive] | rotate ID | deliveries ID [--status S]
+mapi webhooks update ID [--enable|--disable] [-e EVENT...] [--url URL] [--description TEXT]
+mapi webhooks replay ID DELIVERY_ID | rm ID
+mapi plots render (--saved ID | --model M --version V --plot P | --spec FILE) [-f png|svg|pdf] [-o OUT]
+mapi plots embed PLOT_ID [--expires-in-days N] [--allow-origin URL] | embeds PLOT_ID | revoke PLOT_ID EMBED_ID
+mapi guided templates [ID] | detect ID (--csv FILE | --dataset REF) | draft ID --name N --dataset D ...
+mapi priors preview --beliefs FILE (--spec ID --revision N | --document FILE) [--lift-tests FILE]
+mapi signup --email E --name N [--accept-terms] | verify-email TOKEN
+mapi tenant status | export [-o FILE] | delete [--confirm TENANT] [--cancel]
+```
+
+| Command | Notes |
+|---|---|
+| `endpoints promote`, `endpoints rollback` | Show the current version and ask first (`--yes` skips); `--override` needs `--reason` |
+| `webhooks create`, `webhooks rotate` | Print the signing secret once, alone on stdout; `rotate` and `rm` ask first |
+| `webhooks update` | `--enable` switches a paused or automatically disabled webhook back on and resets its failure count; `-e` replaces the event list |
+| `plots embed` | Prints the embed URL (it carries the token) once; `revoke` asks first |
+| `guided detect`, `guided draft --csv` | Profile the CSV locally and send only column summaries |
+| `signup`, `verify-email` | Public calls: no credentials are sent |
+| `tenant delete` | Lists what is purged and kept and asks you to type the tenant id (`--confirm TENANT` in scripts) |
 
 Errors: `QUOTA_EXCEEDED` and `RATE_LIMITED` print when to retry (`retry after 1h 30m`); with
 `--json` the error document carries `retry_after_seconds`. No command prints a token: they

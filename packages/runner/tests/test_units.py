@@ -252,7 +252,7 @@ def test_parse_job_per_kind() -> None:
         (RunKind.DESCRIBE, {"x": 1}),
         (RunKind.FIT, {"apiVersion": "mapi/v1", "kind": "ScoreRequest", "model": "endpoint://p/m"}),
         (RunKind.DERIVE, {"names": []}),
-        (RunKind.RENDER, {"format": "pdf"}),
+        (RunKind.RENDER, {"format": "gif"}),
     ],
 )
 def test_parse_job_rejects_bad_specs(kind: RunKind, spec: dict[str, object]) -> None:

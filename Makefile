@@ -56,6 +56,10 @@ db-shell: ## Open psql on the dev database (embedded pgserver or DATABASE_URL)
 seed: ## Load the E33 demo datasets + spec into a running stack (`make seed SIZE=full`)
 	$(UV) run python scripts/seed.py $(if $(filter command line,$(origin SIZE)),--size $(SIZE))
 
+.PHONY: outbox
+outbox: ## Show the dev stack's newest e-mails (sign-up verification links; TO=<address> filters)
+	$(UV) run python scripts/dev.py outbox $(if $(TO),--to $(TO))
+
 .PHONY: clean-local
 clean-local: ## Delete local state in MAPI_DATA_DIR (.local: database, objects); YES=1 skips the prompt
 	$(UV) run python scripts/dev.py clean $(if $(YES),--yes)
@@ -106,9 +110,24 @@ test-fast: ## Unit tests only, skipping slow MCMC tests
 .PHONY: test-all
 test-all: test web-test ## Python suite + web (Vitest) suites
 
+# Atlas (the budget optimiser, AGPL) lives in its own repository; it is never a locked
+# dependency. The Atlas tests install it into a throwaway overlay of the environment.
+ATLAS_DIR ?= ../optimizer-framework
+
+.PHONY: test-atlas
+test-atlas: ## The mapi_client.atlas tests with Atlas installed from ATLAS_DIR (default ../optimizer-framework)
+	$(UV) run --with-editable $(ATLAS_DIR) python -m pytest -q -p no:cacheprovider packages/client/tests/test_atlas.py
+
+# The M3 journey's Atlas step uses Atlas itself when ATLAS_DIR holds a checkout: that suite
+# runs in a throwaway overlay (as in test-atlas), the others in the project environment (the
+# CLI walkthroughs need its console scripts). Without Atlas it uses Atlas's protocol only.
+M3_JOURNEY := tests/e2e/test_m3_guided_stack.py
+HAVE_ATLAS := $(wildcard $(ATLAS_DIR)/pyproject.toml)
+
 .PHONY: e2e
-e2e: ## End-to-end tests against a running stack (`make dev` first): API suite, then the browser @e2e suite
-	$(UV) run pytest -q -m e2e
+e2e: ## End-to-end tests against a running stack (`make dev` first): API suites (M1-M3), then the browser @e2e suites
+	$(UV) run pytest -q -m e2e $(if $(HAVE_ATLAS),--ignore=$(M3_JOURNEY))
+	$(if $(HAVE_ATLAS),$(UV) run --with-editable $(ATLAS_DIR) python -m pytest -q -p no:cacheprovider -m e2e $(M3_JOURNEY))
 	@if ls apps/web/playwright.config.* >/dev/null 2>&1; then \
 		$(PNPM) --filter @mapi/web e2e; \
 	else echo "e2e: apps/web has no Playwright config; browser suite skipped"; fi
@@ -168,9 +187,24 @@ _web-check:
 web-dev: ## Run the web app (5173) and the plot sandbox (5174) against VITE_API_BASE
 	$(PNPM) -r --parallel dev
 
+.PHONY: api-types
+api-types: ## Regenerate apps/web/openapi.json, access.gen.json and src/api/schema.d.ts from the server
+	$(UV) run python apps/web/scripts/gen_openapi.py
+	$(PNPM) --filter @mapi/web openapi:types
+
+.PHONY: snapshots
+snapshots: ## Regenerate the contract snapshot (mapi_spec), the server's Guided catalog fixture and the web mock fixtures
+	MAPI_UPDATE_SNAPSHOTS=1 $(UV) run pytest -q packages/spec/tests/test_contract_snapshot.py \
+		packages/spec/tests/test_m3_whatif_golden.py \
+		conformance/tests/test_guided_catalog.py
+	$(UV) run python apps/web/scripts/gen_guided_fixtures.py
+	$(UV) run python apps/web/scripts/gen_integration_fixtures.py
+
 .PHONY: web-check
 web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*
 	$(UV) run python apps/web/scripts/gen_openapi.py --check
+	$(UV) run python apps/web/scripts/gen_guided_fixtures.py --check
+	$(UV) run python apps/web/scripts/gen_integration_fixtures.py --check
 	$(PNPM) -r lint
 	$(PNPM) -r typecheck
 	$(PNPM) -r test
@@ -236,7 +270,7 @@ docs-build: docs-catalog ## Build the documentation site into ./site (strict)
 
 .PHONY: docs-test
 docs-test: ## Run every documentation snippet and check every include
-	$(UV) run pytest -q conformance/tests/test_docs_snippets.py conformance/tests/test_docs_platform.py
+	$(UV) run pytest -q conformance/tests/test_docs_snippets.py conformance/tests/test_docs_platform.py conformance/tests/test_docs_tutorials.py
 
 .PHONY: docs-screenshots
 docs-screenshots: ## Recapture docs/assets/screenshots from a running, seeded stack (see the script)
@@ -245,10 +279,31 @@ docs-screenshots: ## Recapture docs/assets/screenshots from a running, seeded st
 
 DOCS_ADMIN_SHOTS := signin,dev-idp,project-switcher,members,tokens,token-new,token-created,usage,admin-tenants,admin-quotas,admin-kill-switches,admin-executors,admin-audit
 
+.PHONY: docs-screenshots-guided
+docs-screenshots-guided: ## Recapture the Guided tutorial screenshots from the mock-mode app (Playwright)
+	MAPI_GUIDED_SCREENSHOTS=1 MAPI_SMOKE_WEB_PORT=$${MAPI_SMOKE_WEB_PORT:-15173} MAPI_SMOKE_PLOTS_PORT=$${MAPI_SMOKE_PLOTS_PORT:-15174} \
+		$(PNPM) --filter @mapi/web exec playwright test e2e/guided-screenshots.spec.ts
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-guided docs/assets/screenshots --max-kb 150
+
 .PHONY: docs-screenshots-admin
 docs-screenshots-admin: ## Recapture the multi-tenant screenshots (sign-in, members, tokens, usage, admin) from a dev stack
 	node scripts/docs_screenshots_admin.mjs .local/screenshots-admin
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-admin docs/assets/screenshots --only $(DOCS_ADMIN_SHOTS)
+
+DOCS_INTEGRATIONS_SHOTS := integrations-overview,integrations-promote-gate,integrations-endpoint,integrations-try-it,integrations-snippets,integrations-webhook,integrations-sharing,integrations-embed-link,settings-data,admin-signups,signup
+
+.PHONY: docs-screenshots-integrations
+docs-screenshots-integrations: ## Recapture the Integrations hub and trust-page screenshots from the mock-mode web app (see the script)
+	node scripts/docs_screenshots_integrations.mjs .local/screenshots-integrations
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-integrations docs/assets/screenshots --max-kb 150 --only $(DOCS_INTEGRATIONS_SHOTS)
+
+DOCS_TUTORIAL_SHOTS := integrations-sheets,webhook-secret,embed-page
+
+.PHONY: docs-screenshots-tutorials
+docs-screenshots-tutorials: ## Recapture the v0.4 tutorial screenshots (Sheets card, webhook secret, embed page) from mock mode
+	$(UV) run python scripts/docs_embed_view.py .local/embed-view.json
+	MAPI_EMBED_VIEW=.local/embed-view.json node scripts/docs_screenshots_tutorials.mjs .local/screenshots-tutorials
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-tutorials docs/assets/screenshots --max-kb 150 --only $(DOCS_TUTORIAL_SHOTS)
 
 ## ---------------------------------------------------------------- release
 .PHONY: release-check

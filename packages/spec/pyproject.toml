@@ -1,13 +1,13 @@
 [project]
 name = "mapi-spec"
-version = "0.3.0"
+version = "0.4.0"
 description = "Pure-Pydantic contracts for modeling-api (specs, schemas, manifests, plot envelopes)"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
 dependencies = [
-  "pydantic>=2.9",
+  "pydantic>=2.11",
   "pyyaml>=6.0",
   "jsonschema>=4.23",
 ]

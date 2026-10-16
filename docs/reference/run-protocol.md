@@ -325,7 +325,7 @@ it, so a renamed input or a changed payload fails type checks and tests on both 
 | `describe` | `DescribeJob` (`image_digest`) | none | `catalog.json` (`Catalog`) |
 | `validate` | the resolved `ModelSpec` | `dataset`, `side.<name>` | `validation.json` |
 | `fit` | the resolved `ModelSpec` (`use:` and dataset refs pinned) | `dataset`, `side.<name>` | `bundle.zarr.zip`, `diagnostics.json`, `metrics.json` (`MetricsSidecar`), `plots.json`, `coords.json` (`ScoreMetadata.fit_coords`), `ui/…` |
-| `score` | the `ScoreRequest` | `bundle`, `bundle.manifest`, `dataset` (the request's `data`), `scenario`, `side.<name>` | `score.zarr.zip`, `result.json`, `plots.json`, `ui/summary.arrow` |
+| `score` | the `ScoreRequest` | `bundle`, `bundle.manifest`, `dataset` (the request's `data`), `scenario`, `side.<name>`, `history` (v0.4: the fit dataset, for forecasts whose `future_covariates` is `carry_last` or `seasonal_naive`), `inline.data` / `inline.scenario` (v0.4: an endpoint call's inline XrJSON, used when `dataset` / `scenario` is absent) | `score.zarr.zip`, `result.json`, `plots.json`, `ui/summary.arrow`; `ui/guided/forecast.json` or `ui/guided/counterfactual.json` (v0.4) |
 | `evaluate` / `derive` / `render` | `EvaluateJob` / `DeriveJob` / `RenderJob` from the run's `params` | `bundle`, `dataset` (default: the fit dataset), `side.<name>`; `plots` for render | as listed in the [runner reference](runner.md#what-runspecspec-holds-per-kind) |
 
 `side_table_input(name)` builds `side.<name>`; `SCORE_INPUTS` maps a `ScoreRequest`'s `data`
@@ -333,6 +333,13 @@ and `scenario` fields to their input names. A `*.zarr.zip` dataset may carry its
 `DataSchema` as JSON in the root attribute `DATASET_SCHEMA_ATTR` (`mapi_schema`); ingest writes
 it, and an upload that carries it keeps its dim policies, roles and units instead of an
 inferred schema.
+
+`inline.data` and `inline.scenario` (`mapi_spec.endpoints.INPUT_INLINE_DATA` and
+`INPUT_INLINE_SCENARIO`) hold the `XrJsonDataset` JSON of an endpoint score call, stored by the
+API in the quarantine bucket. The worker decodes them with the wire format's caps (strict JSON,
+no `NaN` or `Infinity`, at most 5 MB) and gives each dim coordinate the type of the bundle's raw
+schema (dates from ISO strings, whole numbers for `integer` and `index` dims, text for
+categorical dims); anything it cannot read fails the run with `SCHEMA_INVALID`.
 
 ### UI views
 

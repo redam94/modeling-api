@@ -9,7 +9,10 @@ import type { DatasetVersion, Problem, Run, RunEventView, SpecRevision, UploadSe
 import { env } from "@/env";
 
 import * as fx from "./fixtures";
+import { createGuidedHandlers } from "./guided";
+import { createIntegrationHandlers, createIntegrationsState } from "./integrations";
 import { createTenancyHandlers, createTenancyState } from "./tenancy";
+import { createTrustHandlers, createTrustState } from "./trust";
 
 const API = env.apiBase;
 const API_RE = API.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -26,6 +29,8 @@ const page = <T,>(items: T[]) => HttpResponse.json({ items, next_cursor: null })
 
 interface MockState {
   tenancy: ReturnType<typeof createTenancyState>;
+  integrations: ReturnType<typeof createIntegrationsState>;
+  trust: ReturnType<typeof createTrustState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -37,6 +42,8 @@ export function createState(): MockState {
   const json = (v: unknown) => enc.encode(JSON.stringify(v));
   return {
     tenancy: createTenancyState(),
+    integrations: createIntegrationsState(),
+    trust: createTrustState(),
     runs: new Map(fx.runs.map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
@@ -119,10 +126,15 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
   return [
     // v0.3: session, tenancy and the per-request checks (first, so they guard every /v1 route).
     ...createTenancyHandlers(state.tenancy),
+    // M3 Guided mode: answers for the resources a Guided session creates, falls through otherwise.
+    ...createGuidedHandlers(state),
+    // v0.4: endpoints, webhooks, sharing (mocks/integrations.ts) and the trust lifecycle (mocks/trust.ts).
+    ...createIntegrationHandlers(state.integrations, { artifacts: state.artifacts }),
+    ...createTrustHandlers(state.trust, { tenancy: state.tenancy, artifacts: state.artifacts }),
     http.get(`${API}/readyz`, () =>
-      HttpResponse.json({ status: "ok", version: "0.3.0-mock", contract_version: "0.1", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
+      HttpResponse.json({ status: "ok", version: "0.4.0-mock", contract_version: "0.1", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
     ),
-    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.3.0-mock", contract_version: "0.1" })),
+    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.4.0-mock", contract_version: "0.1" })),
     http.get(`${API}/v1/catalog`, () => HttpResponse.json(fx.catalog)),
     http.get(`${API}/v1/schemas/:name`, ({ params }) =>
       params.name === "modelspec.json"

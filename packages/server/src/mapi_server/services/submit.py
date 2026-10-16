@@ -16,6 +16,7 @@ from mapi_spec._types import Duration
 from mapi_spec.api import RunCreate, RunRetry
 from mapi_spec.audit import AuditAction, AuditOutcome
 from mapi_spec.capabilities import Capabilities
+from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError, ValidationFailed
 from mapi_spec.executor import RunKind
 from mapi_spec.jobs import (
@@ -25,6 +26,7 @@ from mapi_spec.jobs import (
     INPUT_BUNDLE,
     INPUT_BUNDLE_MANIFEST,
     INPUT_DATASET,
+    INPUT_HISTORY,
     INPUT_PLOTS,
     INPUT_UPLOAD,
     DeriveJob,
@@ -39,9 +41,9 @@ from mapi_spec.jobs import (
 from mapi_spec.loader import spec_hash
 from mapi_spec.quotas import QuotaDemand, default_priority
 from mapi_spec.refs import DatasetRef
-from mapi_spec.resources import ResourceClass
+from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
-from mapi_spec.spec import DEFAULT_FIT_SEED, ModelSpec, ScoreRequest
+from mapi_spec.spec import DEFAULT_FIT_SEED, FutureCovariates, ModelSpec, ScoreRequest
 from mapi_spec.tenancy import ResourceKind, TrustTier
 from pydantic import JsonValue
 from sqlalchemy import select
@@ -66,8 +68,10 @@ from mapi_server.services.specs import (
     data_cap_issue,
     pin_document,
     resolve_dataset,
+    score_draw_cap,
     validate_document,
 )
+from mapi_server.services.verification import require_uploaded_code_allowed
 
 __all__ = [
     "DEFAULT_TIMEOUT_S",
@@ -127,6 +131,18 @@ async def admit(
     estimate = run_estimate(ctx.price_table, rc, wall, max(1, run.task_count or 1))
     run.estimate = estimate.model_dump(mode="json") if estimate is not None else None
     auth = ctx.request
+    if untrusted:  # cut line A: uploaded code needs a trusted tier or identity verification
+        try:
+            await require_uploaded_code_allowed(session, ctx, run.tenant_id)
+        except MapiError as exc:
+            if auth is not None:
+                await write_audit(
+                    ctx.db,
+                    [auth.audit(ctx, AuditAction.RUN_CREATE, ResourceKind.RUN,
+                                AuditOutcome.DENIED, code=exc.code,
+                                details={"kind": kind.value, "untrusted_code": True})],
+                )  # fmt: skip
+            raise
     if auth is None:
         return
     run.token_id = auth.token.id if auth.token is not None else None
@@ -350,6 +366,24 @@ async def _fit_dataset(session: AsyncSession, mv: m.ModelVersion) -> m.DatasetVe
     return dv
 
 
+async def fit_dataset_version(session: AsyncSession, mv: m.ModelVersion) -> m.DatasetVersion:
+    """The ready dataset version ``mv`` was fitted on (``REF_UNRESOLVED`` otherwise)."""
+    return await _fit_dataset(session, mv)
+
+
+async def fit_dataset_ref(session: AsyncSession, mv: m.ModelVersion) -> str:
+    """``dataset://<project>/<name>@v<n>``: the dataset version ``mv`` was fitted on
+    (``REF_UNRESOLVED`` when it is not recorded or no longer ready)."""
+    dv = await _fit_dataset(session, mv)
+    ds = await session.get(m.Dataset, dv.dataset_id)
+    if ds is None:
+        raise MapiError(
+            f"the fit dataset of model version {mv.id} is no longer available",
+            code=ErrorCode.REF_UNRESOLVED,
+        )
+    return f"dataset://{ds.project_id}/{ds.name}@v{dv.version}"
+
+
 async def _dataset_input(
     session: AsyncSession, scope: Scope, ref: str | DatasetRef | None, pointer: str
 ) -> m.DatasetVersion | None:
@@ -421,26 +455,39 @@ async def submit_model_run(
     resource_class: ResourceClass | None = None,
     timeout: Duration | None = None,
     labels: dict[str, str] | None = None,
+    extra_inputs: dict[str, Any] | None = None,
+    inline_summary: DataSummary | None = None,
 ) -> m.Run:
-    """``score``/``evaluate``/``derive``/``render`` against a verified model version."""
+    """``score``/``evaluate``/``derive``/``render`` against a verified model version.
+
+    ``extra_inputs`` are further pinned run inputs (an endpoint call's inline payloads,
+    already stored) and ``inline_summary`` summarises the one the score run reads."""
     scope = ctx.scope
     mv = await _ready_model_version(session, scope, model_version_id)
     ref = await _model_ref(session, mv)
-    inputs: dict[str, Any] = {}
+    inputs: dict[str, Any] = dict(extra_inputs or {})
     read: list[m.DatasetVersion] = []
     payload: dict[str, Any]
     if kind is RunKind.SCORE:
         if request is None:
             raise MapiError("score runs need a request", code=ErrorCode.SCHEMA_INVALID)
         issues: list[Issue] = []
-        datasets = await check_score_request(session, scope, request, mv, issues)
+        datasets = await check_score_request(
+            session, scope, request, mv, issues, inline=inline_summary
+        )
         if any(i.severity == "error" for i in issues):
             raise ValidationFailed(issues)
-        payload = request.model_dump(mode="json", by_alias=True, exclude_none=True)
-        payload["model"] = ref
+        req_payload = request.model_dump(mode="json", by_alias=True, exclude_none=True)
+        req_payload["model"] = ref
+        # the runner enforces the tier's draw cap again (plan Q2)
+        payload = {"request": req_payload, "max_draws": await score_draw_cap(session, scope)}
         for name, dv in datasets.items():
             inputs[name] = data_ref(dv)
             read.append(dv)
+        if _needs_history(request):
+            fit_dv = await _fit_dataset(session, mv)
+            inputs[INPUT_HISTORY] = data_ref(fit_dv)
+            read.append(fit_dv)
     else:
         job = parse_model_job_params(kind, dict(params or {}))
         payload = job.model_dump(mode="json", by_alias=True, exclude_none=True)
@@ -471,6 +518,14 @@ async def submit_model_run(
         catalog_digest=mv.manifest.get("catalog_digest"),
     )
     return await _accept(session, ctx, run, untrusted=bool((mv.lineage or {}).get("overlay_hash")))
+
+
+def _needs_history(request: ScoreRequest) -> bool:
+    """A forecast whose missing covariates are extended from the fitted series (M3)."""
+    return request.mode == "forecast" and request.future_covariates in (
+        FutureCovariates.CARRY_LAST,
+        FutureCovariates.SEASONAL_NAIVE,
+    )
 
 
 async def submit_run(session: AsyncSession, ctx: ServerContext, body: RunCreate) -> m.Run:
@@ -553,6 +608,13 @@ async def submit_ingest(
     generation: int,
     mapping: dict[str, Any],
 ) -> m.Run:
+    # plan §8.5: the smallest class whose dataset cap holds the upload (uploads are capped
+    # at class L's limit, so one always fits)
+    resource_class = class_for_size(upload.size_bytes) or ResourceClass.L
+    # M3: whatever an upload decodes to must fit the class's scratch budget (Cloud Run's
+    # filesystem lives in RAM), so a decompression bomb fails as PAYLOAD_TOO_LARGE first
+    scratch = RESOURCE_CLASSES[resource_class].scratch_bytes
+    caps: dict[str, Any] = {} if scratch is None else {"max_uncompressed_bytes": scratch}
     job = IngestJob(
         mapping=mapping,
         dataset=f"dataset://{dataset.project_id}/{dataset.name}@v{version}",
@@ -561,12 +623,10 @@ async def submit_ingest(
             content_type=upload.content_type,
             size_bytes=upload.size_bytes,
         ),
+        **caps,
     )
     payload = job.model_dump(mode="json", by_alias=True, exclude_none=True)
     snapshot = await ctx.catalogs.get(session)
-    # plan §8.5: the smallest class whose dataset cap holds the upload (uploads are capped
-    # at class L's limit, so one always fits)
-    resource_class = class_for_size(upload.size_bytes) or ResourceClass.L
     run = await create_run(
         session,
         ctx.scope,

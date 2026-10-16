@@ -27,10 +27,12 @@ from mapi_spec.localdev import (
 )
 from mapi_spec.storage import Buckets
 from mapi_spec.tenancy import DEFAULT_RESIDENCY, TrustTier, residency_of_region
+from mapi_spec.trust import SHARED_EMAIL_DOMAINS
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from mapi_server import __version__
+from mapi_server.clientaddr import normalise_trusted_proxies
 
 __all__ = [
     "DEFAULT_CLOUDRUN_BASES",
@@ -38,6 +40,7 @@ __all__ = [
     "DEFAULT_DOCKER_IMAGES",
     "DEFAULT_ESTIMATE_WALL_S",
     "ExecutorName",
+    "MailerKind",
     "ObjectStoreKind",
     "Profile",
     "Settings",
@@ -76,6 +79,7 @@ DEFAULT_ESTIMATE_WALL_S: dict[str, float] = {
     RunKind.DERIVE.value: 60.0,
     RunKind.RENDER.value: 30.0,
     RunKind.OPTIMIZE.value: 300.0,
+    RunKind.TRANSLATE_PRIORS.value: 60.0,
 }
 """Wall-time estimate per run kind (seconds, capped at the run's timeout): what a run is
 charged against vCPU-second quotas until its attempts are metered into the cost ledger."""
@@ -109,6 +113,15 @@ class SignerKind(StrEnum):
 
     LOCAL = "local"
     KMS = "kms"
+
+
+class MailerKind(StrEnum):
+    """How the server sends e-mail (sign-up verification links)."""
+
+    CONSOLE = "console"  # log the message (single-tenant installs; never multi-tenant)
+    OUTBOX = "outbox"  # write JSON files under MAPI_OUTBOX_DIR (dev; read at /dev/outbox)
+    SMTP = "smtp"  # smtplib with STARTTLS or implicit TLS (production)
+    NONE = "none"  # no e-mail: self-service sign-up is off
 
 
 class ObjectStoreKind(StrEnum):
@@ -490,9 +503,49 @@ class Settings(BaseSettings):
     max_sidecar_bytes: int = Field(8 * 1024 * 1024, ge=1024)
     log_level: Literal["debug", "info", "warning", "error"] = "info"
 
+    # ------------------------------------------------------- plot rendering and embeds (M3)
+    render_timeout_s: int = Field(
+        300,
+        ge=30,
+        le=3600,
+        description="Wall-clock limit of a POST /v1/plots:render run (the sandbox kills it)",
+    )
+    render_plotly_enabled: bool = Field(
+        False,
+        description="Accept Plotly plots in POST /v1/plots:render. Plotly static export needs "
+        "kaleido and a Chrome/Chromium in the runner image, which the base images do not "
+        "ship; while off, Plotly renders are refused with MODE_NOT_SUPPORTED",
+    )
+    embed_rate_per_minute: int = Field(
+        300, ge=1, description="Public embed views per minute and embed link (429 beyond)"
+    )
+    embed_ip_rate_per_minute: int = Field(
+        120,
+        ge=1,
+        description="Public embed requests per minute and client address, valid or not",
+    )
+    embed_cache_s: float = Field(
+        60.0,
+        ge=0,
+        description="How long an API instance reuses an embed's resolved plot (revocation and "
+        "expiry are still checked on every request; responses are never cached by browsers "
+        "or shared caches, so a revoked link stops rendering on the next load)",
+    )
+    embed_image_url_ttl_s: int = Field(
+        900, ge=60, le=86400, description="Lifetime of the PNG fallback's signed URL"
+    )
+
     # ------------------------------------------------------------------- observability
     log_json: bool = Field(
         True, description="Emit JSON logs (structlog); off gives a human console renderer"
+    )
+    trusted_proxies: Annotated[list[str] | None, NoDecode] = Field(
+        None,
+        description="Addresses or CIDR ranges of the proxies in front of the API (load "
+        "balancer, Cloud Run front end, the web container's /v1/ proxy), comma-separated. A "
+        "request from one of them takes the right-most untrusted X-Forwarded-For hop as the "
+        "client address (per-address limits, Sybil checks, audit). 'none': clients reach the "
+        "API directly and X-Forwarded-For is ignored. Required in the multi-tenant profile",
     )
     metrics_enabled: bool = Field(True, description="Mount GET /metrics (Prometheus)")
     worker_metrics_port: int | None = Field(
@@ -516,6 +569,178 @@ class Settings(BaseSettings):
         None,
         description="OTLP/HTTP collector base URL for span export (also read from "
         "OTEL_EXPORTER_OTLP_ENDPOINT); unset means spans are created but not exported",
+    )
+
+    # ------------------------------------------------------------ webhooks (M3, plan §9)
+    webhook_allow_http: bool = Field(
+        False,
+        description="Development only: allow http:// webhook URLs, for the hosts in "
+        "MAPI_WEBHOOK_DEV_ALLOWLIST only (refused in the multi-tenant profile)",
+    )
+    webhook_dev_allowlist: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Development only: webhook host names (comma-separated) exempt from the "
+        "SSRF address and port checks, e.g. a receiver on localhost (refused in the "
+        "multi-tenant profile)",
+    )
+    webhook_ca_file: Path | None = Field(
+        None,
+        description="Extra PEM CA bundle trusted for webhook receivers (a private CA); the "
+        "system trust store is always used",
+    )
+    webhook_poll_interval_s: float = Field(
+        2.0, gt=0, description="How often the worker looks for due webhook deliveries"
+    )
+    webhook_max_attempts: int = Field(
+        8, ge=1, le=8, description="Tries per delivery (the retry schedule allows up to 8)"
+    )
+    webhook_auto_disable_after: int = Field(
+        20,
+        ge=1,
+        le=1000,
+        description="Disable a webhook after this many consecutive events failed",
+    )
+    webhook_max_per_project: int = Field(25, ge=1, le=1000)
+    webhook_retention_days: int = Field(
+        30, ge=1, le=3650, description="Days webhook events and their delivery logs are kept"
+    )
+
+    # ------------------------------------------------------------- trust lifecycle (M3)
+    signup_enabled: bool | None = Field(
+        None,
+        description="Self-service sign-up at POST /auth/signup (default: on in the dev and "
+        "multi-tenant profiles when a mailer is configured, off single-tenant)",
+    )
+    mailer: MailerKind | None = Field(
+        None,
+        description="How e-mail is sent: console, outbox, smtp or none (default: outbox in "
+        "dev, console single-tenant, smtp multi-tenant)",
+    )
+    mail_from: str = Field(
+        "modeling-api <no-reply@mapi.localhost>",
+        max_length=320,
+        description="From: header of the e-mails the server sends",
+    )
+    outbox_dir: Path | None = Field(
+        None, description="Where the outbox mailer writes messages (default: data_dir/outbox)"
+    )
+    smtp_host: str | None = Field(None, description="SMTP server (MAPI_MAILER=smtp)")
+    smtp_port: int = Field(587, ge=1, le=65535)
+    smtp_tls: Literal["starttls", "ssl"] = Field(
+        "starttls", description="starttls (port 587) or ssl (implicit TLS, port 465)"
+    )
+    smtp_username: str | None = None
+    smtp_password: str | None = Field(None, repr=False)
+    smtp_timeout_s: float = Field(10.0, gt=0)
+    signup_verify_url: str | None = Field(
+        None,
+        description="Verification link template with {token} (default: "
+        "<web_origin>/verify-email?token={token})",
+    )
+    signup_blocked_domains: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="E-mail domains refused at sign-up besides the built-in disposable list "
+        "(comma-separated; subdomains included)",
+    )
+    signup_blocklist_path: Path | None = Field(
+        None,
+        description="A file of disposable e-mail domains (one per line, # comments), e.g. a "
+        "maintained public list, added to the built-in one",
+    )
+    signup_per_ip_per_hour: int = Field(
+        5, ge=1, description="Sign-ups accepted per client address and hour"
+    )
+    signup_per_domain_per_day: int = Field(
+        25,
+        ge=1,
+        description="Verified sign-ups per e-mail domain and day (shared free-mail domains "
+        "are exempt)",
+    )
+    signup_global_per_hour: int = Field(
+        500, ge=1, description="Verified sign-ups per hour on the whole platform"
+    )
+    signup_shared_email_domains: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: list(SHARED_EMAIL_DOMAINS),
+        description="Free-mail domains shared by unrelated people (comma-separated; replaces "
+        "the built-in list): no per-domain sign-up cap and no domain-burst Sybil flag",
+    )
+    verify_per_ip_per_minute: int = Field(
+        20, ge=1, description="E-mail verification attempts per client address and minute"
+    )
+    signup_sybil_window_days: int = Field(
+        30, ge=1, description="Look-back of the Sybil heuristics (same address, browser, e-mail)"
+    )
+    signup_sybil_threshold: int = Field(
+        3,
+        ge=1,
+        description="Workspaces created from one address, browser or e-mail within the window "
+        "before a new one is flagged for review",
+    )
+    signup_flagged_suspend: bool = Field(
+        False,
+        description="Suspend a flagged sign-up's tenant until an operator approves it "
+        "(default: it works and waits in the review queue)",
+    )
+    signup_retention_days: int = Field(
+        30, ge=1, description="Unverified sign-ups (with their e-mail) are deleted after this"
+    )
+    public_code_upload_enabled: bool = Field(
+        False,
+        description="Cut line B: let identity-verified public tenants run uploaded code "
+        "(off through M4: public tenants run built-ins and declarative specs only)",
+    )
+    tenant_deletion_grace_s: float = Field(
+        7 * 86400.0,
+        ge=0,
+        description="Grace period of a tenant deletion: the tenant is suspended and may cancel",
+    )
+    deletion_reauth_max_age_s: float | None = Field(
+        None,
+        gt=0,
+        description="Also require a sign-in at most this old to request a deletion (re-auth); "
+        "unset: the confirmation phrase alone",
+    )
+    deletion_run_stop_timeout_s: float = Field(
+        3600.0,
+        gt=0,
+        description="How long a purge waits for the tenant's cancelled runs to stop",
+    )
+    deletion_max_attempts: int = Field(
+        8, ge=1, description="Automatic retries of a failed purge before operators must retry"
+    )
+    bundle_retention_days: int = Field(
+        30,
+        ge=0,
+        description="The bundles bucket's retention period (Terraform bundle_retention_days): "
+        "when a purge may retry objects a retention lock refused",
+    )
+    lifecycle_interval_s: float = Field(
+        15.0, gt=0, description="Cadence of the deletion and export scheduler (orchestrator)"
+    )
+    export_max_inline_bytes: int = Field(
+        256 * 1024 * 1024,
+        ge=0,
+        description="Dataset bytes a GDPR export archive includes; larger exports list the "
+        "remaining objects (with sizes and hashes) instead",
+    )
+    export_retention_s: float = Field(
+        7 * 86400.0, gt=0, description="How long a GDPR export archive is kept"
+    )
+    export_link_ttl_s: float = Field(
+        900.0, gt=0, le=7 * 86400, description="Lifetime of an export's signed download link"
+    )
+    exports_per_day: int = Field(3, ge=1, description="GDPR exports a tenant may request per day")
+    export_max_metadata_bytes: int = Field(
+        256 * 1024 * 1024,
+        ge=0,
+        description="Bytes of metadata rows (runs, logs, events, audit, ...) a GDPR export "
+        "archive includes; the tables cut short are listed in its manifest",
+    )
+    export_build_timeout_s: float = Field(
+        3600.0,
+        gt=0,
+        description="How long one GDPR export build may take; a build still marked running "
+        "5 minutes after that (its process died) is built again once, then failed",
     )
 
     def obs_settings(self) -> Any:
@@ -552,12 +777,26 @@ class Settings(BaseSettings):
         "kms_trusted_key_versions",
         "signing_trusted_key_paths",
         "dispatch_tiers",
+        "webhook_dev_allowlist",
+        "signup_blocked_domains",
+        "signup_shared_email_domains",
         mode="before",
     )
     @classmethod
     def _hosts(cls, v: object) -> object:
         if isinstance(v, str):
             return [h.strip() for h in v.split(",") if h.strip()]
+        return v
+
+    @field_validator("trusted_proxies", mode="before")
+    @classmethod
+    def _proxies(cls, v: object) -> object:
+        if isinstance(v, str):
+            if v.strip().lower() == "none":
+                return []
+            v = v.split(",")
+        if isinstance(v, list | tuple):
+            return normalise_trusted_proxies(str(x) for x in v)
         return v
 
     @field_validator("env")
@@ -591,12 +830,74 @@ class Settings(BaseSettings):
                 "MAPI_OBJECT_STORE=gcs needs MAPI_URL_UPLOADER: a service account other than "
                 "MAPI_URL_SIGNER that may create objects but never delete them"
             )
+        if self.profile is Profile.MULTI_TENANT and (
+            self.webhook_allow_http or self.webhook_dev_allowlist
+        ):
+            raise ValueError(
+                "MAPI_WEBHOOK_ALLOW_HTTP and MAPI_WEBHOOK_DEV_ALLOWLIST are for development; "
+                "the multi-tenant profile always applies the full SSRF policy"
+            )
+        if (
+            self.profile is Profile.MULTI_TENANT
+            and self.signup_open
+            and self.effective_mailer in (MailerKind.CONSOLE, MailerKind.OUTBOX)
+        ):
+            raise ValueError(
+                "multi-tenant sign-up needs MAPI_MAILER=smtp: console and outbox mailers would "
+                "expose verification links to whoever reads the logs or the disk"
+            )
+        if self.signup_enabled and not self._mailer_usable:
+            raise ValueError(
+                "MAPI_SIGNUP_ENABLED needs a mailer: MAPI_MAILER=smtp with MAPI_SMTP_HOST "
+                "(or console/outbox outside the multi-tenant profile)"
+            )
         weak = [a for a in self.oidc_algorithms if a.upper().startswith("HS") or a == "none"]
         if weak:
             raise ValueError("oidc_algorithms must be asymmetric (RS*, ES*, PS* or EdDSA)")
+        if self.profile is Profile.MULTI_TENANT and self.trusted_proxies is None:
+            raise ValueError(
+                "the multi-tenant profile needs MAPI_TRUSTED_PROXIES: the proxies in front of "
+                "the API (so per-address limits see the caller, not the load balancer), or "
+                "'none' when clients connect to the API directly"
+            )
         return self
 
     # ------------------------------------------------------------------------- derived
+    @property
+    def effective_mailer(self) -> MailerKind:
+        """``MAPI_MAILER``, else the profile's default (dev: outbox, multi-tenant: smtp)."""
+        if self.mailer is not None:
+            return self.mailer
+        return {
+            Profile.DEV: MailerKind.OUTBOX,
+            Profile.MULTI_TENANT: MailerKind.SMTP,
+        }.get(self.profile, MailerKind.CONSOLE)
+
+    @property
+    def signup_open(self) -> bool:
+        """Is self-service sign-up on (and can it send its e-mail)?"""
+        enabled = (
+            self.signup_enabled
+            if self.signup_enabled is not None
+            else self.profile is not Profile.SINGLE_TENANT
+        )
+        return enabled and self._mailer_usable
+
+    @property
+    def _mailer_usable(self) -> bool:
+        kind = self.effective_mailer
+        return kind is not MailerKind.NONE and (kind is not MailerKind.SMTP or bool(self.smtp_host))
+
+    def resolved_outbox_dir(self) -> Path:
+        return self.outbox_dir or (self.data_dir / "outbox")
+
+    def verify_link(self, token: str) -> str:
+        """The verification link e-mailed to a sign-up."""
+        template = self.signup_verify_url or (
+            self.web_origin.rstrip("/") + "/verify-email?token={token}"
+        )
+        return template.replace("{token}", token)
+
     @property
     def buckets(self) -> Buckets:
         return Buckets(self.env)

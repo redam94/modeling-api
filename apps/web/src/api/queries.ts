@@ -35,6 +35,7 @@ import type {
   MembershipCreate,
   ProjectCreate,
   ProjectRole,
+  ProjectUpdate,
   Model,
   ModelVersion,
   Page,
@@ -665,9 +666,10 @@ export function useModelVersionById(mvId: string | null | undefined) {
   });
 }
 
-export function usePlots(modelId: string, version: number) {
+export function usePlots(modelId: string, version: number, enabled = true) {
   const s = useProjectScope();
   return useQuery({
+    enabled: enabled && Boolean(modelId) && version > 0,
     queryKey: qk.plots(s.key, modelId, version),
     queryFn: ({ signal }) =>
       unwrap(
@@ -759,6 +761,21 @@ export function useCreateProject(tenantId: string) {
   return useMutation({
     mutationFn: (body: ProjectCreate) =>
       unwrap(api.POST("/v1/tenants/{tenant_id}/projects", { params: { path: { tenant_id: tenantId } }, body })),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: qk.me }),
+        qc.invalidateQueries({ queryKey: qk.tenantProjects(tenantId) }),
+      ]);
+    },
+  });
+}
+
+/** `PATCH` a project (project admins): its name, description or Guided lock. */
+export function useUpdateProject(tenantId: string, projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ProjectUpdate) =>
+      unwrap(api.PATCH("/v1/tenants/{tenant_id}/projects/{project_id}", { params: { path: { tenant_id: tenantId, project_id: projectId } }, body })),
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: qk.me }),

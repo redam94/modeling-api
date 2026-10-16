@@ -528,6 +528,30 @@ def test_upload_detects_corruption(
         client.datasets.upload(f, dataset_id=ds["id"])
 
 
+def test_an_mff_mapping_uploads_a_csv_file(
+    client: Client, api: respx.MockRouter, example: Ex, tmp_path: Path
+) -> None:
+    """MFF long tables are CSV files: an ``mff`` mapping (a Guided draft's) reads them."""
+    mff = tmp_path / "media_mff.csv"
+    mff.write_bytes(b"Period,Geography,VariableName,VariableValue\n2024-01-07,de,Sales,1.0\n")
+    ds = example(Dataset)
+    api.post(f"{V1}/datasets/{ds['id']}/uploads").respond(
+        201, json=_session(example, mff.stat().st_size, "text/csv")
+    )
+    api.put(f"{STORAGE}/upload/quarantine").respond(200)
+    version = api.post(f"{V1}/datasets/{ds['id']}/versions").respond(
+        202, json=example(DatasetVersion, status="ingesting")
+    )
+    mapping = IngestMapping.model_validate({"format": "mff", "preset": "mff"})
+    out = client.datasets.upload(mff, dataset_id=ds["id"], mapping=mapping, wait=False)
+    assert out.status.value == "ingesting"
+    assert body_of(version.calls.last.request)["mapping"]["format"] == "mff"
+    parquet = tmp_path / "media.parquet"
+    parquet.write_bytes(b"PAR1")
+    with pytest.raises(ValueError, match="does not match 'parquet'"):
+        client.datasets.upload(parquet, dataset_id=ds["id"], mapping=mapping)
+
+
 def test_upload_argument_checks(client: Client, tmp_path: Path) -> None:
     f = tmp_path / "d.csv"
     f.write_text("a\n1\n")

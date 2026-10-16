@@ -207,6 +207,11 @@ Ask for them in `outputs.derived`; they are computed once, at fit, over the firs
 - **`marginal_cost`**: the extra EUR of spend needed for one extra EUR of revenue at
   current spend (and its inverse, marginal ROI), per geo and per channel.
 
+`response_curves` also carries the `baseline` (intercepts and controls, per draw and per
+geo), so the what-if grid view closes the expected KPI. Business priors (ROI or share
+ranges) and lift tests calibrate this model through the spec's `calibration` block: see
+[Guided modelling](guided-modelling.md).
+
 ## Optimising budgets
 
 `mmm.hierarchical_geo` declares `decision: true`. Its objective scores a budget per
@@ -261,6 +266,21 @@ Bundles never contain pickle: the adapter stores the posterior, pymc-marketing's
 `fit_data` and its JSON model description, and rebuilds the model through
 pymc-marketing's own loading path when it scores. Markets are a fixed dim for this
 adapter: pymc-marketing cannot score a market it has not seen.
+
+`settings.priors` overrides pymc-marketing's priors (`saturation_beta`, `intercept`,
+`gamma_control`, `gamma_fourier`, in its scaled units). Business priors and lift tests in the
+spec's `calibration` block calibrate the adapter as they do the geo MMM; the business priors
+are translated on pymc-marketing's own model (see
+[Guided modelling](guided-modelling.md#business-priors-for-mmmpymc_marketing)).
+
+## BayesInsight models
+
+`mmm.bayesinsight` fits a BayesInsight `model_def.json` as BayesInsight defines it -
+likelihoods, priors in KPI units, curves, carry-over, signs, effects per row id, seasons and
+local trends. Import a BayesInsight project with `"target": "mmm.bayesinsight"` (see
+[the import](guided-data.md#importing-for-mmmbayesinsight)); the
+[models reference](../reference/models.md#mmmbayesinsight-a-bayesinsight-model_defjson)
+documents every feature.
 
 ## Trust, but verify
 

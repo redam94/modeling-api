@@ -94,7 +94,56 @@ and `gcloud storage buckets get-iam-policy gs://mapi-<env>-<bucket>`.
 - Undeliverable events are dead-lettered after 10 attempts instead of being dropped.
 - Behind the load balancer the API accepts traffic only from it; TLS 1.2+ (MODERN profile);
   the plot sandbox has its own host (use a different registrable domain in prod), as plan
-  §10.3 requires. A Cloud Armor policy can be attached (`security_policy`, M3).
+  §10.3 requires. Every backend carries the Cloud Armor policy below.
+
+## Cloud Armor
+
+`modules/control/armor.tf` creates a Cloud Armor policy with the load balancer
+(`var.domains`) and attaches it to the `api`, `web` and `plots` backends (`lb.tf`). Supply your
+own with `security_policy` instead, or turn it off with `cloud_armor.enabled = false`.
+
+| Rule | Priority | Threat | Setting |
+|---|---|---|---|
+| Trusted ranges (CI, office) | 100 | Being banned by your own load tests | `cloud_armor.trusted_ip_ranges` (at most 10 CIDRs, never `*`) |
+| OWASP CRS: `sqli`, `xss`, `lfi`, `rce`, `scannerdetection` (v3.3 stable) | 1000–1004 | Injection probes and scanners against the API and the SPA | `cloud_armor.waf_mode` (`preview` by default), `cloud_armor.waf_sensitivity` (paranoia level 1–4, default 1) |
+| Per-IP rate ban on `/auth/signup` (and `/v1/signup`) | 2000 | Sign-up floods, Sybil farms | `rate_limits.signup_per_minute` (10) |
+| Per-IP rate ban on `/auth/*` | 2001 | Credential stuffing on sign-in, callback and e-mail verification | `rate_limits.auth_per_minute` (120) |
+| Per-IP rate ban on `/v1/embeds/*` | 2002 | Scraping of public embed links | `rate_limits.embed_per_minute` (600) |
+| Per-IP rate ban on `/v1/endpoints/<alias>/score` | 2003 | Denial of wallet through scoring | `rate_limits.score_per_minute` (600) |
+| Default | last | | allow |
+
+- **Preview, then enforce.** The OWASP rules start in `preview`: matches are logged
+  (`jsonPayload.previewSecurityPolicy` on the load balancer's request logs), nothing is
+  blocked. Watch a week of real traffic, add exclusions or lower the sensitivity where a rule
+  matches legitimate requests (spec YAML and plot JSON are the likely ones), then set
+  `waf_mode = "enforce"` (in prod: `cloud_armor_waf_mode`). Enforced matches answer `403`.
+- **Rate bans** are enforced from the start (`rate_limit_mode = "enforce"`): over the
+  per-minute threshold a client gets `429`; three times the threshold within five minutes bans
+  the address for `ban_duration_sec` (600 s). The API's own limits (sign-up per address,
+  domain and platform; token and tenant request rates) apply behind them.
+- **Adaptive Protection** (Layer 7 DDoS defense) is on: it learns each backend's normal
+  traffic and alerts with a suggested rule; it never blocks by itself.
+- **Request bodies.** JSON bodies are parsed (`json_parsing = STANDARD`), so the rules see
+  field values instead of raw text. Cloud Armor inspects only the first
+  `request_body_inspection_size` bytes of a body (8 KB by default, at most 64 KB): larger
+  bodies (spec documents, inline XrJSON score payloads up to 5 MB) are inspected partially,
+  not blocked. The API enforces its own body limits; signed-URL uploads go to Cloud Storage
+  directly and never pass the load balancer.
+
+Check on a live environment:
+
+```bash
+gcloud compute backend-services describe mapi-prod-api --global --format='value(securityPolicy)'
+gcloud compute security-policies describe mapi-prod-edge --format='yaml(rules,adaptiveProtectionConfig)'
+# a burst against sign-up is banned (expect 429s after the threshold)
+for i in $(seq 1 40); do curl -s -o /dev/null -w '%{http_code}\n' -X POST https://app.example.com/auth/signup; done | sort | uniq -c
+```
+
+**Logs and tenant deletion.** The load balancer logs every request (`log_config.sample_rate =
+1`) into the control project's `_Default` bucket, whose retention Terraform sets explicitly
+(`log_retention_days`, 30 days, `modules/control/logging.tf`). Tenant deletion does not purge
+logs; they hold ids, not content, and expire with that retention
+([Deleting data](../guides/data-deletion.md#logs)).
 
 ## Supply chain
 

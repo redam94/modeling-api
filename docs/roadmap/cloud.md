@@ -1,6 +1,6 @@
 # Cloud and multi-tenant core <span class="mapi-badge">v0.3</span>
 
-!!! abstract "Status: this release (milestone M2), a private beta"
+!!! success "Status: available in v0.3 (milestone M2), a private beta"
     v0.3 makes the platform multi-tenant and gives it a cloud execution backend: one fresh
     sandbox per run on Cloud Run Jobs. The run protocol (bootstrap object, signed events,
     verified outputs, signed bundle manifests) is the one that already ran locally in

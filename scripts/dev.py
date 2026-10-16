@@ -28,6 +28,10 @@ web app signs in through it; scripts use :func:`mapi_client.oidc.dev_idp_login`.
 is not ``MAPI_PROFILE`` because the CLI reads that one as its config-file profile. Outside the
 single-tenant profile ``POST /internal/events`` needs a bearer: a random
 ``MAPI_INTERNAL_TOKEN`` is kept in ``$MAPI_DATA_DIR/dev/internal-token`` (mode 0600).
+The dev profile also delivers webhooks to receivers on this machine: it writes a throwaway
+CA and a certificate for ``127.0.0.1``/``localhost`` to ``$MAPI_DATA_DIR/dev/webhook-tls/``
+and sets ``MAPI_WEBHOOK_CA_FILE`` and ``MAPI_WEBHOOK_DEV_ALLOWLIST`` for the servers, unless
+those variables are set already.
 
 Addresses come from :class:`mapi_spec.localdev.LocalDev` (``MAPI_API_URL``,
 ``MAPI_GCS_ENDPOINT``, ``MAPI_WEB_ORIGIN``, ``MAPI_PLOTS_ORIGIN``, ``MAPI_DATA_DIR``,
@@ -40,7 +44,8 @@ stack is stopped and the exit status is non-zero. Nothing is restarted behind yo
 Any service's command can be replaced with ``MAPI_DEV_<NAME>_CMD`` (shell-quoted), e.g.
 ``MAPI_DEV_API_CMD="uvicorn mapi_server.app:app --reload --port 8000"``.
 
-Sub-commands: ``up``, ``stop``, ``status``, ``env``, ``migrate``, ``db-shell``, ``clean``.
+Sub-commands: ``up``, ``stop``, ``status``, ``env``, ``migrate``, ``db-shell``, ``clean``,
+``outbox`` (the dev mailer's newest e-mails, e.g. sign-up verification links).
 """
 
 from __future__ import annotations
@@ -72,6 +77,11 @@ ROOT = Path(__file__).resolve().parent.parent
 SUPERVISOR = "dev"
 EXECUTOR_ENV = "MAPI_EXECUTOR"
 STACK_PROFILE_ENV = "MAPI_STACK_PROFILE"
+WEBHOOK_CA_ENV = "MAPI_WEBHOOK_CA_FILE"
+WEBHOOK_ALLOWLIST_ENV = "MAPI_WEBHOOK_DEV_ALLOWLIST"
+TRUSTED_PROXIES_ENV = "MAPI_TRUSTED_PROXIES"
+DEV_WEBHOOK_HOSTS = ("127.0.0.1", "localhost")
+"""Receiver hosts the dev profile delivers webhooks to (with the local-receiver TLS bundle)."""
 STACK_PROFILES = ("dev", "single-tenant", "multi-tenant")
 DEFAULT_STACK_PROFILE = "dev"
 """Executor backend for ``mapi-server worker`` (``local-process`` in dev and compose)."""
@@ -112,6 +122,12 @@ class DevConfig:
     data_dir: Path
     profile: str = DEFAULT_STACK_PROFILE
     """The servers' ``MAPI_PROFILE`` (from ``MAPI_STACK_PROFILE``)."""
+    caller_webhook_ca: bool = False
+    """The caller set ``MAPI_WEBHOOK_CA_FILE`` (the dev receiver bundle is then not used)."""
+    caller_webhook_allowlist: bool = False
+    """The caller set ``MAPI_WEBHOOK_DEV_ALLOWLIST`` (kept as given)."""
+    caller_trusted_proxies: bool = False
+    """The caller set ``MAPI_TRUSTED_PROXIES`` (kept as given)."""
 
     @classmethod
     def from_environ(cls, environ: Mapping[str, str], root: Path = ROOT) -> DevConfig:
@@ -135,6 +151,9 @@ class DevConfig:
             plots_origin=local.plots_origin,
             data_dir=data_dir,
             profile=profile,
+            caller_webhook_ca=bool(environ.get(WEBHOOK_CA_ENV, "").strip()),
+            caller_webhook_allowlist=WEBHOOK_ALLOWLIST_ENV in environ,
+            caller_trusted_proxies=TRUSTED_PROXIES_ENV in environ,
         )
 
     @property
@@ -152,6 +171,29 @@ class DevConfig:
     @property
     def internal_token_file(self) -> Path:
         return self.data_dir / "dev" / "internal-token"
+
+    @property
+    def outbox_dir(self) -> Path:
+        """Where the dev profile's outbox mailer writes e-mail (sign-up verification links);
+        ``GET /dev/outbox`` and ``dev.py outbox`` read it."""
+        return self.data_dir / "outbox"
+
+    @property
+    def webhook_tls_dir(self) -> Path:
+        """The dev profile's local-receiver TLS bundle: ``ca.pem`` (trusted by the servers
+        through ``MAPI_WEBHOOK_CA_FILE``), ``cert.pem`` and ``key.pem`` (for a receiver on
+        ``127.0.0.1`` or ``localhost``, such as the M3 end-to-end suite's)."""
+        return self.data_dir / "dev" / "webhook-tls"
+
+    def webhook_tls(self) -> Path:
+        """Create the local-receiver bundle once (renewed when it expires within a day);
+        returns the CA file."""
+        out = self.webhook_tls_dir
+        ca_file = out / "ca.pem"
+        if _cert_valid_for(out / "cert.pem", days=1) and ca_file.exists():
+            return ca_file
+        write_receiver_tls(out, DEV_WEBHOOK_HOSTS)
+        return ca_file
 
     def internal_token(self) -> str:
         """The stack's ``MAPI_INTERNAL_TOKEN`` (created once, mode 0600)."""
@@ -190,9 +232,120 @@ class DevConfig:
         }
         if self.profile != "single-tenant":
             env["MAPI_INTERNAL_TOKEN"] = self.internal_token()
+        if self.profile == "dev":
+            # the dev profile mails through the outbox (read at GET /dev/outbox)
+            env["MAPI_OUTBOX_DIR"] = str(self.outbox_dir)
+            # webhooks to a receiver on this machine (https with the dev CA): the SSRF guard
+            # exempts these hosts in the dev profile only (the settings refuse it elsewhere)
+            if not self.caller_webhook_ca:
+                env[WEBHOOK_CA_ENV] = str(self.webhook_tls())
+            if not self.caller_webhook_allowlist:
+                env[WEBHOOK_ALLOWLIST_ENV] = ",".join(DEV_WEBHOOK_HOSTS)
+        if self.profile == "multi-tenant" and not self.caller_trusted_proxies:
+            # browsers and the CLI call this API directly (the Vite servers proxy nothing), so
+            # the peer is the client; the multi-tenant profile wants that decision explicit
+            env[TRUSTED_PROXIES_ENV] = "none"
         if database_url:
             env[ENV_DATABASE_URL] = database_url
         return env
+
+
+# ============================================================================ webhook receivers
+
+
+def _cert_valid_for(path: Path, *, days: int) -> bool:
+    """``path`` holds a certificate that is still valid ``days`` from now."""
+    from datetime import UTC, datetime, timedelta
+
+    from cryptography import x509
+
+    try:
+        cert = x509.load_pem_x509_certificate(path.read_bytes())
+    except (OSError, ValueError):
+        return False
+    return cert.not_valid_after_utc > datetime.now(UTC) + timedelta(days=days)
+
+
+def write_receiver_tls(out: Path, hosts: Sequence[str], *, days: int = 90) -> None:
+    """A throwaway CA and a server certificate for ``hosts`` under ``out`` (``ca.pem``,
+    ``cert.pem``, ``key.pem`` with mode 0600). Development only: the CA's key is not kept,
+    so it can sign nothing else."""
+    import ipaddress
+    from datetime import UTC, datetime, timedelta
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
+
+    now = datetime.now(UTC)
+    ca_key = ec.generate_private_key(ec.SECP256R1())
+    ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "modeling-api dev webhook CA")])
+    ca = (
+        x509.CertificateBuilder()
+        .subject_name(ca_name)
+        .issuer_name(ca_name)
+        .public_key(ca_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - timedelta(minutes=5))
+        .not_valid_after(now + timedelta(days=days))
+        .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
+        .add_extension(
+            x509.KeyUsage(
+                digital_signature=False,
+                content_commitment=False,
+                key_encipherment=False,
+                data_encipherment=False,
+                key_agreement=False,
+                key_cert_sign=True,
+                crl_sign=True,
+                encipher_only=False,
+                decipher_only=False,
+            ),
+            critical=True,
+        )
+        .add_extension(
+            x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), critical=False
+        )
+        .sign(ca_key, hashes.SHA256())
+    )
+    key = ec.generate_private_key(ec.SECP256R1())
+    sans: list[x509.GeneralName] = []
+    for host in hosts:
+        try:
+            sans.append(x509.IPAddress(ipaddress.ip_address(host)))
+        except ValueError:
+            sans.append(x509.DNSName(host))
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, hosts[0])]))
+        .issuer_name(ca_name)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - timedelta(minutes=5))
+        .not_valid_after(now + timedelta(days=days))
+        .add_extension(x509.SubjectAlternativeName(sans), critical=False)
+        .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+        .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
+        .add_extension(
+            x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()),
+            critical=False,
+        )
+        .sign(ca_key, hashes.SHA256())
+    )
+    out.mkdir(parents=True, exist_ok=True)
+    key_pem = key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    )
+    key_file = out / "key.pem"
+    key_file.unlink(missing_ok=True)
+    fd = os.open(key_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as fh:
+        fh.write(key_pem)
+    (out / "cert.pem").write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+    (out / "ca.pem").write_bytes(ca.public_bytes(serialization.Encoding.PEM))
 
 
 # ===================================================================================== services
@@ -366,7 +519,11 @@ def build_services(cfg: DevConfig, environ: Mapping[str, str]) -> list[Service]:
                 str(plots.port),
                 "--strictPort",
             ),
-            env={"VITE_APP_ORIGINS": cfg.web_origin.rstrip("/")},
+            # the embed page (/embed/<token>) fetches the public view from the API
+            env={
+                "VITE_APP_ORIGINS": cfg.web_origin.rstrip("/"),
+                "VITE_API_URL": cfg.api_url.rstrip("/"),
+            },
             ready=TcpProbe(plots.host, plots.port),
             requires=(
                 pnpm_req,
@@ -1006,6 +1163,23 @@ def cmd_clean(args: argparse.Namespace, cfg: DevConfig, environ: Mapping[str, st
     return 0
 
 
+def cmd_outbox(args: argparse.Namespace, cfg: DevConfig, environ: Mapping[str, str]) -> int:
+    """Print the newest e-mails of the dev outbox (verification links first)."""
+    from mapi_server.services.mail import read_outbox
+
+    directory = Path(environ.get("MAPI_OUTBOX_DIR") or cfg.outbox_dir)
+    messages = read_outbox(directory, to=args.to, limit=args.limit)
+    if not messages:
+        print(f"no e-mail in {directory}" + (f" to {args.to}" if args.to else ""))
+        return 0
+    for msg in messages:
+        tags = msg.get("tags") or {}
+        print(f"{msg.get('sent_at', '?')}  to {msg.get('to', '?')}: {msg.get('subject', '')}")
+        if isinstance(tags, dict) and tags.get("link"):
+            print(f"    {tags['link']}")
+    return 0
+
+
 COMMANDS: dict[str, Callable[[argparse.Namespace, DevConfig, Mapping[str, str]], int]] = {
     "up": cmd_up,
     "stop": cmd_stop,
@@ -1014,6 +1188,7 @@ COMMANDS: dict[str, Callable[[argparse.Namespace, DevConfig, Mapping[str, str]],
     "migrate": cmd_migrate,
     "db-shell": cmd_db_shell,
     "clean": cmd_clean,
+    "outbox": cmd_outbox,
 }
 
 
@@ -1039,6 +1214,9 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     sub.add_parser("db-shell", help="open psql on the dev database")
     clean = sub.add_parser("clean", help="delete MAPI_DATA_DIR (database, objects, logs)")
     clean.add_argument("--yes", action="store_true")
+    outbox = sub.add_parser("outbox", help="show the dev mailer's newest e-mails and links")
+    outbox.add_argument("--to", default=None, help="only e-mail to this address")
+    outbox.add_argument("--limit", type=int, default=10)
     return parser.parse_args(argv)
 
 

@@ -28,6 +28,12 @@ from mapi_server_testkit.builders import CATALOG, EXEC_TOKEN
 IMAGE_DIGEST = "sha256:" + "ab" * 32
 
 APP_TABLES = (
+    "webhook_deliveries",
+    "webhook_events",
+    "webhooks",
+    "endpoint_runs",
+    "endpoint_revisions",
+    "endpoints",
     "audit_events",
     "cost_ledger",
     "quota_policies",
@@ -39,6 +45,8 @@ APP_TABLES = (
     "api_tokens",
     "memberships",
     "users",
+    "plot_embeds",
+    "saved_plots",
     "plots",
     "model_versions",
     "models",
@@ -54,6 +62,10 @@ APP_TABLES = (
     "datasets",
     "catalogs",
     "idempotency_keys",
+    "signups",
+    "tenant_verifications",
+    "tenant_deletions",
+    "tenant_exports",
     "projects",
     "tenants",
     "procrastinate_events",

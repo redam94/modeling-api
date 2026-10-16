@@ -57,6 +57,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_TENANT_ID`, `MAPI_PROJECT_ID` | `default` | The platform's own tenant and project (the only ones of a single-tenant install; platform runs such as `describe` live there) |
 | `MAPI_API_HOST`, `MAPI_API_PORT` | `127.0.0.1`, `8000` | Bind address of `mapi-server api` when started without `--host`/`--port` |
 | `MAPI_ALLOWED_HOSTS` | `127.0.0.1,localhost,api` | `Host` header values the API answers (comma-separated; the host of `MAPI_API_URL` is always allowed; `*` turns the check off). The DNS-rebinding guard of the unauthenticated M1 API |
+| `MAPI_TRUSTED_PROXIES` | unset | Addresses or CIDR ranges of the proxies in front of the API (load balancer, Cloud Run front end, the web container's `/v1/` proxy), comma-separated. A request from one of them takes the right-most `X-Forwarded-For` hop that is not a trusted proxy as the client address, which the per-address limits (sign-up, verification, embed views), the Sybil `same_ip` check and audit fingerprints use. `none`: clients connect directly and `X-Forwarded-For` is ignored. **Required in the `multi-tenant` profile**; `make dev` sets `none` for its multi-tenant stack |
 | `MAPI_DEBUG` | `false` | Put tracebacks into problem documents' `untrusted_text`. Never in production |
 | `MAPI_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
 | `MAPI_LOG_JSON` | `true` | One JSON object per log line (structlog, with `trace_id`/`span_id` and the request, run and tenant context); `false` gives a human console format |
@@ -96,7 +97,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | Variable | Default | Meaning |
 |---|---|---|
 | `MAPI_AUTH_REQUIRED` | on, except `single-tenant` | Require a session or API token on every non-public route. Cannot be turned off in a multi-tenant profile |
-| `MAPI_SERVER_SECRET` | from `MAPI_SERVER_SECRET_PATH` | Root secret of the API-token pepper and the audit fingerprints. Every API instance must share it; changing it invalidates every token |
+| `MAPI_SERVER_SECRET` | from `MAPI_SERVER_SECRET_PATH` | Root secret of the API-token pepper, the audit fingerprints and the key that seals webhook secrets. Every API and worker instance must share it; changing it invalidates every token and webhook secret |
 | `MAPI_SERVER_SECRET_PATH` | `server-secret` next to the bundle-signing key | File holding the root secret (`0600`, created by `mapi-server migrate`; Compose keeps it on the `keys` volume) |
 | `MAPI_COOKIE_SECURE` | on when `MAPI_API_URL` is `https` | `__Host-` prefixed, `Secure` session cookies. Off: `mapi_session`/`mapi_csrf` for plain-HTTP development |
 | `MAPI_OIDC_ISSUER` | unset | The OpenID provider (for example `https://accounts.google.com`). Unset outside the `dev` profile: browser sign-in is off, tokens still work |
@@ -121,6 +122,19 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_LEASE_CANDIDATES_PER_TENANT` | `50` | At most this many of them per tenant, so one tenant's held runs cannot crowd out the others |
 | `MAPI_EXECUTOR_REPORT_INTERVAL_S` | `10` | How often each dispatcher reports executor health for `/v1/admin/executors` |
 | `MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S` | `259200` (3 days) | How long a recorded conformance or security-suite report lets an executor take `verified` and `public` tenants ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)) |
+
+**Plot rendering and embed links (v0.4)**
+
+See [Sharing plots](../guides/sharing-plots.md).
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_RENDER_TIMEOUT_S` | `300` | Wall-clock limit of a `POST /v1/plots:render` run; the sandbox stops it after this |
+| `MAPI_RENDER_PLOTLY_ENABLED` | `false` | Accept Plotly plots for static rendering. This needs kaleido and a Chrome or Chromium in the runner image, which the base images do not ship. While it is off, Plotly renders are refused with `MODE_NOT_SUPPORTED` |
+| `MAPI_EMBED_RATE_PER_MINUTE` | `300` | Public views per minute of one embed link (`429 RATE_LIMITED` beyond) |
+| `MAPI_EMBED_IP_RATE_PER_MINUTE` | `120` | Public embed requests per minute from one client address, valid or not (slows down token guessing) |
+| `MAPI_EMBED_CACHE_S` | `60` | How long an API instance reuses an embed's resolved plot. Expiry and revocation are still checked on every request, and responses are `Cache-Control: private, no-cache`, so a revoked link stops rendering on the next load |
+| `MAPI_EMBED_IMAGE_URL_TTL_S` | `900` | Lifetime of the signed URL of an embed's PNG fallback |
 
 **Object storage**
 
@@ -200,6 +214,22 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_CLOUDRUN_DNS_ENFORCED` | `false` | The DNS response policy is verified to apply to Jobs (the M0 DNS red-team gate). `verified` and `public` tenants (`verified` is the default tier) are placed only when both are `true` **and** passing suite evidence is recorded ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)); until then their runs are refused at submission |
 | `MAPI_CLOUDRUN_ADOPT_LOOKBACK_S` | `93600` | How far back orphan adoption lists executions |
 
+**Webhooks (v0.4)** (see [Endpoints and webhooks](../guides/endpoints-and-webhooks.md))
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_WEBHOOK_POLL_INTERVAL_S` | `2` | How often the worker's relay looks for due deliveries and hands them to the `webhooks` procrastinate queue |
+| `MAPI_WEBHOOK_MAX_ATTEMPTS` | `8` | Tries per delivery (1 to 8; retries wait 1 min, 5 min, 30 min, 2 h, 6 h, 12 h and 24 h, plus up to 10% jitter) |
+| `MAPI_WEBHOOK_AUTO_DISABLE_AFTER` | `20` | Disable a webhook after this many consecutive events could not be delivered (a `410 Gone` disables at once); audited as `webhook.disabled` |
+| `MAPI_WEBHOOK_MAX_PER_PROJECT` | `25` | Webhooks one project may have (`409` beyond) |
+| `MAPI_WEBHOOK_RETENTION_DAYS` | `30` | Days events and their delivery logs are kept |
+| `MAPI_WEBHOOK_CA_FILE` | unset | An extra PEM CA bundle trusted for receivers (a private CA); the system trust store is always used |
+| `MAPI_WEBHOOK_ALLOW_HTTP` | `false` | Development only: accept `http://` URLs for the hosts in `MAPI_WEBHOOK_DEV_ALLOWLIST`. Refused in the `multi-tenant` profile |
+| `MAPI_WEBHOOK_DEV_ALLOWLIST` | none | Development only: host names (comma-separated, optionally `host:port`) exempt from the SSRF address and port checks, such as a receiver on `localhost`. Refused in the `multi-tenant` profile |
+
+Webhook signing secrets are sealed with a key derived from `MAPI_SERVER_SECRET`: changing the
+server secret makes every webhook secret unusable (rotate them afterwards).
+
 **Pub/Sub push events** (`POST /internal/events`)
 
 | Variable | Default | Meaning |
@@ -208,6 +238,49 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT` | unset | The service account the subscription signs as (set together with the audience) |
 | `MAPI_PUBSUB_PUSH_SUBSCRIPTIONS` | any | Accepted subscription names (comma-separated) |
 | `MAPI_GOOGLE_JWKS_URL` | `https://www.googleapis.com/oauth2/v3/certs` | Google's OIDC signing keys |
+
+**Sign-up, e-mail and abuse controls (v0.4)** (see [Sign-up and abuse controls](signup-and-abuse.md))
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_SIGNUP_ENABLED` | on in `dev` and `multi-tenant` when a mailer works, off `single-tenant` | Self-service sign-up at `POST /auth/signup`. Setting it on without a usable mailer refuses to start |
+| `MAPI_MAILER` | `outbox` in `dev`, `smtp` in `multi-tenant`, `console` otherwise | `console` (log the message), `outbox` (JSON files, read at `GET /dev/outbox` in `dev`), `smtp` or `none`. `multi-tenant` refuses `console` and `outbox` while sign-up is on: whoever reads the logs or the disk could verify any address |
+| `MAPI_MAIL_FROM` | `modeling-api <no-reply@mapi.localhost>` | The `From:` header |
+| `MAPI_OUTBOX_DIR` | `$MAPI_DATA_DIR/outbox` | Where the outbox mailer writes (mode `0600`, newest 200 kept) |
+| `MAPI_SMTP_HOST`, `MAPI_SMTP_PORT` | unset, `587` | The SMTP server. Without a host the `smtp` mailer is off (and so is sign-up) |
+| `MAPI_SMTP_TLS` | `starttls` | `starttls` (required, not opportunistic: a server without it is refused) or `ssl` (implicit TLS, port 465). The certificate is verified against the system trust store |
+| `MAPI_SMTP_USERNAME`, `MAPI_SMTP_PASSWORD` | unset | SMTP authentication (keep the password in a secret store) |
+| `MAPI_SMTP_TIMEOUT_S` | `10` | Connection and command timeout |
+| `MAPI_SIGNUP_VERIFY_URL` | `$MAPI_WEB_ORIGIN/verify-email?token={token}` | The link e-mailed to a sign-up; `{token}` is replaced |
+| `MAPI_SIGNUP_BLOCKED_DOMAINS` | none | E-mail domains refused besides the built-in disposable list (comma-separated; subdomains included) |
+| `MAPI_SIGNUP_BLOCKLIST_PATH` | unset | A file of disposable domains, one per line (`#` comments), for example a maintained public list |
+| `MAPI_SIGNUP_PER_IP_PER_HOUR` | `5` | Sign-ups accepted per client address and hour |
+| `MAPI_SIGNUP_PER_DOMAIN_PER_DAY` | `25` | Verified sign-ups per e-mail domain and day (unverified ones do not count; the shared free-mail domains are exempt) |
+| `MAPI_SIGNUP_GLOBAL_PER_HOUR` | `500` | Verified sign-ups per hour on the whole platform (unverified ones do not count) |
+| `MAPI_SIGNUP_SHARED_EMAIL_DOMAINS` | built-in list (`gmail.com`, `outlook.com`, ...) | Free-mail domains shared by unrelated people (comma-separated; replaces the built-in list): no per-domain cap and no `domain_burst` flag |
+| `MAPI_VERIFY_PER_IP_PER_MINUTE` | `20` | E-mail verification attempts per client address and minute |
+| `MAPI_SIGNUP_SYBIL_WINDOW_DAYS` | `30` | Look-back of the Sybil heuristics |
+| `MAPI_SIGNUP_SYBIL_THRESHOLD` | `3` | Workspaces from one client address, browser or e-mail within the window before the next one is flagged for review (a domain is flagged at twice as many within an hour) |
+| `MAPI_SIGNUP_FLAGGED_SUSPEND` | `false` | Suspend a flagged sign-up's workspace until an operator approves it (default: it works and waits in the review queue) |
+| `MAPI_SIGNUP_RETENTION_DAYS` | `30` | Unverified sign-ups, with their e-mail, are deleted after this |
+| `MAPI_PUBLIC_CODE_UPLOAD_ENABLED` | `false` | Cut line B (M5): let identity-verified `public` tenants run uploaded code. Off: public tenants run built-in models and declarative specs only |
+
+**Tenant deletion and GDPR export (v0.4)** (see [Deleting data](../guides/data-deletion.md))
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_TENANT_DELETION_GRACE_S` | `604800` (7 days) | Grace period of a deletion: the tenant is suspended and may cancel |
+| `MAPI_DELETION_REAUTH_MAX_AGE_S` | unset | Also require a sign-in at most this many seconds old to request a deletion; unset: the confirmation phrase alone |
+| `MAPI_DELETION_RUN_STOP_TIMEOUT_S` | `3600` | How long a purge waits for the tenant's cancelled runs to stop before it goes ahead |
+| `MAPI_DELETION_MAX_ATTEMPTS` | `8` | Automatic retries (with back-off from 5 minutes to 6 hours) of a failed purge; then an operator retries |
+| `MAPI_BUNDLE_RETENTION_DAYS` | `30` | The bundles bucket's retention period (Terraform `bundle_retention_days`): when a purge retries the objects a retention lock kept |
+| `MAPI_LIFECYCLE_INTERVAL_S` | `15` | Cadence of the orchestrator's deletion and export scheduler |
+| `MAPI_EXPORT_MAX_INLINE_BYTES` | 256 MiB | Dataset bytes an export archive includes; the rest is listed in its manifest |
+| `MAPI_EXPORT_RETENTION_S` | `604800` (7 days) | How long an export archive is kept |
+| `MAPI_EXPORT_LINK_TTL_S` | `900` | Lifetime of an export's signed download link (a fresh one on every `GET`) |
+| `MAPI_EXPORTS_PER_DAY` | `3` | Exports a tenant may request per day (one at a time) |
+| `MAPI_EXPORT_MAX_METADATA_BYTES` | 256 MiB | Metadata rows an export archive includes; tables cut short are listed in its manifest |
+| `MAPI_EXPORT_BUILD_TIMEOUT_S` | `3600` | How long an export build may take; a build still `running` five minutes later (its process died) is built again once, then failed |
 
 ## The runner (per run)
 
@@ -238,7 +311,9 @@ the entry point builds over it ([Container images](images.md#compile-caches-and-
 `mapi-gcs-shim serve` takes its defaults from the topology: `MAPI_DATA_DIR` (state in
 `$MAPI_DATA_DIR/gcs`), `MAPI_ENV` (bucket names), `MAPI_GCS_ENDPOINT` (host and port) and
 `MAPI_WEB_ORIGIN` (the CORS origin). Each has a command-line flag; see the
-[GCS shim reference](../reference/gcs-shim.md).
+[GCS shim reference](../reference/gcs-shim.md). `MAPI_BUNDLE_RETENTION_DAYS`, when set, is
+also the bundles bucket's locked retention in days when the shim creates its state (`0`: none;
+unset: write-once, about 100 years).
 
 ## The CLI and the Python client
 
@@ -268,6 +343,7 @@ rewrite the config file atomically with mode `0600`.
 |---|---|
 | `MAPI_STACK_PROFILE` | The servers' `MAPI_PROFILE`: `dev` (the default: sign-in through the built-in development IdP, the `default` tenant and project, the seeded accounts of `MAPI_DEVIDP_USERS` with `admin@dev.local` as tenant admin and platform operator), `single-tenant` (the credential-less M1 API) or `multi-tenant`. A separate name so that a CLI `MAPI_PROFILE` in your shell never reaches the servers |
 | `MAPI_INTERNAL_TOKEN` | Outside the single-tenant profile, a random bearer for `POST /internal/events` is created in `$MAPI_DATA_DIR/dev/internal-token` and given to the servers (the end-to-end suite reads it there) |
+| `MAPI_WEBHOOK_CA_FILE`, `MAPI_WEBHOOK_DEV_ALLOWLIST` | Unless you set them, the `dev` profile writes a throwaway CA and a certificate for `127.0.0.1` and `localhost` to `$MAPI_DATA_DIR/dev/webhook-tls/` (`ca.pem`, `cert.pem`, `key.pem`), trusts the CA and allow-lists both hosts, so webhooks reach an HTTPS receiver on your machine (the M3 end-to-end suite's) |
 | `MAPI_DEV_<NAME>_CMD` | Replace one service's command (shell-quoted). `<NAME>` is `GCS_SHIM`, `MIGRATE`, `API`, `WORKER`, `WEB` or `PLOTS`, e.g. `MAPI_DEV_API_CMD="uvicorn mapi_server.app:app --reload --port 8000"` |
 | `NO_COLOR`, `FORCE_COLOR` | Disable or force coloured service prefixes |
 
@@ -291,6 +367,8 @@ production build.
 | `VITE_STORAGE_ORIGINS` | `http://127.0.0.1:4443` | Origins of signed storage URLs, allowed by the app's CSP `connect-src` |
 | `VITE_APP_ORIGINS` (sandbox) | `http://127.0.0.1:5173,http://localhost:5173` | Origins allowed to frame the sandbox and talk to it |
 | `VITE_AUTH_BASE` | `VITE_API_BASE` | Where the sign-in routes (`/auth/*`) live, when they are not on the API base |
+| `VITE_TERMS_URL` | `/terms` | The terms of service sign-up links to (an `http(s)` URL or a path on the app's origin); the default is the plain-language summary the app ships |
+| `VITE_ACCEPTABLE_USE_URL` | `/acceptable-use` | The acceptable-use policy sign-up links to, likewise. A public installation should publish its own versions of both |
 
 The web app's Playwright smoke suite serves the app on 5173 and the sandbox on 5174. When those
 ports are taken, set `MAPI_SMOKE_WEB_PORT` and `MAPI_SMOKE_PLOTS_PORT`; the suite then builds the
@@ -363,7 +441,10 @@ The variables Terraform sets on the Cloud Run services (the deployment contract 
 | `MAPI_E2E_ACCOUNTS` | The two development-IdP accounts the M2 tenancy suite makes tenant admins (default `analyst@dev.local,viewer@dev.local`) |
 | `MAPI_E2E_UI_ACCOUNT` | The tenant admin of the M2 browser flow and the fit burst (default `analyst@dev.local`) |
 | `MAPI_E2E_BURST_RUNS` | Opt-in: how many concurrent real fits `tests/e2e/test_m2_burst_stack.py` submits ([M2 verification](m2-verification.md)) |
-| `MAPI_UPDATE_SNAPSHOTS` | `1` regenerates the contract snapshot of `mapi_spec` |
+| `MAPI_E2E_SIGNUP_ACCOUNT` | The address the M3 trust-lifecycle suite (`tests/e2e/test_m3_trust_stack.py`) signs up with; it must be a development-IdP account so it can sign in (default `viewer@dev.local`) |
+| `MAPI_E2E_GUIDED_ACCOUNT` | The address the M3 journey (`tests/e2e/test_m3_guided_stack.py`) signs up with; a development-IdP account (default `viewer@dev.local`) |
+| `MAPI_E2E_WEBHOOK_TLS_DIR` | Where the M3 journey's webhook receiver finds `cert.pem` and `key.pem` (default `$MAPI_DATA_DIR/dev/webhook-tls`) |
+| `MAPI_UPDATE_SNAPSHOTS` | `1` regenerates the contract snapshot of `mapi_spec` and the Guided catalog fixture of the server tests (`make snapshots`) |
 | `MAPI_HYPOTHESIS_EXAMPLES` | Examples per property in the wire-format round-trip tests (default 60) |
 
 ## Documentation
@@ -372,3 +453,6 @@ The variables Terraform sets on the Cloud Run services (the deployment contract 
 |---|---|
 | `MAPI_DOCS_SPEC` | The spec `scripts/docs_screenshots.mjs` (`make docs-screenshots`) opens and fits, default `eu-geo-mmm`. The script also reads `MAPI_WEB_ORIGIN` |
 | `MAPI_DOCS_PROJECT` | The project `scripts/docs_screenshots_admin.mjs` (`make docs-screenshots-admin`) selects after capturing the project switcher, default `Default project`. The script also reads `MAPI_WEB_ORIGIN`, `MAPI_API_URL` and `MAPI_DEV_ACCOUNT` |
+| `MAPI_GUIDED_SCREENSHOTS` | Set to `1` to run `apps/web/e2e/guided-screenshots.spec.ts`, which captures the Guided tutorial's screenshots from the mock-mode app (`make docs-screenshots-guided` sets it, with `MAPI_SMOKE_WEB_PORT`/`MAPI_SMOKE_PLOTS_PORT` defaulting to 15173/15174); the smoke suite skips it otherwise |
+| `MAPI_EMBED_VIEW` | The `EmbedView` JSON that `scripts/docs_screenshots_tutorials.mjs` (`make docs-screenshots-tutorials`) serves to the plot sandbox's embed page, written by `scripts/docs_embed_view.py` (default `.local/embed-view.json`). The script also reads `MAPI_WEB_ORIGIN` and `MAPI_PLOTS_ORIGIN` (default ports 15173/15174) |
+| `MAPI_EMBED_API` | The API origin the embed page asks for the view in that script, answered by Playwright (default `http://127.0.0.1:8000`, the sandbox dev server's `VITE_API_URL`; nothing needs to listen there) |

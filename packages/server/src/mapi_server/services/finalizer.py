@@ -27,15 +27,18 @@ from typing import Any
 from mapi_plots.sanitize import SanitizeError, sanitize_plot
 from mapi_spec._types import MetricName
 from mapi_spec.api import Lineage, ObjectRef, Scorecard, ScorecardItem, new_id
+from mapi_spec.calibration import PRIOR_TRANSLATION_OUTPUT
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.catalog import Catalog
 from mapi_spec.coords import CoordSummary, DataSummary
 from mapi_spec.errors import ErrorCode, MapiError, Problem
 from mapi_spec.executor import RunEventType, RunKind
+from mapi_spec.guided import ColumnProfile
 from mapi_spec.jobs import (
     DESCRIBE_OUTPUT,
     FIT_BUNDLE,
     FIT_SIDECARS,
+    INGEST_COLUMNS,
     INGEST_DATA,
     INGEST_SCHEMA,
     SIDE_TABLE_PREFIX,
@@ -60,6 +63,7 @@ from mapi_spec.run import (
     verify_output_objects,
 )
 from mapi_spec.schema import DataSchema
+from mapi_spec.scorecard import SCORECARD_OUTPUT
 from mapi_spec.storage import (
     NotFound,
     ObjectMeta,
@@ -79,6 +83,7 @@ from mapi_server.db import models as m
 from mapi_server.jsonlimits import JsonTooDeep, loads_limited
 from mapi_server.observability import metrics as obs_metrics
 from mapi_server.observability.tracing import run_span
+from mapi_server.services.prior_translations import parse_prior_translation
 from mapi_server.services.runs import append_event, apply_transition, now
 from mapi_server.services.runspec import EMPTY_CATALOG_DIGEST, MANIFEST_MAX_BYTES
 from mapi_server.storage import list_all
@@ -110,6 +115,12 @@ class IntegrityError(MapiError):
     default_code = ErrorCode.INTEGRITY_FAILURE
 
 
+_Sidecars = tuple[
+    list[Diagnostic], dict[str, float], list[PlotSpec], dict[str, Any], Scorecard | None
+]
+"""``(diagnostics, metrics, plots, coords, scorecard)`` of a fit."""
+
+
 @dataclass
 class _Verified:
     run: m.Run
@@ -123,7 +134,10 @@ class _Verified:
 
 def build_scorecard(diagnostics: list[Diagnostic]) -> Scorecard | None:
     """Roll diagnostics up into the sanity scorecard (``info``→pass, ``warning``→warn,
-    ``error``→fail; overall is the worst item)."""
+    ``error``→fail; overall is the worst item).
+
+    The fallback for fits without the runner's ``scorecard.json`` (bundles of v0.3
+    runners); from M3 the runner measures the check catalog itself."""
     if not diagnostics:
         return None
     status_of = {"info": "pass", "warning": "warn", "error": "fail"}
@@ -318,6 +332,8 @@ class Finalizer:
             return await self._ingest(v)
         if kind is RunKind.DESCRIBE:
             return await self._describe(v)
+        if kind is RunKind.TRANSLATE_PRIORS:
+            return await self._translate_priors(v)
         return await self._outputs_only(v)
 
     async def _commit(
@@ -384,13 +400,18 @@ class Finalizer:
     # .............................................................................. fit
     async def _sidecars(
         self, v: _Verified
-    ) -> tuple[list[Diagnostic], dict[str, float], list[PlotSpec], dict[str, Any]]:
+    ) -> tuple[
+        list[Diagnostic], dict[str, float], list[PlotSpec], dict[str, Any], Scorecard | None
+    ]:
         cap = self.ctx.settings.max_sidecar_bytes
         diagnostics: list[Diagnostic] = []
         metrics: dict[str, float] = {}
         plots: list[PlotSpec] = []
         coords: dict[str, Any] = {}
+        scorecard: Scorecard | None = None
         try:
+            if (meta := v.objects.get(SCORECARD_OUTPUT)) is not None:
+                scorecard = Scorecard.model_validate(await self._read_json(meta.bucket, meta, cap))
             if (meta := v.objects.get("diagnostics.json")) is not None:
                 diagnostics = _DIAGNOSTICS.validate_python(
                     await self._read_json(meta.bucket, meta, cap)
@@ -417,7 +438,7 @@ class Finalizer:
                     v.warnings.append(f"plot #{i} was dropped by the plot sanitizer: {exc.detail}")
             if len(raw) > _MAX_PLOTS:
                 v.warnings.append(f"only the first {_MAX_PLOTS} plots were kept")
-        return diagnostics, metrics, plots, coords
+        return diagnostics, metrics, plots, coords, scorecard
 
     async def _reserve_model(self, run: m.Run) -> tuple[str, int, str]:
         """Allocate (model_id, version, model_version_id) once per run (idempotent)."""
@@ -469,7 +490,7 @@ class Finalizer:
             if not v.partial:
                 raise IntegrityError(f"a complete fit must upload {FIT_BUNDLE}")
             return await self._commit(v)  # partial without a bundle: checkpoints only
-        diagnostics, metrics, plots, coords = await self._sidecars(v)
+        diagnostics, metrics, plots, coords, scorecard = await self._sidecars(v)
         model_id, version, mv_id = await self._reserve_model(run)
         dst_prefix = bundle_prefix(run.tenant_id, model_id, version)
         bundles = self.ctx.buckets.bundles
@@ -519,6 +540,7 @@ class Finalizer:
                 metrics,
                 plots,
                 coords,
+                scorecard,
             )
 
         return await self._commit(v, apply)
@@ -608,6 +630,7 @@ class Finalizer:
         metrics: dict[str, float],
         plots: list[PlotSpec],
         coords: dict[str, Any],
+        runner_scorecard: Scorecard | None = None,
     ) -> None:
         existing = (
             await session.execute(select(m.ModelVersion).where(m.ModelVersion.run_id == run.id))
@@ -651,7 +674,7 @@ class Finalizer:
             if resolved is not None
             else None
         )
-        scorecard = build_scorecard(diagnostics)
+        scorecard = runner_scorecard or build_scorecard(diagnostics)
         session.add(
             m.ModelVersion(
                 id=mv_id,
@@ -716,6 +739,11 @@ class Finalizer:
                 if "summary.json" in v.objects
                 else None
             )
+            columns = (
+                await self._columns(run_bucket(v), v.objects[INGEST_COLUMNS], cap)
+                if INGEST_COLUMNS in v.objects
+                else None
+            )
         except ValidationError as exc:
             raise IntegrityError(
                 "an ingest sidecar does not match its schema", untrusted_text=str(exc)[:8000]
@@ -760,12 +788,42 @@ class Finalizer:
             dv.summary = summary.model_dump(mode="json") if summary else None
             dv.profile = ref("profile.json")
             dv.preview = ref("preview.json")
+            dv.columns = columns
             dv.objects = stored
             dv.ready_at = now()
             ds.latest_version = max(ds.latest_version or 0, dv.version)
             ds.updated_at = now()
 
         return await self._commit(v, apply)
+
+    async def _columns(self, bucket: str, meta: ObjectMeta, cap: int) -> list[dict[str, Any]]:
+        """``columns.json`` (Guided role detection): a list of ``ColumnProfile``."""
+        raw = await self._read_json(bucket, meta, cap)
+        if not isinstance(raw, list) or len(raw) > MAX_COLUMN_PROFILES:
+            raise IntegrityError(
+                f"{INGEST_COLUMNS} must be a list of at most {MAX_COLUMN_PROFILES} profiles"
+            )
+        return [ColumnProfile.model_validate(c).model_dump(mode="json") for c in raw]
+
+    # .................................................................. translate_priors
+    async def _translate_priors(self, v: _Verified) -> RunState | None:
+        """A translation must upload a valid ``priors.json`` (read as size-capped JSON)."""
+        meta = v.objects.get(PRIOR_TRANSLATION_OUTPUT)
+        if meta is None:
+            if v.partial:
+                return await self._commit(v)
+            raise IntegrityError(f"a translate_priors run must upload {PRIOR_TRANSLATION_OUTPUT}")
+        cap = self.ctx.settings.max_sidecar_bytes
+        if meta.size > cap:
+            raise IntegrityError(f"{PRIOR_TRANSLATION_OUTPUT} exceeds the {cap}-byte limit")
+        raw = await self.ctx.store.get(
+            meta.bucket, meta.name, generation=meta.generation, max_bytes=cap
+        )
+        try:
+            parse_prior_translation(raw)
+        except MapiError as exc:
+            raise IntegrityError(exc.detail, untrusted_text=exc.untrusted_text) from None
+        return await self._commit(v)
 
     # ......................................................................... describe
     async def _describe(self, v: _Verified) -> RunState | None:
@@ -797,6 +855,10 @@ class Finalizer:
             )
 
         return await self._commit(v, apply)
+
+
+MAX_COLUMN_PROFILES = 100_000
+"""Profiles one ``columns.json`` may hold (the ingest caps columns far below this)."""
 
 
 def _md5(copied: ObjectMeta, source: ObjectMeta) -> str:

@@ -35,6 +35,18 @@ exists only for local development. `MAPI_STACK_PROFILE=single-tenant make dev` g
 credential-less v0.2 API. See [Authentication and isolation](authentication.md) for the
 details.
 
+### Signing up <span class="mapi-badge">v0.4</span> { #signing-up }
+
+Self-service sign-up (`POST /auth/signup`) is on in the `dev` profile. Its e-mails are not
+sent: the dev mailer writes each one to an outbox under `MAPI_DATA_DIR/outbox`, and
+`make outbox` prints the newest ones with their verification links (`TO=<address>` keeps one
+recipient's). The API serves the same at `GET /dev/outbox?to=<address>`. A verified sign-up
+creates a `public`-tier workspace; to sign in to it, sign up with one of the seeded addresses
+above, because the development identity provider only knows those. A `public` workspace runs
+built-in models and declarative specs only, and only on an executor with enforced egress and
+DNS, so the `local-process` executor of `make dev` refuses its runs (cut line A; see
+[Sign-up and abuse controls](signup-and-abuse.md)).
+
 ## What `make dev` starts
 
 `scripts/dev.py` is a small process supervisor. It starts each service in dependency order and
@@ -121,6 +133,7 @@ Runs use the same isolation as in production, minus what a laptop cannot do: the
 | `make db-shell` | `psql` on the dev database (the embedded server or `DATABASE_URL`) |
 | `make seed` | Load the E33 demo datasets and the `eu-geo-mmm` spec through the HTTP API (`make seed SIZE=full` for the large variant) |
 | `make e2e` | The end-to-end suites against the running stack: `pytest -m e2e` (`tests/e2e`, through the Python client), then the Playwright `@e2e` suite (`apps/web/e2e`, through the browser) |
+| `make outbox` | The dev mailer's newest e-mails and their links (sign-up verification); `TO=<address>` filters |
 | `make clean-local` | Delete `MAPI_DATA_DIR` (database, objects, supervisor state). It refuses while anything is running; `YES=1` skips the prompt. |
 | `uv run python scripts/dev.py env` | Print the resolved environment as `export` lines, for running a component by hand |
 
@@ -147,8 +160,24 @@ port. The browser suite writes screenshots to `apps/web/e2e/screenshots/` (git-i
 ```bash
 export MAPI_API_URL=http://127.0.0.1:8010   # only if you moved the API
 make dev                                     # shell 1
-make e2e                                     # shell 2: about 5 minutes
+make e2e                                     # shell 2: about 25 minutes
 ```
+
+`make e2e` also runs the M2 tenancy suite and the M3 suites: the trust lifecycle and the
+whole Guided journey to an endpoint, webhooks, embeds, Atlas, export and deletion (see
+[M3 verification](m3-verification.md)). Two settings make the deletion checks complete: start
+the stack with `MAPI_TENANT_DELETION_GRACE_S=0` (no grace period) and, on a fresh
+`MAPI_DATA_DIR`, `MAPI_BUNDLE_RETENTION_DAYS=0` (no retention lock on model bundles).
+Otherwise those checks stop where the platform waits and are skipped. Each run signs up two
+workspaces; the default sign-up limits (5 per address and hour, 25 per `dev.local` and day)
+allow two runs an hour, so raise `MAPI_SIGNUP_PER_IP_PER_HOUR` and
+`MAPI_SIGNUP_PER_DOMAIN_PER_DAY` on a stack you test repeatedly. The Atlas step uses
+Atlas itself when `ATLAS_DIR` (default `../optimizer-framework`) holds a checkout.
+
+Webhooks reach receivers on your machine: in the `dev` profile `make dev` writes a throwaway
+CA and a certificate for `127.0.0.1` and `localhost` to `$MAPI_DATA_DIR/dev/webhook-tls/`
+and the servers trust it and allow both hosts. Serve HTTPS with `cert.pem` and `key.pem` from
+there and register `https://127.0.0.1:<port>/...`.
 
 The mocked Playwright smoke suite (`pnpm --filter @mapi/web test`) serves its own build on
 port 5173, so run it while `make dev` is stopped.
@@ -200,6 +229,7 @@ and is ignored by git.
 ├─ gcs/                   GCS shim objects (buckets mapi-local-*)
 │  └─ _shim/keys/         the shim's principals: control.json (control plane), exec.json (runs)
 ├─ keys/                  bundle-signing-p256.pem: signs bundle manifests (stands in for KMS)
+├─ outbox/                the dev mailer's e-mails (make outbox, GET /dev/outbox)
 ├─ executions/            per-run scratch of the local executor (removed when a run ends)
 └─ dev/supervisor.json    pid of the running supervisor and its services (make stop/status)
 ```

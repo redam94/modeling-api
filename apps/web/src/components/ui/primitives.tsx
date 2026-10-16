@@ -105,10 +105,14 @@ export function Textarea({ className, ...props }: React.ComponentProps<"textarea
   return <textarea data-slot="textarea" className={cn(fieldBase, "min-h-20 py-2", className)} {...props} {...aria} />;
 }
 
+/**
+ * A native select. It never shrinks below its width in a flex row (`shrink-0`): a select squeezed
+ * by its siblings shows a clipped value ("pe" for "per day") with no way to read it.
+ */
 export function NativeSelect({ className, children, ...props }: React.ComponentProps<"select">) {
   const aria = useFieldAria(props.id, props);
   return (
-    <select data-slot="select" className={cn(fieldBase, "h-9 py-1 pr-8", className)} {...props} {...aria}>
+    <select data-slot="select" className={cn(fieldBase, "h-9 shrink-0 py-1 pr-8", className)} {...props} {...aria}>
       {children}
     </select>
   );

@@ -32,6 +32,8 @@ FIXTURES: list[str] = [
     "sklearn_store_demand",
     "e33",
     "pymc_marketing",
+    "e84_lite",
+    "guided_mmm",
 ]
 
 DEFERRED: dict[str, str] = {
@@ -39,11 +41,6 @@ DEFERRED: dict[str, str] = {
         "state-space model on pymc_extras: needs a state-space plugin with the 'filter' score "
         "mode and loo_valid=False, which no built-in plugin provides in M1 (vetted-plugin "
         "ports, M4)"
-    ),
-    "E84-lite": (
-        "margarine choice panel: needs a discrete-choice plugin (long, ragged hh -> trip, "
-        "bounded 'simulate', last_per_group split); the choice pack lands with the vetted "
-        "plugins (M4)"
     ),
     "E82-slim": (
         "GP Bayesian optimisation: needs the 'recommend' mode and plugin-owned Campaign runs, "

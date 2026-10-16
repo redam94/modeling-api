@@ -15,7 +15,7 @@
 # MAPI_GCS_ENDPOINT) rendered into the CSP at container start. Read-only root filesystem
 # friendly: everything nginx writes goes to /tmp. Build from the repository root:
 #
-#   docker build -f images/web/Dockerfile -t mapi/web:0.3.0 .
+#   docker build -f images/web/Dockerfile -t mapi/web:0.4.0 .
 #
 # See docs/operations/docker.md.
 
@@ -48,9 +48,10 @@ RUN --mount=type=cache,target=/pnpm/store,sharing=locked \
     pnpm config set store-dir /pnpm/store \
  && pnpm install --offline --frozen-lockfile --ignore-scripts --prod=false \
  && pnpm --filter @mapi/web build \
- && pnpm --filter @mapi/plot-sandbox build \
+ && VITE_API_URL=__MAPI_API_URL__ pnpm --filter @mapi/plot-sandbox build \
  && test -f apps/web/dist/index.html \
- && test -f apps/plot-sandbox/dist/index.html
+ && test -f apps/plot-sandbox/dist/index.html \
+ && test -f apps/plot-sandbox/dist/embed.html
 
 FROM ${NGINX_IMAGE} AS runtime
 ARG VERSION

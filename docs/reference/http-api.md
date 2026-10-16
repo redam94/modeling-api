@@ -493,6 +493,154 @@ Requests and submissions are checked against three levels of quota: token, tenan
 - The platform kill switches (uploaded code paused, global spend cap reached) also return
   `QUOTA_EXCEEDED`, at the global level.
 
+## Guided mode and integrations <span class="mapi-badge">v0.4</span> { #guided-and-integrations }
+
+v0.4 (milestone M3) adds the contracts for Guided mode and for connecting other applications:
+guided templates and drafts, business priors and lift tests, what-if scenarios, endpoints and
+aliases, code snippets, webhooks, saved and rendered plots with embed links, and the trust
+lifecycle (sign-up, verification, tenant deletion and export). The endpoint table matches
+`mapi_spec.api.M3_ENDPOINTS`; `mapi_spec.api.ROUTE_ACCESS` gives each operation its scope and
+permission, and `mapi_spec.api.ENDPOINTS` is the whole v0.4 surface (M1, M2 and M3; the
+server's route-table test checks that it serves every row). The ideas behind them are
+explained in [Guided mode](../concepts/guided-mode.md) and
+[Integrations](../concepts/integrations.md).
+
+Project-scoped M3 routes take the project from `X-Mapi-Project`, like every v0.3 route.
+
+### Guided mode
+
+`GET /v1/guided/templates` lists the built-in templates (`GuidedTemplate`): plain-language
+questions, the built-in plugin they target, a `ModelSpec` template with `{{placeholder}}`
+strings, default settings, the scorecard checks that apply and `x-ui-level` hints. Role
+detection (`POST /v1/guided/detect-roles`) ranks the columns of an upload for every question
+from `ColumnProfile`s computed in the browser (or from a stored dataset version: its ingest's
+`columns.json`, else its schema and summary) and returns `RoleSuggestions`, each candidate
+with a confidence and a `reason_plain`. A draft (`POST /v1/guided/drafts`) turns
+`GuidedAnswers` into an `IngestMapping` for the upload, a `ModelSpec` document and its YAML
+("View as YAML") without storing anything, with the static validator's findings in `issues`;
+save it with `POST /v1/specs`. `POST /v1/guided/import/bayesinsight` does the same for a
+BayesInsight `model_def.json` and `metadata.json` (`BayesInsightImport`), for the built-in
+geo MMM unless `target` says `mmm.bayesinsight` (the dedicated BayesInsight model). Business
+priors become
+model-space priors in a sandboxed `translate_priors` run (`PriorTranslationRequest` →
+`PriorTranslation`, whose `result` is a `PriorTranslationResult` with a prior-predictive
+preview in business units). `POST /v1/guided/requests:compile` turns a what-if scenario, a
+forecast or an intervention preset (`GuidedCompile`) into the `ScoreRequest` it stands for, so
+"Run exact" submits a real score run. The persona lock is `Project.guided_locked`, changed
+with `PATCH /v1/tenants/{tenant_id}/projects/{project_id}` (`ProjectUpdate.guided_locked`);
+in a locked project, `POST /v1/specs` and `POST /v1/specs/{spec_id}/revisions` by members
+below admin answer `403 FORBIDDEN` for anything but Guided specs that keep their template's
+advanced and hidden fields. Served in this release: the templates, role detection, drafts,
+the BayesInsight import and the lock (see
+[From a spreadsheet to a Guided draft](../guides/guided-data.md)).
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/guided/templates` | Guided templates (geo marketing mix, weekly forecast, demand by store, choice) | — | `Page[GuidedTemplate]` | 200 | — |
+| `GET /v1/guided/templates/{template_id}` | One template: questions, spec template, scorecard checks, UI levels | — | `GuidedTemplate` | 200 | `NOT_FOUND` |
+| `POST /v1/guided/detect-roles` | Suggest a column for every question from column profiles | `DetectRolesRequest` | `RoleSuggestions` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
+| `POST /v1/guided/drafts` | Answers → ingest mapping + ModelSpec draft (+ YAML); stores nothing | `GuidedAnswers` | `GuidedDraft` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `GUIDED_ANSWERS_INVALID` |
+| `POST /v1/guided/import/bayesinsight` | BayesInsight model_def.json + metadata.json → draft for the geo MMM | `BayesInsightImport` | `GuidedDraft` | 200 | `SCHEMA_INVALID`, `IMPORT_UNSUPPORTED` |
+| `POST /v1/guided/requests:compile` | What-if scenario, forecast or preset → the ScoreRequest it stands for ('Run exact') | `GuidedCompile` | `ScoreRequest` | 200 | `SCHEMA_INVALID`, `MISSING_FUTURE_COVARIATE` |
+| `POST /v1/guided/prior-translations` | Business priors → model-space priors + prior predictive (a translate_priors run) | `PriorTranslationRequest` | `PriorTranslation` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `BUSINESS_PRIORS_INVALID`, `CALIBRATION_UNSUPPORTED`, `QUOTA_EXCEEDED` |
+| `GET /v1/guided/prior-translations/{run_id}` | The translation run and, once done, its priors and preview | — | `PriorTranslation` | 200 | `NOT_FOUND` |
+
+### Endpoints and aliases
+
+An endpoint is a stable alias (`endpoint://<project>/<alias>`) for one model version. `PUT`
+promotes a version: the promotion gate (`PromotionGateDecision`) allows a passing scorecard,
+asks for `override: true` with a `reason` from a signed-in project admin when it warns
+(`409 OVERRIDE_REQUIRED`; the override is audited as `endpoint.promote_override`), and blocks
+a failing one (`409 PROMOTION_BLOCKED`). The endpoint's `EvaluationPolicy` requires
+`evaluate_then_refit` fits by default and blocks input-schema changes that would break callers.
+`POST …/score` takes an `EndpointScoreCall` (a score request without `model`, whose `data` and
+`scenario` may be inline XrJSON datasets up to 5 MB) and answers like `…:score` on a model
+version: `Prefer: wait=60` gives `200` with the result when it is done in time, otherwise
+`202` with the run. A `score:<alias>` token may read the endpoint, its schema, history and
+snippets, and score it; `endpoints:promote` tokens may promote and roll back but never
+override the gate.
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/endpoints` | Endpoints of the project | — | `Page[Endpoint]` | 200 | — |
+| `GET /v1/endpoints/{alias}` | An endpoint and the version it serves | — | `Endpoint` | 200 | `NOT_FOUND` |
+| `PUT /v1/endpoints/{alias}` | Create or promote (gated on the scorecard; override = admin + reason, audited) | `EndpointPromote` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `PROMOTION_BLOCKED`, `OVERRIDE_REQUIRED` |
+| `DELETE /v1/endpoints/{alias}` | Delete the alias (model versions stay) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/endpoints/{alias}/history` | Promotions and rollbacks, newest first | — | `Page[EndpointRevision]` | 200 | `NOT_FOUND` |
+| `POST /v1/endpoints/{alias}/score` | Score the current version (Prefer: wait=N → 200 if done, else 202 with the run) | `EndpointScoreCall` | `ScoreCallResult` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED`, `PAYLOAD_TOO_LARGE` |
+| `GET /v1/endpoints/{alias}/schema` | Input schema of the current version and an example payload | — | `EndpointSchema` | 200 | `NOT_FOUND` |
+| `POST /v1/endpoints/{alias}/validate` | Static checks of a score call without running it | `EndpointScoreCall` | `EndpointValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE` |
+| `POST /v1/endpoints/{alias}/rollback` | Point the alias back at an earlier revision's version (audited) | `EndpointRollback` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `GET /v1/endpoints/{alias}/snippets` | Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint | — | `SnippetSet` | 200 | `NOT_FOUND` |
+
+### Webhooks
+
+`POST /v1/webhooks` returns the signing secret once (`WebhookCreated`). Deliveries carry a
+`WebhookEnvelope` and the header `Mapi-Signature: t=<unix>,v1=<hex>`; see
+[Integrations](../concepts/integrations.md#webhooks) for verification and the SSRF policy.
+Managing webhooks needs a project admin or a `webhooks:manage` token.
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/webhooks` | Webhooks of the project | — | `Page[Webhook]` | 200 | `FORBIDDEN` |
+| `POST /v1/webhooks` | Add a webhook (the secret is shown once) | `WebhookCreate` | `WebhookCreated` | 201 | `SCHEMA_INVALID`, `FORBIDDEN`, `WEBHOOK_URL_BLOCKED` |
+| `GET /v1/webhooks/{webhook_id}` | A webhook (never its secret) | — | `Webhook` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `PATCH /v1/webhooks/{webhook_id}` | Change URL, events or active | `WebhookUpdate` | `Webhook` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `WEBHOOK_URL_BLOCKED` |
+| `DELETE /v1/webhooks/{webhook_id}` | Delete a webhook and its delivery log | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
+| `POST /v1/webhooks/{webhook_id}:rotate-secret` | New secret (shown once); the old one signs too for 24 h | — | `WebhookCreated` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/webhooks/{webhook_id}/deliveries` | Delivery log, newest first (filter: status) | — | `Page[WebhookDelivery]` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `POST /v1/webhooks/{webhook_id}/deliveries/{delivery_id}:replay` | Send an event again (a new delivery, replay_of set) | — | `WebhookDelivery` | 202 | `NOT_FOUND`, `FORBIDDEN`, `WEBHOOK_URL_BLOCKED` |
+
+### Saved plots, rendering and embeds
+
+A `SavedPlot` keeps a model version's plot or a user-authored `PlotSpec`. Rendering
+(`PlotRenderRequest` → `PlotRender`) produces PNG, SVG or PDF in the sandbox. Embed links
+(`PlotEmbedCreate` → `PlotEmbedCreated`, listed as `PlotEmbed`) are tokenised, read-only and
+expire; only plots of platform recipes can be embedded (`422 EMBED_NOT_ALLOWED`). The public
+`GET /v1/embeds/{embed_token}` returns an `EmbedView` with every dataset inline, or
+`410 LINK_EXPIRED`; it reads no credential and answers cross-origin reads from the plot
+sandbox origin only. See [Sharing plots](../guides/sharing-plots.md).
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `POST /v1/plots` | Save a model version's plot or a user-authored PlotSpec | `SavedPlotCreate` | `SavedPlot` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `PLOT_UNSAFE` |
+| `GET /v1/plots` | Saved plots | — | `Page[SavedPlot]` | 200 | — |
+| `GET /v1/plots/{plot_id}` | A saved plot with its sanitized spec | — | `SavedPlot` | 200 | `NOT_FOUND` |
+| `DELETE /v1/plots/{plot_id}` | Delete a saved plot (revokes its embeds) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
+| `POST /v1/plots:render` | PNG, SVG or PDF in the sandbox (Prefer: wait=N → 200 if done, else 202) | `PlotRenderRequest` | `PlotRender` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `PLOT_UNSAFE`, `MODE_NOT_SUPPORTED`, `QUOTA_EXCEEDED` |
+| `GET /v1/plots/renders/{run_id}` | A render run and links to its files | — | `PlotRender` | 200 | `NOT_FOUND` |
+| `POST /v1/plots/{plot_id}/embeds` | Tokenised read-only link (platform recipes only; shown once) | `PlotEmbedCreate` | `PlotEmbedCreated` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `EMBED_NOT_ALLOWED` |
+| `GET /v1/plots/{plot_id}/embeds` | Embed links of a plot | — | `Page[PlotEmbed]` | 200 | `NOT_FOUND` |
+| `DELETE /v1/plots/{plot_id}/embeds/{embed_id}` | Revoke an embed link (idempotent) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/embeds/{embed_token}` | Public: the embedded plot with inline data (410 when expired or revoked) | — | `EmbedView` | 200 | `NOT_FOUND`, `LINK_EXPIRED`, `RATE_LIMITED` |
+
+### Sign-up, verification, deletion and export
+
+Self-service sign-up (`SignupRequest` → `SignupAccepted`) answers the same for new and known
+addresses. Verifying the e-mail (`EmailVerify` → `VerificationResult`) creates a
+`public`-tier tenant. `VerificationStatus` says whether the tenant may upload code: never for
+public tenants before cut line B, and only after identity verification (operators record it
+with `VerificationUpdate`). Deletion is scheduled with a grace period during which the tenant
+is suspended and can cancel (`TenantDeletionRequest` → `TenantDeletion`, with progress per
+store); a GDPR export (`GdprExportRequest` → `GdprExport`) packages everything the tenant
+stored.
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `POST /auth/signup` | Self-service sign-up (same answer for new and known addresses) | `SignupRequest` | `SignupAccepted` | 202 | `SCHEMA_INVALID`, `EMAIL_NOT_ALLOWED`, `TERMS_NOT_ACCEPTED`, `RATE_LIMITED` |
+| `POST /auth/verify-email` | Verify the address; creates a public-tier tenant | `EmailVerify` | `VerificationResult` | 200 | `SCHEMA_INVALID`, `LINK_EXPIRED`, `RATE_LIMITED` |
+| `GET /v1/tenants/{tenant_id}/verification` | E-mail and identity verification, and whether code upload is allowed | — | `VerificationStatus` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `PUT /v1/admin/tenants/{tenant_id}/verification` | Record identity verification (operators; audited) | `VerificationUpdate` | `VerificationStatus` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN` |
+| `POST /v1/tenants/{tenant_id}/deletion` | Schedule deletion of the whole tenant (grace period, then purge) | `TenantDeletionRequest` | `TenantDeletion` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `GET /v1/tenants/{tenant_id}/deletion` | Deletion state and progress per store | — | `TenantDeletion` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `DELETE /v1/tenants/{tenant_id}/deletion` | Cancel a scheduled deletion (within the grace period) | — | `TenantDeletion` | 200 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `POST /v1/tenants/{tenant_id}/exports` | GDPR export of everything the tenant stored | `GdprExportRequest` | `GdprExport` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `QUOTA_EXCEEDED` |
+| `GET /v1/tenants/{tenant_id}/exports` | The tenant's GDPR exports, newest first (`GET` one for its download link) | — | `Page[GdprExport]` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/tenants/{tenant_id}/exports/{export_id}` | An export and, once ready, its download link | — | `GdprExport` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/admin/signups` | Sign-ups, newest first; filter by `review` state (the Sybil review queue) or `tenant_id` | — | `Page[SignupReview]` | 200 | `FORBIDDEN` |
+| `POST /v1/admin/signups/{signup_id}/review` | Approve or reject a sign-up (a rejection suspends its tenant; audited) | `SignupReviewDecision` | `SignupReview` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `POST /v1/admin/tenants/{tenant_id}/deletion/retry` | Restart a failed tenant purge (operators; audited) | — | `TenantDeletion` | 202 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+
 ## DTO index
 
 All of these models live in `mapi_spec.api` unless noted. Each one has a schema in the
@@ -512,3 +660,9 @@ OpenAPI document and in `export_schemas()` as `api-<Name>.json`.
 | Usage and cost (v0.3) | `UsageReport`, `CostTotals`, `RunCost`, `CostLedgerEntry`, `CostEstimate` (`mapi_spec.cost`), `QuotaLimitStatus` (`mapi_spec.quotas`) |
 | Operators (v0.3) | `QuotaPolicy`, `QuotaPolicyUpsert`, `QuotaDecision` (`mapi_spec.quotas`), `KillSwitches`, `KillSwitchUpdate`, `ExecutorHealth` (`mapi_spec.admin`), `AdminUsageReport`, `TenantCost`, `GlobalSpend`, `AuditEvent` (`mapi_spec.audit`), `ConformanceReport` (`mapi_spec.conformance_executor`) |
 | Session and internal (v0.3) | `SessionInfo`, `PubSubPushEnvelope` (`mapi_spec.auth`) |
+| Guided mode (v0.4) | `GuidedTemplate`, `DetectRolesRequest`, `ColumnProfile`, `RoleSuggestions`, `GuidedAnswers`, `GuidedDraft`, `BayesInsightImport` (`mapi_spec.guided`), `WideVarMapping`, `MeridianColumns`, `MffOptions`, `BayesInsightModelDef`, `BayesInsightMetadata` (`mapi_spec.ingest`) |
+| Calibration and what-if (v0.4) | `PriorTranslationRequest`, `PriorTranslation`, `BusinessPriors`, `LiftTest`, `Calibration`, `PriorTranslationResult` (`mapi_spec.calibration`), `GuidedCompile`, `WhatIfScenario`, `WhatIfResult` (`mapi_spec.whatif`), `ResponseGridView` (`mapi_spec.views`), `ScoreRequest` (`mapi_spec`) |
+| Endpoints (v0.4) | `Endpoint`, `EndpointPromote`, `EndpointRevision`, `EndpointRollback`, `EndpointScoreCall`, `EndpointSchema`, `EndpointValidation`, `EvaluationPolicy` (`mapi_spec.endpoints`), `PromotionGateDecision` (`mapi_spec.scorecard`), `Snippet`, `SnippetSet` (`mapi_spec.snippets`), `XrJsonDataset` (`mapi_spec.xrjson`) |
+| Webhooks (v0.4) | `Webhook`, `WebhookCreate`, `WebhookCreated`, `WebhookUpdate`, `WebhookDelivery`, `WebhookEnvelope` (`mapi_spec.webhooks`) |
+| Plots (v0.4) | `SavedPlot`, `SavedPlotCreate`, `PlotRenderRequest`, `PlotRender`, `PlotEmbed`, `PlotEmbedCreate`, `PlotEmbedCreated`, `EmbedView` (`mapi_spec.sharing`) |
+| Trust lifecycle (v0.4) | `SignupRequest`, `SignupAccepted`, `EmailVerify`, `VerificationResult`, `VerificationStatus`, `VerificationUpdate`, `SignupReview`, `SignupReviewDecision`, `TenantDeletionRequest`, `TenantDeletion`, `GdprExportRequest`, `GdprExport` (`mapi_spec.trust`) |

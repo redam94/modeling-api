@@ -134,7 +134,7 @@ try {
     ["/models", "models"],
     ["/catalog", "catalog"],
     ["/settings", "settings"],
-    ["/guided", "guided"],
+    ["/guided", "guided-templates"],
     ["/build/new", "editor-new"],
   ]) {
     await go(path);

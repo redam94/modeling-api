@@ -5,6 +5,731 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
+
+Analysts who do not write code can now build a model from a spreadsheet, read it and try
+scenarios on it, and teams can wire a model they trust into the tools they already use.
+Everything was verified on a laptop against a live local stack (the GCS shim, embedded
+Postgres, the `local-process` executor). The real Google Cloud, Docker and the five
+non-technical testers are still to come (see Known gaps). In summary:
+
+- **Guided mode**: a task flow for non-technical analysts. Pick a template (geo marketing
+  mix, weekly forecast, demand by store, customer choice), upload a CSV, Parquet, MFF or
+  Meridian table, confirm the detected column roles, state business beliefs (ROI or
+  contribution-share ranges, a baseline) and lift tests, fit, and read a plain-language report
+  with a scorecard. What-if sliders answer at once from a per-draw response grid (a
+  TypeScript port of the model's own maths), and "Run exact" checks a scenario, a forecast or
+  a counterfactual with a real score run.
+- **modelling**: business priors translated into model priors (`translate_priors` runs and a
+  preview chart) and lift tests as calibration in `mmm.hierarchical_geo` and
+  `mmm.pymc_marketing`; the `mmm.bayesinsight` built-in and a BayesInsight importer; a
+  scorecard per version and a promotion gate that needs an audited admin override for a
+  failing or unevaluated version.
+- **endpoints and integrations**: endpoints with aliases, promotion, history and rollback;
+  generated snippets (Python, TypeScript, curl, R, Apps Script, notebook, Atlas); score
+  answers with the summary inline; webhooks signed with HMAC, behind an SSRF guard, with an
+  outbox, a delivery log and replays; saved plots, static PNG/SVG/PDF rendering with
+  vl-convert and expiring embed links served by the plot sandbox; the Integrations hub in the
+  web app.
+- **trust and data lifecycle**: self-service sign-up with e-mail verification, identity
+  verification and Sybil flags with a review queue, trusted-proxy client addresses, per-tier
+  draw and egress caps, GDPR export and tenant deletion with a grace period, and a Cloud
+  Armor policy in Terraform.
+- **client and CLI**: the v0.4 Python client (endpoints, webhooks, plots, Guided, tenants)
+  and Atlas `RemoteModel`, which lets Atlas optimise a budget against an endpoint; `mapi
+  endpoints`, `webhooks`, `plots`, `guided`, `priors`, `signup` and `tenant`.
+- **docs**: a new landing page, Why modeling-api, use cases, a Tutorials section (Google
+  Sheets, embeds, BayesInsight, webhook receivers, a first Guided analysis, Atlas), Guided
+  and Integrations guides, the security model for v0.4, and the M3 verification report.
+
+Every workspace package and both web apps are versioned 0.4.0. Contract v0.1 gains only
+additive changes. Upgrading from 0.3 runs migrations 0007 to 0010 (Guided drafts,
+endpoints and webhooks, saved plots and embeds, the trust lifecycle). Multi-tenant
+deployments must now set `MAPI_TRUSTED_PROXIES` (`none` when clients connect directly), or
+the server refuses to start.
+
+### Added
+- **web**: the Integrations hub (`/integrations`). Guided cards for Google Sheets (the
+  endpoint's Apps Script and a `score:<alias>` token), a BI embed link and a webhook; endpoints
+  and aliases with the promotion dialog (the version's scorecard, the expected gate, the
+  server's reasons on `409` and the audited admin override), history and rollback, the frozen
+  input contract with **Try it** (validate or score the example call), snippets for Python,
+  TypeScript, curl, R, Apps Script and Atlas plus an Open-in-notebook cell; webhooks with an
+  event picker, the secret shown once, rotation, **Resend newest** (a replay of the newest
+  delivered event; there is no synthetic test event), the delivery log (status,
+  attempts, response code) with replays and the auto-disabled notice; saved plots with
+  PNG/SVG/PDF downloads (Plotly disabled with the server's reason on `MODE_NOT_SUPPORTED`) and
+  expiring embed links with allowed sites and revocation; a **Share** button in the plot
+  gallery; `/tokens?preset=score:<alias>`.
+- **web**: the trust pages. Public `/signup` (disposable-address and terms errors at their
+  fields, the "check your inbox" state, the development outbox link) and `/verify-email`;
+  Settings > Data for organisation admins (GDPR export and download, tenant deletion with the
+  typed confirmation, grace period, cancel and per-store progress); a banner for scheduled
+  deletions; in the admin console, the sign-up review queue and per-tenant identity
+  verification and deletion status with a retry.
+- **docs**: The Integrations hub guide (with screenshots) and the Integrations section of the
+  web app guide; `make docs-screenshots-integrations`.
+- **spec**: the M3 contracts for Guided mode and integrations, shared by the server, runner,
+  web app and client components (contract v0.1, additive only).
+  - `mapi_spec.guided`: four guided templates (`geo_mmm`, `weekly_forecast`,
+    `store_demand`, `customer_choice` - the last needs a built-in choice model that is not
+    shipped yet), plain-language questions, role detection from column profiles, drafts
+    (ingest mapping + `ModelSpec` + YAML) and the BayesInsight `model_def.json` import.
+  - `mapi_spec.ingest`: ingest presets (`mff`, `meridian`, `bayesinsight`), wide variables
+    and the `mff` format; `IngestMapping` moves here (still exported by `mapi_spec.api`).
+  - `mapi_spec.calibration`: business priors (ROI or share ranges with a credibility), lift
+    tests, the `ModelSpec.calibration` block and the sandboxed `translate_priors` run kind.
+  - `mapi_spec.scorecard`: the check catalog, items with check ids, categories and docs
+    anchors, and the promotion gate (pass → allowed, warn → admin override with a reason,
+    fail → blocked); `Scorecard` moves here (still exported by `mapi_spec.api`).
+  - `mapi_spec.whatif` and `ResponseGridView`: per-draw response grids, the slider
+    interpolation contract, "Run exact" and forecast/counterfactual presets;
+    `ScoreRequest.future_covariates`.
+  - `mapi_spec.endpoints`, `mapi_spec.xrjson`, `mapi_spec.snippets`: endpoints and aliases,
+    score calls with inline XrJSON, input-schema compatibility, example payloads and pure
+    snippet generators (Python, TypeScript, curl, R, Apps Script, Atlas).
+  - `mapi_spec.webhooks`: events, envelope, `Mapi-Signature` signing and verification,
+    retries and the SSRF policy; `mapi_spec.sharing`: saved plots, renders (PNG, SVG, PDF)
+    and embed links for platform recipes; `mapi_spec.trust`: sign-up, e-mail and identity
+    verification, tenant deletion and GDPR export.
+  - `mapi_spec.api.M3_ENDPOINTS` (45 operations) with their access rules; new permissions
+    (`webhook`, `embed`, `tenant_deletion`, `tenant_export`, plot delete, endpoint
+    `manage` for gate overrides), scopes (`endpoints:promote`, `webhooks:manage`), audit
+    actions, problem codes and `Project.guided_locked`.
+- **docs**: Guided mode and Integrations concept pages; the v0.4 section of the HTTP API
+  reference.
+- **server**: the Guided data path. `GET /v1/guided/templates` (paged) and
+  `/{template_id}`; `POST /v1/guided/detect-roles` from browser profiles or a stored dataset
+  version; `POST /v1/guided/drafts` and `POST /v1/guided/import/bayesinsight`, validated
+  statically against the catalog with the schema the draft's mapping promises. Every
+  operation documents its RFC 7807 problems in the OpenAPI document.
+  - Migration `0007_guided`: `projects.guided_locked` and `dataset_versions.columns`.
+  - The persona lock is persisted, audited (`project.guided_lock`) and enforced: in a locked
+    project, members below admin store Guided specs only, and only their `basic` fields may
+    change (`403 FORBIDDEN` with the pointers otherwise).
+  - The finalizer validates and stores an ingest's `columns.json`, which detection reads and
+    `…/artifacts/columns.json` serves.
+- **runner**: sandboxed ingest for Guided mode: wide variables (one column per channel or
+  product), the Meridian preset, MFF tables mapped like a CSV after the pivot,
+  `MffOptions.combine`, and the BayesInsight preset (`allowed_*` values, period range,
+  necessary variables). Caps on rows, columns, cell and name length, and decompression (gzip
+  CSV streamed under a budget, Parquet, zip and netCDF by their declared sizes) are checked
+  before a parser allocates; every refusal is a plain message with a suggested action.
+  Ingest writes `columns.json`, the profile of every uploaded column.
+- **plugins**: `choice.multinomial_logit` in `mapi-plugin-tabular`, a conditional logit
+  with household product effects and Bayesian-bootstrap draws, so the `customer_choice`
+  template is real. The `e84_lite` conformance fixture replaces the corpus deferral.
+- **spec**: `mapi_spec.bayesinsight.import_bayesinsight` maps `model_def.json` onto
+  `mmm.hierarchical_geo` - adstock, Hill saturation and pooling with BayesInsight's own
+  priors where they have equivalents, controls, seasonality, trends - and reports every
+  feature without one as an `IMPORT_UNSUPPORTED` warning (`BayesInsightImport.target`
+  keeps the `mmm.bayesinsight` draft). Role detection gains `ColumnProfile.monotonic` and
+  `origin`, `profiles_from_dataset`, `draft_schema` and `guided_lock_issues`;
+  `GuidedAnswers.format` accepts `mff`; `IngestJob` gains the ingest caps.
+- **docs**: the "From a spreadsheet to a Guided draft" guide; the Guided mode
+  concept page, the built-in models and the conformance guide describe the served parts.
+
+- **mmm**: `mmm.hierarchical_geo` declares `business_priors` and `lift_tests` calibration.
+  - Business priors (ROI or contribution-share ranges at a credibility, a baseline share)
+    become per-channel `LogNormal` `beta_channel` priors (and an `intercept` prior) through a
+    vectorised location/scale bisection over Monte Carlo draws of the other priors, with a
+    prior-predictive preview in business units and the prior mass inside each stated range
+    (`mapi_plugin_mmm.calibration`; property tests check the round trip).
+  - Lift tests add `kpi_delta ~ Normal(implied lift, se)` over the test window; the extra
+    spend is carried over through the lag tensor and the implied lift is kept as
+    `lift_tests__model`.
+  - `response_curves` carries the baseline (intercepts and controls), closing the expected KPI.
+  - `mmm.pymc_marketing` takes lift tests through pymc-marketing's `add_lift_test_measurements`.
+- **runner**: `translate_priors` runs (`priors.json` and the `mmm.prior_beliefs` /
+  `core.prior_predictive` plots); every fit writes `scorecard.json` (the whole check catalog,
+  or the guided template's, each measured or skipped with a reason) and the what-if grid
+  view `ui/grids/response_curves.json`; forecast and counterfactual score runs write
+  `ui/guided/forecast.json` and `ui/guided/counterfactual.json`, and a forecast's fan chart
+  shows the fitted history with the split line. Lift tests are checked against the raw data
+  before a fit.
+- **server**: `POST /v1/guided/prior-translations` and `GET …/{run_id}` (static checks of the
+  beliefs and lift tests against the dataset summary, a pinned `translate_priors` run, its
+  verified `priors.json`). The finalizer stores the runner's scorecard on the model version
+  and validates `priors.json`; spec validation checks a spec's lift tests against the dataset.
+- **sdk**: `FitContext.calibration` and `FitContext.to_original` (the fitted scales);
+  `prepare_model_stage` for runs that build but do not fit a model; the optional
+  `translate_priors` plugin hook. **sdk-pymc**: `PyMCModel.prior_overlap_vars` keeps cheap
+  prior draws for the scorecard's new `plausibility.prior_overlap` check.
+- **sdk/runner/server**: forecasts extend the covariates their payload lacks
+  (`ScoreRequest.future_covariates`: `carry_last`, `seasonal_naive`, `zero`) from the fitted
+  history (`mapi_sdk.future`); the server passes the fit dataset as the score run's `history`
+  input. `mapi_server.services.scorecards.promotion_decision` derives the promotion gate from
+  a stored model version.
+- **plots**: `mmm.prior_beliefs` (each channel's prior ROI or share against the stated range).
+- **docs**: Guided modelling (the translation math, the lift-test likelihood, how each
+  scorecard check is measured, the what-if, forecast and counterfactual views).
+- **server**: endpoints and aliases (`/v1/endpoints`, migration `0008_endpoints_webhooks`).
+  - `PUT /v1/endpoints/{alias}` promotes a model version through the promotion gate: the
+    sanity scorecard, the endpoint's evaluation policy (`evaluate_then_refit` by default, so
+    endpoints serve versions refitted on all data after their holdout evaluation) and
+    input-schema breaks. A `warn` needs a signed-in project admin's override with a reason
+    (audited `endpoint.promote_override`; no API token can override); a `fail` blocks.
+    `expected_revision` guards concurrent promotions.
+  - History, rollback (audited with its reason) and delete; `GET …/schema` with an example
+    payload, `POST …/validate`, and `GET …/snippets` rendered with the server's base URL.
+  - `POST /v1/endpoints/{alias}/score`: inline XrJSON payloads are checked against the
+    endpoint's input contract and the CoordPlan rules, stored as run inputs and decoded only
+    in the sandbox; `Prefer: wait`, `Idempotency-Key` (repeat the call to collect a result),
+    `score:<alias>` tokens, and the per-token rate limit and vCPU budget. Bodies are capped
+    (`413`) and depth-checked before parsing.
+- **server**: webhooks (`/v1/webhooks`).
+  - CRUD with the signing secret shown once and stored sealed (AES-GCM under a key derived
+    from the server secret); rotation keeps the old secret signing for 24 hours.
+  - A transactional outbox: `run.succeeded`, `run.failed`, `model.version.ready`,
+    `score.completed` and `endpoint.promoted` are written in the transaction of the change;
+    `emit_tenant_event` serves `tenant.deletion.completed`.
+  - Deliveries from the worker on a `webhooks` procrastinate queue: signed
+    (`Mapi-Signature`), retried with exponential backoff and jitter, auto-disabled after
+    `MAPI_WEBHOOK_AUTO_DISABLE_AFTER` consecutive failed events or a `410` (audited), with a
+    delivery log and replays.
+  - The SSRF guard: static URL checks, one resolution with every address checked, a pinned
+    connection with the original name as SNI and `Host`, no redirects, time and size caps;
+    `MAPI_WEBHOOK_ALLOW_HTTP` and `MAPI_WEBHOOK_DEV_ALLOWLIST` for development only.
+  - Metrics for promotions, endpoint calls, events, delivery tries, SSRF refusals and
+    disabled webhooks; every new operation documents its RFC 7807 problems in OpenAPI.
+- **docs**: the Endpoints and webhooks guide and the webhook settings.
+- **server**: saved plots, static rendering and embed links (plan §10.3 items 4-5).
+  - `POST/GET/DELETE /v1/plots[/{plot_id}]`: a model version's plot (after its signed
+    manifest verifies) or a user-authored PlotSpec, sanitized on save and on every read.
+    User-authored plots are recorded with `author` provenance whatever they claim.
+  - `POST /v1/plots:render` (`Prefer: wait`, `Idempotency-Key`) and
+    `GET /v1/plots/renders/{run_id}`: a `render` run of one sanitized plot. The API writes
+    its `plots.json` input and pins each bundle dataset as a `plotdata.<n>` input. Plotly is
+    refused with `MODE_NOT_SUPPORTED` unless `MAPI_RENDER_PLOTLY_ENABLED`.
+  - `POST/GET/DELETE /v1/plots/{plot_id}/embeds[/{embed_id}]`: tokenised links for platform
+    recipes only (`EMBED_NOT_ALLOWED` otherwise), stored as keyed hashes, with expiry,
+    revocation, view counts and audit events. A PNG fallback is rendered when the caller may
+    start render runs, and copied write-once into the bundles bucket on first use.
+  - The public `GET /v1/embeds/{token}`: no credential is read (cookies and `Authorization`
+    are dropped), CORS for the plot-sandbox origin only, rate limits per link and per
+    address, every dataset inlined from the verified bundle without decoding it.
+  - Migration `0009_plots_embeds`: `saved_plots` and `plot_embeds` with forced row-level
+    security; the gateway role may read only the embed lookup columns.
+  - Every new operation documents its RFC 7807 problems in the OpenAPI document.
+- **runner**: `render` runs draw PNG, SVG and PDF with vl-convert (pinned in the new
+  `mapi-plots[render]` extra) with network access off, refuse anything that could fetch a
+  resource, read `plotdata.<n>` inputs, apply `width`/`height` and cap images at 32 MiB.
+  Plotly needs kaleido and a system Chrome (`MODE_NOT_SUPPORTED` otherwise; no browser is
+  ever downloaded).
+- **plot-sandbox**: the embed page `/embed/<token>`. It fetches the embed view with no
+  credentials under its own CSP (`connect-src` adds only the API's `/v1/embeds/` path),
+  validates and decodes it, honours the link's allowed origins and offers the PNG fallback.
+  The `mapi/web` image serves it with the API origin filled in at start-up.
+- **docs**: the "Sharing plots" guide and the new settings in the configuration reference.
+- **spec**: the sign-up review queue (`SignupReview`, `SignupReviewDecision`, the
+  `SYBIL_FLAGS` catalog), `GET /v1/admin/signups`, `POST /v1/admin/signups/{signup_id}/review`
+  and `POST /v1/admin/tenants/{tenant_id}/deletion/retry`; the `auth.signup_flagged`,
+  `auth.signup_review` and `tenant.deletion_retry` audit actions; the deletion record and
+  platform logs in `RETAINED_RECORDS`.
+- **server**: the trust lifecycle (migration `0010_trust_lifecycle`).
+  - Self-service sign-up (`POST /auth/signup`, `POST /auth/verify-email`): single-use e-mail
+    tokens stored as HMACs (24 h), the same answer for new and known addresses, a mailer
+    protocol (SMTP with required TLS, a file outbox read at `GET /dev/outbox` in the `dev`
+    profile, console), the disposable-domain blocklist plus configured domains and files,
+    per-address, per-domain and platform-wide sign-up limits, and Sybil heuristics (same
+    address, browser cookie, e-mail, domain burst) that flag sign-ups for the operators'
+    review queue. Verification creates a `public` tenant, its `default` project and the admin
+    grant.
+  - Identity verification (`GET /v1/tenants/{id}/verification`, operators'
+    `PUT /v1/admin/tenants/{id}/verification`, an `IdentityVerifier` provider protocol with a
+    fake) and cut line A at run admission: uploaded code needs a trusted tier or identity
+    verification (`IDENTITY_VERIFICATION_REQUIRED`); public tenants run built-ins and
+    declarative specs only.
+  - Tenant deletion: a confirmed request suspends the tenant and cancels its runs; after the
+    grace period the orchestrator makes it `deleting` (tokens revoked, sessions ended,
+    revoker hooks) and a procrastinate job purges the queue, every tenant table, every
+    `t/{tenant}/` object prefix (resuming after retention locks), then notifies and writes
+    the `tenant.purged` tombstone; progress per store; automatic and operator retries.
+  - GDPR export: a zip of every tenant record (credentials redacted), dataset objects and
+    bundle manifests, with a short-lived signed link.
+- **infra**: a Cloud Armor policy on every load-balancer backend (OWASP CRS sqli, xss, lfi,
+  rce and scanner rules in preview-then-enforce, per-IP rate bans on sign-up, `/auth/*`,
+  embeds and endpoint scoring, Adaptive Protection), and an explicit retention for the control
+  project's `_Default` log bucket (tenant deletion does not purge logs).
+- **docs**: Sign-up and abuse controls, Deleting and exporting data, and a Cloud Armor
+  section in Security hardening.
+- **integration**: the M3 parts work together.
+  - Tenant deletion revokes the tenant's embed links and disables its webhooks when it starts,
+    purges every M3 table (endpoints and their history, webhooks, events and deliveries,
+    saved plots, embeds, column profiles) and then delivers a signed
+    `tenant.deletion.completed` to the webhooks that subscribed to it, through the same
+    SSRF-guarded sender as every delivery (`mapi_server.services.tenant_hooks`).
+  - Webhook events come from the finalizer's terminal transitions (`run.*`,
+    `model.version.ready` with the runner's scorecard), promotions and rollbacks
+    (`endpoint.promoted`), score runs (`score.completed`) and deletions.
+  - Endpoint promotion gates on the scorecard the runner measured at fit
+    (`services.scorecards.promotion_decision`, the single gate derivation).
+  - Sign-up workspaces are `public` tier: built-ins and declarative specs only, on executors
+    with enforced egress and DNS (cut line A).
+- **server**: `POST /v1/guided/requests:compile` turns a what-if scenario, a forecast or an
+  intervention preset into its `ScoreRequest`, checked against the model version's score
+  metadata ("Run exact").
+- **runner**: score runs read an endpoint call's inline XrJSON payloads (`inline.data`,
+  `inline.scenario`) with the wire-format caps and the model's dim types.
+- **mmm**: `mmm.bayesinsight`, a BayesInsight `model_def.json` as a built-in model (Q8):
+  Normal, log-normal, Poisson, negative binomial and zero-inflated likelihoods; coefficient
+  and intercept priors in the KPI's own units; Hill, linear and S-shaped curves before
+  delayed, geometric, Weibull or no carry-over; enforced sign constraints; fixed and
+  partially pooled effects per row id (new levels pooled); Fourier seasons and local spline
+  trends. Contributions sum to the expected KPI (a log-mean Divisia split for log links);
+  lift tests observe the incremental KPI under the model's own likelihood. It passes the
+  contract kit; `mapi_plugin_mmm.bayesinsight_examples` simulates a project with known
+  parameters.
+- **spec**: `mapi_spec.bayesinsight_model` types `model_def.json` as the plugin runs it (the
+  `mmm.bayesinsight` settings); `import_bayesinsight(target="mmm.bayesinsight")` now drafts a
+  runnable spec - every row id a panel dim, the KPI bound to `y`, lagged media - falling back
+  to BayesInsight's defaults with `IMPORT_UNSUPPORTED` warnings (and `info` issues for
+  faithful but surprising behaviour).
+- **mmm**: business-prior translation for `mmm.pymc_marketing` (1.1.0): ROI and share ranges
+  become per-channel log-normal `saturation_beta` priors and a baseline share an `intercept`
+  prior (narrowing the control and seasonality priors when needed), solved on prior draws of
+  pymc-marketing's own model; `settings.priors` hands them to pymc-marketing's
+  `model_config`; a `translate_priors` hook previews them and a fit without a translation
+  run translates them itself.
+- **sdk**: categorical holdout metrics - `accuracy`, `accuracy_naive`, `accuracy_lift`,
+  `log_score` and `brier` - for a text target scored as one probability per category.
+- **spec/runner**: the `holdout.hit_rate` scorecard check (the holdout hit rate against
+  always guessing the most popular product, in plain words) for the `customer_choice`
+  template.
+- **conformance**: the `guided_mmm` fixture (the `geo_mmm` Guided draft with business
+  priors and a lift test, true to its simulation); `e84_lite` evaluates the categorical
+  metrics; the dedicated BayesInsight import ingests, validates and fits end to end.
+- **docs**: the built-in models reference covers `mmm.bayesinsight` and every plugin's
+  calibration; Guided modelling covers business priors for the pymc-marketing adapter and
+  the BayesInsight lift likelihood.
+- **docs**: the v0.4 site. A new landing page (both personas, how it works, the Guided quick
+  path, the v0.4 feature grid and the numbers measured in the M3 verification), "Why
+  modeling-api?" (compared with notebooks and ad-hoc apps, MMM vendors and libraries, and
+  generic model serving, with when to use something else) and "Use cases"; a Tutorials
+  section with new tutorials "Connect Google Sheets" (an Apps Script that writes an
+  endpoint's forecast into a sheet, run in the tests against stand-ins for Apps Script),
+  "Embed a chart in Notion, Slack or BI" and "Import a BayesInsight model" (import, check and
+  a local fit that recovers the simulated parameters), and "Receive webhooks" as a
+  tutorial with a tested Flask receiver; the roadmap with v0.4 released and v0.5 (expert
+  plugins, MCP, optimise jobs) next; the security model and architecture pages for v0.4;
+  `make docs-screenshots-tutorials`.
+- **cli**: `mapi tokens create --scope` lists the endpoint, `endpoints:promote` and
+  `webhooks:manage` scopes.
+- **dev**: `make outbox` (`dev.py outbox`) prints the dev mailer's newest e-mails and
+  verification links; `make dev` sets `MAPI_OUTBOX_DIR` and the plot sandbox's `VITE_API_URL`;
+  compose keeps the outbox on a volume. `make api-types` and `make snapshots` regenerate the
+  web API types and the snapshots.
+- **web**: Guided mode, the task flow for non-technical analysts (plan §11 Guided 1-7),
+  replacing the placeholder page.
+  - "What do you want to learn?": the templates as cards, and the analyses in progress. A
+    session is a stored spec (`metadata.labels.guided`); every step has its own URL
+    (`/guided/<spec>/<step>`) and is rebuilt from server state, so it can be resumed or shared.
+  - Your data: the upload (CSV, Parquet, MFF; Google Meridian tables recognised) is profiled in
+    the browser and only the column profiles go to role detection; questions with suggested
+    answers, confidence and reasons; a live preview with a sparkline per chosen series; plain
+    validation messages; then the dataset, the signed upload, the sandboxed ingest with the
+    draft's mapping and the spec.
+  - What you believe: ROI or contribution-share ranges per channel with a confidence, the
+    baseline share and lift tests, a `translate_priors` preview (prior ROI/share
+    distributions and a KPI fan in the plot sandbox) and the translated priors applied when
+    they match the beliefs saved.
+  - Fit the model: plain-language phases, progress, time left and cancel, live over SSE.
+  - Results: headline numbers, ROI and share per channel with 90% ranges, the fit and
+    response-curve plots, and the sanity scorecard grouped by question with what to do.
+  - What if…: per-channel spend sliders answered instantly from the per-draw response grid
+    (a TypeScript port of `mapi_spec.whatif.evaluate_scenario`, checked against golden
+    cases the spec tests export), "Run exact" next to the instant answer, scenario presets
+    (channel off, budget × k) and a forecast fan chart with its split line.
+  - Share: promotion to an endpoint with the gate explained (a warning needs a project
+    admin's reason), an embed link for a platform chart, and the way to the Integrations hub.
+  - "View as YAML" on every step (read-only Monaco) and "Edit in Expert" with
+    "Back to Guided mode"; settings Expert mode changed are kept and marked "advanced
+    settings applied". The Guided/Expert choice is remembered per user, and in a project
+    locked to Guided mode members below admin see Guided screens only.
+  - Mock-mode handlers for every Guided call (`src/mocks/guided.ts`), Vitest unit and route
+    tests and the Playwright smoke spec `e2e/guided.spec.ts` (the whole flow, the lock, the
+    persona and a 375 px phone).
+- **spec**: `tests/snapshots/whatif_golden.json`, golden what-if cases shared with the web
+  app (`make snapshots` regenerates it).
+- **docs**: "Your first analysis in Guided mode", a step-by-step tutorial with screenshots
+  (`make docs-screenshots-guided` recaptures them from mock mode).
+- **client**: the v0.4 Python client. Every operation of `ENDPOINTS` has a request builder
+  (the coverage test now checks the whole v0.4 table), sync and async.
+  - `api.guided` (templates, role detection, drafts, the BayesInsight import, "Run exact"
+    compilation, `preview_priors`), `api.endpoints` (promote, history, rollback, schema,
+    validate, keyed `Prefer: wait` scoring, snippets), `api.webhooks` (secrets returned once;
+    deliveries, replay, rotation), saved plots, renders (waited for, CRC32C-checked download)
+    and embeds on `api.plots`, `api.signup`/`api.verify_email` (sent without credentials),
+    verification, deletion and the GDPR export (size-checked atomic download) on
+    `api.tenants`, and the sign-up review queue on `api.admin`.
+  - `Client().endpoint(alias)` (`RemoteEndpoint`): `schema()`, `validate(ds)` and
+    `score(ds) -> xr.Dataset` with inline XrJSON (`mapi_client.xrjson`, the SDK wire format);
+    the generated Python snippet runs as-is.
+  - `mapi_client.webhooks.verify(headers, body, secret)` for receivers.
+  - `mapi_client.atlas.RemoteModel`: Atlas's model interface, structurally (Atlas is never
+    imported at import time): KPI at the mean or as draws, batching along an independent dim
+    into one score request, an LRU cache, backoff on `RATE_LIMITED`; `register_with_atlas()`;
+    the `atlas` extra; `make test-atlas` runs the tests with Atlas installed in a throwaway
+    overlay.
+- **cli**: `mapi endpoints ls|get|history|promote|rollback|schema|score|snippets`,
+  `mapi webhooks ls|get|create|update|rotate|deliveries|replay|rm`,
+  `mapi plots render|embed|embeds|revoke`, `mapi guided templates|detect|draft` (CSV files are
+  profiled locally), `mapi priors preview`, `mapi tenant status|export|delete`, `mapi signup`
+  and `mapi verify-email`. Promotions, rollbacks, rotations, deletions and revocations ask
+  first; webhook secrets and embed links are printed once, alone on stdout.
+- **docs**: the v0.4 sections of the Python client and command-line guides, "Optimise a budget
+  with Atlas" and "Receiving webhooks" (FastAPI and Flask), with offline, tested snippets.
+
+- **integration (web)**: Guided mode and the Integrations hub work as one.
+  - The Share step links into the hub: the promoted endpoint's snippets, a `score:<alias>`
+    token, the chart link under Plots and links, and the hub itself (typed routes). A project
+    locked to Guided mode keeps Integrations in the navigation.
+  - Both use the same endpoint and saved-plot queries and the same promotion-gate preview (the
+    port of `promotion_gate`), so a promotion or link made in one shows in the other at once;
+    in mock mode they share one endpoint, history, plot and embed state.
+  - Every snippet the app shows and copies is the server's (`mapi_spec.snippets`), the notebook
+    cell included; the mock's fixture endpoint, example call and snippets are generated from
+    `mapi_spec` (`apps/web/scripts/gen_integration_fixtures.py`, checked by `make web-check`
+    and CI, rewritten by `make snapshots`), and a test checks each tab against them.
+- **spec**: a `notebook` snippet language: a Jupyter or marimo cell that scores the endpoint
+  with `Client().endpoint(alias).score(...)` and shows an `xarray.Dataset`; the client's tests
+  run it as generated.
+
+- **e2e**: the M3 exit criteria through the running stack. `tests/e2e/test_m3_guided_stack.py`
+  (in `make e2e`) follows one analyst from sign-up and e-mail verification through the
+  `geo_mmm` Guided flow (CSV and MFF), business priors and a lift test, the scorecard and its
+  gate, what-if vs "Run exact", forecast and channel-off, an endpoint scored with a
+  `score:<alias>` token, signed webhooks to a local HTTPS receiver with a replay, an embed
+  link and its revocation, Atlas optimising a budget through `RemoteModel` against the live
+  endpoint, the GDPR export and a tenant purge checked in Postgres and the GCS shim.
+  `apps/web/e2e/m3-guided.e2e.spec.ts` is the timed "unaided tester" script (upload → report
+  → scenario) and the Integrations hub flow. `make e2e` overlays Atlas from `ATLAS_DIR` when
+  it is there.
+- **dev**: the `dev` profile trusts a local webhook receiver: a throwaway CA and certificate
+  for `127.0.0.1`/`localhost` in `$MAPI_DATA_DIR/dev/webhook-tls/`, with
+  `MAPI_WEBHOOK_CA_FILE` and `MAPI_WEBHOOK_DEV_ALLOWLIST` set unless given.
+- **gcs-shim**: `--bundle-retention-days` (default `$MAPI_BUNDLE_RETENTION_DAYS`) chooses the
+  bundles bucket's locked retention when a root is created (`0`: none), so a test stack's
+  tenant deletions can finish.
+- **web**: "Fit again, more carefully" on the Guided report when a convergence check warns or
+  fails (twice the tuning and draws and a higher `target_accept`, up to a ceiling); a blocked
+  Share step links to it.
+- **spec**: `mapi_spec.guided.freq_plain`: role detection explains a detected date frequency
+  in words ("weekly, on Sundays").
+- **docs**: M3 verification: what was verified of the M3 exit criteria, the timings, the
+  defects found, and the protocol and observation sheet for the five non-technical testers.
+
+### Changed
+- **spec**: the `geo_mmm` template (1.1.0) fits with 1000 tuning steps and draws and
+  `target_accept` 0.95: the 500-draw fit failed the scorecard's convergence checks on two
+  years of weekly data, which Guided users cannot act on, so the analysis could never go live.
+- **web**: in What you believe, channels start without a belief (unticked); ticking one starts
+  from the sensible range. Untouched channels no longer become ROI beliefs.
+- **server**: `GET /v1/embeds/{token}` answers `Cache-Control: private, no-cache` (was
+  `public, max-age=60`), so a revoked link stops rendering on the next load.
+- **spec**: `mapi_spec.api.ENDPOINTS` is the v0.4 surface (M1 + M2 + M3, every row served);
+  `V03_ENDPOINTS` keeps the v0.3 table and `ALL_ENDPOINTS` is an alias of `ENDPOINTS`.
+- **server**: the M3 migrations run in one chain after `0006_executor_disable`:
+  `0007_guided`, `0008_endpoints_webhooks`, `0009_plots_embeds`, `0010_trust_lifecycle`.
+- **spec**: the `customer_choice` template (1.1.0) targets the built-in
+  `choice.multinomial_logit`; wide column labels drop the question's keywords
+  (`price_cola` → `cola`); a draft refuses answers that would give two columns the same
+  dataset name.
+- **spec**: the `customer_choice` template (1.2.0) evaluates the categorical metrics and
+  runs `holdout.hit_rate`; `BayesInsightImport(target="mmm.bayesinsight")` drafts the
+  shipped plugin's settings (`variables` maps analytic names to variables; the KPI is `y`)
+  instead of keeping `model_def` verbatim.
+- **server**: `POST /v1/guided/import/bayesinsight` validates `mmm.bayesinsight` drafts
+  against the catalog too.
+- **conformance**: the corpus runner compares fit-time and evaluate-run metrics only when it
+  rebuilt the holdout (a `last_per_group` split is scored in sample).
+
+### Fixed
+- **cli**: `mapi webhooks update ID [--enable|--disable] [-e EVENT ...] [--url URL]
+  [--description TEXT]`. A webhook created with `--inactive`, or disabled automatically after
+  repeated failures, could only be switched back on in the browser; `--enable` does it from
+  the command line and resets the failure count.
+- **docs**: the Guided tutorial's report and scorecard screenshots contradicted each other
+  (media drove 23% of results, yet "about 80%" would happen without media). The mock-mode
+  scorecard now reads its baseline, largest-channel and best-return checks from the same
+  response grid as the report, and the screenshots were recaptured.
+- **server**: "Run exact" failed on every live stack: `POST /v1/guided/requests:compile` left
+  what-ifs and presets over the fit window without data. The compiled request now names the
+  fit dataset version, and a score request without data, scenario or horizon is refused with
+  `422 SCHEMA_INVALID` before a run starts.
+- **web**: the Guided report showed MAPE in percent as a fraction ("83 %" for 0.83 %); it
+  reads the scorecard's measured value. The beliefs preview no longer prints impossible
+  baseline shares ("between -164 % and 271 %"); Share a chart offers result charts before
+  the sampler's diagnostics.
+- **plots**: prediction plots name the predicted quantity as the dataset does (`revenue`, not
+  `y_hat`).
+- **client**: `datasets.upload` accepts an `mff` mapping for a `.csv` MFF table.
+- **server**: an unresolvable webhook host is explained in plain words (no `gaierror`).
+- **web**: the New token dialog's budget period showed "pe" instead of "per day"/"per month":
+  native selects no longer shrink below their width in a flex row (filters, the cap window,
+  the intervention editor and the upload mapper had the same risk).
+- **spec**: `index` dims extend contiguously (their coordinates have ordinals), so scoring an
+  `index` dim with an `extend` policy no longer fails with `NON_CONTIGUOUS_EXTENSION`.
+- **sdk**: cell-level splits treat an empty text target as missing and hold text targets out
+  with `''`, so a choice panel's chosen product can be held out.
+- **runner**: the `holdout.mape` scorecard check read `mapi_sdk`'s MAPE, which is in percent,
+  against thresholds in fractions, so a 1.4% holdout error showed as 140% and blocked the
+  promotion of almost every model; percent metrics are now divided by 100 first.
+- **runner**: inline endpoint payloads named like the endpoint's input contract (canonical
+  names such as `time`) failed to score when the dataset's own name differed (`week`); the
+  score run renames them to the dataset's names before typing coordinates. The snapshot's
+  documentation says which names a payload uses.
+- **spec**: an endpoint's example call (`GET …/schema`, the snippets, `mapi endpoints score
+  --example`) asked quantile models for a `mean` they cannot serve; it now asks for the
+  representation's default summary.
+
+### Fixed (M3 review: Guided modeling)
+- **spec/server/web**: the promotion gate let through an `evaluate_then_refit` version that
+  was never evaluated on a holdout (a spec without `data.split` skips every holdout check and
+  its scorecard can still pass). Such a version now needs an administrator override with the
+  new gate reason `NOT_EVALUATED`, as does a guided version whose template's scorecard checks
+  did not all run (Q13). The web app's gate preview follows.
+- **mmm**: a contribution-share belief for a channel with no spend in the fit window
+  translated to an absurd prior (`LogNormal(mu≈692)`, so any new spend on the channel
+  predicted ~1e300) with no issue. Both translators (`mmm.hierarchical_geo`,
+  `mmm.pymc_marketing`) now refuse it with an error, as they do for an ROI belief, and refuse
+  any solved prior that is not finite or has `|mu| > 50`, keeping the channel's default.
+- **mmm/runner**: a response grid whose spacing skipped multiplier 1 (`grid.max_multiplier: 3`,
+  `grid.points: 20`, or a maximum below 1) lost its what-if sliders, and the scorecard's ROI,
+  share and baseline checks were read at the nearest point (1.05x or 0.5x spend). The grid
+  now always holds 1 (inserted when the spacing skips it; `max_multiplier` must be at least
+  1), the curves are read at exactly 1, and a what-if grid the view contract refuses is
+  reported as `VIEW_INVALID` instead of `VIEW_TOO_LARGE`.
+- **runner**: a model with more than 256 geos lost its whole what-if grid (the per-geo view
+  failed its geo cap and the national grid was dropped with it); it now gets the national
+  grid (`mapi_spec.views.MAX_GRID_GEOS`).
+- **server**: `POST /v1/guided/requests:compile` answered `404` for an `endpoint://` model
+  target, and `POST /v1/specs:validate` reported a score request aimed at an endpoint as
+  `REF_UNRESOLVED` ("endpoint aliases arrive in v0.4"). An endpoint ref now resolves to the
+  version the endpoint serves.
+- **runner**: a dense ingest (and the MFF pivot) built every combination of the dim labels
+  with no cap, so a 2 MB CSV whose keys rarely repeat asked for ~80 GB and the run was
+  OOM-killed. The cube is now checked before it is built (at most 250 million values, and
+  within the class's scratch budget) and refused as `PAYLOAD_TOO_LARGE` with a hint.
+- **spec/server/runner**: static renders had no pixel cap, so `scale: 8` with a 4096 x 4096
+  size (or a plot that sets its own huge size) asked vl-convert for a ~4 GiB raster and the
+  run was OOM-killed. A PNG or PDF now holds at most 50 megapixels
+  (`mapi_spec.sharing.MAX_RENDER_PIXELS`): `POST /v1/plots:render` refuses a bigger request
+  with `413 PAYLOAD_TOO_LARGE`, and the runner checks the laid-out size (composite views
+  included) before it rasterises.
+- **spec/runner**: the `data.history` check counted periods (warn below 104, fail below 52)
+  whatever the data's frequency, so 105 days of daily data passed as "enough to learn
+  seasonality". It now measures years (`history_years`: periods over the periods in a year
+  at the time dim's frequency, or the one its dates follow; warn below 2 years, fail below
+  1; the `weekly_forecast` template fails below 0.5).
+- **mmm**: a lift test cut by the fit window (one that straddles the end of an
+  `evaluate_then_refit` evaluation fit's training periods, or starts before the data) put
+  all of its spend into the periods left and compared them with the whole test's KPI change,
+  biasing the evaluation fit and the holdout scorecard. Such a test is now skipped and logged,
+  in `mmm.hierarchical_geo`, `mmm.bayesinsight` and `mmm.pymc_marketing`.
+- **runner**: dates with a UTC offset (`2024-01-07T00:00:00+01:00`, common in BI exports) or a
+  tz-aware Parquet timestamp became time zone-aware labels that the ingest then refused as
+  "not dates" (and offsets that change with daylight saving time failed outright). They are
+  now read as the local date and time they name, with an `info` issue saying the offsets
+  were dropped.
+- **sdk**: `future_covariates: seasonal_naive` aligned the last season by position, so a
+  horizon that started after a gap (or a payload of later periods only) shifted the seasonal
+  pattern, and a missing value in the last season was copied forward as NaN. It now takes
+  the value whole seasons before each horizon date, stepping back past missing values, and
+  carries the last value forward (with a warning) only where no season has one.
+- **plots/runner**: a Guided geo MMM's fit chart titled its panels with the spec's internal
+  dim name (`geo`) instead of the analyst's column (`market`), and faceted response curves
+  said `channel` whatever the column was called. Recipes now title facets with the dataset's
+  name for the dim (`RecipeInput.dim_label`, from the bundle's `/binding`), and the fit's
+  holdout prediction tree carries the binding.
+
+### Fixed (M3 review: integrations and trust)
+- **server**: every per-address control saw the proxy's address, not the caller's, so the
+  sign-up, verification and embed-view limits and the Sybil `same_ip` check applied to the
+  whole platform behind a load balancer. New `MAPI_TRUSTED_PROXIES` (addresses or CIDR
+  ranges): a request from a trusted proxy takes the right-most untrusted `X-Forwarded-For`
+  hop as the client; any other peer's header is ignored. The multi-tenant profile refuses to
+  start without it (`none` when clients connect directly); Terraform sets Cloud Run's and the
+  load balancer's hops and `make dev` sets `none` for its multi-tenant stack.
+- **server**: a promoter, an `endpoints:promote` token included, could switch off the
+  schema-change and train-only gates by sending a laxer `evaluation_policy` with the
+  promotion. Relaxing the policy (`schema_change` toward `allow`, `fit_mode` to `train_only`)
+  now needs a signed-in endpoint admin, like an override (`403 FORBIDDEN` otherwise, audited
+  as a denial), and the promotion's audit event records the policy before and after
+  (`mapi_spec.endpoints.policy_relaxations`).
+- **server**: the per-domain (25 a day) and platform (500 an hour) sign-up caps counted
+  unverified sign-ups, so made-up addresses could lock a whole e-mail domain, or everyone,
+  out of sign-up. They now count verified sign-ups only (the per-address limit still counts
+  every request), and large free-mail domains (`MAPI_SIGNUP_SHARED_EMAIL_DOMAINS`, default
+  `mapi_spec.trust.SHARED_EMAIL_DOMAINS`) have no per-domain cap and never trip the
+  `domain_burst` Sybil flag.
+- **server**: the plan's draw cap (Q2: 300, 500 on paid tiers) was enforced only by the
+  Python client, so any caller could ask a model or endpoint for 10,000 draws. Score
+  requests asking for more than the tenant tier's `MAX_SCORE_DRAWS` (`public` 300, other
+  tiers 500) are refused with `QUOTA_EXCEEDED` at `/output/draws`, and the score job carries
+  the cap (`ScoreJob.max_draws`: score runs now store a `{request, max_draws}` payload) so the
+  runner enforces it too.
+- **server**: a `score:<alias>` token could score any dataset of the project by
+  `dataset://` reference (and probe which exist through `…/validate`) without dataset read
+  access. Callers without it now send inline data or name the endpoint's own fit dataset;
+  any other reference, existing or not, gets the same `403 FORBIDDEN`.
+- **server**: a GDPR export whose build process died stayed `running` forever and blocked
+  every later export of the tenant. A build now holds a lease (`MAPI_EXPORT_BUILD_TIMEOUT_S`,
+  after which it fails, plus five minutes); a `running` export past its lease is built once
+  more, then failed, and only the build holding the lease may mark it ready. Metadata rows
+  are capped at `MAPI_EXPORT_MAX_METADATA_BYTES` (tables cut short are listed under
+  `skipped`), so the in-memory archive stays bounded.
+- **server**: an export still building when a tenant purge started wrote the whole archive
+  after the purge, where nothing would ever delete it. The deletion's start cancels the
+  tenant's queued and running exports (`revoked.exports` in the audit event), the `queue`
+  store waits for a cancelled build to end (or its lease to pass), and a build that lost its
+  lease never uploads and deletes an archive it uploaded after losing it.
+- **server**: a purge went on after `MAPI_DELETION_RUN_STOP_TIMEOUT_S` while cancelled runs
+  that never stopped still held signed upload policies under `t/{tenant}/`, so they could
+  write objects after the object store was purged. The `queue` store now also waits until
+  those runs' signed links have expired (attempt start + run timeout + 30 minutes) and says
+  until when.
+- **server, web, client**: GDPR exports could not be listed, and Settings > Data found the last
+  export only through the browser's `localStorage`, so another admin or browser could neither
+  see nor download an export that was running or finished (and could not start another one
+  while it ran). New `GET /v1/tenants/{tenant_id}/exports` (newest first, paged, tenant
+  admins); Settings > Data shows the newest export from it, and the Python client has
+  `tenants.exports(tenant_id)`.
+- **server**: the `storage_bytes` quota left out model bundles although the docs count them;
+  a tenant's storage now adds the size of every model version's stored objects.
+- **server**: the per-tier egress cap (`egress_bytes_per_month`, 5 GiB on the free tier) was
+  defined but never measured. Every signed download link the API mints (dataset and model
+  artifacts, `ui/` views, score and render outputs) and every public embed view (its inline
+  data and PNG link) is now charged to the tenant's monthly egress, which `GET /v1/usage`
+  reports; past the cap the link is refused with `429 QUOTA_EXCEEDED` (with `Retry-After`
+  until the month resets). GDPR exports are never charged; a purge deletes the counter.
+- **server**: the embeds' "platform recipes only" rule trusted the provenance in
+  `plots.json`, which the worker writes while it runs plugin code, so uploaded code could
+  label any spec `core.*` and get it onto public embed links. Plots of model versions fitted
+  with uploaded code (an overlay in their lineage) are saved with `plugin` provenance, are
+  never embeddable, and existing links stop serving them.
+- **server, runner, spec**: endpoint and model scores answered only with signed links to zarr
+  and Arrow files, so the Google Sheets card wrote the word "done" into `A1` and the curl, R
+  and TypeScript snippets printed links nobody could open without those libraries. Score runs
+  now write `summary.json` (the requested summary - mean and 90% HDI by default - as plain
+  tables: coordinate columns, then one column per statistic, at most 100,000 cells), and
+  `ScoreCallResult.summary` carries it inline once the run succeeded. The Apps Script builds
+  its payload from an `Input` sheet (long format) when there is one and writes the summary
+  tables to a `Result` sheet; the other snippets print the tables.
+- **web, plot-sandbox, docs**: embed links were advertised for Slack, but Slack does not frame
+  pages and the embed page had no unfurl tags, so a pasted link showed a bare "Shared plot".
+  The page now carries static Open Graph tags (a "Shared chart" card, never the plot's name or
+  the token), and the UI and guides recommend posting the rendered PNG to Slack instead of
+  promising a live chart there.
+- **docs**: webhooks do not attach rendered plots, a deliberate deviation from the plan
+  (bodies carry ids and states only, so no chart or signed link reaches a third-party
+  receiver); the webhooks guide says so and shows how a receiver renders a chart with
+  `POST /v1/plots:render` when `model.version.ready` arrives.
+
+### Fixed (M3 review: web)
+- **web**: a new self-service sign-up landed in Expert mode, with no way into Guided mode but
+  the header's Mode switch. Until a user chooses, a `public` tier workspace now starts in
+  Guided mode (other workspaces and platform operators in Expert; the browser's stored v2
+  default is forgotten, per-user choices are kept), "Sign in" after the e-mail link opens
+  `/guided`, `/` opens the Guided start page in Guided mode, and Expert navigation (`g g`)
+  and Home (**Start a guided analysis**) lead to Guided.
+- **web**: the admin console's **Promotions** tab was a placeholder. It lists the endpoint
+  promotions that needed attention across tenants (gate overrides with their reason and
+  failing checks, blocked promotions and those refused for want of an override), from the
+  audit log. There is still no queue: the gate decides each promotion at once.
+- **web**: a project could be locked to Guided mode only through the API. Project admins now
+  have **Lock … to Guided mode** under Settings > Mode (`PATCH …/projects/{project_id}`,
+  audited as before).
+- **web**: a webhook's **Send test** button only replayed the newest delivery (and was
+  disabled until one existed). It is now **Resend newest**, and the empty delivery log says
+  how a new webhook gets its first delivery.
+- **web**: the beliefs preview charted every channel, the unticked ones at the model's wide
+  default prior, so they looked like the analyst's beliefs (ROI near 100, media shares adding
+  up past 100 %) and squashed the ranges actually stated. The charts show the ticked channels
+  only and name the others ("No view on …: … learns them from the data"). The mock engine
+  previews every channel, as the server does.
+- **spec**, **web**: a "Results without any media" belief stated without any channel belief
+  was silently dropped (`BusinessPriors.channels` needed at least one entry, and the page then
+  saved "no business priors"). `BusinessPriors` now needs at least one belief of either kind
+  (`channels` defaults to `{}`; a baseline-only block validates, and the "largest shares"
+  warning no longer fires without channel shares), both MMM plugins translate a baseline
+  alone, and the Guided page previews and saves it.
+- **plot-sandbox**: in dark mode, rule and text marks without a colour of their own were
+  drawn black on the dark card (Vega-Lite's default): the beliefs preview's 90% line, the
+  forecast's split line and its "Forecast starts" label. The theme colours rules in muted ink
+  and text and ticks in body ink, so a median tick also stands apart from its bar.
+- **web**: the Guided forecast panel always said "weeks" (daily data too) and accepted
+  horizons up to the template's limit (520), past the horizon a weekly forecast was fitted
+  for, which then failed. It names the data's period (days, weeks, months) and stops at the
+  fitted horizon (`max_extension`), saying a longer one needs a new fit.
+- **web**: Guided fan charts (forecast, prior predictive) started their y axis at zero, which
+  squeezed the bands into slivers; the axis now fits the data (`zero: false`).
+- **web**: the endpoint page said "Promoted by usr_01…" and its history listed user ids, and
+  saved plots said "of mdl_01…". People are named from the project's members (the id stays in
+  the tooltip, and an unknown id is shown as is), and saved plots name their model.
+- **web**: sign-up asked people to accept the terms of service and the acceptable-use policy
+  without a way to read them. Both are links (new tab) to `VITE_TERMS_URL` and
+  `VITE_ACCEPTABLE_USE_URL`, by default the plain-language summaries the app now publishes at
+  `/terms` and `/acceptable-use`.
+- **web**: the Guided upload box described weekly marketing data by market (and the MFF and
+  Meridian presets) for every template, Customer choice and Demand by store included. It
+  describes the rows each template needs and names the presets for the marketing mix only.
+- **web**: adding an experiment showed a red error under every field at once, its example
+  values ("-120000") read as prefilled data, and nothing said why Preview and Save were
+  disabled. A field's message now waits until the field is left, the examples read
+  "e.g. -120,000", and a summary beside the actions says what each unfinished experiment
+  still needs.
+
+### Fixed (integration)
+- **docs**: the Google Sheets tutorial showed the Apps Script from before score answers
+  carried their summary (it wrote `done` into `A1`). Its snippet is the server's current
+  script again (the summary tables in a **Result** sheet, an optional **Input** sheet), the
+  tutorial says what the sheet shows, and the Node test checks the **Result** sheet.
+- **spec**: the example of `PlotEmbedCreated` (in the OpenAPI document) used an `/e/<token>`
+  link; the server answers with `/embed/<token>`.
+- **docs**: M3 verification and the landing page give the unaided-tester timing measured on
+  the integrated branch, with the script starting at `/` (135 s, was 137 s from `/guided`).
+
+### Known gaps
+- **The M3 exit criterion is not met yet.** Five non-technical testers must go from upload to
+  report to scenario unaided in under 30 minutes. The protocol and observation sheet are
+  written (the M3 verification page in the operations docs), and a script clicks through
+  the same flow in 135 s of system time, but no tester session has run.
+- Nothing has run against real Google Cloud or a Docker daemon. The Cloud Armor policy, the
+  trusted-proxy ranges Terraform sets for Cloud Run behind the load balancer, the Cloud Run
+  executor, the docker and docker-gvisor executors and the compose stack are checked with
+  fakes, mocked providers and `terraform validate` only. After the first deploy, check that
+  sign-ups from two networks get different fingerprints.
+- Static rendering covers Vega-Lite only out of the box. Plotly needs kaleido and a system
+  Chrome, so `POST /v1/plots:render` refuses it with `MODE_NOT_SUPPORTED` unless
+  `MAPI_RENDER_PLOTLY_ENABLED`, and that path has not run in an image. Webhook bodies never
+  carry charts (a deliberate deviation), and Slack shows one generic card for every embed
+  link.
+- Webhooks have no synthetic test event: **Resend newest** replays the newest delivery, and a
+  new webhook gets its first delivery from a real event.
+- The Google Sheets Apps Scripts and the embed page inside Notion, Looker Studio and Power BI
+  are tested only against stand-ins, never in the real tools.
+- Egress is estimated from object size when a link is minted, not measured as bytes served; a
+  caller that polls a score result is charged again on each poll. The GDPR export archive is
+  still built in memory (bounded by two settings) because the object store has no streaming
+  upload.
+- There is no combined cap across all free-tier tenants beyond the global quota scope; the
+  Python client's Atlas `RemoteModel` caps draws at 300 on every tier (the server allows 500 on
+  paid tiers).
+- The Guided/Expert choice is stored per browser, not per user on the server; there is no
+  `mapi` command to lock a project to Guided mode (the web switch and the API do it).
+- In the `geo_mmm` template, the default priors of channels without a stated belief can still
+  imply media shares above 100% in total; the beliefs preview no longer presents them as the
+  analyst's beliefs.
+- The `/terms` and `/acceptable-use` pages are plain-language drafts, not reviewed legal text.
+  A public installation should publish its own and set `VITE_TERMS_URL` and
+  `VITE_ACCEPTABLE_USE_URL`.
+- Some screenshots predate the M3 review's wording (the Guided beliefs page, the Integrations
+  hub pages including the Sheets card, Settings).
+- A few tests are timing-sensitive under a fully loaded laptop (the 100-fit Cloud Run load
+  test, the Postgres-restart chaos test, Terraform's provider plugin start-up); each passes
+  when run again.
+
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
 The platform is now multi-tenant and ready for Google Cloud. Many teams can share one

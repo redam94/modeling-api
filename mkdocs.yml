@@ -119,12 +119,23 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
-  - Home: index.md
+  - Home:
+      - index.md
+      - "Why modeling-api?": why.md
+      - Use cases: use-cases.md
   - Getting started:
       - getting-started/index.md
       - "Quickstart: zero to first model": getting-started/quickstart.md
       - Your first model in Python: getting-started/first-model.md
       - Runs and executors: getting-started/executor.md
+  - Tutorials:
+      - tutorials/index.md
+      - "Your first MMM in Guided mode": guides/guided-tutorial.md
+      - Connect Google Sheets: tutorials/google-sheets.md
+      - "Embed a chart in Notion, Slack or BI": tutorials/embed-a-chart.md
+      - Receive webhooks: guides/webhook-receivers.md
+      - Optimise a budget with Atlas: guides/atlas.md
+      - Import a BayesInsight model: tutorials/bayesinsight-import.md
   - Concepts:
       - concepts/index.md
       - Architecture overview: concepts/architecture.md
@@ -137,6 +148,8 @@ nav:
       - Capabilities and manifests: concepts/capabilities.md
       - Tenancy and authentication: concepts/tenancy-and-auth.md
       - Quotas and cost: concepts/quotas-and-cost.md
+      - Guided mode: concepts/guided-mode.md
+      - Integrations: concepts/integrations.md
   - Guides:
       - Using the platform:
           - The Expert web app: guides/web-ui.md
@@ -144,17 +157,23 @@ nav:
           - The command line: guides/cli.md
           - The Python client: guides/python-client.md
           - The HTTP API: guides/http-api.md
+          - "From a spreadsheet to a Guided draft": guides/guided-data.md
+          - Endpoints and webhooks: guides/endpoints-and-webhooks.md
+          - The Integrations hub: guides/integrations-hub.md
       - Running it for teams:
           - Authentication: guides/authentication.md
           - Administration: guides/administration.md
+          - Deleting and exporting data: guides/data-deletion.md
       - Modelling:
           - Port a model in 15 minutes: guides/port-a-model.md
           - Write a step or model plugin: guides/plugins.md
           - Bring a PyMC model: guides/pymc.md
           - Tabular models (scikit-learn, xgboost): guides/sklearn.md
           - Marketing-mix models: guides/mmm.md
+          - "Guided modelling: priors, lift tests, scorecard": guides/guided-modelling.md
           - Forecasting and sequential models: guides/time-series.md
           - Plots, recipes and templates: guides/plots.md
+          - Sharing plots: guides/sharing-plots.md
           - Conformance corpus: guides/conformance.md
   - Reference:
       - Spec format: reference/spec-format.md
@@ -195,10 +214,12 @@ nav:
       - Deploying to Google Cloud: operations/gcp-deployment.md
       - Security hardening on Google Cloud: operations/security-hardening.md
       - Authentication and isolation: operations/authentication.md
+      - Sign-up and abuse controls: operations/signup-and-abuse.md
       - Cloud Run Jobs executor: operations/cloud-run.md
       - Observability: operations/observability.md
       - Security suite: operations/security-suite.md
       - M2 verification: operations/m2-verification.md
+      - M3 verification: operations/m3-verification.md
       - Configuration reference: operations/configuration.md
       - Troubleshooting: operations/troubleshooting.md
   - Roadmap:
@@ -206,6 +227,7 @@ nav:
       - The local platform (v0.2): roadmap/platform-api.md
       - Cloud and multi-tenant (v0.3): roadmap/cloud.md
       - Guided mode and integrations (v0.4): roadmap/guided-ui.md
+      - "Next: expert plugins, MCP and optimisation (v0.5)": roadmap/expert-plugins.md
   - Project:
       - Licensing: project/licensing.md
       - Contributing: project/contributing.md

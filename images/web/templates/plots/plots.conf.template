@@ -2,7 +2,8 @@
 # inside <iframe sandbox="allow-scripts"> (no same-origin) on the app, so their documents have
 # an opaque origin: module scripts, styles and the topojson pack are fetched in CORS mode, which
 # is why every response carries Access-Control-Allow-Origin: * (static, public, no cookies).
-# Nothing here can reach the API: there is no proxy and connect-src is limited to /topojson/.
+# Nothing here can reach the API: there is no proxy and connect-src is limited to /topojson/,
+# except on the embed page (/embed/<token>), which may read the API's public embed path only.
 server {
   listen 8081;
   server_name _;
@@ -26,6 +27,20 @@ server {
   location /topojson/ {
     expires 1d;
     try_files $uri =404;
+  }
+
+  # The embed page of a shared plot (/embed/<token>, M3): embed.html with its own policy,
+  # whose connect-src adds the API's embed path and nothing else. It is meant to be framed by
+  # BI tools, wikis and chat apps (any https site); the page itself refuses to render outside
+  # the link's allowed origins. The build leaves a placeholder for the API origin.
+  location ~ "^/embed/[^/]+/?$" {
+    limit_except GET HEAD { deny all; }
+    expires -1;
+    include /tmp/nginx/conf.d/plots-embed-headers.inc;
+    sub_filter_types text/html;
+    sub_filter_once off;
+    sub_filter "__MAPI_API_URL__" "${MAPI_API_URL}";
+    try_files /embed.html =404;
   }
 
   location / {

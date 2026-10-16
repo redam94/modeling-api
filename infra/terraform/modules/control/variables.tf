@@ -311,7 +311,76 @@ variable "domains" {
 }
 
 variable "security_policy" {
-  description = "Optional Cloud Armor policy (self link) attached to the load balancer backends (M3)."
+  description = "Optional Cloud Armor policy (self link) to attach to the load balancer backends instead of the one this module creates (var.cloud_armor)."
   type        = string
   default     = null
+}
+
+variable "cloud_armor" {
+  description = <<-EOT
+    The Cloud Armor policy this module creates with the load balancer (armor.tf). Roll out
+    with waf_mode = "preview" (matches are only logged), read the logs, then switch to
+    "enforce". Rate limits are requests per client IP and minute; three times the limit
+    within five minutes bans the address for ban_duration_sec.
+  EOT
+  type = object({
+    enabled                      = optional(bool, true)
+    waf_mode                     = optional(string, "preview")
+    waf_sensitivity              = optional(number, 1)
+    rate_limit_mode              = optional(string, "enforce")
+    adaptive_protection          = optional(bool, true)
+    verbose_logs                 = optional(bool, false)
+    request_body_inspection_size = optional(string, "8KB")
+    trusted_ip_ranges            = optional(list(string), [])
+    rate_limits = optional(object({
+      signup_per_minute = optional(number, 10)
+      auth_per_minute   = optional(number, 120)
+      embed_per_minute  = optional(number, 600)
+      score_per_minute  = optional(number, 600)
+      ban_duration_sec  = optional(number, 600)
+    }), {})
+  })
+  default = {}
+
+  validation {
+    condition = (
+      contains(["preview", "enforce"], var.cloud_armor.waf_mode) &&
+      contains(["preview", "enforce"], var.cloud_armor.rate_limit_mode)
+    )
+    error_message = "waf_mode and rate_limit_mode are \"preview\" or \"enforce\"."
+  }
+
+  validation {
+    condition     = contains([1, 2, 3, 4], var.cloud_armor.waf_sensitivity)
+    error_message = "waf_sensitivity is an OWASP CRS paranoia level from 1 (fewest false positives) to 4."
+  }
+
+  validation {
+    condition     = contains(["8KB", "16KB", "32KB", "48KB", "64KB"], var.cloud_armor.request_body_inspection_size)
+    error_message = "request_body_inspection_size is 8KB, 16KB, 32KB, 48KB or 64KB."
+  }
+
+  validation {
+    condition = alltrue([
+      for k in ["signup_per_minute", "auth_per_minute", "embed_per_minute", "score_per_minute"] :
+      var.cloud_armor.rate_limits[k] >= 1
+    ]) && var.cloud_armor.rate_limits.ban_duration_sec >= 60
+    error_message = "Rate limits are at least 1 request per minute and bans last at least 60 s."
+  }
+
+  validation {
+    condition     = length(var.cloud_armor.trusted_ip_ranges) <= 10 && !contains(var.cloud_armor.trusted_ip_ranges, "*")
+    error_message = "At most 10 trusted CIDR ranges, and never \"*\"."
+  }
+}
+
+variable "log_retention_days" {
+  description = "Retention of the control project's _Default log bucket (request and run logs). Tenant deletion does not purge logs: they expire after this many days (docs/guides/data-deletion.md)."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.log_retention_days >= 1 && var.log_retention_days <= 3650
+    error_message = "log_retention_days is between 1 and 3650."
+  }
 }

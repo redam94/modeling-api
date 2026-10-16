@@ -1,5 +1,6 @@
 """The orchestrator process (``mapi-server worker``): dispatcher + reconciler + event pump +
-housekeeper + procrastinate worker, all on one event loop."""
+housekeeper + webhook relay + trust-lifecycle scheduler + procrastinate worker, all on one
+event loop."""
 
 from __future__ import annotations
 
@@ -15,9 +16,21 @@ from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.events import EventIngestor
 from mapi_server.services.finalizer import Finalizer
 from mapi_server.services.housekeeping import Housekeeper
+from mapi_server.services.lifecycle import (
+    InlineLifecycleJobs,
+    LifecycleJobs,
+    LifecycleScheduler,
+    ProcrastinateLifecycleJobs,
+)
 from mapi_server.services.queue import InlineFinalizeQueue, ProcrastinateQueue
 from mapi_server.services.reconciler import Reconciler
 from mapi_server.services.submit import submit_describe
+from mapi_server.services.webhooks.delivery import (
+    InlineWebhookQueue,
+    WebhookDeliverer,
+    WebhookQueue,
+    WebhookRelay,
+)
 
 __all__ = ["Orchestrator"]
 
@@ -33,17 +46,30 @@ class Orchestrator:
         self.ctx = ctx
         self.executor = executor
         self.finalizer = Finalizer(ctx)
+        self.deliverer = WebhookDeliverer(ctx)
         self.procrastinate: ProcrastinateQueue | None = None
+        webhook_queue: WebhookQueue | None = None
         if ctx.queue is None:
             if use_procrastinate:
-                self.procrastinate = ProcrastinateQueue(ctx.db.url, self.finalizer)
+                self.procrastinate = ProcrastinateQueue(
+                    ctx.db.url, self.finalizer, deliverer=self.deliverer
+                )
                 ctx.queue = self.procrastinate
+                webhook_queue = self.procrastinate
             else:
                 ctx.queue = InlineFinalizeQueue(self.finalizer)
+        self.webhook_queue: WebhookQueue = webhook_queue or InlineWebhookQueue(self.deliverer)
+        self.webhooks = WebhookRelay(ctx, self.webhook_queue)
         self.dispatcher = Dispatcher(ctx, executor)
         self.reconciler = Reconciler(ctx, executor)
         self.ingestor = EventIngestor(ctx)
         self.housekeeper = Housekeeper(ctx)
+        jobs: LifecycleJobs = (
+            ProcrastinateLifecycleJobs(self.procrastinate, ctx)
+            if self.procrastinate is not None
+            else InlineLifecycleJobs(ctx)
+        )
+        self.lifecycle = LifecycleScheduler(ctx, jobs)
         self.stop = asyncio.Event()
 
     async def ensure_catalog(self) -> None:
@@ -77,6 +103,8 @@ class Orchestrator:
             asyncio.create_task(self.reconciler.run_forever(self.stop), name="reconciler"),
             asyncio.create_task(self.ingestor.pump(self.executor.event_source()), name="events"),
             asyncio.create_task(self.housekeeper.run_forever(self.stop), name="housekeeping"),
+            asyncio.create_task(self.webhooks.run_forever(self.stop), name="webhooks"),
+            asyncio.create_task(self.lifecycle.run_forever(self.stop), name="lifecycle"),
         ]
         if self.procrastinate is not None:
             tasks.append(
@@ -96,6 +124,11 @@ class Orchestrator:
                 with contextlib.suppress(asyncio.CancelledError, Exception):
                     await t
             stopper.cancel()
+            if isinstance(self.webhook_queue, InlineWebhookQueue):
+                # let tries in flight record their outcome (a cut-off try is retried later,
+                # but its receiver would see the event twice)
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(self.webhook_queue.drain(), 15)
             if self.procrastinate is not None:
                 await self.procrastinate.close()
             aclose = getattr(self.executor, "aclose", None)

@@ -3,7 +3,11 @@
 Outputs:
 
 * score - ``score.zarr.zip`` (the result ``DataTree``), ``result.json`` (representation, units,
-  output space, issues, metrics), ``ui/summary.arrow`` and ``plots.json``;
+  output space, issues, metrics), ``summary.json`` (the summary as plain tables, which the API
+  inlines in its answer), ``ui/summary.arrow`` and ``plots.json``; forecasts add
+  ``ui/guided/forecast.json`` and counterfactuals ``ui/guided/counterfactual.json`` (M3,
+  :mod:`mapi_runner.worker.guided`), and a forecast's fan chart shows the fitted history
+  with the split line;
 * evaluate - the same plus ``metrics.json`` (a ``MetricsReport``);
 * derive - ``derived.zarr.zip`` (``/derived/<name>``), ``ui/grids/<name>.arrow`` and
   ``result.json``.
@@ -15,6 +19,7 @@ import json
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from mapi_sdk._util import normalise_dataset
 from mapi_sdk.bundle import Bundle, MetricsReport
@@ -23,19 +28,24 @@ from mapi_sdk.errors import PayloadLimitError
 from mapi_sdk.harness import _to_original, score_bundle
 from mapi_sdk.models import ScoreContext
 from mapi_sdk.wire import to_arrow_table, write_arrow_ipc, write_datatree_zip
+from mapi_spec.api import SCORE_SUMMARY_MAX_CELLS, SCORE_SUMMARY_OUTPUT
 from mapi_spec.capabilities import REPRESENTATION_RULES
+from mapi_spec.endpoints import INPUT_INLINE_DATA, INPUT_INLINE_SCENARIO
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.run import INPUT_DATASET, RunnerPhase
 from mapi_spec.spec import ScoreRequest
+from mapi_spec.views import COUNTERFACTUAL_VIEW, FORECAST_VIEW
 
-from mapi_runner.jobs import INPUT_SCENARIO, DeriveJob, EvaluateJob, ScoreJob
+from mapi_runner.jobs import INPUT_HISTORY, INPUT_SCENARIO, DeriveJob, EvaluateJob, ScoreJob
 from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.data import (
     load_bundle,
     load_dataset,
+    load_inline,
     load_side_tables,
     supplied_side_tables,
 )
+from mapi_runner.worker.guided import counterfactual_view, forecast_view
 from mapi_runner.worker.plots import render_for
 
 __all__ = ["run_derive", "run_evaluate", "run_score"]
@@ -52,6 +62,15 @@ def _optional_dataset(ctx: WorkerContext, name: str) -> xr.Dataset | None:
     return load_dataset(ctx, name) if ctx.has_input(name) else None
 
 
+def _payload(ctx: WorkerContext, name: str, inline: str, bundle: Bundle) -> xr.Dataset | None:
+    """A score input: the stored dataset ``name``, else an endpoint call's inline XrJSON
+    (named like the endpoint's canonical input contract; renamed to the dataset's names)."""
+    data = _optional_dataset(ctx, name)
+    if data is None and ctx.has_input(inline):
+        data = load_inline(ctx, inline, bundle.raw_schema, bundle.binding)
+    return data
+
+
 def _result_json(tree: xr.DataTree) -> dict[str, Any]:
     attrs = {str(k): v for k, v in tree.attrs.items()}
     out: dict[str, Any] = {"groups": sorted(n.path for n in tree.subtree if n.path != "/")}
@@ -65,7 +84,103 @@ def _result_json(tree: xr.DataTree) -> dict[str, Any]:
     return out
 
 
-def _write_tree(ctx: WorkerContext, tree: xr.DataTree, extra_plots: list[str]) -> None:
+def _cell(value: Any) -> Any:
+    """A JSON cell: ISO text for dates (just the day at midnight), ``None`` for NaN."""
+    if isinstance(value, np.datetime64 | pd.Timestamp):
+        ts = pd.Timestamp(value)
+        if pd.isna(ts):
+            return None
+        return ts.date().isoformat() if ts == ts.normalize() else ts.isoformat()
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, bytes):
+        return value.decode("utf-8", "replace")
+    if isinstance(value, float) and not np.isfinite(value):
+        return None
+    if isinstance(value, str | int | float | bool) or value is None:
+        return value
+    return str(value)
+
+
+def summary_tables(ds: xr.Dataset, *, max_cells: int = SCORE_SUMMARY_MAX_CELLS) -> dict[str, Any]:
+    """The ``summary`` group (variables with a leading ``stat`` dim) as plain tables: the
+    coordinate columns, then one column per statistic; at most ``max_cells`` cells."""
+    tables: list[dict[str, Any]] = []
+    cells = 0
+    truncated = False
+    for name in sorted(ds.data_vars, key=str):
+        da = ds[name]
+        if "stat" not in da.dims:
+            continue
+        da = da.transpose("stat", ...)
+        dims = [str(d) for d in da.dims if d != "stat"]
+        stats = [str(s) for s in da["stat"].values]
+        labels = [ds[d].values if d in ds.coords else np.arange(da.sizes[d]) for d in dims]
+        values = da.values
+        rows: list[list[Any]] = []
+        for idx in np.ndindex(*[da.sizes[d] for d in dims]):
+            if cells + len(dims) + len(stats) > max_cells:
+                truncated = True
+                break
+            rows.append(
+                [_cell(labels[k][i]) for k, i in enumerate(idx)]
+                + [_cell(v) for v in values[(slice(None), *idx)]]
+            )
+            cells += len(dims) + len(stats)
+        tables.append({"variable": str(name), "columns": [*dims, *stats], "rows": rows})
+        if truncated:
+            break
+    return {"tables": tables, "truncated": truncated}
+
+
+_FULL_GROUPS = ("/predictions", "/baseline/predictions", "/delta/predictions")
+
+
+def _without_full(tree: xr.DataTree) -> xr.DataTree:
+    """``tree`` without the full-representation groups scored only for the guided views."""
+    return xr.DataTree.from_dict(
+        {
+            node.path: node.to_dataset(inherit=False)
+            for node in tree.subtree
+            if node.path not in _FULL_GROUPS
+        }
+    )
+
+
+def _guided_views(
+    ctx: WorkerContext,
+    bundle: Bundle,
+    tree: xr.DataTree,
+    request: ScoreRequest,
+    tables: dict[str, xr.Dataset],
+) -> list[xr.DataTree]:
+    """Write the guided view of a forecast/counterfactual; returns extra plot inputs."""
+    try:
+        if request.mode == "forecast":
+            got = forecast_view(bundle, tree, request, registry=ctx.registry, tables=tables)
+            if got is None:
+                return []
+            view, plot_tree = got
+            ctx.write_json(FORECAST_VIEW, view.model_dump(mode="json", exclude_none=True))
+            return [plot_tree]
+        cf = counterfactual_view(bundle, tree, request)
+        if cf is not None:
+            ctx.write_json(COUNTERFACTUAL_VIEW, cf.model_dump(mode="json", exclude_none=True))
+    except (ValueError, KeyError, MapiError) as exc:  # a view never fails the score
+        ctx.warning(
+            "VIEW_FAILED",
+            f"the guided {request.mode} view could not be written",
+            untrusted_text=f"{type(exc).__name__}: {exc}"[:8000],
+        )
+    return []
+
+
+def _write_tree(
+    ctx: WorkerContext,
+    tree: xr.DataTree,
+    extra_plots: list[str],
+    plot_trees: list[xr.DataTree] | None = None,
+) -> None:
     raw = write_datatree_zip(tree)
     assert raw is not None
     ctx.write_output("score.zarr.zip", raw)
@@ -73,21 +188,24 @@ def _write_tree(ctx: WorkerContext, tree: xr.DataTree, extra_plots: list[str]) -
     if "summary" in tree:
         node = tree["summary"]
         assert isinstance(node, xr.DataTree)
+        ctx.write_json(SCORE_SUMMARY_OUTPUT, summary_tables(node.to_dataset()))
         try:
             ctx.write_output("ui/summary.arrow", write_arrow_ipc(to_arrow_table(node.to_dataset())))
         except PayloadLimitError as exc:
             ctx.warning("VIEW_TOO_LARGE", f"the summary view was not written: {exc.detail}")
     ctx.state(RunnerPhase.PLOTS, "rendering plots")
-    ctx.write_json("plots.json", render_for(ctx, extra_plots, [tree]))
+    ctx.write_json("plots.json", render_for(ctx, extra_plots, [*(plot_trees or []), tree]))
 
 
 def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
     ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the bundle and the payload")
     bundle = load_bundle(ctx)
-    data = _optional_dataset(ctx, INPUT_DATASET)
-    scenario = _optional_dataset(ctx, INPUT_SCENARIO)
+    data = _payload(ctx, INPUT_DATASET, INPUT_INLINE_DATA, bundle)
+    scenario = _payload(ctx, INPUT_SCENARIO, INPUT_INLINE_SCENARIO, bundle)
+    history = _optional_dataset(ctx, INPUT_HISTORY)
     tables = load_side_tables(ctx)
     ctx.state(RunnerPhase.SCORE, f"scoring ({job.request.mode})")
+    guided = job.request.mode in ("forecast", "counterfactual")
     tree = score_bundle(
         bundle,
         job.request,
@@ -97,9 +215,15 @@ def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
         registry=ctx.registry,
         max_draws=job.max_draws,
         hooks=ctx.fit_hooks(),
+        return_full=guided,
+        history=history,
     )
+    plot_trees: list[xr.DataTree] = []
+    if guided:
+        plot_trees = _guided_views(ctx, bundle, tree, job.request, tables)
+        tree = _without_full(tree)
     plots = job.plots if job.plots is not None else _DEFAULT_PLOTS.get(job.request.mode, [])
-    _write_tree(ctx, tree, plots)
+    _write_tree(ctx, tree, plots, plot_trees)
     return tree
 
 

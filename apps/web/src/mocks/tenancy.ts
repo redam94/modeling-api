@@ -104,6 +104,17 @@ export function setMockPersona(id: string | null): void {
   }
 }
 
+/** Projects locked to Guided mode (`Project.guided_locked`): localStorage `mapi.mock.guidedLocked`, comma separated. */
+export const MOCK_GUIDED_LOCK_KEY = "mapi.mock.guidedLocked";
+
+export function mockGuidedLocked(): Set<string> {
+  try {
+    return new Set((localStorage.getItem(MOCK_GUIDED_LOCK_KEY) ?? "").split(",").map((s) => s.trim()).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
 /** The mock session's CSRF token (what `/auth/session` hands out for this persona). */
 export function mockCsrfToken(p: Pick<Persona, "id">): string {
   return `csrf-${p.id}`;
@@ -176,6 +187,26 @@ export function createTenancyState(): TenancyState {
     ["auth.login", { resource_kind: "tenant", resource_id: "acme" }],
     ["kill_switch.update", { operator: true, tenant_id: null, project_id: null, resource_kind: "kill_switch", resource_id: null }],
     ["auth.login_failed", { outcome: "denied", code: "UNAUTHENTICATED", actor_id: null, resource_kind: "tenant" }],
+    [
+      "endpoint.promote_override",
+      {
+        resource_kind: "endpoint",
+        resource_id: "ep_01jaf3e1n2d3p4o5i6n7t8a9b0",
+        details: { alias: "geo-mmm-prod", revision: 3, model_version_id: "mv_01jaf3c1d2e3f4g5h6j7k8m9n0", gate: "needs_override", reason: "Coverage is fine on the last quarter; refit scheduled", failing_checks: ["holdout.coverage"] },
+      },
+    ],
+    [
+      "endpoint.promote",
+      {
+        outcome: "denied",
+        code: "PROMOTION_BLOCKED",
+        tenant_id: "globex",
+        project_id: "sandbox",
+        resource_kind: "endpoint",
+        resource_id: null,
+        details: { alias: "churn-prod", model_version_id: "mv_01jaf3g1h2j3k4m5n6p7q8r9s0", gate: "blocked", failing_checks: ["convergence.rhat", "holdout.mape"] },
+      },
+    ],
     ["token.auth_failed", { outcome: "denied", code: "UNAUTHENTICATED", actor_kind: "token", resource_kind: "token" }],
   ];
   return {
@@ -551,7 +582,11 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
       return p ? HttpResponse.json(meFor(p, state)) : UNAUTH();
     }),
     http.get(`${API}/v1/tenants/:tenant/projects`, ({ params }) =>
-      page([...state.projects.values()].filter((x) => x.tenant_id === params.tenant).map((x) => ({ ...x }))),
+      page(
+        [...state.projects.values()]
+          .filter((x) => x.tenant_id === params.tenant)
+          .map((x) => ({ ...x, guided_locked: mockGuidedLocked().has(`${x.tenant_id}/${x.id}`) })),
+      ),
     ),
     http.post(`${API}/v1/tenants/:tenant/projects`, async ({ params, request }) => {
       const p = persona()!;
@@ -564,6 +599,27 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
       state.projects.set(key, created);
       PROJECT_NAMES[key] = body.name;
       return HttpResponse.json(created, { status: 201 });
+    }),
+    http.patch(`${API}/v1/tenants/:tenant/projects/:project`, async ({ params, request }) => {
+      const p = persona()!;
+      const key = `${String(params.tenant)}/${String(params.project)}`;
+      const row = state.projects.get(key);
+      if (!row) return problem(404, "NOT_FOUND", "Not found", "no such project");
+      if (rank(projectRole(p, key)) < rank("admin")) return problem(403, "FORBIDDEN", "Not allowed", "only project admins change a project");
+      const body = (await request.json()) as { name?: string | null; description?: string | null; guided_locked?: boolean | null };
+      const next = { ...row, ...(body.name ? { name: body.name } : {}), ...("description" in body ? { description: body.description ?? null } : {}) };
+      state.projects.set(key, next);
+      if (typeof body.guided_locked === "boolean") {
+        const locked = mockGuidedLocked();
+        if (body.guided_locked) locked.add(key);
+        else locked.delete(key);
+        try {
+          localStorage.setItem(MOCK_GUIDED_LOCK_KEY, [...locked].join(","));
+        } catch {
+          // storage unavailable: the lock lasts for this response only
+        }
+      }
+      return HttpResponse.json({ ...next, guided_locked: mockGuidedLocked().has(key) });
     }),
 
     // ------------------------------------------------------------------ members

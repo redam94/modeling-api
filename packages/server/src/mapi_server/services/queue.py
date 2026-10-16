@@ -5,6 +5,12 @@ the ``finalize_run`` task runs :meth:`Finalizer.finalize` with retries (storage 
 serialised per run by a procrastinate ``lock``. Jobs a dead worker left in ``doing`` are
 re-queued whenever the reconciler re-defers the run. :class:`InlineFinalizeQueue` runs the same
 finalizer in-process (single-process ``dev`` mode and tests).
+
+Webhook deliveries (M3) run on the ``webhooks`` queue: the relay
+(:class:`~mapi_server.services.webhooks.delivery.WebhookRelay`) defers one
+``deliver_webhook`` job per due try, de-duplicated by a queueing lock per delivery and
+attempt. Retries are scheduled in the delivery row (``next_attempt_at``), not by
+procrastinate, so a lost job is simply deferred again by the next relay pass.
 """
 
 from __future__ import annotations
@@ -12,7 +18,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import procrastinate
 from procrastinate import RetryStrategy
@@ -20,11 +26,15 @@ from procrastinate.exceptions import AlreadyEnqueued
 
 from mapi_server.services.finalizer import Finalizer
 
-__all__ = ["FINALIZE_QUEUE", "InlineFinalizeQueue", "ProcrastinateQueue"]
+if TYPE_CHECKING:
+    from mapi_server.services.webhooks.delivery import WebhookDeliverer
+
+__all__ = ["FINALIZE_QUEUE", "WEBHOOK_QUEUE", "InlineFinalizeQueue", "ProcrastinateQueue"]
 
 log = logging.getLogger(__name__)
 
 FINALIZE_QUEUE = "finalize"
+WEBHOOK_QUEUE = "webhooks"
 STALLED_WORKER_S = 30.0
 """A worker that missed heartbeats this long is dead (procrastinate's own default)."""
 
@@ -32,8 +42,15 @@ STALLED_WORKER_S = 30.0
 class ProcrastinateQueue:
     """Defers ``finalize_run`` jobs and runs the procrastinate worker."""
 
-    def __init__(self, conninfo: str, finalizer: Finalizer) -> None:
+    def __init__(
+        self,
+        conninfo: str,
+        finalizer: Finalizer,
+        *,
+        deliverer: WebhookDeliverer | None = None,
+    ) -> None:
         self._finalizer = finalizer
+        self._deliverer = deliverer
         self.app = procrastinate.App(
             connector=procrastinate.PsycopgConnector(conninfo=conninfo, min_size=1, max_size=4)
         )
@@ -49,7 +66,25 @@ class ProcrastinateQueue:
             log.info("finalized %s/%s → %s", run_id, attempt, state)
 
         self._task: Any = finalize_run
+
+        @self.app.task(
+            name="mapi.deliver_webhook",
+            queue=WEBHOOK_QUEUE,
+            pass_context=False,
+        )
+        async def deliver_webhook(delivery_id: str, attempt: int) -> None:
+            if self._deliverer is None:  # pragma: no cover - a worker without webhooks
+                raise RuntimeError("this worker does not deliver webhooks")
+            outcome = await self._deliverer.deliver(delivery_id)
+            log.debug("webhook delivery %s/%s → %s", delivery_id, attempt, outcome)
+
+        self._deliver_task: Any = deliver_webhook
         self._opened = False
+        self.queues: list[str] = [FINALIZE_QUEUE] + (
+            [WEBHOOK_QUEUE] if deliverer is not None else []
+        )
+        """Queues the worker serves (finalize, webhooks with a deliverer; other components add
+        theirs, e.g. ``lifecycle``)."""
 
     async def open(self) -> None:
         if not self._opened:
@@ -102,11 +137,20 @@ class ProcrastinateQueue:
                 run_id=run_id, attempt=attempt
             )
 
+    async def defer_delivery(self, delivery_id: str, attempt: int) -> None:
+        """Hand one webhook delivery try to the worker (once per delivery and attempt)."""
+        await self.open()
+        lock = f"webhook:{delivery_id}:{attempt}"
+        with contextlib.suppress(AlreadyEnqueued):
+            await self._deliver_task.configure(queueing_lock=lock).defer_async(
+                delivery_id=delivery_id, attempt=attempt
+            )
+
     async def run_worker(self, *, wait: bool = True) -> None:
-        """Run the procrastinate worker on the finalize queue (``wait=False`` drains once)."""
+        """Run the procrastinate worker on :attr:`queues` (``wait=False`` drains once)."""
         await self.open()
         await self.app.run_worker_async(
-            queues=[FINALIZE_QUEUE],
+            queues=list(self.queues),
             wait=wait,
             concurrency=4,
             install_signal_handlers=False,

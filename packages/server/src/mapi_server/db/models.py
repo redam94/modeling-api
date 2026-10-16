@@ -24,6 +24,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     func,
     text,
 )
@@ -40,6 +41,9 @@ __all__ = [
     "CostLedgerEntry",
     "Dataset",
     "DatasetVersion",
+    "Endpoint",
+    "EndpointRevision",
+    "EndpointRun",
     "ExecutorReport",
     "IdempotencyKey",
     "LoginTransactionRow",
@@ -48,6 +52,7 @@ __all__ = [
     "ModelVersion",
     "PlatformSetting",
     "Plot",
+    "PlotEmbed",
     "Project",
     "QuotaPolicy",
     "RateCounter",
@@ -56,12 +61,20 @@ __all__ = [
     "RunEvent",
     "RunLog",
     "RunProgress",
+    "SavedPlot",
+    "Signup",
     "Spec",
     "SpecRevision",
     "Tenant",
+    "TenantDeletion",
+    "TenantExport",
+    "TenantVerification",
     "Upload",
     "User",
     "WebSession",
+    "Webhook",
+    "WebhookDelivery",
+    "WebhookEvent",
 ]
 
 TENANT_TABLES: tuple[str, ...] = (
@@ -84,6 +97,18 @@ TENANT_TABLES: tuple[str, ...] = (
     "idempotency_keys",
     "audit_events",
     "cost_ledger",
+    "endpoints",
+    "endpoint_revisions",
+    "endpoint_runs",
+    "webhooks",
+    "webhook_events",
+    "webhook_deliveries",
+    "saved_plots",
+    "plot_embeds",
+    # M3 trust lifecycle (0010_trust_lifecycle)
+    "tenant_verifications",
+    "tenant_deletions",
+    "tenant_exports",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -98,6 +123,7 @@ GLOBAL_TABLES: tuple[str, ...] = (
     "rate_counters",
     "executor_reports",
     "catalogs",
+    "signups",
 )
 """Platform tables without a tenant: only the platform role writes them; the request-path
 role may read ``catalogs``, ``quota_policies`` and ``platform_settings``."""
@@ -169,6 +195,8 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    # M3 persona lock (0007_guided): non-admins see and write Guided specs only
+    guided_locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     __table_args__ = (CheckConstraint("project_id = id", name="project_id_is_id"),)
 
@@ -366,6 +394,8 @@ class DatasetVersion(_Scoped, Base):
     message: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
     ready_at: Mapped[datetime | None] = mapped_column()
+    # columns.json of the ingest run (0007_guided): ColumnProfile per uploaded column
+    columns: Mapped[list[Any] | None] = mapped_column(JSONB)
 
     __table_args__ = (
         CheckConstraint("status in ('ingesting','ready','failed')", name="status"),
@@ -618,6 +648,77 @@ class Plot(_Scoped, Base):
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
 
 
+class SavedPlot(_Scoped, Base):
+    """A saved plot (``POST /v1/plots``, M3): a model version's plot or a user-authored spec.
+
+    ``spec`` is the sanitized PlotSpec at save time (sanitized again on every read). A plot
+    saved from a model version keeps ``model_version_id``: its ``data_ref`` datasets are
+    bundle objects of that version, verified against the signed manifest when used.
+    """
+
+    __tablename__ = "saved_plots"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str | None] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(String(16))
+    source_kind: Mapped[str] = mapped_column(String(16))
+    model_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("model_versions.id", ondelete="CASCADE")
+    )
+    source: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # ModelPlotRef JSON
+    recipe: Mapped[str | None] = mapped_column(String(128))
+    provenance: Mapped[str] = mapped_column(String(16))
+    spec: Mapped[dict[str, Any]] = mapped_column()
+    created_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column()
+    updated_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("source_kind in ('model_plot','spec')", name="source_kind"),
+        CheckConstraint("provenance in ('recipe','plugin','author')", name="provenance"),
+        CheckConstraint("kind in ('vega-lite','plotly')", name="kind"),
+        Index("ix_saved_plots_project", "tenant_id", "project_id", "id"),
+    )
+
+
+class PlotEmbed(_Scoped, Base):
+    """A tokenised read-only link to a saved plot. Only ``token_hash`` (HMAC-SHA256 under the
+    server pepper) is stored; ``image`` is the static PNG fallback once copied out of the
+    render run's scratch (``{bucket, name, generation}``)."""
+
+    __tablename__ = "plot_embeds"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    plot_id: Mapped[str] = mapped_column(ForeignKey("saved_plots.id", ondelete="CASCADE"))
+    label: Mapped[str | None] = mapped_column(String(200))
+    token_hash: Mapped[str] = mapped_column(String(80), unique=True)
+    display: Mapped[str] = mapped_column(String(16))
+    allowed_origins: Mapped[list[Any]] = mapped_column(default=list)
+    views: Mapped[int] = mapped_column(BigInteger, default=0)
+    last_viewed_at: Mapped[datetime | None] = mapped_column()
+    render_run_id: Mapped[str | None] = mapped_column(String(64))
+    image: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    created_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column()
+    expires_at: Mapped[datetime] = mapped_column()
+    revoked_at: Mapped[datetime | None] = mapped_column()
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        Index("ix_plot_embeds_plot", "tenant_id", "project_id", "plot_id"),
+    )
+
+
 # ===================================================================== catalogs
 
 
@@ -791,3 +892,305 @@ class ExecutorReport(Base):
     message: Mapped[str | None] = mapped_column(String(500))
     disabled_reason: Mapped[str | None] = mapped_column(String(500))
     """Why an operator disabled it (``enabled`` is the operator's, never the report's)."""
+
+
+# ======================================================================= endpoints (M3)
+
+
+class Endpoint(_Scoped, Base):
+    """A stable alias (``endpoint://project/alias``) for the model version it serves now.
+
+    ``revision`` increases with every promotion and rollback (:class:`EndpointRevision`);
+    ``schema_snapshot`` is the promoted version's input contract (what callers send) and
+    ``gate`` the promotion gate's decision for it (:mod:`mapi_spec.endpoints`)."""
+
+    __tablename__ = "endpoints"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    alias: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str | None] = mapped_column(Text)
+    model_id: Mapped[str] = mapped_column(String(64))
+    model_version_id: Mapped[str] = mapped_column(ForeignKey("model_versions.id"))
+    revision: Mapped[int] = mapped_column(Integer)
+    evaluation_policy: Mapped[dict[str, Any]] = mapped_column()
+    schema_snapshot: Mapped[dict[str, Any]] = mapped_column()
+    gate: Mapped[dict[str, Any]] = mapped_column()
+    overridden: Mapped[bool] = mapped_column(Boolean, default=False)
+    promoted_by: Mapped[str | None] = mapped_column(String(128))
+    promoted_at: Mapped[datetime] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("tenant_id", "project_id", "alias"),
+        CheckConstraint("revision >= 1", name="revision"),
+    )
+
+
+class EndpointRevision(_Scoped, Base):
+    """One promotion or rollback of an endpoint (append-only for the request-path role)."""
+
+    __tablename__ = "endpoint_revisions"
+
+    endpoint_id: Mapped[str] = mapped_column(
+        ForeignKey("endpoints.id", ondelete="CASCADE"), primary_key=True
+    )
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    alias: Mapped[str] = mapped_column(String(128))
+    action: Mapped[str] = mapped_column(String(16))
+    model_version_id: Mapped[str] = mapped_column(String(64))
+    model_ref: Mapped[str] = mapped_column(String(300))
+    previous_model_version_id: Mapped[str | None] = mapped_column(String(64))
+    gate: Mapped[dict[str, Any]] = mapped_column()
+    overridden: Mapped[bool] = mapped_column(Boolean, default=False)
+    reason: Mapped[str | None] = mapped_column(String(1000))
+    actor_id: Mapped[str | None] = mapped_column(String(128))
+    token_id: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (CheckConstraint("action in ('promote','rollback')", name="action"),)
+
+
+class EndpointRun(_Scoped, Base):
+    """Which endpoint (and revision) a score run was submitted through (webhooks, usage)."""
+
+    __tablename__ = "endpoint_runs"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), primary_key=True)
+    endpoint_id: Mapped[str] = mapped_column(String(64))
+    alias: Mapped[str] = mapped_column(String(128))
+    revision: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (Index("ix_endpoint_runs_endpoint", "endpoint_id", "created_at"),)
+
+
+# ======================================================================== webhooks (M3)
+
+
+class Webhook(_Scoped, Base):
+    """An outgoing webhook. The signing secret is stored sealed (AES-GCM under a key derived
+    from the server secret, bound to the webhook id) and never returned after creation."""
+
+    __tablename__ = "webhooks"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    url: Mapped[str] = mapped_column(String(2048))
+    events: Mapped[list[Any]] = mapped_column()
+    description: Mapped[str | None] = mapped_column(String(500))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    secret_sealed: Mapped[str] = mapped_column(Text)
+    secret_hint: Mapped[str] = mapped_column(String(16))
+    previous_secret_sealed: Mapped[str | None] = mapped_column(Text)
+    previous_secret_expires_at: Mapped[datetime | None] = mapped_column()
+    failure_count: Mapped[int] = mapped_column(Integer, default=0)
+    disabled_reason: Mapped[str | None] = mapped_column(String(500))
+    last_delivery_at: Mapped[datetime | None] = mapped_column()
+    last_success_at: Mapped[datetime | None] = mapped_column()
+    created_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        Index("ix_webhooks_scope", "tenant_id", "project_id", "active"),
+        CheckConstraint("failure_count >= 0", name="failure_count"),
+    )
+
+
+class WebhookEvent(Base):
+    """The transactional outbox: one event, written in the transaction that caused it.
+    ``envelope`` is the :class:`mapi_spec.webhooks.WebhookEnvelope` JSON every delivery of it
+    sends. ``project_id`` is NULL for tenant-wide events."""
+
+    __tablename__ = "webhook_events"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"))
+    project_id: Mapped[str | None] = mapped_column(String(64))
+    type: Mapped[str] = mapped_column(String(64))
+    envelope: Mapped[dict[str, Any]] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (Index("ix_webhook_events_tenant_time", "tenant_id", "created_at"),)
+
+
+class WebhookDelivery(_Scoped, Base):
+    """One event's delivery chain to one webhook (``attempt`` is the latest or next try).
+
+    ``pending``/``retrying`` rows are due at ``next_attempt_at``; ``lease_until`` marks a try
+    in flight (the relay skips it until the lease runs out)."""
+
+    __tablename__ = "webhook_deliveries"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    webhook_id: Mapped[str] = mapped_column(ForeignKey("webhooks.id", ondelete="CASCADE"))
+    event_id: Mapped[str] = mapped_column(ForeignKey("webhook_events.id", ondelete="CASCADE"))
+    event_type: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(16))
+    attempt: Mapped[int] = mapped_column(Integer, default=1)
+    response_code: Mapped[int | None] = mapped_column(Integer)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    error: Mapped[str | None] = mapped_column(String(500))
+    response_excerpt: Mapped[str | None] = mapped_column(String(1024))
+    next_attempt_at: Mapped[datetime | None] = mapped_column()
+    lease_until: Mapped[datetime | None] = mapped_column()
+    replay_of: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column()
+    updated_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('pending','succeeded','retrying','failed','blocked')", name="status"
+        ),
+        CheckConstraint("attempt >= 1", name="attempt"),
+        Index("ix_webhook_deliveries_due", "status", "next_attempt_at"),
+        Index("ix_webhook_deliveries_webhook", "webhook_id", "created_at"),
+    )
+
+
+# ================================================================= trust lifecycle (M3)
+
+
+class Signup(Base):
+    """A self-service sign-up (``POST /auth/signup``) and its e-mail verification.
+
+    Global: the tenant does not exist until the address is verified. ``token_hash`` is the
+    keyed digest of the single-use verification token (never the token); ``ip_hash`` and
+    ``device_hash`` are keyed digests of the client address and of the browser's device
+    cookie, used by the rate limits and the Sybil heuristics. The API reads and writes it
+    as the gateway role; operators review it (``GET /v1/admin/signups``).
+    """
+
+    __tablename__ = "signups"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    email: Mapped[str] = mapped_column(String(320))
+    email_domain: Mapped[str] = mapped_column(String(255))
+    name: Mapped[str] = mapped_column(String(200))
+    organisation: Mapped[str | None] = mapped_column(String(200))
+    terms_version: Mapped[str] = mapped_column(String(32))
+    token_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
+    state: Mapped[str] = mapped_column(String(16), default="pending")
+    review: Mapped[str] = mapped_column(String(16), default="none", server_default="none")
+    flags: Mapped[list[Any]] = mapped_column(default=list)
+    ip_hash: Mapped[str | None] = mapped_column(String(64))
+    device_hash: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column()
+    expires_at: Mapped[datetime] = mapped_column()
+    verified_at: Mapped[datetime | None] = mapped_column()
+    user_id: Mapped[str | None] = mapped_column(String(64))
+    created_tenant_id: Mapped[str | None] = mapped_column(String(64))
+    reviewed_by: Mapped[str | None] = mapped_column(String(128))
+    reviewed_at: Mapped[datetime | None] = mapped_column()
+    review_reason: Mapped[str | None] = mapped_column(String(500))
+
+    __table_args__ = (
+        CheckConstraint("state in ('pending','verified','expired')", name="state"),
+        CheckConstraint("review in ('none','flagged','approved','rejected')", name="review"),
+        Index("ix_signups_ip", "ip_hash", "created_at"),
+        Index("ix_signups_device", "device_hash", "created_at"),
+        Index("ix_signups_domain", "email_domain", "created_at"),
+        Index("ix_signups_email", text("lower(email)")),
+        Index("ix_signups_review", "review", "created_at"),
+        Index("ix_signups_tenant", "created_tenant_id"),
+    )
+
+
+class TenantVerification(Base):
+    """E-mail and identity verification of a tenant (plan §9 "Compute abuse"). The
+    request-path role may only read it; operators change it through the gateway role."""
+
+    __tablename__ = "tenant_verifications"
+
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    email_verified_at: Mapped[datetime | None] = mapped_column()
+    identity_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    method: Mapped[str] = mapped_column(String(16), default="none")
+    verified_at: Mapped[datetime | None] = mapped_column()
+    verified_by: Mapped[str | None] = mapped_column(String(128))
+    reason: Mapped[str | None] = mapped_column(String(500))
+    provider_reference: Mapped[str | None] = mapped_column(String(200))
+    updated_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (
+        CheckConstraint("method in ('none','email','card','document','manual')", name="method"),
+    )
+
+
+class TenantDeletion(Base):
+    """A tenant deletion: grace period, purge progress per store, objects a retention lock
+    still holds. Kept after the purge (it is the deletion's own, content-free record)."""
+
+    __tablename__ = "tenant_deletions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id"))
+    state: Mapped[str] = mapped_column(String(16))
+    previous_status: Mapped[str] = mapped_column(String(16))
+    reason: Mapped[str | None] = mapped_column(String(1000))
+    requested_by: Mapped[str | None] = mapped_column(String(128))
+    requested_at: Mapped[datetime] = mapped_column()
+    purge_after: Mapped[datetime] = mapped_column()
+    started_at: Mapped[datetime | None] = mapped_column()
+    completed_at: Mapped[datetime | None] = mapped_column()
+    cancelled_at: Mapped[datetime | None] = mapped_column()
+    stores: Mapped[list[Any]] = mapped_column(default=list)
+    retained_objects: Mapped[list[Any]] = mapped_column(default=list)
+    notify: Mapped[list[Any]] = mapped_column(default=list)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_attempt_at: Mapped[datetime | None] = mapped_column()
+    last_error: Mapped[str | None] = mapped_column(String(500))
+
+    __table_args__ = (
+        CheckConstraint(
+            "state in ('scheduled','cancelled','deleting','purged','failed')", name="state"
+        ),
+        Index(
+            "uq_tenant_deletions_open",
+            "tenant_id",
+            unique=True,
+            postgresql_where=text("state in ('scheduled','deleting','failed')"),
+        ),
+        Index("ix_tenant_deletions_due", "state", "next_attempt_at"),
+    )
+
+
+class TenantExport(Base):
+    """A GDPR export job and the archive it produced (``t/{tenant}/exports/`` in the data
+    bucket, deleted when it expires)."""
+
+    __tablename__ = "tenant_exports"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"))
+    state: Mapped[str] = mapped_column(String(16), default="queued")
+    include: Mapped[list[Any]] = mapped_column(default=list)
+    requested_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column()
+    started_at: Mapped[datetime | None] = mapped_column()
+    ready_at: Mapped[datetime | None] = mapped_column()
+    expires_at: Mapped[datetime | None] = mapped_column()
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    sha256: Mapped[str | None] = mapped_column(String(71))
+    bucket: Mapped[str | None] = mapped_column(String(63))
+    object_name: Mapped[str | None] = mapped_column(String(1024))
+    error: Mapped[str | None] = mapped_column(String(500))
+
+    __table_args__ = (
+        CheckConstraint("state in ('queued','running','ready','expired','failed')", name="state"),
+        Index("ix_tenant_exports_tenant", "tenant_id", "created_at"),
+        Index("ix_tenant_exports_state", "state"),
+    )

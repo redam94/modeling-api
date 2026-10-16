@@ -19,6 +19,7 @@ from mapi_gcs_shim.app import ShimApp
 from mapi_gcs_shim.backend import FsBackend
 from mapi_gcs_shim.config import (
     PRINCIPAL_CONTROL,
+    WRITE_ONCE_RETENTION_SECONDS,
     ShimConfig,
     ShimCredentials,
     init_root,
@@ -43,13 +44,15 @@ def build_app(
     clock: Callable[[], datetime] | None = None,
     cors_origins: Sequence[str] = (),
     allowed_hosts: Sequence[str] = (),
+    bundle_retention_seconds: int | None = WRITE_ONCE_RETENTION_SECONDS,
 ) -> ShimApp:
     """Initialise ``root`` (config, keys, buckets) and return the ASGI app.
 
     The caller owns ``app.backend`` and must ``close()`` it to release the root lock.
+    ``bundle_retention_seconds`` applies when the root is created (see :func:`init_root`).
     """
     root = Path(root)
-    config = init_root(root, env=env)
+    config = init_root(root, env=env, bundle_retention_seconds=bundle_retention_seconds)
     write_key_files(root, config, endpoint=endpoint)
     backend = FsBackend(root)
     try:
@@ -104,6 +107,7 @@ def serve(
     on_ready: Callable[[str], None] | None = None,
     cors_origins: Sequence[str] = (),
     allowed_hosts: Sequence[str] = (),
+    bundle_retention_seconds: int | None = WRITE_ONCE_RETENTION_SECONDS,
 ) -> None:
     """Serve until interrupted (SIGINT/SIGTERM), then shut down gracefully and return."""
     import uvicorn
@@ -117,6 +121,7 @@ def serve(
         sweep_interval=sweep_interval,
         cors_origins=cors_origins,
         allowed_hosts=allowed_hosts,
+        bundle_retention_seconds=bundle_retention_seconds,
     )
 
     # uvicorn handles SIGINT/SIGTERM itself during run() and re-raises the signal after its

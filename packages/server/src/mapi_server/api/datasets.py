@@ -28,6 +28,7 @@ from mapi_spec.api import (
 from mapi_spec.audit import AuditAction
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError
+from mapi_spec.jobs import INGEST_COLUMNS
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.schema import DataSchema
 from mapi_spec.storage import DATASET_OBJECTS, NotFound, SignedPut, quarantine_key
@@ -49,7 +50,7 @@ from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError, ProblemWithHeaders
 from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import artifact_link
-from mapi_server.services.quotas import admit_storage
+from mapi_server.services.quotas import admit_storage, charge_egress
 from mapi_server.services.runs import now
 from mapi_server.services.submit import submit_ingest
 
@@ -59,7 +60,7 @@ router = APIRouter(prefix="/v1/datasets", tags=["datasets"])
 
 UPLOAD_TTL = timedelta(hours=1)
 MAX_UPLOAD_BYTES = RESOURCE_CLASSES[ResourceClass.L].max_dataset_bytes
-ARTIFACT_NAMES = (*DATASET_OBJECTS, "summary.json")
+ARTIFACT_NAMES = (*DATASET_OBJECTS, "summary.json", INGEST_COLUMNS)
 DatasetId = Annotated[str, Path(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$")]
 
 
@@ -371,6 +372,7 @@ async def _artifact(
         key=obj["name"],
         generation=int(obj["generation"]),
     )
+    await charge_egress(ctx, dv.tenant_id, link.size or 0)
     if audit and ctx.request is not None:  # a signed download URL left the API
         await write_audit(
             ctx.db,
@@ -401,7 +403,7 @@ async def get_dataset_artifact(
     name: str,
 ) -> ArtifactLink:
     """Signed, generation-pinned URL for ``data.zarr.zip``/``schema.json``/``profile.json``/
-    ``preview.json`` (15 min, HTTP Range works)."""
+    ``preview.json``/``summary.json``/``columns.json`` (15 min, HTTP Range works)."""
     return await _artifact(ctx, session, dataset_id, version, name, audit=True)
 
 

@@ -1,5 +1,7 @@
-"""Pure-Pydantic contracts for modeling-api (specs, schemas, manifests, plot envelopes, and
-the multi-tenant control-plane contracts: tenancy, tokens, quotas, cost, audit, admin).
+"""Pure-Pydantic contracts for modeling-api (specs, schemas, manifests, plot envelopes, the
+multi-tenant control-plane contracts: tenancy, tokens, quotas, cost, audit, admin, and the M3
+guided-mode and integration contracts: templates, calibration, what-if, scorecard and
+promotion gate, endpoints, snippets, webhooks, plot sharing and the trust lifecycle).
 
 This package never imports numpy, xarray or pandas: the control plane depends on it and
 must stay JSON-only. Public names are re-exported here; see the submodules for details.
@@ -9,6 +11,14 @@ from importlib import metadata as _metadata
 
 from mapi_spec.admin import ExecutorHealth, KillSwitches, kill_switch_decision
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome
+from mapi_spec.calibration import (
+    BusinessPriors,
+    Calibration,
+    ChannelBelief,
+    LiftTest,
+    PriorTranslationResult,
+    apply_prior_translation,
+)
 from mapi_spec.capabilities import (
     REPRESENTATION_RULES,
     Aggregation,
@@ -49,6 +59,13 @@ from mapi_spec.effects import (
     propagate,
     resolve_effect,
 )
+from mapi_spec.endpoints import (
+    Endpoint,
+    EndpointScoreCall,
+    EvaluationPolicy,
+    example_score_call,
+    schema_breaks,
+)
 from mapi_spec.errors import (
     ERROR_INFO,
     ErrorCode,
@@ -59,6 +76,24 @@ from mapi_spec.errors import (
     ValidationFailed,
     http_status,
     json_pointer,
+)
+from mapi_spec.guided import (
+    GUIDED_TEMPLATES,
+    ColumnProfile,
+    GuidedAnswers,
+    GuidedDraft,
+    GuidedTemplate,
+    build_draft,
+    draft_from_bayesinsight,
+    suggest_roles,
+)
+from mapi_spec.ingest import (
+    BayesInsightModelDef,
+    IngestMapping,
+    IngestPreset,
+    MeridianColumns,
+    MffOptions,
+    WideVarMapping,
 )
 from mapi_spec.jsonschema_export import export_schemas
 from mapi_spec.loader import (
@@ -103,6 +138,18 @@ from mapi_spec.schema import (
     Role,
     VarSpec,
 )
+from mapi_spec.scorecard import (
+    SCORECARD_CHECKS,
+    GateOutcome,
+    PromotionGateDecision,
+    Scorecard,
+    ScorecardItem,
+    authorize_promotion,
+    evaluate_check,
+    promotion_gate,
+)
+from mapi_spec.sharing import PlotEmbed, SavedPlot, embeddable
+from mapi_spec.snippets import Snippet, SnippetContext, SnippetLanguage, render_snippets
 from mapi_spec.spec import (
     API_VERSION,
     CONTRACT_VERSION,
@@ -113,6 +160,7 @@ from mapi_spec.spec import (
     Campaign,
     DataBlock,
     FitConfig,
+    FutureCovariates,
     Horizon,
     Intervention,
     ModelBlock,
@@ -137,6 +185,11 @@ from mapi_spec.tenancy import (
     can,
 )
 from mapi_spec.tokens import ApiToken, ScopeName, generate_token, parse_token, scope_allows
+from mapi_spec.trust import (
+    TenantDeletion,
+    VerificationStatus,
+    uploaded_code_allowed,
+)
 from mapi_spec.validate import (
     ResolvedSpec,
     ScoreMetadata,
@@ -144,11 +197,21 @@ from mapi_spec.validate import (
     validate_score_request,
     validate_spec,
 )
+from mapi_spec.views import ResponseGridView
+from mapi_spec.webhooks import (
+    WebhookEnvelope,
+    WebhookEventType,
+    check_webhook_url,
+    signature_header,
+    verify_signature,
+)
+from mapi_spec.whatif import WhatIfScenario, evaluate_scenario, scenario_score_request
+from mapi_spec.xrjson import XrJsonDataset
 
 try:
     __version__ = _metadata.version("mapi-spec")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.3.0"
+    __version__ = "0.4.0"
 
 __all__ = [
     "API_VERSION",
@@ -156,10 +219,12 @@ __all__ = [
     "DEFAULT_PRICE_TABLE",
     "ERROR_INFO",
     "EXECUTOR_CONFORMANCE",
+    "GUIDED_TEMPLATES",
     "PERMISSIONS",
     "REPRESENTATION_RULES",
     "RESOURCE_CLASSES",
     "SBC",
+    "SCORECARD_CHECKS",
     "Action",
     "Aggregation",
     "AggregationVerdict",
@@ -170,10 +235,15 @@ __all__ = [
     "AuditOutcome",
     "AuthContext",
     "Backtest",
+    "BayesInsightModelDef",
     "Binding",
+    "BusinessPriors",
+    "Calibration",
     "Campaign",
     "Capabilities",
     "Catalog",
+    "ChannelBelief",
+    "ColumnProfile",
     "ConformanceCase",
     "ContextNeed",
     "CoordSummary",
@@ -188,18 +258,31 @@ __all__ = [
     "Diagnostic",
     "DimPolicy",
     "DimSpec",
+    "Endpoint",
     "EndpointRef",
+    "EndpointScoreCall",
     "ErrorCode",
+    "EvaluationPolicy",
     "ExecutorHealth",
     "FitConfig",
+    "FutureCovariates",
+    "GateOutcome",
+    "GuidedAnswers",
+    "GuidedDraft",
+    "GuidedTemplate",
     "Horizon",
+    "IngestMapping",
+    "IngestPreset",
     "InlineArrow",
     "Intervention",
     "Issue",
     "KillSwitches",
+    "LiftTest",
     "Limits",
     "MapiError",
     "Membership",
+    "MeridianColumns",
+    "MffOptions",
     "ModelBlock",
     "ModelCatalogEntry",
     "ModelManifest",
@@ -209,13 +292,16 @@ __all__ = [
     "OutputSelector",
     "PlotBindings",
     "PlotCatalogEntry",
+    "PlotEmbed",
     "PlotProvenance",
     "PlotSpec",
     "PriceTable",
     "Principal",
+    "PriorTranslationResult",
     "PriorityClass",
     "Problem",
     "ProjectRole",
+    "PromotionGateDecision",
     "PropagationResult",
     "QuotaDecision",
     "QuotaLimits",
@@ -227,15 +313,22 @@ __all__ = [
     "ResourceClass",
     "ResourceHint",
     "ResourceKind",
+    "ResponseGridView",
     "Role",
     "RunCost",
+    "SavedPlot",
     "SchemaEffect",
     "ScopeName",
     "ScoreMetadata",
     "ScoreMode",
     "ScoreRequest",
+    "Scorecard",
+    "ScorecardItem",
     "Severity",
     "SideTable",
+    "Snippet",
+    "SnippetContext",
+    "SnippetLanguage",
     "SpecRef",
     "SpecValidation",
     "Stage",
@@ -244,6 +337,7 @@ __all__ = [
     "StepKind",
     "Sweep",
     "Tenant",
+    "TenantDeletion",
     "TenantStatus",
     "TrustTier",
     "UseRef",
@@ -251,17 +345,32 @@ __all__ = [
     "VarDerive",
     "VarPatch",
     "VarSpec",
+    "VerificationStatus",
     "Version",
     "VersionRange",
+    "WebhookEnvelope",
+    "WebhookEventType",
+    "WhatIfScenario",
+    "WideVarMapping",
+    "XrJsonDataset",
     "__version__",
     "apply_effect",
+    "apply_prior_translation",
+    "authorize_promotion",
+    "build_draft",
     "can",
     "can_aggregate",
     "canonical_json",
+    "check_webhook_url",
     "default_summary",
+    "draft_from_bayesinsight",
     "dump_yaml",
+    "embeddable",
     "estimate_cost",
+    "evaluate_check",
     "evaluate_quota",
+    "evaluate_scenario",
+    "example_score_call",
     "expand_sweep",
     "export_schemas",
     "generate_token",
@@ -276,14 +385,22 @@ __all__ = [
     "parse_summary",
     "parse_token",
     "plan_leases",
+    "promotion_gate",
     "propagate",
     "register_upgrader",
+    "render_snippets",
     "resolve_effect",
     "resolve_version",
+    "scenario_score_request",
+    "schema_breaks",
     "scope_allows",
+    "signature_header",
     "spec_hash",
+    "suggest_roles",
     "summary_allowed",
     "upgrade",
+    "uploaded_code_allowed",
     "validate_score_request",
     "validate_spec",
+    "verify_signature",
 ]

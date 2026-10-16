@@ -1,4 +1,5 @@
-"""REST DTOs for the HTTP API (``/v1``; plan §8.2): M1 (v0.2) plus the M2 (v0.3) additions.
+"""REST DTOs for the HTTP API (``/v1``; plan §8.2): M1 (v0.2), M2 (v0.3) and the M3 (v0.4)
+contracts.
 
 Conventions shared by every endpoint (see ``docs/reference/http-api.md``):
 
@@ -11,9 +12,10 @@ Conventions shared by every endpoint (see ``docs/reference/http-api.md``):
   :class:`~mapi_spec.errors.Problem` documents with stable codes.
 * Timestamps are timezone-aware RFC 3339 strings in UTC.
 
-:data:`M1_ENDPOINTS` and :data:`M2_ENDPOINTS` (together :data:`ENDPOINTS`) are the
-machine-readable endpoint tables; the server's route table and the reference docs are tested
-against them. :data:`ROUTE_ACCESS` gives every operation its tenant/project scope and the
+:data:`M1_ENDPOINTS` and :data:`M2_ENDPOINTS` (together :data:`ENDPOINTS`, what v0.3 serves)
+and :data:`M3_ENDPOINTS` (guided mode and integrations) are the machine-readable endpoint
+tables; :data:`ALL_ENDPOINTS` is all three. The server's route table and the reference docs
+are tested against them. :data:`ROUTE_ACCESS` gives every operation its tenant/project scope and the
 permission it checks. From v0.3 every M1 resource is project-scoped: the project comes from
 the path or the ``X-Mapi-Project`` header (:func:`mapi_spec.tenancy.resolve_project_scope`).
 """
@@ -54,17 +56,59 @@ from mapi_spec.admin import (
 )
 from mapi_spec.audit import AuditEvent
 from mapi_spec.auth import PubSubPushEnvelope, SessionInfo
+from mapi_spec.calibration import (
+    PRIORS_POINTER,
+    BusinessPriors,
+    LiftTest,
+    PriorTranslationResult,
+)
 from mapi_spec.capabilities import Capabilities, Diagnostic
 from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
 from mapi_spec.coords import DataSummary
 from mapi_spec.cost import CostTotals, RunCost
+from mapi_spec.endpoints import (
+    Endpoint,
+    EndpointPromote,
+    EndpointRevision,
+    EndpointRollback,
+    EndpointSchema,
+    EndpointScoreCall,
+    EndpointValidation,
+    EvaluationPolicy,
+)
 from mapi_spec.errors import ErrorCode, Issue, Problem
 from mapi_spec.executor import RunEventType, RunKind
+from mapi_spec.guided import (
+    BayesInsightImport,
+    ColumnProfile,
+    DetectRolesRequest,
+    GuidedAnswers,
+    GuidedDraft,
+    GuidedTemplate,
+    RoleSuggestions,
+)
+from mapi_spec.ingest import (
+    DimMapping,
+    IngestMapping,
+    VarMapping,
+    WideVarMapping,
+)
 from mapi_spec.plots import PlotSpec
 from mapi_spec.quotas import QuotaLimitStatus, QuotaPolicy, QuotaPolicyUpsert
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import BundleManifest, ChainProgress, FailureClass, RunnerPhase, RunState
-from mapi_spec.schema import DataSchema, DimSpec, Role
+from mapi_spec.schema import DataSchema
+from mapi_spec.scorecard import PromotionGateDecision, Scorecard, ScorecardItem
+from mapi_spec.sharing import (
+    EmbedView,
+    PlotEmbed,
+    PlotEmbedCreate,
+    PlotEmbedCreated,
+    PlotRenderRequest,
+    SavedPlot,
+    SavedPlotCreate,
+)
+from mapi_spec.snippets import Snippet, SnippetSet
 from mapi_spec.spec import CONTRACT_VERSION, DocumentKind, ScoreRequest
 from mapi_spec.storage import Crc32c, SignedPut
 from mapi_spec.tenancy import (
@@ -82,9 +126,33 @@ from mapi_spec.tenancy import (
     TrustTier,
 )
 from mapi_spec.tokens import ApiToken, TokenCreate, TokenCreated
+from mapi_spec.trust import (
+    EmailVerify,
+    GdprExport,
+    GdprExportRequest,
+    SignupAccepted,
+    SignupRequest,
+    SignupReview,
+    SignupReviewDecision,
+    TenantDeletion,
+    TenantDeletionRequest,
+    VerificationResult,
+    VerificationStatus,
+    VerificationUpdate,
+)
 from mapi_spec.validate import ResolvedSpec
+from mapi_spec.webhooks import (
+    Webhook,
+    WebhookCreate,
+    WebhookCreated,
+    WebhookDelivery,
+    WebhookEnvelope,
+    WebhookUpdate,
+)
+from mapi_spec.whatif import GuidedCompile
 
 __all__ = [
+    "ALL_ENDPOINTS",
     "API_PREFIX",
     "ARTIFACT_LINK_TTL",
     "DEFAULT_PROJECT_ID",
@@ -96,6 +164,7 @@ __all__ = [
     "LAST_EVENT_ID_HEADER",
     "M1_ENDPOINTS",
     "M2_ENDPOINTS",
+    "M3_ENDPOINTS",
     "MAX_PREFER_WAIT_SECONDS",
     "PAGE_LIMIT_DEFAULT",
     "PAGE_LIMIT_MAX",
@@ -104,28 +173,51 @@ __all__ = [
     "PROJECT_HEADER",
     "ROUTE_ACCESS",
     "RUN_CREATE_KINDS",
+    "SCORE_SUMMARY_MAX_BYTES",
+    "SCORE_SUMMARY_MAX_CELLS",
+    "SCORE_SUMMARY_OUTPUT",
     "SSE_HEARTBEAT",
     "SSE_HEARTBEAT_SECONDS",
     "SSE_RETRY_MS",
     "TOKEN_TENANT_ROUTES",
+    "V03_ENDPOINTS",
     "AdminUsageReport",
     "ApiToken",
     "ArtifactLink",
     "AuditEvent",
+    "BayesInsightImport",
     "CatalogResponse",
+    "ColumnProfile",
     "CostTotals",
     "Dataset",
     "DatasetCreate",
     "DatasetVersion",
     "DatasetVersionCreate",
     "DatasetVersionStatus",
+    "DetectRolesRequest",
     "DimMapping",
+    "EmailVerify",
+    "EmbedView",
+    "Endpoint",
     "EndpointDecl",
+    "EndpointPromote",
+    "EndpointRevision",
+    "EndpointRollback",
+    "EndpointSchema",
+    "EndpointScoreCall",
+    "EndpointValidation",
+    "EvaluationPolicy",
     "ExecutorEvidence",
     "ExecutorEvidenceUpdate",
     "ExecutorHealth",
     "ExecutorUpdate",
+    "GdprExport",
+    "GdprExportRequest",
     "GlobalSpend",
+    "GuidedAnswers",
+    "GuidedCompile",
+    "GuidedDraft",
+    "GuidedTemplate",
     "Health",
     "HealthCheck",
     "IngestMapping",
@@ -143,17 +235,26 @@ __all__ = [
     "ModelVersion",
     "ObjectRef",
     "Page",
+    "PlotEmbed",
+    "PlotEmbedCreate",
+    "PlotEmbedCreated",
     "PlotListItem",
+    "PlotRender",
+    "PlotRenderRequest",
     "PlotSpec",
     "PlotValidateResponse",
+    "PriorTranslation",
+    "PriorTranslationRequest",
     "ProgressSnapshot",
     "Project",
     "ProjectCreate",
     "ProjectUpdate",
+    "PromotionGateDecision",
     "PubSubPushEnvelope",
     "QuotaLimitStatus",
     "QuotaPolicy",
     "QuotaPolicyUpsert",
+    "RoleSuggestions",
     "RouteAccess",
     "RouteScope",
     "Run",
@@ -161,11 +262,21 @@ __all__ = [
     "RunCreate",
     "RunEventView",
     "RunRetry",
+    "SavedPlot",
+    "SavedPlotCreate",
     "ScoreCall",
     "ScoreCallResult",
+    "ScoreSummary",
+    "ScoreSummaryTable",
     "Scorecard",
     "ScorecardItem",
     "SessionInfo",
+    "SignupAccepted",
+    "SignupRequest",
+    "SignupReview",
+    "SignupReviewDecision",
+    "Snippet",
+    "SnippetSet",
     "SpecCreate",
     "SpecDoc",
     "SpecRevision",
@@ -176,6 +287,8 @@ __all__ = [
     "TenantAdminUpdate",
     "TenantCost",
     "TenantCreate",
+    "TenantDeletion",
+    "TenantDeletionRequest",
     "TenantUpdate",
     "TokenCreate",
     "TokenCreated",
@@ -185,6 +298,16 @@ __all__ = [
     "ValidateRequest",
     "ValidateResponse",
     "VarMapping",
+    "VerificationResult",
+    "VerificationStatus",
+    "VerificationUpdate",
+    "Webhook",
+    "WebhookCreate",
+    "WebhookCreated",
+    "WebhookDelivery",
+    "WebhookEnvelope",
+    "WebhookUpdate",
+    "WideVarMapping",
     "check_idempotency_key",
     "encode_sse",
     "loc_to_pointer",
@@ -418,65 +541,6 @@ class UploadSession(_Response):
             "created_at": _TS,
         }
     )
-
-
-class DimMapping(_Request):
-    """A dim of the dataset, read from one column of a tabular upload."""
-
-    column: str = Field(..., min_length=1, max_length=256)
-    spec: DimSpec
-
-    model_config = _examples(
-        {"column": "date", "spec": {"kind": "time", "policy": "extend", "freq": "D"}}
-    )
-
-
-class VarMapping(_Request):
-    """A data variable read from one column (dtype is inferred during ingest)."""
-
-    column: str = Field(..., min_length=1, max_length=256)
-    role: Role = Role.COVARIATE
-    units: str | None = Field(None, max_length=64)
-    missing: Literal["forbid", "allow", "mask"] = "forbid"
-    description: str | None = Field(None, max_length=2000)
-
-    model_config = _examples({"column": "revenue", "role": "target", "units": "EUR"})
-
-
-class IngestMapping(_Request):
-    """How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).
-
-    Tabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit
-    ``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.
-    """
-
-    format: Literal["csv", "parquet", "zarr_zip", "netcdf"]
-    layout: Literal["dense", "long"] = "dense"
-    dims: dict[str, DimMapping] = Field(default_factory=dict, max_length=32)
-    vars: dict[str, VarMapping] = Field(default_factory=dict, max_length=1024)
-
-    model_config = _examples(
-        {
-            "format": "csv",
-            "dims": {
-                "market": {"column": "market", "spec": {"kind": "categorical"}},
-                "date": {
-                    "column": "date",
-                    "spec": {"kind": "time", "policy": "extend", "freq": "D"},
-                },
-            },
-            "vars": {
-                "revenue_local": {"column": "revenue", "role": "target", "units": "local"},
-                "spend_local": {"column": "spend", "role": "spend", "units": "local"},
-            },
-        }
-    )
-
-    @model_validator(mode="after")
-    def _tabular(self) -> IngestMapping:
-        if self.format in ("csv", "parquet") and (not self.dims or not self.vars):
-            raise ValueError("csv/parquet uploads need at least one dim and one var mapping")
-        return self
 
 
 class DatasetVersionCreate(_Request):
@@ -1009,64 +1073,6 @@ def parse_prefer_wait(value: str | None) -> int | None:
 # ======================================================================================== models
 
 
-class ScorecardItem(_Response):
-    code: str = Field(..., pattern=r"^[A-Z][A-Z0-9_]{1,63}$")
-    status: Literal["pass", "warn", "fail"]
-    title: str = Field(..., max_length=200)
-    message_plain: str = Field(..., max_length=2000)
-    message_expert: str | None = Field(None, max_length=2000)
-    metric: MetricName | None = None
-    value: float | None = None
-    threshold: float | None = None
-    suggested_action: str | None = Field(None, max_length=2000)
-
-    model_config = _examples(
-        {
-            "code": "RHAT_OK",
-            "status": "pass",
-            "title": "Chains agree",
-            "message_plain": "All chains converged to the same answer.",
-            "metric": "r_hat_max",
-            "value": 1.004,
-            "threshold": 1.01,
-        }
-    )
-
-
-class Scorecard(_Response):
-    """Sanity scorecard: convergence, holdout error and plausibility checks rolled up."""
-
-    overall: Literal["pass", "warn", "fail"]
-    items: list[ScorecardItem] = Field(default_factory=list)
-
-    model_config = _examples(
-        {
-            "overall": "warn",
-            "items": [
-                {
-                    "code": "RHAT_OK",
-                    "status": "pass",
-                    "title": "Chains agree",
-                    "message_plain": "All chains converged to the same answer.",
-                    "metric": "r_hat_max",
-                    "value": 1.004,
-                    "threshold": 1.01,
-                },
-                {
-                    "code": "HOLDOUT_MAPE",
-                    "status": "warn",
-                    "title": "Holdout error",
-                    "message_plain": "Forecasts were off by 14% on the last 8 weeks.",
-                    "metric": "mape",
-                    "value": 0.14,
-                    "threshold": 0.1,
-                    "suggested_action": "Add holidays or check data for the last weeks.",
-                },
-            ],
-        }
-    )
-
-
 class Lineage(_Response):
     """Everything a model version came from (plan §8.6)."""
 
@@ -1212,12 +1218,64 @@ class ScoreCall(_Request):
     )
 
 
+SCORE_SUMMARY_OUTPUT: Final = "summary.json"
+"""The score run output holding :class:`ScoreSummary` (plain JSON, read by the API)."""
+SCORE_SUMMARY_MAX_CELLS: Final = 100_000
+"""Cells a :class:`ScoreSummary` carries at most; larger results set ``truncated``."""
+SCORE_SUMMARY_MAX_BYTES: Final = 8 * 1024 * 1024
+"""The largest ``summary.json`` the API inlines in a :class:`ScoreCallResult`."""
+
+SummaryCell = str | int | float | bool | None
+
+
+class ScoreSummaryTable(_Response):
+    """One output variable's summary as a table: the coordinate columns (one per dim), then
+    one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text."""
+
+    variable: str = Field(..., max_length=256)
+    columns: list[str] = Field(..., max_length=256)
+    rows: list[list[SummaryCell]]
+
+    model_config = _examples(
+        {
+            "variable": "revenue",
+            "columns": ["geo", "time", "mean", "hdi_90_lower", "hdi_90_upper"],
+            "rows": [["de", "2026-01-05", 1520.4, 1402.1, 1633.9]],
+        }
+    )
+
+
+class ScoreSummary(_Response):
+    """The requested summary of a score run as plain tables (``summary.json``), inlined in
+    :class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without
+    zarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the
+    ``score.zarr.zip`` output for everything)."""
+
+    tables: list[ScoreSummaryTable] = Field(default_factory=list, max_length=1000)
+    truncated: bool = False
+
+    model_config = _examples(
+        {
+            "tables": [
+                {
+                    "variable": "revenue",
+                    "columns": ["geo", "time", "mean", "hdi_90_lower", "hdi_90_upper"],
+                    "rows": [["de", "2026-01-05", 1520.4, 1402.1, 1633.9]],
+                }
+            ],
+            "truncated": False,
+        }
+    )
+
+
 class ScoreCallResult(_Response):
-    """``done`` with output links (200), or the still-running run (202)."""
+    """``done`` with output links (200), or the still-running run (202). ``summary`` is the
+    requested summary (mean and HDI by default) inline, once the run succeeded."""
 
     done: bool
     run: Run
     outputs: list[ArtifactLink] = Field(default_factory=list)
+    summary: ScoreSummary | None = None
 
     model_config = _examples(
         {
@@ -1681,6 +1739,9 @@ class ProjectCreate(_Request):
     id: TenantId
     name: str = Field(..., min_length=1, max_length=200)
     description: str | None = Field(None, max_length=4000)
+    guided_locked: bool | None = Field(
+        None, description="M3: show only Guided mode to non-admins (default: not locked)"
+    )
 
     model_config = _examples(
         {"id": "growth", "name": "Growth", "description": "EU media mix models"}
@@ -1692,8 +1753,11 @@ class ProjectUpdate(_Request):
 
     name: str | None = Field(None, min_length=1, max_length=200)
     description: str | None = Field(None, max_length=4000)
+    guided_locked: bool | None = Field(
+        None, description="M3: persona lock (audited as project.guided_lock)"
+    )
 
-    model_config = _examples({"description": "EU and UK media mix models"})
+    model_config = _examples({"description": "EU and UK media mix models"}, {"guided_locked": True})
 
     @model_validator(mode="after")
     def _some(self) -> ProjectUpdate:
@@ -2121,8 +2185,369 @@ M2_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
 )  # fmt: skip
 """The M2 endpoint table (additive to :data:`M1_ENDPOINTS`)."""
 
-ENDPOINTS: Final[tuple[EndpointDecl, ...]] = M1_ENDPOINTS + M2_ENDPOINTS
-"""Every endpoint of the v0.3 API."""
+V03_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = M1_ENDPOINTS + M2_ENDPOINTS
+"""Every endpoint of the v0.3 API (M1 + M2)."""
+
+
+# ===================================================================================== M3: DTOs
+#
+# Guided mode and integrations (v0.4). The building blocks live in their own modules
+# (mapi_spec.guided, .calibration, .whatif, .endpoints, .snippets, .webhooks, .sharing,
+# .trust, .scorecard, .ingest) and are re-exported here; the DTOs below wrap a Run.
+
+
+class PriorTranslationRequest(_Request):
+    """``POST /v1/guided/prior-translations``: start a sandboxed ``translate_priors`` run.
+
+    Give the spec as a saved revision (``spec_id`` + ``revision``) or an unsaved
+    ``document`` (a guided draft); ``dataset`` overrides its ``data.dataset``.
+    """
+
+    spec_id: Id | None = None
+    revision: int | None = Field(None, ge=1)
+    document: dict[str, JsonValue] | None = None
+    dataset: str | None = Field(None, max_length=512, examples=["dataset://growth/eu@v3"])
+    business_priors: BusinessPriors
+    lift_tests: list[LiftTest] = Field(default_factory=list, max_length=500)
+    draws: int = Field(500, ge=50, le=2000)
+    seed: int | None = Field(None, ge=0, lt=2**32)
+    resource_class: ResourceClass | None = None
+
+    model_config = _examples(
+        {
+            "spec_id": _SPEC_ID,
+            "revision": 2,
+            "business_priors": BusinessPriors.model_json_schema()["examples"][0],
+            "draws": 500,
+        }
+    )
+
+    @model_validator(mode="after")
+    def _one(self) -> PriorTranslationRequest:
+        saved = self.spec_id is not None or self.revision is not None
+        if saved == (self.document is not None):
+            raise ValueError("give either spec_id and revision, or document")
+        if saved and (self.spec_id is None or self.revision is None):
+            raise ValueError("spec_id and revision go together")
+        return self
+
+
+class PriorTranslation(_Response):
+    """``GET /v1/guided/prior-translations/{run_id}`` (and the ``202`` of the POST): the run
+    and, once it succeeded, the translated priors with their preview. Apply ``result.priors``
+    at ``apply_at`` (``mapi_spec.calibration.apply_prior_translation``)."""
+
+    run: Run
+    done: bool
+    result: PriorTranslationResult | None = None
+    apply_at: str = PRIORS_POINTER
+
+    model_config = _examples(
+        {
+            "run": {**Run.model_json_schema()["examples"][0], "kind": "translate_priors",
+                    "state": "succeeded", "progress": None},
+            "done": True,
+            "result": PriorTranslationResult.model_json_schema()["examples"][0],
+        }
+    )  # fmt: skip
+
+
+class PlotRender(_Response):
+    """``POST /v1/plots:render`` (``Prefer: wait=N``) and ``GET /v1/plots/renders/{run_id}``:
+    the ``render`` run and, when done, signed links to ``renders/<plot>.<format>``."""
+
+    done: bool
+    run: Run
+    format: Literal["png", "svg", "pdf"]
+    outputs: list[ArtifactLink] = Field(default_factory=list)
+
+    model_config = _examples(
+        {
+            "done": True,
+            "run": {**Run.model_json_schema()["examples"][0], "kind": "render",
+                    "state": "succeeded", "progress": None},
+            "format": "pdf",
+            "outputs": [
+                {**ArtifactLink.model_json_schema()["examples"][0],
+                 "name": "renders/mmm.response_curves.pdf", "content_type": "application/pdf"}
+            ],
+        }
+    )  # fmt: skip
+
+
+# ==================================================================================== M3 table
+
+_ALIAS = "/v1/endpoints/{alias}"
+_WH = "/v1/webhooks/{webhook_id}"
+_TEN = "/v1/tenants/{tenant_id}"
+_SCORE_ERRORS = (*_BODY, *_NF, _E.MODE_NOT_SUPPORTED, _E.UNSEEN_LEVELS, _E.COORD_NOT_ALLOWED,
+                 _E.HORIZON_EXCEEDS_FIT, _E.MISSING_FUTURE_COVARIATE,
+                 _E.NON_CONTIGUOUS_EXTENSION, _E.CAPABILITY_UNSUPPORTED,
+                 _E.RECURSIVE_UNSUPPORTED, _E.QUOTA_EXCEEDED, _E.PAYLOAD_TOO_LARGE)  # fmt: skip
+
+M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    # guided mode
+    EndpointDecl(
+        "GET", "/v1/guided/templates", "list_guided_templates",
+        "Guided templates (geo marketing mix, weekly forecast, demand by store, choice)",
+        "Page[GuidedTemplate]", 200, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", "/v1/guided/templates/{template_id}", "get_guided_template",
+        "One template: questions, spec template, scorecard checks, UI levels",
+        "GuidedTemplate", 200, errors=_NF,
+    ),
+    EndpointDecl(
+        "POST", "/v1/guided/detect-roles", "detect_roles",
+        "Suggest a column for every question from column profiles", "RoleSuggestions", 200,
+        request="DetectRolesRequest", errors=(*_BODY, *_NF), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/guided/drafts", "create_guided_draft",
+        "Answers -> ingest mapping + ModelSpec draft (+ YAML); stores nothing", "GuidedDraft",
+        200, request="GuidedAnswers",
+        errors=(*_BODY, *_NF, _E.GUIDED_ANSWERS_INVALID), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/guided/import/bayesinsight", "import_bayesinsight",
+        "BayesInsight model_def.json + metadata.json -> draft for the geo MMM",
+        "GuidedDraft", 200, request="BayesInsightImport",
+        errors=(*_BODY, _E.IMPORT_UNSUPPORTED), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/guided/requests:compile", "compile_guided_request",
+        "What-if scenario, forecast or preset -> the ScoreRequest it stands for ('Run exact')",
+        "ScoreRequest", 200, request="GuidedCompile",
+        errors=(*_BODY, _E.MISSING_FUTURE_COVARIATE), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/guided/prior-translations", "create_prior_translation",
+        "Business priors -> model-space priors + prior predictive (a translate_priors run)",
+        "PriorTranslation", 202, request="PriorTranslationRequest",
+        errors=(*_BODY, *_NF, _E.BUSINESS_PRIORS_INVALID, _E.CALIBRATION_UNSUPPORTED,
+                _E.QUOTA_EXCEEDED),
+        headers=(*_PH, IDEMPOTENCY_KEY_HEADER),
+    ),
+    EndpointDecl(
+        "GET", "/v1/guided/prior-translations/{run_id}", "get_prior_translation",
+        "The translation run and, once done, its priors and preview", "PriorTranslation", 200,
+        errors=_NF, headers=_PH,
+    ),
+    # endpoints and aliases
+    EndpointDecl(
+        "GET", "/v1/endpoints", "list_endpoints", "Endpoints of the project",
+        "Page[Endpoint]", 200, paginated=True, query=_PAGE, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _ALIAS, "get_endpoint", "An endpoint and the version it serves", "Endpoint", 200,
+        errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "PUT", _ALIAS, "promote_endpoint",
+        "Create or promote (gated on the scorecard; override = admin + reason, audited)",
+        "Endpoint", 200, request="EndpointPromote",
+        errors=(*_BODY, *_NF, *_FB, _E.CONFLICT, _E.PROMOTION_BLOCKED, _E.OVERRIDE_REQUIRED),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", _ALIAS, "delete_endpoint", "Delete the alias (model versions stay)", None,
+        204, errors=(*_NF, *_FB), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _ALIAS + "/history", "list_endpoint_history",
+        "Promotions and rollbacks, newest first", "Page[EndpointRevision]", 200, errors=_NF,
+        paginated=True, query=_PAGE, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _ALIAS + "/score", "score_endpoint",
+        "Score the current version (Prefer: wait=N -> 200 if done, else 202 with the run)",
+        "ScoreCallResult", 200, request="EndpointScoreCall", errors=_SCORE_ERRORS,
+        headers=(*_PH, PREFER_HEADER, IDEMPOTENCY_KEY_HEADER),
+    ),
+    EndpointDecl(
+        "GET", _ALIAS + "/schema", "get_endpoint_schema",
+        "Input schema of the current version and an example payload", "EndpointSchema", 200,
+        errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _ALIAS + "/validate", "validate_endpoint_request",
+        "Static checks of a score call without running it", "EndpointValidation", 200,
+        request="EndpointScoreCall", errors=(*_BODY, *_NF, _E.PAYLOAD_TOO_LARGE), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _ALIAS + "/rollback", "rollback_endpoint",
+        "Point the alias back at an earlier revision's version (audited)", "Endpoint", 200,
+        request="EndpointRollback", errors=(*_BODY, *_NF, *_FB, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _ALIAS + "/snippets", "list_endpoint_snippets",
+        "Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint",
+        "SnippetSet", 200, errors=_NF, query=("language", "base_url"), headers=_PH,
+    ),
+    # webhooks
+    EndpointDecl(
+        "GET", "/v1/webhooks", "list_webhooks", "Webhooks of the project", "Page[Webhook]", 200,
+        errors=_FB, paginated=True, query=_PAGE, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/webhooks", "create_webhook", "Add a webhook (the secret is shown once)",
+        "WebhookCreated", 201, request="WebhookCreate",
+        errors=(*_BODY, *_FB, _E.WEBHOOK_URL_BLOCKED), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _WH, "get_webhook", "A webhook (never its secret)", "Webhook", 200,
+        errors=(*_NF, *_FB), headers=_PH,
+    ),
+    EndpointDecl(
+        "PATCH", _WH, "update_webhook", "Change URL, events or active", "Webhook", 200,
+        request="WebhookUpdate", errors=(*_BODY, *_NF, *_FB, _E.WEBHOOK_URL_BLOCKED),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", _WH, "delete_webhook", "Delete a webhook and its delivery log", None, 204,
+        errors=(*_NF, *_FB), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _WH + ":rotate-secret", "rotate_webhook_secret",
+        "New secret (shown once); the old one signs too for 24 h", "WebhookCreated", 200,
+        errors=(*_NF, *_FB), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _WH + "/deliveries", "list_webhook_deliveries",
+        "Delivery log, newest first (filter: status)", "Page[WebhookDelivery]", 200,
+        errors=(*_NF, *_FB), paginated=True, query=(*_PAGE, "status"), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _WH + "/deliveries/{delivery_id}:replay", "replay_webhook_delivery",
+        "Send an event again (a new delivery, replay_of set)", "WebhookDelivery", 202,
+        errors=(*_NF, *_FB, _E.WEBHOOK_URL_BLOCKED), headers=_PH,
+    ),
+    # plots: saving, rendering, embeds
+    EndpointDecl(
+        "POST", "/v1/plots", "create_saved_plot",
+        "Save a model version's plot or a user-authored PlotSpec", "SavedPlot", 201,
+        request="SavedPlotCreate", errors=(*_BODY, *_NF, _E.PLOT_UNSAFE), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", "/v1/plots", "list_saved_plots", "Saved plots", "Page[SavedPlot]", 200,
+        paginated=True, query=_PAGE, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", "/v1/plots/{plot_id}", "get_saved_plot", "A saved plot with its sanitized spec",
+        "SavedPlot", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", "/v1/plots/{plot_id}", "delete_saved_plot",
+        "Delete a saved plot (revokes its embeds)", None, 204, errors=(*_NF, *_FB),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/plots:render", "render_plot",
+        "PNG, SVG or PDF in the sandbox (Prefer: wait=N -> 200 if done, else 202)",
+        "PlotRender", 200, request="PlotRenderRequest",
+        errors=(*_BODY, *_NF, _E.PLOT_UNSAFE, _E.MODE_NOT_SUPPORTED, _E.QUOTA_EXCEEDED),
+        headers=(*_PH, PREFER_HEADER, IDEMPOTENCY_KEY_HEADER),
+    ),
+    EndpointDecl(
+        "GET", "/v1/plots/renders/{run_id}", "get_plot_render",
+        "A render run and links to its files", "PlotRender", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/plots/{plot_id}/embeds", "create_plot_embed",
+        "Tokenised read-only link (platform recipes only; shown once)", "PlotEmbedCreated",
+        201, request="PlotEmbedCreate", errors=(*_BODY, *_NF, *_FB, _E.EMBED_NOT_ALLOWED),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", "/v1/plots/{plot_id}/embeds", "list_plot_embeds", "Embed links of a plot",
+        "Page[PlotEmbed]", 200, errors=_NF, paginated=True, query=_PAGE, headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", "/v1/plots/{plot_id}/embeds/{embed_id}", "revoke_plot_embed",
+        "Revoke an embed link (idempotent)", None, 204, errors=(*_NF, *_FB), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", "/v1/embeds/{embed_token}", "get_embed",
+        "Public: the embedded plot with inline data (410 when expired or revoked)",
+        "EmbedView", 200, errors=(*_NF, _E.LINK_EXPIRED, _E.RATE_LIMITED),
+    ),
+    # trust lifecycle
+    EndpointDecl(
+        "POST", "/auth/signup", "signup",
+        "Self-service sign-up (same answer for new and known addresses)", "SignupAccepted",
+        202, request="SignupRequest",
+        errors=(*_BODY, _E.EMAIL_NOT_ALLOWED, _E.TERMS_NOT_ACCEPTED, _E.RATE_LIMITED),
+    ),
+    EndpointDecl(
+        "POST", "/auth/verify-email", "verify_email",
+        "Verify the address; creates a public-tier tenant", "VerificationResult", 200,
+        request="EmailVerify", errors=(*_BODY, _E.LINK_EXPIRED, _E.RATE_LIMITED),
+    ),
+    EndpointDecl(
+        "GET", _TEN + "/verification", "get_tenant_verification",
+        "E-mail and identity verification, and whether code upload is allowed",
+        "VerificationStatus", 200, errors=(*_NF, *_FB),
+    ),
+    EndpointDecl(
+        "PUT", "/v1/admin/tenants/{tenant_id}/verification", "admin_put_tenant_verification",
+        "Record identity verification (operators; audited)", "VerificationStatus", 200,
+        request="VerificationUpdate", errors=(*_BODY, *_NF, *_FB),
+    ),
+    EndpointDecl(
+        "POST", _TEN + "/deletion", "request_tenant_deletion",
+        "Schedule deletion of the whole tenant (grace period, then purge)", "TenantDeletion",
+        202, request="TenantDeletionRequest", errors=(*_BODY, *_NF, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "GET", _TEN + "/deletion", "get_tenant_deletion",
+        "Deletion state and progress per store", "TenantDeletion", 200, errors=(*_NF, *_FB),
+    ),
+    EndpointDecl(
+        "DELETE", _TEN + "/deletion", "cancel_tenant_deletion",
+        "Cancel a scheduled deletion (within the grace period)", "TenantDeletion", 200,
+        errors=(*_NF, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "POST", _TEN + "/exports", "create_tenant_export",
+        "GDPR export of everything the tenant stored", "GdprExport", 202,
+        request="GdprExportRequest", errors=(*_BODY, *_NF, *_FB, _E.QUOTA_EXCEEDED),
+    ),
+    EndpointDecl(
+        "GET", _TEN + "/exports", "list_tenant_exports",
+        "The tenant's GDPR exports, newest first (GET one for its download link)",
+        "Page[GdprExport]", 200, errors=(*_NF, *_FB), paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", _TEN + "/exports/{export_id}", "get_tenant_export",
+        "An export and, once ready, its download link", "GdprExport", 200,
+        errors=(*_NF, *_FB),
+    ),
+    EndpointDecl(
+        "GET", "/v1/admin/signups", "admin_list_signups",
+        "Sign-ups, newest first; filter by review state (the Sybil review queue)",
+        "Page[SignupReview]", 200, errors=_FB, paginated=True,
+        query=(*_PAGE, "review", "tenant_id"),
+    ),
+    EndpointDecl(
+        "POST", "/v1/admin/signups/{signup_id}/review", "admin_review_signup",
+        "Approve or reject a sign-up (a rejection suspends its tenant; audited)",
+        "SignupReview", 200, request="SignupReviewDecision",
+        errors=(*_BODY, *_NF, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "POST", "/v1/admin/tenants/{tenant_id}/deletion/retry", "admin_retry_tenant_deletion",
+        "Restart a failed tenant purge (operators; audited)", "TenantDeletion", 202,
+        errors=(*_NF, *_FB, _E.CONFLICT),
+    ),
+)  # fmt: skip
+"""The M3 endpoint table (guided mode and integrations; additive to :data:`V03_ENDPOINTS`)."""
+
+ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
+"""Every endpoint of the v0.4 API (M1 + M2 + M3); the server serves every row."""
+
+ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
+"""Every endpoint of the v0.4 contract (an alias of :data:`ENDPOINTS`, kept for the M3
+components that were written against it)."""
 
 _RK, _AC = ResourceKind, Action
 
@@ -2137,6 +2562,11 @@ def _t(resource: ResourceKind | None = None, action: Action | None = None) -> Ro
 
 def _op(resource: ResourceKind, action: Action) -> RouteAccess:
     return RouteAccess(RouteScope.PLATFORM, resource, action)
+
+
+def _alias(action: Action, *also: tuple[ResourceKind, Action]) -> RouteAccess:
+    """An endpoint operation; ``{alias}`` names the endpoint (``score:<alias>`` tokens)."""
+    return RouteAccess(RouteScope.PROJECT, ResourceKind.ENDPOINT, action, tuple(also), "alias")
 
 
 _PUBLIC = RouteAccess(RouteScope.PUBLIC)
@@ -2235,13 +2665,69 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "auth_logout": _PUBLIC,
     "auth_session": _PUBLIC,
     "ingest_event": RouteAccess(RouteScope.INTERNAL, _RK.EVENT, _AC.CREATE),
+    # M3 guided mode
+    "list_guided_templates": _AUTH,
+    "get_guided_template": _AUTH,
+    "detect_roles": _p(_RK.DATASET, _AC.READ),
+    "create_guided_draft": _p(_RK.SPEC, _AC.READ),
+    "import_bayesinsight": _p(_RK.SPEC, _AC.READ),
+    "compile_guided_request": _p(_RK.MODEL, _AC.READ),
+    "create_prior_translation": _p(_RK.RUN, _AC.CREATE, (_RK.SPEC, _AC.READ)),
+    "get_prior_translation": _p(_RK.RUN, _AC.READ),
+    # M3 endpoints ("alias" names the endpoint for score:<alias> tokens)
+    "list_endpoints": _p(_RK.ENDPOINT, _AC.READ),
+    "get_endpoint": _alias(_AC.READ),
+    "promote_endpoint": _alias(_AC.PROMOTE, (_RK.MODEL, _AC.READ)),
+    "delete_endpoint": _alias(_AC.DELETE),
+    "list_endpoint_history": _alias(_AC.READ),
+    "score_endpoint": _alias(_AC.RUN),
+    "get_endpoint_schema": _alias(_AC.READ),
+    "validate_endpoint_request": _alias(_AC.READ),
+    "rollback_endpoint": _alias(_AC.PROMOTE),
+    "list_endpoint_snippets": _alias(_AC.READ),
+    # M3 webhooks
+    "list_webhooks": _p(_RK.WEBHOOK, _AC.READ),
+    "create_webhook": _p(_RK.WEBHOOK, _AC.CREATE),
+    "get_webhook": _p(_RK.WEBHOOK, _AC.READ),
+    "update_webhook": _p(_RK.WEBHOOK, _AC.UPDATE),
+    "delete_webhook": _p(_RK.WEBHOOK, _AC.DELETE),
+    "rotate_webhook_secret": _p(_RK.WEBHOOK, _AC.UPDATE),
+    "list_webhook_deliveries": _p(_RK.WEBHOOK, _AC.READ),
+    "replay_webhook_delivery": _p(_RK.WEBHOOK, _AC.UPDATE),
+    # M3 plots
+    "create_saved_plot": _p(_RK.PLOT, _AC.CREATE),
+    "list_saved_plots": _p(_RK.PLOT, _AC.READ),
+    "get_saved_plot": _p(_RK.PLOT, _AC.READ),
+    "delete_saved_plot": _p(_RK.PLOT, _AC.DELETE),
+    "render_plot": _p(_RK.PLOT, _AC.RUN),
+    "get_plot_render": _p(_RK.PLOT, _AC.READ),
+    "create_plot_embed": _p(_RK.EMBED, _AC.CREATE, (_RK.PLOT, _AC.READ)),
+    "list_plot_embeds": _p(_RK.EMBED, _AC.READ),
+    "revoke_plot_embed": _p(_RK.EMBED, _AC.DELETE),
+    "get_embed": _PUBLIC,
+    # M3 trust lifecycle
+    "signup": _PUBLIC,
+    "verify_email": _PUBLIC,
+    "get_tenant_verification": _t(_RK.TENANT, _AC.READ),
+    "admin_put_tenant_verification": _op(_RK.TENANT, _AC.MANAGE),
+    "request_tenant_deletion": _t(_RK.TENANT_DELETION, _AC.CREATE),
+    "get_tenant_deletion": _t(_RK.TENANT_DELETION, _AC.READ),
+    "cancel_tenant_deletion": _t(_RK.TENANT_DELETION, _AC.CANCEL),
+    "create_tenant_export": _t(_RK.TENANT_EXPORT, _AC.CREATE),
+    "list_tenant_exports": _t(_RK.TENANT_EXPORT, _AC.READ),
+    "get_tenant_export": _t(_RK.TENANT_EXPORT, _AC.READ),
+    "admin_list_signups": _op(_RK.TENANT, _AC.READ),
+    "admin_review_signup": _op(_RK.TENANT, _AC.MANAGE),
+    "admin_retry_tenant_deletion": _op(_RK.TENANT_DELETION, _AC.MANAGE),
 }
 """Tenant/project scoping and the permission checked for every operation in
-:data:`ENDPOINTS` (keyed by ``operation_id``).
+:data:`ALL_ENDPOINTS` (keyed by ``operation_id``).
 
 Acting on *other principals'* tokens (``list_tokens?all=true``, revoking someone else's
 token) additionally needs ``manage`` on ``token``. A ``create_run`` for a model version
-(score, evaluate, derive, render) additionally needs ``run`` on ``model``.
+(score, evaluate, derive, render) additionally needs ``run`` on ``model``. A
+``promote_endpoint`` with ``override=true`` additionally needs ``manage`` on ``endpoint``,
+which no token scope grants (a signed-in admin decides, audited with the reason).
 """
 
 

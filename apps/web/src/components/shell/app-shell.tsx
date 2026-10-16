@@ -1,6 +1,6 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { AlertTriangle, LogIn, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
-import type { ReactNode } from "react";
+import { LogIn, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 
 import { useReady } from "@/api/queries";
 import { signIn } from "@/api/session";
@@ -18,6 +18,8 @@ import {
 import { Kbd } from "@/components/ui/primitives";
 import { Logo, NoProjectScreen } from "@/features/auth/gate";
 import { useWorkspace } from "@/features/auth/workspace";
+import { useEffectivePersona, useGuidedLock, useSetPersona } from "@/features/guided/persona";
+import { TenantStatusBanner } from "@/features/trust/tenant-banner";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { useApplyTheme } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
@@ -26,7 +28,7 @@ import { useAuth } from "@/stores/auth";
 import { useScope } from "@/stores/scope";
 
 import { CommandPalette, ShortcutsDialog } from "./command-palette";
-import { ADMIN_NAV, EXPERT_NAV, GUIDED_NAV, PROJECT_NAV, SETTINGS_NAV, type NavItem } from "./nav";
+import { ADMIN_NAV, EXPERT_NAV, GUIDED_MODE_NAV, GUIDED_NAV, INTEGRATIONS_NAV, PROJECT_NAV, SETTINGS_NAV, type NavItem } from "./nav";
 import { ProjectSwitcher } from "./project-switcher";
 import { Toaster } from "./toaster";
 import { UserMenu } from "./user-menu";
@@ -126,9 +128,12 @@ function ThemeMenu() {
 }
 
 export function PersonaToggle() {
-  const persona = useUi((s) => s.persona);
-  const setPersona = useUi((s) => s.setPersona);
+  const persona = useEffectivePersona();
+  const setPersona = useSetPersona();
+  const lock = useGuidedLock();
   const navigate = useNavigate();
+  // Members below admin of a Guided-locked project see Guided mode only.
+  if (lock.locked) return null;
   return (
     <SegmentedControl<Persona>
       label="Mode"
@@ -138,7 +143,7 @@ export function PersonaToggle() {
         void navigate({ to: p === "guided" ? "/guided" : "/" });
       }}
       options={[
-        { value: "guided", label: "Guided", title: "Task-based flows (arrives in v0.4)" },
+        { value: "guided", label: "Guided", title: "Task-based flows in business terms" },
         { value: "expert", label: "Expert", title: "Specs, runs and diagnostics" },
       ]}
     />
@@ -163,24 +168,6 @@ function SignedOutBanner() {
   );
 }
 
-function TenantStatusBanner() {
-  const ws = useWorkspace();
-  const t = ws.current?.tenant;
-  if (!t || !t.status || t.status === "active") return null;
-  return (
-    <div role="status" className="flex items-start gap-2 border-b border-warning/35 bg-warning/10 px-4 py-2 text-[13px] md:px-6">
-      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
-      <p>
-        <span className="font-medium">{t.name} is {t.status === "suspended" ? "suspended" : "being deleted"}.</span>{" "}
-        <span className="text-muted-foreground">
-          {t.status === "suspended" ? "Everything is read-only: nothing can be changed or run." : "Nothing can be changed."}
-          {t.status_reason ? ` Reason: ${t.status_reason}` : ""}
-        </span>
-      </p>
-    </div>
-  );
-}
-
 export function AppShell({ children }: { children?: ReactNode }) {
   useApplyTheme();
   const ws = useWorkspace();
@@ -188,12 +175,20 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const collapsed = useUi((s) => s.sidebarCollapsed);
   const toggleSidebar = useUi((s) => s.toggleSidebar);
-  const persona = useUi((s) => s.persona);
+  const persona = useEffectivePersona();
+  const lock = useGuidedLock();
   const setPaletteOpen = useUi((s) => s.setPaletteOpen);
   const setShortcutsOpen = useUi((s) => s.setShortcutsOpen);
   const navigate = useNavigate();
 
-  const nav = persona === "guided" ? [GUIDED_NAV, ...EXPERT_NAV.slice(1)] : EXPERT_NAV;
+  // A Guided-locked project shows members below admin the Guided screens only, and the
+  // Integrations hub that Guided mode's "Share" step leads to.
+  const nav = lock.locked ? [GUIDED_NAV, INTEGRATIONS_NAV] : persona === "guided" ? GUIDED_MODE_NAV : EXPERT_NAV;
+  // Guided mode has no Expert Home: "/" opens the Guided start page (a new self-service
+  // workspace lands there, as does a Guided-locked project).
+  useEffect(() => {
+    if (persona === "guided" && pathname === "/") void navigate({ to: "/guided", replace: true });
+  }, [persona, pathname, navigate]);
   const projectNav = ws.mode === "session" ? PROJECT_NAV : [];
   const adminNav = ws.operator ? [ADMIN_NAV] : [];
   const chords = Object.fromEntries(

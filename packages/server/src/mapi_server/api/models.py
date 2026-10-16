@@ -3,6 +3,7 @@ links, ``ui/`` views, scoring (``Prefer: wait``), evaluate, and plots."""
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Header, Path, Request, status
@@ -11,6 +12,8 @@ from mapi_plots.sanitize import sanitize_plot
 from mapi_spec.api import (
     PREFER_HEADER,
     PREFERENCE_APPLIED_HEADER,
+    SCORE_SUMMARY_MAX_BYTES,
+    SCORE_SUMMARY_OUTPUT,
     ArtifactLink,
     Lineage,
     Model,
@@ -23,6 +26,7 @@ from mapi_spec.api import (
     ScoreCall,
     ScoreCallResult,
     Scorecard,
+    ScoreSummary,
     parse_prefer_wait,
 )
 from mapi_spec.audit import AuditAction
@@ -33,7 +37,7 @@ from mapi_spec.plots import PlotSpec
 from mapi_spec.refs import ModelVersionRef
 from mapi_spec.run import RunState
 from mapi_spec.tenancy import ResourceKind
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,16 +55,20 @@ from mapi_server.api.runs import render_run, run_view, wait_terminal
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
+from mapi_server.jsonlimits import loads_limited
 from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import (
     artifact_link,
     verified_bundle_object,
     verified_manifest,
 )
+from mapi_server.services.quotas import charge_egress
 from mapi_server.services.runs import load_run
 from mapi_server.services.submit import submit_model_run
 
-__all__ = ["EvaluateCall", "plots_router", "router"]
+__all__ = ["EvaluateCall", "plots_router", "router", "score_result"]
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/models", tags=["models"])
 plots_router = APIRouter(prefix="/v1/plots", tags=["plots"])
@@ -209,6 +217,7 @@ async def _bundle_link(
     link = await artifact_link(
         ctx.store, name=name, bucket=obj.bucket, key=obj.key, generation=obj.generation
     )
+    await charge_egress(ctx, mv.tenant_id, link.size or 0)
     if audit and ctx.request is not None:  # a signed URL to a bundle object left the API
         await write_audit(
             ctx.db,
@@ -254,11 +263,30 @@ async def redirect_model_ui(
     return RedirectResponse(link.url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
 
-async def _score_result(ctx: ServerContext, run_id: str) -> ScoreCallResult:
+async def _summary(ctx: ServerContext, meta: dict[str, Any]) -> ScoreSummary | None:
+    """The run's ``summary.json`` (plain JSON the runner wrote): size- and depth-capped,
+    validated; ``None`` (the links remain) when it is missing, too large or malformed."""
+    if int(meta.get("size") or 0) > SCORE_SUMMARY_MAX_BYTES:
+        return None
+    try:
+        raw = await ctx.store.get(
+            meta["bucket"],
+            meta["name"],
+            generation=int(meta["generation"]),
+            max_bytes=SCORE_SUMMARY_MAX_BYTES,
+        )
+        return ScoreSummary.model_validate(loads_limited(raw))
+    except (MapiError, ValidationError, ValueError, KeyError, TypeError):
+        log.warning("the summary of a score run could not be read; answering without it")
+        return None
+
+
+async def score_result(ctx: ServerContext, run_id: str) -> ScoreCallResult:
     async with ctx.data_session() as session:
         run = await load_run(session, ctx.scope, run_id)
         view = await run_view(session, run)
         outputs: list[ArtifactLink] = []
+        summary: ScoreSummary | None = None
         done = RunState(run.state).terminal
         if run.state == RunState.SUCCEEDED.value:
             att = await session.get(m.RunAttempt, (run.id, run.attempt))
@@ -272,7 +300,11 @@ async def _score_result(ctx: ServerContext, run_id: str) -> ScoreCallResult:
                         generation=int(meta["generation"]),
                     )
                 )
-    return ScoreCallResult(done=done, run=view, outputs=outputs)
+            if att is not None and SCORE_SUMMARY_OUTPUT in (att.outputs or {}):
+                summary = await _summary(ctx, att.outputs[SCORE_SUMMARY_OUTPUT])
+        tenant_id = run.tenant_id
+    await charge_egress(ctx, tenant_id, sum(o.size or 0 for o in outputs))
+    return ScoreCallResult(done=done, run=view, outputs=outputs, summary=summary)
 
 
 @router.post(
@@ -332,7 +364,7 @@ async def score_model(
     if wait:
         await wait_terminal(ctx, run_id, float(wait), disconnected=request.is_disconnected)
         headers[PREFERENCE_APPLIED_HEADER] = f"wait={wait}"
-    result = await _score_result(ctx, run_id)
+    result = await score_result(ctx, run_id)
     return JSONResponse(
         result.model_dump(mode="json"),
         status_code=200 if result.done else 202,

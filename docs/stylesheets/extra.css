@@ -169,3 +169,94 @@
   border-radius: 0.4rem;
   background: #ffffff;
 }
+
+/* ------------------------------------------------------------------ landing: personas, numbers, quick path */
+
+.md-typeset .mapi-personas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.md-typeset .mapi-persona {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-top: 0.25rem solid var(--md-accent-fg-color);
+  border-radius: 0.5rem;
+  padding: 0.4rem 1.1rem 0.9rem;
+}
+
+.md-typeset .mapi-persona--expert {
+  border-top-color: var(--md-typeset-a-color);
+}
+
+.md-typeset .mapi-persona h3 {
+  margin-top: 0.6rem;
+}
+
+.md-typeset .mapi-persona .mapi-promise {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0.2rem 0 0.6rem;
+}
+
+.md-typeset .mapi-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.8rem;
+  margin: 1rem 0 1.2rem;
+}
+
+.md-typeset .mapi-stat {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.9rem;
+}
+
+.md-typeset .mapi-stat strong {
+  display: block;
+  font-size: 1.45rem;
+  line-height: 1.2;
+  color: var(--md-accent-fg-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.md-typeset .mapi-stat span {
+  display: block;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  margin-top: 0.3rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .mapi-path > ol {
+  counter-reset: mapi-step;
+  list-style: none;
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.md-typeset .mapi-path > ol > li {
+  counter-increment: mapi-step;
+  position: relative;
+  margin: 0 0 0.7rem;
+  padding-left: 2.4rem;
+}
+
+.md-typeset .mapi-path > ol > li::before {
+  content: counter(mapi-step);
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--md-accent-fg-color--transparent);
+  color: var(--md-accent-fg-color);
+  border: 1px solid var(--md-accent-fg-color);
+}

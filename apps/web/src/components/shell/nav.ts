@@ -8,6 +8,7 @@ import {
   Home,
   KeyRound,
   Library,
+  Plug,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -40,13 +41,33 @@ export const ADMIN_NAV: NavItem = {
   description: "Tenants, quotas, kill switches, executors and audit",
 };
 
+/** The Integrations hub: in Expert navigation, and beside Guided in a Guided-locked project. */
+export const INTEGRATIONS_NAV: NavItem = {
+  to: "/integrations",
+  label: "Integrations",
+  icon: Plug,
+  chord: "i",
+  description: "Endpoints, snippets, webhooks and share links",
+};
+
+export const GUIDED_NAV: NavItem = {
+  to: "/guided",
+  label: "Guided",
+  icon: Sparkles,
+  chord: "g",
+  description: "Task-based flows for analysts",
+};
+
+/** Expert navigation; Guided stays one click away (opening it switches the mode). */
 export const EXPERT_NAV: NavItem[] = [
   { to: "/", label: "Home", icon: Home, chord: "h", description: "Activity and health at a glance" },
+  GUIDED_NAV,
   { to: "/datasets", label: "Datasets", icon: Database, chord: "d", description: "Upload, map and inspect data" },
   { to: "/build", label: "Build", icon: FileCode2, chord: "b", description: "Write and validate model specs" },
   { to: "/runs", label: "Runs", icon: Activity, chord: "r", description: "Fits, dry-runs, ingests and scores" },
   { to: "/models", label: "Models", icon: Boxes, chord: "m", description: "Inspect fitted model versions" },
   { to: "/score", label: "Score", icon: Gauge, chord: "s", description: "Forecasts, scenarios and counterfactuals" },
+  INTEGRATIONS_NAV,
   { to: "/catalog", label: "Catalog", icon: Library, chord: "c", description: "Models, steps and plot recipes" },
 ];
 
@@ -58,10 +79,5 @@ export const SETTINGS_NAV: NavItem = {
   description: "Theme, mode and connection",
 };
 
-export const GUIDED_NAV: NavItem = {
-  to: "/guided",
-  label: "Guided",
-  icon: Sparkles,
-  chord: "g",
-  description: "Task-based flows for analysts",
-};
+/** Guided mode's navigation: Guided first, then the Expert areas (without Expert Home). */
+export const GUIDED_MODE_NAV: NavItem[] = [GUIDED_NAV, ...EXPERT_NAV.filter((item) => item.to !== "/" && item !== GUIDED_NAV)];

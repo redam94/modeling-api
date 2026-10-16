@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from mapi_spec.admin import DEFAULT_KILL_SWITCHES, KillSwitches, kill_switch_decision
 from mapi_spec.cost import CostEntryKind
@@ -36,12 +36,16 @@ from mapi_spec.quotas import (
 from mapi_spec.run import RunState
 from mapi_spec.tenancy import TrustTier
 from mapi_spec.tokens import TokenRecord
-from sqlalchemy import BigInteger, ColumnElement, Float, cast, delete, func, select
+from sqlalchemy import BigInteger, ColumnElement, Float, cast, delete, func, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
+from mapi_server.errors import ProblemWithHeaders
 from mapi_server.observability import metrics as obs_metrics
+
+if TYPE_CHECKING:
+    from mapi_server.context import ServerContext
 
 __all__ = [
     "ACTIVE_STATES",
@@ -50,7 +54,10 @@ __all__ = [
     "KILL_SWITCHES_KEY",
     "admit_run",
     "admit_storage",
+    "charge_egress",
     "count_requests",
+    "egress_subject",
+    "egress_this_month",
     "estimate_micros",
     "global_policy",
     "global_spend",
@@ -179,9 +186,11 @@ async def quota_usage(
     *,
     now: datetime,
     requests_this_minute: int = 0,
+    egress_bytes_month: int = 0,
 ) -> QuotaUsage:
     """Current counters of one subject (``s`` must be able to see its rows: a tenant session
-    for a token or tenant, the platform role for the global level)."""
+    for a token or tenant, the platform role for the global level). The egress counter lives
+    in a platform table: callers that show it pass :func:`egress_this_month`."""
     day, month = window_starts(now)
     ledger = select(
         func.coalesce(
@@ -224,13 +233,111 @@ async def quota_usage(
                 )
             ).scalar_one()
         )
+        # model bundles: the stored objects of every model version (``artifacts`` lists them
+        # with their sizes, copied from the signed manifest at finalisation)
+        storage += int(
+            (
+                await s.execute(
+                    text(
+                        "SELECT coalesce(sum((a->>'size')::bigint), 0) FROM model_versions mv "
+                        "CROSS JOIN LATERAL jsonb_array_elements(coalesce(mv.artifacts, "
+                        "'[]'::jsonb)) AS a WHERE mv.tenant_id = :t "
+                        "AND jsonb_typeof(a->'size') = 'number'"
+                    ),
+                    {"t": subject_id},
+                )
+            ).scalar_one()
+        )
     return QuotaUsage(
         vcpu_seconds_today=float(today) + float(pending_vcpu),
         vcpu_seconds_month=float(this_month) + float(pending_vcpu),
         concurrent_runs=int(running),
         storage_bytes=storage,
+        egress_bytes_month=egress_bytes_month,
         requests_this_minute=requests_this_minute,
     )
+
+
+# ====================================================================================== egress
+
+EGRESS_UNIT: Final = 1024
+"""Egress is counted in KiB (``rate_counters.count`` is a 32-bit integer: 2 TiB a month)."""
+_COUNT_MAX: Final = 2**31 - 1
+
+
+def egress_subject(tenant_id: str) -> str:
+    """The ``rate_counters`` subject of a tenant's monthly egress (KiB per UTC month)."""
+    return f"egress:{tenant_id}"[:96]
+
+
+async def egress_this_month(system: AsyncSession, tenant_id: str, *, now: datetime) -> int:
+    """Bytes of signed downloads handed out for ``tenant_id`` this UTC month (platform or
+    gateway session: the counter is a platform table)."""
+    _, month = window_starts(now)
+    n = (
+        await system.execute(
+            select(m.RateCounter.count).where(
+                m.RateCounter.subject == egress_subject(tenant_id),
+                m.RateCounter.window_start == month,
+            )
+        )
+    ).scalar_one_or_none()
+    return int(n or 0) * EGRESS_UNIT
+
+
+async def charge_egress(
+    ctx: ServerContext, tenant_id: str, nbytes: int, *, now: datetime | None = None
+) -> None:
+    """Charge a signed download (or a public embed view) of ``nbytes`` to the tenant's
+    monthly egress (plan §9: caps on output and download egress per tier).
+
+    Measured when the link is minted, from the object's size (a link may be used more or
+    less than once: it is an estimate, like the vCPU estimate of a queued run). Raises
+    ``QUOTA_EXCEEDED`` (with ``Retry-After`` until the month resets) instead of charging when
+    the tenant's ``egress_bytes_per_month`` would be exceeded. GDPR exports are not charged.
+    """
+    if nbytes <= 0:
+        return
+    ts = now or datetime.now(UTC)
+    _, month = window_starts(ts)
+    subject = egress_subject(tenant_id)
+    async with ctx.db.session() as system:
+        tier = (
+            await system.execute(select(m.Tenant.trust_tier).where(m.Tenant.id == tenant_id))
+        ).scalar_one_or_none()
+        if tier is None:
+            return
+        policy = await tenant_policy(system, tenant_id, tier)
+        if policy.limits.egress_bytes_per_month is not None:
+            used = await egress_this_month(system, tenant_id, now=ts)
+            decision = _observed(
+                evaluate_quota(
+                    [(policy, QuotaUsage(egress_bytes_month=used))],
+                    QuotaDemand(egress_bytes=nbytes),
+                    now=ts,
+                )
+            )
+            if not decision.allowed:
+                assert decision.code is not None
+                raise ProblemWithHeaders(
+                    decision.message or "download egress quota exceeded",
+                    code=decision.code,
+                    headers=decision.headers(),
+                )
+        units = -(-nbytes // EGRESS_UNIT)
+        await system.execute(
+            delete(m.RateCounter).where(
+                m.RateCounter.subject == subject, m.RateCounter.window_start < month
+            )
+        )
+        await system.execute(
+            insert(m.RateCounter)
+            .values(subject=subject, window_start=month, count=min(units, _COUNT_MAX))
+            .on_conflict_do_update(
+                index_elements=["subject", "window_start"],
+                set_={"count": func.least(m.RateCounter.count + units, _COUNT_MAX)},
+            )
+        )
 
 
 async def global_spend(s: AsyncSession, switches: KillSwitches, *, now: datetime) -> int:

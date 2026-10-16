@@ -23,7 +23,12 @@ from mapi_server.auth.request import RequestAuth
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.cost import ledger_dto
-from mapi_server.services.quotas import quota_usage, tenant_policy, token_policy
+from mapi_server.services.quotas import (
+    egress_this_month,
+    quota_usage,
+    tenant_policy,
+    token_policy,
+)
 from mapi_server.services.runs import now
 
 __all__ = ["period_bounds", "router"]
@@ -81,7 +86,10 @@ async def _report(
             usage = await quota_usage(session, QuotaScope.TOKEN, auth.token.id, now=ts)
             quotas.extend(quota_status(policy, usage, now=ts))
         policy = await tenant_policy(system, tenant_id, tenant.trust_tier)
-    usage = await quota_usage(session, QuotaScope.TENANT, tenant_id, now=ts)
+        egress = await egress_this_month(system, tenant_id, now=ts)
+    usage = await quota_usage(
+        session, QuotaScope.TENANT, tenant_id, now=ts, egress_bytes_month=egress
+    )
     quotas.extend(quota_status(policy, usage, now=ts))
     return UsageReport(
         tenant_id=tenant_id,

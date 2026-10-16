@@ -1,8 +1,8 @@
 {
   "name": "@mapi/web",
   "private": true,
-  "version": "0.3.0",
-  "description": "modeling-api web app (Expert mode; Guided mode shell)",
+  "version": "0.4.0",
+  "description": "modeling-api web app (Expert and Guided modes)",
   "license": "AGPL-3.0-only OR LicenseRef-mapi-commercial",
   "type": "module",
   "scripts": {

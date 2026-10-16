@@ -83,7 +83,7 @@ def test_static_validation_and_owned_preprocessing(
     res = validate_spec(spec, registry.catalog(), e33_raw_schema(data[0]))
     assert res.ok, [(i.pointer, i.message) for i in res.errors]
     rs = res.raise_for_errors()
-    assert rs.model.resolved == "mmm.pymc_marketing@1.0.0"
+    assert rs.model.resolved == "mmm.pymc_marketing@1.1.0"
     # markets are fixed for the adapter even though the data allow new levels
     assert rs.model.effective_policies["geo"].value == "fixed"
     bad = load_model_spec(SPEC.replace("engine: pymc", "engine: advi"))
@@ -224,3 +224,192 @@ def test_pymc_marketing_adapter_passes_the_contract_kit(
     } <= ran
     # a market unseen at fit is rejected: pymc-marketing cannot score new panel levels
     assert "UNSEEN_LEVELS" in report.get("new_level_policies").detail
+
+
+# ------------------------------------------------------------------------- lift tests (M3)
+
+LIFT = """
+calibration:
+  lift_tests:
+    - {id: tv-de, channel: tv, geo: DE, start: 2023-03-06, end: 2023-04-02,
+       spend_delta: -4000, kpi_delta: -6000, se: 1500}
+"""
+
+
+def _lift_inputs() -> tuple[object, object, list[str]]:
+    import pandas as pd
+    from mapi_plugin_mmm.settings import PyMCMarketingSettings
+
+    dates = pd.date_range("2023-03-05", periods=6, freq="W-SUN")
+    frame = pd.DataFrame(
+        {
+            "date": list(dates) * 2,
+            "geo": ["DE"] * 6 + ["NL"] * 6,
+            "tv": [100.0] * 12,
+            "search": [50.0] * 12,
+            "y": [1000.0] * 12,
+        }
+    )
+    s = PyMCMarketingSettings.model_validate({"dims": ["geo"], "adstock": {"l_max": 2}})
+    return frame, s, ["tv", "search"]
+
+
+def test_lift_tests_become_per_period_rows() -> None:
+    from datetime import date
+
+    from mapi_plugin_mmm.pymc_marketing import lift_frame
+    from mapi_spec.calibration import LiftTest
+
+    frame, s, channels = _lift_inputs()
+    base = {"channel": "tv", "geo": "DE", "start": date(2023, 3, 6), "end": date(2023, 4, 2),
+            "spend_delta": -200.0, "kpi_delta": -300.0, "se": 40.0}  # fmt: skip
+    df = lift_frame([LiftTest.model_validate(base)], frame, s, channels)  # type: ignore[arg-type]
+    assert df.to_dict("records") == [
+        {
+            "channel": "tv",
+            "x": 100.0,
+            "delta_x": -50.0,
+            "delta_y": -75.0,
+            "sigma": 10.0,
+            "geo": "DE",
+        }
+    ]
+    later = LiftTest.model_validate({**base, "start": date(2024, 1, 1), "end": date(2024, 2, 1)})
+    assert lift_frame([later], frame, s, channels).empty  # type: ignore[arg-type]
+    for bad, pointer in (
+        ({"geo": None}, "/calibration/lift_tests/0/geo"),
+        ({"geo": "FR"}, "/calibration/lift_tests/0/geo"),
+        ({"channel": "radio"}, "/calibration/lift_tests/0/channel"),
+        ({"spend_delta": -5000.0}, "/calibration/lift_tests/0/spend_delta"),
+    ):
+        with pytest.raises(MapiError) as err:
+            lift_frame([LiftTest.model_validate({**base, **bad})], frame, s, channels)  # type: ignore[arg-type]
+        assert err.value.pointer == pointer
+
+
+@pytest.mark.slow
+def test_a_lift_test_calibrates_the_adapter(
+    data: tuple[xr.Dataset, E33Truth], tables: dict, registry: Registry
+) -> None:
+    spec = load_model_spec(SPEC.replace("mode: evaluate_then_refit", "mode: train_only") + LIFT)
+    assert "lift_tests" in PyMCMarketingMMM.manifest().capabilities.calibration
+    b = fit_spec(spec, data[0], tables, registry, raw_schema=e33_raw_schema(data[0]))
+    assert b.model.learned["calibration"] == {"lift_rows": 1}
+    # pymc-marketing's lift likelihood conditioned the fit
+    assert "lift_measurements" in b.model.groups["observed_data"]
+
+
+# ========================================================================= business priors
+
+BELIEFS = {
+    "channels": {"tv": {"roi": [1.5, 4.0], "credibility": 0.8},
+                 "search": {"contribution_share": [0.02, 0.10], "credibility": 0.9}},
+    "baseline_share": {"share": [0.5, 0.8], "credibility": 0.8},
+}  # fmt: skip
+
+
+def test_business_priors_translate_to_pymc_marketing_priors(
+    data: tuple[xr.Dataset, E33Truth], tables: dict, registry: Registry
+) -> None:
+    from mapi_plugin_mmm.settings import PyMCMarketingSettings
+    from mapi_sdk.harness import prepare_model_stage
+    from mapi_spec.calibration import BusinessPriors, PriorTranslationJob
+
+    assert "business_priors" in PyMCMarketingMMM.manifest().capabilities.calibration
+    stage = prepare_model_stage(SPEC, data[0], tables, registry, raw_schema=e33_raw_schema(data[0]))
+    s = PyMCMarketingSettings.model_validate(stage.settings)
+    job = PriorTranslationJob(spec={}, business_priors=BusinessPriors.model_validate(BELIEFS),
+                              draws=400, seed=3)  # fmt: skip
+    out = PyMCMarketingMMM().translate_priors(stage.data, s, job, stage.fit_context)
+    priors = out.result.priors
+    beta = priors["saturation_beta"]
+    assert beta["distribution"] == "LogNormal" and beta["dims"] == ["channel"]
+    assert len(beta["mu"]) == 2 and out.result.channels == ["tv", "search"]  # type: ignore[arg-type]
+    assert priors["intercept"]["distribution"] == "Normal"
+    # the stated ranges hold the stated prior mass (Monte Carlo error aside)
+    cov = out.result.coverage
+    assert abs(cov["tv"] - 0.8) < 0.08 and abs(cov["search"] - 0.9) < 0.06
+    assert abs(cov["baseline"] - 0.8) < 0.1
+    # pymc-marketing's wide seasonality prior had to be narrowed to reach the baseline range
+    assert "gamma_fourier" in priors and "gamma_control" in priors
+    assert any("narrowed" in i.message for i in out.result.issues)
+    preview = out.preview
+    assert set(preview.data_vars) >= {"roi", "contribution_share", "baseline_share", "kpi"}
+    assert out.result.preview.kpi_fan is not None
+    tv = out.result.preview.roi["tv"]
+    assert 1.0 < tv.quantiles["0.5"] < 4.0 and tv.units == "EUR per EUR"
+    # the priors apply: settings validate and become pymc-marketing model_config priors
+    applied = PyMCMarketingSettings.model_validate(
+        {**s.model_dump(mode="json", exclude_none=True), "priors": priors}
+    )
+    from mapi_plugin_mmm.pymc_marketing import _model_config
+
+    config = _model_config(applied, 2)
+    assert config["saturation_beta"].dims == ("geo", "channel")
+    assert config["intercept"].dims == ("geo",)
+    assert config["gamma_fourier"].dims == ("geo", "fourier_mode")
+
+
+def test_a_baseline_belief_alone_translates_to_pymc_marketing_priors(
+    data: tuple[xr.Dataset, E33Truth], tables: dict, registry: Registry
+) -> None:
+    from mapi_plugin_mmm.settings import PyMCMarketingSettings
+    from mapi_sdk.harness import prepare_model_stage
+    from mapi_spec.calibration import BusinessPriors, PriorTranslationJob
+    from mapi_spec.errors import Severity
+
+    stage = prepare_model_stage(SPEC, data[0], tables, registry, raw_schema=e33_raw_schema(data[0]))
+    s = PyMCMarketingSettings.model_validate(stage.settings)
+    beliefs = BusinessPriors.model_validate({"baseline_share": BELIEFS["baseline_share"]})
+    job = PriorTranslationJob(spec={}, business_priors=beliefs, draws=400, seed=3)
+    out = PyMCMarketingMMM().translate_priors(stage.data, s, job, stage.fit_context)
+    assert not [i for i in out.result.issues if i.severity is Severity.ERROR]
+    assert out.result.priors["intercept"]["distribution"] == "Normal"
+    assert abs(out.result.coverage["baseline"] - 0.8) < 0.1
+
+
+def test_unknown_channels_in_business_priors_are_errors(
+    data: tuple[xr.Dataset, E33Truth], tables: dict, registry: Registry
+) -> None:
+    from mapi_plugin_mmm.settings import PyMCMarketingSettings
+    from mapi_sdk.harness import prepare_model_stage
+    from mapi_spec.calibration import BusinessPriors, PriorTranslationJob
+    from mapi_spec.errors import Severity
+
+    stage = prepare_model_stage(SPEC, data[0], tables, registry, raw_schema=e33_raw_schema(data[0]))
+    s = PyMCMarketingSettings.model_validate(stage.settings)
+    beliefs = BusinessPriors.model_validate({"channels": {"radio": {"roi": [1, 2]}}})
+    job = PriorTranslationJob(spec={}, business_priors=beliefs, draws=100, seed=1)
+    out = PyMCMarketingMMM().translate_priors(stage.data, s, job, stage.fit_context)
+    [issue] = [i for i in out.result.issues if i.severity is Severity.ERROR]
+    assert issue.pointer == "/business_priors/channels/radio" and "radio" in issue.message
+    from mapi_plugin_mmm.pymc_marketing import _model_config
+
+    three = PyMCMarketingSettings.model_validate(
+        {"priors": {"saturation_beta": {"distribution": "LogNormal", "mu": [0.0, 1.0, 2.0],
+                                        "sigma": [1.0, 1.0, 1.0], "dims": ["channel"]}}}
+    )  # fmt: skip
+    with pytest.raises(MapiError) as exc:
+        _model_config(three, 2)  # one value per channel
+    assert exc.value.code is ErrorCode.SETTINGS_INVALID
+
+
+@pytest.mark.slow
+def test_business_priors_are_translated_at_fit_time(
+    data: tuple[xr.Dataset, E33Truth], tables: dict, registry: Registry
+) -> None:
+    import json as _json
+
+    cal = "calibration:\n  business_priors: " + _json.dumps(BELIEFS) + "\n"
+    spec = load_model_spec(SPEC.replace("mode: evaluate_then_refit", "mode: train_only") + cal)
+    b = fit_spec(spec, data[0], tables, registry, raw_schema=e33_raw_schema(data[0]))
+    translated = b.model.learned["calibration"]["translated_priors"]  # type: ignore[index]
+    assert translated["saturation_beta"]["distribution"] == "LogNormal"  # type: ignore[index]
+    # the fitted model was built with them (pymc-marketing's own model description)
+    attrs = b.model.learned["pymc_marketing"]["attrs"]  # type: ignore[index]
+    config = _json.loads(attrs["model_config"])  # type: ignore[index]
+    assert config["saturation_beta"]["dist"] == "LogNormal"
+    # and it scores after a round trip through the bundle
+    req = load_score_request(REQ + "mode: predict\noutput: {kind: expected, draws: 10}\n")
+    tree = score_bundle(b, req, data[0], side_tables=tables, registry=registry)
+    assert np.isfinite(tree["summary"].to_dataset()["y_hat"]).all()

@@ -18,6 +18,7 @@ const page = {
   catalog: () => import("@/routes/catalog"),
   datasets: () => import("@/routes/datasets"),
   guided: () => import("@/routes/guided"),
+  integrations: () => import("@/routes/integrations"),
   members: () => import("@/routes/members"),
   models: () => import("@/routes/models"),
   runDetail: () => import("@/routes/run-detail"),
@@ -141,14 +142,58 @@ const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/set
 
 const guidedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guided", component: lazyRouteComponent(page.guided, "GuidedPage") });
 
+// Guided sessions (M3): a new one starts from a template; a saved one is a spec, one URL per step.
+const guidedNewRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guided/new/$templateId", component: lazyRouteComponent(page.guided, "GuidedNewPage") });
+
+const guidedResumeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guided/$specId", component: lazyRouteComponent(page.guided, "GuidedResumePage") });
+
+const guidedStepRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guided/$specId/$step", component: lazyRouteComponent(page.guided, "GuidedSessionPage") });
+
 const tokensRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/tokens",
   component: lazyRouteComponent(page.tokens, "TokensPage"),
-  validateSearch: (s: Record<string, unknown>): { all?: boolean | undefined; status?: "active" | "expired" | "revoked" | undefined } => ({
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { all?: boolean | undefined; status?: "active" | "expired" | "revoked" | undefined; preset?: string | undefined } => ({
     all: s.all === true || s.all === "true" ? true : undefined,
     status: oneOf(s.status, ["active", "expired", "revoked"] as const),
+    // "score:<alias>": open the New token dialog for one endpoint (from Integrations).
+    preset: typeof s.preset === "string" && /^score:[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$/.test(s.preset) ? s.preset : undefined,
   }),
+});
+
+export const INTEGRATION_TABS = ["overview", "endpoints", "webhooks", "sharing"] as const;
+export type IntegrationTab = (typeof INTEGRATION_TABS)[number];
+export const ENDPOINT_TABS = ["overview", "schema", "snippets"] as const;
+export type EndpointTab = (typeof ENDPOINT_TABS)[number];
+
+const integrationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/integrations",
+  component: lazyRouteComponent(page.integrations, "IntegrationsPage"),
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { tab?: IntegrationTab | undefined; model?: string | undefined; version?: number | undefined; plot?: string | undefined } => ({
+    tab: oneOf(s.tab, INTEGRATION_TABS),
+    // A model plot to save and share (from the plot gallery's "Share").
+    model: idParam(s.model),
+    version: positiveInt(s.version),
+    plot: typeof s.plot === "string" && /^[A-Za-z0-9_.-]{1,128}$/.test(s.plot) ? s.plot : undefined,
+  }),
+});
+
+const endpointRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/integrations/endpoints/$alias",
+  component: lazyRouteComponent(page.integrations, "EndpointPage"),
+  validateSearch: (s: Record<string, unknown>): { tab?: EndpointTab | undefined } => ({ tab: oneOf(s.tab, ENDPOINT_TABS) }),
+});
+
+const webhookRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/integrations/webhooks/$webhookId",
+  component: lazyRouteComponent(page.integrations, "WebhookPage"),
 });
 
 const membersRoute = createRoute({
@@ -171,7 +216,7 @@ const usageRoute = createRoute({
   }),
 });
 
-export const ADMIN_TABS = ["tenants", "quotas", "kill-switches", "cost", "executors", "audit", "promotions"] as const;
+export const ADMIN_TABS = ["tenants", "signups", "quotas", "kill-switches", "cost", "executors", "audit", "promotions"] as const;
 export type AdminTab = (typeof ADMIN_TABS)[number];
 
 const adminRoute = createRoute({
@@ -197,7 +242,13 @@ export const routeTree = rootRoute.addChildren([
   catalogRoute,
   settingsRoute,
   guidedRoute,
+  guidedNewRoute,
+  guidedResumeRoute,
+  guidedStepRoute,
   tokensRoute,
+  integrationsRoute,
+  endpointRoute,
+  webhookRoute,
   membersRoute,
   usageRoute,
   adminRoute,

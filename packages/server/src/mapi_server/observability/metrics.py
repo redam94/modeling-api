@@ -37,6 +37,8 @@ __all__ = [
     "Metrics",
     "record_cost_micros",
     "record_dispatch_latency",
+    "record_endpoint_promotion",
+    "record_endpoint_score",
     "record_event_ingested",
     "record_executor_throttled",
     "record_finalize_outcome",
@@ -48,6 +50,10 @@ __all__ = [
     "record_run_transition",
     "record_sandbox_violation",
     "record_time_to_running",
+    "record_webhook_blocked",
+    "record_webhook_delivery",
+    "record_webhook_disabled",
+    "record_webhook_event",
     "render",
     "set_active_runs",
     "set_executor_running",
@@ -62,6 +68,8 @@ DISPATCH_BUCKETS: Final[Sequence[float]] = (0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 3
 TTR_BUCKETS: Final[Sequence[float]] = (1, 2, 5, 10, 20, 30, 45, 60, 90, 120, 300, 600)
 # Logging -> Pub/Sub lag is usually sub-second but can spike into tens of seconds.
 INGEST_LAG_BUCKETS: Final[Sequence[float]] = (0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120)
+# Webhook tries are bounded by the SSRF policy's 5 s timeout (twice that end to end).
+WEBHOOK_BUCKETS: Final[Sequence[float]] = (0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10)
 
 
 class Metrics:
@@ -188,6 +196,51 @@ class Metrics:
             buckets=DISPATCH_BUCKETS,
             registry=r,
         )
+        # M3: endpoints and webhooks (no tenant or alias labels: bounded cardinality)
+        self.endpoint_promotions_total = Counter(
+            "mapi_endpoint_promotions_total",
+            "Endpoint promotion and rollback decisions, by outcome (allowed, overridden, "
+            "needs_override, blocked, forbidden, rollback).",
+            ["outcome"],
+            registry=r,
+        )
+        self.endpoint_score_requests_total = Counter(
+            "mapi_endpoint_score_requests_total",
+            "POST /v1/endpoints/{alias}/score calls, by result (accepted, replayed, "
+            "invalid) and whether the payload was inline XrJSON.",
+            ["result", "inline"],
+            registry=r,
+        )
+        self.webhook_events_total = Counter(
+            "mapi_webhook_events_total",
+            "Webhook events written to the outbox, by event type.",
+            ["type"],
+            registry=r,
+        )
+        self.webhook_deliveries_total = Counter(
+            "mapi_webhook_deliveries_total",
+            "Webhook delivery tries, by resulting status (succeeded, retrying, failed, blocked).",
+            ["status"],
+            registry=r,
+        )
+        self.webhook_delivery_duration = Histogram(
+            "mapi_webhook_delivery_duration_seconds",
+            "Time of one webhook delivery try (resolution, connection, answer).",
+            buckets=WEBHOOK_BUCKETS,
+            registry=r,
+        )
+        self.webhook_ssrf_blocked_total = Counter(
+            "mapi_webhook_ssrf_blocked_total",
+            "Webhook URLs refused by the SSRF policy, by stage (create, update, replay, delivery).",
+            ["stage"],
+            registry=r,
+        )
+        self.webhooks_disabled_total = Counter(
+            "mapi_webhooks_disabled_total",
+            "Webhooks the platform disabled, by reason (failures, gone).",
+            ["reason"],
+            registry=r,
+        )
 
     # -------------------------------------------------------------- live callbacks
     def bind_sse_gauge(self, count: Callable[[], float]) -> None:
@@ -292,3 +345,30 @@ def set_global_spend(spent_micros: float, cap_micros: float) -> None:
 def record_http_request(method: str, route: str, status: int, seconds: float) -> None:
     METRICS.http_requests_total.labels(method=method, route=route, status=str(status)).inc()
     METRICS.http_request_duration.labels(method=method, route=route).observe(max(0.0, seconds))
+
+
+def record_endpoint_promotion(outcome: str) -> None:
+    METRICS.endpoint_promotions_total.labels(outcome=outcome).inc()
+
+
+def record_endpoint_score(result: str, *, inline: bool) -> None:
+    METRICS.endpoint_score_requests_total.labels(
+        result=result, inline="true" if inline else "false"
+    ).inc()
+
+
+def record_webhook_event(event_type: str, deliveries: int) -> None:
+    METRICS.webhook_events_total.labels(type=event_type).inc()
+
+
+def record_webhook_delivery(status: str, seconds: float) -> None:
+    METRICS.webhook_deliveries_total.labels(status=status).inc()
+    METRICS.webhook_delivery_duration.observe(max(0.0, seconds))
+
+
+def record_webhook_blocked(stage: str) -> None:
+    METRICS.webhook_ssrf_blocked_total.labels(stage=stage).inc()
+
+
+def record_webhook_disabled(reason: str) -> None:
+    METRICS.webhooks_disabled_total.labels(reason=reason).inc()

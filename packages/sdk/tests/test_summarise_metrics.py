@@ -254,3 +254,63 @@ def test_default_summaries_fit_the_stored_quantile_grid() -> None:
     assert default_summary_names(POINT, R.QUANTILES) == ["median", "q5", "q95"]
     with pytest.raises(CapabilityError):
         summarise(QUANT, R.QUANTILES, ["q5"])
+
+
+def _choice_pred() -> xr.DataArray:
+    """Two identical draws of choice probabilities over (hh, trip, product)."""
+    p = np.array(
+        [
+            [[0.7, 0.2, 0.1], [0.1, 0.8, 0.1]],  # hh a
+            [[0.2, 0.3, 0.5], [0.0, 0.0, 0.0]],  # hh b: no choice set on trip 2
+        ]
+    )
+    return xr.DataArray(
+        np.stack([p, p])[None],
+        dims=["chain", "draw", "hh", "trip", "product"],
+        coords={"hh": ["a", "b"], "trip": [1, 2], "product": ["cola", "fizz", "Store Brand"]},
+    )
+
+
+def test_categorical_targets_get_hit_rate_log_score_and_brier() -> None:
+    from mapi_sdk.metrics import CATEGORICAL_METRICS, categorical_dim
+
+    pred = _choice_pred()
+    obs = xr.DataArray(
+        [["cola", "cola"], ["store_brand", ""]],
+        dims=["hh", "trip"],
+        coords={"hh": ["a", "b"], "trip": [1, 2]},
+    )
+    assert categorical_dim(pred, obs) == "product"
+    assert categorical_dim(pred.isel(product=0), obs) is None
+    values, skipped = compute_metrics(pred, obs, R.DRAWS, [*CATEGORICAL_METRICS, "rmse"])
+    # cells: (a,1) cola p=.7 hit; (a,2) cola p=.1 miss; (b,1) Store Brand (loose match) hit;
+    # (b,2) has no label and no choice set
+    assert values["accuracy"] == pytest.approx(2 / 3)
+    assert values["accuracy_naive"] == pytest.approx(2 / 3)  # cola is 2 of the 3 labels
+    assert values["accuracy_lift"] == pytest.approx(0.0)
+    assert values["log_score"] == pytest.approx(np.mean(np.log([0.7, 0.1, 0.5])))
+    brier = np.mean([0.3**2 + 0.2**2 + 0.1**2, 0.9**2 + 0.8**2 + 0.1**2,
+                     0.2**2 + 0.3**2 + 0.5**2])  # fmt: skip
+    assert values["brier"] == pytest.approx(brier)
+    assert "categorical" in skipped["rmse"]
+    trip1 = xr.DataArray([True, False], dims=["trip"], coords={"trip": [1, 2]})
+    masked, _ = compute_metrics(pred, obs, R.DRAWS, ["accuracy"], mask=trip1)
+    assert masked["accuracy"] == 1.0
+
+
+def test_unknown_labels_are_misses_and_other_shapes_are_skipped() -> None:
+    pred = _choice_pred().isel(trip=[0])
+    obs = xr.DataArray([["pepsi"], ["fizz"]], dims=["hh", "trip"],
+                       coords={"hh": ["a", "b"], "trip": [1]})  # fmt: skip
+    values, _ = compute_metrics(pred, obs, R.DRAWS, ["accuracy", "log_score", "brier"])
+    assert values["accuracy"] == 0.0
+    assert values["log_score"] == pytest.approx(np.mean(np.log([1e-12, 0.3])))
+    assert values["brier"] == pytest.approx(np.mean([0.49 + 0.04 + 0.01, 0.04 + 0.49 + 0.25]))
+    _, why = compute_metrics(pred.isel(chain=0, draw=0), obs, R.QUANTILES, ["accuracy"])
+    assert "probabilities" in why["accuracy"]
+    flat = xr.DataArray([0.5, 0.5], dims=["hh"], coords={"hh": ["a", "b"]})
+    _, why2 = compute_metrics(flat, obs.isel(trip=0), R.POINT, ["mae", "elpd_loo"])
+    assert why2 == {"mae": "the target holds labels but the prediction has no category dim"}
+    numeric = obs.isel(trip=0).copy(data=[1.0, 2.0])
+    _, why3 = compute_metrics(pred.isel(trip=0), numeric, R.DRAWS, ["accuracy"])
+    assert "categorical" in why3["accuracy"]

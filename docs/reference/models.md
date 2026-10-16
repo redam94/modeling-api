@@ -3,16 +3,33 @@
 These model plugins ship with the platform (tier T0). They register through the
 `mapi.models` entry point, so `default_registry()` and the control-plane catalog list them
 without any configuration. Every one passes the contract kit (`mapi_sdk.testing.check_model`)
-and has a conformance fixture (see [Conformance corpus](../guides/conformance.md)).
+and all but `mmm.bayesinsight` have a conformance fixture (see
+[Conformance corpus](../guides/conformance.md)); the BayesInsight model is exercised end to
+end by the import test of the Guided data path instead.
+
+**Calibration** (M3, the spec's `calibration` block, Guided task 3) is declared per plugin in
+`Capabilities.calibration`; a spec with calibration data for a plugin that does not declare
+it fails static validation with `CALIBRATION_UNSUPPORTED`:
+
+| Plugin | Business priors | Lift tests |
+|---|---|---|
+| `mmm.hierarchical_geo` | yes - `beta_channel` and `intercept` priors | yes - with carry-over inside the test window |
+| `mmm.pymc_marketing` | yes - `saturation_beta`, `intercept` (and narrowed `gamma_control`/`gamma_fourier`) priors | yes - pymc-marketing's `add_lift_test_measurements` |
+| `mmm.bayesinsight` | no - its priors are already in KPI units: state them in `model_def.json` | yes - the incremental KPI under the model's own likelihood |
+
+The math of the translation and of each lift likelihood is in
+[Guided modelling](../guides/guided-modelling.md).
 
 | Plugin | Package | Representation | Score modes | Corpus fixture |
 |---|---|---|---|---|
 | `mmm.hierarchical_geo@1` | `mapi-plugin-mmm` | draws | predict, forecast, counterfactual, simulate, evaluate | `e33` |
 | `mmm.pymc_marketing@1` | `mapi-plugin-mmm` | draws | predict, forecast, counterfactual, evaluate | `pymc_marketing` |
+| `mmm.bayesinsight@1` | `mapi-plugin-mmm` | draws | predict, forecast, counterfactual, simulate, evaluate | – (contract kit and the BayesInsight import test) |
 | `ts.hsgp_trend@1` | `mapi-plugin-ts` | draws | predict, forecast, evaluate | `c08` |
 | `ts.gaussian_hmm@1` | `mapi-plugin-ts` | draws | predict, forecast, filter, evaluate | `e24` |
 | `tabular.hierarchical_glm@1` | `mapi-plugin-tabular` | draws | predict, counterfactual, evaluate | `e02` |
 | `tabular.regressor@1` | `mapi-plugin-tabular` | quantiles | predict, forecast, counterfactual, evaluate | `xgb_store_demand` |
+| `choice.multinomial_logit@1` | `mapi-plugin-tabular` | draws (Bayesian bootstrap) | predict, forecast, counterfactual, evaluate | `e84_lite` |
 
 Plugins use **canonical names** for their inputs; bind your dataset's names onto them in the
 spec's `data.bind` block. Outputs come back under your names (reverse binding) unless they
@@ -54,6 +71,70 @@ inverse_units]` and the platform skips its own versions of those. Bundles store 
 pymc-marketing's `fit_data` and its JSON model description, never a pickle. Markets are a
 `fixed` dim: pymc-marketing cannot score a market it has not seen. See
 [the adapter section](../guides/mmm.md#the-pymc-marketing-adapter).
+
+**Priors and calibration.** `settings.priors` hands prior overrides to pymc-marketing's
+`model_config`, in its scaled units (the KPI divided by its maximum): `saturation_beta` (the
+channel effect, one parameter per channel; `saturation_b` for `saturation: none`),
+`intercept`, `gamma_control` and `gamma_fourier`. Business priors are translated into them
+on prior draws of pymc-marketing's own model, so its scaling, adstock and curves are exactly
+the fit's: a log-normal `saturation_beta` per channel matches each ROI or contribution-share
+range at its credibility, a Normal `intercept` the baseline share, and the control and
+seasonality priors are narrowed when they alone spread the baseline share wider than the
+range (an `info` issue says by how much). A `translate_priors` run previews them; a fit
+without one translates them itself (`learned.calibration.translated_priors`). Lift tests go
+through pymc-marketing's `add_lift_test_measurements` (the saturation curve, no carry-over).
+
+## `mmm.bayesinsight`: a BayesInsight `model_def.json`
+
+Fits a BayesInsight model exactly as its
+`model_def.json` defines it - the dedicated target of the BayesInsight import
+(`POST /v1/guided/import/bayesinsight` with `"target": "mmm.bayesinsight"`; see
+[Guided mode](../concepts/guided-mode.md#bayesinsight-models)). The settings carry
+`model_def` (typed by `mapi_spec.bayesinsight_model`), map every analytic variable name to its
+model-stage variable and list the panel dims (the model's row ids besides `Period`).
+
+**Inputs.** The KPI `y(*panel, time)` as stored (BayesInsight does not rescale it; priors are
+in its units), every media variable as a `core.lag_tensor` with `pad: nan` (the history
+before a series starts carries no media, BayesInsight's zero-padded convolution) and the
+controls along `(*panel, time)`. Panel dims are `new_levels` (pooled); `time` extends.
+
+**Model.** `eta = intercept + Σ media + Σ controls + Σ seasons + Σ trends`:
+
+| Feature | `model_def.json` | Semantics |
+|---|---|---|
+| Likelihood | `exog.likelihood.type` | `Normal`, `LogNormal` (on `eta`), `Poisson`, `NegativeBinomial`, `ZeroInflatedPoisson`, `ZeroInflatedNegativeBinomial` (log link, `exp(clip(eta, -20, 20))`); none given means **Poisson**, as in BayesInsight. `likelihood_params` parametrise the dispersion prior, `dispersion_dims` vary it by row id |
+| Coefficients | `coeff_prior`, `intercept_prior` | Any of `Normal`, `Laplace`, `StudentT`, `Uniform`, `HalfNormal`, `HalfCauchy`, `Exponential`, `LogNormal`, `Gamma`, `Beta` with its parameters, in KPI units; defaults are BayesInsight's (`LogNormal(log 0.05, log 1.3)` for media, `Normal(0, 3)` otherwise) |
+| Effects per row id | `fixed_ind_coeff_dims`, `random_coeff_dims` | One coefficient per level combination of the fixed row ids, plus `sigma * z` per level combination of the random ones with `sigma ~ HalfNormal(partial_pooling_sigma)` (0, BayesInsight's default, pools nothing). New levels at score time get the pooled value; a coefficient estimated per level of a dim has none for a new level (`UNSEEN_LEVELS`) |
+| Signs | `sign` | Enforced (BayesInsight declares but does not enforce them): real priors are truncated at 0, positive priors negated for `negative`, random effects multiplicative so no level crosses zero. Media are always positive |
+| Media curve | `media_transform`, `media_transform_prior` | First the curve on `transform(x) / index` (`index`: each series' non-zero median or mean, `index_to`): `hill` (`K ~ LogNormal`, `n = 1 + Exponential`), `linear`, or the S-shaped curve of an `SShaped` prior, anchored so no spend has no effect |
+| Carry-over | `adstock`, `adstock_prior` | Then `delayed` (`alpha^((l - theta)^2)`), `geometric` (`alpha^l`), `weibull` (pymc-marketing's PDF or CDF weights, a `Weibull` prior) or `none`, over `l_max` lags, normalised to sum to one |
+| Controls | `deterministic_transform`, `normalization` | `linear`, `log`, `exp`, `indexp`, `power`; `Global Standardize` over the fit window (or the stored `mean`/`std`) |
+| Seasons | `season` | `n_fourier` cos/sin pairs of `period`, one coefficient each, on BayesInsight's time grid |
+| Local trends | `localtrend` | A B-spline basis (`num_knots`, `order`) with Gaussian-random-walk coefficients, per level of `random_coeff_dims` or grouped by `grouping_map`; forecasts hold the last fitted level |
+
+Where BayesInsight's own code cannot run a feature it defines (geometric and Weibull
+carry-over, the S-shaped curve, linear media, the zero-inflated negative binomial's
+`psi`), the plugin's choice is documented on `mapi_spec.bayesinsight_model` and the import
+reports it as an `info` issue. `MvNormal` likelihoods, time transforms (moving averages) and
+event priors are not supported: the import falls back to BayesInsight's defaults with an
+`IMPORT_UNSUPPORTED` warning.
+
+**Outputs.** `y_hat(*panel, time)` - the expected KPI (`eta` for a Normal likelihood,
+`exp(eta + sigma^2 / 2)` for a log-normal, the count mean times the zero-inflation share) or,
+`predictive`, a draw of the likelihood with common random numbers where the family allows -
+and `contributions(component, *panel, time)`: each media variable, `baseline` (the
+intercepts), each control, season and trend. They sum to `y_hat`: additive terms for a Normal
+likelihood, a log-mean Divisia split of `E[y] - baseline` for the others, exact for terms of
+either sign.
+
+**Calibration.** Lift tests (`channel`: a media variable's analytic or model-stage name,
+`geo`: a label of the first panel dim) observe the incremental KPI `Σ E[y | x + dx] -
+E[y | x]` over the test window under the model's own likelihood, with the extra spend
+spread in proportion to the actual spend and carried over. Business priors are not
+supported: BayesInsight's coefficient priors are already statements in KPI units.
+
+Response curves, marginal costs and the decision objective are not offered yet, so the
+Guided what-if sliders and the scorecard's ROI checks skip this model (they say so).
 
 ## `ts.hsgp_trend` — smooth trend with seasonality
 
@@ -175,3 +256,54 @@ regression), so other estimators are rejected at validation.
 
 All other settings are those of `mapi_sklearn` (see
 [Tabular models](../guides/sklearn.md)).
+
+## `choice.multinomial_logit` — which product customers pick
+
+The built-in model of the Guided **customer choice** template (E84-style household panels): on
+every shopping trip a household picks one product, and price and promotions shift the choice.
+
+**Inputs.** A dense `hh × trip` panel - `hh` (categorical, `new_levels` with strategy
+`hyperprior`), `trip` (`index`, `extend`) - with the alternatives along `product`
+(categorical, `fixed`). The target `y(hh, trip)` is text: the product chosen, empty where a
+household made no trip (ragged panels are fine). Covariates are alternative-specific
+variables along `product`, such as `price(hh, trip, product)` and `promo(hh, trip, product)`;
+by default every numeric variable with the `product` dim is one. A product whose covariates
+are missing on a trip was not available on that trip (off the shelf).
+
+**Model.** A conditional logit with household-specific product intercepts:
+`U[h, t, j] = asc[j] + Σ_k beta[k]·x_k[h, t, j] + u[h, j]`, the choice probabilities a softmax
+over the available products, `u[h, j] ~ Normal(0, effect_sd)` (a random-intercept logit). It
+is fitted by penalised maximum likelihood, the posterior mode of that model. **Uncertainty**
+comes from the Bayesian bootstrap: each of `fit.draws` draws refits with Dirichlet weights on
+households, so every household keeps its own effect in every draw and the draws are joint
+(`draws` representation: shares, counterfactual deltas and sums over trips are valid).
+There is no pointwise log-likelihood, so LOO is not offered.
+
+**Scoring.** `y_hat(hh, trip, product)` is the choice probability (`expected`) or one sampled
+choice per draw (`predictive`, one-hot). A household never seen at fit draws its preferences
+from `Normal(0, sd)` per draw, `sd` being the spread of the fitted effects in that draw. Trips
+never made have probability 0 for every product, so sums over trips count expected
+purchases. Price scenarios are interventions, e.g.
+`{var: price, sel: {product: cola}, multiply: 1.1}` in a `counterfactual` request. Choice
+values match product labels after lower-casing and replacing punctuation with `_`.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `covariates` | every numeric variable along `product` | Alternative-specific covariates |
+| `random_effects` | `[hh]` | Household product intercepts (`[]`: none) |
+| `effect_sd` | 1.0 | Prior sd of the household effects (smaller pools more) |
+| `coef_sd` | 10.0 | Prior sd of the product intercepts and coefficients |
+| `reference` | the first product | The product whose intercept is fixed at 0 |
+| `max_iter` | 500 | Iterations of each L-BFGS fit |
+
+`fit.draws` (default 100, at most 2000) sets the bootstrap draws and `fit.seed` makes them
+reproducible. The in-sample hit rate is reported as the `CHOICE_HIT_RATE` diagnostic.
+
+**Holdout metrics.** A text target scored as one probability per product gets the
+categorical metrics of `evaluate.metrics`: `accuracy` (the hit rate of the most likely
+product), `accuracy_naive` (always guessing the holdout's most common product),
+`accuracy_lift` (their difference), `log_score` (mean log probability of the product
+bought) and `brier` (multi-class Brier score). The Guided `customer_choice` template
+evaluates all five on each household's last trip and its scorecard runs
+[`holdout.hit_rate`](../concepts/guided-mode.md#check-holdout-hit-rate); numeric metrics
+such as `mape` are skipped for a text target.

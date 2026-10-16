@@ -29,6 +29,7 @@ __all__ = [
     "GridSettings",
     "HierarchicalGeoSettings",
     "Priors",
+    "PyMCMarketingPriors",
     "PyMCMarketingSettings",
     "SaturationSettings",
     "mcmc_fit_schema",
@@ -82,16 +83,18 @@ class GridSettings(_Sub):
 
     max_multiplier: float = Field(
         2.0,
-        gt=0,
+        ge=1,
         le=20,
-        description="Largest spend multiplier on the grid (1 = spend over the fit window)",
+        description="Largest spend multiplier on the grid (1 = spend over the fit window, "
+        "which the grid always holds)",
         json_schema_extra=ADVANCED,
     )
     points: int = Field(
         21,
         ge=3,
         le=201,
-        description="Grid points from 0 to max_multiplier",
+        description="Grid points from 0 to max_multiplier (plus 1, today's spend, when the "
+        "spacing skips it)",
         json_schema_extra=ADVANCED,
     )
     marginal_step: float = Field(
@@ -103,8 +106,12 @@ class GridSettings(_Sub):
     )
 
     def multipliers(self) -> list[float]:
+        """``points`` evenly spaced multipliers from 0 to ``max_multiplier``, with ``1.0``
+        (today's spend, which the what-if grid and the scorecard read) inserted when the
+        spacing skips it."""
         step = self.max_multiplier / (self.points - 1)
-        return [round(i * step, 12) for i in range(self.points)]
+        grid = [round(i * step, 12) for i in range(self.points)]
+        return grid if 1.0 in grid else sorted([*grid, 1.0])
 
 
 def _slot(name: str) -> Any:
@@ -197,6 +204,41 @@ class HierarchicalGeoSettings(ModelSettings):
         return resolve_priors(self.priors.as_dict())
 
 
+class PyMCMarketingPriors(_Sub):
+    """Prior overrides of ``mmm.pymc_marketing`` (pymc-marketing's ``model_config``).
+
+    ``saturation_beta`` is the channel effect - pymc-marketing's ``saturation_beta``
+    (``saturation_b`` for ``saturation: none``), drawn per panel cell and channel with the
+    per-channel parameters given here; ``intercept`` the intercept per panel cell;
+    ``gamma_control``/``gamma_fourier`` the control and yearly seasonality coefficients.
+    All are in pymc-marketing's scaled units (the KPI divided by its maximum);
+    business-prior translation writes them (:mod:`mapi_plugin_mmm.pymc_marketing_calibration`).
+    """
+
+    saturation_beta: PositiveChannelPrior | None = Field(
+        None,
+        description="Channel effect (the saturation curve's multiplier), scaled units",
+        json_schema_extra=ADVANCED,
+    )
+    intercept: RealScalarPrior | None = Field(
+        None, description="Intercept, scaled units", json_schema_extra=ADVANCED
+    )
+    gamma_control: RealScalarPrior | None = Field(
+        None,
+        description="Control coefficients, per panel cell and control",
+        json_schema_extra=ADVANCED,
+    )
+    gamma_fourier: RealScalarPrior | None = Field(
+        None,
+        description="Yearly seasonality coefficients, per panel cell and Fourier mode",
+        json_schema_extra=ADVANCED,
+    )
+
+    def as_dict(self) -> dict[str, PriorSpec]:
+        names = ("saturation_beta", "intercept", "gamma_control", "gamma_fourier")
+        return {k: v for k in names if (v := getattr(self, k))}
+
+
 class PyMCMarketingSettings(ModelSettings):
     """Settings of ``mmm.pymc_marketing`` (an adapter around ``pymc_marketing.mmm.MMM``).
 
@@ -228,6 +270,12 @@ class PyMCMarketingSettings(ModelSettings):
         json_schema_extra=BASIC,
     )
     adstock_first: bool = Field(True, json_schema_extra=ADVANCED)
+    priors: PyMCMarketingPriors = Field(
+        PyMCMarketingPriors(),
+        description="Prior overrides handed to pymc-marketing (M3: written by business-prior "
+        "translation)",
+        json_schema_extra=ADVANCED,
+    )
 
     @field_validator("dims", "controls")
     @classmethod

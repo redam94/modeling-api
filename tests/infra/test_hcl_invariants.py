@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 
 import pytest
-from mapi_spec.api import ENDPOINTS
+from mapi_spec.api import ALL_ENDPOINTS, ENDPOINTS
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.run import ENV_BOOTSTRAP_URL, ENV_NONCE, ENV_RUN_ID
 from mapi_spec.storage import BucketPurpose, bucket_name
@@ -432,7 +432,7 @@ def test_server_workloads_get_only_real_settings() -> None:
         "MAPI_PUBSUB_PUSH_AUDIENCE", "MAPI_PUBSUB_PUSH_SERVICE_ACCOUNT",
         "MAPI_DATABASE_APP_URL", "MAPI_DATABASE_SYSTEM_URL", "MAPI_DB_SYSTEM_ROLE",
         "MAPI_DATABASE_GATEWAY_URL", "MAPI_DB_GATEWAY_ROLE",
-        "MAPI_CLOUDRUN_PROJECT", "MAPI_EXECUTOR",
+        "MAPI_CLOUDRUN_PROJECT", "MAPI_EXECUTOR", "MAPI_TRUSTED_PROXIES",
     ):  # fmt: skip
         assert required in names, required
 
@@ -602,3 +602,76 @@ def test_every_server_workload_ships_its_metrics_to_cloud_monitoring() -> None:
     for env in ENVS:
         main = (TF_ROOT / "envs" / env / "main.tf").read_text()
         assert "var.metrics_collector_image" in main, env
+
+
+# ------------------------------------------------------------------------------ Cloud Armor
+
+
+def test_cloud_armor_guards_every_load_balancer_backend() -> None:
+    """Plan §14 M3 (Cloud Armor): the policy is attached to every backend of the external
+    load balancer, carries the OWASP CRS rules (sqli, xss, lfi, rce, scanner detection) in a
+    preview-then-enforce mode, and Adaptive Protection is on by default."""
+    blocks = _module_blocks("control")
+    backend = _one(blocks, "google_compute_backend_service", "run")
+    assert re.search(r"security_policy\s*=\s*local\.security_policy", backend.body)
+    policy = _one(blocks, "google_compute_security_policy", "edge")
+    assert 'type        = "CLOUD_ARMOR"' in policy.body
+    assert "count       = local.armor" in policy.body
+    armor = strip_comments((TF_ROOT / "modules" / "control" / "armor.tf").read_text())
+    for rule in ("sqli", "xss", "lfi", "rce", "scannerdetection"):
+        assert f'"{rule}-v33-stable"' in armor, rule
+    assert 'preview     = var.cloud_armor.waf_mode == "preview"' in policy.body
+    assert "evaluatePreconfiguredWaf(" in policy.body and 'action      = "deny(403)"' in policy.body
+    assert "layer_7_ddos_defense_config" in policy.body
+    assert 'json_parsing                 = "STANDARD"' in policy.body
+    variables = (TF_ROOT / "modules" / "control" / "variables.tf").read_text()
+    block = re.search(r'variable "cloud_armor" \{(.*?)\n\}', variables, re.S)
+    assert block is not None
+    assert 'waf_mode                     = optional(string, "preview")' in block.group(1)
+    assert "adaptive_protection          = optional(bool, true)" in block.group(1)
+    assert "request_body_inspection_size" in block.group(1)
+    assert "priority    = 2147483647" in policy.body  # an explicit default rule
+
+
+def test_cloud_armor_rate_bans_cover_the_abuse_prone_routes() -> None:
+    """Per-IP rate-based bans on sign-up, /auth/*, public embeds and endpoint scoring, on
+    paths the API really serves (the M3 contract)."""
+    armor = strip_comments((TF_ROOT / "modules" / "control" / "armor.tf").read_text())
+    rules = re.findall(r"expression\s*=\s*\"(request\.path[^\"]+)\"", armor)
+    joined = " ".join(rules)
+    paths = {e.path for e in ALL_ENDPOINTS}
+    assert "/auth/signup" in paths and "request.path.startsWith('/auth/signup')" in joined
+    assert "request.path.startsWith('/auth/')" in joined
+    assert any(p.startswith("/v1/embeds/") for p in paths)
+    assert "request.path.startsWith('/v1/embeds/')" in joined
+    assert "/v1/endpoints/{alias}/score" in paths
+    score = re.search(r"request\.path\.matches\('([^']+)'\)", joined)
+    assert score and re.fullmatch(score.group(1), "/v1/endpoints/geo-mmm-prod/score")
+    assert not re.fullmatch(score.group(1), "/v1/endpoints/geo-mmm-prod/schema")
+    assert armor.count('action      = "rate_based_ban"') == 1  # one dynamic rule, four entries
+    assert 'enforce_on_key   = "IP"' in armor and 'exceed_action    = "deny(429)"' in armor
+    lb = (TF_ROOT / "modules" / "control" / "lb.tf").read_text()
+    for prefix in ('"/v1/*"', '"/auth/*"'):  # the rules see these paths: the LB routes them
+        assert prefix in lb
+
+
+def test_prod_rolls_cloud_armor_out_in_preview_first() -> None:
+    prod = (TF_ROOT / "envs" / "prod" / "main.tf").read_text()
+    assert "cloud_armor        = { waf_mode = var.cloud_armor_waf_mode }" in prod
+    variables = (TF_ROOT / "envs" / "prod" / "variables.tf").read_text()
+    block = re.search(r'variable "cloud_armor_waf_mode" \{(.*?)\n\}', variables, re.S)
+    assert block and 'default     = "preview"' in block.group(1)
+    stack = (TF_ROOT / "modules" / "stack" / "main.tf").read_text()
+    assert 'cloud_armor              = lookup(var.control, "cloud_armor", {})' in stack
+
+
+def test_log_retention_is_explicit_because_deletion_does_not_purge_logs() -> None:
+    """Tenant deletion purges Postgres and object storage, not Cloud Logging: the control
+    project's _Default bucket has an explicit, bounded retention instead."""
+    bucket = _one(_module_blocks("control"), "google_logging_project_bucket_config", "default")
+    assert 'bucket_id      = "_Default"' in bucket.body
+    assert "retention_days = var.log_retention_days" in bucket.body
+    variables = (TF_ROOT / "modules" / "control" / "variables.tf").read_text()
+    block = re.search(r'variable "log_retention_days" \{(.*?)\n\}', variables, re.S)
+    assert block and "default     = 30" in block.group(1) and "3650" in block.group(1)
+    assert "does not purge" in strip_comments(block.group(1)) or "not purge" in block.group(1)

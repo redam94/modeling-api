@@ -76,6 +76,7 @@ async def test_fit_is_verified_copied_signed_and_registered(
             "plots.json",
             "coords.json",
             "ui/summaries.json",
+            "scorecard.json",
         )
     }
     stored = ctx.store.snapshot()  # type: ignore[attr-defined]

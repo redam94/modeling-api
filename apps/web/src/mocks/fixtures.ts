@@ -388,7 +388,7 @@ export const modelVersion: ModelVersion = {
     resource_class: "M",
     lib_versions: { pymc: "5.25.1" },
   },
-  metrics: { mape: 0.14, coverage_90: 0.88 },
+  metrics: { mape: 14, coverage_90: 0.88 }, // mapi_sdk reports MAPE in percent
   artifacts: [
     { name: "bundle.zarr.zip", size: 2_097_152, content_type: "application/zip" },
     { name: "ui/tree_index.json", size: 1024, content_type: "application/json" },

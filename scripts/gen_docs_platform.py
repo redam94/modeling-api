@@ -76,6 +76,10 @@ RESOURCE_LABELS: dict[str, str] = {
     "kill_switch": "Kill switches",
     "executor": "Executor health",
     "event": "Run events (`/internal/events`)",
+    "webhook": "Outgoing webhooks and their delivery log",
+    "embed": "Read-only embed links of saved plots",
+    "tenant_deletion": "Deleting the whole tenant",
+    "tenant_export": "GDPR exports of the tenant's data",
 }
 
 ACTION_NOTES: dict[tuple[str, str], str] = {
@@ -84,7 +88,12 @@ ACTION_NOTES: dict[tuple[str, str], str] = {
     ("model", "run"): "score",
     ("plot", "run"): "render",
     ("endpoint", "run"): "score",
-    ("tenant", "manage"): "tier, status, residency",
+    ("tenant", "manage"): "tier, status, residency, identity verification",
+    ("endpoint", "manage"): "override a promotion gate; sessions only",
+    ("plot", "delete"): "saved plots",
+    ("webhook", "update"): "includes rotating the secret and replaying deliveries",
+    ("tenant_deletion", "cancel"): "within the grace period",
+    ("tenant_deletion", "manage"): "purge, retry",
 }
 
 
@@ -128,7 +137,15 @@ def roles_matrix() -> str:
     return "\n".join(lines) + "\n"
 
 
-SCOPE_COLUMNS = ("models:read", "runs:create", "score:*", "datasets:write", "plugins:publish")
+SCOPE_COLUMNS = (
+    "models:read",
+    "runs:create",
+    "score:*",
+    "datasets:write",
+    "plugins:publish",
+    "endpoints:promote",
+    "webhooks:manage",
+)
 
 
 def scopes_matrix() -> str:

@@ -10,6 +10,12 @@ file                   ``format``                content
 ``profile.json``       ``mapi.profile/v1``       per-variable statistics + missingness grid
 ``ui/tree_index.json`` ``mapi.tree-index/v1``    structure of the bundle DataTree (no arrays)
 ``ui/preprocess.json`` ``mapi.preprocess/v1``    learned preprocessing state per pipeline step
+``ui/grids/            ``mapi.response-grid/v1`` per-draw response curves for what-if sliders
+response_curves.json``                           (M3; :class:`ResponseGridView`)
+``ui/guided/           ``mapi.forecast/v1``      a forecast score run's KPI: history, then the
+forecast.json``                                  forecast fan after the split (M3)
+``ui/guided/           ``mapi.counterfactual/v1`` a counterfactual score run's change of the
+counterfactual.json``                            KPI, in total and per period (M3)
 =====================  ========================  ==========================================
 
 Views are produced inside the sandbox from untrusted data: strings are capped and readers
@@ -23,20 +29,34 @@ from typing import Final, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from mapi_spec._types import JsonValue
+from mapi_spec.calibration import DistributionSummary, FanChart
 
 __all__ = [
+    "COUNTERFACTUAL_FORMAT",
+    "COUNTERFACTUAL_VIEW",
+    "FORECAST_FORMAT",
+    "FORECAST_VIEW",
+    "MAX_GRID_CELLS",
+    "MAX_GRID_DRAWS",
+    "MAX_GRID_GEOS",
+    "MAX_GRID_POINTS",
     "MAX_LEARNED_BYTES",
     "MAX_STATE_ARRAYS",
     "MAX_STATE_ARRAY_CELLS",
     "PREPROCESS_FORMAT",
     "PREVIEW_FORMAT",
     "PROFILE_FORMAT",
+    "RESPONSE_GRID_FORMAT",
+    "RESPONSE_GRID_VIEW",
     "TREE_INDEX_FORMAT",
+    "CounterfactualView",
+    "ForecastView",
     "MissingnessGrid",
     "PreprocessView",
     "PreviewColumn",
     "PreviewView",
     "ProfileView",
+    "ResponseGridView",
     "StateArrayView",
     "StepStateView",
     "TreeCoord",
@@ -51,6 +71,24 @@ PREVIEW_FORMAT: Final = "mapi.preview/v1"
 PROFILE_FORMAT: Final = "mapi.profile/v1"
 TREE_INDEX_FORMAT: Final = "mapi.tree-index/v1"
 PREPROCESS_FORMAT: Final = "mapi.preprocess/v1"
+RESPONSE_GRID_FORMAT: Final = "mapi.response-grid/v1"
+RESPONSE_GRID_VIEW: Final = "ui/grids/response_curves.json"
+"""Where a fit writes its :class:`ResponseGridView` (served by ``…/artifacts/{name}``)."""
+FORECAST_FORMAT: Final = "mapi.forecast/v1"
+FORECAST_VIEW: Final = "ui/guided/forecast.json"
+"""Where a ``forecast`` score run writes its :class:`ForecastView` (M3)."""
+COUNTERFACTUAL_FORMAT: Final = "mapi.counterfactual/v1"
+COUNTERFACTUAL_VIEW: Final = "ui/guided/counterfactual.json"
+"""Where a ``counterfactual`` score run writes its :class:`CounterfactualView` (M3)."""
+MAX_GRID_DRAWS: Final = 500
+MAX_GRID_CELLS: Final = 2_000_000
+"""Cap on the number of floats in one response grid (draws x channels x points [x geos])."""
+MAX_GRID_GEOS: Final = 256
+"""Cap on a response grid's per-geo axis (``geos``); a model with more geos gets the national
+grid only."""
+MAX_GRID_POINTS: Final = 202
+"""Cap on a response grid's multipliers: up to 201 evenly spaced points plus 1 (today's spend)
+when the spacing skips it."""
 
 ViewScalar = str | int | float | bool | None
 """A JSON scalar (datetimes are ISO strings; NaN is ``null``)."""
@@ -199,3 +237,138 @@ class PreprocessView(_View):
 
     format: Literal["mapi.preprocess/v1"] = PREPROCESS_FORMAT
     steps: list[StepStateView] = Field(default_factory=list, max_length=1024)
+
+
+class ResponseGridView(_View):
+    """``ui/grids/response_curves.json``: per-draw response curves for instant what-if sliders.
+
+    For each thinned posterior draw ``d``, channel ``c`` and spend multiplier ``m``,
+    ``contribution[d][c][m]`` is the channel's total contribution to the KPI over the fit
+    window (``periods`` periods, KPI units) when the channel's spend is scaled by
+    ``multipliers[m]``; ``spend[c][m]`` is that spend (spend units). Multiplier ``1`` is the
+    actual spend (``current_spend``). ``baseline[d]`` is the KPI over the window that no
+    channel explains, so ``baseline[d] + sum_c contribution[d][c][at 1]`` is the model's
+    expected KPI. ``*_by_geo`` variants add a trailing geo axis (``geos`` order).
+
+    Sliders interpolate per draw (see :func:`mapi_spec.whatif.evaluate_scenario`), so
+    uncertainty bands stay joint across channels; "Run exact" submits a real score run.
+    """
+
+    format: Literal["mapi.response-grid/v1"] = RESPONSE_GRID_FORMAT
+    kpi: str = Field(..., max_length=128)
+    kpi_units: str | None = Field(None, max_length=64)
+    spend_units: str | None = Field(None, max_length=64)
+    periods: int = Field(..., ge=1)
+    channels: list[str] = Field(..., min_length=1, max_length=64)
+    geos: list[str] | None = Field(None, max_length=MAX_GRID_GEOS)
+    multipliers: list[float] = Field(..., min_length=2, max_length=MAX_GRID_POINTS)
+    draws: int = Field(..., ge=1, le=MAX_GRID_DRAWS)
+    contribution: list[list[list[float]]]
+    spend: list[list[float]]
+    current_spend: list[float]
+    baseline: list[float] | None = None
+    contribution_by_geo: list[list[list[list[float]]]] | None = None
+    spend_by_geo: list[list[list[float]]] | None = None
+
+    @model_validator(mode="after")
+    def _shape(self) -> Self:
+        m = self.multipliers
+        if m != sorted(set(m)) or m[0] < 0:
+            raise ValueError("multipliers must be unique, ascending and non-negative")
+        if not any(abs(x - 1.0) < 1e-9 for x in m):
+            raise ValueError("multipliers must include 1 (the actual spend)")
+        nc, nm, nd = len(self.channels), len(m), self.draws
+        if len(set(self.channels)) != nc:
+            raise ValueError("channels must be unique")
+        cells = nd * nc * nm * (len(self.geos) if self.geos else 1)
+        if cells > MAX_GRID_CELLS:
+            raise ValueError(f"the grid holds {cells} values (max {MAX_GRID_CELLS})")
+        if len(self.contribution) != nd or any(
+            len(per_c) != nc or any(len(row) != nm for row in per_c) for per_c in self.contribution
+        ):
+            raise ValueError("contribution must be [draw][channel][multiplier]")
+        if len(self.spend) != nc or any(len(row) != nm for row in self.spend):
+            raise ValueError("spend must be [channel][multiplier]")
+        if len(self.current_spend) != nc:
+            raise ValueError("current_spend needs one value per channel")
+        if self.baseline is not None and len(self.baseline) != nd:
+            raise ValueError("baseline needs one value per draw")
+        if (
+            self.contribution_by_geo is not None or self.spend_by_geo is not None
+        ) and not self.geos:
+            raise ValueError("per-geo grids need geos")
+        if self.geos:
+            ng = len(self.geos)
+            if len(set(self.geos)) != ng:
+                raise ValueError("geos must be unique")
+            by = self.contribution_by_geo
+            if by is not None and (
+                len(by) != nd
+                or any(
+                    len(per_c) != nc
+                    or any(len(row) != nm or any(len(cell) != ng for cell in row) for row in per_c)
+                    for per_c in by
+                )
+            ):
+                raise ValueError("contribution_by_geo must be [draw][channel][multiplier][geo]")
+            sg = self.spend_by_geo
+            if sg is not None and (
+                len(sg) != ng
+                or any(len(per_c) != nc or any(len(row) != nm for row in per_c) for per_c in sg)
+            ):
+                raise ValueError("spend_by_geo must be [geo][channel][multiplier]")
+        return self
+
+
+class ForecastView(_View):
+    """``ui/guided/forecast.json``: the KPI of a ``forecast`` score run for Guided mode.
+
+    ``fan.coords`` are the last ``history`` fitted periods followed by the forecast periods;
+    ``fan.observed`` holds the actual KPI over the history (``null`` after it) and
+    ``fan.values`` the forecast quantiles (``null`` over the history), so the split line sits
+    at ``split_at``, the first forecast period. The KPI is summed over ``summed_over``
+    (geos, stores, ...) per posterior draw before the quantiles are taken; ``total`` is the
+    KPI summed over the whole horizon.
+    """
+
+    format: Literal["mapi.forecast/v1"] = FORECAST_FORMAT
+    kpi: str = Field(..., max_length=128)
+    units: str | None = Field(None, max_length=64)
+    kind: Literal["expected", "predictive"] = "expected"
+    dim: str = Field(..., max_length=128)
+    history: int = Field(0, ge=0)
+    split_at: ViewScalar = None
+    summed_over: list[str] = Field(default_factory=list, max_length=32)
+    fan: FanChart
+    total: DistributionSummary | None = None
+
+    @model_validator(mode="after")
+    def _split(self) -> Self:
+        if self.history > len(self.fan.coords):
+            raise ValueError("history cannot exceed the number of coords")
+        return self
+
+
+class CounterfactualView(_View):
+    """``ui/guided/counterfactual.json``: how a counterfactual changed the KPI.
+
+    ``delta_total`` is ``scenario - baseline`` summed over every period and ``summed_over``
+    dims per posterior draw (common random numbers keep the difference precise);
+    ``delta_fan`` gives the change per period along ``dim``. ``interventions`` echo the
+    request's (``var``, ``sel``, ``multiply``/``add``/``set``).
+    """
+
+    format: Literal["mapi.counterfactual/v1"] = COUNTERFACTUAL_FORMAT
+    kpi: str = Field(..., max_length=128)
+    units: str | None = Field(None, max_length=64)
+    kind: Literal["expected", "predictive"] = "expected"
+    dim: str | None = Field(None, max_length=128)
+    summed_over: list[str] = Field(default_factory=list, max_length=32)
+    interventions: list[dict[str, JsonValue]] = Field(default_factory=list, max_length=64)
+    scenario_total: DistributionSummary
+    baseline_total: DistributionSummary
+    delta_total: DistributionSummary
+    delta_share: DistributionSummary | None = Field(
+        None, description="delta_total / baseline_total per draw (None if the baseline is 0)"
+    )
+    delta_fan: FanChart | None = None

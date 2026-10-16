@@ -326,12 +326,18 @@ async def test_postgres_restart_mid_run_converges(tmp_path: Path) -> None:
 
     # record finalize hand-offs instead of running the finalizer (no real outputs here): the
     # convergence we assert is that the live reconciler moves the run past RUNNING.
+    # The reconciler re-defers the hand-off of a FINALIZING run on every pass; the real queue's
+    # queueing lock (``finalize:{run_id}:{attempt}``) collapses those into one job, so the fake
+    # does the same: ``calls`` holds the jobs, ``defers`` every request.
     class _RecordingQueue:
         def __init__(self) -> None:
             self.calls: list[tuple[str, int]] = []
+            self.defers: list[tuple[str, int]] = []
 
         async def defer_finalize(self, run_id: str, attempt: int) -> None:
-            self.calls.append((run_id, attempt))
+            self.defers.append((run_id, attempt))
+            if (run_id, attempt) not in self.calls:
+                self.calls.append((run_id, attempt))
 
     queue = _RecordingQueue()
     ctx.queue = queue
@@ -396,6 +402,9 @@ async def test_postgres_restart_mid_run_converges(tmp_path: Path) -> None:
             return False
 
         await _until(finalizing)
+        # let several reconcile passes see the FINALIZING run: each re-defers the hand-off,
+        # which the real queue's queueing lock collapses into one job
+        await asyncio.sleep(0.3)
         assert not loops.done()
         async with ctx.db.session() as s:
             attempts = (
@@ -407,6 +416,7 @@ async def test_postgres_restart_mid_run_converges(tmp_path: Path) -> None:
             ).scalar_one()
         assert attempts == 1
         assert queue.calls == [(run_id, 1)], "handed off exactly once"
+        assert set(queue.defers) == {(run_id, 1)}, "only this attempt was ever handed off"
         assert executor.submit_calls == 1, "no duplicate execution"
     finally:
         orch.stop.set()

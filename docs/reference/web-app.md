@@ -4,7 +4,7 @@ The browser front end is two separately served apps in the pnpm workspace:
 
 | App | Package | Local origin | What it is |
 |---|---|---|---|
-| Web app | `@mapi/web` (`apps/web`) | `http://127.0.0.1:5173` | The Expert-mode SPA (React 19, TanStack Router/Query/Table, Monaco, Arrow) plus the Guided-mode shell |
+| Web app | `@mapi/web` (`apps/web`) | `http://127.0.0.1:5173` | The SPA (React 19, TanStack Router/Query/Table, Monaco, Arrow): Expert mode and the Guided task flow |
 | Plot sandbox | `@mapi/plot-sandbox` (`apps/plot-sandbox`) | `http://127.0.0.1:5174` | The only place Vega-Lite and Plotly specs render, on a separate origin |
 
 `make dev` starts both against the local API ([Local development](../operations/local-development.md)).
@@ -21,7 +21,8 @@ In production they are static files, served with the headers described below (th
 | Runs | Filters by state and kind; live progress over SSE (resumes with `Last-Event-ID`), per-chain lanes, the `STALLED` banner, event timeline, logs; cancel, resume a partial run, retry one resource class up after `RESOURCE_EXHAUSTED` |
 | Inspect | Scorecard, per-variable diagnostics, the DataTree browser (`ui/tree_index.json`), the preprocessing state viewer (`ui/preprocess.json`), lineage, signature and bundle objects, the plot gallery |
 | Score | Mode limited to the model's capabilities, horizon, `inputs_stage`, input and scenario datasets, the spec's side tables (supplied ones default to the version the fit used; pinned ones are replayed), interventions, output selector; `Prefer: wait=30`, then the run over SSE; the run's own plots (`GET /v1/runs/{id}/plots`, sanitized) in the sandbox, Arrow outputs as a table (summaries pivoted by statistic) and a quick chart |
-| Catalog, Settings | Steps, models and plots of the image; theme, persona and connection health |
+| Guided | The task flow for analysts (`/guided`, `/guided/new/<template>`, `/guided/<spec>/<step>`): templates, the question flow over a browser-side profile of the upload, business priors and lift tests with a sandboxed preview, the fit with plain-language progress, the report and sanity scorecard, what-if sliders interpolating the per-draw response grid in the browser (`src/features/guided/whatif.ts`, checked against `packages/spec/tests/snapshots/whatif_golden.json`), "Run exact", forecasts and scenario presets, promotion and embed links; see [Your first analysis in Guided mode](../guides/guided-tutorial.md) |
+| Catalog, Settings | Steps, models and plots of the image; theme, persona (remembered per user) and connection health |
 
 ## API client
 
@@ -29,7 +30,8 @@ In production they are static files, served with the headers described below (th
 `uv run python apps/web/scripts/gen_openapi.py` from `mapi_server.app.openapi_document()`
 (no database needed). `pnpm --filter @mapi/web openapi:types` generates
 `src/api/schema.d.ts` from it, and `openapi-fetch` gives typed calls. CI fails when either
-file drifts from the server (`gen_openapi.py --check`, `openapi:check`). Run-event payloads
+file drifts from the server (`gen_openapi.py --check`, `openapi:check`); `make api-types` runs
+both generators. Run-event payloads
 (`StatePayload`, `ProgressPayload`, …) are published as components so SSE frames are typed
 too.
 
@@ -69,5 +71,6 @@ pnpm --filter @mapi/web e2e   # @e2e specs against a running stack (MAPI_E2E=1)
 ```
 
 The smoke suite runs the mock-mode production build and fails on any CSP or Trusted Types
-violation. The `@e2e` specs reuse a running `make dev` stack; set `VITE_API_BASE`,
+violation; `e2e/guided.spec.ts` drives the whole Guided flow against the mock API
+(`src/mocks/guided.ts`). The `@e2e` specs reuse a running `make dev` stack; set `VITE_API_BASE`,
 `MAPI_WEB_ORIGIN` and `MAPI_PLOTS_ORIGIN` when it runs on other ports.

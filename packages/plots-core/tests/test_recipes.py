@@ -315,6 +315,18 @@ def test_fan_from_draws_detects_the_split(scored: Any) -> None:
     assert "training data ends" in caption(plot)
 
 
+def test_fan_speaks_of_the_dataset_target_not_the_model_output() -> None:
+    """Score outputs predict ``y_hat``; readers know the KPI by the dataset's name."""
+    preds = xr.Dataset(
+        {"y_hat": (("chain", "draw", "week"), np.ones((1, 20, 6)))},
+        coords={"week": pd.date_range("2024-01-07", periods=6, freq="W-SUN")},
+    )
+    obs = xr.Dataset({"revenue": (("week",), np.ones(6))}, coords={"week": preds["week"]})
+    plot = get_recipe("core.ppc_fan").render({"posterior_predictive": preds, "observed_data": obs})
+    assert "estimate of revenue" in caption(plot) and "y_hat" not in caption(plot)
+    assert '"title": "revenue"' in json.dumps(plot.spec)
+
+
 def test_fan_from_summary_and_explicit_split() -> None:
     tree = ex.score_tree(with_draws=False)
     plot = get_recipe("core.ppc_fan").render(tree, split_at="2024-03-03", point="mean")
@@ -361,6 +373,23 @@ def test_faceted_fan_gives_every_panel_its_own_date_axis_in_coordinate_order() -
     assert spec["columns"] == 2
     wide = get_recipe("core.ppc_fan").render(ex.score_tree(), columns=8)
     assert wide.spec["columns"] == len(ex.GEOS)
+
+
+def test_facets_are_titled_with_the_dataset_s_own_names(bundle: Any) -> None:
+    """A Guided geo MMM binds the analyst's column (``market``) to the spec dim ``geo``:
+    panels used to be titled with the internal name."""
+    tree = ex.score_tree()
+    assert get_recipe("core.ppc_fan").render(tree).spec["facet"]["title"] == "geo"
+    binding = {"dims": {"geo": "market", "channel": "Media"}, "vars": {}}
+    tree["binding"] = xr.DataTree(xr.Dataset(attrs={"json": json.dumps(binding)}))
+    assert RecipeInput(tree).dim_label("geo") == "market"
+    assert RecipeInput(tree).dim_label("time") == "time"
+    plot = get_recipe("core.ppc_fan").render(tree)
+    assert plot.spec["facet"]["title"] == "market"
+    bound = bundle.copy()
+    bound["binding"] = xr.DataTree(xr.Dataset(attrs={"json": json.dumps(binding)}))
+    curves = get_recipe("mmm.response_curves").render(bound, facet=True)
+    assert curves.spec["facet"]["title"] == "Media"
 
 
 def test_faceted_response_curves_give_every_panel_its_own_axes(bundle: Any) -> None:

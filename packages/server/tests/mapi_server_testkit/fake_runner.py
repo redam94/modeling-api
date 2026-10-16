@@ -46,6 +46,7 @@ from mapi_spec.run import (
     new_hmac_key,
     sign_output_manifest,
 )
+from mapi_spec.scorecard import SCORECARD_OUTPUT, evaluate_check, rollup
 from mapi_spec.storage import PostPolicy, SignedPut, crc32c, crc32c_to_base64, md5_base64
 
 SAFE_PLOT: dict[str, Any] = {
@@ -141,6 +142,15 @@ def outputs_for(rs: RunSpec, mode: str) -> dict[str, tuple[bytes, str]]:
                 }
             ),
             "ui/summaries.json": js({"y": {"mean": 1.0}}),
+            # an M3 runner's scorecard: converged, and evaluated on the holdout (Q13)
+            SCORECARD_OUTPUT: js(
+                rollup(
+                    [
+                        evaluate_check("convergence.rhat", 1.002),
+                        evaluate_check("holdout.mape", 0.05),
+                    ]
+                ).model_dump(mode="json")
+            ),
         }
         if mode == "partial":
             out.pop("bundle.zarr.zip")
@@ -155,7 +165,15 @@ def outputs_for(rs: RunSpec, mode: str) -> dict[str, tuple[bytes, str]]:
             "schema.json": js(schema),
             "summary.json": js({"vars": ["y"], "coords": {"t": {"kind": "time", "size": 48}}}),
             "preview.json": js({"rows": [[1.0]]}),
-        }
+            "columns.json": js(
+                [
+                    {"name": "date", "dtype": "date", "n_rows": 48, "n_distinct": 48,
+                     "detected_freq": "MS", "monotonic": True, "origin": "column"},
+                    {"name": "co2", "dtype": "number", "n_rows": 48, "min": 300.0,
+                     "max": 420.0, "origin": "column"},
+                ]
+            ),
+        }  # fmt: skip
     if kind == "describe":
         path = os.environ["FAKE_RUNNER_CATALOG"]
         return {"catalog.json": (Path(path).read_bytes(), "application/json")}

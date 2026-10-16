@@ -66,3 +66,8 @@ output "network_id" {
   description = "The control VPC."
   value       = google_compute_network.control.id
 }
+
+output "security_policy" {
+  description = "Self link of the Cloud Armor policy on the load balancer backends (null without one)."
+  value       = local.security_policy
+}

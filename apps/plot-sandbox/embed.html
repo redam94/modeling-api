@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="%EMBED_CSP%" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="mapi-api-url" content="%MAPI_API_URL%" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Chat tools (Slack, Teams) do not frame embeds; they show these tags. Static: the page
+         is the same for every link, so the card names neither the plot nor the token. -->
+    <meta property="og:title" content="Shared chart" />
+    <meta property="og:site_name" content="modeling-api" />
+    <meta property="og:description" content="A read-only chart shared from modeling-api: open the link to view it." />
+    <title>Shared plot</title>
+  </head>
+  <body class="embed">
+    <main>
+      <h1 id="title"></h1>
+      <div id="plot" role="img" aria-label="Plot"></div>
+      <p id="caption"></p>
+      <p id="status" role="status"></p>
+      <footer>
+        <a id="png" hidden target="_blank" rel="noopener noreferrer">Open as PNG</a>
+        <span id="meta"></span>
+      </footer>
+    </main>
+    <script type="module" src="/src/embed-main.ts"></script>
+  </body>
+</html>

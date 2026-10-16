@@ -83,6 +83,16 @@ together is in the [Architecture overview](architecture.md), and what keeps it s
     vCPU-second quotas at token, tenant and global level; interactive and batch priority;
     exact per-run cost from a versioned price table.
 
+-   **[Guided mode](guided-mode.md)** <span class="mapi-badge">v0.4</span>
+
+    Templates, plain-language questions with role detection, business priors and lift tests,
+    the sanity scorecard and instant what-if sliders over per-draw response grids.
+
+-   **[Integrations](integrations.md)** <span class="mapi-badge">v0.4</span>
+
+    Endpoints and aliases with a gated promotion, code snippets, signed webhooks, rendered
+    and embedded plots, and the trust lifecycle from sign-up to deletion.
+
 </div>
 
 ## Vocabulary

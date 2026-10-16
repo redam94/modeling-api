@@ -6,6 +6,7 @@ that *is* kept has passed the JSON sanitizer, which the control plane runs again
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable, Iterable
 from typing import Any
 
@@ -39,7 +40,9 @@ def render_for(
         tree = source() if callable(source) else source
         if tree is None:
             continue
-        report = render_plots(tree, todo, registry=ctx.registry)
+        with warnings.catch_warnings():  # e.g. all-NaN bands over a forecast's history
+            warnings.simplefilter("ignore", RuntimeWarning)
+            report = render_plots(tree, todo, registry=ctx.registry)
         for plot in report.to_json():
             done[str(plot["id"])] = plot
         for issue in report.issues:

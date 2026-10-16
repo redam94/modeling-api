@@ -45,3 +45,10 @@ mock_resource "google_logging_project_sink" {
     writer_identity = "serviceAccount:service-111111111111@gcp-sa-logging.iam.gserviceaccount.com"
   }
 }
+
+mock_resource "google_compute_security_policy" {
+  defaults = {
+    id        = "projects/mock-project/global/securityPolicies/mock-edge"
+    self_link = "https://www.googleapis.com/compute/v1/projects/mock-project/global/securityPolicies/mock-edge"
+  }
+}

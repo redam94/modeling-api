@@ -13,22 +13,22 @@ This page walks through every page in navigation order. The screenshots come fro
 [quickstart](../getting-started/quickstart.md) stack; `make dev` serves the app at
 <http://127.0.0.1:5173>.
 
-!!! note "Guided mode arrives in v0.4"
-    The **Guided / Expert** switch in the header already exists, but Guided mode is a preview
-    of the task flow that analysts will get in [v0.4](../roadmap/guided-ui.md). Both modes edit
-    the same `ModelSpec`.
+!!! note "Guided mode"
+    The **Guided / Expert** switch in the header changes the whole app to the task flow for
+    analysts described in [Your first analysis in Guided mode](guided-tutorial.md). Both modes
+    edit the same `ModelSpec`.
 
 ## The shell
 
 | Element | What it does |
 |---|---|
 | Project switcher | The tenant and project everything on the page acts in, with your role there; switch, create a project (tenant admins) or open its members. See [Authentication](authentication.md#browser-sign-in). |
-| Sidebar | Home, Datasets, Build, Runs, Models, Score and Catalog; under **Project**, Usage, Members and Tokens; under **Platform**, Admin (operators only); Settings at the bottom. **Collapse** (++cmd+b++) narrows it to icons. |
+| Sidebar | Home, Guided, Datasets, Build, Runs, Models, Score, Integrations and Catalog (in Guided mode, Guided replaces Home); under **Project**, Usage, Members and Tokens; under **Platform**, Admin (operators only); Settings at the bottom. **Collapse** (++cmd+b++) narrows it to icons. |
 | **Jump to…** (++cmd+k++ or ++slash++) | A command palette: go to any page, start a new spec, switch the theme, or paste an id (`run_…`, `mdl_…`, `ds_…`, `spc_…`) to open it. |
 | **API connected** | Polls `GET /readyz`: green when PostgreSQL, the object store and the catalog are ready, amber (*API degraded*) or red (*API unreachable*) otherwise. It links to **Settings**, which shows each check. |
-| **Guided / Expert** | The persona switch (remembered in this browser). |
+| **Guided / Expert** | The persona switch, remembered per user on this browser. Until you choose, a self-service (`public` tier) workspace starts in Guided mode and any other one (or a platform operator) in Expert; in Guided mode `/` opens the Guided start page. Hidden for members below admin of a project locked to Guided mode. |
 | Display icon | Light, dark or system theme. |
-| ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++m++ Models, ++s++ Score, ++c++ Catalog, ++comma++ Settings. |
+| ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++g++ Guided, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++m++ Models, ++s++ Score, ++i++ Integrations, ++c++ Catalog, ++comma++ Settings. |
 
 Text that came from a run or a plugin (log lines, tracebacks, warning messages, plot
 captions) is always rendered as plain text, with ANSI escapes and control and bidi
@@ -274,17 +274,39 @@ the [generated catalogs](../reference/generated/models-catalog.md).
 
 ![Settings: appearance, mode and connection](../assets/screenshots/settings.png){ .mapi-shot }
 
-**Appearance** and **Mode** are stored in this browser. **Connection** shows the API and plot
+**Appearance** and **Mode** are stored in this browser. Project admins also find **Lock
+… to Guided mode** under Mode <span class="mapi-badge">v0.4</span>: the project's persona lock
+(stored on the server and audited; see [Guided mode](../concepts/guided-mode.md#the-persona-lock)).
+**Connection** shows the API and plot
 sandbox the app was built for (`VITE_API_BASE`, `VITE_PLOTS_ORIGIN`), the server and contract
 versions, and the latency of each readiness check.
 
+Organisation admins also get **Data** <span class="mapi-badge">v0.4</span>: a GDPR export of
+everything the organisation stored, and deleting the organisation with a 7-day grace period in
+which it can be cancelled. See [Settings > Data](integrations-hub.md#settings-data).
+
+## Integrations <span class="mapi-badge">v0.4</span>
+
+![The Integrations overview](../assets/screenshots/integrations-overview.png){ .mapi-shot }
+
+Where a model leaves the platform: Guided cards for Google Sheets, a BI dashboard and a webhook,
+and the Expert pages - endpoints and aliases promoted through the scorecard gate (with history,
+rollback, the input contract, **Try it** and snippets in six languages), webhooks with their
+delivery logs and replays, and saved plots with PNG/SVG/PDF downloads and expiring embed links.
+A plot gallery's **Share** button starts there too. Every page is described in
+[The Integrations hub](integrations-hub.md).
+
+The sign-in screen links to the public **sign-up** page when the server allows self-service
+sign-up; see [Sign-up and e-mail verification](integrations-hub.md#sign-up-and-e-mail-verification).
+
 ## Guided
 
-![The Guided mode preview](../assets/screenshots/guided.png){ .mapi-shot }
+![Guided mode: what do you want to learn?](../assets/screenshots/guided-templates.png){ .mapi-shot }
 
-The six tasks an analyst will follow in v0.4: choose a template, answer questions about the
-data, enter beliefs as ROI ranges, run, read the report and scorecard, try what-if scenarios.
-Today the page explains them and links back to Expert mode.
+The task flow for analysts: choose a template, answer questions about the data, state what
+you believe, fit, read the report and the sanity scorecard, try what-if scenarios and share
+the result. Every step has its own URL and **View as YAML**. The walkthrough is
+[Your first analysis in Guided mode](guided-tutorial.md).
 
 ## Usage, Members, Tokens and Admin <span class="mapi-badge">v0.3</span> { #team-pages }
 
@@ -295,8 +317,8 @@ screenshots, in the [Administration guide](administration.md):
 |---|---|---|
 | **Usage** | Everyone in the project; **Organisation** needs a tenant-wide admin | [Cost and quota use](administration.md#cost-and-usage) for a UTC day or month |
 | **Members** | Everyone; changes need an admin | [Who has which role](administration.md#projects-and-members), invitations |
-| **Tokens** | Everyone (their own); admins see everyone's | [API tokens](administration.md#api-tokens): create, list, revoke |
-| **Admin** | Platform operators | [Tenants](administration.md#tenants), [quotas](administration.md#quotas), [kill switches](administration.md#kill-switches), [executors](administration.md#executors) and the [audit log](administration.md#audit-log) |
+| **Tokens** | Everyone (their own); admins see everyone's | [API tokens](administration.md#api-tokens): create, list, revoke; `?preset=score:<alias>` opens a token for one endpoint |
+| **Admin** | Platform operators | [Tenants](administration.md#tenants), [quotas](administration.md#quotas), [kill switches](administration.md#kill-switches), [executors](administration.md#executors) and the [audit log](administration.md#audit-log); v0.4 adds the [sign-up review queue and tenant trust](integrations-hub.md#admin-console-additions) |
 
 ## Where next
 

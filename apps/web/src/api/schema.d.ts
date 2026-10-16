@@ -85,6 +85,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Signup Route
+         * @description Self-service sign-up. The answer is the same for new and known addresses; the link
+         *     in the e-mail (valid 24 hours, single use) creates a ``public``-tier workspace.
+         */
+        post: operations["signup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Email Route
+         * @description Verify the address with the e-mailed token: creates the workspace (sign in next).
+         */
+        post: operations["verify_email"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -287,6 +328,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/signups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin List Signups
+         * @description Sign-ups, newest first; ``review=flagged`` is the Sybil review queue.
+         */
+        get: operations["admin_list_signups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/signups/{signup_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin Review Signup
+         * @description Approve or reject a sign-up; a rejection suspends the workspace it created.
+         */
+        post: operations["admin_review_signup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/tenants": {
         parameters: {
             query?: never;
@@ -328,6 +409,46 @@ export interface paths {
          *     ``deleting`` tenants are inaccessible (their data is removed by a separate procedure).
          */
         patch: operations["admin_update_tenant"];
+        trace?: never;
+    };
+    "/v1/admin/tenants/{tenant_id}/deletion/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin Retry Tenant Deletion
+         * @description Restart a failed purge (the orchestrator picks it up on its next pass).
+         */
+        post: operations["admin_retry_tenant_deletion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/tenants/{tenant_id}/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Admin Put Tenant Verification
+         * @description Record (or revoke) identity verification of a tenant; audited with the reason.
+         */
+        put: operations["admin_put_tenant_verification"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/admin/usage": {
@@ -533,7 +654,7 @@ export interface paths {
         /**
          * Get Dataset Artifact
          * @description Signed, generation-pinned URL for ``data.zarr.zip``/``schema.json``/``profile.json``/
-         *     ``preview.json`` (15 min, HTTP Range works).
+         *     ``preview.json``/``summary.json``/``columns.json`` (15 min, HTTP Range works).
          */
         get: operations["get_dataset_artifact"];
         put?: never;
@@ -556,6 +677,389 @@ export interface paths {
          * @description ``…/preview``, ``…/schema``, ``…/profile``, ``…/summary``: 307 to the signed URL.
          */
         get: operations["redirect_dataset_view"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/embeds/{embed_token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public: the embedded plot with inline data (410 when expired or revoked)
+         * @description Public: the embedded plot with every dataset inline (``410 LINK_EXPIRED`` once
+         *     expired or revoked, ``404`` for an unknown token, ``429`` past the per-link or
+         *     per-address rate). Cookies and ``Authorization`` are ignored; browsers may read it only
+         *     from the plot-sandbox origin (CORS), which renders it under its own CSP.
+         */
+        get: operations["get_embed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Endpoints of the project
+         * @description Endpoints of the project, by alias.
+         */
+        get: operations["list_endpoints"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An endpoint and the version it serves */
+        get: operations["get_endpoint"];
+        /**
+         * Create or promote (gated on the scorecard; override = admin + reason, audited)
+         * @description Point the alias at a model version (creating the alias if needed).
+         *
+         *     The promotion gate decides: a version whose scorecard passes, that was fitted with
+         *     ``evaluate_then_refit`` (unless the endpoint's policy allows ``train_only``) and whose
+         *     input contract does not break the endpoint's callers is promoted. A ``warn`` scorecard
+         *     (or no scorecard) needs ``override=true`` with a ``reason`` from a signed-in project admin
+         *     (``409 OVERRIDE_REQUIRED`` otherwise; API tokens can never override); a ``fail``
+         *     scorecard, an interrupted fit or a ``train_only`` fit is ``409 PROMOTION_BLOCKED``.
+         *     The problem's ``errors`` list the gate's reasons.
+         */
+        put: operations["promote_endpoint"];
+        post?: never;
+        /** Delete the alias (model versions stay) */
+        delete: operations["delete_endpoint"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Promotions and rollbacks, newest first */
+        get: operations["list_endpoint_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Point the alias back at an earlier revision's version (audited) */
+        post: operations["rollback_endpoint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}/schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Input schema of the current version and an example payload
+         * @description What to send: the input contract frozen at promotion and an example call body that
+         *     validates against it.
+         */
+        get: operations["get_endpoint_schema"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Score the current version (Prefer: wait=N -> 200 if done, else 202 with the run)
+         * @description Score the version the alias serves now, with replayed preprocessing.
+         *
+         *     ``data``/``scenario`` are ``dataset://`` references or inline XrJSON (up to 5 MB each).
+         *     ``Prefer: wait=N`` (N <= 60) waits up to N seconds: ``200`` with links to the outputs if
+         *     the run finished, else ``202`` with the run. Repeat the call with the same
+         *     ``Idempotency-Key`` (and ``Prefer: wait``) to collect the result later: tokens scoped to
+         *     ``score:<alias>`` need nothing else. Per-token rate limits and vCPU budgets apply.
+         */
+        post: operations["score_endpoint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}/snippets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint
+         * @description Ready-to-run code that scores the endpoint with its example payload. The API token is
+         *     read from ``MAPI_TOKEN`` (an Apps Script property): snippets never contain a secret.
+         */
+        get: operations["list_endpoint_snippets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/endpoints/{alias}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Static checks of a score call without running it
+         * @description The checks ``…/score`` runs before it submits anything: the inline payload against the
+         *     endpoint's input contract (variables, dims, coordinates), CoordPlan (modes, horizon,
+         *     unseen levels, future covariates) and dataset references. ``200`` even when invalid.
+         */
+        post: operations["validate_endpoint_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/detect-roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suggest a column for every question from column profiles
+         * @description Rank the columns for each question of a template and pre-fill the answers.
+         *
+         *     Send ``columns`` (profiled in the browser) or name a stored ``dataset`` version; the
+         *     profiles of a stored version come from its ingest run (``columns.json``: the uploaded
+         *     columns, for MFF uploads the pivoted variables) or, for older versions, from its dims
+         *     and variables.
+         */
+        post: operations["detect_roles"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answers -> ingest mapping + ModelSpec draft (+ YAML); stores nothing
+         * @description Turn answers into the ingest mapping for the upload, the ``ModelSpec`` (and its YAML)
+         *     for the request's project, and the static validator's findings. ``422
+         *     GUIDED_ANSWERS_INVALID`` points at ``/answers/<question>`` for a missing or impossible
+         *     answer; problems the validator finds come back as ``issues`` (200).
+         */
+        post: operations["create_guided_draft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/import/bayesinsight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * BayesInsight model_def.json + metadata.json -> a draft for a built-in MMM
+         * @description Import a BayesInsight project (Q8). With the default ``target:
+         *     mmm.hierarchical_geo`` the draft maps media transforms, priors, controls, seasonality
+         *     and pooling to the built-in geo MMM and lists every feature without an equivalent as
+         *     an ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` drafts the dedicated
+         *     plugin, which runs ``model_def`` as BayesInsight defines it (what it cannot run falls
+         *     back to BayesInsight's defaults with a warning). Either draft is validated statically
+         *     against the catalog. ``422 IMPORT_UNSUPPORTED`` when the model cannot run at all (no
+         *     single KPI, no media, split series).
+         */
+        post: operations["import_bayesinsight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/prior-translations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Translate business priors (sandboxed translate_priors run)
+         * @description Business priors (ROI or share ranges with a credibility, a baseline share) to
+         *     model-space priors for the spec's model, with a prior-predictive preview in business
+         *     units. Static problems (an unknown channel, shares adding up to more than the KPI, a
+         *     model without ``business_priors`` calibration) are refused before any run starts.
+         */
+        post: operations["create_prior_translation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/prior-translations/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A prior translation and, once done, its priors and preview
+         * @description ``done`` once the run is terminal; ``result`` only when it succeeded (a failed run's
+         *     problem is on ``run.problem``).
+         */
+        get: operations["get_prior_translation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/requests:compile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What-if scenario, forecast or preset -> the ScoreRequest it stands for ('Run exact')
+         * @description Compile a slider scenario (``whatif``), a forecast over a horizon or an intervention
+         *     preset (``counterfactual``: channel off, budget x k) into the exact ``ScoreRequest``
+         *     ("Run exact" submits it with ``POST /v1/models/{id}/versions/{v}:score``). The request
+         *     is checked statically against the model version's score metadata (for an
+         *     ``endpoint://`` target, the version the endpoint serves now): an unknown model is
+         *     ``404``, and a request the version cannot score (unknown coordinates, missing future
+         *     covariates under ``future_covariates: supplied``) is ``422`` with JSON pointers.
+         *     A what-if or preset over the fit window (no horizon) scores the data the version was
+         *     fitted on, so the compiled request names that dataset version in ``data``.
+         *     Nothing is stored and no run starts.
+         */
+        post: operations["compile_guided_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Guided templates (geo marketing mix, weekly forecast, demand by store, choice)
+         * @description The built-in templates in id order: questions, the spec template, scorecard checks
+         *     and ``x-ui-level`` hints. Templates are data and the same for every tenant.
+         */
+        get: operations["list_guided_templates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One template: questions, spec template, scorecard checks, UI levels */
+        get: operations["get_guided_template"];
         put?: never;
         post?: never;
         delete?: never;
@@ -764,6 +1268,150 @@ export interface paths {
          *     200 with output links if the run finished, else 202 with the run.
          */
         post: operations["score_model"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Saved plots
+         * @description Saved plots of the project, newest first (without their specs).
+         */
+        get: operations["list_saved_plots"];
+        put?: never;
+        /**
+         * Save a model version's plot or a user-authored PlotSpec
+         * @description Save a model version's plot (``source``: verified against the signed bundle manifest)
+         *     or a user-authored PlotSpec (``spec``: sanitized; its provenance is recorded as
+         *     ``author`` and it can never be embedded). ``PLOT_UNSAFE`` when the sanitizer refuses it.
+         */
+        post: operations["create_saved_plot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots/renders/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A render run and links to its files
+         * @description A render run and, once it succeeded, signed links to its files.
+         */
+        get: operations["get_plot_render"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots/{plot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A saved plot with its sanitized spec
+         * @description A saved plot with its spec, sanitized again on the way out. Render it only in the
+         *     plot-sandbox origin.
+         */
+        get: operations["get_saved_plot"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a saved plot (revokes its embeds)
+         * @description Delete a saved plot. Its embed links stop working (404) and their images are removed.
+         */
+        delete: operations["delete_saved_plot"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots/{plot_id}/embeds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Embed links of a plot
+         * @description Embed links of a saved plot, newest first (never their tokens).
+         */
+        get: operations["list_plot_embeds"];
+        put?: never;
+        /**
+         * Tokenised read-only link (platform recipes only; shown once)
+         * @description Mint a read-only link (the token is in the response once; only its HMAC is stored).
+         *     Only plots a model version drew with a platform recipe can be embedded
+         *     (``EMBED_NOT_ALLOWED`` for plugin- and user-authored plots). When the caller may start
+         *     render runs, a PNG of the plot is rendered in the sandbox as the embed page's fallback.
+         *     Audited.
+         */
+        post: operations["create_plot_embed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots/{plot_id}/embeds/{embed_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke an embed link (idempotent)
+         * @description Revoke an embed link: it answers ``410 LINK_EXPIRED`` from now on. Idempotent.
+         */
+        delete: operations["revoke_plot_embed"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plots:render": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * PNG, SVG or PDF in the sandbox (Prefer: wait=N -> 200 if done, else 202)
+         * @description Render one plot to PNG, SVG or PDF in the sandbox (Vega-Lite through vl-convert with
+         *     network access disabled; Plotly only where the platform enables it, else
+         *     ``MODE_NOT_SUPPORTED``). The plot is sanitized first and its data is passed to the run
+         *     as pinned inputs: rendering never fetches a URL. ``Prefer: wait=N`` (≤ 60) waits up to
+         *     N s: 200 with signed links to ``renders/<plot>.<format>`` when done, else 202 with the
+         *     run (poll ``GET /v1/plots/renders/{run_id}``).
+         */
+        post: operations["render_plot"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1028,6 +1676,9 @@ export interface paths {
         /**
          * Create Spec
          * @description Store revision 1 (invalid documents are stored too, with ``valid: false``).
+         *
+         *     In a Guided-locked project, members below admin may store Guided specs only (``403``
+         *     with the offending pointers otherwise; see ``Project.guided_locked``).
          */
         post: operations["create_spec"];
         delete?: never;
@@ -1206,6 +1857,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/{tenant_id}/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tenant Deletion
+         * @description The latest deletion of the tenant and its progress per store.
+         */
+        get: operations["get_tenant_deletion"];
+        put?: never;
+        /**
+         * Request Tenant Deletion
+         * @description Schedule the deletion of the whole tenant. ``confirm`` repeats the tenant id. The
+         *     tenant is suspended at once and its unfinished runs are cancelled; the purge starts
+         *     when the grace period ends and can be cancelled until then.
+         */
+        post: operations["request_tenant_deletion"];
+        /**
+         * Cancel Tenant Deletion
+         * @description Cancel a scheduled deletion (``CONFLICT`` once the purge has started).
+         */
+        delete: operations["cancel_tenant_deletion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tenant Exports
+         * @description The tenant's exports, newest first: what is being built and what can be downloaded
+         *     (``GET`` one export for its download link).
+         */
+        get: operations["list_tenant_exports"];
+        put?: never;
+        /**
+         * Create Tenant Export
+         * @description Queue a GDPR export of everything the tenant stored; poll it for the link.
+         */
+        post: operations["create_tenant_export"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/exports/{export_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tenant Export
+         * @description An export; once ``ready``, ``download_url`` is a fresh short-lived signed link.
+         */
+        get: operations["get_tenant_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/{tenant_id}/members": {
         parameters: {
             query?: never;
@@ -1341,6 +2067,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/{tenant_id}/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tenant Verification
+         * @description E-mail and identity verification, and whether the workspace may upload code.
+         */
+        get: operations["get_tenant_verification"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tokens": {
         parameters: {
             query?: never;
@@ -1400,6 +2146,114 @@ export interface paths {
         get: operations["get_usage"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Webhooks of the project */
+        get: operations["list_webhooks"];
+        put?: never;
+        /**
+         * Add a webhook (the secret is shown once)
+         * @description Subscribe ``url`` to ``events`` of this project. The answer holds the signing secret
+         *     (``whsec_…``) - the only time it is returned; deliveries are signed with it
+         *     (``Mapi-Signature: t=…,v1=…``). At most ``MAPI_WEBHOOK_MAX_PER_PROJECT`` webhooks per
+         *     project (``409 CONFLICT``).
+         */
+        post: operations["create_webhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhook_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A webhook (never its secret) */
+        get: operations["get_webhook"];
+        put?: never;
+        post?: never;
+        /** Delete a webhook and its delivery log */
+        delete: operations["delete_webhook"];
+        options?: never;
+        head?: never;
+        /**
+         * Change URL, events or active
+         * @description Re-activating a webhook (``active: true``) resets its consecutive-failure count and
+         *     clears the reason it was disabled for.
+         */
+        patch: operations["update_webhook"];
+        trace?: never;
+    };
+    "/v1/webhooks/{webhook_id}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Delivery log, newest first (filter: status)
+         * @description ``response_excerpt`` is the start of the receiver's answer: untrusted text.
+         */
+        get: operations["list_webhook_deliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhook_id}/deliveries/{delivery_id}:replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send an event again (a new delivery, replay_of set)
+         * @description A new delivery of the same event (same event id, so receivers can deduplicate), sent
+         *     by the worker within seconds; the webhook must be active.
+         */
+        post: operations["replay_webhook_delivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhook_id}:rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * New secret (shown once); the old one signs too for 24 h
+         * @description While the previous secret is still valid, deliveries carry two ``v1`` signatures.
+         */
+        post: operations["rotate_webhook_secret"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1622,7 +2476,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -1719,6 +2573,173 @@ export interface components {
          */
         AuditOutcome: "success" | "denied" | "error";
         /**
+         * BayesInsightImport
+         * @description ``POST /v1/guided/import/bayesinsight``: a BayesInsight project as a draft (Q8: an
+         *     ingest adapter plus the ``mmm.bayesinsight`` plugin, not a separate spec kind).
+         * @example {
+         *       "dataset": "bi_mff",
+         *       "format": "mff",
+         *       "metadata": {
+         *         "allowed_campaigns": [
+         *           "Total"
+         *         ],
+         *         "allowed_creatives": [
+         *           "Total"
+         *         ],
+         *         "allowed_geos": [
+         *           "US",
+         *           "DE"
+         *         ],
+         *         "allowed_outlets": [
+         *           "Total"
+         *         ],
+         *         "allowed_products": [
+         *           "Total"
+         *         ],
+         *         "periodicity": "Weekly",
+         *         "row_ids": [
+         *           "Geography",
+         *           "Product",
+         *           "Period"
+         *         ]
+         *       },
+         *       "model_def": {
+         *         "variable_details": [
+         *           {
+         *             "likelihood": {
+         *               "type": "Normal"
+         *             },
+         *             "variable_name": "Sales_Total_Total_Total",
+         *             "variable_type": "exog"
+         *           },
+         *           {
+         *             "adstock": "delayed",
+         *             "media_transform": "hill",
+         *             "variable_name": "TV_Total_Total_Total",
+         *             "variable_type": "media"
+         *           },
+         *           {
+         *             "variable_name": "annual_seasonality",
+         *             "variable_type": "season"
+         *           }
+         *         ]
+         *       },
+         *       "name": "bi-import"
+         *     }
+         */
+        BayesInsightImport: {
+            /**
+             * Dataset
+             * @description Name of the dataset the MFF upload becomes
+             */
+            dataset: string;
+            /**
+             * Format
+             * @default mff
+             * @enum {string}
+             */
+            format?: "csv" | "parquet" | "mff";
+            /**
+             * Holdout Periods
+             * @default 8
+             */
+            holdout_periods?: number;
+            metadata: components["schemas"]["BayesInsightMetadata"];
+            model_def: components["schemas"]["BayesInsightModelDef"];
+            /** Name */
+            name: string;
+            /**
+             * Target
+             * @description M3: the plugin to import for. mmm.hierarchical_geo (default) maps every feature with an equivalent and warns about the rest (mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight runs model_def as BayesInsight defines it (likelihoods, priors in KPI units, curves, carry-over, signs, random effects, seasons, local trends) and warns about what it cannot run
+             * @default mmm.hierarchical_geo
+             * @enum {string}
+             */
+            target?: "mmm.hierarchical_geo" | "mmm.bayesinsight";
+        };
+        /**
+         * BayesInsightMetadata
+         * @description BayesInsight's ``metadata.json`` (``{"metadata": {...}}`` is accepted too).
+         *
+         *     ``row_ids`` are the MFF key columns the model is indexed by (``Period`` always last);
+         *     the key columns *not* in ``row_ids`` are aggregated away and suffix variable names
+         *     (``Promotion_Total_Total_Total``).
+         */
+        BayesInsightMetadata: {
+            /** Allowed Campaigns */
+            allowed_campaigns?: string[] | null;
+            /** Allowed Creatives */
+            allowed_creatives?: string[] | null;
+            /** Allowed Geos */
+            allowed_geos?: string[] | null;
+            /** Allowed Outlets */
+            allowed_outlets?: string[] | null;
+            /** Allowed Products */
+            allowed_products?: string[] | null;
+            /** End Period */
+            end_period?: string | null;
+            /** Necessary Variables */
+            necessary_variables?: string[] | null;
+            /**
+             * Periodicity
+             * @default Weekly
+             * @enum {string}
+             */
+            periodicity?: "Weekly" | "Daily";
+            /**
+             * Row Ids
+             * @default [
+             *       "Period"
+             *     ]
+             */
+            row_ids?: string[];
+            /** Start Period */
+            start_period?: string | null;
+        };
+        /**
+         * BayesInsightModelDef
+         * @description BayesInsight's ``model_def.json``. ``artifact``, ``fitted`` and ``VOF`` describe a
+         *     local fit and are ignored by the import.
+         */
+        BayesInsightModelDef: {
+            VOF?: components["schemas"]["JsonValue"] | null;
+            /** Artifact */
+            artifact?: string | null;
+            /**
+             * Fitted
+             * @default false
+             */
+            fitted?: boolean;
+            /** Variable Details */
+            variable_details: components["schemas"]["BayesInsightVariable"][];
+        };
+        /**
+         * BayesInsightVariable
+         * @description One entry of ``model_def.json``'s ``variable_details``.
+         *
+         *     The fields the import interprets are typed; everything else (priors, transforms,
+         *     likelihood parameters) is kept verbatim for the ``mmm.bayesinsight`` plugin, which
+         *     validates it in the sandbox.
+         */
+        BayesInsightVariable: {
+            /** Fixed Ind Coeff Dims */
+            fixed_ind_coeff_dims?: string[] | null;
+            /** Normalization */
+            normalization?: string | null;
+            /** Random Coeff Dims */
+            random_coeff_dims?: string[] | null;
+            /** Sign */
+            sign?: ("positive" | "negative") | null;
+            /** Variable Name */
+            variable_name: string;
+            /**
+             * Variable Type
+             * @enum {string}
+             */
+            variable_type: "control" | "media" | "exog" | "localtrend" | "season";
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * Binding
          * @description Canonical name → dataset name, for dims and variables (``geo: market``).
          *
@@ -1741,6 +2762,21 @@ export interface components {
          * @enum {string}
          */
         BudgetPeriod: "day" | "month";
+        /**
+         * BudgetScale
+         * @description Intervention preset: scale the budget by ``k`` (all channels, or the listed ones).
+         */
+        BudgetScale: {
+            /** Channels */
+            channels?: string[] | null;
+            /** K */
+            k: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "budget_scale";
+        };
         /**
          * BundleManifest
          * @description The platform-signed manifest of a bundle (``manifest.json`` + ``manifest.sig``).
@@ -1867,10 +2903,72 @@ export interface components {
             size: number;
         };
         /**
+         * BusinessPriors
+         * @description Beliefs in business units, per channel (keys are channel *labels* as in the data),
+         *     and/or about the baseline. At least one belief is stated: a baseline belief alone is
+         *     fine (channels without a belief keep the model's default priors).
+         * @example {
+         *       "baseline_share": {
+         *         "credibility": 0.8,
+         *         "share": [
+         *           0.5,
+         *           0.8
+         *         ]
+         *       },
+         *       "channels": {
+         *         "search": {
+         *           "credibility": 0.9,
+         *           "roi": [
+         *             2,
+         *             6
+         *           ]
+         *         },
+         *         "social": {
+         *           "contribution_share": [
+         *             0.02,
+         *             0.1
+         *           ]
+         *         },
+         *         "tv": {
+         *           "credibility": 0.8,
+         *           "roi": [
+         *             1.5,
+         *             4
+         *           ]
+         *         }
+         *       },
+         *       "kpi_units": "EUR",
+         *       "spend_units": "EUR"
+         *     }
+         */
+        BusinessPriors: {
+            baseline_share?: components["schemas"]["ShareBelief"] | null;
+            /** Channels */
+            channels?: {
+                [key: string]: components["schemas"]["ChannelBelief"];
+            };
+            /**
+             * Kpi Units
+             * @example EUR
+             */
+            kpi_units?: string | null;
+            /**
+             * Spend Units
+             * @example EUR
+             */
+            spend_units?: string | null;
+        };
+        /**
          * Capabilities
          * @description What a model plugin can do (declared in its manifest).
          */
         Capabilities: {
+            /**
+             * Calibration
+             * @description Calibration data the model uses from a spec's calibration block (M3)
+             * @default []
+             */
+            calibration?: unknown[];
             /**
              * Checkpointable
              * @default false
@@ -1993,6 +3091,68 @@ export interface components {
             tuning?: boolean;
         };
         /**
+         * ChannelBelief
+         * @description What the user believes about one channel: exactly one of ``roi`` or
+         *     ``contribution_share``, held with ``credibility``.
+         *
+         *     * ``roi``: KPI units gained per spend unit over the fit window (``[1.5, 4]`` = "every
+         *       euro returns between 1.5 and 4 euros of revenue");
+         *     * ``contribution_share``: the channel's share of the KPI over the fit window.
+         */
+        ChannelBelief: {
+            /**
+             * Contribution Share
+             * @example [
+             *       0.05,
+             *       0.15
+             *     ]
+             */
+            contribution_share?: [
+                number,
+                number
+            ] | null;
+            /**
+             * Credibility
+             * @description Probability that the true value lies inside the range (0.8 = 'I am 80% sure')
+             * @default 0.8
+             */
+            credibility?: number;
+            /**
+             * Roi
+             * @example [
+             *       1.5,
+             *       4
+             *     ]
+             */
+            roi?: [
+                number,
+                number
+            ] | null;
+        };
+        /**
+         * ChannelOff
+         * @description Intervention preset: what if this channel had spent nothing?
+         */
+        ChannelOff: {
+            /** Channel */
+            channel: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "channel_off";
+        };
+        /**
+         * CheckThresholds
+         * @description Warn and fail thresholds of a check (in the check's direction).
+         */
+        CheckThresholds: {
+            /** Fail */
+            fail: number;
+            /** Warn */
+            warn: number;
+        };
+        /**
          * CheckpointPayload
          * @description ``checkpoint``: a checkpoint object was uploaded under the checkpoint prefix.
          */
@@ -2017,6 +3177,73 @@ export interface components {
             segment: number;
             /** Size */
             size: number;
+        };
+        /**
+         * ColumnProfile
+         * @description What the browser (DuckDB-WASM/papaparse preview) or an ingest profile knows about a
+         *     column. ``name`` and ``sample`` are user data: render them as text only.
+         * @example {
+         *       "dtype": "number",
+         *       "max": 98312,
+         *       "min": 1520.5,
+         *       "n_distinct": 1012,
+         *       "n_rows": 1040,
+         *       "name": "revenue_eur"
+         *     }
+         * @example {
+         *       "detected_freq": "W-SUN",
+         *       "dtype": "date",
+         *       "max_date": "2025-12-28",
+         *       "min_date": "2024-01-07",
+         *       "n_distinct": 104,
+         *       "n_rows": 1040,
+         *       "name": "week"
+         *     }
+         */
+        ColumnProfile: {
+            /**
+             * Detected Freq
+             * @example W-SUN
+             * @example D
+             * @example MS
+             */
+            detected_freq?: string | null;
+            /**
+             * Dtype
+             * @enum {string}
+             */
+            dtype: "number" | "integer" | "string" | "date" | "boolean";
+            /** Max */
+            max?: number | null;
+            /** Max Date */
+            max_date?: string | null;
+            /** Min */
+            min?: number | null;
+            /** Min Date */
+            min_date?: string | null;
+            /**
+             * Monotonic
+             * @description Values never decrease in file order (dates of a single series, trip numbers); repeated panels of dates are not monotonic
+             */
+            monotonic?: boolean | null;
+            /** N Distinct */
+            n_distinct?: number | null;
+            /**
+             * N Missing
+             * @default 0
+             */
+            n_missing?: number;
+            /** N Rows */
+            n_rows: number;
+            /** Name */
+            name: string;
+            /**
+             * Origin
+             * @description Where the profile comes from: a table column, a VariableName of an MFF table, or a dim/variable of a stored dataset
+             */
+            origin?: ("column" | "mff_variable" | "dim" | "variable") | null;
+            /** Sample */
+            sample?: (string | number | boolean | null)[];
         };
         /**
          * CompletePayload
@@ -2222,6 +3449,32 @@ export interface components {
              * @default 0
              */
             vcpu_seconds?: number;
+        };
+        /** CounterfactualCompile */
+        CounterfactualCompile: {
+            /**
+             * Channel Dim
+             * @default channel
+             */
+            channel_dim?: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "counterfactual";
+            /**
+             * Model
+             * @description endpoint://project/alias or model://project/name@vN
+             */
+            model: string;
+            output?: components["schemas"]["OutputSelector"] | null;
+            /** Preset */
+            preset: components["schemas"]["ChannelOff"] | components["schemas"]["BudgetScale"];
+            /**
+             * Spend Var
+             * @default spend
+             */
+            spend_var?: string;
         };
         /**
          * DataRef
@@ -2526,6 +3779,16 @@ export interface components {
          */
         DatasetVersionStatus: "ingesting" | "ready" | "failed";
         /**
+         * DeletionState
+         * @enum {string}
+         */
+        DeletionState: "scheduled" | "cancelled" | "deleting" | "purged" | "failed";
+        /**
+         * DeliveryStatus
+         * @enum {string}
+         */
+        DeliveryStatus: "pending" | "succeeded" | "retrying" | "failed" | "blocked";
+        /**
          * DerivedDecl
          * @description A derived quantity (contributions, response curves, ...).
          */
@@ -2544,6 +3807,54 @@ export interface components {
             name: string;
             /** Units */
             units?: string | null;
+        };
+        /**
+         * DetectRolesRequest
+         * @description ``POST /v1/guided/detect-roles``: exactly one of ``dataset`` (a stored version:
+         *     its schema and profile are used) or ``columns`` (profiled in the browser).
+         * @example {
+         *       "columns": [
+         *         {
+         *           "dtype": "number",
+         *           "max": 98312,
+         *           "min": 1520.5,
+         *           "n_distinct": 1012,
+         *           "n_rows": 1040,
+         *           "name": "revenue_eur"
+         *         },
+         *         {
+         *           "detected_freq": "W-SUN",
+         *           "dtype": "date",
+         *           "max_date": "2025-12-28",
+         *           "min_date": "2024-01-07",
+         *           "n_distinct": 104,
+         *           "n_rows": 1040,
+         *           "name": "week"
+         *         },
+         *         {
+         *           "dtype": "string",
+         *           "n_distinct": 10,
+         *           "n_rows": 1040,
+         *           "name": "market"
+         *         },
+         *         {
+         *           "dtype": "number",
+         *           "max": 90000,
+         *           "min": 0,
+         *           "n_rows": 1040,
+         *           "name": "tv_spend"
+         *         }
+         *       ],
+         *       "template_id": "geo_mmm"
+         *     }
+         */
+        DetectRolesRequest: {
+            /** Columns */
+            columns?: components["schemas"]["ColumnProfile"][] | null;
+            /** Dataset */
+            dataset?: string | null;
+            /** Template Id */
+            template_id: string;
         };
         /**
          * Diagnostic
@@ -2651,11 +3962,792 @@ export interface components {
             policy?: components["schemas"]["DimPolicy"];
         };
         /**
+         * DistributionSummary
+         * @description A distribution in business units: mean, sd and named quantiles (``"0.05"`` …).
+         * @example {
+         *       "mean": 2.6,
+         *       "quantiles": {
+         *         "0.05": 1.5,
+         *         "0.5": 2.5,
+         *         "0.95": 4.1
+         *       },
+         *       "sd": 0.8
+         *     }
+         */
+        DistributionSummary: {
+            /** Mean */
+            mean: number;
+            /** Quantiles */
+            quantiles?: {
+                [key: string]: number;
+            };
+            /** Sd */
+            sd: number;
+            /** Units */
+            units?: string | null;
+        };
+        /**
+         * EmailVerify
+         * @description ``POST /auth/verify-email``: the token from the e-mail link (single use).
+         * @example {
+         *       "token": "mev_0123456789abcdefghjkmnpqrstvwxyz01234567"
+         *     }
+         */
+        EmailVerify: {
+            /** Token */
+            token: string;
+        };
+        /**
+         * EmbedView
+         * @description ``GET /v1/embeds/{token}`` (public, rate-limited, cacheable until ``expires_at``):
+         *     a platform-recipe plot with every dataset inlined. Expired or revoked tokens answer
+         *     ``410 LINK_EXPIRED``; unknown ones ``404``.
+         * @example {
+         *       "allowed_origins": [
+         *         "https://acme.notion.site"
+         *       ],
+         *       "expires_at": "2027-01-13T09:30:00Z",
+         *       "generated_at": "2026-10-15T09:30:00Z",
+         *       "image_url": "https://storage.googleapis.com/mapi-prod-bundles/t/acme/embeds/emb_01jaf3p1q2r3s4t5v6w7x8y9z0/plot.png?X-Goog-Signature=…",
+         *       "plot": {
+         *         "caption_plain": "The shaded band is where the model expects 90% of weeks.",
+         *         "datasets": {
+         *           "fan": {
+         *             "data": "QVJST1cx",
+         *             "kind": "inline_arrow",
+         *             "rows": 2
+         *           }
+         *         },
+         *         "id": "core.ppc_fan",
+         *         "kind": "vega-lite",
+         *         "persona": "both",
+         *         "provenance": {
+         *           "generated_at": "2026-10-15T09:40:00Z",
+         *           "recipe": "core.ppc_fan@1.0.0"
+         *         },
+         *         "schema_version": "v5",
+         *         "spec": {
+         *           "data": {
+         *             "name": "fan"
+         *           },
+         *           "encoding": {
+         *             "x": {
+         *               "field": "time",
+         *               "type": "temporal"
+         *             },
+         *             "y": {
+         *               "field": "lo",
+         *               "type": "quantitative"
+         *             },
+         *             "y2": {
+         *               "field": "hi"
+         *             }
+         *           },
+         *           "mark": "area"
+         *         },
+         *         "title": "Posterior predictive fan"
+         *       },
+         *       "title": "EU response curves (v3)"
+         *     }
+         */
+        EmbedView: {
+            /**
+             * Allowed Origins
+             * @description The embed's PlotEmbedCreate.allowed_origins: sites that may frame the embed page (empty: any). The embed page refuses to render elsewhere.
+             */
+            allowed_origins?: string[];
+            /** Caption Plain */
+            caption_plain?: string | null;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Image Url
+             * @description Short-lived signed URL of a static PNG of the plot (the embed page's fallback link), once the sandbox has rendered one
+             */
+            image_url?: string | null;
+            plot: components["schemas"]["PlotSpec"];
+            /** Title */
+            title: string;
+        };
+        /**
+         * Endpoint
+         * @description A stable alias and the model version it serves now.
+         * @example {
+         *       "alias": "geo-mmm-prod",
+         *       "created_at": "2026-09-01T08:00:00Z",
+         *       "description": "Weekly EU MMM used by the budget planner",
+         *       "evaluation_policy": {
+         *         "fit_mode": "evaluate_then_refit",
+         *         "schema_change": "block"
+         *       },
+         *       "gate": {
+         *         "outcome": "allowed",
+         *         "scorecard_overall": "pass"
+         *       },
+         *       "id": "ep_01jaf3g1h2j3k4m5n6p7q8r9s0",
+         *       "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+         *       "model_ref": "model://growth/eu-geo-mmm@v3",
+         *       "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+         *       "overridden": false,
+         *       "project_id": "growth",
+         *       "promoted_at": "2026-10-15T09:30:00Z",
+         *       "promoted_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "ref": "endpoint://growth/geo-mmm-prod",
+         *       "revision": 4,
+         *       "schema_snapshot": {
+         *         "fit_coords": {
+         *           "channel": {
+         *             "kind": "categorical",
+         *             "size": 2,
+         *             "values": [
+         *               "search",
+         *               "tv"
+         *             ]
+         *           },
+         *           "date": {
+         *             "end": "2025-12-30",
+         *             "freq": "D",
+         *             "kind": "time",
+         *             "size": 730,
+         *             "start": "2024-01-01"
+         *           },
+         *           "market": {
+         *             "kind": "categorical",
+         *             "size": 2,
+         *             "values": [
+         *               "de",
+         *               "fr"
+         *             ]
+         *           }
+         *         },
+         *         "future_required": [
+         *           "spend_local"
+         *         ],
+         *         "horizon_dim": "time",
+         *         "input_schema": {
+         *           "dims": {
+         *             "channel": {
+         *               "kind": "categorical"
+         *             },
+         *             "date": {
+         *               "freq": "D",
+         *               "kind": "time",
+         *               "policy": "extend"
+         *             },
+         *             "market": {
+         *               "kind": "categorical",
+         *               "new_level_strategy": "pooled",
+         *               "policy": "new_levels"
+         *             }
+         *           },
+         *           "vars": {
+         *             "revenue_local": {
+         *               "dims": [
+         *                 "market",
+         *                 "date"
+         *               ],
+         *               "dtype": "float64",
+         *               "role": "target"
+         *             },
+         *             "spend_local": {
+         *               "dims": [
+         *                 "market",
+         *                 "channel",
+         *                 "date"
+         *               ],
+         *               "dtype": "float64",
+         *               "future_required": true,
+         *               "role": "spend"
+         *             }
+         *           }
+         *         },
+         *         "inputs_stage": "raw",
+         *         "representation": "draws",
+         *         "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *         "score_modes": [
+         *           "counterfactual",
+         *           "evaluate",
+         *           "forecast",
+         *           "predict"
+         *         ]
+         *       },
+         *       "tenant_id": "acme",
+         *       "updated_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        Endpoint: {
+            /** Alias */
+            alias: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description?: string | null;
+            evaluation_policy?: components["schemas"]["EvaluationPolicy"];
+            gate: components["schemas"]["PromotionGateDecision"];
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /**
+             * Model Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            model_id: string;
+            /**
+             * Model Ref
+             * @description model://project/name@vN
+             */
+            model_ref: string;
+            /**
+             * Model Version Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            model_version_id: string;
+            /**
+             * Overridden
+             * @description The current version was promoted by override
+             * @default false
+             */
+            overridden?: boolean;
+            /** Project Id */
+            project_id: string;
+            /**
+             * Promoted At
+             * Format: date-time
+             */
+            promoted_at: string;
+            /** Promoted By */
+            promoted_by?: string | null;
+            /**
+             * Ref
+             * @description endpoint://project/alias
+             */
+            ref: string;
+            /**
+             * Revision
+             * @description Increases with every promotion and rollback
+             */
+            revision: number;
+            schema_snapshot: components["schemas"]["EndpointSchemaSnapshot"];
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * EndpointPromote
+         * @description ``PUT /v1/endpoints/{alias}``: create the alias or point it at another version.
+         *
+         *     Name the version by id or by ``model://project/name@vN`` (exactly one). A version whose
+         *     gate says ``needs_override`` needs ``override=true`` and a ``reason`` from a signed-in
+         *     project admin (audited); ``blocked`` versions cannot be promoted. ``expected_revision``
+         *     guards against concurrent promotions (``409 CONFLICT`` when stale).
+         * @example {
+         *       "expected_revision": 3,
+         *       "model": "model://growth/eu-geo-mmm@v3"
+         *     }
+         * @example {
+         *       "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+         *       "override": true,
+         *       "reason": "Holdout MAPE is high because of the strike in week 41; accepted by CMO."
+         *     }
+         */
+        EndpointPromote: {
+            /** Description */
+            description?: string | null;
+            evaluation_policy?: components["schemas"]["EvaluationPolicy"] | null;
+            /**
+             * Expected Revision
+             * @description 0: the alias must be new
+             */
+            expected_revision?: number | null;
+            /** Model */
+            model?: string | null;
+            /** Model Version Id */
+            model_version_id?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override?: boolean;
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * EndpointRevision
+         * @description One entry of an endpoint's history (newest first in ``GET …/history``).
+         * @example {
+         *       "action": "promote",
+         *       "actor_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "alias": "geo-mmm-prod",
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "gate": {
+         *         "failing_checks": [
+         *           "holdout.mape"
+         *         ],
+         *         "outcome": "needs_override",
+         *         "reasons": [
+         *           {
+         *             "check": "holdout.mape",
+         *             "code": "SCORECARD_WARN",
+         *             "message_plain": "Holdout error: forecasts were off by 14%.",
+         *             "outcome": "needs_override"
+         *           }
+         *         ],
+         *         "scorecard_overall": "warn"
+         *       },
+         *       "model_ref": "model://growth/eu-geo-mmm@v3",
+         *       "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+         *       "overridden": true,
+         *       "previous_model_version_id": "mv_01jaf3e0f0g0h0j0k0m0n0p0q0",
+         *       "reason": "Holdout MAPE is high because of the strike in week 41.",
+         *       "revision": 4
+         *     }
+         */
+        EndpointRevision: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "promote" | "rollback";
+            /** Actor Id */
+            actor_id?: string | null;
+            /** Alias */
+            alias: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            gate: components["schemas"]["PromotionGateDecision"];
+            /** Model Ref */
+            model_ref: string;
+            /**
+             * Model Version Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            model_version_id: string;
+            /**
+             * Overridden
+             * @default false
+             */
+            overridden?: boolean;
+            /** Previous Model Version Id */
+            previous_model_version_id?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** Revision */
+            revision: number;
+            /** Token Id */
+            token_id?: string | null;
+        };
+        /**
+         * EndpointRollback
+         * @description ``POST /v1/endpoints/{alias}/rollback``: point the alias back at the version of an
+         *     earlier revision (default: the one before the current). The gate is not re-run - the
+         *     version was promoted before - but the rollback is audited with its reason.
+         * @example {
+         *       "reason": "v3 over-forecasts after the price change"
+         *     }
+         */
+        EndpointRollback: {
+            /** Reason */
+            reason: string;
+            /** To Revision */
+            to_revision?: number | null;
+        };
+        /**
+         * EndpointSchema
+         * @description ``GET /v1/endpoints/{alias}/schema``: what to send, with a ready example payload.
+         * @example {
+         *       "alias": "geo-mmm-prod",
+         *       "example": {
+         *         "future_covariates": "carry_last",
+         *         "horizon": {
+         *           "dim": "time",
+         *           "periods": 8
+         *         },
+         *         "mode": "forecast",
+         *         "output": {
+         *           "kind": "expected",
+         *           "summary": [
+         *             "mean",
+         *             "hdi_90"
+         *           ]
+         *         }
+         *       },
+         *       "model_ref": "model://growth/eu-geo-mmm@v3",
+         *       "ref": "endpoint://growth/geo-mmm-prod",
+         *       "revision": 4,
+         *       "snapshot": {
+         *         "fit_coords": {
+         *           "channel": {
+         *             "kind": "categorical",
+         *             "size": 2,
+         *             "values": [
+         *               "search",
+         *               "tv"
+         *             ]
+         *           },
+         *           "date": {
+         *             "end": "2025-12-30",
+         *             "freq": "D",
+         *             "kind": "time",
+         *             "size": 730,
+         *             "start": "2024-01-01"
+         *           },
+         *           "market": {
+         *             "kind": "categorical",
+         *             "size": 2,
+         *             "values": [
+         *               "de",
+         *               "fr"
+         *             ]
+         *           }
+         *         },
+         *         "future_required": [
+         *           "spend_local"
+         *         ],
+         *         "horizon_dim": "time",
+         *         "input_schema": {
+         *           "dims": {
+         *             "channel": {
+         *               "kind": "categorical"
+         *             },
+         *             "date": {
+         *               "freq": "D",
+         *               "kind": "time",
+         *               "policy": "extend"
+         *             },
+         *             "market": {
+         *               "kind": "categorical",
+         *               "new_level_strategy": "pooled",
+         *               "policy": "new_levels"
+         *             }
+         *           },
+         *           "vars": {
+         *             "revenue_local": {
+         *               "dims": [
+         *                 "market",
+         *                 "date"
+         *               ],
+         *               "dtype": "float64",
+         *               "role": "target"
+         *             },
+         *             "spend_local": {
+         *               "dims": [
+         *                 "market",
+         *                 "channel",
+         *                 "date"
+         *               ],
+         *               "dtype": "float64",
+         *               "future_required": true,
+         *               "role": "spend"
+         *             }
+         *           }
+         *         },
+         *         "inputs_stage": "raw",
+         *         "representation": "draws",
+         *         "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *         "score_modes": [
+         *           "counterfactual",
+         *           "evaluate",
+         *           "forecast",
+         *           "predict"
+         *         ]
+         *       }
+         *     }
+         */
+        EndpointSchema: {
+            /** Alias */
+            alias: string;
+            /**
+             * Example
+             * @description An EndpointScoreCall body that validates against this endpoint
+             */
+            example: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /**
+             * Max Inline Bytes
+             * @default 5242880
+             */
+            max_inline_bytes?: number;
+            /** Model Ref */
+            model_ref: string;
+            /** Ref */
+            ref: string;
+            /** Revision */
+            revision: number;
+            snapshot: components["schemas"]["EndpointSchemaSnapshot"];
+        };
+        /**
+         * EndpointSchemaSnapshot
+         * @description The input contract of the promoted version, frozen at promotion: what callers send.
+         *
+         *     ``input_schema`` is the schema at ``inputs_stage`` under the spec's canonical names
+         *     (``data.bind`` applied: ``time``, ``y``), which inline payloads use; the runner renames
+         *     them to the dataset's own names before scoring. ``horizon_dim`` is the canonical name of
+         *     the dim a forecast extends.
+         * @example {
+         *       "fit_coords": {
+         *         "channel": {
+         *           "kind": "categorical",
+         *           "size": 2,
+         *           "values": [
+         *             "search",
+         *             "tv"
+         *           ]
+         *         },
+         *         "date": {
+         *           "end": "2025-12-30",
+         *           "freq": "D",
+         *           "kind": "time",
+         *           "size": 730,
+         *           "start": "2024-01-01"
+         *         },
+         *         "market": {
+         *           "kind": "categorical",
+         *           "size": 2,
+         *           "values": [
+         *             "de",
+         *             "fr"
+         *           ]
+         *         }
+         *       },
+         *       "future_required": [
+         *         "spend_local"
+         *       ],
+         *       "horizon_dim": "time",
+         *       "input_schema": {
+         *         "dims": {
+         *           "channel": {
+         *             "kind": "categorical"
+         *           },
+         *           "date": {
+         *             "freq": "D",
+         *             "kind": "time",
+         *             "policy": "extend"
+         *           },
+         *           "market": {
+         *             "kind": "categorical",
+         *             "new_level_strategy": "pooled",
+         *             "policy": "new_levels"
+         *           }
+         *         },
+         *         "vars": {
+         *           "revenue_local": {
+         *             "dims": [
+         *               "market",
+         *               "date"
+         *             ],
+         *             "dtype": "float64",
+         *             "role": "target"
+         *           },
+         *           "spend_local": {
+         *             "dims": [
+         *               "market",
+         *               "channel",
+         *               "date"
+         *             ],
+         *             "dtype": "float64",
+         *             "future_required": true,
+         *             "role": "spend"
+         *           }
+         *         }
+         *       },
+         *       "inputs_stage": "raw",
+         *       "representation": "draws",
+         *       "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *       "score_modes": [
+         *         "counterfactual",
+         *         "evaluate",
+         *         "forecast",
+         *         "predict"
+         *       ]
+         *     }
+         */
+        EndpointSchemaSnapshot: {
+            /** Fit Coords */
+            fit_coords?: {
+                [key: string]: components["schemas"]["CoordSummary"];
+            };
+            /** Future Required */
+            future_required?: string[];
+            /** Horizon Dim */
+            horizon_dim?: string | null;
+            input_schema: components["schemas"]["DataSchema"];
+            /**
+             * Inputs Stage
+             * @default raw
+             */
+            inputs_stage?: string;
+            representation?: components["schemas"]["Representation"] | null;
+            /** Schema Hash */
+            schema_hash: string;
+            /** Score Modes */
+            score_modes?: ("predict" | "forecast" | "counterfactual" | "simulate" | "filter" | "evaluate")[];
+        };
+        /**
+         * EndpointScoreCall
+         * @description ``POST /v1/endpoints/{alias}/score`` (and ``…/validate``): a score request for the
+         *     endpoint's current version.
+         *
+         *     ``data``/``scenario`` are ``dataset://`` references or inline XrJSON datasets (up to
+         *     5 MB; :mod:`mapi_spec.xrjson`). Send ``Prefer: wait=N`` (N ≤ 60) to wait: 200 with the
+         *     result when the run finishes in time, else 202 with the run.
+         * @example {
+         *       "future_covariates": "carry_last",
+         *       "horizon": {
+         *         "dim": "time",
+         *         "periods": 8
+         *       },
+         *       "mode": "forecast",
+         *       "output": {
+         *         "kind": "expected",
+         *         "summary": [
+         *           "mean",
+         *           "hdi_90"
+         *         ]
+         *       }
+         *     }
+         * @example {
+         *       "data": {
+         *         "coords": {
+         *           "channel": {
+         *             "data": [
+         *               "search",
+         *               "tv"
+         *             ],
+         *             "dims": [
+         *               "channel"
+         *             ]
+         *           },
+         *           "date": {
+         *             "data": [
+         *               "2025-12-30"
+         *             ],
+         *             "dims": [
+         *               "date"
+         *             ]
+         *           },
+         *           "market": {
+         *             "data": [
+         *               "de"
+         *             ],
+         *             "dims": [
+         *               "market"
+         *             ]
+         *           }
+         *         },
+         *         "data_vars": {
+         *           "spend_local": {
+         *             "data": [
+         *               [
+         *                 [
+         *                   1200
+         *                 ],
+         *                 [
+         *                   5300
+         *                 ]
+         *               ]
+         *             ],
+         *             "dims": [
+         *               "market",
+         *               "channel",
+         *               "date"
+         *             ]
+         *           }
+         *         }
+         *       },
+         *       "mode": "predict"
+         *     }
+         */
+        EndpointScoreCall: {
+            /** Data */
+            data?: string | components["schemas"]["XrJsonDataset"] | null;
+            /** @default supplied */
+            future_covariates?: components["schemas"]["FutureCovariates"];
+            horizon?: components["schemas"]["Horizon"] | null;
+            /**
+             * Inputs Stage
+             * @default raw
+             */
+            inputs_stage?: string;
+            /** Interventions */
+            interventions?: components["schemas"]["Intervention"][];
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Mode
+             * @default predict
+             * @enum {string}
+             */
+            mode?: "predict" | "forecast" | "counterfactual" | "simulate" | "filter" | "evaluate";
+            output?: components["schemas"]["OutputSelector"];
+            resource_class?: components["schemas"]["ResourceClass"] | null;
+            /** Scenario */
+            scenario?: string | components["schemas"]["XrJsonDataset"] | null;
+            /** Seed */
+            seed?: number | null;
+            /** Select */
+            select?: {
+                [key: string]: (string | number | boolean)[];
+            };
+            /** Side Tables */
+            side_tables?: {
+                [key: string]: string;
+            };
+            /** Timeout */
+            timeout?: string | null;
+        };
+        /**
+         * EndpointValidation
+         * @description ``POST /v1/endpoints/{alias}/validate``: the static checks of a score call (CoordPlan,
+         *     capabilities, inline payload envelope) without running it.
+         * @example {
+         *       "issues": [
+         *         {
+         *           "code": "MISSING_FUTURE_COVARIATE",
+         *           "message": "forecasting needs future values of ['spend'] at stage 'raw'",
+         *           "pointer": "/scenario",
+         *           "severity": "error",
+         *           "suggested_action": "Provide them in a scenario dataset."
+         *         }
+         *       ],
+         *       "valid": false
+         *     }
+         */
+        EndpointValidation: {
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            request?: components["schemas"]["ScoreRequest"] | null;
+            /** Valid */
+            valid: boolean;
+        };
+        /**
          * ErrorCode
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
          */
-        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR";
+        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED";
         /**
          * ErrorPayload
          * @description ``error``: the run failed; ``message`` is platform-authored, plugin text is untrusted.
@@ -2684,6 +4776,29 @@ export interface components {
             params?: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * EvaluationPolicy
+         * @description What a model version must satisfy to be promoted to the endpoint (Q13).
+         *
+         *     ``fit_mode = evaluate_then_refit`` (default) requires versions whose production bundle
+         *     was refitted on all data after the holdout evaluation; ``train_only`` also accepts
+         *     exploration fits. ``schema_change`` decides what happens when the new version expects
+         *     input the endpoint's callers do not send (:func:`schema_breaks`).
+         * @example {
+         *       "fit_mode": "evaluate_then_refit",
+         *       "schema_change": "block"
+         *     }
+         */
+        EvaluationPolicy: {
+            /** @default evaluate_then_refit */
+            fit_mode?: components["schemas"]["FitMode"];
+            /**
+             * Schema Change
+             * @default block
+             * @enum {string}
+             */
+            schema_change?: "block" | "warn" | "allow";
         };
         /**
          * ExecutorAttestation
@@ -3132,6 +5247,201 @@ export interface components {
          */
         FailureClass: "user" | "resource_exhausted" | "infra" | "integrity" | "timeout" | "sandbox";
         /**
+         * FanChart
+         * @description Quantile bands of a series along one dim (a KPI fan): ``values[i][j]`` is quantile
+         *     ``quantiles[i]`` at ``coords[j]``. ``observed`` (if any) is the data over ``coords``.
+         * @example {
+         *       "coords": [
+         *         "2026-01-04",
+         *         "2026-01-11"
+         *       ],
+         *       "dim": "time",
+         *       "observed": [
+         *         101,
+         *         99.5
+         *       ],
+         *       "quantiles": [
+         *         0.05,
+         *         0.5,
+         *         0.95
+         *       ],
+         *       "units": "kEUR",
+         *       "values": [
+         *         [
+         *           80,
+         *           82
+         *         ],
+         *         [
+         *           100,
+         *           103
+         *         ],
+         *         [
+         *           125,
+         *           129
+         *         ]
+         *       ]
+         *     }
+         */
+        FanChart: {
+            /** Coords */
+            coords: (string | number)[];
+            /** Dim */
+            dim: string;
+            /** Observed */
+            observed?: (number | null)[] | null;
+            /** Quantiles */
+            quantiles: number[];
+            /** Units */
+            units?: string | null;
+            /** Values */
+            values: (number | null)[][];
+        };
+        /**
+         * FitMode
+         * @enum {string}
+         */
+        FitMode: "evaluate_then_refit" | "train_only";
+        /** ForecastCompile */
+        ForecastCompile: {
+            /**
+             * Channel Dim
+             * @default channel
+             */
+            channel_dim?: string;
+            /**
+             * Dim
+             * @default time
+             */
+            dim?: string;
+            /** @default carry_last */
+            future_covariates?: components["schemas"]["FutureCovariates"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "forecast";
+            /**
+             * Model
+             * @description endpoint://project/alias or model://project/name@vN
+             */
+            model: string;
+            output?: components["schemas"]["OutputSelector"] | null;
+            /** Periods */
+            periods: number;
+            /** Preset */
+            preset?: (components["schemas"]["ChannelOff"] | components["schemas"]["BudgetScale"]) | null;
+            /** Scenario */
+            scenario?: string | null;
+            /**
+             * Spend Var
+             * @default spend
+             */
+            spend_var?: string;
+        };
+        /**
+         * FutureCovariates
+         * @description Where future values of ``future_required`` covariates come from in a forecast (M3).
+         *
+         *     ``supplied`` (default) needs them in the request's data or scenario
+         *     (``MISSING_FUTURE_COVARIATE`` otherwise). The other policies let the runner extend them
+         *     over the horizon, per series, inside the sandbox: ``carry_last`` repeats the last
+         *     observed value, ``seasonal_naive`` repeats the value one season earlier (the time dim's
+         *     yearly period), ``zero`` sets them to zero (e.g. "no spend planned").
+         * @enum {string}
+         */
+        FutureCovariates: "supplied" | "carry_last" | "seasonal_naive" | "zero";
+        /**
+         * GateOutcome
+         * @enum {string}
+         */
+        GateOutcome: "allowed" | "needs_override" | "blocked";
+        /**
+         * GateReason
+         * @description Why the gate is not plainly ``allowed``: a stable code, plain text, and the check.
+         */
+        GateReason: {
+            /** Check */
+            check?: string | null;
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "SCORECARD_WARN" | "SCORECARD_FAIL" | "NO_SCORECARD" | "TRAIN_ONLY" | "PARTIAL_MODEL" | "SCHEMA_CHANGE" | "NOT_EVALUATED";
+            /** Message Plain */
+            message_plain: string;
+            outcome: components["schemas"]["GateOutcome"];
+        };
+        /**
+         * GdprExport
+         * @description An export job; ``download_url`` is a short-lived signed link once ``ready``.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "download_url": "https://storage.example/exports/exp_01…?X-Goog-Signature=…",
+         *       "expires_at": "2026-10-16T09:42:00Z",
+         *       "id": "exp_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *       "include": [
+         *         "metadata",
+         *         "datasets",
+         *         "models",
+         *         "audit",
+         *         "usage"
+         *       ],
+         *       "ready_at": "2026-10-15T09:42:00Z",
+         *       "requested_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "size_bytes": 73400320,
+         *       "state": "ready",
+         *       "tenant_id": "acme-retail"
+         *     }
+         */
+        GdprExport: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Download Url */
+            download_url?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Include */
+            include: ("metadata" | "datasets" | "models" | "audit" | "usage")[];
+            /** Ready At */
+            ready_at?: string | null;
+            /** Requested By */
+            requested_by?: string | null;
+            /** Size Bytes */
+            size_bytes?: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "running" | "ready" | "expired" | "failed";
+            /** Tenant Id */
+            tenant_id: string;
+        };
+        /**
+         * GdprExportRequest
+         * @description ``POST /v1/tenants/{tenant_id}/exports``: what to include (default: everything).
+         * @example {
+         *       "include": [
+         *         "metadata",
+         *         "datasets",
+         *         "models",
+         *         "audit",
+         *         "usage"
+         *       ]
+         *     }
+         */
+        GdprExportRequest: {
+            /** Include */
+            include?: ("metadata" | "datasets" | "models" | "audit" | "usage")[];
+        };
+        /**
          * GlobalSpend
          * @description Platform spend in the current window of the global spend cap: what the kill switch
          *     compares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in
@@ -3170,6 +5480,367 @@ export interface components {
              * Format: date-time
              */
             start: string;
+        };
+        /**
+         * GuidedAnswers
+         * @description ``POST /v1/guided/drafts``: answers to a template's questions.
+         *
+         *     Column answers are *column names* of the upload (a list for ``columns`` questions).
+         *     ``dataset`` names the dataset the upload will become (``dataset://<project>/<name>``);
+         *     ``columns`` (optional) lets the draft use detected types and frequencies.
+         * @example {
+         *       "answers": {
+         *         "controls": [
+         *           "avg_price"
+         *         ],
+         *         "date": "week",
+         *         "frequency": "weekly",
+         *         "geo": "market",
+         *         "holdout_periods": 8,
+         *         "kpi": "revenue_eur",
+         *         "spend": [
+         *           "tv_spend",
+         *           "search_spend",
+         *           "social_spend"
+         *         ]
+         *       },
+         *       "dataset": "eu_media_weekly",
+         *       "format": "csv",
+         *       "name": "eu-geo-mmm",
+         *       "template_id": "geo_mmm"
+         *     }
+         */
+        GuidedAnswers: {
+            /** Answers */
+            answers?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            business_priors?: components["schemas"]["BusinessPriors"] | null;
+            /** Columns */
+            columns?: components["schemas"]["ColumnProfile"][] | null;
+            /**
+             * Dataset
+             * @description Name of the dataset the upload becomes
+             */
+            dataset: string;
+            /**
+             * Format
+             * @description The upload's format; for 'mff' (M3) column answers name VariableName values, Period and the MFF key columns
+             * @default csv
+             * @enum {string}
+             */
+            format?: "csv" | "parquet" | "mff";
+            /** Lift Tests */
+            lift_tests?: components["schemas"]["LiftTest"][];
+            /**
+             * Name
+             * @description Name of the spec (and model) to create
+             */
+            name: string;
+            /** Template Id */
+            template_id: string;
+        };
+        /**
+         * GuidedCompile
+         * @description Body of ``POST /v1/guided/requests:compile``: one of ``whatif``, ``forecast`` or
+         *     ``counterfactual`` (by ``kind``); the response is the equivalent ``ScoreRequest``.
+         * @example {
+         *       "kind": "whatif",
+         *       "model": "model://growth/eu-geo-mmm@v3",
+         *       "scenario": {
+         *         "multipliers": {
+         *           "search": 1.3,
+         *           "tv": 0.8
+         *         }
+         *       }
+         *     }
+         * @example {
+         *       "kind": "forecast",
+         *       "model": "endpoint://growth/geo-mmm-prod",
+         *       "periods": 13,
+         *       "preset": {
+         *         "k": 1.1,
+         *         "kind": "budget_scale"
+         *       }
+         *     }
+         * @example {
+         *       "kind": "counterfactual",
+         *       "model": "endpoint://growth/geo-mmm-prod",
+         *       "preset": {
+         *         "channel": "tv",
+         *         "kind": "channel_off"
+         *       }
+         *     }
+         */
+        GuidedCompile: components["schemas"]["WhatIfCompile"] | components["schemas"]["ForecastCompile"] | components["schemas"]["CounterfactualCompile"];
+        /**
+         * GuidedDraft
+         * @description The draft a template and its answers produce: how to ingest the upload, the spec,
+         *     the spec as YAML ("View as YAML") and anything worth a second look.
+         * @example {
+         *       "dataset_ref": "dataset://growth/eu_media_weekly@latest",
+         *       "issues": [],
+         *       "mapping": {
+         *         "dims": {
+         *           "market": {
+         *             "column": "market",
+         *             "spec": {
+         *               "kind": "categorical"
+         *             }
+         *           },
+         *           "week": {
+         *             "column": "week",
+         *             "spec": {
+         *               "freq": "W-SUN",
+         *               "kind": "time",
+         *               "policy": "extend"
+         *             }
+         *           }
+         *         },
+         *         "format": "csv",
+         *         "vars": {
+         *           "revenue": {
+         *             "column": "revenue",
+         *             "role": "target",
+         *             "units": "EUR"
+         *           }
+         *         },
+         *         "wide": {
+         *           "spend": {
+         *             "columns": {
+         *               "search": "search_spend",
+         *               "social": "social_spend",
+         *               "tv": "tv_spend"
+         *             },
+         *             "dim": "channel",
+         *             "role": "spend",
+         *             "units": "EUR"
+         *           }
+         *         }
+         *       },
+         *       "spec": {
+         *         "apiVersion": "mapi/v1",
+         *         "kind": "ModelSpec"
+         *       },
+         *       "template_id": "geo_mmm",
+         *       "template_version": "1.0.0",
+         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\n…"
+         *     }
+         */
+        GuidedDraft: {
+            /** Dataset Ref */
+            dataset_ref: string;
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            mapping: components["schemas"]["IngestMapping"];
+            /** Spec */
+            spec: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Template Id */
+            template_id: string;
+            /** Template Version */
+            template_version: string;
+            /** Yaml */
+            yaml: string;
+        };
+        /**
+         * GuidedQuestion
+         * @description One plain-language question. Column questions name what the column becomes:
+         *
+         *     * ``dim``: the column labels a dataset dim (``dim_spec`` describes it); the placeholder
+         *       ``{{<id>}}`` is the dataset dim name;
+         *     * ``role`` (``column``): the column is a data variable with that role; the placeholder is
+         *       the dataset variable name;
+         *     * ``role`` + ``wide_dim`` (``columns``): the columns become *one* variable ``as_var``
+         *       along ``wide_dim`` (one label per column, e.g. spend per channel);
+         *     * ``role`` without ``wide_dim`` (``columns``): each column is its own variable.
+         */
+        GuidedQuestion: {
+            /** Accepts */
+            accepts?: ("number" | "integer" | "string" | "date" | "boolean")[];
+            /** As Var */
+            as_var?: string | null;
+            /** Choices */
+            choices?: components["schemas"]["QuestionChoice"][];
+            default?: components["schemas"]["JsonValue"];
+            /**
+             * Dim
+             * @description Canonical dim this column labels
+             */
+            dim?: string | null;
+            dim_spec?: components["schemas"]["DimSpec"] | null;
+            /** Help Plain */
+            help_plain?: string | null;
+            /** Id */
+            id: string;
+            /** Keywords */
+            keywords?: string[];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "column" | "columns" | "choice" | "number" | "text";
+            /** Maximum */
+            maximum?: number | null;
+            /** Minimum */
+            minimum?: number | null;
+            /**
+             * Missing
+             * @description M3: missing-value policy of the variables a column answer becomes (default forbid; 'allow' for ragged panels such as shopping trips per household)
+             */
+            missing?: ("forbid" | "allow" | "mask") | null;
+            /** Prompt Plain */
+            prompt_plain: string;
+            /**
+             * Required
+             * @default true
+             */
+            required?: boolean;
+            role?: components["schemas"]["Role"] | null;
+            /**
+             * Ui Level
+             * @default basic
+             * @enum {string}
+             */
+            ui_level?: "basic" | "advanced" | "hidden";
+            /** Wide Dim */
+            wide_dim?: string | null;
+        };
+        /**
+         * GuidedTemplate
+         * @description A guided task: questions, the spec they fill and what to check afterwards.
+         *
+         *     ``ui_levels`` maps JSON pointers of the spec to ``x-ui-level`` hints (``hidden`` fields
+         *     are kept but not shown; Expert edits round-trip). ``plugin_available`` is false while
+         *     the template's built-in plugin is not shipped (``plugin_note`` says what is missing).
+         * @example {
+         *       "description_plain": "Forecast one series a few weeks ahead.",
+         *       "family": "forecast",
+         *       "id": "weekly_forecast",
+         *       "plugin": "ts.hsgp_trend@^1",
+         *       "questions": [
+         *         {
+         *           "accepts": [
+         *             "number",
+         *             "integer"
+         *           ],
+         *           "id": "kpi",
+         *           "keywords": [
+         *             "sales"
+         *           ],
+         *           "kind": "column",
+         *           "prompt_plain": "Which column do you want to forecast?",
+         *           "role": "target"
+         *         },
+         *         {
+         *           "accepts": [
+         *             "date"
+         *           ],
+         *           "dim": "time",
+         *           "dim_spec": {
+         *             "kind": "time",
+         *             "policy": "extend"
+         *           },
+         *           "id": "date",
+         *           "kind": "column",
+         *           "prompt_plain": "Which column holds the date or week?"
+         *         }
+         *       ],
+         *       "scorecard_checks": [
+         *         "convergence.rhat",
+         *         "holdout.mape"
+         *       ],
+         *       "spec_template": {
+         *         "apiVersion": "mapi/v1",
+         *         "data": {
+         *           "bind": {
+         *             "dims": {
+         *               "t": "{{date}}"
+         *             },
+         *             "vars": {
+         *               "y": "{{kpi}}"
+         *             }
+         *           },
+         *           "dataset": "{{dataset}}"
+         *         },
+         *         "kind": "ModelSpec",
+         *         "metadata": {
+         *           "name": "{{name}}",
+         *           "project": "{{project}}"
+         *         },
+         *         "model": {
+         *           "settings": {
+         *             "max_extension": 26
+         *           },
+         *           "use": "ts.hsgp_trend@^1"
+         *         }
+         *       },
+         *       "tasks": [
+         *         "forecast"
+         *       ],
+         *       "title": "Weekly forecast",
+         *       "ui_levels": {
+         *         "/model/fit": "advanced"
+         *       },
+         *       "version": "1.0.0"
+         *     }
+         */
+        GuidedTemplate: {
+            /** Defaults */
+            defaults?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Description Plain */
+            description_plain: string;
+            /**
+             * Family
+             * @enum {string}
+             */
+            family: "mmm" | "forecast" | "tabular" | "choice";
+            /** Id */
+            id: string;
+            /** Lookups */
+            lookups?: {
+                [key: string]: components["schemas"]["TemplateLookup"];
+            };
+            /**
+             * Plugin
+             * @description UseRef of the built-in plugin (id@range)
+             */
+            plugin: string;
+            /**
+             * Plugin Available
+             * @default true
+             */
+            plugin_available?: boolean;
+            /** Plugin Note */
+            plugin_note?: string | null;
+            /** Questions */
+            questions: components["schemas"]["GuidedQuestion"][];
+            /** Scorecard Checks */
+            scorecard_checks?: string[];
+            /** Scorecard Thresholds */
+            scorecard_thresholds?: {
+                [key: string]: components["schemas"]["CheckThresholds"];
+            };
+            /** Spec Template */
+            spec_template: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Tasks */
+            tasks?: ("whatif" | "forecast" | "counterfactual" | "business_priors" | "lift_tests")[];
+            /** Title */
+            title: string;
+            /** Ui Levels */
+            ui_levels?: {
+                [key: string]: "basic" | "advanced" | "hidden";
+            };
+            /**
+             * Version
+             * @default 1.0.0
+             */
+            version?: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -3251,6 +5922,12 @@ export interface components {
          *
          *     Tabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit
          *     ``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.
+         *
+         *     With the ``mff``/``bayesinsight`` presets the long table is first pivoted to one column
+         *     per ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then
+         *     pick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may
+         *     refine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and
+         *     ``wide`` every variable is kept under its own name.
          * @example {
          *       "dims": {
          *         "date": {
@@ -3282,8 +5959,71 @@ export interface components {
          *         }
          *       }
          *     }
+         * @example {
+         *       "dims": {
+         *         "market": {
+         *           "column": "market",
+         *           "spec": {
+         *             "kind": "categorical"
+         *           }
+         *         },
+         *         "week": {
+         *           "column": "week",
+         *           "spec": {
+         *             "freq": "W-SUN",
+         *             "kind": "time",
+         *             "policy": "extend"
+         *           }
+         *         }
+         *       },
+         *       "format": "csv",
+         *       "vars": {
+         *         "revenue": {
+         *           "column": "revenue",
+         *           "role": "target",
+         *           "units": "EUR"
+         *         }
+         *       },
+         *       "wide": {
+         *         "spend": {
+         *           "columns": {
+         *             "search": "search_spend",
+         *             "social": "social_spend",
+         *             "tv": "tv_spend"
+         *           },
+         *           "dim": "channel",
+         *           "role": "spend",
+         *           "units": "EUR"
+         *         }
+         *       }
+         *     }
+         * @example {
+         *       "format": "mff",
+         *       "mff": {
+         *         "freq": "W-MON"
+         *       },
+         *       "preset": "mff"
+         *     }
+         * @example {
+         *       "format": "parquet",
+         *       "meridian": {
+         *         "kpi": "revenue",
+         *         "media": [
+         *           "tv_impressions"
+         *         ],
+         *         "media_channels": [
+         *           "tv"
+         *         ],
+         *         "media_spend": [
+         *           "tv_spend"
+         *         ]
+         *       },
+         *       "preset": "meridian"
+         *     }
          */
         IngestMapping: {
+            /** @description BayesInsight's metadata.json (the bayesinsight preset) */
+            bayesinsight?: components["schemas"]["BayesInsightMetadata"] | null;
             /** Dims */
             dims?: {
                 [key: string]: components["schemas"]["DimMapping"];
@@ -3292,18 +6032,39 @@ export interface components {
              * Format
              * @enum {string}
              */
-            format: "csv" | "parquet" | "zarr_zip" | "netcdf";
+            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf";
             /**
              * Layout
              * @default dense
              * @enum {string}
              */
             layout?: "dense" | "long";
+            /** @description The meridian preset's columns */
+            meridian?: components["schemas"]["MeridianColumns"] | null;
+            /** @description Options of the mff/bayesinsight presets */
+            mff?: components["schemas"]["MffOptions"] | null;
+            /**
+             * @description M3: a file contract instead of (or refined by) the column mapping
+             * @default none
+             */
+            preset?: components["schemas"]["IngestPreset"];
             /** Vars */
             vars?: {
                 [key: string]: components["schemas"]["VarMapping"];
             };
+            /**
+             * Wide
+             * @description M3: variables read from one column per label of a dim (wide tables)
+             */
+            wide?: {
+                [key: string]: components["schemas"]["WideVarMapping"];
+            };
         };
+        /**
+         * IngestPreset
+         * @enum {string}
+         */
+        IngestPreset: "none" | "mff" | "meridian" | "bayesinsight";
         /** IngestResponse */
         IngestResponse: {
             result: components["schemas"]["IngestResult"];
@@ -3471,6 +6232,78 @@ export interface components {
             updated_at?: string | null;
             /** Updated By */
             updated_by?: string | null;
+        };
+        /**
+         * LiftTest
+         * @description One experiment: ``spend_delta`` extra spend on ``channel`` (optionally in one ``geo``)
+         *     from ``start`` to ``end`` (inclusive) caused ``kpi_delta`` incremental KPI.
+         *
+         *     Give the measurement's uncertainty as a standard error ``se`` *or* a confidence interval
+         *     ``ci`` at ``ci_level``. A holdout ("turn the channel off") is a negative ``spend_delta``
+         *     with (usually) a negative ``kpi_delta``.
+         * @example {
+         *       "channel": "tv",
+         *       "ci": [
+         *         -380000,
+         *         -140000
+         *       ],
+         *       "ci_level": 0.9,
+         *       "description": "TV off in Germany for four weeks",
+         *       "end": "2026-05-03",
+         *       "geo": "de",
+         *       "id": "tv-holdout-2026q2",
+         *       "kpi_delta": -260000,
+         *       "spend_delta": -120000,
+         *       "start": "2026-04-06"
+         *     }
+         */
+        LiftTest: {
+            /** Channel */
+            channel: string;
+            /**
+             * Ci
+             * @description Confidence interval of kpi_delta
+             */
+            ci?: [
+                number,
+                number
+            ] | null;
+            /**
+             * Ci Level
+             * @default 0.9
+             */
+            ci_level?: number;
+            /** Description */
+            description?: string | null;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Geo */
+            geo?: string | null;
+            /** Id */
+            id?: string | null;
+            /**
+             * Kpi Delta
+             * @description Measured incremental KPI (KPI units)
+             */
+            kpi_delta: number;
+            /**
+             * Se
+             * @description Standard error of kpi_delta
+             */
+            se?: number | null;
+            /**
+             * Spend Delta
+             * @description Extra spend during the test (spend units)
+             */
+            spend_delta: number;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
         };
         /**
          * LimitName
@@ -3804,6 +6637,92 @@ export interface components {
             role: components["schemas"]["ProjectRole"];
         };
         /**
+         * MeridianColumns
+         * @description Google Meridian's ``CoordToColumns`` contract for a wide CSV/Parquet table.
+         *
+         *     ``media``/``media_spend`` (and ``reach``/``frequency``/``rf_spend``) are parallel lists:
+         *     the *i*-th column of each belongs to the *i*-th entry of ``media_channels``
+         *     (``rf_channels``). ``geo`` is omitted for a national model; ``kpi_type`` says whether
+         *     the KPI is revenue (ROI in currency) or a count (``revenue_per_kpi`` converts it).
+         * @example {
+         *       "controls": [
+         *         "competitor_sales",
+         *         "sentiment"
+         *       ],
+         *       "geo": "geo",
+         *       "kpi": "conversions",
+         *       "kpi_type": "non_revenue",
+         *       "media": [
+         *         "tv_impressions",
+         *         "search_impressions"
+         *       ],
+         *       "media_channels": [
+         *         "tv",
+         *         "search"
+         *       ],
+         *       "media_spend": [
+         *         "tv_spend",
+         *         "search_spend"
+         *       ],
+         *       "population": "population",
+         *       "revenue_per_kpi": "revenue_per_conversion",
+         *       "time": "time"
+         *     }
+         */
+        MeridianColumns: {
+            /** Controls */
+            controls?: string[];
+            /**
+             * Freq
+             * @description Time frequency (pandas alias)
+             * @default W
+             */
+            freq?: string | null;
+            /** Frequency */
+            frequency?: string[];
+            /**
+             * Geo
+             * @default geo
+             */
+            geo?: string | null;
+            /**
+             * Kpi
+             * @default kpi
+             */
+            kpi?: string;
+            /**
+             * Kpi Type
+             * @default revenue
+             * @enum {string}
+             */
+            kpi_type?: "revenue" | "non_revenue";
+            /** Media */
+            media?: string[];
+            /** Media Channels */
+            media_channels?: string[];
+            /** Media Spend */
+            media_spend?: string[];
+            /** Non Media Treatments */
+            non_media_treatments?: string[];
+            /** Organic Media */
+            organic_media?: string[];
+            /** Population */
+            population?: string | null;
+            /** Reach */
+            reach?: string[];
+            /** Revenue Per Kpi */
+            revenue_per_kpi?: string | null;
+            /** Rf Channels */
+            rf_channels?: string[];
+            /** Rf Spend */
+            rf_spend?: string[];
+            /**
+             * Time
+             * @default time
+             */
+            time?: string;
+        };
+        /**
          * MetricPayload
          * @description ``metric``: a scalar metric (holdout error, elpd, ...).
          */
@@ -3821,6 +6740,81 @@ export interface components {
             step?: number | null;
             /** Value */
             value: number;
+        };
+        /**
+         * MffOptions
+         * @description The MFF ("model feature format") long-table preset.
+         *
+         *     One row per ``(period, geography, product, campaign, outlet, creative, variable)`` with
+         *     the value in ``value_column``. ``Period`` becomes the time dim; the other key columns
+         *     become dims only when they hold more than one distinct value; ``VariableName`` values
+         *     become data variables.
+         *
+         *     ``combine`` joins several key columns into one dim (``{"geo": ["Geography", "Product"]}``
+         *     gives labels such as ``US|Watches``) - a model with one panel dim can then fit a
+         *     geography x product panel. A combined dim is created even when it has a single label,
+         *     so ``{"geo": ["Geography"]}`` keeps a national table's geo dim.
+         */
+        MffOptions: {
+            /**
+             * Combine
+             * @description M3: dim -> key columns whose labels are joined ('|') into that one dim
+             */
+            combine?: {
+                [key: string]: string[];
+            };
+            /**
+             * Freq
+             * @description Pandas offset alias; inferred when omitted
+             */
+            freq?: string | null;
+            /**
+             * Key Columns
+             * @description Key column -> dim name
+             */
+            key_columns?: {
+                [key: string]: string;
+            };
+            /**
+             * Missing
+             * @default allow
+             * @enum {string}
+             */
+            missing?: "forbid" | "allow" | "mask";
+            /**
+             * Period Column
+             * @default Period
+             */
+            period_column?: string;
+            /**
+             * Roles
+             * @description Variable -> role
+             */
+            roles?: {
+                [key: string]: string;
+            };
+            /**
+             * Time Dim
+             * @default date
+             */
+            time_dim?: string;
+            /**
+             * Units
+             * @description Variable -> units
+             */
+            units?: {
+                [key: string]: string;
+            };
+            /**
+             * Value Column
+             * @default VariableValue
+             */
+            value_column?: string;
+            /**
+             * Variable Column
+             * @default VariableName
+             */
+            variable_column?: string;
         };
         /**
          * Model
@@ -3920,6 +6914,21 @@ export interface components {
             };
             /** Version */
             version: string;
+        };
+        /**
+         * ModelPlotRef
+         * @description A plot a model version rendered (``GET /v1/models/{id}/versions/{v}/plots``).
+         */
+        ModelPlotRef: {
+            /**
+             * Model Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            model_id: string;
+            /** Plot Id */
+            plot_id: string;
+            /** Version */
+            version: number;
         };
         /**
          * ModelVersion
@@ -4223,6 +7232,32 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[EndpointRevision]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_EndpointRevision_: {
+            /** Items */
+            items: components["schemas"]["EndpointRevision"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[Endpoint]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_Endpoint_: {
+            /** Items */
+            items: components["schemas"]["Endpoint"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[ExecutorHealth]
          * @example {
          *       "items": [],
@@ -4232,6 +7267,32 @@ export interface components {
         Page_ExecutorHealth_: {
             /** Items */
             items: components["schemas"]["ExecutorHealth"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[GdprExport]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_GdprExport_: {
+            /** Items */
+            items: components["schemas"]["GdprExport"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[GuidedTemplate]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_GuidedTemplate_: {
+            /** Items */
+            items: components["schemas"]["GuidedTemplate"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -4314,6 +7375,19 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[PlotEmbed]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_PlotEmbed_: {
+            /** Items */
+            items: components["schemas"]["PlotEmbed"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[PlotListItem]
          * @example {
          *       "items": [],
@@ -4392,6 +7466,32 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[SavedPlot]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_SavedPlot_: {
+            /** Items */
+            items: components["schemas"]["SavedPlot"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[SignupReview]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_SignupReview_: {
+            /** Items */
+            items: components["schemas"]["SignupReview"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[SpecDoc]
          * @example {
          *       "items": [],
@@ -4440,6 +7540,32 @@ export interface components {
         Page_Tenant_: {
             /** Items */
             items: components["schemas"]["Tenant"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WebhookDelivery]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WebhookDelivery_: {
+            /** Items */
+            items: components["schemas"]["WebhookDelivery"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[Webhook]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_Webhook_: {
+            /** Items */
+            items: components["schemas"]["Webhook"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -4506,6 +7632,132 @@ export interface components {
             yanked?: boolean;
         };
         /**
+         * PlotEmbed
+         * @description An embed link as listed (never its token).
+         * @example {
+         *       "allowed_origins": [
+         *         "https://acme.notion.site"
+         *       ],
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "display": "mpe_7k2m9q…",
+         *       "expires_at": "2027-01-13T09:30:00Z",
+         *       "id": "emb_01jaf3p1q2r3s4t5v6w7x8y9z0",
+         *       "label": "Q4 board deck",
+         *       "plot_id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",
+         *       "project_id": "growth",
+         *       "status": "active",
+         *       "tenant_id": "acme",
+         *       "views": 12
+         *     }
+         */
+        PlotEmbed: {
+            /** Allowed Origins */
+            allowed_origins?: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /**
+             * Display
+             * @description Redacted token, mpe_<first 6>…
+             */
+            display: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Label */
+            label?: string | null;
+            /** Last Viewed At */
+            last_viewed_at?: string | null;
+            /**
+             * Plot Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            plot_id: string;
+            /** Project Id */
+            project_id: string;
+            /** Revoked At */
+            revoked_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "expired" | "revoked";
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Views
+             * @default 0
+             */
+            views?: number;
+        };
+        /**
+         * PlotEmbedCreate
+         * @description ``POST /v1/plots/{plot_id}/embeds``. ``allowed_origins`` (https origins) become the
+         *     embed page's ``frame-ancestors``; empty allows any site to frame it.
+         * @example {
+         *       "allowed_origins": [
+         *         "https://acme.notion.site"
+         *       ],
+         *       "expires_in_days": 90,
+         *       "label": "Q4 board deck"
+         *     }
+         */
+        PlotEmbedCreate: {
+            /** Allowed Origins */
+            allowed_origins?: string[];
+            /**
+             * Expires In Days
+             * @default 30
+             */
+            expires_in_days?: number;
+            /** Label */
+            label?: string | null;
+        };
+        /**
+         * PlotEmbedCreated
+         * @description ``201`` of ``POST …/embeds``: the only time the URL (with its token) is returned.
+         * @example {
+         *       "embed": {
+         *         "allowed_origins": [
+         *           "https://acme.notion.site"
+         *         ],
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "display": "mpe_7k2m9q…",
+         *         "expires_at": "2027-01-13T09:30:00Z",
+         *         "id": "emb_01jaf3p1q2r3s4t5v6w7x8y9z0",
+         *         "label": "Q4 board deck",
+         *         "plot_id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",
+         *         "project_id": "growth",
+         *         "status": "active",
+         *         "tenant_id": "acme",
+         *         "views": 12
+         *       },
+         *       "token": "mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz",
+         *       "url": "https://plots.mapi.example/embed/mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz"
+         *     }
+         */
+        PlotEmbedCreated: {
+            embed: components["schemas"]["PlotEmbed"];
+            /** Token */
+            token: string;
+            /**
+             * Url
+             * @description Public read-only URL; paste it into the BI tool
+             */
+            url: string;
+        };
+        /**
          * PlotListItem
          * @description A plot available for a model version; fetch the sanitized :class:`PlotSpec` at href.
          * @example {
@@ -4558,6 +7810,103 @@ export interface components {
             plugin?: string | null;
             /** Recipe */
             recipe?: string | null;
+        };
+        /**
+         * PlotRender
+         * @description ``POST /v1/plots:render`` (``Prefer: wait=N``) and ``GET /v1/plots/renders/{run_id}``:
+         *     the ``render`` run and, when done, signed links to ``renders/<plot>.<format>``.
+         * @example {
+         *       "done": true,
+         *       "format": "pdf",
+         *       "outputs": [
+         *         {
+         *           "content_type": "application/pdf",
+         *           "crc32c": "4waSgw==",
+         *           "expires_at": "2026-10-15T09:45:00Z",
+         *           "generation": 7,
+         *           "name": "renders/mmm.response_curves.pdf",
+         *           "size": 2097152,
+         *           "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault%2Fmodels%2Fmdl_01%2F1%2Fbundle.zarr.zip?generation=7&X-Goog-Signature=…"
+         *         }
+         *       ],
+         *       "run": {
+         *         "attempt": 1,
+         *         "cost": {
+         *           "estimated": true
+         *         },
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "executor": "local-process",
+         *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *         "kind": "render",
+         *         "project_id": "default",
+         *         "queued_at": "2026-10-15T09:30:00Z",
+         *         "resource_class": "M",
+         *         "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *         "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+         *         "spec_revision": 2,
+         *         "started_at": "2026-10-15T09:30:05Z",
+         *         "state": "succeeded",
+         *         "tenant_id": "default",
+         *         "timeout": "45m",
+         *         "updated_at": "2026-10-15T09:31:00Z"
+         *       }
+         *     }
+         */
+        PlotRender: {
+            /** Done */
+            done: boolean;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "png" | "svg" | "pdf";
+            /** Outputs */
+            outputs?: components["schemas"]["ArtifactLink"][];
+            run: components["schemas"]["Run"];
+        };
+        /**
+         * PlotRenderRequest
+         * @description ``POST /v1/plots:render``: exactly one of ``plot`` (an inline spec, sanitized),
+         *     ``saved_plot_id`` or ``source``. ``width``/``height`` are CSS pixels before ``scale``;
+         *     the raster (``width x height x scale^2``, with the plot's own size where none is given)
+         *     holds at most :data:`MAX_RENDER_PIXELS`. Send ``Prefer: wait=N`` to get the file links in
+         *     the response.
+         * @example {
+         *       "format": "pdf",
+         *       "saved_plot_id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",
+         *       "scale": 1
+         *     }
+         * @example {
+         *       "format": "png",
+         *       "height": 600,
+         *       "source": {
+         *         "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+         *         "plot_id": "mmm.response_curves",
+         *         "version": 3
+         *       },
+         *       "width": 1200
+         *     }
+         */
+        PlotRenderRequest: {
+            /**
+             * Format
+             * @default png
+             * @enum {string}
+             */
+            format?: "png" | "svg" | "pdf";
+            /** Height */
+            height?: number | null;
+            plot?: components["schemas"]["PlotSpec"] | null;
+            /** Saved Plot Id */
+            saved_plot_id?: string | null;
+            /**
+             * Scale
+             * @default 2
+             */
+            scale?: number;
+            source?: components["schemas"]["ModelPlotRef"] | null;
+            /** Width */
+            width?: number | null;
         };
         /**
          * PlotSpec
@@ -4662,6 +8011,399 @@ export interface components {
          */
         PrincipalKind: "user" | "service_account" | "token" | "service";
         /**
+         * PriorPreview
+         * @description The prior predictive in business units: what the model believes *before* seeing the
+         *     KPI, so users can check that their beliefs came out as intended.
+         * @example {
+         *       "contribution_share": {
+         *         "tv": {
+         *           "mean": 0.12,
+         *           "quantiles": {
+         *             "0.05": 0.06,
+         *             "0.95": 0.19
+         *           },
+         *           "sd": 0.04
+         *         }
+         *       },
+         *       "kpi_fan": {
+         *         "coords": [
+         *           "2026-01-04",
+         *           "2026-01-11"
+         *         ],
+         *         "dim": "time",
+         *         "observed": [
+         *           101,
+         *           99.5
+         *         ],
+         *         "quantiles": [
+         *           0.05,
+         *           0.5,
+         *           0.95
+         *         ],
+         *         "units": "kEUR",
+         *         "values": [
+         *           [
+         *             80,
+         *             82
+         *           ],
+         *           [
+         *             100,
+         *             103
+         *           ],
+         *           [
+         *             125,
+         *             129
+         *           ]
+         *         ]
+         *       },
+         *       "roi": {
+         *         "tv": {
+         *           "mean": 2.6,
+         *           "quantiles": {
+         *             "0.05": 1.5,
+         *             "0.5": 2.5,
+         *             "0.95": 4.1
+         *           },
+         *           "sd": 0.8
+         *         }
+         *       }
+         *     }
+         */
+        PriorPreview: {
+            baseline_share?: components["schemas"]["DistributionSummary"] | null;
+            /** Contribution Share */
+            contribution_share?: {
+                [key: string]: components["schemas"]["DistributionSummary"];
+            };
+            kpi_fan?: components["schemas"]["FanChart"] | null;
+            /** Roi */
+            roi?: {
+                [key: string]: components["schemas"]["DistributionSummary"];
+            };
+        };
+        /**
+         * PriorTranslation
+         * @description ``GET /v1/guided/prior-translations/{run_id}`` (and the ``202`` of the POST): the run
+         *     and, once it succeeded, the translated priors with their preview. Apply ``result.priors``
+         *     at ``apply_at`` (``mapi_spec.calibration.apply_prior_translation``).
+         * @example {
+         *       "done": true,
+         *       "result": {
+         *         "channels": [
+         *           "tv",
+         *           "search",
+         *           "social"
+         *         ],
+         *         "coverage": {
+         *           "search": 0.88,
+         *           "social": 0.81,
+         *           "tv": 0.79
+         *         },
+         *         "draws": 500,
+         *         "format": "mapi.prior-translation/v1",
+         *         "preview": {
+         *           "contribution_share": {
+         *             "tv": {
+         *               "mean": 0.12,
+         *               "quantiles": {
+         *                 "0.05": 0.06,
+         *                 "0.95": 0.19
+         *               },
+         *               "sd": 0.04
+         *             }
+         *           },
+         *           "kpi_fan": {
+         *             "coords": [
+         *               "2026-01-04",
+         *               "2026-01-11"
+         *             ],
+         *             "dim": "time",
+         *             "observed": [
+         *               101,
+         *               99.5
+         *             ],
+         *             "quantiles": [
+         *               0.05,
+         *               0.5,
+         *               0.95
+         *             ],
+         *             "units": "kEUR",
+         *             "values": [
+         *               [
+         *                 80,
+         *                 82
+         *               ],
+         *               [
+         *                 100,
+         *                 103
+         *               ],
+         *               [
+         *                 125,
+         *                 129
+         *               ]
+         *             ]
+         *           },
+         *           "roi": {
+         *             "tv": {
+         *               "mean": 2.6,
+         *               "quantiles": {
+         *                 "0.05": 1.5,
+         *                 "0.5": 2.5,
+         *                 "0.95": 4.1
+         *               },
+         *               "sd": 0.8
+         *             }
+         *           }
+         *         },
+         *         "priors": {
+         *           "beta_channel": {
+         *             "dims": [
+         *               "channel"
+         *             ],
+         *             "distribution": "LogNormal",
+         *             "mu": [
+         *               -1.2,
+         *               -0.9,
+         *               -2.1
+         *             ],
+         *             "sigma": [
+         *               0.38,
+         *               0.33,
+         *               0.5
+         *             ]
+         *           }
+         *         },
+         *         "seed": 7
+         *       },
+         *       "run": {
+         *         "attempt": 1,
+         *         "cost": {
+         *           "estimated": true
+         *         },
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "executor": "local-process",
+         *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *         "kind": "translate_priors",
+         *         "project_id": "default",
+         *         "queued_at": "2026-10-15T09:30:00Z",
+         *         "resource_class": "M",
+         *         "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *         "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+         *         "spec_revision": 2,
+         *         "started_at": "2026-10-15T09:30:05Z",
+         *         "state": "succeeded",
+         *         "tenant_id": "default",
+         *         "timeout": "45m",
+         *         "updated_at": "2026-10-15T09:31:00Z"
+         *       }
+         *     }
+         */
+        PriorTranslation: {
+            /**
+             * Apply At
+             * @default /model/settings/priors
+             */
+            apply_at?: string;
+            /** Done */
+            done: boolean;
+            result?: components["schemas"]["PriorTranslationResult"] | null;
+            run: components["schemas"]["Run"];
+        };
+        /**
+         * PriorTranslationRequest
+         * @description ``POST /v1/guided/prior-translations``: start a sandboxed ``translate_priors`` run.
+         *
+         *     Give the spec as a saved revision (``spec_id`` + ``revision``) or an unsaved
+         *     ``document`` (a guided draft); ``dataset`` overrides its ``data.dataset``.
+         * @example {
+         *       "business_priors": {
+         *         "baseline_share": {
+         *           "credibility": 0.8,
+         *           "share": [
+         *             0.5,
+         *             0.8
+         *           ]
+         *         },
+         *         "channels": {
+         *           "search": {
+         *             "credibility": 0.9,
+         *             "roi": [
+         *               2,
+         *               6
+         *             ]
+         *           },
+         *           "social": {
+         *             "contribution_share": [
+         *               0.02,
+         *               0.1
+         *             ]
+         *           },
+         *           "tv": {
+         *             "credibility": 0.8,
+         *             "roi": [
+         *               1.5,
+         *               4
+         *             ]
+         *           }
+         *         },
+         *         "kpi_units": "EUR",
+         *         "spend_units": "EUR"
+         *       },
+         *       "draws": 500,
+         *       "revision": 2,
+         *       "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0"
+         *     }
+         */
+        PriorTranslationRequest: {
+            business_priors: components["schemas"]["BusinessPriors"];
+            /**
+             * Dataset
+             * @example dataset://growth/eu@v3
+             */
+            dataset?: string | null;
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Draws
+             * @default 500
+             */
+            draws?: number;
+            /** Lift Tests */
+            lift_tests?: components["schemas"]["LiftTest"][];
+            resource_class?: components["schemas"]["ResourceClass"] | null;
+            /** Revision */
+            revision?: number | null;
+            /** Seed */
+            seed?: number | null;
+            /** Spec Id */
+            spec_id?: string | null;
+        };
+        /**
+         * PriorTranslationResult
+         * @description ``priors.json`` of a ``translate_priors`` run.
+         *
+         *     ``priors`` are model-space priors in the plugin's ``settings.priors`` form (pymc-marketing
+         *     ``Prior`` dicts; per-channel parameters are lists in ``channels`` order), to be written
+         *     at :data:`PRIORS_POINTER`. ``coverage`` is the prior mass inside each stated range
+         *     (close to the stated credibility when the translation is faithful).
+         * @example {
+         *       "channels": [
+         *         "tv",
+         *         "search",
+         *         "social"
+         *       ],
+         *       "coverage": {
+         *         "search": 0.88,
+         *         "social": 0.81,
+         *         "tv": 0.79
+         *       },
+         *       "draws": 500,
+         *       "format": "mapi.prior-translation/v1",
+         *       "preview": {
+         *         "contribution_share": {
+         *           "tv": {
+         *             "mean": 0.12,
+         *             "quantiles": {
+         *               "0.05": 0.06,
+         *               "0.95": 0.19
+         *             },
+         *             "sd": 0.04
+         *           }
+         *         },
+         *         "kpi_fan": {
+         *           "coords": [
+         *             "2026-01-04",
+         *             "2026-01-11"
+         *           ],
+         *           "dim": "time",
+         *           "observed": [
+         *             101,
+         *             99.5
+         *           ],
+         *           "quantiles": [
+         *             0.05,
+         *             0.5,
+         *             0.95
+         *           ],
+         *           "units": "kEUR",
+         *           "values": [
+         *             [
+         *               80,
+         *               82
+         *             ],
+         *             [
+         *               100,
+         *               103
+         *             ],
+         *             [
+         *               125,
+         *               129
+         *             ]
+         *           ]
+         *         },
+         *         "roi": {
+         *           "tv": {
+         *             "mean": 2.6,
+         *             "quantiles": {
+         *               "0.05": 1.5,
+         *               "0.5": 2.5,
+         *               "0.95": 4.1
+         *             },
+         *             "sd": 0.8
+         *           }
+         *         }
+         *       },
+         *       "priors": {
+         *         "beta_channel": {
+         *           "dims": [
+         *             "channel"
+         *           ],
+         *           "distribution": "LogNormal",
+         *           "mu": [
+         *             -1.2,
+         *             -0.9,
+         *             -2.1
+         *           ],
+         *           "sigma": [
+         *             0.38,
+         *             0.33,
+         *             0.5
+         *           ]
+         *         }
+         *       },
+         *       "seed": 7
+         *     }
+         */
+        PriorTranslationResult: {
+            /** Channels */
+            channels: string[];
+            /** Coverage */
+            coverage?: {
+                [key: string]: number;
+            };
+            /** Draws */
+            draws: number;
+            /**
+             * Format
+             * @default mapi.prior-translation/v1
+             * @constant
+             */
+            format?: "mapi.prior-translation/v1";
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            preview?: components["schemas"]["PriorPreview"];
+            /** Priors */
+            priors?: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["JsonValue"];
+                };
+            };
+            /** Seed */
+            seed?: number | null;
+        };
+        /**
          * Problem
          * @description RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).
          */
@@ -4764,6 +8506,13 @@ export interface components {
          *       "name": "Default project",
          *       "tenant_id": "default"
          *     }
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "guided_locked": true,
+         *       "id": "growth",
+         *       "name": "Growth",
+         *       "tenant_id": "acme"
+         *     }
          */
         Project: {
             /**
@@ -4773,6 +8522,12 @@ export interface components {
             created_at: string;
             /** Description */
             description?: string | null;
+            /**
+             * Guided Locked
+             * @description Persona lock (M3): the web app shows only Guided mode to members below admin. The API still accepts every spec; the lock is a presentation policy.
+             * @default false
+             */
+            guided_locked?: boolean;
             /** Id */
             id: string;
             /** Name */
@@ -4792,6 +8547,11 @@ export interface components {
         ProjectCreate: {
             /** Description */
             description?: string | null;
+            /**
+             * Guided Locked
+             * @description M3: show only Guided mode to non-admins (default: not locked)
+             */
+            guided_locked?: boolean | null;
             /** Id */
             id: string;
             /** Name */
@@ -4809,12 +8569,66 @@ export interface components {
          * @example {
          *       "description": "EU and UK media mix models"
          *     }
+         * @example {
+         *       "guided_locked": true
+         *     }
          */
         ProjectUpdate: {
             /** Description */
             description?: string | null;
+            /**
+             * Guided Locked
+             * @description M3: persona lock (audited as project.guided_lock)
+             */
+            guided_locked?: boolean | null;
             /** Name */
             name?: string | null;
+        };
+        /**
+         * PromotionGateDecision
+         * @description The gate's decision for promoting one model version to an endpoint.
+         * @example {
+         *       "failing_checks": [
+         *         "holdout.mape"
+         *       ],
+         *       "outcome": "needs_override",
+         *       "reasons": [
+         *         {
+         *           "check": "holdout.mape",
+         *           "code": "SCORECARD_WARN",
+         *           "message_plain": "Holdout error: forecasts were off by 14%.",
+         *           "outcome": "needs_override"
+         *         }
+         *       ],
+         *       "scorecard_overall": "warn"
+         *     }
+         */
+        PromotionGateDecision: {
+            /** Failing Checks */
+            failing_checks?: string[];
+            outcome: components["schemas"]["GateOutcome"];
+            /** Reasons */
+            reasons?: components["schemas"]["GateReason"][];
+            /** Scorecard Overall */
+            scorecard_overall?: ("pass" | "warn" | "fail") | null;
+        };
+        /** QuestionChoice */
+        QuestionChoice: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * QuestionSuggestion
+         * @description Candidates for one question (best first) and the pre-filled answer.
+         */
+        QuestionSuggestion: {
+            answer?: components["schemas"]["JsonValue"];
+            /** Candidates */
+            candidates?: components["schemas"]["RoleCandidate"][];
+            /** Question Id */
+            question_id: string;
         };
         /**
          * QuotaLimitStatus
@@ -5048,13 +8862,68 @@ export interface components {
          * ResourceKind
          * @enum {string}
          */
-        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event";
+        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export";
         /**
          * Role
          * @description What a variable means to a model.
          * @enum {string}
          */
         Role: "target" | "covariate" | "media" | "spend" | "control" | "index" | "mask" | "constant" | "weight" | "exposure";
+        /** RoleCandidate */
+        RoleCandidate: {
+            /** Column */
+            column: string;
+            /** Confidence */
+            confidence: number;
+            /** Reason Plain */
+            reason_plain: string;
+        };
+        /**
+         * RoleSuggestions
+         * @example {
+         *       "questions": [
+         *         {
+         *           "answer": "revenue_eur",
+         *           "candidates": [
+         *             {
+         *               "column": "revenue_eur",
+         *               "confidence": 0.9,
+         *               "reason_plain": "named like a revenue column; numbers"
+         *             }
+         *           ],
+         *           "question_id": "kpi"
+         *         },
+         *         {
+         *           "answer": [
+         *             "tv_spend"
+         *           ],
+         *           "candidates": [
+         *             {
+         *               "column": "tv_spend",
+         *               "confidence": 0.8,
+         *               "reason_plain": "named like spend; never negative"
+         *             }
+         *           ],
+         *           "question_id": "spend"
+         *         }
+         *       ],
+         *       "template_id": "geo_mmm",
+         *       "unassigned": []
+         *     }
+         */
+        RoleSuggestions: {
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /** Questions */
+            questions: components["schemas"]["QuestionSuggestion"][];
+            /** Template Id */
+            template_id: string;
+            /**
+             * Unassigned
+             * @description Columns no answer uses
+             */
+            unassigned?: string[];
+        };
         /**
          * Run
          * @description A unit of work and its lifecycle (see the state machine in ``mapi_spec.run``).
@@ -5342,7 +9211,7 @@ export interface components {
          *     M4): they own child runs and never execute on an executor themselves.
          * @enum {string}
          */
-        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign";
+        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors";
         /**
          * RunRetry
          * @description ``POST /runs/{id}:retry``: a *new* run from a failed one, optionally one class up.
@@ -5371,6 +9240,102 @@ export interface components {
          * @enum {string}
          */
         RunnerPhase: "bootstrap" | "load_inputs" | "validate" | "preprocess" | "fit" | "sample" | "score" | "evaluate" | "derive" | "plots" | "upload" | "done";
+        /**
+         * SavedPlot
+         * @description A saved plot. ``spec`` is the sanitized PlotSpec (on ``GET /v1/plots/{plot_id}``;
+         *     omitted in lists). ``embeddable`` is :func:`embeddable` of this plot.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "embeddable": true,
+         *       "id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",
+         *       "kind": "vega-lite",
+         *       "project_id": "growth",
+         *       "provenance": "recipe",
+         *       "recipe": "mmm.response_curves@1.0.0",
+         *       "source": {
+         *         "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+         *         "plot_id": "mmm.response_curves",
+         *         "version": 3
+         *       },
+         *       "source_kind": "model_plot",
+         *       "tenant_id": "acme",
+         *       "title": "EU response curves (v3)",
+         *       "updated_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        SavedPlot: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Embeddable */
+            embeddable: boolean;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "vega-lite" | "plotly";
+            /** Project Id */
+            project_id: string;
+            /**
+             * Provenance
+             * @enum {string}
+             */
+            provenance: "recipe" | "plugin" | "author";
+            /**
+             * Recipe
+             * @description provenance.recipe, if any
+             */
+            recipe?: string | null;
+            source?: components["schemas"]["ModelPlotRef"] | null;
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "model_plot" | "spec";
+            spec?: components["schemas"]["PlotSpec"] | null;
+            /** Tenant Id */
+            tenant_id: string;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * SavedPlotCreate
+         * @description ``POST /v1/plots``: exactly one of ``source`` (a model version's plot) or ``spec``
+         *     (a user-authored plot, sanitized first; never embeddable).
+         * @example {
+         *       "source": {
+         *         "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+         *         "plot_id": "mmm.response_curves",
+         *         "version": 3
+         *       },
+         *       "title": "EU response curves (v3)"
+         *     }
+         */
+        SavedPlotCreate: {
+            /** Description */
+            description?: string | null;
+            source?: components["schemas"]["ModelPlotRef"] | null;
+            spec?: components["schemas"]["PlotSpec"] | null;
+            /** Title */
+            title: string;
+        };
         /**
          * ScoreCall
          * @description Body of ``POST /v1/models/{model_id}/versions/{version}:score``.
@@ -5409,7 +9374,8 @@ export interface components {
         };
         /**
          * ScoreCallResult
-         * @description ``done`` with output links (200), or the still-running run (202).
+         * @description ``done`` with output links (200), or the still-running run (202). ``summary`` is the
+         *     requested summary (mean and HDI by default) inline, once the run succeeded.
          * @example {
          *       "done": true,
          *       "outputs": [
@@ -5452,6 +9418,7 @@ export interface components {
             /** Outputs */
             outputs?: components["schemas"]["ArtifactLink"][];
             run: components["schemas"]["Run"];
+            summary?: components["schemas"]["ScoreSummary"] | null;
         };
         /**
          * ScorePolicy
@@ -5471,6 +9438,8 @@ export interface components {
             apiVersion: "mapi/v1";
             /** Data */
             data?: string | null;
+            /** @description M3: how forecasts get future covariates (default: supplied) */
+            future_covariates?: components["schemas"]["FutureCovariates"] | null;
             horizon?: components["schemas"]["Horizon"] | null;
             /**
              * Inputs Stage
@@ -5510,6 +9479,78 @@ export interface components {
             };
         };
         /**
+         * ScoreSummary
+         * @description The requested summary of a score run as plain tables (``summary.json``), inlined in
+         *     :class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without
+         *     zarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the
+         *     ``score.zarr.zip`` output for everything).
+         * @example {
+         *       "tables": [
+         *         {
+         *           "columns": [
+         *             "geo",
+         *             "time",
+         *             "mean",
+         *             "hdi_90_lower",
+         *             "hdi_90_upper"
+         *           ],
+         *           "rows": [
+         *             [
+         *               "de",
+         *               "2026-01-05",
+         *               1520.4,
+         *               1402.1,
+         *               1633.9
+         *             ]
+         *           ],
+         *           "variable": "revenue"
+         *         }
+         *       ],
+         *       "truncated": false
+         *     }
+         */
+        ScoreSummary: {
+            /** Tables */
+            tables?: components["schemas"]["ScoreSummaryTable"][];
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated?: boolean;
+        };
+        /**
+         * ScoreSummaryTable
+         * @description One output variable's summary as a table: the coordinate columns (one per dim), then
+         *     one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.
+         * @example {
+         *       "columns": [
+         *         "geo",
+         *         "time",
+         *         "mean",
+         *         "hdi_90_lower",
+         *         "hdi_90_upper"
+         *       ],
+         *       "rows": [
+         *         [
+         *           "de",
+         *           "2026-01-05",
+         *           1520.4,
+         *           1402.1,
+         *           1633.9
+         *         ]
+         *       ],
+         *       "variable": "revenue"
+         *     }
+         */
+        ScoreSummaryTable: {
+            /** Columns */
+            columns: string[];
+            /** Rows */
+            rows: (string | number | boolean | null)[][];
+            /** Variable */
+            variable: string;
+        };
+        /**
          * Scorecard
          * @description Sanity scorecard: convergence, holdout error and plausibility checks rolled up.
          * @example {
@@ -5545,6 +9586,13 @@ export interface components {
              * @enum {string}
              */
             overall: "pass" | "warn" | "fail";
+            /**
+             * Skipped
+             * @description M3: checks that could not run, with the reason (check id -> text)
+             */
+            skipped?: {
+                [key: string]: string;
+            };
         };
         /**
          * ScorecardItem
@@ -5557,10 +9605,38 @@ export interface components {
          *       "title": "Chains agree",
          *       "value": 1.004
          *     }
+         * @example {
+         *       "category": "holdout",
+         *       "check": "holdout.mape",
+         *       "code": "HOLDOUT_MAPE",
+         *       "docs_anchor": "check-holdout-mape",
+         *       "message_plain": "Forecasts were off by 14% on the held-out periods.",
+         *       "metric": "mape",
+         *       "status": "warn",
+         *       "suggested_action": "Check the last weeks of data for gaps or one-off events.",
+         *       "threshold": 0.1,
+         *       "title": "Holdout error",
+         *       "value": 0.14
+         *     }
          */
         ScorecardItem: {
+            /**
+             * Category
+             * @description M3: the check's category
+             */
+            category?: ("convergence" | "holdout" | "plausibility" | "data") | null;
+            /**
+             * Check
+             * @description M3: the stable check id (SCORECARD_CHECKS), e.g. holdout.mape
+             */
+            check?: string | null;
             /** Code */
             code: string;
+            /**
+             * Docs Anchor
+             * @description M3: anchor on the scorecard docs page that explains the check
+             */
+            docs_anchor?: string | null;
             /** Message Expert */
             message_expert?: string | null;
             /** Message Plain */
@@ -5717,6 +9793,23 @@ export interface components {
          */
         Severity: "info" | "warning" | "error";
         /**
+         * ShareBelief
+         * @description A share range (for example of the baseline: KPI that happens without any media).
+         */
+        ShareBelief: {
+            /**
+             * Credibility
+             * @description Probability that the true value lies inside the range (0.8 = 'I am 80% sure')
+             * @default 0.8
+             */
+            credibility?: number;
+            /** Share */
+            share: [
+                number,
+                number
+            ];
+        };
+        /**
          * SignedPut
          * @description A signed PUT URL for exactly one object name.
          *
@@ -5758,6 +9851,212 @@ export interface components {
             name: string;
             /** Url */
             url: string;
+        };
+        /**
+         * SignupAccepted
+         * @description ``202`` of ``POST /auth/signup``: identical for new and known addresses.
+         * @example {
+         *       "expires_in_s": 86400,
+         *       "status": "check_email"
+         *     }
+         */
+        SignupAccepted: {
+            /**
+             * Expires In S
+             * @default 86400
+             */
+            expires_in_s?: number;
+            /**
+             * Status
+             * @default check_email
+             * @constant
+             */
+            status?: "check_email";
+        };
+        /**
+         * SignupRequest
+         * @description ``POST /auth/signup`` (public, rate-limited). ``organisation`` names the tenant.
+         * @example {
+         *       "accepted_terms": true,
+         *       "email": "ana@acme.example",
+         *       "name": "Ana Analyst",
+         *       "organisation": "Acme Retail",
+         *       "terms_version": "2026-10"
+         *     }
+         */
+        SignupRequest: {
+            /** Accepted Terms */
+            accepted_terms: boolean;
+            /**
+             * Challenge
+             * @description A bot-check token (e.g. Turnstile), if configured
+             */
+            challenge?: string | null;
+            /** Email */
+            email: string;
+            /** Name */
+            name: string;
+            /** Organisation */
+            organisation?: string | null;
+            /**
+             * Terms Version
+             * @default 2026-10
+             */
+            terms_version?: string;
+        };
+        /**
+         * SignupReview
+         * @description ``GET /v1/admin/signups`` (operators): one sign-up and why it was flagged.
+         *
+         *     Client addresses and browsers appear only as keyed digests (``ip_hash``,
+         *     ``device_hash``), never raw; e-mail addresses are shown to operators for the review.
+         * @example {
+         *       "created_at": "2026-10-15T09:00:00Z",
+         *       "email": "ana@acme.example",
+         *       "email_domain": "acme.example",
+         *       "expires_at": "2026-10-16T09:00:00Z",
+         *       "flags": [
+         *         "same_ip"
+         *       ],
+         *       "id": "sgn_01jaf3s1t2v3w4x5y6z7a8b9c0",
+         *       "ip_hash": "3f7a0c9e1b2d4f6a8c0e2b4d6f8a0c2e",
+         *       "name": "Ana Analyst",
+         *       "organisation": "Acme Retail",
+         *       "reasons_plain": [
+         *         "Several workspaces were created from the same network address"
+         *       ],
+         *       "review": "flagged",
+         *       "state": "verified",
+         *       "tenant_id": "acme-retail",
+         *       "verified_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        SignupReview: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Device Hash */
+            device_hash?: string | null;
+            /** Email */
+            email: string;
+            /** Email Domain */
+            email_domain: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Flags */
+            flags?: string[];
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Ip Hash */
+            ip_hash?: string | null;
+            /** Name */
+            name: string;
+            /** Organisation */
+            organisation?: string | null;
+            /** Reasons Plain */
+            reasons_plain?: string[];
+            /** @default none */
+            review?: components["schemas"]["SignupReviewState"];
+            /** Review Reason */
+            review_reason?: string | null;
+            /** Reviewed At */
+            reviewed_at?: string | null;
+            /** Reviewed By */
+            reviewed_by?: string | null;
+            state: components["schemas"]["SignupState"];
+            /**
+             * Tenant Id
+             * @description The tenant the verification created
+             */
+            tenant_id?: string | null;
+            /** Verified At */
+            verified_at?: string | null;
+        };
+        /**
+         * SignupReviewDecision
+         * @description ``POST /v1/admin/signups/{signup_id}/review`` (operators; audited).
+         *
+         *     ``reject`` suspends the tenant the sign-up created; ``approve`` clears the flag (and
+         *     reactivates a tenant an earlier rejection suspended).
+         * @example {
+         *       "decision": "reject",
+         *       "reason": "one of 14 tenants from one IP"
+         *     }
+         */
+        SignupReviewDecision: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "reject";
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * SignupReviewState
+         * @description The operators' review of a sign-up (Sybil heuristics flag, operators decide).
+         * @enum {string}
+         */
+        SignupReviewState: "none" | "flagged" | "approved" | "rejected";
+        /**
+         * SignupState
+         * @description Where one sign-up is: waiting for its e-mail link, done, or never completed.
+         * @enum {string}
+         */
+        SignupState: "pending" | "verified" | "expired";
+        /**
+         * Snippet
+         * @description Ready-to-run code. ``code`` is platform-generated; it embeds the example payload.
+         * @example {
+         *       "code": "curl -sS -X POST 'https://api.example.com/v1/endpoints/geo-mmm-prod/score' \\\n  -H \"Authorization: Bearer $MAPI_TOKEN\" \\\n  ...",
+         *       "language": "curl",
+         *       "title": "curl"
+         *     }
+         */
+        Snippet: {
+            /** Code */
+            code: string;
+            language: components["schemas"]["SnippetLanguage"];
+            /**
+             * Requires
+             * @description What to install first
+             */
+            requires?: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * SnippetLanguage
+         * @enum {string}
+         */
+        SnippetLanguage: "python" | "typescript" | "curl" | "r" | "apps_script" | "atlas" | "notebook";
+        /**
+         * SnippetSet
+         * @description ``GET /v1/endpoints/{alias}/snippets`` (``?language=`` narrows it).
+         * @example {
+         *       "alias": "geo-mmm-prod",
+         *       "items": [
+         *         {
+         *           "code": "curl -sS -X POST 'https://api.example.com/v1/endpoints/geo-mmm-prod/score' \\\n  -H \"Authorization: Bearer $MAPI_TOKEN\" \\\n  ...",
+         *           "language": "curl",
+         *           "title": "curl"
+         *         }
+         *       ]
+         *     }
+         */
+        SnippetSet: {
+            /** Alias */
+            alias: string;
+            /** Items */
+            items?: components["schemas"]["Snippet"][];
         };
         /**
          * SpecCreate
@@ -6050,6 +10349,30 @@ export interface components {
          * @enum {string}
          */
         StepKind: "reshape" | "value" | "feature";
+        /** StoreProgress */
+        StoreProgress: {
+            /** Detail */
+            detail?: string | null;
+            /**
+             * Items Done
+             * @default 0
+             */
+            items_done?: number;
+            /** Items Total */
+            items_total?: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "running" | "done" | "failed";
+            /**
+             * Store
+             * @enum {string}
+             */
+            store: "database" | "object_store" | "queue" | "logs" | "webhooks";
+            /** Updated At */
+            updated_at?: string | null;
+        };
         /**
          * TemplateCase
          * @description Conditional fragment merged into the template when all ``when`` params match.
@@ -6063,6 +10386,18 @@ export interface components {
             when: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
+        };
+        /**
+         * TemplateLookup
+         * @description A placeholder derived from an answer: ``map[answer]`` (e.g. frequency → season).
+         */
+        TemplateLookup: {
+            /** Map */
+            map: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Source */
+            source: string;
         };
         /**
          * TemplateParam
@@ -6204,6 +10539,95 @@ export interface components {
             name: string;
             /** @default verified */
             trust_tier?: components["schemas"]["TrustTier"];
+        };
+        /**
+         * TenantDeletion
+         * @description A tenant deletion and its progress per store.
+         * @example {
+         *       "id": "del_01jaf3q1r2s3t4v5w6x7y8z9a0",
+         *       "purge_after": "2026-10-15T09:30:00Z",
+         *       "requested_at": "2026-10-08T09:30:00Z",
+         *       "requested_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "started_at": "2026-10-15T09:30:00Z",
+         *       "state": "deleting",
+         *       "stores": [
+         *         {
+         *           "items_done": 412,
+         *           "items_total": 412,
+         *           "state": "done",
+         *           "store": "database"
+         *         },
+         *         {
+         *           "items_done": 40,
+         *           "items_total": 96,
+         *           "state": "running",
+         *           "store": "object_store"
+         *         },
+         *         {
+         *           "items_done": 0,
+         *           "items_total": 0,
+         *           "state": "done",
+         *           "store": "queue"
+         *         },
+         *         {
+         *           "state": "pending",
+         *           "store": "logs"
+         *         },
+         *         {
+         *           "state": "pending",
+         *           "store": "webhooks"
+         *         }
+         *       ],
+         *       "tenant_id": "acme-retail"
+         *     }
+         */
+        TenantDeletion: {
+            /** Cancelled At */
+            cancelled_at?: string | null;
+            /** Completed At */
+            completed_at?: string | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /**
+             * Purge After
+             * Format: date-time
+             */
+            purge_after: string;
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            /** Requested By */
+            requested_by?: string | null;
+            /** Retained */
+            retained?: {
+                [key: string]: string;
+            };
+            /** Started At */
+            started_at?: string | null;
+            state: components["schemas"]["DeletionState"];
+            /** Stores */
+            stores?: components["schemas"]["StoreProgress"][];
+            /** Tenant Id */
+            tenant_id: string;
+        };
+        /**
+         * TenantDeletionRequest
+         * @description ``POST /v1/tenants/{tenant_id}/deletion``: ``confirm`` must repeat the tenant id.
+         * @example {
+         *       "confirm": "acme-retail",
+         *       "reason": "closing the account"
+         *     }
+         */
+        TenantDeletionRequest: {
+            /** Confirm */
+            confirm: string;
+            /** Reason */
+            reason?: string | null;
         };
         /**
          * TenantStatus
@@ -6705,6 +11129,84 @@ export interface components {
             units?: string | null;
         };
         /**
+         * VerificationMethod
+         * @enum {string}
+         */
+        VerificationMethod: "none" | "email" | "card" | "document" | "manual";
+        /**
+         * VerificationResult
+         * @description The verified address and the public-tier tenant it now administers; sign in next.
+         * @example {
+         *       "email": "ana@acme.example",
+         *       "login_url": "/auth/login?return_to=%2Fguided",
+         *       "project_id": "default",
+         *       "tenant_id": "acme-retail",
+         *       "trust_tier": "public"
+         *     }
+         */
+        VerificationResult: {
+            /** Email */
+            email: string;
+            /**
+             * Login Url
+             * @default /auth/login
+             */
+            login_url?: string;
+            /** Project Id */
+            project_id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /** @default public */
+            trust_tier?: components["schemas"]["TrustTier"];
+        };
+        /**
+         * VerificationStatus
+         * @description ``GET /v1/tenants/{tenant_id}/verification``.
+         * @example {
+         *       "email_verified": true,
+         *       "identity_verified": false,
+         *       "method": "email",
+         *       "reason_plain": "Public workspaces run built-in models only for now.",
+         *       "tenant_id": "acme-retail",
+         *       "trust_tier": "public",
+         *       "uploaded_code_allowed": false,
+         *       "verified_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        VerificationStatus: {
+            /** Email Verified */
+            email_verified: boolean;
+            /** Identity Verified */
+            identity_verified: boolean;
+            /** @default none */
+            method?: components["schemas"]["VerificationMethod"];
+            /** Reason Plain */
+            reason_plain: string;
+            /** Tenant Id */
+            tenant_id: string;
+            trust_tier: components["schemas"]["TrustTier"];
+            /** Uploaded Code Allowed */
+            uploaded_code_allowed: boolean;
+            /** Verified At */
+            verified_at?: string | null;
+        };
+        /**
+         * VerificationUpdate
+         * @description ``PUT /v1/admin/tenants/{tenant_id}/verification`` (operators; audited).
+         * @example {
+         *       "identity_verified": true,
+         *       "method": "manual",
+         *       "reason": "signed enterprise contract"
+         *     }
+         */
+        VerificationUpdate: {
+            /** Identity Verified */
+            identity_verified: boolean;
+            method: components["schemas"]["VerificationMethod"];
+            /** Reason */
+            reason: string;
+        };
+        /**
          * WarningPayload
          * @description ``warning``: a non-fatal, platform-classified problem.
          */
@@ -6718,6 +11220,386 @@ export interface components {
              * @default null
              */
             untrusted_text?: string | null;
+        };
+        /**
+         * Webhook
+         * @description A webhook as listed (never its secret; ``secret_hint`` shows its last 4 characters).
+         * @example {
+         *       "active": true,
+         *       "created_at": "2026-10-01T08:00:00Z",
+         *       "events": [
+         *         "run.succeeded",
+         *         "run.failed",
+         *         "endpoint.promoted"
+         *       ],
+         *       "failure_count": 0,
+         *       "id": "whk_01jaf3h1j2k3m4n5p6q7r8s9t0",
+         *       "last_delivery_at": "2026-10-15T09:30:00Z",
+         *       "last_success_at": "2026-10-15T09:30:00Z",
+         *       "project_id": "growth",
+         *       "secret_hint": "whsec_…Q2x9",
+         *       "tenant_id": "acme",
+         *       "updated_at": "2026-10-15T09:30:00Z",
+         *       "url": "https://hooks.example.com/mapi"
+         *     }
+         */
+        Webhook: {
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description?: string | null;
+            /** Disabled Reason */
+            disabled_reason?: string | null;
+            /** Events */
+            events: components["schemas"]["WebhookEventType"][];
+            /**
+             * Failure Count
+             * @description Consecutive failed events
+             * @default 0
+             */
+            failure_count?: number;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Last Delivery At */
+            last_delivery_at?: string | null;
+            /** Last Success At */
+            last_success_at?: string | null;
+            /** Project Id */
+            project_id: string;
+            /** Secret Hint */
+            secret_hint: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Url */
+            url: string;
+        };
+        /**
+         * WebhookCreate
+         * @description ``POST /v1/webhooks``: the secret is generated by the server and shown once.
+         *
+         *     The server applies the SSRF policy to ``url`` (static checks, then every address the
+         *     host resolves to): ``422 WEBHOOK_URL_BLOCKED``. ``https`` only, ports 443 and 8443.
+         * @example {
+         *       "description": "Notify the planning service",
+         *       "events": [
+         *         "run.succeeded",
+         *         "run.failed",
+         *         "endpoint.promoted"
+         *       ],
+         *       "url": "https://hooks.example.com/mapi"
+         *     }
+         */
+        WebhookCreate: {
+            /**
+             * Active
+             * @default true
+             */
+            active?: boolean;
+            /** Description */
+            description?: string | null;
+            /** Events */
+            events: components["schemas"]["WebhookEventType"][];
+            /** Url */
+            url: string;
+        };
+        /**
+         * WebhookCreated
+         * @description ``201`` of ``POST /v1/webhooks`` and ``200`` of ``…:rotate-secret``: the only time the
+         *     secret is returned. After a rotation the previous secret keeps signing for 24 h.
+         * @example {
+         *       "secret": "whsec_b3dE5gH7jK9mN1pQ3sT5vW7yZ9bC1dE3fG5hJ7kQ2x9",
+         *       "webhook": {
+         *         "active": true,
+         *         "created_at": "2026-10-01T08:00:00Z",
+         *         "events": [
+         *           "run.succeeded",
+         *           "run.failed",
+         *           "endpoint.promoted"
+         *         ],
+         *         "failure_count": 0,
+         *         "id": "whk_01jaf3h1j2k3m4n5p6q7r8s9t0",
+         *         "last_delivery_at": "2026-10-15T09:30:00Z",
+         *         "last_success_at": "2026-10-15T09:30:00Z",
+         *         "project_id": "growth",
+         *         "secret_hint": "whsec_…Q2x9",
+         *         "tenant_id": "acme",
+         *         "updated_at": "2026-10-15T09:30:00Z",
+         *         "url": "https://hooks.example.com/mapi"
+         *       }
+         *     }
+         */
+        WebhookCreated: {
+            /** Secret */
+            secret: string;
+            webhook: components["schemas"]["Webhook"];
+        };
+        /**
+         * WebhookDelivery
+         * @description One delivery attempt chain of one event to one webhook (``attempt`` counts tries).
+         *
+         *     ``error`` is platform-authored; ``response_excerpt`` is the first bytes of the receiver's
+         *     answer (untrusted text: render as text only).
+         * @example {
+         *       "attempt": 2,
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "duration_ms": 412,
+         *       "error": "the receiver answered 503",
+         *       "event_id": "evt_01jaf3k1m2n3p4q5r6s7t8v9w0",
+         *       "event_type": "run.succeeded",
+         *       "id": "whd_01jaf3m1n2p3q4r5s6t7v8w9x0",
+         *       "next_retry_at": "2026-10-15T09:40:00Z",
+         *       "response_code": 503,
+         *       "status": "retrying",
+         *       "updated_at": "2026-10-15T09:35:00Z",
+         *       "webhook_id": "whk_01jaf3h1j2k3m4n5p6q7r8s9t0"
+         *     }
+         */
+        WebhookDelivery: {
+            /** Attempt */
+            attempt: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /** Error */
+            error?: string | null;
+            /**
+             * Event Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            event_id: string;
+            event_type: components["schemas"]["WebhookEventType"];
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Next Retry At */
+            next_retry_at?: string | null;
+            /** Replay Of */
+            replay_of?: string | null;
+            /** Response Code */
+            response_code?: number | null;
+            /** Response Excerpt */
+            response_excerpt?: string | null;
+            status: components["schemas"]["DeliveryStatus"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Webhook Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            webhook_id: string;
+        };
+        /**
+         * WebhookEventType
+         * @enum {string}
+         */
+        WebhookEventType: "run.succeeded" | "run.failed" | "model.version.ready" | "endpoint.promoted" | "score.completed" | "tenant.deletion.completed";
+        /**
+         * WebhookUpdate
+         * @description ``PATCH /v1/webhooks/{webhook_id}`` (re-activating resets the failure count).
+         * @example {
+         *       "active": true
+         *     }
+         * @example {
+         *       "events": [
+         *         "score.completed"
+         *       ]
+         *     }
+         */
+        WebhookUpdate: {
+            /** Active */
+            active?: boolean | null;
+            /** Description */
+            description?: string | null;
+            /** Events */
+            events?: components["schemas"]["WebhookEventType"][] | null;
+            /** Url */
+            url?: string | null;
+        };
+        /** WhatIfCompile */
+        WhatIfCompile: {
+            /**
+             * Channel Dim
+             * @default channel
+             */
+            channel_dim?: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "whatif";
+            /**
+             * Model
+             * @description endpoint://project/alias or model://project/name@vN
+             */
+            model: string;
+            output?: components["schemas"]["OutputSelector"] | null;
+            scenario: components["schemas"]["WhatIfScenario"];
+            /**
+             * Spend Var
+             * @default spend
+             */
+            spend_var?: string;
+        };
+        /**
+         * WhatIfScenario
+         * @description Spend multipliers per channel over the fit window (``1`` = what was actually spent).
+         *
+         *     ``geo`` restricts the scenario to one geo's grid (needs a per-geo grid).
+         * @example {
+         *       "label": "Shift 20% of TV to search",
+         *       "multipliers": {
+         *         "search": 1.3,
+         *         "tv": 0.8
+         *       }
+         *     }
+         */
+        WhatIfScenario: {
+            /** Geo */
+            geo?: string | null;
+            /** Label */
+            label?: string | null;
+            /** Multipliers */
+            multipliers?: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * WideVarMapping
+         * @description One variable read from several columns, one per label of ``dim`` (a wide table).
+         *
+         *     ``{"dim": "channel", "columns": {"tv": "tv_spend", "search": "search_spend"}}`` gives a
+         *     variable along ``channel`` (plus the table's other dims) with coords ``tv`` and
+         *     ``search``. Several wide variables may share a dim; their labels must then agree.
+         * @example {
+         *       "columns": {
+         *         "search": "search_spend",
+         *         "social": "social_spend",
+         *         "tv": "tv_spend"
+         *       },
+         *       "dim": "channel",
+         *       "role": "spend",
+         *       "units": "EUR"
+         *     }
+         */
+        WideVarMapping: {
+            /** Columns */
+            columns: {
+                [key: string]: string;
+            };
+            /** Description */
+            description?: string | null;
+            /** Dim */
+            dim: string;
+            dim_spec?: components["schemas"]["DimSpec"];
+            /**
+             * Missing
+             * @default forbid
+             * @enum {string}
+             */
+            missing?: "forbid" | "allow" | "mask";
+            /** @default covariate */
+            role?: components["schemas"]["Role"];
+            /** Units */
+            units?: string | null;
+        };
+        /**
+         * XrJsonDataset
+         * @description An inline dataset (``xr.Dataset.to_dict()`` shape). Dim lengths must agree across
+         *     variables; every dim of a data variable should have a coord (checked in the sandbox
+         *     against the model's schema).
+         * @example {
+         *       "coords": {
+         *         "channel": {
+         *           "data": [
+         *             "tv",
+         *             "search"
+         *           ],
+         *           "dims": [
+         *             "channel"
+         *           ]
+         *         },
+         *         "time": {
+         *           "data": [
+         *             "2026-11-01",
+         *             "2026-11-08"
+         *           ],
+         *           "dims": [
+         *             "time"
+         *           ]
+         *         }
+         *       },
+         *       "data_vars": {
+         *         "spend": {
+         *           "data": [
+         *             [
+         *               1000,
+         *               1200
+         *             ],
+         *             [
+         *               400,
+         *               380
+         *             ]
+         *           ],
+         *           "dims": [
+         *             "channel",
+         *             "time"
+         *           ]
+         *         }
+         *       }
+         *     }
+         */
+        XrJsonDataset: {
+            /** Attrs */
+            attrs?: {
+                [key: string]: string | number | boolean | null;
+            };
+            /** Coords */
+            coords?: {
+                [key: string]: components["schemas"]["XrJsonVariable"];
+            };
+            /** Data Vars */
+            data_vars: {
+                [key: string]: components["schemas"]["XrJsonVariable"];
+            };
+            /** Dims */
+            dims?: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * XrJsonVariable
+         * @description A coord or data variable: ``data`` nested ``len(dims)`` deep (a scalar for no dims).
+         */
+        XrJsonVariable: {
+            /** Attrs */
+            attrs?: {
+                [key: string]: string | number | boolean | null;
+            };
+            data: components["schemas"]["JsonValue"];
+            /** Dims */
+            dims?: string[];
         };
     };
     responses: never;
@@ -6831,6 +11713,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionInfo"];
+                };
+            };
+        };
+    };
+    signup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignupAccepted"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `SCHEMA_INVALID`, `EMAIL_NOT_ALLOWED`, `TERMS_NOT_ACCEPTED` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `RATE_LIMITED` */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    verify_email: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailVerify"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationResult"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `LINK_EXPIRED` */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `SCHEMA_INVALID` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `RATE_LIMITED` */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -7274,6 +12249,111 @@ export interface operations {
             };
         };
     };
+    admin_list_signups: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                review?: components["schemas"]["SignupReviewState"] | null;
+                tenant_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_SignupReview_"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_review_signup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                signup_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignupReviewDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignupReview"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `CONFLICT` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `SCHEMA_INVALID` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     admin_list_tenants: {
         parameters: {
             query?: {
@@ -7403,6 +12483,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_retry_tenant_deletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDeletion"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `CONFLICT` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_put_tenant_verification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationStatus"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `SCHEMA_INVALID` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -7885,6 +13076,1265 @@ export interface operations {
             };
         };
     };
+    get_embed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                embed_token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbedView"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`LINK_EXPIRED`) */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_endpoints: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Endpoint_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Endpoint"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    promote_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndpointPromote"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Endpoint"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT, PROMOTION_BLOCKED, OVERRIDE_REQUIRED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_endpoint_history: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_EndpointRevision_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    rollback_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndpointRollback"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Endpoint"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_endpoint_schema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EndpointSchema"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    score_endpoint: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description wait=N (N <= 60): wait up to N s for the result */
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndpointScoreCall"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoreCallResult"];
+                };
+            };
+            /** @description Still running: the run */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoreCallResult"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: HORIZON_EXCEEDS_FIT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, MODE_NOT_SUPPORTED, UNSEEN_LEVELS, COORD_NOT_ALLOWED, MISSING_FUTURE_COVARIATE, NON_CONTIGUOUS_EXTENSION, CAPABILITY_UNSUPPORTED, RECURSIVE_UNSUPPORTED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_endpoint_snippets: {
+        parameters: {
+            query?: {
+                /** @description Only these languages (repeatable) */
+                language?: components["schemas"]["SnippetLanguage"][] | null;
+                /** @description The API base URL to embed (default: this server's) */
+                base_url?: string | null;
+            };
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SnippetSet"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    validate_endpoint_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The endpoint alias (a slug) */
+                alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndpointScoreCall"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EndpointValidation"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    detect_roles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DetectRolesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleSuggestions"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_guided_draft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuidedAnswers"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidedDraft"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, GUIDED_ANSWERS_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    import_bayesinsight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BayesInsightImport"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidedDraft"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, IMPORT_UNSUPPORTED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_prior_translation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriorTranslationRequest"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriorTranslation"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriorTranslation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `BUSINESS_PRIORS_INVALID`: The business priors are inconsistent; `CALIBRATION_UNSUPPORTED`: The model cannot use this calibration data */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_prior_translation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriorTranslation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compile_guided_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuidedCompile"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoreRequest"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, REF_UNRESOLVED, SCENARIO_OUT_OF_RANGE, MISSING_FUTURE_COVARIATE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_guided_templates: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GuidedTemplate_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_guided_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidedTemplate"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_me: {
         parameters: {
             query?: never;
@@ -8257,6 +14707,648 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_saved_plots: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_SavedPlot_"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_saved_plot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedPlotCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedPlot"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`SCHEMA_INVALID`, `PLOT_UNSAFE`) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`INTEGRITY_FAILURE`) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_plot_render: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotRender"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_saved_plot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedPlot"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_saved_plot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_plot_embeds: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                plot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PlotEmbed_"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_plot_embed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlotEmbedCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotEmbedCreated"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`SCHEMA_INVALID`, `EMBED_NOT_ALLOWED`, `PLOT_UNSAFE`) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`INTEGRITY_FAILURE`) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revoke_plot_embed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plot_id: string;
+                embed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem (`RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    render_plot: {
+        parameters: {
+            query?: never;
+            header?: {
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlotRenderRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotRender"];
+                };
+            };
+            /** @description Still rendering */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotRender"];
+                };
+            };
+            /** @description Problem (`UNAUTHENTICATED`) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`FORBIDDEN`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`NOT_FOUND`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`SCHEMA_INVALID`, `PLOT_UNSAFE`, `MODE_NOT_SUPPORTED`) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`QUOTA_EXCEEDED`, `RATE_LIMITED`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem (`INTEGRITY_FAILURE`) */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -9161,6 +16253,339 @@ export interface operations {
             };
         };
     };
+    get_tenant_deletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDeletion"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_tenant_deletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantDeletionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDeletion"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `CONFLICT` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `SCHEMA_INVALID` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cancel_tenant_deletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDeletion"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `CONFLICT` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tenant_exports: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GdprExport_"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_tenant_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GdprExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GdprExport"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `SCHEMA_INVALID` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `QUOTA_EXCEEDED` */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_tenant_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GdprExport"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_tenant_members: {
         parameters: {
             query?: {
@@ -9605,6 +17030,55 @@ export interface operations {
             };
         };
     };
+    get_tenant_verification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationStatus"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_tokens: {
         parameters: {
             query?: {
@@ -9761,6 +17235,570 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_webhooks: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Webhook_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_webhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookCreated"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, WEBHOOK_URL_BLOCKED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_webhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_webhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_webhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, WEBHOOK_URL_BLOCKED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_webhook_deliveries: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                status?: components["schemas"]["DeliveryStatus"] | null;
+            };
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WebhookDelivery_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    replay_webhook_delivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+                delivery_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDelivery"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: WEBHOOK_URL_BLOCKED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    rotate_webhook_secret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookCreated"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

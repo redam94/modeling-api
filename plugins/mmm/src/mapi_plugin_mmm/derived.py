@@ -15,7 +15,10 @@ labelled ``output_space = "model"``.
   contribution over the fit window when a channel's spend is scaled by ``multiplier``
   (``0 .. grid.max_multiplier``); ``spend(channel, multiplier)`` and
   ``spend_by_geo(geo, channel, multiplier)`` give the spend on each grid point and
-  ``current_spend(channel)`` the actual spend. ``target_scale(geo)`` and
+  ``current_spend(channel)`` the actual spend; ``baseline(sample)`` and
+  ``baseline_by_geo(sample, geo)`` are the KPI over the window that no channel explains
+  (intercepts plus controls), so ``baseline + sum_c contribution(at 1)`` is the expected
+  KPI (M3: the what-if grid view). ``target_scale(geo)`` and
   ``spend_scale(geo, channel)`` convert model units to original units (used by the decision
   objective). Guided-mode sliders interpolate these grids per draw, so bands stay joint.
 * ``marginal_cost`` - ``marginal_cost(sample, channel, geo)``: extra spend per extra unit
@@ -42,6 +45,7 @@ __all__ = [
     "SAMPLE",
     "ChannelCurves",
     "ToOriginal",
+    "baseline_cube",
     "contributions_dataset",
     "draw_samples",
     "marginal_cost_dataset",
@@ -189,6 +193,24 @@ def _cube(values: np.ndarray, curves: ChannelCurves) -> xr.DataArray:
     )
 
 
+def baseline_cube(curves: ChannelCurves, post: xr.Dataset, design: ControlDesign) -> xr.DataArray:
+    """``(sample, geo, time)`` KPI no channel explains (intercept + controls), model units."""
+    intercept = post["intercept"]
+    if GEO in intercept.coords:
+        intercept = intercept.sel({GEO: curves.geos})
+    base = np.asarray(intercept.transpose(SAMPLE, GEO).values, dtype=np.float64)
+    cube = np.broadcast_to(base[:, :, None], (*base.shape, curves.times.size)).copy()
+    if not design.empty:
+        gamma = post["gamma_control"].sel(control_feature=design.features)
+        g = np.asarray(gamma.transpose(SAMPLE, "control_feature").values, dtype=np.float64)
+        cube = cube + np.einsum("gtf,sf->sgt", design.values, g)
+    return xr.DataArray(
+        cube,
+        dims=[SAMPLE, GEO, TIME],
+        coords={SAMPLE: np.arange(cube.shape[0]), GEO: curves.geos, TIME: curves.times},
+    )
+
+
 def contributions_dataset(
     curves: ChannelCurves,
     post: xr.Dataset,
@@ -255,9 +277,14 @@ def _scales(curves: ChannelCurves, to_original: ToOriginal | None) -> tuple[xr.D
 
 
 def response_curves_dataset(
-    curves: ChannelCurves, grid: GridSettings, to_original: ToOriginal | None
+    curves: ChannelCurves,
+    grid: GridSettings,
+    to_original: ToOriginal | None,
+    *,
+    baseline: xr.DataArray | None = None,
 ) -> xr.Dataset:
-    """Per-draw response grids (spend multiplier x channel x geo) over the fit window."""
+    """Per-draw response grids (spend multiplier x channel x geo) over the fit window;
+    ``baseline`` (``(sample, geo, time)``, model units) adds the unexplained KPI."""
     mults = np.asarray(grid.multipliers(), dtype=np.float64)
     resp: list[np.ndarray] = []
     spend: list[np.ndarray] = []
@@ -289,19 +316,27 @@ def response_curves_dataset(
     )
     total = by_geo.sum(GEO)
     total.attrs = dict(by_geo.attrs)
-    current = by_geo.sel(multiplier=1.0, method="nearest").sum(GEO).drop_vars("multiplier")
+    current = by_geo.sel(multiplier=1.0).sum(GEO).drop_vars("multiplier")  # always on the grid
     current.attrs = dict(by_geo.attrs)
     target_scale, spend_scale = _scales(curves, to_original)
-    ds = xr.Dataset(
-        {
-            "contribution": contribution,
-            "spend": total,
-            "spend_by_geo": by_geo,
-            "current_spend": current,
-            "target_scale": target_scale,
-            "spend_scale": spend_scale,
-        }
-    )
+    variables: dict[str, xr.DataArray] = {
+        "contribution": contribution,
+        "spend": total,
+        "spend_by_geo": by_geo,
+        "current_spend": current,
+        "target_scale": target_scale,
+        "spend_scale": spend_scale,
+    }
+    if baseline is not None:
+        base = _convert(to_original, baseline, "y").sum(TIME)
+        base_attrs = dict(base.attrs)
+        variables["baseline_by_geo"] = base.transpose(SAMPLE, GEO).assign_attrs(
+            {**base_attrs, "description": "KPI over the fit window that no channel explains"}
+        )
+        variables["baseline"] = base.sum(GEO).assign_attrs(
+            {**base_attrs, "description": "KPI over the fit window that no channel explains"}
+        )
+    ds = xr.Dataset(variables)
     ds.attrs = {
         "periods": int(curves.times.size),
         "description": "Response of the target to scaling each channel's spend over the "

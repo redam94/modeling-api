@@ -22,8 +22,8 @@ an unset limit means "no limit at this level".
 | `concurrent_runs` | Live count | Runs between `queued` and a terminal state |
 | `max_fanout_tasks` | Per submission | Caps one sweep, backtest or SBC (`taskCount`) |
 | `max_resource_class` | Per submission | For example, the free tier runs on class S only |
-| `storage_bytes` | Cumulative | Datasets, bundles and uploads |
-| `egress_bytes_per_month` | Cumulative, UTC month | Downloads through signed URLs |
+| `storage_bytes` | Cumulative | Dataset versions, uploads in progress and model bundles (every model version's stored objects) |
+| `egress_bytes_per_month` | Cumulative, UTC month | Downloads: the size of every object the API hands out a signed link to (dataset and model artifacts, `ui/` views, score and render outputs), and of public embed views. Charged when the link is minted; GDPR exports are never charged |
 | `requests_per_minute` | Rate | API calls |
 
 ## Three levels
@@ -58,6 +58,12 @@ Default tenant limits by trust tier (operators override them per tenant with
 | `verified` | 86,400 | 1,000,000 | 20 | 256 | L | 600 |
 | `internal` | — | — | 100 | 1,000 | — | 6,000 |
 | `self-hosted-trusted` | — | — | — | — | — | — |
+
+**Returned draws.** A score request returns a summary by default (no draws). Draws on request
+(`output.draws`) are capped per tier: at most 300 on `public`, 500 on every other tier
+(`mapi_spec.quotas.MAX_SCORE_DRAWS`). More is refused with `QUOTA_EXCEEDED` at
+`/output/draws`, whether the call comes through `POST /v1/models/…:score`, an endpoint, or
+its `…/validate`; the score job carries the cap and the runner enforces it again.
 
 ## Interactive and batch work
 

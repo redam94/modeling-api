@@ -1,0 +1,120 @@
+{
+ "alias": "geo-mmm-prod",
+ "base_url": "http://127.0.0.1:8000",
+ "project": "acme/growth",
+ "snapshot": {
+  "inputs_stage": "raw",
+  "input_schema": {
+   "layout": "dense",
+   "dims": {
+    "date": {
+     "kind": "time",
+     "policy": "extend",
+     "ordered": false,
+     "freq": "W-SUN",
+     "new_level_strategy": "error"
+    },
+    "market": {
+     "kind": "categorical",
+     "policy": "fixed",
+     "ordered": false,
+     "new_level_strategy": "error"
+    },
+    "channel": {
+     "kind": "categorical",
+     "policy": "fixed",
+     "ordered": false,
+     "new_level_strategy": "error"
+    }
+   },
+   "vars": {
+    "spend_local": {
+     "dims": [
+      "market",
+      "channel",
+      "date"
+     ],
+     "dtype": "float64",
+     "role": "spend",
+     "units": "local",
+     "missing": "forbid",
+     "future_required": false
+    }
+   },
+   "ragged": []
+  },
+  "schema_hash": "sha256:abababababababababababababababababababababababababababababababab",
+  "score_modes": [
+   "predict",
+   "forecast",
+   "counterfactual",
+   "evaluate"
+  ],
+  "horizon_dim": "date",
+  "future_required": [],
+  "fit_coords": {}
+ },
+ "example": {
+  "mode": "forecast",
+  "horizon": {
+   "dim": "date",
+   "periods": 8
+  },
+  "data": null,
+  "scenario": null,
+  "output": {
+   "summary": [
+    "mean",
+    "hdi_90"
+   ]
+  },
+  "future_covariates": "carry_last"
+ },
+ "snippets": {
+  "alias": "geo-mmm-prod",
+  "items": [
+   {
+    "language": "python",
+    "title": "Python (mapi-client)",
+    "code": "import os\n\nfrom mapi_client import Client\n\napi = Client(\n    'http://127.0.0.1:8000',\n    token=os.environ['MAPI_TOKEN'],\n    project='acme/growth',\n)\nresult = api.endpoints.score(\n    'geo-mmm-prod',\n    {\n        'mode': 'forecast',\n        'horizon': {\n            'dim': 'date',\n            'periods': 8,\n        },\n        'data': None,\n        'scenario': None,\n        'output': {\n            'summary': ['mean', 'hdi_90'],\n        },\n        'future_covariates': 'carry_last',\n    },\n    wait=60,\n)\nprint(result.run.state, [link.name for link in result.outputs])\n# the numbers: one table per output (coordinates, then mean and HDI)\nfor table in result.summary.tables if result.summary else []:\n    print(table.variable, table.columns, table.rows[:5])\n",
+    "requires": "pip install mapi-client"
+   },
+   {
+    "language": "typescript",
+    "title": "TypeScript (fetch, Node 18+ or a browser)",
+    "code": "const payload = {\n  \"mode\": \"forecast\",\n  \"horizon\": {\n    \"dim\": \"date\",\n    \"periods\": 8\n  },\n  \"data\": null,\n  \"scenario\": null,\n  \"output\": {\n    \"summary\": [\n      \"mean\",\n      \"hdi_90\"\n    ]\n  },\n  \"future_covariates\": \"carry_last\"\n};\n\nconst response = await fetch(\"http://127.0.0.1:8000/v1/endpoints/geo-mmm-prod/score\", {\n  method: \"POST\",\n  headers: {\n    Authorization: `Bearer ${process.env[\"MAPI_TOKEN\"]}`,\n    \"Content-Type\": \"application/json\",\n    \"X-Mapi-Project\": \"acme/growth\",\n    \"Prefer\": \"wait=60\",\n  },\n  body: JSON.stringify(payload),\n});\nif (!response.ok) {\n  throw new Error(`${response.status}: ${await response.text()}`);\n}\nconst result = await response.json(); // 200: done with outputs; 202: still running\n// the numbers: one table per output (coordinates, then mean and HDI)\nconsole.log(result.done ? result.summary?.tables : result.run.id);\n",
+    "requires": null
+   },
+   {
+    "language": "curl",
+    "title": "curl",
+    "code": "curl -sS -X POST 'http://127.0.0.1:8000/v1/endpoints/geo-mmm-prod/score' \\\n  -H \"Authorization: Bearer $MAPI_TOKEN\" \\\n  -H 'Content-Type: application/json' \\\n  -H 'X-Mapi-Project: acme/growth' \\\n  -H 'Prefer: wait=60' \\\n  --data '{\n  \"mode\": \"forecast\",\n  \"horizon\": {\n    \"dim\": \"date\",\n    \"periods\": 8\n  },\n  \"data\": null,\n  \"scenario\": null,\n  \"output\": {\n    \"summary\": [\n      \"mean\",\n      \"hdi_90\"\n    ]\n  },\n  \"future_covariates\": \"carry_last\"\n}'\n# The \"summary\" field of the answer holds the numbers (mean and HDI per coordinate).\n",
+    "requires": null
+   },
+   {
+    "language": "r",
+    "title": "R (httr2)",
+    "code": "library(httr2)\n\nresp <- request('http://127.0.0.1:8000/v1/endpoints/geo-mmm-prod/score') |>\n  req_auth_bearer_token(Sys.getenv('MAPI_TOKEN')) |>\n  req_headers(`X-Mapi-Project` = 'acme/growth', Prefer = 'wait=60') |>\n  req_body_raw('{\n  \"mode\": \"forecast\",\n  \"horizon\": {\n    \"dim\": \"date\",\n    \"periods\": 8\n  },\n  \"data\": null,\n  \"scenario\": null,\n  \"output\": {\n    \"summary\": [\n      \"mean\",\n      \"hdi_90\"\n    ]\n  },\n  \"future_covariates\": \"carry_last\"\n}', type = \"application/json\") |>\n  req_perform()\nresult <- resp_body_json(resp)\nstr(result$run$state)\n# the numbers: one table per output (coordinates, then mean and HDI)\nstr(result$summary$tables)\n",
+    "requires": "install.packages(\"httr2\")"
+   },
+   {
+    "language": "apps_script",
+    "title": "Google Sheets (Apps Script)",
+    "code": "// Extensions > Apps Script. Store the token once under Project Settings >\n// Script properties as MAPI_TOKEN.\n//\n// Input (optional): a sheet named \"Input\" in long format - a header row naming the\n// endpoint's dims and input variables, then one row per coordinate - replaces the\n// example's inline data. The answer's summary (mean and HDI per coordinate) is written\n// to a sheet named \"Result\".\nfunction scoreGeoMmmProd() {\n  const token = PropertiesService.getScriptProperties().getProperty(\"MAPI_TOKEN\");\n  const payload = {\n    \"mode\": \"forecast\",\n    \"horizon\": {\n      \"dim\": \"date\",\n      \"periods\": 8\n    },\n    \"data\": null,\n    \"scenario\": null,\n    \"output\": {\n      \"summary\": [\n        \"mean\",\n        \"hdi_90\"\n      ]\n    },\n    \"future_covariates\": \"carry_last\"\n  };\n  const book = SpreadsheetApp.getActiveSpreadsheet();\n  const input = book.getSheetByName(\"Input\");\n  if (input) {\n    const key = payload.scenario && payload.scenario.data_vars ? \"scenario\" : \"data\";\n    payload[key] = mapiSheetToXr_(input.getDataRange().getValues(), payload[key]);\n  }\n  const response = UrlFetchApp.fetch(\"http://127.0.0.1:8000/v1/endpoints/geo-mmm-prod/score\", {\n    method: \"post\",\n    contentType: \"application/json\",\n    headers: {\n      Authorization: \"Bearer \" + token,\n      \"X-Mapi-Project\": \"acme/growth\",\n      Prefer: \"wait=60\",\n    },\n    payload: JSON.stringify(payload),\n    muteHttpExceptions: true,\n  });\n  if (response.getResponseCode() >= 300) {\n    throw new Error(response.getResponseCode() + \": \" + response.getContentText());\n  }\n  const result = JSON.parse(response.getContentText());\n  const out = book.getSheetByName(\"Result\") || book.insertSheet(\"Result\");\n  out.clear();\n  if (!result.done) {\n    const note = \"Still running (\" + result.run.id + \"): run the function again in a minute.\";\n    out.getRange(1, 1).setValue(note);\n    return result;\n  }\n  const rows = mapiSummaryRows_(result.summary);\n  if (!rows.length) {\n    out.getRange(1, 1).setValue(result.run.state + \": no summary in the answer\");\n    return result;\n  }\n  const width = Math.max(...rows.map((r) => r.length));\n  const grid = rows.map((r) => r.concat(new Array(width - r.length).fill(\"\")));\n  out.getRange(1, 1, grid.length, width).setValues(grid);\n  return result;\n}\n\n// The summary tables one below the other: a header row (\"variable\", the coordinate\n// columns, the statistics), one row per coordinate, a blank row between tables.\nfunction mapiSummaryRows_(summary) {\n  const rows = [];\n  for (const table of (summary && summary.tables) || []) {\n    if (rows.length) rows.push([\"\"]);\n    rows.push([\"variable\"].concat(table.columns));\n    for (const row of table.rows) {\n      rows.push([table.variable].concat(row.map((c) => (c === null ? \"\" : c))));\n    }\n  }\n  if (summary && summary.truncated) {\n    rows.push([\"(truncated: the full result is in the run's outputs)\"]);\n  }\n  return rows;\n}\n\n// A long table (a header row, then rows) as an inline dataset shaped like the example's:\n// columns named like its dims hold coordinates, columns named like its variables hold\n// values; empty cells become null.\nfunction mapiSheetToXr_(values, example) {\n  if (!example || !example.data_vars) {\n    throw new Error(\"this endpoint's example call sends no inline data to replace\");\n  }\n  const header = values[0].map(String);\n  const rows = values.slice(1).filter((r) => r.some((c) => c !== \"\"));\n  const column = (name) => {\n    const i = header.indexOf(name);\n    if (i < 0) throw new Error('the Input sheet needs a column named \"' + name + '\"');\n    return i;\n  };\n  const cell = (v) =>\n    v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\") : v;\n  const coords = {};\n  const index = {};\n  for (const spec of Object.values(example.data_vars)) {\n    for (const dim of spec.dims) {\n      if (index[dim]) continue;\n      const i = column(dim);\n      index[dim] = new Map();\n      const seen = [];\n      for (const r of rows) {\n        const key = cell(r[i]);\n        if (!index[dim].has(key)) {\n          index[dim].set(key, seen.length);\n          seen.push(key);\n        }\n      }\n      coords[dim] = { dims: [dim], data: seen };\n    }\n  }\n  const data_vars = {};\n  for (const [name, spec] of Object.entries(example.data_vars)) {\n    const i = column(name);\n    const value = (r) => (r[i] === \"\" ? null : r[i]);\n    if (!spec.dims.length) {\n      data_vars[name] = { dims: [], data: rows.length ? value(rows[0]) : null };\n      continue;\n    }\n    const last = spec.dims.length - 1;\n    const empty = (k) => coords[spec.dims[k]].data.map(() => (k < last ? empty(k + 1) : null));\n    const data = empty(0);\n    for (const r of rows) {\n      const at = spec.dims.map((dim) => index[dim].get(cell(r[column(dim)])));\n      let node = data;\n      for (let k = 0; k < at.length - 1; k++) node = node[at[k]];\n      node[at[at.length - 1]] = value(r);\n    }\n    data_vars[name] = { dims: spec.dims, data: data };\n  }\n  return { coords: coords, data_vars: data_vars };\n}\n",
+    "requires": null
+   },
+   {
+    "language": "atlas",
+    "title": "Atlas (RemoteModel)",
+    "code": "import os\n\nfrom mapi_client import Client\nfrom mapi_client.atlas import RemoteModel\n\napi = Client(\n    'http://127.0.0.1:8000',\n    token=os.environ['MAPI_TOKEN'],\n    project='acme/growth',\n)\n# An Atlas model backed by the endpoint: Atlas's optimiser scores budgets against it.\nmodel = RemoteModel(api, endpoint='geo-mmm-prod')\n",
+    "requires": "pip install 'mapi-client[atlas]'"
+   },
+   {
+    "language": "notebook",
+    "title": "Notebook (mapi-client, xarray)",
+    "code": "# A notebook cell (Jupyter or marimo): the endpoint as an object, results as xarray.\nimport os\n\nfrom mapi_client import Client\n\napi = Client(\n    'http://127.0.0.1:8000',\n    token=os.environ['MAPI_TOKEN'],\n    project='acme/growth',\n)\nendpoint = api.endpoint('geo-mmm-prod')\nschema = endpoint.schema()  # the input contract and an example call\n\n# The example call. For your own inputs, pass an xarray.Dataset shaped like\n# schema.snapshot.input_schema as `data`.\ndata = None\ncall = {\n    'mode': 'forecast',\n    'horizon': {\n        'dim': 'date',\n        'periods': 8,\n    },\n    'scenario': None,\n    'output': {\n        'summary': ['mean', 'hdi_90'],\n    },\n    'future_covariates': 'carry_last',\n}\nds = endpoint.score(data, wait=60, **call)\nds  # the summary: one variable per output, with a `stat` dim (mean, hdi_90_lower, ...)\n",
+    "requires": "pip install 'mapi-client[xarray]'"
+   }
+  ]
+ }
+}

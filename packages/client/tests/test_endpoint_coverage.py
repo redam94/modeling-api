@@ -1,6 +1,6 @@
 """Every endpoint a program may call has a request builder whose method, path, success
-statuses and project scoping match ``mapi_spec.api.ENDPOINTS`` and ``ROUTE_ACCESS`` (the
-contract the server's route table is tested against)."""
+statuses and project scoping match ``mapi_spec.api.ENDPOINTS`` (the whole v0.4 table: M1, M2
+and M3) and ``ROUTE_ACCESS`` - the contract the server's route table is tested against."""
 
 from __future__ import annotations
 
@@ -10,35 +10,57 @@ from typing import Any
 
 import pytest
 from mapi_client import _calls as c
+from mapi_client import _calls_m3 as m3
 from mapi_client._http import Call
 from mapi_spec.api import (
     ENDPOINTS,
+    IDEMPOTENCY_KEY_HEADER,
+    PREFER_HEADER,
     ROUTE_ACCESS,
+    BayesInsightImport,
     DatasetCreate,
     DatasetVersionCreate,
+    DetectRolesRequest,
+    EmailVerify,
     EndpointDecl,
+    EndpointPromote,
+    EndpointRollback,
+    EndpointScoreCall,
     ExecutorEvidenceUpdate,
     ExecutorUpdate,
+    GdprExportRequest,
+    GuidedAnswers,
+    GuidedCompile,
     IngestMapping,
     KillSwitchUpdate,
     MembershipCreate,
     MembershipUpdate,
+    PlotEmbedCreate,
+    PlotRenderRequest,
     PlotSpec,
+    PriorTranslationRequest,
     ProjectCreate,
     ProjectUpdate,
     QuotaPolicyUpsert,
     RouteScope,
     RunCreate,
     RunRetry,
+    SavedPlotCreate,
     ScoreCall,
+    SignupRequest,
+    SignupReviewDecision,
     SpecCreate,
     SpecRevisionCreate,
     TenantAdminUpdate,
     TenantCreate,
+    TenantDeletionRequest,
     TenantUpdate,
     TokenCreate,
     UploadCreate,
     ValidateRequest,
+    VerificationUpdate,
+    WebhookCreate,
+    WebhookUpdate,
 )
 from mapi_spec.quotas import QuotaLimits
 
@@ -49,6 +71,17 @@ _USR = "usr_01jaf3a9b8c7d6e5f4g3h2j1k0"
 _INVITE = MembershipCreate(email="ana@acme.example", role="runner")
 _TOKEN = TokenCreate(name="ci", scopes=["models:read"])
 _QUOTA = QuotaPolicyUpsert(scope="tenant", subject_id="acme", limits=QuotaLimits(concurrent_runs=4))
+
+
+def _ex[M](model: type[M], index: int = 0) -> M:
+    """A request DTO from its published schema example."""
+    schema = model.model_json_schema()  # type: ignore[attr-defined]
+    return model.model_validate(schema["examples"][index])  # type: ignore[attr-defined]
+
+
+_CALL = _ex(EndpointScoreCall)
+_WH = "whk_01jaf3h1j2k3m4n5p6q7r8s9t0"
+_PLT = "plt_01jaf3h1j2k3m4n5p6q7r8s9t0"
 
 NOT_FOR_PROGRAMS = frozenset(
     {
@@ -169,9 +202,75 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     ),
     "admin_list_audit": lambda: c.admin_list_audit(None, None),
     "admin_get_usage": lambda: c.admin_get_usage(period="day"),
+    # v0.4 guided mode
+    "list_guided_templates": lambda: m3.list_guided_templates(None, None),
+    "get_guided_template": lambda: m3.get_guided_template("geo_mmm"),
+    "detect_roles": lambda: m3.detect_roles(_ex(DetectRolesRequest)),
+    "create_guided_draft": lambda: m3.create_guided_draft(_ex(GuidedAnswers)),
+    "import_bayesinsight": lambda: m3.import_bayesinsight(_ex(BayesInsightImport)),
+    "compile_guided_request": lambda: m3.compile_guided_request(_ex(GuidedCompile)),
+    "create_prior_translation": lambda: m3.create_prior_translation(
+        _ex(PriorTranslationRequest), None
+    ),
+    "get_prior_translation": lambda: m3.get_prior_translation("run_1"),
+    # v0.4 endpoints
+    "list_endpoints": lambda: m3.list_endpoints(None, None),
+    "get_endpoint": lambda: m3.get_endpoint("geo-mmm-prod"),
+    "promote_endpoint": lambda: m3.promote_endpoint("geo-mmm-prod", _ex(EndpointPromote)),
+    "delete_endpoint": lambda: m3.delete_endpoint("geo-mmm-prod"),
+    "list_endpoint_history": lambda: m3.list_endpoint_history("geo-mmm-prod", None, None),
+    "score_endpoint": lambda: m3.score_endpoint(
+        "geo-mmm-prod", _CALL, wait=60, idempotency_key="k"
+    ),
+    "get_endpoint_schema": lambda: m3.get_endpoint_schema("geo-mmm-prod"),
+    "validate_endpoint_request": lambda: m3.validate_endpoint_request("geo-mmm-prod", _CALL),
+    "rollback_endpoint": lambda: m3.rollback_endpoint("geo-mmm-prod", _ex(EndpointRollback)),
+    "list_endpoint_snippets": lambda: m3.list_endpoint_snippets(
+        "geo-mmm-prod", ["python", "curl"], "https://api.example.com"
+    ),
+    # v0.4 webhooks
+    "list_webhooks": lambda: m3.list_webhooks(None, None),
+    "create_webhook": lambda: m3.create_webhook(_ex(WebhookCreate)),
+    "get_webhook": lambda: m3.get_webhook(_WH),
+    "update_webhook": lambda: m3.update_webhook(_WH, _ex(WebhookUpdate)),
+    "delete_webhook": lambda: m3.delete_webhook(_WH),
+    "rotate_webhook_secret": lambda: m3.rotate_webhook_secret(_WH),
+    "list_webhook_deliveries": lambda: m3.list_webhook_deliveries(_WH, None, None, status="failed"),
+    "replay_webhook_delivery": lambda: m3.replay_webhook_delivery(_WH, "whd_1"),
+    # v0.4 plots, renders and embeds
+    "create_saved_plot": lambda: m3.create_saved_plot(_ex(SavedPlotCreate)),
+    "list_saved_plots": lambda: m3.list_saved_plots(None, None),
+    "get_saved_plot": lambda: m3.get_saved_plot(_PLT),
+    "delete_saved_plot": lambda: m3.delete_saved_plot(_PLT),
+    "render_plot": lambda: m3.render_plot(_ex(PlotRenderRequest), wait=30, idempotency_key="k"),
+    "get_plot_render": lambda: m3.get_plot_render("run_1"),
+    "create_plot_embed": lambda: m3.create_plot_embed(_PLT, _ex(PlotEmbedCreate)),
+    "list_plot_embeds": lambda: m3.list_plot_embeds(_PLT, None, None),
+    "revoke_plot_embed": lambda: m3.revoke_plot_embed(_PLT, "emb_1"),
+    "get_embed": lambda: m3.get_embed("mpe_token"),
+    # v0.4 trust lifecycle
+    "signup": lambda: m3.signup(_ex(SignupRequest)),
+    "verify_email": lambda: m3.verify_email(_ex(EmailVerify)),
+    "get_tenant_verification": lambda: m3.get_tenant_verification("acme"),
+    "admin_put_tenant_verification": lambda: m3.admin_put_tenant_verification(
+        "acme", _ex(VerificationUpdate)
+    ),
+    "request_tenant_deletion": lambda: m3.request_tenant_deletion(
+        "acme", TenantDeletionRequest(confirm="acme")
+    ),
+    "get_tenant_deletion": lambda: m3.get_tenant_deletion("acme"),
+    "cancel_tenant_deletion": lambda: m3.cancel_tenant_deletion("acme"),
+    "create_tenant_export": lambda: m3.create_tenant_export("acme", GdprExportRequest()),
+    "list_tenant_exports": lambda: m3.list_tenant_exports("acme", None, None),
+    "get_tenant_export": lambda: m3.get_tenant_export("acme", "exp_1"),
+    "admin_list_signups": lambda: m3.admin_list_signups(None, None, review="flagged"),
+    "admin_review_signup": lambda: m3.admin_review_signup("sgn_1", _ex(SignupReviewDecision)),
+    "admin_retry_tenant_deletion": lambda: m3.admin_retry_tenant_deletion("acme"),
 }
 
-PROGRAM_ENDPOINTS = tuple(d for d in ENDPOINTS if d.operation_id not in NOT_FOR_PROGRAMS)
+CLIENT_ENDPOINTS = ENDPOINTS
+"""The table the client covers: every row of the v0.4 API."""
+PROGRAM_ENDPOINTS = tuple(d for d in CLIENT_ENDPOINTS if d.operation_id not in NOT_FOR_PROGRAMS)
 
 
 def _pattern(decl: EndpointDecl) -> re.Pattern[str]:
@@ -183,7 +282,7 @@ def _pattern(decl: EndpointDecl) -> re.Pattern[str]:
 
 def test_every_endpoint_has_a_builder() -> None:
     assert {d.operation_id for d in PROGRAM_ENDPOINTS} == set(BUILDERS)
-    assert {d.operation_id for d in ENDPOINTS} >= NOT_FOR_PROGRAMS
+    assert {d.operation_id for d in CLIENT_ENDPOINTS} >= NOT_FOR_PROGRAMS
 
 
 @pytest.mark.parametrize("decl", PROGRAM_ENDPOINTS, ids=lambda d: d.operation_id)
@@ -285,3 +384,67 @@ def test_minting_a_token_is_never_resent() -> None:
     """A lost response to POST /v1/tokens must not mint a second token."""
     assert not c.create_token(_TOKEN).idempotent
     assert c.revoke_token("tok_1").idempotent
+
+
+@pytest.mark.parametrize("decl", PROGRAM_ENDPOINTS, ids=lambda d: d.operation_id)
+def test_prefer_and_idempotency_headers_follow_the_contract(decl: EndpointDecl) -> None:
+    call = BUILDERS[decl.operation_id]()
+    if PREFER_HEADER in decl.headers:
+        assert call.headers.get(PREFER_HEADER, "").startswith("wait=")
+        assert call.server_wait  # the read timeout covers the server's wait
+    else:
+        assert PREFER_HEADER not in call.headers
+    if IDEMPOTENCY_KEY_HEADER not in decl.headers:
+        assert IDEMPOTENCY_KEY_HEADER not in call.headers
+
+
+def test_m3_public_routes_carry_no_credentials() -> None:
+    public = {"signup", "verify_email", "get_embed"}
+    for op, make in BUILDERS.items():
+        assert make().public is (op in public), op
+
+
+def test_m3_waits_are_capped() -> None:
+    with pytest.raises(ValueError):
+        m3.score_endpoint("a", _CALL, wait=61, idempotency_key="k")
+    with pytest.raises(ValueError):
+        m3.render_plot(_ex(PlotRenderRequest), wait=-1, idempotency_key="k")
+    call = m3.score_endpoint("a", _CALL, wait=None, idempotency_key="k")
+    assert PREFER_HEADER not in call.headers
+
+
+def test_m3_snippet_languages_are_repeated_and_checked() -> None:
+    call = m3.list_endpoint_snippets("a", ["python", "atlas"])
+    assert call.params == {"language": ["python", "atlas"]}
+    assert m3.list_endpoint_snippets("a").params == {}
+    with pytest.raises(ValueError):
+        m3.list_endpoint_snippets("a", ["cobol"])
+
+
+def test_m3_calls_that_mint_secrets_or_send_mail_are_never_resent() -> None:
+    """A lost response must not create a second webhook, secret, link or e-mail."""
+    assert not m3.create_webhook(_ex(WebhookCreate)).idempotent
+    assert not m3.rotate_webhook_secret(_WH).idempotent
+    assert not m3.create_plot_embed(_PLT, _ex(PlotEmbedCreate)).idempotent
+    assert not m3.signup(_ex(SignupRequest)).idempotent
+    assert not m3.verify_email(_ex(EmailVerify)).idempotent
+    deletion = m3.request_tenant_deletion("acme", TenantDeletionRequest(confirm="acme"))
+    assert not deletion.idempotent
+    # static checks and keyed submissions are safe to resend
+    assert m3.validate_endpoint_request("a", _CALL).idempotent
+    assert m3.score_endpoint("a", _CALL, wait=1, idempotency_key="k").idempotent
+    assert m3.revoke_plot_embed(_PLT, "emb_1").idempotent
+
+
+def test_m3_filters_are_validated() -> None:
+    with pytest.raises(ValueError):
+        m3.list_webhook_deliveries(_WH, None, None, status="lost")
+    with pytest.raises(ValueError):
+        m3.admin_list_signups(None, None, review="maybe")
+    assert m3.admin_list_signups(5, None, tenant_id="acme").params == {
+        "limit": 5,
+        "tenant_id": "acme",
+    }
+    with pytest.raises(ValueError):
+        m3.get_endpoint("..")
+    assert m3.get_embed("a/b").path == "/v1/embeds/a%2Fb"

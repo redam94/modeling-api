@@ -13,6 +13,7 @@ from typing import Any
 from pydantic import BaseModel, TypeAdapter
 
 from mapi_spec import api
+from mapi_spec.calibration import Calibration, PriorTranslationResult
 from mapi_spec.capabilities import Diagnostic, ModelManifest, OutputSelector
 from mapi_spec.catalog import Catalog, ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
 from mapi_spec.coords import DataSummary
@@ -33,6 +34,7 @@ from mapi_spec.spec import (
     Sweep,
 )
 from mapi_spec.storage import ObjectMeta, PostPolicy, SignedGet, SignedPut
+from mapi_spec.views import CounterfactualView, ForecastView, ResponseGridView
 
 __all__ = ["API_SCHEMA_MODELS", "SCHEMA_BASE_URI", "SCHEMA_MODELS", "export_schemas"]
 
@@ -68,6 +70,12 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "signedget.json": SignedGet,
     "signedput.json": SignedPut,
     "postpolicy.json": PostPolicy,
+    # M3: sandbox outputs and views the control plane and the web app read
+    "priortranslation.json": PriorTranslationResult,
+    "responsegrid.json": ResponseGridView,
+    "forecastview.json": ForecastView,
+    "counterfactualview.json": CounterfactualView,
+    "calibration.json": Calibration,
 }
 
 API_SCHEMA_MODELS: dict[str, type[BaseModel]] = {

@@ -3,19 +3,25 @@
 from __future__ import annotations
 
 import json
+import warnings
 from collections.abc import Iterable
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 
+import numpy as np
+import pandas as pd
 import xarray as xr
+from mapi_sdk.binding import BindingMap
 from mapi_sdk.bundle import BUNDLE_FILE, Bundle, BundleManifest, file_digest
 from mapi_sdk.errors import BundleError, WireFormatError
-from mapi_sdk.wire import read_datatree_zip, read_zarr_zip
+from mapi_sdk.wire import DEFAULT_LIMITS, loads_xrjson, read_datatree_zip, read_zarr_zip
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.jobs import DATASET_SCHEMA_ATTR
 from mapi_spec.run import INPUT_BUNDLE, INPUT_DATASET
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import ModelSpec, ScorePolicy
+from mapi_spec.xrjson import MAX_XRJSON_BYTES
 from pydantic import ValidationError
 
 from mapi_runner.jobs import INPUT_BUNDLE_MANIFEST, INPUT_SCHEMA, SIDE_TABLE_PREFIX
@@ -25,6 +31,7 @@ __all__ = [
     "SCHEMA_ATTR",
     "load_bundle",
     "load_dataset",
+    "load_inline",
     "load_raw_schema",
     "load_side_tables",
     "supplied_side_tables",
@@ -47,6 +54,73 @@ def load_dataset(ctx: WorkerContext, name: str = INPUT_DATASET) -> xr.Dataset:
             pointer=f"/inputs/{name}",
             untrusted_text=exc.detail,
         ) from None
+
+
+_INLINE_LIMITS = replace(DEFAULT_LIMITS, max_json_bytes=MAX_XRJSON_BYTES + 64 * 1024)
+"""An endpoint call's inline payload: the API caps the call at ``MAX_XRJSON_BYTES``; the
+stored document adds only the envelope's own keys."""
+
+
+def load_inline(
+    ctx: WorkerContext,
+    name: str,
+    schema: DataSchema | None,
+    binding: BindingMap | None = None,
+) -> xr.Dataset:
+    """Decode an inline XrJSON score payload (``inline.data`` / ``inline.scenario``, stored by
+    the API from an endpoint call) with the wire format's caps, then give its dim coordinates
+    the types of ``schema``'s dims (JSON carries dates as ISO strings and every number as a
+    float). Strict JSON only: no NaN or Infinity constants; nulls become missing values.
+
+    An endpoint's input contract (``EndpointSchemaSnapshot.input_schema``, which the API
+    validates the call against) names dims and variables canonically (``time``, ``y``), while
+    ``schema`` is the bundle's raw schema under the dataset's names (``week``,
+    ``units_sold``): with ``binding`` the payload's canonical names are renamed to the dataset
+    names first, so it is typed and scored like the same rows uploaded as a dataset."""
+    path = ctx.download(name)
+    assert path is not None
+    pointer = "/" + name.removeprefix("inline.")
+    try:
+        ds = loads_xrjson(path.read_bytes(), limits=_INLINE_LIMITS)
+    except WireFormatError as exc:
+        raise MapiError(
+            f"the inline {pointer[1:]} payload is not a readable dataset",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer=pointer,
+            untrusted_text=exc.detail,
+        ) from None
+    if binding is not None:
+        ds = binding.reverse(ds)
+    if schema is None:
+        return ds
+    coords: dict[str, Any] = {}
+    for dim, spec in schema.dims.items():
+        if dim not in ds.coords or ds[dim].ndim != 1:
+            continue
+        values = ds[dim].values
+        try:
+            if spec.kind == "time":
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    coords[dim] = pd.to_datetime(values).values.astype("datetime64[ns]")
+            elif spec.kind in ("integer", "index"):
+                num = np.asarray(values, dtype="float64")
+                if not np.all(np.isfinite(num)) or not np.all(num % 1 == 0):
+                    raise ValueError("not whole numbers")
+                coords[dim] = num.astype("int64")
+            elif spec.kind == "float":
+                coords[dim] = np.asarray(values, dtype="float64")
+            else:
+                coords[dim] = np.asarray([str(v) for v in values.tolist()], dtype=object)
+        except (ValueError, TypeError, OverflowError) as exc:
+            raise MapiError(
+                f"coordinate {dim!r} of the inline {pointer[1:]} payload cannot be read as a "
+                f"{spec.kind} dim",
+                code=ErrorCode.SCHEMA_INVALID,
+                pointer=f"{pointer}/coords/{dim}",
+                untrusted_text=str(exc)[:2000],
+            ) from None
+    return ds.assign_coords(coords) if coords else ds
 
 
 def load_raw_schema(ctx: WorkerContext, data: xr.Dataset) -> DataSchema | None:

@@ -1,7 +1,7 @@
 {
   "name": "@mapi/plot-sandbox",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Isolated Vega-Lite / Plotly renderer served from its own origin (plan §10.3)",
   "license": "AGPL-3.0-only OR LicenseRef-mapi-commercial",
   "type": "module",
@@ -17,6 +17,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "apache-arrow": "21.1.0",
     "plotly.js-strict-dist-min": "3.7.0",
     "vega": "6.4.0",
     "vega-embed": "7.2.0",

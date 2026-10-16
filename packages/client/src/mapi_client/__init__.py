@@ -15,7 +15,13 @@
 * list endpoints return lazy :class:`Paginator` / :class:`AsyncPaginator` iterators;
 * ``runs.stream_events`` follows the SSE stream and resumes with ``Last-Event-ID``;
 * ``datasets.upload`` and ``models.score`` handle signed URLs, waiting and CRC32C checks;
-  ``xr.Dataset`` uploads and ``xr.DataTree`` results need the ``xarray`` extra.
+  ``xr.Dataset`` uploads and ``xr.DataTree`` results need the ``xarray`` extra;
+* from v0.4 ``guided``, ``endpoints`` (and ``Client.endpoint(alias)``, a
+  :class:`RemoteEndpoint` whose ``score(ds)`` returns an ``xr.Dataset``), ``webhooks``, saved
+  plots, renders and embeds on ``plots``, sign-up (:meth:`Client.signup`) and the trust
+  lifecycle on ``tenants``/``admin``; :mod:`mapi_client.webhooks` verifies deliveries,
+  :mod:`mapi_client.atlas` adapts an endpoint to Atlas (``RemoteModel``) and
+  :mod:`mapi_client.xrjson` encodes inline payloads.
 
 >>> from mapi_client import Client               # doctest: +SKIP
 >>> with Client("http://127.0.0.1:8000") as api:
@@ -25,6 +31,8 @@
 from mapi_client._async import AsyncClient
 from mapi_client._common import ScoreResult
 from mapi_client._http import Call, RetryPolicy, RetryState
+from mapi_client._m3 import RemoteEndpoint
+from mapi_client._m3_async import AsyncRemoteEndpoint
 from mapi_client._sync import Client
 from mapi_client._version import __version__
 from mapi_client.auth import BearerAuth, TokenProvider, default_auth
@@ -45,6 +53,7 @@ from mapi_client.sse import RunEnd, RunEventFrame, RunLiveFrame, RunSnapshot, Ru
 __all__ = [
     "AsyncClient",
     "AsyncPaginator",
+    "AsyncRemoteEndpoint",
     "BearerAuth",
     "Call",
     "Client",
@@ -56,6 +65,7 @@ __all__ = [
     "OidcTokenProvider",
     "Paginator",
     "RateLimited",
+    "RemoteEndpoint",
     "RetryPolicy",
     "RetryState",
     "RunEnd",

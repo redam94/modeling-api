@@ -25,6 +25,7 @@ from mapi_spec._types import (
     StrictModel,
     unique,
 )
+from mapi_spec.calibration import Calibration
 from mapi_spec.capabilities import OutputSelector, ScoreMode
 from mapi_spec.errors import parse_pointer
 from mapi_spec.refs import DatasetRef, ModelTarget, SpecRef, UseRef
@@ -48,6 +49,7 @@ __all__ = [
     "ExecutionBlock",
     "FitConfig",
     "FitMode",
+    "FutureCovariates",
     "Horizon",
     "Intervention",
     "KeepConfig",
@@ -422,6 +424,11 @@ class ModelSpec(_Document):
     outputs: OutputsBlock = Field(default_factory=OutputsBlock)
     evaluate: EvaluateBlock = Field(default_factory=EvaluateBlock)
     execution: ExecutionBlock = Field(default_factory=ExecutionBlock)
+    calibration: Calibration | None = Field(
+        None,
+        description="Business priors and lift tests the model should respect (M3); needs a "
+        "model whose capabilities declare them",
+    )
 
     @model_validator(mode="after")
     def _check(self) -> ModelSpec:
@@ -463,6 +470,22 @@ class Intervention(StrictModel):
         return self
 
 
+class FutureCovariates(StrEnum):
+    """Where future values of ``future_required`` covariates come from in a forecast (M3).
+
+    ``supplied`` (default) needs them in the request's data or scenario
+    (``MISSING_FUTURE_COVARIATE`` otherwise). The other policies let the runner extend them
+    over the horizon, per series, inside the sandbox: ``carry_last`` repeats the last
+    observed value, ``seasonal_naive`` repeats the value one season earlier (the time dim's
+    yearly period), ``zero`` sets them to zero (e.g. "no spend planned").
+    """
+
+    SUPPLIED = "supplied"
+    CARRY_LAST = "carry_last"
+    SEASONAL_NAIVE = "seasonal_naive"
+    ZERO = "zero"
+
+
 class ScoreRequest(_Document):
     """Score a fitted model with replayed preprocessing."""
 
@@ -478,6 +501,9 @@ class ScoreRequest(_Document):
     interventions: list[Intervention] = Field(default_factory=list, max_length=256)
     output: OutputSelector = Field(default_factory=OutputSelector)
     seed: int | None = Field(None, ge=0, lt=2**32)
+    future_covariates: FutureCovariates | None = Field(
+        None, description="M3: how forecasts get future covariates (default: supplied)"
+    )
 
     @model_validator(mode="after")
     def _check(self) -> ScoreRequest:

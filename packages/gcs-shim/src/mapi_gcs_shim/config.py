@@ -234,19 +234,29 @@ def _new_secret() -> str:
     return base64.b64encode(secrets.token_bytes(30)).decode()
 
 
-def default_config(env: str = DEFAULT_ENV) -> ShimConfig:
-    """The plan §8.6 buckets and the two platform principals, with fresh secrets."""
+def default_config(
+    env: str = DEFAULT_ENV, *, bundle_retention_seconds: int | None = WRITE_ONCE_RETENTION_SECONDS
+) -> ShimConfig:
+    """The plan §8.6 buckets and the two platform principals, with fresh secrets.
+
+    The bundles bucket has a locked retention policy of ``bundle_retention_seconds``: by
+    default effectively write-once; the deployed bucket's period (Terraform
+    ``bundle_retention_days``, 30 days) to emulate it; ``None`` for no retention policy
+    (e.g. a test stack whose tenant deletions must finish at once)."""
     b = Buckets(env)
     day = 86400
+    bundles = (
+        BucketConfig(name=b.bundles)
+        if bundle_retention_seconds is None
+        else BucketConfig(
+            name=b.bundles, retention_period_seconds=bundle_retention_seconds, retention_locked=True
+        )
+    )
     buckets = (
         BucketConfig(name=b.quarantine, lifecycle_age_seconds=7 * day),
         BucketConfig(name=b.bootstrap, lifecycle_age_seconds=1 * day),
         BucketConfig(name=b.runs),
-        BucketConfig(
-            name=b.bundles,
-            retention_period_seconds=WRITE_ONCE_RETENTION_SECONDS,
-            retention_locked=True,
-        ),
+        bundles,
         BucketConfig(name=b.data),
     )
     domain = f"mapi-{env}.iam.gserviceaccount.com"
@@ -317,11 +327,17 @@ def save_config(path: Path, cfg: ShimConfig) -> None:
     atomic_write(Path(path), json.dumps(cfg.to_json_dict(), indent=2).encode(), mode=0o600)
 
 
-def init_root(root: Path, *, env: str = DEFAULT_ENV) -> ShimConfig:
+def init_root(
+    root: Path,
+    *,
+    env: str = DEFAULT_ENV,
+    bundle_retention_seconds: int | None = WRITE_ONCE_RETENTION_SECONDS,
+) -> ShimConfig:
     """Create the root layout and a default config if none exists; return the config.
 
-    An existing config is loaded as is (its ``env`` wins over ``env``), so secrets are
-    stable across restarts.
+    An existing config is loaded as is (its ``env`` and bucket policies win over ``env`` and
+    ``bundle_retention_seconds``), so secrets are stable across restarts and a locked
+    retention policy is never shortened.
     """
     root = Path(root)
     (root / CONFIG_DIR / KEYS_DIR).mkdir(parents=True, exist_ok=True)
@@ -331,7 +347,7 @@ def init_root(root: Path, *, env: str = DEFAULT_ENV) -> ShimConfig:
     path = config_path(root)
     if path.exists():
         return load_config(path)
-    cfg = default_config(env)
+    cfg = default_config(env, bundle_retention_seconds=bundle_retention_seconds)
     save_config(path, cfg)
     return cfg
 

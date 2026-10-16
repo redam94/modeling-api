@@ -1,7 +1,7 @@
 """``python -m mapi_security`` — run the probe corpus or list it.
 
     python -m mapi_security run --executor local-process
-    python -m mapi_security run --executor docker-gvisor --image mapi/worker:0.3.0 --json out.json
+    python -m mapi_security run --executor docker-gvisor --image mapi/worker:0.4.0 --json out.json
     python -m mapi_security list
 
 ``run`` exits non-zero when any probe outcome is unacceptable for the executor's isolation

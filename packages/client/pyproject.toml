@@ -1,6 +1,6 @@
 [project]
 name = "mapi-client"
-version = "0.3.0"
+version = "0.4.0"
 description = "Python client for modeling-api"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -15,6 +15,9 @@ dependencies = [
 [project.optional-dependencies]
 # xr.Dataset uploads and xr.DataTree score results (validated zarr-zip IO from the SDK)
 xarray = ["mapi-sdk", "xarray>=2025.1"]
+# mapi_client.atlas.RemoteModel: the xarray runtime only. Atlas itself (AGPL) is installed
+# separately from its repository and never imported by the client at import time.
+atlas = ["mapi-sdk", "xarray>=2025.1"]
 
 [build-system]
 requires = ["hatchling>=1.25"]

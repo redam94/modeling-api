@@ -1,22 +1,64 @@
 import { LogOut } from "lucide-react";
 
-import { ROLE_META } from "@/api/access";
-import { useReady } from "@/api/queries";
+import { can, ROLE_META } from "@/api/access";
+import { errorMessage } from "@/api/client";
+import { useReady, useUpdateProject } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/features/auth/gate";
 import { useWorkspace } from "@/features/auth/workspace";
+import { useEffectivePersona, useGuidedLock, useSetPersona } from "@/features/guided/persona";
+import { DataSettings } from "@/features/trust/data-settings";
 import { KeyValues, Mono, PageHeader } from "@/components/common";
-import { SegmentedControl } from "@/components/ui/overlays";
+import { SegmentedControl, Switch } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/primitives";
 import { env } from "@/env";
 import { absoluteTime, formatNumber } from "@/lib/format";
+import { toast } from "@/stores/toast";
 import { useUi, type Persona, type ThemePreference } from "@/stores/ui";
+
+/** The project's persona lock (`Project.guided_locked`), for its admins. */
+function GuidedLockSwitch({ locked }: { locked: boolean }) {
+  const ws = useWorkspace();
+  const current = ws.current;
+  const update = useUpdateProject(current?.tenant.id ?? "", current?.project.project_id ?? "");
+  if (ws.mode !== "session" || !current || !can(ws.grants, "update", "project")) return null;
+  return (
+    <div className="mt-4 flex items-start gap-3 border-t pt-4">
+      <Switch
+        id="guided-lock"
+        className="mt-0.5"
+        checked={locked}
+        disabled={update.isPending}
+        aria-describedby="guided-lock-hint"
+        onCheckedChange={(on) =>
+          update.mutate(
+            { guided_locked: on },
+            {
+              onSuccess: () => toast.success(on ? "Locked to Guided mode" : "Guided lock removed", current.project.name),
+              onError: (err) => toast.error("The lock could not be changed", errorMessage(err)),
+            },
+          )
+        }
+      />
+      <div className="grid gap-0.5">
+        <label htmlFor="guided-lock" className="text-[13px] font-medium">
+          Lock {current.project.name} to Guided mode
+        </label>
+        <p id="guided-lock-hint" className="text-xs text-muted-foreground">
+          Members below admin see Guided screens only: they answer the questions, state beliefs, run and share, but cannot switch to Expert or change advanced
+          settings. Project admins keep both modes. Every change is audited.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function SettingsPage() {
   const theme = useUi((s) => s.theme);
   const setTheme = useUi((s) => s.setTheme);
-  const persona = useUi((s) => s.persona);
-  const setPersona = useUi((s) => s.setPersona);
+  const persona = useEffectivePersona();
+  const setPersona = useSetPersona();
+  const lock = useGuidedLock();
   const ready = useReady();
   const ws = useWorkspace();
   const signOut = useSignOut();
@@ -83,20 +125,25 @@ export function SettingsPage() {
             <div>
               <CardTitle>Mode</CardTitle>
               <CardDescription>
-                Expert mode edits specs directly. Guided mode walks analysts through tasks in business terms; it arrives in v0.4, and both modes edit the same spec.
+                Expert mode edits specs directly. Guided mode walks analysts through tasks in business terms; both edit the same spec. The choice is remembered for your account on this browser.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
-            <SegmentedControl<Persona>
-              label="Mode"
-              value={persona}
-              onValueChange={setPersona}
-              options={[
-                { value: "expert", label: "Expert" },
-                { value: "guided", label: "Guided" },
-              ]}
-            />
+            {lock.locked ? (
+              <p className="text-[13px] text-muted-foreground">A project admin has locked this project to Guided mode.</p>
+            ) : (
+              <SegmentedControl<Persona>
+                label="Mode"
+                value={persona}
+                onValueChange={setPersona}
+                options={[
+                  { value: "expert", label: "Expert" },
+                  { value: "guided", label: "Guided" },
+                ]}
+              />
+            )}
+            <GuidedLockSwitch locked={lock.projectLocked} />
           </CardContent>
         </Card>
         <Card>
@@ -130,6 +177,7 @@ export function SettingsPage() {
             />
           </CardContent>
         </Card>
+        {ws.mode === "session" && ws.current?.tenantRole === "admin" ? <DataSettings tenant={ws.current.tenant} /> : null}
       </div>
     </>
   );

@@ -15,10 +15,14 @@ fit        a ``ModelSpec`` document                     ``dataset``, optional ``
 score      a ``ScoreRequest`` document, or              ``bundle``, optional
            :class:`ScoreJob`                            ``bundle.manifest``, ``dataset`` (the
                                                         request's ``data``), ``scenario``,
-                                                        ``side.<name>``
+                                                        ``side.<name>``, ``history`` (M3: the
+                                                        fit dataset, for ``carry_last`` /
+                                                        ``seasonal_naive`` future covariates)
 evaluate   :class:`EvaluateJob`                         ``bundle``, ``dataset``, ...
 derive     :class:`DeriveJob`                           ``bundle``, ``dataset``, ``side.<name>``
 render     :class:`RenderJob`                           ``plots`` (a ``plots.json``)
+translate_ :class:`~mapi_spec.calibration.Prior-         ``dataset``, optional ``schema``,
+priors     TranslationJob` (M3)                         ``side.<name>``; output ``priors.json``
 ========== ============================================ ======================================
 
 Datasets are single-object ``*.zarr.zip`` files. A dataset's raw schema comes from the
@@ -38,8 +42,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from mapi_spec._types import StrictModel
 from mapi_spec.api import IngestMapping
+from mapi_spec.calibration import PRIOR_TRANSLATION_OUTPUT, PriorTranslationJob
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
+from mapi_spec.ingest import MffOptions
 from mapi_spec.loader import parse_document
 from mapi_spec.run import INPUT_BUNDLE, INPUT_DATASET
 from mapi_spec.spec import ModelSpec, ScoreRequest
@@ -51,16 +57,22 @@ __all__ = [
     "DESCRIBE_OUTPUT",
     "FIT_BUNDLE",
     "FIT_SIDECARS",
+    "INGEST_COLUMNS",
     "INGEST_DATA",
     "INGEST_OPTIONAL",
     "INGEST_SCHEMA",
     "INPUT_BUNDLE",
     "INPUT_BUNDLE_MANIFEST",
     "INPUT_DATASET",
+    "INPUT_HISTORY",
     "INPUT_PLOTS",
     "INPUT_SCENARIO",
     "INPUT_SCHEMA",
     "INPUT_UPLOAD",
+    "MAX_PLOT_DATA_INPUTS",
+    "PLOT_DATA_INPUT_PREFIX",
+    "PRIOR_TRANSLATION_OUTPUT",
+    "RENDER_OUTPUT_PREFIX",
     "SCORE_INPUTS",
     "SCORE_OUTPUT",
     "SIDE_TABLE_PREFIX",
@@ -72,10 +84,13 @@ __all__ = [
     "Job",
     "MetricsSidecar",
     "MffOptions",
+    "PriorTranslationJob",
     "RenderJob",
     "ScoreJob",
     "parse_job",
     "parse_model_job_params",
+    "plot_data_input",
+    "render_output",
     "side_table_input",
 ]
 
@@ -85,12 +100,33 @@ INPUT_SCHEMA: Final = "schema"
 INPUT_SCENARIO: Final = "scenario"
 INPUT_BUNDLE_MANIFEST: Final = "bundle.manifest"
 INPUT_PLOTS: Final = "plots"
+INPUT_HISTORY: Final = "history"
+"""Score input (M3): the model's fit dataset, from which a forecast extends the covariates
+its payload lacks (``ScoreRequest.future_covariates``: ``carry_last``, ``seasonal_naive``)."""
 SIDE_TABLE_PREFIX: Final = "side."
+PLOT_DATA_INPUT_PREFIX: Final = "plotdata."
+"""``render`` runs: a ``data_ref`` dataset whose ``path`` is ``plotdata.<n>`` is read from the
+run input of the same name (the control plane pins the bundle object it points at)."""
+MAX_PLOT_DATA_INPUTS: Final = 64
+RENDER_OUTPUT_PREFIX: Final = "renders/"
+"""``render`` runs write ``renders/<plot id>.<format>``."""
 
 SCORE_INPUTS: Final = {"data": INPUT_DATASET, "scenario": INPUT_SCENARIO}
 """``ScoreRequest`` dataset fields → the input name the runner reads them from."""
 
 _SIDE_NAME = re.compile(r"^[a-z][a-z0-9_\-]{0,57}$")
+
+
+def plot_data_input(index: int) -> str:
+    """The run input (and ``data_ref`` path) of a render run's ``index``-th external dataset."""
+    if not 0 <= index < MAX_PLOT_DATA_INPUTS:
+        raise ValueError(f"a render run takes at most {MAX_PLOT_DATA_INPUTS} data inputs")
+    return f"{PLOT_DATA_INPUT_PREFIX}{index}"
+
+
+def render_output(plot_id: str, fmt: str) -> str:
+    """``renders/<plot id>.<format>``: the object a render run writes for one plot."""
+    return f"{RENDER_OUTPUT_PREFIX}{plot_id}.{fmt}"
 
 
 def side_table_input(name: str) -> str:
@@ -111,10 +147,13 @@ otherwise ingest infers a schema (every dim ``fixed``, every variable a ``covari
 # ------------------------------------------------------------------------------ output names
 INGEST_DATA: Final = "data.zarr.zip"
 INGEST_SCHEMA: Final = "schema.json"
-INGEST_OPTIONAL: Final = ("summary.json", "profile.json", "preview.json")
+INGEST_COLUMNS: Final = "columns.json"
+INGEST_OPTIONAL: Final = ("summary.json", "profile.json", "preview.json", INGEST_COLUMNS)
 DATASET_OUTPUTS: Final = (INGEST_DATA, INGEST_SCHEMA, *INGEST_OPTIONAL)
 """What an ingest run uploads: the data, its ``DataSchema``, its ``DataSummary`` (used for
-CoordPlan checks of score payloads), the profile and the UI preview."""
+CoordPlan checks of score payloads), the profile, the UI preview and (M3) ``columns.json``:
+one :class:`~mapi_spec.guided.ColumnProfile` per column of the uploaded table (for MFF
+uploads: per pivoted ``VariableName``), which Guided role detection reads."""
 
 FIT_BUNDLE: Final = "bundle.zarr.zip"
 FIT_SIDECARS: Final = ("diagnostics.json", "metrics.json", "plots.json", "coords.json")
@@ -129,33 +168,6 @@ SCORE_OUTPUT: Final = "score.zarr.zip"
 
 
 # ------------------------------------------------------------------------------------- jobs
-class MffOptions(StrictModel):
-    """The MFF ("model feature format") long-table preset.
-
-    One row per ``(period, geography, product, campaign, outlet, creative, variable)`` with
-    the value in ``value_column``. ``Period`` becomes the time dim; the other key columns
-    become dims only when they hold more than one distinct value; ``VariableName`` values
-    become data variables.
-    """
-
-    period_column: str = "Period"
-    variable_column: str = "VariableName"
-    value_column: str = "VariableValue"
-    key_columns: dict[str, str] = Field(
-        default_factory=lambda: {
-            "Geography": "geo",
-            "Product": "product",
-            "Campaign": "campaign",
-            "Outlet": "outlet",
-            "Creative": "creative",
-        },
-        description="Key column -> dim name",
-    )
-    time_dim: str = "date"
-    freq: str | None = Field(None, description="Pandas offset alias; inferred when omitted")
-    roles: dict[str, str] = Field(default_factory=dict, description="Variable -> role")
-    units: dict[str, str] = Field(default_factory=dict, description="Variable -> units")
-    missing: Literal["forbid", "allow", "mask"] = "allow"
 
 
 class IngestSource(StrictModel):
@@ -167,13 +179,34 @@ class IngestSource(StrictModel):
 
 
 class IngestJob(StrictModel):
-    """An ingest run: an explicit column mapping, or the MFF preset."""
+    """An ingest run: an explicit column mapping, or the MFF preset.
+
+    From M3 the mapping itself may name a preset (``mapping.preset``: ``mff``,
+    ``meridian`` or ``bayesinsight``, with its options in the mapping); the top-level
+    ``preset``/``mff`` pair stays for v0.2 callers.
+    """
 
     mapping: IngestMapping | None = None
     preset: Literal["mff"] | None = None
     mff: MffOptions = Field(default_factory=MffOptions)
     preview_rows: int = Field(50, ge=1, le=1000)
     max_rows: int = Field(50_000_000, ge=1)
+    max_columns: int = Field(
+        4096, ge=1, le=100_000, description="M3: columns of a tabular upload (MFF: variables)"
+    )
+    max_cell_chars: int = Field(
+        4096, ge=16, le=1_048_576, description="M3: characters in one text cell or header"
+    )
+    max_decompression_ratio: float = Field(
+        50.0,
+        gt=1,
+        le=10_000,
+        description="M3: uncompressed / stored bytes of a compressed upload (gzip CSV, "
+        "Parquet, zarr zip, netCDF)",
+    )
+    max_uncompressed_bytes: int = Field(
+        8 * 1024**3, ge=1, description="M3: uncompressed bytes of an upload, in any format"
+    )
     dataset: str | None = Field(
         None, max_length=512, description="dataset://project/name@vN being created (lineage)"
     )
@@ -227,14 +260,29 @@ class DeriveJob(StrictModel):
 
 
 class RenderJob(StrictModel):
-    """Render plots from a ``plots.json`` to static images."""
+    """Render plots from a ``plots.json`` to static images (``renders/<plot id>.<format>``).
+
+    ``pdf`` (M3) and an explicit ``width``/``height`` in CSS pixels (before ``scale``) are
+    for reports; Vega-Lite renders with vl-convert, Plotly with kaleido, in the sandbox.
+    """
 
     plots: list[str] | None = Field(None, description="Plot ids (default: all)")
-    format: Literal["png", "svg"] = "png"
+    format: Literal["png", "svg", "pdf"] = "png"
     scale: float = Field(2.0, gt=0, le=8)
+    width: int | None = Field(None, ge=16, le=4096)
+    height: int | None = Field(None, ge=16, le=4096)
 
 
-Job = IngestJob | DescribeJob | ModelSpec | ScoreJob | EvaluateJob | DeriveJob | RenderJob
+Job = (
+    IngestJob
+    | DescribeJob
+    | ModelSpec
+    | ScoreJob
+    | EvaluateJob
+    | DeriveJob
+    | RenderJob
+    | PriorTranslationJob
+)
 
 
 class MetricsSidecar(BaseModel):
@@ -314,6 +362,12 @@ def parse_job(kind: RunKind, spec: dict[str, Any]) -> Job:
             return DeriveJob.model_validate(spec)
         if kind is RunKind.RENDER:
             return RenderJob.model_validate(spec)
+        if kind is RunKind.TRANSLATE_PRIORS:
+            job = PriorTranslationJob.model_validate(spec)
+            doc = parse_document(dict(job.spec))
+            if not isinstance(doc, ModelSpec):
+                raise ValueError("expected a ModelSpec document")
+            return job
     except (ValidationError, ValueError) as exc:
         raise _invalid(kind, exc) from None
     except MapiError:

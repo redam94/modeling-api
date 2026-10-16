@@ -6,6 +6,27 @@ intervals (ETIs for draws and quantiles, the stored interval, normal intervals f
 moments); ``crps`` needs draws. ``elpd_loo``/``elpd_waic`` come from ArviZ on the fitted
 model's ``log_likelihood`` group when ArviZ is installed; otherwise they are skipped with a
 reason. Unknown or unsupported metrics are skipped, never silently zero.
+
+**Categorical targets** (M3, choice models): when the observed target holds labels (text)
+and the prediction carries one probability per category along a dim the target lacks
+(``y_hat(hh, trip, product)`` for ``y(hh, trip)``), the metrics are computed on the
+predicted probabilities (the mean over draws), per held-out cell with a label:
+
+==================  =========================================================================
+``accuracy``        hit rate: the most probable category is the observed one
+``accuracy_naive``  the hit rate of always guessing the holdout's most common label (a strict
+                    baseline: it knows the holdout's own frequencies)
+``accuracy_lift``   ``accuracy - accuracy_naive`` (positive: the model beats the guess)
+``log_score``       mean log probability of the observed label (higher is better;
+                    probabilities are floored at 1e-12)
+``brier``           mean multi-class Brier score ``sum_j (p_j - [j = y])^2`` (0 is perfect)
+==================  =========================================================================
+
+Labels are matched to categories exactly, else after lower-casing and collapsing every run
+of non-alphanumerics to ``_`` (``Coke Zero`` matches ``coke_zero``); a label matching no
+category counts as a miss with probability 0. Cells whose probabilities are all zero (no
+choice set, such as a trip that never happened) and empty labels do not count. Numeric
+metrics (``rmse``, ``mape``, ...) are skipped for categorical targets.
 """
 
 from __future__ import annotations
@@ -24,11 +45,29 @@ from mapi_spec.errors import CapabilityError
 
 from mapi_sdk.summarise import interp_quantile
 
-__all__ = ["MetricResult", "compute_metrics", "elpd", "point_estimate"]
+__all__ = [
+    "CATEGORICAL_METRICS",
+    "MetricResult",
+    "categorical_dim",
+    "compute_metrics",
+    "elpd",
+    "point_estimate",
+]
 
 _COVERAGE = re.compile(r"^(coverage|interval_width)_([1-9][0-9]?)$")
 MetricResult = tuple[dict[str, float | None], dict[str, str]]
 PARETO_K_THRESHOLD = 0.7
+CATEGORICAL_METRICS: tuple[str, ...] = (
+    "accuracy",
+    "accuracy_naive",
+    "accuracy_lift",
+    "log_score",
+    "brier",
+)
+"""Holdout metrics of categorical targets (see the module doc)."""
+_SAMPLE_DIMS = frozenset({"chain", "draw", "sample", "quantile", "bound", "moment"})
+_LOG_FLOOR = 1e-12
+_KEY = re.compile(r"[^a-z0-9]+")
 
 
 def point_estimate(da: xr.DataArray, rep: Representation) -> xr.DataArray:
@@ -84,6 +123,99 @@ def _crps_draws(da: xr.DataArray, obs: xr.DataArray) -> float:
     return float(np.nanmean(vals))
 
 
+def _is_text(da: xr.DataArray) -> bool:
+    return da.dtype.kind in "USO"
+
+
+def categorical_dim(pred: xr.DataArray, observed: xr.DataArray) -> str | None:
+    """The category dim of a probability prediction for a text target, else ``None``.
+
+    ``pred`` must carry every dim of ``observed`` plus exactly one more (besides sample
+    dims such as ``chain`` and ``draw``), and ``observed`` must hold labels.
+    """
+    if not _is_text(observed):
+        return None
+    extra = [str(d) for d in pred.dims if d not in observed.dims and str(d) not in _SAMPLE_DIMS]
+    if len(extra) != 1 or not set(map(str, observed.dims)) <= set(map(str, pred.dims)):
+        return None
+    return extra[0]
+
+
+def _label_key(label: Any) -> str:
+    return _KEY.sub("_", str(label).strip().lower()).strip("_")
+
+
+def _label_codes(obs: np.ndarray, categories: Sequence[Any]) -> np.ndarray:
+    """Category index per observed label (``-1`` when it matches none)."""
+    exact = {str(c): j for j, c in enumerate(categories)}
+    loose: dict[str, int] = {}
+    for j, c in enumerate(categories):
+        loose.setdefault(_label_key(c), j)
+    flat = obs.reshape(-1)
+    codes = np.full(flat.shape, -1, dtype=np.int64)
+    for i, value in enumerate(flat.tolist()):
+        text = str(value)
+        codes[i] = exact.get(text, loose.get(_label_key(text), -1))
+    return codes.reshape(obs.shape)
+
+
+def _categorical_metrics(
+    pred: xr.DataArray,
+    observed: xr.DataArray,
+    rep: Representation,
+    names: Sequence[str],
+    cat: str,
+    mask: xr.DataArray | None,
+) -> MetricResult:
+    values: dict[str, float | None] = {}
+    skipped: dict[str, str] = {}
+    wanted = [n for n in dict.fromkeys(names) if not n.startswith("elpd_")]
+    if rep not in (Representation.DRAWS, Representation.POINT):
+        reason = f"categorical metrics need probabilities, not {rep.value}"
+        return values, dict.fromkeys(wanted, reason)
+    prob = point_estimate(pred, rep)
+    valid = observed.notnull() & (observed.astype(str) != "")
+    if mask is not None:
+        valid = valid & mask.broadcast_like(observed).astype(bool)
+    prob, obs, valid = xr.align(prob, observed, valid, join="inner", exclude=[cat])
+    dims = [str(d) for d in obs.dims]
+    raw = np.asarray(prob.transpose(*dims, cat).values, dtype=np.float64)
+    p = np.where(np.isfinite(raw), np.clip(raw, 0.0, None), 0.0).reshape(-1, prob.sizes[cat])
+    total = p.sum(axis=1)
+    keep = np.asarray(valid.transpose(*dims).values, dtype=bool).reshape(-1) & (total > 0)
+    codes = _label_codes(np.asarray(obs.transpose(*dims).values), list(prob[cat].values))
+    codes = codes.reshape(-1)[keep]
+    p = p[keep] / total[keep, None]
+    n = int(keep.sum())
+    rows = np.arange(n)
+    hit = codes >= 0
+    p_obs = np.where(hit, p[rows, np.where(hit, codes, 0)], 0.0)
+    for name in wanted:
+        if name not in CATEGORICAL_METRICS:
+            skipped[name] = "not defined for a categorical target (use accuracy, log_score, brier)"
+            continue
+        if n == 0:
+            skipped[name] = "no holdout observations"
+            continue
+        accuracy = float(np.mean(np.argmax(p, axis=1) == codes))
+        counts = np.bincount(codes[hit], minlength=p.shape[1])
+        naive = float(counts.max() / n) if counts.size else 0.0
+        match name:
+            case "accuracy":
+                values[name] = accuracy
+            case "accuracy_naive":
+                values[name] = naive
+            case "accuracy_lift":
+                values[name] = accuracy - naive
+            case "log_score":
+                values[name] = float(np.mean(np.log(np.maximum(p_obs, _LOG_FLOOR))))
+            case _:  # brier
+                onehot = np.zeros_like(p)
+                onehot[rows[hit], codes[hit]] = 1.0
+                values[name] = float(np.mean(((p - onehot) ** 2).sum(axis=1)))
+    return values, skipped
+
+
 def compute_metrics(
     pred: xr.DataArray,
     observed: xr.DataArray,
@@ -95,8 +227,16 @@ def compute_metrics(
     """Holdout metrics of ``pred`` (representation-shaped) against ``observed``.
 
     ``mask`` (bool, broadcastable to ``observed``) restricts the cells that count.
-    Returns ``(values, skipped)`` where ``skipped`` maps metric -> reason.
+    Returns ``(values, skipped)`` where ``skipped`` maps metric -> reason. A probability
+    prediction for a categorical target (:func:`categorical_dim`) gets the categorical
+    metrics (see the module doc).
     """
+    cat = categorical_dim(pred, observed)
+    if cat is not None:
+        return _categorical_metrics(pred, observed, rep, names, cat, mask)
+    if _is_text(observed):
+        reason = "the target holds labels but the prediction has no category dim"
+        return {}, {n: reason for n in names if not n.startswith("elpd_")}
     values: dict[str, float | None] = {}
     skipped: dict[str, str] = {}
     obs = observed
@@ -137,6 +277,8 @@ def compute_metrics(
                     ss_res = float((err**2).sum())
                     ss_tot = float(((o - o.mean()) ** 2).sum())
                     values[name] = None if ss_tot == 0 else 1 - ss_res / ss_tot
+                case _ if name in CATEGORICAL_METRICS:
+                    skipped[name] = "defined for categorical targets only"
                 case "crps":
                     if rep is not Representation.DRAWS:
                         skipped[name] = "CRPS needs posterior draws"

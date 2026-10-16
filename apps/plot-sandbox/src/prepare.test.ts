@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { compile } from "vega-lite";
+
 import { deepMerge, preparePlotly, prepareVegaLite, resolvePlotlyRefs, SpecError } from "./prepare";
 import type { JsonObject } from "./protocol";
 import { contrast, DARK_VARIANTS, NON_TEXT_FILLS } from "./recipe-palette";
@@ -99,6 +101,30 @@ describe("recipe colours in dark mode", () => {
     expect(((out.layer as JsonObject[])[1]!.mark as JsonObject).color).toBe("#1B2333");
     const custom = prepareVegaLite({ mark: { type: "bar", color: "#123456" } }, {}, "dark");
     expect((custom.mark as JsonObject).color).toBe("#123456");
+  });
+
+  it("draws rule, text and tick marks without a colour of their own in the theme's ink", () => {
+    // Vega-Lite's own defaults are black: invisible on the dark card (the Guided beliefs
+    // preview's 90% line, the forecast's split line and its "Forecast starts" label).
+    const spec: JsonObject = {
+      data: { name: "contrib" },
+      layer: [
+        { mark: "bar", encoding: { x: { field: "value", type: "quantitative" }, y: { field: "channel", type: "nominal" } } },
+        { mark: "rule", encoding: { x: { field: "value", type: "quantitative" } } },
+        { mark: "tick", encoding: { x: { field: "value", type: "quantitative" }, y: { field: "channel", type: "nominal" } } },
+        { mark: "text", encoding: { x: { field: "value", type: "quantitative" }, text: { field: "channel" } } },
+      ],
+    };
+    for (const [theme, card] of [["dark", "#1b212d"], ["light", "#ffffff"]] as const) {
+      const vg = compile(prepareVegaLite(spec, datasets, theme) as never).spec as { marks: { name: string; encode: { update: Record<string, { value?: string }> } }[] };
+      const colour = (layer: number, channel: "stroke" | "fill") => vg.marks.find((m) => m.name === `layer_${layer}_marks`)?.encode.update[channel]?.value ?? "";
+      for (const [layer, channel] of [[1, "stroke"], [2, "fill"], [3, "fill"]] as const) expect(colour(layer, channel)).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(contrast(colour(1, "stroke"), card), `${theme} rule`).toBeGreaterThanOrEqual(3);
+      expect(contrast(colour(3, "fill"), card), `${theme} text`).toBeGreaterThanOrEqual(4.5);
+      // the median tick stands apart from the series colour of the bar it sits on
+      expect(contrast(colour(2, "fill"), card), `${theme} tick`).toBeGreaterThanOrEqual(3);
+      expect(colour(2, "fill")).not.toBe(colour(0, "fill"));
+    }
   });
 
   it("gives every dark variant at least 3:1 contrast on the dark card", () => {

@@ -50,6 +50,7 @@ def test_hierarchical_geo_manifest() -> None:
     caps = m.capabilities
     assert m.id == "mmm.hierarchical_geo" and m.version == "1.3.0"
     assert caps.decision and caps.fast_score and caps.contribution_scale == "additive"
+    assert set(caps.calibration) == {"business_priors", "lift_tests"}
     assert set(caps.score_modes) >= {"predict", "forecast", "counterfactual", "evaluate"}
     assert m.derived_names() == {"contributions", "response_curves", "marginal_cost"}
     assert all(d.cache == "fit" for d in m.derived)
@@ -104,6 +105,33 @@ def test_settings_validation() -> None:
     grid = HierarchicalGeoSettings().grid
     assert grid.multipliers()[0] == 0.0 and grid.multipliers()[-1] == 2.0
     assert len(grid.multipliers()) == grid.points
+
+
+@pytest.mark.parametrize(
+    ("max_multiplier", "points"), [(2.0, 21), (3.0, 21), (2.0, 20), (1.5, 11), (1.0, 3), (20, 201)]
+)
+def test_the_response_grid_always_holds_today_s_spend(max_multiplier: float, points: int) -> None:
+    """The what-if grid and the scorecard read the curves at multiplier 1 (the actual spend);
+    a grid whose step skips it lost its sliders and scored ROI at the wrong spend."""
+    from mapi_plugin_mmm.settings import GridSettings
+    from mapi_spec.views import MAX_GRID_POINTS
+
+    m = GridSettings(max_multiplier=max_multiplier, points=points).multipliers()
+    assert 1.0 in m and m == sorted(set(m)) and m[0] == 0.0 and m[-1] == max_multiplier
+    assert len(m) in (points, points + 1) and len(m) <= MAX_GRID_POINTS
+
+
+def test_a_grid_that_stops_below_today_s_spend_is_refused() -> None:
+    from mapi_plugin_mmm.settings import GridSettings
+
+    with pytest.raises(ValidationError):
+        GridSettings(max_multiplier=0.5)
+    issues = validate_settings(
+        HierarchicalGeoMMM.manifest().settings_schema,
+        {"grid": {"max_multiplier": 0.5}},
+        "/model/settings",
+    )
+    assert issues and all(i.code is ErrorCode.SETTINGS_INVALID for i in issues)
 
 
 def test_settings_schema_rejects_bad_priors_statically() -> None:
@@ -162,4 +190,5 @@ def test_plan_spec_validates_against_the_real_catalog(
 def test_entry_points_register_both_plugins() -> None:
     reg = default_registry(reload=True)
     refs = {f"{m.id}@{m.version}" for m in (e.manifest for e in reg.catalog().models)}
-    assert {"mmm.hierarchical_geo@1.3.0", "mmm.pymc_marketing@1.0.0"} <= refs
+    want = {"mmm.hierarchical_geo@1.3.0", "mmm.pymc_marketing@1.1.0", "mmm.bayesinsight@1.0.0"}
+    assert want <= refs

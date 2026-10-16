@@ -32,6 +32,7 @@ from jsonschema import Draft202012Validator
 from pydantic import Field, JsonValue
 
 from mapi_spec._types import RESERVED_STAGE, Scalar, StrictModel
+from mapi_spec.calibration import check_business_priors
 from mapi_spec.capabilities import (
     REPRESENTATION_RULES,
     Capabilities,
@@ -61,7 +62,7 @@ from mapi_spec.schema import (
     policy_is_at_least_as_tight,
     tighten_policy,
 )
-from mapi_spec.spec import Binding, ModelSpec, ScorePolicy, ScoreRequest
+from mapi_spec.spec import Binding, FutureCovariates, ModelSpec, ScorePolicy, ScoreRequest
 from mapi_spec.template import TemplateError
 
 __all__ = [
@@ -86,6 +87,7 @@ KNOWN_METRICS: tuple[re.Pattern[str], ...] = tuple(
         r"^coverage_[1-9][0-9]?$",
         r"^interval_width_[1-9][0-9]?$",
         r"^(mape|smape|wape|rmse|mae|mase|crps|r2|bias|log_score|accuracy|auc|brier)$",
+        r"^accuracy_(naive|lift)$",
     )
 )
 _UNCERTAINTY_METRICS = re.compile(r"^(coverage_|interval_width_|crps$|elpd_|log_score$)")
@@ -569,6 +571,7 @@ def validate_spec(spec: ModelSpec, catalog: Catalog, raw_schema: DataSchema) -> 
     resolved_model = _check_model(spec, catalog, stages[-1].schema, resolved_steps, issues)
     if resolved_model is not None:
         _check_owned(resolved_model.capabilities, owned_candidates, issues)
+        _check_calibration(spec, resolved_model.capabilities, issues)
 
     resolved: ResolvedSpec | None = None
     if not has_errors(issues) and resolved_model is not None and all(resolved_steps):
@@ -582,6 +585,30 @@ def validate_spec(spec: ModelSpec, catalog: Catalog, raw_schema: DataSchema) -> 
             model=resolved_model,
         )
     return SpecValidation(issues=issues, stages=stages, resolved=resolved)
+
+
+def _check_calibration(spec: ModelSpec, caps: Capabilities, issues: list[Issue]) -> None:
+    """The ``calibration`` block needs a model that declares what it carries (M3)."""
+    cal = spec.calibration
+    if cal is None:
+        return
+    if cal.business_priors is not None:
+        issues.extend(check_business_priors(cal.business_priors, "/calibration/business_priors"))
+    wanted: list[tuple[str, str, bool]] = [
+        ("business_priors", "/calibration/business_priors", cal.business_priors is not None),
+        ("lift_tests", "/calibration/lift_tests", bool(cal.lift_tests)),
+    ]
+    for kind, ptr, present in wanted:
+        if present and kind not in caps.calibration:
+            issues.append(
+                _issue(
+                    ErrorCode.CALIBRATION_UNSUPPORTED,
+                    ptr,
+                    f"model {spec.model.use.id!r} does not use {kind.replace('_', ' ')}",
+                    suggested_action="Remove this calibration data or choose a model that "
+                    "supports it.",
+                )
+            )
 
 
 def _check_split(
@@ -1167,7 +1194,11 @@ def validate_score_request(
     # future covariates ----------------------------------------------------------------
     supplied = {canon(v) for v in inputs.vars} if inputs is not None else set()
     extends = req.horizon is not None or any(v > 0 for v in extension.values())
-    if extends and stage_schema is not None:
+    if (
+        extends
+        and stage_schema is not None
+        and req.future_covariates in (None, FutureCovariates.SUPPLIED)
+    ):
         required = {n for n, v in stage_schema.vars.items() if v.future_required}
         if model_schema is not None:
             required |= {

@@ -26,6 +26,7 @@ from mapi_spec.errors import (
 )
 from mapi_spec.jobs import INPUT_DATASET, INPUT_SCENARIO, SCORE_INPUTS, side_table_input
 from mapi_spec.loader import check_limits, parse_document, parse_text, spec_hash
+from mapi_spec.quotas import max_score_draws
 from mapi_spec.refs import DatasetRef, EndpointRef, ModelVersionRef
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.schema import DataSchema
@@ -35,6 +36,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
+from mapi_server.services.calibration import check_spec_calibration
 from mapi_server.services.catalog import CatalogService, CatalogSnapshot
 from mapi_server.services.runs import Scope
 
@@ -48,6 +50,7 @@ __all__ = [
     "pin_document",
     "resolve_dataset",
     "resolve_model_version",
+    "score_draw_cap",
     "validate_document",
 ]
 
@@ -145,9 +148,26 @@ async def resolve_dataset(
 async def resolve_model_version(
     session: AsyncSession, scope: Scope, ref: ModelVersionRef | EndpointRef
 ) -> tuple[m.ModelVersion | None, str | None]:
-    if isinstance(ref, EndpointRef):
-        return None, "endpoint aliases arrive in v0.4 (M3); use model://project/name@vN"
+    """The model version a ref points at (an endpoint: the version it serves now), or
+    ``(None, reason)``."""
     if ref.project != scope.project_id:
+        return None, f"project {ref.project!r} does not exist"
+    if isinstance(ref, EndpointRef):
+        endpoint = (
+            await session.execute(
+                select(m.Endpoint).where(
+                    m.Endpoint.tenant_id == scope.tenant_id,
+                    m.Endpoint.project_id == scope.project_id,
+                    m.Endpoint.alias == ref.alias,
+                )
+            )
+        ).scalar_one_or_none()
+        if endpoint is None:
+            return None, f"endpoint {ref.alias!r} does not exist"
+        served = await session.get(m.ModelVersion, endpoint.model_version_id)
+        if served is None:
+            return None, f"endpoint {ref.alias!r} serves no model version"
+        return served, None
         return None, f"project {ref.project!r} does not exist"
     model = (
         await session.execute(
@@ -279,6 +299,8 @@ async def _validate_model_spec(
         return
     result = validate_spec(spec, snapshot.catalog, DataSchema.model_validate(dv.data_schema))
     out.issues.extend(result.issues)
+    if spec.calibration is not None and dv.summary:
+        out.issues.extend(check_spec_calibration(spec, DataSummary.model_validate(dv.summary)))
     split = result.resolved.split_stage if result.resolved else None
     out.stages = [(st.name, st.schema, st.name == split) for st in result.stages]
     out.resolved = result.resolved
@@ -295,14 +317,27 @@ async def _validate_score(
     await check_score_request(session, scope, req, mv, out.issues)
 
 
+async def score_draw_cap(session: AsyncSession, scope: Scope) -> int:
+    """How many draws a score request of this tenant may return (plan Q2, per tier)."""
+    tier = (
+        await session.execute(select(m.Tenant.trust_tier).where(m.Tenant.id == scope.tenant_id))
+    ).scalar_one_or_none()
+    return max_score_draws(tier)
+
+
 async def check_score_request(
     session: AsyncSession,
     scope: Scope,
     req: ScoreRequest,
     mv: m.ModelVersion,
     issues: list[Issue],
+    *,
+    inline: DataSummary | None = None,
 ) -> dict[str, m.DatasetVersion]:
-    """CoordPlan checks from metadata + resolution of the request's dataset refs."""
+    """CoordPlan checks from metadata + resolution of the request's dataset refs.
+
+    ``inline`` summarises a payload sent inline (endpoint score calls with XrJSON data):
+    it is used when the request names no dataset for ``data``/``scenario``."""
     datasets: dict[str, m.DatasetVersion] = {}
     for name, ref in (("data", req.data), ("scenario", req.scenario)):
         if ref is None:
@@ -329,10 +364,21 @@ async def check_score_request(
         return datasets
     meta = ScoreMetadata.model_validate(mv.score_meta)
     payload = datasets.get(INPUT_SCENARIO) or datasets.get(INPUT_DATASET)
-    summary = None
+    summary = inline
     if payload is not None and payload.summary is not None:
         summary = DataSummary.model_validate(payload.summary)
-    issues.extend(validate_score_request(req, meta, summary))
+    cap = await score_draw_cap(session, scope)
+    issues.extend(validate_score_request(req, meta, summary, max_draws=cap))
+    if req.data is None and req.scenario is None and req.horizon is None and inline is None:
+        # the sandbox would fail the run with the same message; say it before a run starts
+        issues.append(
+            _issue(
+                ErrorCode.SCHEMA_INVALID,
+                "/data",
+                "the score request has no data; give data or a scenario dataset, or a "
+                "forecast horizon",
+            )
+        )
     return datasets
 
 

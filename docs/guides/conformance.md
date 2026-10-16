@@ -78,6 +78,8 @@ The contract kit does not run in this mode; it needs the plugin in-process.
 | `sklearn_store_demand` | `sklearn.tabular_conformal` | the same panel with plain scikit-learn (histogram boosting, skops): split-conformal intervals, interval aggregation refused, pooled new stores |
 | `e33` | `mmm.hierarchical_geo` | FX (`supplied`) and holiday (`pinned`) side tables, split after `resample`, per-market lag context, new market from the hyperprior, weekly EUR plan via `inputs_stage`, CRN counterfactual (intervention and baseline-vs-scenario), derived quantities in EUR |
 | `pymc_marketing` | `mmm.pymc_marketing` | a model that `owns` scaling, carry-over and units; a scoring window equals the same weeks of the full series |
+| `e84_lite` | `choice.multinomial_logit` | a ragged household × trip panel with a text target, `last_per_group` split, products off the shelf, new households from the fitted spread, a price-rise counterfactual, next trips, categorical holdout metrics (hit rate against the naive guess, log score, Brier) |
+| `guided_mmm` | `mmm.hierarchical_geo` | the `geo_mmm` Guided template's draft with business priors (ROI, contribution share, baseline share) translated at fit time and a lift test in the likelihood, both true to the simulation; ROI, baseline share and lift checked against the truth; a forecast and the channel-off preset |
 
 ### Deferred
 
@@ -88,7 +90,6 @@ plan's list, the fixtures and the deferrals in step:
 | Plan fixture | Waits for |
 |---|---|
 | E13 state-space | a state-space plugin with the `filter` mode (vetted plugins, M4) |
-| E84-lite choice panel | a discrete-choice plugin (M4) |
 | E82-slim GP Bayesian optimisation | the `recommend` mode and Campaign runs (M6) |
 | E45 | a plugin for its model (vetted plugins, M4) |
 

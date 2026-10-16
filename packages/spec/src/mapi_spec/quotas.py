@@ -44,6 +44,7 @@ __all__ = [
     "DEFAULT_TIER_LIMITS",
     "GLOBAL_SUBJECT",
     "JOBS_RUN_PER_MINUTE",
+    "MAX_SCORE_DRAWS",
     "PRIORITY_WEIGHTS",
     "LeaseCandidate",
     "LimitName",
@@ -59,6 +60,7 @@ __all__ = [
     "backoff_seconds",
     "default_priority",
     "evaluate_quota",
+    "max_score_draws",
     "plan_leases",
     "policy_for_token",
     "quota_status",
@@ -100,13 +102,20 @@ PRIORITY_WEIGHTS: Final[dict[PriorityClass, float]] = {
 tenant's running batch work counts four times as heavily against its next interactive run."""
 
 _INTERACTIVE_KINDS = frozenset(
-    {RunKind.SCORE, RunKind.RENDER, RunKind.DERIVE, RunKind.VALIDATE, RunKind.DESCRIBE}
+    {
+        RunKind.SCORE,
+        RunKind.RENDER,
+        RunKind.DERIVE,
+        RunKind.VALIDATE,
+        RunKind.DESCRIBE,
+        RunKind.TRANSLATE_PRIORS,  # M3: a guided user waits for it while drafting
+    }
 )
 
 
 def default_priority(kind: RunKind | str) -> PriorityClass:
-    """Interactive for short, user-facing kinds (score, render, derive, validate, describe);
-    batch for fits, ingest, evaluate, optimise and fan-out parents."""
+    """Interactive for short, user-facing kinds (score, render, derive, validate, describe,
+    translate_priors); batch for fits, ingest, evaluate, optimise and fan-out parents."""
     return PriorityClass.INTERACTIVE if RunKind(kind) in _INTERACTIVE_KINDS else PriorityClass.BATCH
 
 
@@ -175,6 +184,27 @@ DEFAULT_TIER_LIMITS: Final[dict[TrustTier, QuotaLimits]] = {
     TrustTier.SELF_HOSTED_TRUSTED: QuotaLimits(),
 }
 """Tenant limits when no tenant policy overrides them (free tier: class S only, plan Q6)."""
+
+MAX_SCORE_DRAWS: Final[dict[TrustTier, int]] = {
+    TrustTier.PUBLIC: 300,
+    TrustTier.VERIFIED: 500,
+    TrustTier.INTERNAL: 500,
+    TrustTier.SELF_HOSTED_TRUSTED: 500,
+}
+"""Draws a score request may return (``output.draws``), per tier (plan Q2: 300, 500 on
+paid tiers). The server refuses more with ``QUOTA_EXCEEDED`` and stamps the cap on the
+score job (``ScoreJob.max_draws``), which the runner enforces again."""
+
+
+def max_score_draws(tier: TrustTier | str | None) -> int:
+    """The draw cap of a tenant's tier (the free tier's when it is unknown)."""
+    if tier is None:
+        return MAX_SCORE_DRAWS[TrustTier.PUBLIC]
+    try:
+        return MAX_SCORE_DRAWS[TrustTier(tier)]
+    except ValueError:
+        return MAX_SCORE_DRAWS[TrustTier.PUBLIC]
+
 
 DEFAULT_GLOBAL_LIMITS: Final = QuotaLimits(concurrent_runs=700)
 """70% of Cloud Run's 1,000 running executions per project and region (plan §8.8)."""

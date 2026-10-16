@@ -161,7 +161,7 @@ PLAN_CORPUS = {
     "C08": "c08",
     "E24": "e24",
     "E13": None,
-    "E84-lite": None,
+    "E84-lite": "e84_lite",
     "E82-slim": None,
     "E45": None,
     "pymc-marketing": "pymc_marketing",

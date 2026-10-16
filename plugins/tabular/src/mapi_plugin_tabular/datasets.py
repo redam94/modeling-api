@@ -4,7 +4,9 @@
   home (``home`` dim), ``county_idx`` indexing ``county``, a floor indicator and the
   county-level log uranium;
 * :func:`store_demand_dataset` - the plan §6.2 store x sku x week panel (units sold, price
-  with gaps, promotions).
+  with gaps, promotions);
+* :func:`choice_panel_dataset` - a ragged household x trip soda choice panel (E84-lite) for
+  ``choice.multinomial_logit``.
 """
 
 from __future__ import annotations
@@ -17,11 +19,15 @@ import xarray as xr
 from mapi_spec.schema import DataSchema
 
 __all__ = [
+    "CHOICE_SCHEMA",
+    "CHOICE_SPEC_YAML",
+    "CHOICE_TRUTH",
     "RADON_SCHEMA",
     "RADON_SPEC_YAML",
     "RADON_TRUTH",
     "STORE_DEMAND_SCHEMA",
     "STORE_DEMAND_SPEC_YAML",
+    "choice_panel_dataset",
     "radon_dataset",
     "store_demand_dataset",
 ]
@@ -232,5 +238,105 @@ def store_demand_dataset(
             "store_id": [f"s{i}" for i in range(stores)],
             "sku": [f"k{j}" for j in range(skus)],
             "week": week,
+        },
+    )
+
+
+# ================================================================================ choice
+
+CHOICE_TRUTH: dict[str, Any] = {
+    "asc": {"cola": 0.0, "fizz": -0.3, "store": -0.8},
+    "price": -1.6,
+    "promo": 0.9,
+    "household_sd": 0.7,
+}
+"""Generating parameters of :func:`choice_panel_dataset`."""
+
+CHOICE_SCHEMA = DataSchema.model_validate(
+    {
+        "dims": {
+            "household": {
+                "kind": "categorical",
+                "policy": "new_levels",
+                "new_level_strategy": "hyperprior",
+            },
+            "trip": {"kind": "index", "policy": "extend"},
+            "product": {"kind": "categorical"},
+        },
+        "vars": {
+            "brand": {"dims": ["household", "trip"], "dtype": "str", "role": "target",
+                      "missing": "allow"},
+            "price": {"dims": ["household", "trip", "product"], "dtype": "float64",
+                      "role": "covariate", "missing": "allow", "units": "EUR"},
+            "promo": {"dims": ["household", "trip", "product"], "dtype": "float64",
+                      "role": "covariate", "missing": "allow"},
+        },
+    }
+)  # fmt: skip
+
+CHOICE_SPEC_YAML = """
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: soda-choice, project: retail, labels: {family: choice}}
+data:
+  dataset: dataset://retail/soda_trips@latest
+  bind:
+    dims: {hh: household, trip: trip, product: product}
+    vars: {y: brand}
+  split: {kind: last_per_group, dim: trip, within: [hh], last: 1, min_len: 3}
+model:
+  use: choice.multinomial_logit@^1
+  settings: {random_effects: [hh]}
+  fit: {mode: evaluate_then_refit, draws: 20, seed: 5}
+execution: {resource_class: S, timeout: 10m}
+"""
+
+
+def choice_panel_dataset(
+    *,
+    households: int = 40,
+    max_trips: int = 8,
+    min_trips: int = 4,
+    products: tuple[str, ...] = ("cola", "fizz", "store"),
+    seed: int = 0,
+) -> xr.Dataset:
+    """A ragged household x trip soda panel: ``brand`` chosen (text; '' where a household
+    made fewer trips), ``price`` and ``promo`` per product, from :data:`CHOICE_TRUTH`
+    (unknown products get intercept 0). The last product is off the shelf on some trips
+    (``NaN`` price): it is not available then."""
+    rng = np.random.default_rng(seed)
+    nj = len(products)
+    asc = np.array([CHOICE_TRUTH["asc"].get(p, 0.0) for p in products])
+    u = rng.normal(0.0, CHOICE_TRUTH["household_sd"], (households, nj))
+    u[:, 0] = 0.0
+    base = np.linspace(1.0, 2.0, nj)
+    price = base * np.exp(rng.normal(0.0, 0.15, (households, max_trips, nj)))
+    promo = (rng.uniform(size=(households, max_trips, nj)) < 0.2).astype(float)
+    util = (
+        asc
+        + CHOICE_TRUTH["price"] * price
+        + CHOICE_TRUTH["promo"] * promo
+        + u[:, None, :]
+        + rng.gumbel(size=(households, max_trips, nj))
+    )
+    off = rng.uniform(size=(households, max_trips)) < 0.1
+    util[..., nj - 1] = np.where(off, -np.inf, util[..., nj - 1])
+    choice = np.asarray(products, dtype=object)[np.argmax(util, axis=-1)]
+    trips = rng.integers(min_trips, max_trips + 1, households)
+    absent = np.arange(max_trips)[None, :] >= trips[:, None]
+    brand = np.where(absent, "", choice).astype(str)
+    price_obs = np.where(absent[..., None], np.nan, price)
+    price_obs[..., nj - 1] = np.where(off | absent, np.nan, price_obs[..., nj - 1])
+    promo_obs = np.where(np.isnan(price_obs), np.nan, promo)
+    return xr.Dataset(
+        {
+            "brand": (("household", "trip"), brand),
+            "price": (("household", "trip", "product"), price_obs, {"units": "EUR"}),
+            "promo": (("household", "trip", "product"), promo_obs),
+        },
+        coords={
+            "household": [f"h{i:03d}" for i in range(households)],
+            "trip": np.arange(1, max_trips + 1, dtype=np.int64),
+            "product": list(products),
         },
     )

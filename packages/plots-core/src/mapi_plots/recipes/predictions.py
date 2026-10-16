@@ -88,6 +88,14 @@ class Bands:
     source: Literal["draws", "summary"]
     temporal: bool
     cells: list[str] = field(default_factory=list)  # dims kept per cell (summaries only)
+    observed_var: str | None = None  # the dataset's name for what ``var`` predicts
+
+    @property
+    def label(self) -> str:
+        """What readers call the predicted quantity: the observed variable's name (the
+        dataset's target, e.g. ``revenue``) when there is one, not the model output's
+        (``y_hat``)."""
+        return self.observed_var or self.var
 
 
 def _x_values(da: xr.DataArray, dim: str) -> np.ndarray:
@@ -174,7 +182,9 @@ def band_frame(
         summed = []
     obs_ds = inp.find(*obs_groups)
     obs_name = observed_name(obs_ds, v, observed_var)
+    observed_as: str | None = None
     if obs_ds is not None and obs_name is not None:
+        observed_as = obs_name
         o = obs_ds[obs_name]
         o_other = [d for d in o.dims if d not in (*keep, *cells)]
         if o_other:
@@ -194,7 +204,7 @@ def band_frame(
     order = ["x", "group", *(["cell"] if cells else []), *cols]
     frame = frame[order]
     temporal = t in da.coords and np.issubdtype(da[t].dtype, np.datetime64)
-    return Bands(frame, v, t, f, summed, source, temporal, cells)
+    return Bands(frame, v, t, f, summed, source, temporal, cells, observed_as)
 
 
 def _split_point(inp: RecipeInput, bands: Bands, requested: Any) -> Any:
@@ -278,7 +288,7 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
         layers.append(
             base.mark_area(opacity=0.15 + 0.15 * i, color=BAND).encode(
                 x=_xenc(b, title=b.x_dim),
-                y=alt.Y(f"{lo_c}:Q", title=b.var, scale=alt.Scale(zero=False)),
+                y=alt.Y(f"{lo_c}:Q", title=b.label, scale=alt.Scale(zero=False)),
                 y2=f"{hi_c}:Q",
             )
         )
@@ -306,7 +316,7 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
             "group",
             frame["group"].astype(str),
             columns=s.columns,
-            title=b.facet,
+            title=inp.dim_label(b.facet),
             independent_y=True,
         )
     else:
@@ -320,7 +330,7 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
         else f"; the shaded bands are the {lv_txt} intervals"
     )
     caption = (
-        f"The line is the model's {s.point} estimate of {b.var}{bands_txt}"
+        f"The line is the model's {s.point} estimate of {b.label}{bands_txt}"
         + ("; dots are the actual values" if "observed" in frame else "")
         + "."
     )
@@ -400,9 +410,9 @@ def fit_vs_actual(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
         alt.Chart(named("points"))
         .mark_circle(size=28, opacity=0.7)
         .encode(
-            x=alt.X("observed:Q", title=f"actual {b.var}"),
-            y=alt.Y("point:Q", title=f"predicted {b.var}"),
-            color=alt.Color("group:N", title=b.facet or ""),
+            x=alt.X("observed:Q", title=f"actual {b.label}"),
+            y=alt.Y("point:Q", title=f"predicted {b.label}"),
+            color=alt.Color("group:N", title=inp.dim_label(b.facet) if b.facet else ""),
             tooltip=[_xtip(b), "group:N", *_cell_tip(b), "observed:Q", "point:Q"],
         )
     )
@@ -420,7 +430,7 @@ def fit_vs_actual(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
         float((resid[nz].abs() / f.loc[nz, "observed"].abs()).mean()) if nz.any() else float("nan")
     )
     caption = (
-        f"Each dot compares an actual value of {b.var} with the model's prediction; dots on the "
+        f"Each dot compares an actual value of {b.label} with the model's prediction; dots on the "
         f"dashed line are perfect predictions. The model explains {pct(r2)} of the variation "
         f"(R² = {r2:.2f})"
         + (f" with a typical error of {pct(mape)} (MAPE)." if np.isfinite(mape) else ".")
@@ -445,8 +455,8 @@ def residuals_over_time(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
         base.mark_rule(color=REFERENCE).encode(y=alt.datum(0)),
         base.mark_line(point=True, strokeWidth=1, opacity=0.6 if b.cells else 1.0).encode(
             x=_xenc(b, title=b.x_dim),
-            y=alt.Y("residual:Q", title=f"actual − predicted {b.var}"),
-            color=alt.Color("group:N", title=b.facet or ""),
+            y=alt.Y("residual:Q", title=f"actual − predicted {b.label}"),
+            color=alt.Color("group:N", title=inp.dim_label(b.facet) if b.facet else ""),
             tooltip=[_xtip(b), "group:N", *_cell_tip(b), "residual:Q"],
             **({"detail": alt.Detail("cell:N")} if b.cells else {}),
         ),
@@ -454,7 +464,7 @@ def residuals_over_time(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
     ).properties(width=s.width, height=s.height)
     bias = float(f["residual"].mean())
     scale = float(f["observed"].abs().mean()) or 1.0
-    caption = f"Residuals are actual minus predicted {b.var}; they should hover around zero."
+    caption = f"Residuals are actual minus predicted {b.label}; they should hover around zero."
     if abs(bias) > 0.05 * scale:
         direction = "under" if bias > 0 else "over"
         caption += f" On average the model {direction}-predicts by {fmt(abs(bias))}."

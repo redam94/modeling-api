@@ -47,14 +47,25 @@ from mapi_pymc.context import BuildContext
 from mapi_pymc.engines import ENGINES
 from mapi_pymc.frozen import FrozenPredictorSpec
 from mapi_pymc.model import PyMCModel
-from mapi_sdk.models import FitContext, FitOutput, Fitted, ScoreContext
+from mapi_sdk.models import FitContext, FitOutput, Fitted, PriorTranslation, ScoreContext
+from mapi_spec.calibration import PriorTranslationJob
 from mapi_spec.capabilities import Capabilities, Representation, ResourceHint
-from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.errors import ErrorCode, MapiError, Severity
 from mapi_spec.resources import ResourceClass
 from mapi_spec.spec import FitConfig
 
+from mapi_plugin_mmm.calibration import (
+    LIFT_DIM,
+    LIFT_VAR,
+    LiftDesign,
+    lift_design,
+    model_scales,
+    prior_preview,
+    translate_business_priors,
+)
 from mapi_plugin_mmm.derived import (
     ChannelCurves,
+    baseline_cube,
     contributions_dataset,
     draw_samples,
     marginal_cost_dataset,
@@ -112,6 +123,8 @@ SCHEMA_TEMPLATE: dict[str, Any] = {
 }
 
 _MODES = frozenset({"predict", "forecast", "counterfactual", "evaluate", "simulate"})
+_TRANSLATION_SOLVE_DRAWS = 1000
+"""Monte Carlo draws of the other priors when solving a business-prior translation."""
 
 
 def _vector(var: Any, n: int) -> Any:
@@ -136,6 +149,7 @@ class HierarchicalGeoMMM(PyMCModel[HierarchicalGeoSettings]):
         identified_quantities=["y_hat", "contributions"],
         deterministic_given_seed=False,
         checkpointable=True,
+        calibration=frozenset({"business_priors", "lift_tests"}),
     )
     schema_template = SCHEMA_TEMPLATE
     outputs: ClassVar[dict[str, Any]] = {
@@ -202,6 +216,10 @@ class HierarchicalGeoMMM(PyMCModel[HierarchicalGeoSettings]):
     pad_extend = False
     default_engine = "nutpie"
     fast_score_spec = FrozenPredictorSpec(response_exprs={"y_hat": "mu"}, input_vars=[SPEND])
+    prior_overlap_vars = ("beta_channel", "alpha", "theta", "lam", "slope", "half")
+    """Media parameters whose prior/posterior overlap the scorecard reports."""
+    _lift: LiftDesign | None = None
+    """The lift-test cells of the fit in progress (set by :meth:`fit` around the build)."""
 
     # ------------------------------------------------------------------ build
     def build(self, ds: xr.Dataset, s: HierarchicalGeoSettings, ctx: BuildContext) -> pm.Model:
@@ -225,19 +243,23 @@ class HierarchicalGeoMMM(PyMCModel[HierarchicalGeoSettings]):
         coords["component"] = comps
         if not design.empty:
             coords["control_feature"] = design.features
+        lift = self._lift if ctx.is_fit else None
+        if lift is not None:
+            coords[LIFT_DIM] = lift.ids
         n_ch, n_time = x.shape[1], x.shape[2]
         with pm.Model(coords=coords) as model:
             xd = ctx.data(SPEND, x, dims=[GEO, CHANNEL, TIME, lag_dim])
             weights = self._adstock(s, priors, n_ch, n_lag)  # (channel, lag)
             adstocked = (xd * weights[None, :, None, :]).sum(axis=-1)
-            sat_params = {
-                p: _vector(build_prior(p, priors[p], dims=[CHANNEL], coords=coords), n_ch)[
-                    None, :, None
-                ]
+            sat_vectors = {
+                p: _vector(build_prior(p, priors[p], dims=[CHANNEL], coords=coords), n_ch)
                 for p in saturation_params(s.saturation.kind)
             }
+            sat_params = {p: v[None, :, None] for p, v in sat_vectors.items()}
             response = saturate(adstocked, s.saturation.kind, xp=pt, **sat_params)
             beta = self._channel_effects(s, priors, ctx, coords, n_ch)  # (geo, channel)
+            if lift is not None:
+                _lift_likelihood(lift, weights, sat_vectors, beta, s)
             channel = pm.Deterministic(
                 "channel_contribution", beta[:, :, None] * response, dims=[GEO, CHANNEL, TIME]
             )
@@ -355,7 +377,18 @@ class HierarchicalGeoMMM(PyMCModel[HierarchicalGeoSettings]):
     def fit(
         self, ds: xr.Dataset, s: HierarchicalGeoSettings, cfg: FitConfig, ctx: FitContext
     ) -> FitOutput:
-        out = super().fit(ds, s, cfg, ctx)
+        calibration: dict[str, Any] = {}
+        s, self._lift = self._calibrate(ds, s, cfg, ctx, calibration)
+        try:
+            out = super().fit(ds, s, cfg, ctx)
+        finally:
+            self._lift = None
+        if calibration:
+            out.learned["calibration"] = calibration
+            ll = out.groups.get("log_likelihood")
+            if ll is not None and LIFT_VAR in ll:
+                # elpd covers the KPI; the lift tests are calibration data
+                out.groups["log_likelihood"] = ll.drop_vars(LIFT_VAR)
         post = out.groups["posterior"]
         # time-indexed deterministics are recomputed at score time; keeping every draw of
         # them would dominate the bundle size
@@ -364,6 +397,86 @@ class HierarchicalGeoMMM(PyMCModel[HierarchicalGeoSettings]):
         out.learned["dropped_deterministics"] = list(sorted(heavy))
         out.learned["controls"] = list(control_vars(ds, s.controls))
         return out
+
+    # ------------------------------------------------------------------ calibration
+    def _calibrate(
+        self,
+        ds: xr.Dataset,
+        s: HierarchicalGeoSettings,
+        cfg: FitConfig,
+        ctx: FitContext,
+        record: dict[str, Any],
+    ) -> tuple[HierarchicalGeoSettings, LiftDesign | None]:
+        """Apply the spec's calibration block: translate business priors that no
+        ``translate_priors`` run translated yet, and build the lift-test design."""
+        cal = ctx.calibration
+        if cal is None or cal.empty:
+            return s, None
+        scales = model_scales(ds, s, ctx.to_original)
+        if cal.business_priors is not None and cal.prior_translation_run is None:
+            seed = cfg.seed if cfg.seed is not None else ctx.seed
+            outcome = translate_business_priors(
+                cal.business_priors,
+                scales,
+                s,
+                ds,
+                draws=_TRANSLATION_SOLVE_DRAWS,
+                seed=seed,
+                pointer="/calibration/business_priors",
+            )
+            errors = [i for i in outcome.issues if i.severity is Severity.ERROR]
+            if errors:
+                raise MapiError(
+                    errors[0].message,
+                    code=ErrorCode.BUSINESS_PRIORS_INVALID,
+                    pointer=errors[0].pointer,
+                    issues=errors,
+                )
+            s = _with_priors(s, outcome.priors)
+            record["translated_priors"] = outcome.priors
+        lift = None
+        if cal.lift_tests:
+            lift = lift_design(cal.lift_tests, scales, log=ctx.info)
+            record["lift_tests"] = {
+                "used": [] if lift is None else list(lift.ids),
+                "skipped": [] if lift is None else list(lift.skipped),
+            }
+        return s, lift
+
+    def translate_priors(
+        self,
+        ds: xr.Dataset,
+        s: HierarchicalGeoSettings,
+        job: PriorTranslationJob,
+        ctx: FitContext,
+    ) -> PriorTranslation:
+        """Business priors to ``beta_channel``/``intercept`` priors with a prior-predictive
+        preview in business units (:mod:`mapi_plugin_mmm.calibration`)."""
+        seed = job.seed if job.seed is not None else ctx.seed
+        scales = model_scales(ds, s, ctx.to_original)
+        ctx.progress(0.1, "solving for model-space priors")
+        outcome = translate_business_priors(
+            job.business_priors,
+            scales,
+            s,
+            ds,
+            draws=max(_TRANSLATION_SOLVE_DRAWS, job.draws),
+            seed=seed,
+        )
+        ctx.check_cancelled()
+        ctx.progress(0.6, "sampling the prior predictive")
+        result, preview = prior_preview(
+            outcome,
+            scales,
+            s,
+            ds,
+            draws=job.draws,
+            seed=seed + 1,
+            quantiles=job.quantiles,
+            lift_tests=job.lift_tests,
+        )
+        ctx.progress(1.0, "priors translated")
+        return PriorTranslation(result=result, preview=preview)
 
     # ------------------------------------------------------------------ derived
     def _curves(
@@ -391,7 +504,9 @@ class HierarchicalGeoMMM(PyMCModel[HierarchicalGeoSettings]):
             design = control_design(ds, controls)
             return contributions_dataset(curves, post, controls, design, to_original)
         if name == "response_curves":
-            return response_curves_dataset(curves, s.grid, to_original)
+            design = control_design(ds, control_vars(ds, s.controls))
+            base = baseline_cube(curves, post, design)
+            return response_curves_dataset(curves, s.grid, to_original, baseline=base)
         if name == "marginal_cost":
             return marginal_cost_dataset(curves, s.grid, to_original)
         raise MapiError(
@@ -536,8 +651,8 @@ class HierarchicalGeoMMM(PyMCModel[HierarchicalGeoSettings]):
     ) -> np.ndarray:
         """``(geo, channel)`` share of each channel's fit-window spend by geo."""
         rc = fitted.derived.get("response_curves")
-        if units == "original" and rc is not None:
-            by_geo = rc["spend_by_geo"].sel(multiplier=1.0, method="nearest")
+        if units == "original" and rc is not None and 1.0 in rc["multiplier"].values:
+            by_geo = rc["spend_by_geo"].sel(multiplier=1.0)
             tot = np.asarray(by_geo.sel({GEO: geos, CHANNEL: channels}).transpose(GEO, CHANNEL))
         else:
             data = fitted.groups.get("constant_data")
@@ -556,3 +671,34 @@ class HierarchicalGeoMMM(PyMCModel[HierarchicalGeoSettings]):
         col = tot.sum(axis=0, keepdims=True)
         even = np.full_like(tot, 1.0 / max(geos.size, 1))
         return np.where(col > 0, tot / np.where(col > 0, col, 1.0), even)
+
+
+def _with_priors(s: HierarchicalGeoSettings, priors: dict[str, Any]) -> HierarchicalGeoSettings:
+    """``s`` with prior overrides replaced by ``priors`` (translated keys win)."""
+    raw = s.model_dump(mode="json", exclude_none=True)
+    raw["priors"] = {**raw.get("priors", {}), **priors}
+    return HierarchicalGeoSettings.model_validate(raw)
+
+
+def _lift_likelihood(
+    lift: LiftDesign,
+    weights: Any,
+    sat_vectors: dict[str, Any],
+    beta: Any,
+    s: HierarchicalGeoSettings,
+) -> None:
+    """``kpi_delta ~ Normal(model lift, se)`` per lift test (see
+    :mod:`mapi_plugin_mmm.calibration`); the model lift is kept as
+    ``lift_tests__model(lift_test)``."""
+    channel = lift.channel
+    w = weights[channel]  # (cell, lag)
+    a0 = (pt.as_tensor_variable(lift.x) * w).sum(axis=1)
+    a1 = (pt.as_tensor_variable(lift.x + lift.dx) * w).sum(axis=1)
+    params = {p: v[channel] for p, v in sat_vectors.items()}
+    kind = s.saturation.kind
+    gain = saturate(a1, kind, xp=pt, **params) - saturate(a0, kind, xp=pt, **params)
+    cell = pt.as_tensor_variable(lift.target_scale) * beta[lift.geo, channel] * gain
+    modelled = pm.Deterministic(
+        f"{LIFT_VAR}__model", pt.dot(pt.as_tensor_variable(lift.segments()), cell), dims=LIFT_DIM
+    )
+    pm.Normal(LIFT_VAR, mu=modelled, sigma=lift.sigma, observed=lift.observed, dims=LIFT_DIM)

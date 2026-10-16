@@ -1,8 +1,9 @@
 # @mapi/web
 
 The modeling-api web app: Expert mode (v0.2), the multi-tenant workspace (v0.3: sign-in, tenant
-and project switcher, API tokens, members, usage and cost, operator console) and the Guided-mode
-shell (task flows land in v0.4). React 19, TypeScript (strict), Vite, TanStack Router/Query/Table, Zustand for UI-only
+and project switcher, API tokens, members, usage and cost, operator console), and in v0.4 Guided mode
+(the task flow for analysts), the Integrations hub and the trust pages (endpoints, snippets, webhooks,
+share links, sign-up, Settings > Data). React 19, TypeScript (strict), Vite, TanStack Router/Query/Table, Zustand for UI-only
 state, Tailwind v4 with shadcn/ui (new-york, neutral) components, Monaco + monaco-yaml, Apache
 Arrow JS and lucide icons.
 
@@ -21,6 +22,8 @@ pnpm --filter @mapi/web e2e               # @e2e specs against a running local s
 | `VITE_PLOTS_ORIGIN` | `http://127.0.0.1:5174` | Origin of `apps/plot-sandbox`; must differ from the app origin. |
 | `VITE_STORAGE_ORIGINS` | `http://127.0.0.1:4443` | Origins of signed storage URLs (CSP `connect-src`), comma separated. |
 | `VITE_AUTH_BASE` | `VITE_API_BASE` | Where the backend-for-frontend `/auth/*` routes live, when not on the API base. |
+| `VITE_TERMS_URL` | `/terms` | The terms of service sign-up links to (`http(s)` URL or same-origin path). |
+| `VITE_ACCEPTABLE_USE_URL` | `/acceptable-use` | The acceptable-use policy sign-up links to. |
 
 The Playwright smoke suite serves on 5173/5174. If those ports are taken (a running `make dev`),
 use others: `MAPI_SMOKE_WEB_PORT=5293 MAPI_SMOKE_PLOTS_PORT=5294 pnpm --filter @mapi/web test:smoke`.
@@ -50,6 +53,29 @@ use others: `MAPI_SMOKE_WEB_PORT=5293 MAPI_SMOKE_PLOTS_PORT=5294 pnpm --filter @
 In mock mode (`dev:mock`, the smoke suite) the identity provider is a page in the app
 (`/auth/login`, `src/mocks/dev-idp.tsx`, never in production builds) offering three personas:
 Ana (organisation admin and platform operator, the default), Rui (runner) and Vic (viewer).
+
+## Guided mode (v0.4)
+
+`src/routes/guided.tsx` and `src/features/guided/` implement the task flow of plan §11: templates,
+the question flow, business priors and lift tests, the fit, the report and scorecard, what-if
+sliders, forecasts and sharing. The user guide is `docs/guides/guided-tutorial.md`.
+
+- **Sessions are specs.** `POST /v1/guided/drafts` stores nothing; the draft becomes a spec when
+  the data is uploaded (its `metadata.labels.guided` names the template), and every later step
+  writes a revision whose message starts with `Guided:`. Each step is a URL
+  (`/guided/<spec>/<step>`) rebuilt from server state: the spec, its dataset, the spec's fit runs
+  (`GET /v1/runs?kind=fit&spec_id=…`) and the model version the latest fit produced. Only the
+  answers of a session that has not uploaded yet live in `sessionStorage`.
+- **Local profiling.** `features/guided/profile.ts` reads the head of the file (8 MB), pivots MFF
+  long tables, recognises Meridian tables and sends `ColumnProfile`s only.
+- **What-if.** `features/guided/whatif.ts` ports `mapi_spec.whatif.evaluate_scenario`;
+  `whatif.test.ts` replays `packages/spec/tests/snapshots/whatif_golden.json`.
+- **Persona.** The Guided/Expert choice is stored per user id (`stores/ui.ts`, `personas`);
+  `Project.guided_locked` hides the toggle and the Expert navigation for members below admin.
+- **Mocks.** `src/mocks/guided.ts` answers every Guided call in mock mode and the smoke suite
+  (the templates in `guided-templates.gen.json` come from `mapi_spec.guided`:
+  `uv run python apps/web/scripts/gen_guided_fixtures.py [--check]`). A project can be locked
+  in mock mode with `localStorage["mapi.mock.guidedLocked"] = "acme/growth"`.
 
 ## API client
 

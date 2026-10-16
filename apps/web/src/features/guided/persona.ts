@@ -1,0 +1,80 @@
+/**
+ * Guided or Expert (plan §11 "One shell, two modes"): the header toggle is remembered per user
+ * (a self-service workspace starts in Guided), and a project admin can lock a project to Guided mode (`Project.guided_locked`). In a locked
+ * project, members below admin see Guided screens only and no Expert toggle; the API still
+ * enforces what they may store.
+ */
+import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect } from "react";
+
+import { atLeast } from "@/api/access";
+import { api, unwrap } from "@/api/client";
+import { qk } from "@/api/queries";
+import type { TrustTier } from "@/api/types";
+import { useWorkspace } from "@/features/auth/workspace";
+import { personaOf, useUi, type Persona } from "@/stores/ui";
+
+/**
+ * The project's details (persona lock), from the tenant's project list. Kept out of the Guided
+ * API module: the shell runs this on every page.
+ */
+function useProjectInfo(tenantId: string | null | undefined, projectId: string | null | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: qk.tenantProjects(tenantId ?? ""),
+    queryFn: ({ signal }) =>
+      unwrap(api.GET("/v1/tenants/{tenant_id}/projects", { params: { path: { tenant_id: tenantId ?? "" }, query: { limit: 200 } }, signal })),
+    enabled: enabled && Boolean(tenantId && projectId),
+    staleTime: 60_000,
+    select: (page) => page.items.find((p) => p.id === projectId) ?? null,
+  });
+}
+
+export interface GuidedLock {
+  /** The project is locked to Guided mode. */
+  projectLocked: boolean;
+  /** …and the lock applies to this user (below project admin). */
+  locked: boolean;
+}
+
+export function useGuidedLock(): GuidedLock {
+  const ws = useWorkspace();
+  const current = ws.current;
+  const info = useProjectInfo(current?.tenant.id, current?.project.project_id, ws.mode === "session");
+  const projectLocked = Boolean(info.data?.guided_locked);
+  return { projectLocked, locked: projectLocked && !atLeast(current?.role, "admin") };
+}
+
+/**
+ * The persona of someone who has not chosen one yet: Guided in a self-service (`public` tier)
+ * workspace, whose people sign up to answer business questions; Expert elsewhere and for
+ * platform operators.
+ */
+export function defaultPersona(trustTier: TrustTier | null | undefined, operator: boolean): Persona {
+  return trustTier === "public" && !operator ? "guided" : "expert";
+}
+
+/** The persona the shell shows: the user's choice, or Guided when the lock applies. */
+export function useEffectivePersona(): Persona {
+  const ws = useWorkspace();
+  const fallback = defaultPersona(ws.current?.tenant.trust_tier, ws.operator);
+  const persona = useUi((s) => personaOf(s, ws.user.id, fallback));
+  const lock = useGuidedLock();
+  return lock.locked ? "guided" : persona;
+}
+
+export function useSetPersona(): (p: Persona) => void {
+  const ws = useWorkspace();
+  const set = useUi((s) => s.setPersona);
+  return useCallback((p: Persona) => set(p, ws.user.id), [set, ws.user.id]);
+}
+
+/** Opening a Guided screen chooses Guided mode (so the header toggle tells the truth). */
+export function useEnterGuided(): void {
+  const persona = useEffectivePersona();
+  const setPersona = useSetPersona();
+  useEffect(() => {
+    if (persona !== "guided") setPersona("guided");
+    // Only on arrival: switching to Expert from here navigates away.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}

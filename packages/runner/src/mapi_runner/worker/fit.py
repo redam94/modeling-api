@@ -3,10 +3,10 @@
 Outputs (relative to the attempt prefix)::
 
     bundle.zarr.zip  bundle.manifest.json  diagnostics.json  plots.json  metrics.json
-    coords.json
+    coords.json  scorecard.json (M3: the sanity scorecard, mapi_spec.scorecard.Scorecard)
     evaluation/{bundle.zarr.zip, manifest.json, diagnostics.json, plots.json, metrics.json}
     ui/{thin.zarr.zip, summaries.json, tree_index.json, preprocess.json, grids/*.arrow,
-        plotdata/*.arrow}
+        grids/response_curves.json (M3: the what-if grid view), plotdata/*.arrow}
 
 The SDK names the bundle's own manifest ``manifest.json``; at the top level that name is the
 runner's output manifest, so it is uploaded as ``bundle.manifest.json``.
@@ -24,7 +24,9 @@ from mapi_sdk.harness import fit_spec, score_bundle
 from mapi_sdk.schema import summarize_coords
 from mapi_spec.capabilities import REPRESENTATION_RULES
 from mapi_spec.run import RunnerPhase
+from mapi_spec.scorecard import SCORECARD_OUTPUT
 from mapi_spec.spec import AsOfSplit, ModelSpec, ScoreRequest, TimeHoldoutSplit
+from mapi_spec.views import RESPONSE_GRID_VIEW
 
 from mapi_runner.jobs import BUNDLE_MANIFEST_OUTPUT
 from mapi_runner.worker.checkpoints import RunCheckpointSink
@@ -35,10 +37,12 @@ from mapi_runner.worker.data import (
     load_side_tables,
     supplied_side_tables,
 )
+from mapi_runner.worker.guided import check_lift_tests, response_grid_view
 from mapi_runner.worker.plots import render_for
+from mapi_runner.worker.scorecard import fit_scorecard
 from mapi_runner.worker.views import externalize_plot_data, write_ui_views
 
-__all__ = ["FIT_COORDS", "run_fit", "write_fit_coords"]
+__all__ = ["FIT_COORDS", "run_fit", "write_fit_coords", "write_guided_views"]
 
 FIT_COORDS = "coords.json"
 
@@ -48,6 +52,7 @@ def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
     data = load_dataset(ctx)
     schema = load_raw_schema(ctx, data)
     tables = load_side_tables(ctx)
+    check_lift_tests(spec, data)
     sink: RunCheckpointSink | None = None
     if ctx.start.checkpointing:
         sink = RunCheckpointSink(ctx)
@@ -74,6 +79,7 @@ def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
     write_bundle(ctx, bundle)
     write_fit_coords(ctx, bundle)
     write_ui_views(ctx, bundle)
+    write_guided_views(ctx, bundle, data)
     for diagnostic in bundle.diagnostics[:200]:
         ctx.diagnostic(diagnostic)
     for name, value in sorted(bundle.metrics.values.items()):
@@ -81,6 +87,23 @@ def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
             ctx.metric(name, float(value))
     ctx.progress(1.0, "fit complete", force=True)
     return bundle
+
+
+def write_guided_views(ctx: WorkerContext, bundle: Bundle, data: xr.Dataset) -> None:
+    """``scorecard.json`` and, for models with response curves, the what-if grid view."""
+    card = fit_scorecard(bundle, data)
+    ctx.write_json(SCORECARD_OUTPUT, card.model_dump(mode="json", exclude_none=True))
+    try:
+        grid = response_grid_view(bundle)
+    except ValueError as exc:  # the view contract refused it (never fail a fit on a view)
+        ctx.warning(
+            "VIEW_INVALID",
+            "the what-if grid was not written: it does not meet the view contract",
+            str(exc)[:8000],
+        )
+        grid = None
+    if grid is not None:
+        ctx.write_json(RESPONSE_GRID_VIEW, grid.model_dump(mode="json", exclude_none=True))
 
 
 def write_bundle(ctx: WorkerContext, bundle: Bundle) -> None:
@@ -151,7 +174,7 @@ def _evaluation_tree(
         request["side_tables"] = supplied
     metrics = [m for m in spec.evaluate.metrics if not m.startswith("elpd_")] or ["rmse"]
     try:
-        return score_bundle(
+        tree = score_bundle(
             target,
             ScoreRequest.model_validate(request),
             payload,
@@ -167,3 +190,8 @@ def _evaluation_tree(
             untrusted_text=f"{type(exc).__name__}: {exc}"[:8000],
         )
         return None
+    if isinstance(tree, xr.DataTree) and "binding" not in tree.children:
+        # canonical names in, so plots can title panels with the dataset's own names
+        binding = target.resolved.binding.model_dump_json()
+        tree["binding"] = xr.DataTree(xr.Dataset(attrs={"json": binding}))
+    return tree

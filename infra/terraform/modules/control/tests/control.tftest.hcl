@@ -245,6 +245,169 @@ run "with_load_balancer" {
   }
 }
 
+run "cloud_armor_on_every_backend" {
+  command = apply
+
+  variables {
+    domains = { web = "app.example.com", plots = "plots.example.net" }
+  }
+
+  assert {
+    condition = alltrue([
+      for k, b in google_compute_backend_service.run : b.security_policy == google_compute_security_policy.edge[0].self_link
+    ]) && length(google_compute_backend_service.run) == 3
+    error_message = "The Cloud Armor policy is attached to the api, web and plots backends."
+  }
+
+  assert {
+    condition = toset([
+      for r in google_compute_security_policy.edge[0].rule : r.match[0].expr[0].expression
+      if r.priority >= 1000 && r.priority < 2000
+      ]) == toset([
+      for w in ["sqli", "xss", "lfi", "rce", "scannerdetection"] :
+      "evaluatePreconfiguredWaf('${w}-v33-stable', {'sensitivity': 1})"
+    ])
+    error_message = "The OWASP CRS rules sqli, xss, lfi, rce and scanner detection are configured."
+  }
+
+  assert {
+    condition = alltrue([
+      for r in google_compute_security_policy.edge[0].rule : r.preview && r.action == "deny(403)"
+      if r.priority >= 1000 && r.priority < 2000
+    ])
+    error_message = "The OWASP rules start in preview (logged, not blocking)."
+  }
+
+  assert {
+    condition = length([
+      for r in google_compute_security_policy.edge[0].rule : r
+      if r.action == "rate_based_ban" && !r.preview && r.rate_limit_options[0].enforce_on_key == "IP"
+    ]) == 4
+    error_message = "Sign-up, /auth/*, embeds and endpoint scoring have enforced per-IP rate bans."
+  }
+
+  assert {
+    condition = anytrue([
+      for r in google_compute_security_policy.edge[0].rule :
+      strcontains(r.match[0].expr[0].expression, "/auth/signup") && r.rate_limit_options[0].rate_limit_threshold[0].count == 10
+      if r.action == "rate_based_ban"
+    ])
+    error_message = "Sign-up is limited to 10 requests per IP and minute by default."
+  }
+
+  assert {
+    condition     = google_compute_security_policy.edge[0].adaptive_protection_config[0].layer_7_ddos_defense_config[0].enable
+    error_message = "Adaptive Protection is on by default."
+  }
+
+  assert {
+    condition     = google_compute_security_policy.edge[0].advanced_options_config[0].json_parsing == "STANDARD"
+    error_message = "JSON bodies are parsed, so the WAF rules see field values (fewer false positives)."
+  }
+
+  assert {
+    condition     = output.security_policy == google_compute_security_policy.edge[0].self_link
+    error_message = "The policy is exported."
+  }
+}
+
+run "cloud_armor_enforce_and_trusted_ranges" {
+  command = apply
+
+  variables {
+    domains = { web = "app.example.com", plots = "plots.example.net" }
+    cloud_armor = {
+      waf_mode            = "enforce"
+      waf_sensitivity     = 2
+      adaptive_protection = false
+      trusted_ip_ranges   = ["203.0.113.0/24"]
+      rate_limits         = { signup_per_minute = 3 }
+    }
+  }
+
+  assert {
+    condition = alltrue([
+      for r in google_compute_security_policy.edge[0].rule : !r.preview
+      if r.priority >= 1000 && r.priority < 2000
+    ])
+    error_message = "waf_mode = enforce blocks OWASP matches."
+  }
+
+  assert {
+    condition = [
+      for r in google_compute_security_policy.edge[0].rule : [r.action, toset(r.match[0].config[0].src_ip_ranges)]
+      if r.priority == 100
+    ] == [["allow", toset(["203.0.113.0/24"])]]
+    error_message = "Trusted ranges are allowed before every other rule."
+  }
+
+  assert {
+    condition     = !google_compute_security_policy.edge[0].adaptive_protection_config[0].layer_7_ddos_defense_config[0].enable
+    error_message = "Adaptive Protection can be turned off."
+  }
+}
+
+run "a_supplied_policy_replaces_the_module_one" {
+  command = apply
+
+  variables {
+    domains         = { web = "app.example.com", plots = "plots.example.net" }
+    security_policy = "projects/acme-test-control/global/securityPolicies/custom"
+  }
+
+  assert {
+    condition     = length(google_compute_security_policy.edge) == 0
+    error_message = "No module policy when one is supplied."
+  }
+
+  assert {
+    condition     = google_compute_backend_service.run["api"].security_policy == "projects/acme-test-control/global/securityPolicies/custom"
+    error_message = "The supplied policy is attached."
+  }
+}
+
+run "no_cloud_armor_without_a_load_balancer" {
+  command = plan
+
+  assert {
+    condition     = length(google_compute_security_policy.edge) == 0
+    error_message = "Cloud Armor needs the load balancer."
+  }
+}
+
+run "cloud_armor_modes_are_checked" {
+  command = plan
+
+  variables {
+    cloud_armor = { waf_mode = "block" }
+  }
+
+  expect_failures = [var.cloud_armor]
+}
+
+run "cloud_armor_never_trusts_everyone" {
+  command = plan
+
+  variables {
+    cloud_armor = { trusted_ip_ranges = ["*"] }
+  }
+
+  expect_failures = [var.cloud_armor]
+}
+
+run "logs_expire_after_the_configured_retention" {
+  command = plan
+
+  variables {
+    log_retention_days = 14
+  }
+
+  assert {
+    condition     = google_logging_project_bucket_config.default.retention_days == 14 && google_logging_project_bucket_config.default.bucket_id == "_Default"
+    error_message = "The control project's _Default log bucket keeps logs log_retention_days days (tenant deletion does not purge logs)."
+  }
+}
+
 run "plot_sandbox_needs_its_own_host" {
   command = plan
 

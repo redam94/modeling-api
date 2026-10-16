@@ -89,6 +89,9 @@ class RunKind(StrEnum):
     BACKTEST = "backtest"
     SBC = "sbc"
     CAMPAIGN = "campaign"
+    TRANSLATE_PRIORS = "translate_priors"
+    """M3: business priors → model-space priors plus a prior-predictive preview in business
+    units (sandboxed; :class:`mapi_spec.calibration.PriorTranslationJob`)."""
 
     @property
     def is_parent(self) -> bool:

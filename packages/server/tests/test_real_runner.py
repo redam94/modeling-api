@@ -79,6 +79,50 @@ async def _catalog(client: httpx.AsyncClient, timeout: float) -> dict[str, Any]:
     raise AssertionError("the describe run did not produce a catalog in time")
 
 
+async def _render_and_embed(
+    client: httpx.AsyncClient, model_id: str, plots: list[dict[str, Any]]
+) -> None:
+    """Save a recipe plot of the fit, render it to PNG in the real sandbox runner and share
+    it: the embed view inlines its data and links the PNG fallback rendered for the link."""
+    pytest.importorskip("vl_convert", reason="vl-convert-python is not installed")
+    recipe = next(p for p in plots if p["kind"] == "vega-lite" and p.get("recipe"))
+    source = {"model_id": model_id, "version": 1, "plot_id": recipe["id"]}
+    saved = await client.post("/v1/plots", json={"title": recipe["title"], "source": source})
+    assert saved.status_code == 201, saved.text
+    assert saved.json()["embeddable"], saved.json()
+    plot_id = saved.json()["id"]
+    r = await client.post(
+        "/v1/plots:render",
+        json={"saved_plot_id": plot_id, "format": "png", "scale": 1},
+        headers={"Prefer": "wait=60"},
+    )
+    assert r.status_code in (200, 202), r.text
+    render = await _wait(client, r.json()["run"]["id"], 300)
+    assert render["state"] == "succeeded", render
+    done = (await client.get(f"/v1/plots/renders/{render['id']}")).json()
+    assert [o["name"] for o in done["outputs"]] == [f"renders/{recipe['id']}.png"]
+    async with httpx.AsyncClient() as http:
+        png = await http.get(done["outputs"][0]["url"])
+    assert png.status_code == 200 and png.content.startswith(b"\x89PNG\r\n\x1a\n")
+
+    created = await client.post(f"/v1/plots/{plot_id}/embeds", json={"expires_in_days": 1})
+    assert created.status_code == 201, created.text
+    token = created.json()["token"]
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + 300
+    view: dict[str, Any] = {}
+    while loop.time() < deadline:  # the PNG fallback is rendered by its own run
+        view = (await client.get(f"/v1/embeds/{token}")).json()
+        if view.get("image_url"):
+            break
+        await asyncio.sleep(1)
+    assert view.get("image_url"), view
+    assert all(d["kind"] == "inline_arrow" for d in view["plot"]["datasets"].values())
+    async with httpx.AsyncClient() as http:
+        fallback = await http.get(view["image_url"])
+    assert fallback.status_code == 200 and fallback.content.startswith(b"\x89PNG")
+
+
 async def test_ingest_fit_score_with_the_real_runner_and_shim(
     client: httpx.AsyncClient, ctx: ServerContext
 ) -> None:
@@ -185,13 +229,20 @@ async def test_ingest_fit_score_with_the_real_runner_and_shim(
         )
         assert replay.status_code == 200 and replay.json()["done"], replay.text
         outputs = {o["name"] for o in replay.json()["outputs"]}
-        assert "score.zarr.zip" in outputs
+        assert {"score.zarr.zip", "summary.json"} <= outputs
+        # the numbers inline: one table per output, coordinates then statistics
+        tables = replay.json()["summary"]["tables"]
+        assert [t["columns"][-3:] for t in tables] == [["median", "q10", "q90"]]  # quantiles
+        assert tables[0]["rows"] and isinstance(tables[0]["rows"][0][-1], float)
 
         # ----------------------------------------- evaluate (defaults to the fit dataset)
         ev = await client.post(f"/v1/models/{model_id}/versions/1:evaluate", json={"params": {}})
         assert ev.status_code == 202, ev.text
         evaluated = await _wait(client, ev.json()["id"], 300)
         assert evaluated["state"] == "succeeded", evaluated
+
+        # ---------------------------- static rendering and an embed link (M3, vl-convert)
+        await _render_and_embed(client, model_id, plots["items"])
     finally:
         orch.stop.set()
         await asyncio.wait_for(task, 60)

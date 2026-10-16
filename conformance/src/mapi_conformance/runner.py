@@ -830,7 +830,9 @@ def _evaluate(
         values = json.loads(tree.attrs["metrics"])["values"]
         for k, v in values.items():
             report.metrics.setdefault(k, v)
-        if bundle.evaluation is not None:
+        if bundle.evaluation is not None and where == "holdout":
+            # (a split the runner cannot rebuild - last_per_group - is scored in sample,
+            # which is not the fit-time holdout)
             for k, v in values.items():
                 want = bundle.metrics.values.get(k)
                 if want is not None and v is not None and not np.isclose(want, v, rtol=1e-6):

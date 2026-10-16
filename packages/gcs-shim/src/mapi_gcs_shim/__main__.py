@@ -22,6 +22,7 @@ from urllib.parse import urlsplit
 from mapi_spec.localdev import GCS_SHIM_PORT, LOCALHOST, LocalDev
 
 from mapi_gcs_shim.config import (
+    WRITE_ONCE_RETENTION_SECONDS,
     ShimCredentials,
     default_root,
     init_root,
@@ -30,6 +31,22 @@ from mapi_gcs_shim.config import (
 )
 
 _COMMANDS = ("serve", "init", "key")
+BUNDLE_RETENTION_ENV = "MAPI_BUNDLE_RETENTION_DAYS"
+
+
+def bundle_retention_seconds(days: int | None) -> int | None:
+    """The bundles bucket's locked retention for ``--bundle-retention-days``: write-once when
+    unset, ``days`` (the deployed bucket's period) when positive, none at ``0``."""
+    if days is None:
+        return WRITE_ONCE_RETENTION_SECONDS
+    if days < 0:
+        raise ValueError("--bundle-retention-days must be 0 or more")
+    return days * 86400 or None
+
+
+def _env_days() -> int | None:
+    raw = os.environ.get(BUNDLE_RETENTION_ENV, "").strip()
+    return int(raw) if raw else None
 
 
 def _defaults() -> tuple[LocalDev, str, int]:
@@ -62,6 +79,15 @@ def _parser() -> argparse.ArgumentParser:
         )
         sp.add_argument(
             "--env", default=local.env, help="environment for default bucket names (mapi-{env}-*)"
+        )
+        sp.add_argument(
+            "--bundle-retention-days",
+            type=int,
+            default=_env_days(),
+            metavar="DAYS",
+            help="locked retention of the bundles bucket when the root is created (default: "
+            f"${BUNDLE_RETENTION_ENV}, else write-once; 0: no retention). An existing root "
+            "keeps its policy.",
         )
 
     serve = sub.add_parser("serve", help="run the HTTP server (default command)")
@@ -115,7 +141,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(args_list)
 
     if args.command == "init":
-        cfg = init_root(args.root, env=args.env)
+        cfg = init_root(
+            args.root,
+            env=args.env,
+            bundle_retention_seconds=bundle_retention_seconds(args.bundle_retention_days),
+        )
         paths = write_key_files(args.root, cfg, endpoint=args.endpoint)
         for principal, path in sorted(paths.items()):
             print(f"{principal}: {path}")
@@ -163,6 +193,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         on_ready=ready,
         cors_origins=origins,
         allowed_hosts=hosts,
+        bundle_retention_seconds=bundle_retention_seconds(args.bundle_retention_days),
     )
     return 0
 

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Database, FileCode2, Library, Plus } from "lucide-react";
+import { Database, FileCode2, Library, Plus, Sparkles } from "lucide-react";
 
 import { useModels, useReady, useRuns } from "@/api/queries";
 import type { Run } from "@/api/types";
@@ -154,6 +154,10 @@ export function HomePage() {
             <CardTitle>Start something</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-2">
+            <Link to="/guided" className="flex items-start gap-3 rounded-md p-2 hover:bg-accent/60">
+              <Sparkles className="mt-0.5 size-4 text-primary" />
+              <span><span className="font-medium">Start a guided analysis</span><span className="block text-muted-foreground">Answer questions in business terms: a marketing mix, a forecast, demand or customer choice.</span></span>
+            </Link>
             <Link to="/build/new" className="flex items-start gap-3 rounded-md p-2 hover:bg-accent/60">
               <FileCode2 className="mt-0.5 size-4 text-primary" />
               <span><span className="font-medium">Write a spec</span><span className="block text-muted-foreground">Starts from the geo MMM template with live validation.</span></span>

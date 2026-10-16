@@ -66,6 +66,9 @@ module "stack" {
     }
     kms               = { protection_level = "HSM" }
     metrics_collector = { image = var.metrics_collector_image }
+    # Cloud Armor: start in preview, read the logs, then set cloud_armor_waf_mode = "enforce"
+    cloud_armor        = { waf_mode = var.cloud_armor_waf_mode }
+    log_retention_days = 30
   }
   oidc_client_secret = var.oidc_client_secret
 

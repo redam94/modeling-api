@@ -2,7 +2,7 @@
 description: What modeling-api protects against, which controls each executor isolation level enforces, the threat model in plain terms, and what is verified, what is not yet, and what comes later.
 ---
 
-# Security model <span class="mapi-badge">v0.3</span>
+# Security model <span class="mapi-badge">v0.4</span>
 
 modeling-api is built to run **models and data from people it does not trust**, from many
 organisations on one deployment. Every control that does not need a cloud is in the code and
@@ -38,7 +38,7 @@ covered by tests on every change; **[verify M0]** means the control is built but
 cloud behaviour not yet confirmed against a real Cloud Run Jobs execution (see
 [the checklist](../operations/gcp-deployment.md#before-you-start-the-verify-m0-checklist)).
 
-| If someone tries to… | What stops them | In v0.3 |
+| If someone tries to… | What stops them | In v0.4 |
 |---|---|---|
 | Break out of the sandbox into the machine | A fresh microVM per run; the model code runs as its own non-root user with `no_new_privs`, on a read-only root filesystem | Built for Cloud Run Jobs; the uid split there is **[verify M0]**. Local executors are not boundaries |
 | Steal the run's credentials | Nothing secret in the environment or arguments; the run's instructions are read from a one-time object and deleted before model code starts; the only credential can get and delete that object, nothing else | **Enforced** (locally the storage emulator enforces the same permissions) |
@@ -53,7 +53,12 @@ cloud behaviour not yet confirmed against a real Cloud Run Jobs execution (see
 | Run script in your browser through a plot | A sanitizer, then a sandboxed iframe on another origin with a strict CSP | **Enforced** |
 | Hijack the runner with a malicious package | The supervisor runs in its own environment (`python -I -S`); package uploads are checked for `.pth` and `sitecustomize` | Supervisor isolation **enforced**; uploaded packages arrive with the overlay pipeline (v0.5) |
 | Slip something into the supply chain | Hash-locked Python, digest-pinned images, a frozen JavaScript lockfile without install scripts, keyless CI identities | **Enforced** in the builds; signed-image enforcement (Binary Authorization) comes with public code upload |
-| Abuse webhooks or the MCP server | Address checks and signed payloads; curated tools with delimited untrusted text | Not applicable yet: webhooks arrive in v0.4, MCP later |
+| Turn a webhook against your network (SSRF) | Static URL checks, one DNS resolution with every address checked, a connection pinned to the checked address, no redirects, time and size caps; private, loopback and link-local addresses and odd ports refused | **Enforced** (to public hosts covered by unit tests; the development allow-list is refused in the `multi-tenant` profile) |
+| Forge or replay a webhook delivery to your receiver | An HMAC-SHA256 signature over a timestamp and the raw body under a per-webhook secret shown once and stored sealed; receivers refuse stale timestamps; envelopes carry ids and states, never data, links or secrets | **Enforced** (`mapi_client.webhooks.verify`) |
+| Use an embed link to see more than one chart | A tokenised link to one saved plot of a platform recipe, stored as a keyed hash; the public view reads no credential, inlines only that plot's data, is rate-limited per link and per address, and stops on revocation or expiry | **Enforced** |
+| Sign up many workspaces to farm free compute | E-mail verification, disposable domains refused, per-address, per-domain and platform-wide sign-up limits, Sybil flags reviewed by operators; `public` workspaces run built-ins and declarative specs only (cut line A), and only on executors that enforce egress and DNS | **Enforced**; vendor identity verification and a public run on such an executor await a deployment |
+| Keep a tenant's data after it leaves | Tenant deletion purges every table and object prefix after a grace period and notifies by signed webhook; a GDPR export with credentials redacted | **Enforced**; only the pseudonymised audit log and the cost ledger are retained |
+| Misuse the MCP server | Curated tools with delimited untrusted text | Not applicable yet: the MCP server comes in v0.5 |
 
 The probes that check these rows as hostile code, executor by executor, are the
 [security suite](../operations/security-suite.md).
@@ -170,7 +175,7 @@ escape sequences before printing.
 - This documentation site's OpenAPI explorer loads a vendored, hash-pinned Redoc bundle; it
   makes no request outside the site.
 
-## Known gaps in v0.3
+## Known gaps in v0.4
 
 - **Cloud behaviours not yet verified.** Everything marked [verify M0] above, chiefly that the
   DNS response policy applies to Cloud Run Jobs. Until it is confirmed, the executor declares
@@ -184,6 +189,14 @@ escape sequences before printing.
   Placement by trust tier is enforced regardless.
 - **Identity Platform's own tokens** are not accepted by the browser sign-in yet; use Google
   or another OpenID provider ([Authentication](../guides/authentication.md#identity-platform)).
+- **Public workspaces need an enforcing executor.** Sign-up creates `public` workspaces, which
+  run only on `docker-gvisor` or on Cloud Run Jobs once its DNS enforcement is verified; a
+  deployment with neither cannot run their work. Neither ran in the M3
+  verification ([what remains](../operations/m3-verification.md#what-remains-unverified)).
+- **Identity verification has no vendor integration yet**: operators verify tenants by hand
+  (audited), behind the `IdentityVerifier` protocol.
+- **Webhook deliveries to the internet** were exercised only through the development
+  allow-list; the SSRF policy for public hosts is covered by unit tests.
 - The API's built-in `/docs` and `/redoc` pages (FastAPI's defaults) load Swagger UI and Redoc
   from a public CDN. Use the [OpenAPI explorer](../reference/openapi.md) or `/openapi.json`
   instead.
@@ -195,7 +208,9 @@ escape sequences before printing.
 
 ## What comes next
 
-[Public code upload](../roadmap/index.md#after-v04) (tenants uploading their own plugins) comes
+Plugin upload for allow-listed teams comes in [v0.5](../roadmap/expert-plugins.md), built into
+hash-pinned overlays and checked by the contract kit on upload.
+[Public code upload](../roadmap/index.md#after-v05) (every tenant uploading their own plugins) comes
 only after a dedicated overlay build pipeline with a curated package mirror, a separate
 execution project for public tenants, Binary Authorization on base images, abuse controls
 (verification before any code runs), a rehearsed kill-switch drill and an external penetration

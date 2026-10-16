@@ -322,3 +322,11 @@ def test_backoff() -> None:
     assert backoff_seconds(3, base=0.5, cap=1.5) == 1.5
     with pytest.raises(ValueError):
         backoff_seconds(0)
+
+
+def test_returned_draws_are_capped_per_tier() -> None:
+    from mapi_spec.quotas import max_score_draws
+
+    assert max_score_draws("public") == 300
+    assert max_score_draws(TrustTier.VERIFIED) == 500
+    assert max_score_draws(None) == max_score_draws("nonsense") == 300

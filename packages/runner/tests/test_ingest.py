@@ -140,6 +140,101 @@ def test_mff_preset_errors() -> None:
         dataset_from_mff(_mff(), MffOptions(roles={"nope": "target"}))
 
 
+@pytest.mark.parametrize(
+    "dates",
+    [
+        # one offset, a 'Z' suffix, and offsets that change with daylight saving time
+        [f"2024-01-{d:02d}T00:00:00+01:00" for d in (7, 14, 21)],
+        [f"2024-01-{d:02d}T00:00:00Z" for d in (7, 14, 21)],
+        ["2024-03-24T00:00:00+01:00", "2024-03-31T00:00:00+02:00", "2024-04-07T00:00:00+02:00"],
+    ],
+)
+def test_dates_with_utc_offsets_are_read_as_local_dates(dates: list[str]) -> None:
+    """BI exports often write offsets: they used to become tz-aware labels the dataset
+    then refused ('labels are not dates'), or fail outright when DST changed the offset."""
+    from mapi_runner.worker.ingest import INGEST_NOTES_ATTR
+    from mapi_sdk.wire import read_zarr_zip, write_zarr_zip
+
+    df = pd.DataFrame({"Date": dates, "Market": "de", "Rev": [1.0, 2.0, 3.0], "Tv": 1.0})
+    ds, schema = dataset_from_table(df, _mapping())
+    assert ds["date"].dtype.kind == "M"
+    assert [str(d)[:10] for d in ds["date"].values] == [d[:10] for d in dates]
+    assert schema.dims["date"].freq == "W-SUN"
+    assert not [i for i in validate_dataset(schema, ds) if i.severity.value == "error"]
+    [note] = ds.attrs.pop(INGEST_NOTES_ATTR)
+    assert "UTC offsets" in note["message"] and note["pointer"] == "/mapping/dims/date"
+    raw = write_zarr_zip(ds)
+    assert raw is not None and read_zarr_zip(raw)["date"].dtype.kind == "M"
+
+
+def test_a_tz_aware_parquet_timestamp_is_read_as_a_local_date() -> None:
+    from mapi_runner.worker.ingest import INGEST_NOTES_ATTR
+
+    stamps = pd.date_range("2024-01-07", periods=3, freq="W-SUN", tz="Europe/Berlin")
+    df = pd.DataFrame({"Date": stamps, "Market": "de", "Rev": [1.0, 2.0, 3.0], "Tv": 1.0})
+    ds, _ = dataset_from_table(df, _mapping())
+    assert str(ds["date"].values[0])[:19] == "2024-01-07T00:00:00"
+    assert INGEST_NOTES_ATTR in ds.attrs
+    mff = _mff()
+    mff["Period"] = mff["Period"] + "T00:00:00+01:00"
+    ds, schema = dataset_from_mff(mff, MffOptions())
+    assert ds["date"].dtype.kind == "M" and schema.dims["date"].freq == "W-SUN"
+    assert ds.attrs[INGEST_NOTES_ATTR][0]["pointer"] == "/mapping/mff/Period"
+
+
+def _diagonal(n: int) -> pd.DataFrame:
+    """``n`` rows whose two keys never repeat: a dense cube of ``n x n`` cells."""
+    return pd.DataFrame({"a": [f"a{i}" for i in range(n)], "b": [f"b{i}" for i in range(n)],
+                         "v": 1.0})  # fmt: skip
+
+
+def _diagonal_mapping() -> IngestMapping:
+    return IngestMapping.model_validate(
+        {
+            "format": "csv",
+            "dims": {"a": {"column": "a", "spec": {"kind": "categorical"}},
+                     "b": {"column": "b", "spec": {"kind": "categorical"}}},
+            "vars": {"v": {"column": "v", "role": "target"}},
+        }
+    )  # fmt: skip
+
+
+def test_a_dense_cube_larger_than_the_limits_is_refused_before_it_is_built() -> None:
+    """A small CSV of 'diagonal' rows mapped to two dims asks for n^2 cells (100k rows:
+    1e10 float64, ~80 GB); it fails as PAYLOAD_TOO_LARGE instead of exhausting memory."""
+    from mapi_runner.worker.tabular import IngestLimits
+    from mapi_spec.errors import ErrorCode
+
+    small = IngestLimits(max_cells=10_000)
+    ds, _ = dataset_from_table(_diagonal(100), _diagonal_mapping(), limits=small)
+    assert dict(ds.sizes) == {"a": 100, "b": 100}
+    with pytest.raises(MapiError) as exc:
+        dataset_from_table(_diagonal(101), _diagonal_mapping(), limits=small)
+    assert exc.value.code is ErrorCode.PAYLOAD_TOO_LARGE
+    assert exc.value.pointer == "/mapping/dims"
+    assert "10,201" in exc.value.detail
+    # the default limits refuse the memory bomb outright (and quickly)
+    with pytest.raises(MapiError) as exc:
+        dataset_from_table(_diagonal(100_000), _diagonal_mapping())
+    assert exc.value.code is ErrorCode.PAYLOAD_TOO_LARGE
+    # the byte budget (the class's scratch) applies too
+    tight = IngestLimits(max_uncompressed_bytes=8 * 50 * 50)
+    with pytest.raises(MapiError) as exc:
+        dataset_from_table(_diagonal(51), _diagonal_mapping(), limits=tight)
+    assert exc.value.code is ErrorCode.PAYLOAD_TOO_LARGE
+
+
+def test_the_mff_pivot_is_capped_like_a_dense_table() -> None:
+    from mapi_runner.worker.tabular import IngestLimits
+    from mapi_spec.errors import ErrorCode
+
+    with pytest.raises(MapiError) as exc:
+        dataset_from_mff(_mff(), MffOptions(), limits=IngestLimits(max_cells=19))
+    assert exc.value.code is ErrorCode.PAYLOAD_TOO_LARGE
+    ds, _ = dataset_from_mff(_mff(), MffOptions(), limits=IngestLimits(max_cells=20))
+    assert dict(ds.sizes) == {"date": 5, "geo": 2}
+
+
 def test_ingest_job_needs_exactly_one_of_mapping_or_preset() -> None:
     with pytest.raises(ValueError):
         IngestJob()

@@ -114,17 +114,22 @@ test.describe("@e2e M1: fit, inspect and score an E33 geo MMM from the UI", () =
     await expect(lines).toContainText("apiVersion: mapi/v1");
     // the starter template has been validated once: the editor is settled
     await expect(page.getByText(/^\s*(valid|\d+ errors?)\s*$/)).toBeVisible({ timeout: 30_000 });
-    await lines.click();
     // Monaco picks its keybindings from the user agent (the device preset may not be the host OS)
     const mod = (await page.evaluate(() => navigator.userAgent.includes("Macintosh"))) ? "Meta" : "Control";
-    await page.keyboard.press(`${mod}+A`);
-    await page.keyboard.press("Delete");
-    await expect(lines).not.toContainText("apiVersion");
-    // a paste keeps the YAML as is (typing would be re-indented by the editor); the browser,
-    // not Monaco, maps the paste shortcut, so it follows the host OS
     await page.evaluate((text) => navigator.clipboard.writeText(text), state.spec);
-    await page.keyboard.press("ControlOrMeta+V");
-    await expect(lines).toContainText("target_accept: 0.9"); // only the pasted spec has it
+    // a paste keeps the YAML as is (typing would be re-indented by the editor); the browser,
+    // not Monaco, maps the paste shortcut, so it follows the host OS. A paste right after the
+    // editor settles is sometimes dropped, so the whole replacement is retried.
+    await expect(async () => {
+      await lines.click();
+      await page.keyboard.press(`${mod}+A`);
+      await page.keyboard.press("Delete");
+      await expect(lines).not.toContainText("apiVersion", { timeout: 2_000 });
+      await page.keyboard.press("ControlOrMeta+V");
+      await expect(lines).toContainText("target_accept: 0.9", { timeout: 3_000 });
+      await page.keyboard.press(mod === "Meta" ? "Meta+ArrowUp" : "Control+Home"); // back to the top
+      await expect(lines).toContainText(`name: ${SPEC_NAME},`, { timeout: 3_000 }); // only the pasted spec has it
+    }).toPass({ timeout: 30_000 });
     await page.getByRole("button", { name: "Validate" }).click();
     await expect(page.getByText("valid", { exact: true })).toBeVisible({ timeout: 30_000 });
     const pipeline = page.getByRole("list", { name: "Pipeline" });
@@ -160,9 +165,10 @@ test.describe("@e2e M1: fit, inspect and score an E33 geo MMM from the UI", () =
     await page.goto(state.modelPath);
     const scorecard = page.getByRole("heading", { name: "Scorecard" }).locator("xpath=ancestor::section[1]");
     await expect(scorecard).toBeVisible();
-    await expect(scorecard.getByText("Divergences", { exact: true })).toBeVisible();
+    // the runner's scorecard (v0.4): one item per catalog check, titled in plain words
+    await expect(scorecard.getByText("Sampler stayed on track", { exact: true })).toBeVisible();
     await expect(page.getByText(/^scorecard (pass|warn|fail)$/)).toBeVisible();
-    await expect(page.getByText("coverage_90")).toBeVisible();
+    await expect(page.getByText("coverage_90", { exact: true }).first()).toBeVisible();
     await shot(page, "05-scorecard");
 
     await page.getByRole("tab", { name: "Diagnostics" }).click();
@@ -203,9 +209,9 @@ test.describe("@e2e M1: fit, inspect and score an E33 geo MMM from the UI", () =
   });
 
   const scores = [
-    { name: "forecast", data: DATASETS.eu_media_future, stage: "raw", market: "NL", markets: 3, shot: "09-score-forecast" },
-    { name: "new market", data: DATASETS.eu_media_future_fr, stage: "raw", market: "FR", markets: 4, shot: "10-score-new-market" },
-    { name: "weekly EUR plan", data: DATASETS.eu_media_weekly_plan, stage: "weekly", market: "UK", markets: 3, shot: "11-score-weekly-plan" },
+    { name: "forecast", data: DATASETS.eu_media_future, stage: "raw", markets: 3, shot: "09-score-forecast" },
+    { name: "new market", data: DATASETS.eu_media_future_fr, stage: "raw", markets: 4, shot: "10-score-new-market" },
+    { name: "weekly EUR plan", data: DATASETS.eu_media_weekly_plan, stage: "weekly", markets: 3, shot: "11-score-weekly-plan" },
   ];
   for (const s of scores) {
     test(`score: ${s.name} over 8 weeks @e2e`, async ({ page }) => {
@@ -225,9 +231,10 @@ test.describe("@e2e M1: fit, inspect and score an E33 geo MMM from the UI", () =
       const runPlots = results.getByRole("region", { name: "Run plots" });
       await expect(runPlots.getByText("Fit and forecast")).toBeVisible();
       const fan = await renderedPlot(runPlots);
-      // one fan panel per market, the new one included
-      await expect(fan.contentFrame().locator("svg.marks").first()).toContainText(s.market);
-      // 8 weeks x markets x 5 components, one row per coordinate (stat pivoted into columns)
+      // the forecast fan (v0.4: the KPI summed over markets, with the fitted history)
+      await expect(fan.contentFrame().locator("svg.marks").first()).toContainText("date");
+      // 8 weeks x markets x 5 components, one row per coordinate (stat pivoted into columns):
+      // the new market is scored too (the table is virtualised: count, do not read, its rows)
       await expect(results.getByText(`${8 * s.markets * 5} rows`)).toBeVisible();
       await expect(results.getByRole("table", { name: "ui/summary.arrow" })).toContainText("y_hat_mean");
       // the quick chart over the pivoted summary (its frame loads lazily, once in view)
