@@ -29,7 +29,7 @@ Promotion is gated on the [sanity scorecard](guided-mode.md#scorecard) and the e
 | The version | Gate | What happens |
 |---|---|---|
 | Scorecard passes | `allowed` | Promoted |
-| Scorecard warns, or has no scorecard | `needs_override` | `409 OVERRIDE_REQUIRED` unless a signed-in project admin sends `override: true` with a `reason`; the override is audited (`endpoint.promote_override`) |
+| Scorecard warns, or has no scorecard; an `evaluate_then_refit` fit whose scorecard measured no holdout check (no `data.split`, or no `evaluate.metrics`: it was never evaluated); a guided version whose template's checks did not all run (`NOT_EVALUATED`) | `needs_override` | `409 OVERRIDE_REQUIRED` unless a signed-in project admin sends `override: true` with a `reason`; the override is audited (`endpoint.promote_override`) |
 | Scorecard fails, the fit was interrupted (`partial`) | `blocked` | `409 PROMOTION_BLOCKED`; no override |
 | Fitted `train_only` | `blocked` | Endpoints need `evaluate_then_refit` (Q13): context and terminal state come from all the data. A policy with `fit_mode: train_only` accepts exploration fits |
 | Expects input the callers do not send | `blocked` (policy `schema_change: block`), `needs_override` (`warn`) or ignored (`allow`) | A dim removed or changed, a tightened dim policy, a new required input, an input whose dims or type changed (`schema_breaks`) |

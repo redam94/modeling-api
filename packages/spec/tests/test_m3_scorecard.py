@@ -197,3 +197,43 @@ def test_override_rules() -> None:
         authorize_promotion(blocked, override=True, reason="please", can_override=True)
     assert exc.value.code is ErrorCode.PROMOTION_BLOCKED
     assert "Holdout error" in exc.value.detail
+
+
+def test_gate_needs_an_override_for_an_evaluate_then_refit_fit_never_evaluated() -> None:
+    """Q13: an ``evaluate_then_refit`` version must have been scored on a holdout. A spec
+    without ``data.split`` fits on all the data and every holdout check is skipped."""
+    no_split = rollup(
+        [evaluate_check("convergence.rhat", 1.001)],
+        {"holdout.mape": "no split", "holdout.coverage_90": "no split"},
+    )
+    assert no_split.overall == "pass"
+    d = promotion_gate(no_split, fit_mode="evaluate_then_refit")
+    assert d.outcome is GateOutcome.NEEDS_OVERRIDE
+    [reason] = d.reasons
+    assert reason.code == "NOT_EVALUATED" and reason.check == "holdout.mape"
+    assert "no split" in reason.message_plain
+    assert "holdout.mape" in d.failing_checks
+    # an exploration fit allowed by the endpoint's policy needs no holdout
+    lenient = promotion_gate(no_split, fit_mode="train_only", allow_train_only=True)
+    assert lenient.outcome is GateOutcome.ALLOWED
+    # any measured holdout check is enough
+    scored = rollup([evaluate_check("holdout.hit_rate", 0.1)], {"holdout.mape": "not choice"})
+    assert promotion_gate(scored).outcome is GateOutcome.ALLOWED
+
+
+def test_gate_needs_an_override_for_a_required_check_that_was_skipped() -> None:
+    card = rollup(
+        [evaluate_check("holdout.mape", 0.05)],
+        {"plausibility.negative_roi": "the model has no response curves"},
+    )
+    assert promotion_gate(card).outcome is GateOutcome.ALLOWED
+    d = promotion_gate(
+        card, required_checks=["holdout.mape", "plausibility.negative_roi", "data.history"]
+    )
+    assert d.outcome is GateOutcome.NEEDS_OVERRIDE
+    assert [(r.code, r.check) for r in d.reasons] == [
+        ("NOT_EVALUATED", "plausibility.negative_roi"),
+        ("NOT_EVALUATED", "data.history"),
+    ]
+    assert "no response curves" in d.reasons[0].message_plain
+    assert d.failing_checks == ["plausibility.negative_roi", "data.history"]

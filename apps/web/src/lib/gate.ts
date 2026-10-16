@@ -31,7 +31,11 @@ export const GATE_REASON_LABEL: Record<GateReason["code"], string> = {
   TRAIN_ONLY: "Fitted without the final refit",
   PARTIAL_MODEL: "Interrupted fit",
   SCHEMA_CHANGE: "Input contract changed",
+  NOT_EVALUATED: "Check did not run",
 };
+
+/** The holdout checks of the catalog, in catalog order (`mapi_spec.scorecard.SCORECARD_CHECKS`). */
+const HOLDOUT_CHECKS = ["holdout.mape", "holdout.coverage_90", "holdout.hit_rate"];
 
 const RANK: Record<GateOutcome, number> = { allowed: 0, needs_override: 1, blocked: 2 };
 
@@ -44,12 +48,15 @@ export function worstOutcome(a: GateOutcome, b: GateOutcome): GateOutcome {
  * A port of the scorecard part of `mapi_spec.scorecard.promotion_gate` (same reasons, same
  * words): an interrupted (`partial`) fit or a `train_only` fit is blocked; no scorecard needs an
  * override; a `fail` item blocks, a `warn` item needs a project admin's override with a reason.
- * Input-schema breaks are known only to the server for an existing alias and arrive in the
+ * An `evaluate_then_refit` version (the default when `fitMode` is unknown, as on the server)
+ * whose scorecard measured no holdout check was never evaluated, and each of `requiredChecks`
+ * (the guided template's checks) that did not run needs an override too (`NOT_EVALUATED`; the
+ * server names the check by its title, the preview by its id). Input-schema breaks are known only to the server for an existing alias and arrive in the
  * `409` problem, so a preview of `allowed` can still come back refused.
  */
 export function previewScorecardGate(
   scorecard: Scorecard | null | undefined,
-  opts: { partial?: boolean; fitMode?: string | null } = {},
+  opts: { partial?: boolean; fitMode?: string | null; requiredChecks?: readonly string[] } = {},
 ): PromotionGateDecision {
   const reasons: GateReason[] = [];
   const add = (code: GateReason["code"], outcome: GateOutcome, message_plain: string, check: string | null = null) =>
@@ -65,7 +72,27 @@ export function previewScorecardGate(
       failing.push(item.check ?? item.code);
       add(item.status === "fail" ? "SCORECARD_FAIL" : "SCORECARD_WARN", item.status === "fail" ? "blocked" : "needs_override", `${item.title}: ${item.message_plain}`, item.check ?? null);
     }
-    if (scorecard.overall !== "pass" && !failing.length) {
+    const skipped: Record<string, string> = scorecard.skipped ?? {};
+    const items = scorecard.items ?? [];
+    const scored = new Set(items.map((i) => i.check).filter((c): c is string => Boolean(c)));
+    const hasHoldout = items.some((i) => i.category === "holdout" || (i.check ?? "").startsWith("holdout.") || i.code.startsWith("HOLDOUT"));
+    if ((opts.fitMode ?? "evaluate_then_refit") === "evaluate_then_refit" && !hasHoldout) {
+      const check = HOLDOUT_CHECKS.find((c) => c in skipped) ?? null;
+      const why = (check && skipped[check]) || "the scorecard has no holdout check";
+      failing.push(check ?? "holdout");
+      add(
+        "NOT_EVALUATED",
+        "needs_override",
+        `The model was never scored on held-out data, so its forecast error is unknown (${why}). Add a holdout split (data.split) and holdout metrics (evaluate.metrics), then refit.`,
+        check,
+      );
+    }
+    for (const check of new Set(opts.requiredChecks ?? [])) {
+      if (scored.has(check) || failing.includes(check)) continue;
+      failing.push(check);
+      add("NOT_EVALUATED", "needs_override", `${check}: this check could not be run (${skipped[check] ?? "it is not on the scorecard"}).`, check);
+    }
+    if (scorecard.overall !== "pass" && !reasons.some((r) => r.code === "SCORECARD_WARN" || r.code === "SCORECARD_FAIL")) {
       add(scorecard.overall === "fail" ? "SCORECARD_FAIL" : "SCORECARD_WARN", scorecard.overall === "fail" ? "blocked" : "needs_override", "The scorecard did not pass.");
     }
   }
@@ -74,8 +101,11 @@ export function previewScorecardGate(
 }
 
 /** {@link previewScorecardGate} for a model version (its scorecard and partial flag). */
-export function previewGate(mv: Pick<ModelVersion, "scorecard" | "status">, opts: { fitMode?: string | null } = {}): PromotionGateDecision {
-  return previewScorecardGate(mv.scorecard, { partial: mv.status === "partial", fitMode: opts.fitMode ?? null });
+export function previewGate(
+  mv: Pick<ModelVersion, "scorecard" | "status">,
+  opts: { fitMode?: string | null; requiredChecks?: readonly string[] } = {},
+): PromotionGateDecision {
+  return previewScorecardGate(mv.scorecard, { partial: mv.status === "partial", fitMode: opts.fitMode ?? null, requiredChecks: opts.requiredChecks ?? [] });
 }
 
 const REASON_CODES = new Set<string>(Object.keys(GATE_REASON_LABEL));

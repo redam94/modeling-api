@@ -5358,7 +5358,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "SCORECARD_WARN" | "SCORECARD_FAIL" | "NO_SCORECARD" | "TRAIN_ONLY" | "PARTIAL_MODEL" | "SCHEMA_CHANGE";
+            code: "SCORECARD_WARN" | "SCORECARD_FAIL" | "NO_SCORECARD" | "TRAIN_ONLY" | "PARTIAL_MODEL" | "SCHEMA_CHANGE" | "NOT_EVALUATED";
             /** Message Plain */
             message_plain: string;
             outcome: components["schemas"]["GateOutcome"];

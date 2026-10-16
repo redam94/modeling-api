@@ -418,6 +418,13 @@ milestone releases are tagged on `main`.
   --example`) asked quantile models for a `mean` they cannot serve; it now asks for the
   representation's default summary.
 
+### Fixed (M3 review: Guided modeling)
+- **spec/server/web**: the promotion gate let through an `evaluate_then_refit` version that
+  was never evaluated on a holdout (a spec without `data.split` skips every holdout check and
+  its scorecard can still pass). Such a version now needs an administrator override with the
+  new gate reason `NOT_EVALUATED`, as does a guided version whose template's scorecard checks
+  did not all run (Q13). The web app's gate preview follows.
+
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
 The platform is now multi-tenant and ready for Google Cloud. Many teams can share one
