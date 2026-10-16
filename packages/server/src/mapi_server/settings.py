@@ -526,7 +526,8 @@ class Settings(BaseSettings):
         60.0,
         ge=0,
         description="How long an API instance reuses an embed's resolved plot (revocation and "
-        "expiry are still checked on every request); also the response's max-age",
+        "expiry are still checked on every request; responses are never cached by browsers "
+        "or shared caches, so a revoked link stops rendering on the next load)",
     )
     embed_image_url_ttl_s: int = Field(
         900, ge=60, le=86400, description="Lifetime of the PNG fallback's signed URL"

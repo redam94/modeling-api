@@ -78,10 +78,11 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "What you believe" })).toBeVisible();
   const tv = page.locator('[data-channel="tv"]');
   await expect(tv).toBeVisible();
+  await tv.getByRole("checkbox").click(); // channels start without a belief
   await tv.getByLabel("From").fill("1.5");
   await tv.getByLabel("To").fill("4");
   await expect(tv).toContainText("Every 1 spent brings back between 1.5 and 4.");
-  await page.locator('[data-channel="social"]').getByRole("checkbox").click(); // no view on social
+  await page.locator('[data-channel="search"]').getByRole("checkbox").click(); // the default range for search; no view on social
   await page.getByRole("button", { name: "Add an experiment" }).click();
   const exp = page.getByRole("listitem", { name: "Experiment 1" });
   await exp.getByLabel("Channel tested").selectOption("tv");
@@ -193,7 +194,7 @@ test("Edit in Expert switches mode and the edit shows up as advanced settings", 
       method: "POST",
       headers,
       credentials: "include",
-      body: JSON.stringify({ yaml: rev.yaml.replace(/draws: 500/, "draws: 2000"), parent_revision: 1, message: "more draws" }),
+      body: JSON.stringify({ yaml: rev.yaml.replace(/(?<!ui_)draws: \d+/, "draws: 2000"), parent_revision: 1, message: "more draws" }),
     });
     return res.status;
   }, specId);
@@ -241,7 +242,7 @@ test("Guided mode fits a 375 px phone without sideways scrolling", async ({ page
   await expect(page).toHaveURL(/\/priors$/);
   await expect(page.locator('[data-channel="tv"]')).toBeVisible();
   await noSideScroll(page);
-  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByRole("button", { name: "Continue without beliefs" }).click();
   await page.getByRole("button", { name: "Fit the model" }).click();
   await expect(page.getByRole("progressbar", { name: "Fit progress" })).toBeVisible();
   await noSideScroll(page);

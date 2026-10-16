@@ -351,8 +351,9 @@ async def get_embed(ctx: Ctx, auth: Auth, embed_token: EmbedToken) -> JSONRespon
     per-address rate). Cookies and ``Authorization`` are ignored; browsers may read it only
     from the plot-sandbox origin (CORS), which renders it under its own CSP."""
     view = await embed_view(ctx, embed_token, auth.client_ip)
-    max_age = int(ctx.settings.embed_cache_s)
-    headers = {**EMBED_RESPONSE_HEADERS, "Cache-Control": f"public, max-age={max_age}"}
+    # no browser or shared cache may answer for the server: a revoked link must stop
+    # rendering at once, on the next load (the API's own reuse is MAPI_EMBED_CACHE_S)
+    headers = {**EMBED_RESPONSE_HEADERS, "Cache-Control": "private, no-cache"}
     return JSONResponse(view.model_dump(mode="json"), headers=headers)
 
 

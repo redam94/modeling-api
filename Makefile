@@ -118,9 +118,16 @@ ATLAS_DIR ?= ../optimizer-framework
 test-atlas: ## The mapi_client.atlas tests with Atlas installed from ATLAS_DIR (default ../optimizer-framework)
 	$(UV) run --with-editable $(ATLAS_DIR) python -m pytest -q -p no:cacheprovider packages/client/tests/test_atlas.py
 
+# The M3 journey's Atlas step uses Atlas itself when ATLAS_DIR holds a checkout: that suite
+# runs in a throwaway overlay (as in test-atlas), the others in the project environment (the
+# CLI walkthroughs need its console scripts). Without Atlas it uses Atlas's protocol only.
+M3_JOURNEY := tests/e2e/test_m3_guided_stack.py
+HAVE_ATLAS := $(wildcard $(ATLAS_DIR)/pyproject.toml)
+
 .PHONY: e2e
-e2e: ## End-to-end tests against a running stack (`make dev` first): API suite, then the browser @e2e suite
-	$(UV) run pytest -q -m e2e
+e2e: ## End-to-end tests against a running stack (`make dev` first): API suites (M1-M3), then the browser @e2e suites
+	$(UV) run pytest -q -m e2e $(if $(HAVE_ATLAS),--ignore=$(M3_JOURNEY))
+	$(if $(HAVE_ATLAS),$(UV) run --with-editable $(ATLAS_DIR) python -m pytest -q -p no:cacheprovider -m e2e $(M3_JOURNEY))
 	@if ls apps/web/playwright.config.* >/dev/null 2>&1; then \
 		$(PNPM) --filter @mapi/web e2e; \
 	else echo "e2e: apps/web has no Playwright config; browser suite skipped"; fi

@@ -100,7 +100,8 @@ export function formFromCalibration(calibration: unknown, channels: readonly str
     const b = stated[channel];
     const range = isRecord(b) ? pair(mode === "roi" ? b.roi : b.contribution_share) : null;
     const cred = isRecord(b) && typeof b.credibility === "number" ? b.credibility : 0.8;
-    return range ? { channel, enabled: true, low: range[0], high: range[1], credibility: cred } : { channel, enabled: !bp, low: dl, high: dh, credibility: 0.8 };
+    // No stated belief: unticked (the data decides alone); ticking it starts from a sensible range.
+    return range ? { channel, enabled: true, low: range[0], high: range[1], credibility: cred } : { channel, enabled: false, low: dl, high: dh, credibility: 0.8 };
   });
   const base = bp && isRecord(bp.baseline_share) ? bp.baseline_share : null;
   const baseRange = base ? pair(base.share) : null;

@@ -48,9 +48,10 @@ test("guided tutorial screenshots", async ({ page }) => {
 
   const tv = page.locator('[data-channel="tv"]');
   await expect(tv).toBeVisible();
+  await tv.getByRole("checkbox").click(); // channels start without a belief
   await tv.getByLabel("From").fill("1.5");
   await tv.getByLabel("To").fill("4");
-  await page.locator('[data-channel="social"]').getByRole("checkbox").click();
+  await page.locator('[data-channel="search"]').getByRole("checkbox").click();
   await page.getByRole("button", { name: "Add an experiment" }).click();
   const exp = page.getByRole("listitem", { name: "Experiment 1" });
   await exp.getByLabel("Channel tested").selectOption("tv");
@@ -62,6 +63,8 @@ test("guided tutorial screenshots", async ({ page }) => {
   await exp.getByLabel("± uncertainty (standard error)").fill("25000");
   await page.getByRole("button", { name: "Preview what this means" }).click();
   await expect(page.getByRole("heading", { name: "What your beliefs mean, before seeing the data" })).toBeVisible({ timeout: 10_000 });
+  // plot frames load as they scroll into view: bring the KPI fan in before the full-page shot
+  await page.locator('iframe[title="Results the model expects before fitting"]').scrollIntoViewIfNeeded();
   await frames(page);
   await shot(page, "priors");
 

@@ -3,23 +3,31 @@
  * each with its 90% range; how well the model fits) and the sanity scorecard, grouped by
  * question, each check with what it means and what to do.
  */
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Microscope } from "lucide-react";
+import { ArrowRight, Microscope, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { stringify } from "yaml";
 
 import { useModelPlots, type ModelPlot } from "../model-plots";
-import { usePlot } from "@/api/queries";
+import { can } from "@/api/access";
+import { api, errorMessage, unwrap } from "@/api/client";
+import { qk, usePlot, useProjectScope } from "@/api/queries";
 import type { ModelVersion, Scorecard } from "@/api/types";
-import { EmptyState, ErrorNotice, LoadingRows } from "@/components/common";
+import { EmptyState, ErrorNotice, LoadingRows, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from "@/components/ui/primitives";
+import { useGrants } from "@/features/auth/workspace";
 import { PlotFrame } from "@/features/plots/plot-frame";
 import { useModelPlotData } from "@/features/plots/plot-data";
 import { cn } from "@/lib/utils";
 
 import { useResponseGrid } from "../api";
 import { StepActions } from "../frame";
-import { amount, ratio, share } from "../plain";
-import { exploreTitle } from "../session";
+import { amount, holdoutFraction, ratio, share } from "../plain";
+import { useGuidedLock } from "../persona";
+import { canFitMoreCarefully, withCarefulFit } from "../refit";
+import { GUIDED_MESSAGE, exploreTitle } from "../session";
 import { StatusBadge, Figure, type CheckStatus } from "../ui";
 import type { GuidedSession } from "../use-session";
 import { baselineShare, channelHeadlines, type ChannelHeadline, type ResponseGrid } from "../whatif";
@@ -37,7 +45,63 @@ const OVERALL: Record<CheckStatus, { title: string; body: string }> = {
   fail: { title: "Some checks failed", body: "Fix what the failed checks point to before you use these numbers." },
 };
 
-function ScorecardView({ scorecard, mv }: { scorecard: Scorecard; mv: ModelVersion }) {
+/**
+ * The convergence checks' remedy as one button: Guided screens hide the fit settings, so
+ * "run more tuning and draws" or "raise target_accept" would otherwise be a dead end.
+ */
+function FitMoreCarefully({ session, failed }: { session: GuidedSession; failed: boolean }) {
+  const scope = useProjectScope();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const grants = useGrants();
+  const lock = useGuidedLock();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fit = (session.document.model as Record<string, unknown> | undefined)?.fit;
+  if (!canFitMoreCarefully(fit)) return null;
+  const allowed = can(grants, "update", "spec") && !lock.locked;
+  const refit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const doc = withCarefulFit(session.document as Record<string, unknown>);
+      await unwrap(
+        api.POST("/v1/specs/{spec_id}/revisions", {
+          params: { path: { spec_id: session.spec.id } },
+          body: { yaml: stringify(doc), parent_revision: session.latest.revision, message: `${GUIDED_MESSAGE} fit again, more carefully` },
+          headers: scope.headers,
+        }),
+      );
+      await Promise.all([qc.invalidateQueries({ queryKey: qk.spec(scope.key, session.spec.id) }), qc.invalidateQueries({ queryKey: qk.specRevisions(scope.key, session.spec.id) })]);
+      void navigate({ to: "/guided/$specId/$step", params: { specId: session.spec.id, step: "run" } });
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="grid gap-2 rounded-lg border p-4" data-testid="fit-more-carefully">
+      <p className="font-medium">{failed ? "The model has not settled yet" : "The model could settle further"}</p>
+      <p className="text-[13px] text-muted-foreground">
+        Fitting again with longer, more careful sampling usually fixes the checks under &ldquo;Did the model settle?&rdquo;. Your data and beliefs stay as they are; the fit takes about twice as long.
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button onClick={() => void refit()} disabled={!allowed || busy}>
+          {busy ? <Spinner /> : <RefreshCw />} Fit again, more carefully
+        </Button>
+        {!allowed ? <span className="text-xs text-muted-foreground">Ask a project admin to fit it again.</span> : null}
+      </div>
+      {error ? (
+        <p role="alert" className="text-[13px] text-destructive">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ScorecardView({ scorecard, mv, session }: { scorecard: Scorecard; mv: ModelVersion; session: GuidedSession }) {
   const items = scorecard.items ?? [];
   const known = new Set(CATEGORIES.map((c) => c.id));
   const groups = [
@@ -70,6 +134,9 @@ function ScorecardView({ scorecard, mv }: { scorecard: Scorecard; mv: ModelVersi
           <p className="text-[13px] text-muted-foreground">{OVERALL[scorecard.overall].body}</p>
         </div>
       </div>
+      {items.some((i) => i.category === "convergence" && i.status !== "pass") ? (
+        <FitMoreCarefully session={session} failed={items.some((i) => i.category === "convergence" && i.status === "fail")} />
+      ) : null}
       <div className="grid gap-4 lg:grid-cols-2">
         {groups.map((g) => (
           <Card key={g.id}>
@@ -203,8 +270,8 @@ export function ReportStep({ session }: { session: GuidedSession }) {
   const rows = grid.data ? channelHeadlines(grid.data) : [];
   const base = grid.data ? baselineShare(grid.data) : null;
   const best = [...rows].sort((a, b) => (b.roi?.mean ?? -Infinity) - (a.roi?.mean ?? -Infinity))[0];
-  const mape = mv.metrics?.mape;
-  const coverage = mv.metrics?.coverage_90 ?? mv.metrics?.coverage_80;
+  const mape = holdoutFraction(mv, "mape");
+  const coverage = holdoutFraction(mv, "coverage_90") ?? holdoutFraction(mv, "coverage_80");
   const shown = (plots.data ?? []).filter((p) => p.id === "core.ppc_fan" || p.id === "core.fit_vs_actual" || p.id === "mmm.response_curves").slice(0, 2);
   const stale = session.lastGoodFit.spec_revision !== session.latest.revision;
   return (
@@ -230,7 +297,7 @@ export function ReportStep({ session }: { session: GuidedSession }) {
           ))}
         </section>
       ) : null}
-      {mv.scorecard ? <ScorecardView scorecard={mv.scorecard} mv={mv} /> : <p className="text-[13px] text-muted-foreground">This model has no scorecard.</p>}
+      {mv.scorecard ? <ScorecardView scorecard={mv.scorecard} mv={mv} session={session} /> : <p className="text-[13px] text-muted-foreground">This model has no scorecard.</p>}
       <StepActions>
         <Button variant="ghost" onClick={() => void navigate({ to: "/guided/$specId/$step", params: { specId: session.spec.id, step: "run" } })}>
           Back

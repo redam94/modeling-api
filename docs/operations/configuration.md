@@ -132,7 +132,7 @@ See [Sharing plots](../guides/sharing-plots.md).
 | `MAPI_RENDER_PLOTLY_ENABLED` | `false` | Accept Plotly plots for static rendering. This needs kaleido and a Chrome or Chromium in the runner image, which the base images do not ship. While it is off, Plotly renders are refused with `MODE_NOT_SUPPORTED` |
 | `MAPI_EMBED_RATE_PER_MINUTE` | `300` | Public views per minute of one embed link (`429 RATE_LIMITED` beyond) |
 | `MAPI_EMBED_IP_RATE_PER_MINUTE` | `120` | Public embed requests per minute from one client address, valid or not (slows down token guessing) |
-| `MAPI_EMBED_CACHE_S` | `60` | How long an API instance reuses an embed's resolved plot. It is also the response's `max-age`. Expiry and revocation are still checked on every request |
+| `MAPI_EMBED_CACHE_S` | `60` | How long an API instance reuses an embed's resolved plot. Expiry and revocation are still checked on every request, and responses are `Cache-Control: private, no-cache`, so a revoked link stops rendering on the next load |
 | `MAPI_EMBED_IMAGE_URL_TTL_S` | `900` | Lifetime of the signed URL of an embed's PNG fallback |
 
 **Object storage**
@@ -307,7 +307,9 @@ the entry point builds over it ([Container images](images.md#compile-caches-and-
 `mapi-gcs-shim serve` takes its defaults from the topology: `MAPI_DATA_DIR` (state in
 `$MAPI_DATA_DIR/gcs`), `MAPI_ENV` (bucket names), `MAPI_GCS_ENDPOINT` (host and port) and
 `MAPI_WEB_ORIGIN` (the CORS origin). Each has a command-line flag; see the
-[GCS shim reference](../reference/gcs-shim.md).
+[GCS shim reference](../reference/gcs-shim.md). `MAPI_BUNDLE_RETENTION_DAYS`, when set, is
+also the bundles bucket's locked retention in days when the shim creates its state (`0`: none;
+unset: write-once, about 100 years).
 
 ## The CLI and the Python client
 
@@ -337,6 +339,7 @@ rewrite the config file atomically with mode `0600`.
 |---|---|
 | `MAPI_STACK_PROFILE` | The servers' `MAPI_PROFILE`: `dev` (the default: sign-in through the built-in development IdP, the `default` tenant and project, the seeded accounts of `MAPI_DEVIDP_USERS` with `admin@dev.local` as tenant admin and platform operator), `single-tenant` (the credential-less M1 API) or `multi-tenant`. A separate name so that a CLI `MAPI_PROFILE` in your shell never reaches the servers |
 | `MAPI_INTERNAL_TOKEN` | Outside the single-tenant profile, a random bearer for `POST /internal/events` is created in `$MAPI_DATA_DIR/dev/internal-token` and given to the servers (the end-to-end suite reads it there) |
+| `MAPI_WEBHOOK_CA_FILE`, `MAPI_WEBHOOK_DEV_ALLOWLIST` | Unless you set them, the `dev` profile writes a throwaway CA and a certificate for `127.0.0.1` and `localhost` to `$MAPI_DATA_DIR/dev/webhook-tls/` (`ca.pem`, `cert.pem`, `key.pem`), trusts the CA and allow-lists both hosts, so webhooks reach an HTTPS receiver on your machine (the M3 end-to-end suite's) |
 | `MAPI_DEV_<NAME>_CMD` | Replace one service's command (shell-quoted). `<NAME>` is `GCS_SHIM`, `MIGRATE`, `API`, `WORKER`, `WEB` or `PLOTS`, e.g. `MAPI_DEV_API_CMD="uvicorn mapi_server.app:app --reload --port 8000"` |
 | `NO_COLOR`, `FORCE_COLOR` | Disable or force coloured service prefixes |
 
@@ -433,6 +436,8 @@ The variables Terraform sets on the Cloud Run services (the deployment contract 
 | `MAPI_E2E_UI_ACCOUNT` | The tenant admin of the M2 browser flow and the fit burst (default `analyst@dev.local`) |
 | `MAPI_E2E_BURST_RUNS` | Opt-in: how many concurrent real fits `tests/e2e/test_m2_burst_stack.py` submits ([M2 verification](m2-verification.md)) |
 | `MAPI_E2E_SIGNUP_ACCOUNT` | The address the M3 trust-lifecycle suite (`tests/e2e/test_m3_trust_stack.py`) signs up with; it must be a development-IdP account so it can sign in (default `viewer@dev.local`) |
+| `MAPI_E2E_GUIDED_ACCOUNT` | The address the M3 journey (`tests/e2e/test_m3_guided_stack.py`) signs up with; a development-IdP account (default `viewer@dev.local`) |
+| `MAPI_E2E_WEBHOOK_TLS_DIR` | Where the M3 journey's webhook receiver finds `cert.pem` and `key.pem` (default `$MAPI_DATA_DIR/dev/webhook-tls`) |
 | `MAPI_UPDATE_SNAPSHOTS` | `1` regenerates the contract snapshot of `mapi_spec` and the Guided catalog fixture of the server tests (`make snapshots`) |
 | `MAPI_HYPOTHESIS_EXAMPLES` | Examples per property in the wire-format round-trip tests (default 60) |
 

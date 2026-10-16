@@ -126,6 +126,11 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
                   {gateSentence(gate.outcome, isAdmin)}
                 </p>
                 <GateReasons reasons={gate.reasons ?? []} />
+                {gate.outcome === "blocked" ? (
+                  <Link to="/guided/$specId/$step" params={{ specId: session.spec.id, step: "report" }} className="text-[13px] font-medium underline underline-offset-2">
+                    See what to do on the Results step
+                  </Link>
+                ) : null}
               </div>
             </div>
             <Field label="Endpoint name" htmlFor={`${id}-alias`} hint={existing ? `This name is in use: it serves ${existing.model_ref}. Promoting replaces that model.` : "Lower-case letters, digits and dashes. Tools use it to find the model."} error={aliasOk ? undefined : "Use lower-case letters, digits and dashes."}>
@@ -165,11 +170,22 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
   );
 }
 
+/** Charts people share first: results before the sampler's diagnostics (offered last). */
+const SHARE_FIRST = ["mmm.response_curves", "mmm.decomposition", "core.ppc_fan", "core.fit_vs_actual"];
+
+export function shareOrder<T extends { id: string }>(plots: T[]): T[] {
+  const rank = (p: T) => {
+    const i = SHARE_FIRST.indexOf(p.id);
+    return i >= 0 ? i : p.id.startsWith("core.convergence") ? SHARE_FIRST.length + 1 : SHARE_FIRST.length;
+  };
+  return [...plots].sort((a, b) => rank(a) - rank(b));
+}
+
 function Embed({ mv }: { mv: ModelVersion }) {
   const id = useId();
   const grants = useGrants();
   const plots = useModelPlots(mv);
-  const embeddable = (plots.data ?? []).filter((p) => isPlatformRecipe(p.recipe));
+  const embeddable = shareOrder((plots.data ?? []).filter((p) => isPlatformRecipe(p.recipe)));
   const [plotId, setPlotId] = useState<string>("");
   const [days, setDays] = useState(30);
   const create = useCreateEmbed();

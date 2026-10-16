@@ -3,7 +3,7 @@
  * states. Analysts read "about 3 minutes left", "between 1.8 and 3.2", not `eta_seconds` or
  * `hdi_90`.
  */
-import type { RunState, RunnerPhase } from "@/api/types";
+import type { ModelVersion, RunState, RunnerPhase } from "@/api/types";
 
 export interface PhaseText {
   title: string;
@@ -133,4 +133,20 @@ export function multiplierText(m: number): string {
   if (m === 0) return "switched off";
   const pct = Math.round((m - 1) * 100);
   return pct > 0 ? `+${pct}%` : `${pct}%`;
+}
+
+/** Metrics `mapi_sdk` reports in percent (`metrics.json`, `ModelVersion.metrics`). */
+const PERCENT_METRICS = new Set(["mape", "smape", "wape"]);
+
+/**
+ * A holdout metric as a fraction (0.008 for 0.8%), ready for {@link share}: the scorecard's
+ * measured value when it has the check (its values are fractions), else the model version's
+ * metric, divided by 100 when `mapi_sdk` reports it in percent (`mape`, `smape`, `wape`).
+ */
+export function holdoutFraction(mv: Pick<ModelVersion, "metrics" | "scorecard">, metric: string): number | null {
+  const item = mv.scorecard?.items?.find((i) => i.metric === metric && i.value != null);
+  if (item?.value != null) return item.value;
+  const raw = mv.metrics?.[metric];
+  if (raw == null || !Number.isFinite(raw)) return null;
+  return PERCENT_METRICS.has(metric) ? raw / 100 : raw;
 }

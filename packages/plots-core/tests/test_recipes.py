@@ -315,6 +315,18 @@ def test_fan_from_draws_detects_the_split(scored: Any) -> None:
     assert "training data ends" in caption(plot)
 
 
+def test_fan_speaks_of_the_dataset_target_not_the_model_output() -> None:
+    """Score outputs predict ``y_hat``; readers know the KPI by the dataset's name."""
+    preds = xr.Dataset(
+        {"y_hat": (("chain", "draw", "week"), np.ones((1, 20, 6)))},
+        coords={"week": pd.date_range("2024-01-07", periods=6, freq="W-SUN")},
+    )
+    obs = xr.Dataset({"revenue": (("week",), np.ones(6))}, coords={"week": preds["week"]})
+    plot = get_recipe("core.ppc_fan").render({"posterior_predictive": preds, "observed_data": obs})
+    assert "estimate of revenue" in caption(plot) and "y_hat" not in caption(plot)
+    assert '"title": "revenue"' in json.dumps(plot.spec)
+
+
 def test_fan_from_summary_and_explicit_split() -> None:
     tree = ex.score_tree(with_draws=False)
     plot = get_recipe("core.ppc_fan").render(tree, split_at="2024-03-03", point="mean")

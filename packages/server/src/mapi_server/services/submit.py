@@ -365,6 +365,19 @@ async def _fit_dataset(session: AsyncSession, mv: m.ModelVersion) -> m.DatasetVe
     return dv
 
 
+async def fit_dataset_ref(session: AsyncSession, mv: m.ModelVersion) -> str:
+    """``dataset://<project>/<name>@v<n>``: the dataset version ``mv`` was fitted on
+    (``REF_UNRESOLVED`` when it is not recorded or no longer ready)."""
+    dv = await _fit_dataset(session, mv)
+    ds = await session.get(m.Dataset, dv.dataset_id)
+    if ds is None:
+        raise MapiError(
+            f"the fit dataset of model version {mv.id} is no longer available",
+            code=ErrorCode.REF_UNRESOLVED,
+        )
+    return f"dataset://{ds.project_id}/{ds.name}@v{dv.version}"
+
+
 async def _dataset_input(
     session: AsyncSession, scope: Scope, ref: str | DatasetRef | None, pointer: str
 ) -> m.DatasetVersion | None:

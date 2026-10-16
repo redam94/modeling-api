@@ -23702,7 +23702,7 @@
     },
     "/v1/guided/requests:compile": {
       "post": {
-        "description": "Compile a slider scenario (``whatif``), a forecast over a horizon or an intervention\npreset (``counterfactual``: channel off, budget x k) into the exact ``ScoreRequest``\n(\"Run exact\" submits it with ``POST /v1/models/{id}/versions/{v}:score``). The request\nis checked statically against the model version's score metadata: an unknown model is\n``404``, and a request the version cannot score (unknown coordinates, missing future\ncovariates under ``future_covariates: supplied``) is ``422`` with JSON pointers.\nNothing is stored and no run starts.",
+        "description": "Compile a slider scenario (``whatif``), a forecast over a horizon or an intervention\npreset (``counterfactual``: channel off, budget x k) into the exact ``ScoreRequest``\n(\"Run exact\" submits it with ``POST /v1/models/{id}/versions/{v}:score``). The request\nis checked statically against the model version's score metadata: an unknown model is\n``404``, and a request the version cannot score (unknown coordinates, missing future\ncovariates under ``future_covariates: supplied``) is ``422`` with JSON pointers.\nA what-if or preset over the fit window (no horizon) scores the data the version was\nfitted on, so the compiled request names that dataset version in ``data``.\nNothing is stored and no run starts.",
         "operationId": "compile_guided_request",
         "requestBody": {
           "content": {
@@ -23809,6 +23809,17 @@
                       "type": "urn:mapi:error:MISSING_FUTURE_COVARIATE"
                     }
                   },
+                  "REF_UNRESOLVED": {
+                    "summary": "A reference could not be resolved",
+                    "value": {
+                      "code": "REF_UNRESOLVED",
+                      "detail": "A reference could not be resolved",
+                      "errors": [],
+                      "status": 422,
+                      "title": "A reference could not be resolved",
+                      "type": "urn:mapi:error:REF_UNRESOLVED"
+                    }
+                  },
                   "SCENARIO_OUT_OF_RANGE": {
                     "summary": "The scenario is outside the precomputed grid",
                     "value": {
@@ -23837,7 +23848,7 @@
                 }
               }
             },
-            "description": "Problem: SCHEMA_INVALID, SCENARIO_OUT_OF_RANGE, MISSING_FUTURE_COVARIATE"
+            "description": "Problem: SCHEMA_INVALID, REF_UNRESOLVED, SCENARIO_OUT_OF_RANGE, MISSING_FUTURE_COVARIATE"
           }
         },
         "summary": "What-if scenario, forecast or preset -> the ScoreRequest it stands for ('Run exact')",

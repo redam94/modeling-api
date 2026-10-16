@@ -467,3 +467,26 @@ def test_bayesinsight_import_needs_one_kpi_and_matching_names() -> None:
     assert [(i.severity.value, i.pointer) for i in draft.issues] == [
         ("info", "/model_def/variable_details/1/partial_pooling_sigma")
     ]
+
+
+def test_detected_frequencies_are_explained_in_words() -> None:
+    from mapi_spec.guided import freq_plain
+
+    assert freq_plain("W-SUN") == "weekly, on Sundays"
+    assert freq_plain("D") == "daily" and freq_plain("MS") == "monthly (on the 1st)"
+    assert freq_plain("QS-JAN") == "quarterly" and freq_plain("10min") == "10min"
+    geo = get_template("geo_mmm")
+    cols = [
+        ColumnProfile(name="Week", dtype="date", n_rows=10, detected_freq="W-SUN"),
+        ColumnProfile(name="Revenue", dtype="number", n_rows=10),
+    ]
+    date = next(q for q in suggest_roles(geo, cols).questions if q.question_id == "date")
+    assert "weekly, on Sundays" in date.candidates[0].reason_plain
+    assert "W-SUN" not in date.candidates[0].reason_plain
+
+
+def test_the_geo_mmm_fits_long_enough_for_its_scorecard() -> None:
+    """Two years of weekly data failed the convergence checks at 500 draws (M3 usability run);
+    a Guided user cannot change the fit, so the template samples longer and more carefully."""
+    fit = get_template("geo_mmm").spec_template["model"]["fit"]  # type: ignore[index,call-overload]
+    assert fit["draws"] >= 1000 and fit["tune"] >= 1000 and fit["target_accept"] >= 0.95  # type: ignore[index]

@@ -347,8 +347,9 @@ def test_lineage_pins_data_side_tables_and_runtime(
 def test_scorecard_diagnostics_and_metrics(fit: FitResult) -> None:
     mv = fit.version
     assert mv.scorecard is not None and mv.scorecard.items
-    codes = {i.code for i in mv.scorecard.items}
-    assert {"RHAT", "ESS_BULK", "DIVERGENCES"} <= codes, codes
+    # the runner's scorecard (v0.4): one item per catalog check (mapi_spec.scorecard)
+    checks = {i.check for i in mv.scorecard.items}
+    assert {"convergence.rhat", "convergence.ess", "convergence.divergences"} <= checks, checks
     assert mv.scorecard.overall in ("pass", "warn", "fail")
     assert all(i.message_plain for i in mv.scorecard.items)
     assert mv.diagnostics and {d.code for d in mv.diagnostics} >= {"RHAT", "DIVERGENCES"}
