@@ -520,3 +520,19 @@ def test_about_shows_any_card(mapi: Invoke, api: respx.MockRouter, example: Ex) 
     assert res.exit_code == 0 and "Weekly totals" in res.stdout and "Example:" in res.stdout
     res = mapi(*CONN, "about", "ts.nope")
     assert res.exit_code == 1 and "no catalog item" in res.stderr
+
+
+def test_v05_errors_come_with_a_hint(mapi: Invoke, api: respx.MockRouter, example: Ex) -> None:
+    api.get(f"{V1}/workflows/{WF}").respond(200, json=example(Workflow))
+    api.post(f"{V1}/workflows/{WF}/runs").mock(
+        return_value=problem(ErrorCode.WORKFLOW_NOT_RUNNABLE, "revision 2 has errors", 409)
+    )
+    res = mapi(*CONN, "workflows", "run", WF)
+    assert res.exit_code == 1 and "WORKFLOW_NOT_RUNNABLE" in res.stderr
+    assert "mapi workflows apply" in res.stderr
+    api.get(f"{V1}/validations/{VAL}").respond(200, json=example(ModelValidation))
+    api.post(f"{V1}/validations/{VAL}/approvals").mock(
+        return_value=problem(ErrorCode.SELF_APPROVAL_FORBIDDEN, "not your own", 403)
+    )
+    res = mapi(*CONN, "approve", VAL, "-y")
+    assert "reviewer capability" in res.stderr
