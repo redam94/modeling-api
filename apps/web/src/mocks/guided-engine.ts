@@ -42,7 +42,7 @@ function score(q: GuidedQuestion, col: ColumnProfile): [number, string[]] {
     why.push("contains dates");
     if (col.detected_freq) {
       s += 0.05;
-      why.push(`evenly spaced (${col.detected_freq})`);
+      why.push(`evenly spaced: ${freqPlain(col.detected_freq)}`);
     }
   } else if (q.dim && (col.dtype === "string" || col.dtype === "integer") && col.n_distinct) {
     if (col.n_distinct >= 2 && col.n_distinct <= 1000 && col.n_distinct * 2 <= Math.max(col.n_rows, 1)) {
@@ -68,6 +68,17 @@ function score(q: GuidedQuestion, col: ColumnProfile): [number, string[]] {
     why.push("mostly empty");
   }
   return [Math.max(0, Math.min(1, s)), why];
+}
+
+const WEEKDAYS: Record<string, string> = { MON: "Monday", TUE: "Tuesday", WED: "Wednesday", THU: "Thursday", FRI: "Friday", SAT: "Saturday", SUN: "Sunday" };
+const FREQ_WORDS: Record<string, string> = { D: "daily", B: "every working day", h: "hourly", H: "hourly", MS: "monthly (on the 1st)", M: "monthly (month ends)", ME: "monthly (month ends)", QS: "quarterly", Q: "quarterly", QE: "quarterly", YS: "yearly", Y: "yearly", YE: "yearly", A: "yearly", AS: "yearly" };
+
+/** Port of `mapi_spec.guided.freq_plain`: a date frequency in words. */
+export function freqPlain(freq: string): string {
+  const day = freq.startsWith("W-") ? WEEKDAYS[freq.slice(2)] : undefined;
+  if (day) return `weekly, on ${day}s`;
+  if (freq === "W") return "weekly";
+  return FREQ_WORDS[freq.split("-")[0] ?? ""] ?? freq;
 }
 
 export function suggestRoles(template: GuidedTemplate, columns: ColumnProfile[]): RoleSuggestions {

@@ -77,6 +77,7 @@ __all__ = [
     "channel_label",
     "draft_from_bayesinsight",
     "draft_schema",
+    "freq_plain",
     "get_template",
     "guided_lock_issues",
     "profiles_from_dataset",
@@ -315,9 +316,15 @@ _HOLDOUT = GuidedQuestion(
 )
 _TIME_DIM = DimSpec(kind="time", policy="extend")
 _FIT = {"mode": "evaluate_then_refit", "tune": 500, "draws": 500, "chains": 4, "seed": 20261015}
+_MMM_FIT = {"mode": "evaluate_then_refit", "tune": 1000, "draws": 1000, "chains": 4,
+            "target_accept": 0.95, "seed": 20261015}  # fmt: skip
+"""The geo MMM's fit: hierarchical adstock-saturation models sample slowly, and on two years
+of weekly data the shorter fit left the scorecard's convergence checks failing (a Guided user
+cannot change the fit settings), so it samples longer and more carefully (about a minute)."""
 
 GEO_MMM = GuidedTemplate(
     id="geo_mmm",
+    version="1.1.0",
     title="Geo marketing mix",
     description_plain="Find out how much each marketing channel adds to your results in each "
     "market, and what happens if you move budget between channels.",
@@ -384,7 +391,7 @@ GEO_MMM = GuidedTemplate(
             "use": "mmm.hierarchical_geo@^1",
             "settings": {"pooling": "partial", "adstock": {"kind": "geometric", "l_max": 6},
                          "saturation": {"kind": "logistic"}},
-            "fit": _FIT,
+            "fit": _MMM_FIT,
         },
         "outputs": {"derived": ["contributions", "response_curves", "marginal_cost"],
                     "plots": ["core.ppc_fan", "core.convergence", "mmm.decomposition",
@@ -759,7 +766,7 @@ def _score(q: GuidedQuestion, col: ColumnProfile) -> tuple[float, list[str]]:
         why.append("contains dates")
         if col.detected_freq:
             score += 0.05
-            why.append(f"evenly spaced ({col.detected_freq})")
+            why.append(f"evenly spaced: {freq_plain(col.detected_freq)}")
     elif q.dim is not None and col.dtype in ("string", "integer") and col.n_distinct:
         if 2 <= col.n_distinct <= 1000 and col.n_distinct * 2 <= max(col.n_rows, 1):
             score += 0.2
@@ -788,6 +795,25 @@ def _score(q: GuidedQuestion, col: ColumnProfile) -> tuple[float, list[str]]:
 
 
 _FREQ_ANSWER = {"W": "weekly", "D": "daily", "B": "daily"}
+
+
+_WEEKDAYS: Final = {"MON": "Monday", "TUE": "Tuesday", "WED": "Wednesday", "THU": "Thursday",
+                    "FRI": "Friday", "SAT": "Saturday", "SUN": "Sunday"}  # fmt: skip
+_FREQ_WORDS: Final = {"D": "daily", "B": "every working day", "h": "hourly", "H": "hourly",
+                      "MS": "monthly (on the 1st)", "M": "monthly (month ends)",
+                      "ME": "monthly (month ends)", "QS": "quarterly", "Q": "quarterly",
+                      "QE": "quarterly", "YS": "yearly", "Y": "yearly", "YE": "yearly",
+                      "A": "yearly", "AS": "yearly"}  # fmt: skip
+
+
+def freq_plain(freq: str) -> str:
+    """A detected date frequency in words (``W-SUN`` -> ``weekly, on Sundays``), for the
+    reasons role detection gives; unknown aliases are returned as they are."""
+    if freq.startswith("W-") and freq[2:] in _WEEKDAYS:
+        return f"weekly, on {_WEEKDAYS[freq[2:]]}s"
+    if freq == "W":
+        return "weekly"
+    return _FREQ_WORDS.get(freq.split("-")[0], freq)
 
 
 def suggest_roles(template: GuidedTemplate, columns: Sequence[ColumnProfile]) -> RoleSuggestions:
