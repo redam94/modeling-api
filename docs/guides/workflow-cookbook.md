@@ -267,6 +267,11 @@ print(nodes["granger"].result["verdict_plain"])   # "Past values of the driver h
 print([n.node_id for n in run.nodes if n.status.value == "skipped"])  # the branch not taken
 ```
 
+Run on a laptop against three simulated weekly series, two of which share a stochastic trend
+(`target=a`, `driver=b`), it printed the two verdicts above and `['diff', 'lags', 'var']`:
+the Johansen trace statistic (69.1) put the rank at 1, the VECM branch ran, and Granger found
+that `b` helps predict `a` (p = 0.0015). See [Macro and VAR analysis](../use-cases.md#macro-and-var-analysis).
+
 The fitted model's impulse responses, variance decomposition, Granger table and Johansen
 table are in the [Model Explorer](model-explorer.md) (`mapi explore model … -s irf -s fevd`).
 

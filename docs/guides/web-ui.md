@@ -267,6 +267,14 @@ editor with a node palette, typed ports and a YAML view, and a live run monitor.
 [In the web app](workflows.md#in-the-web-app). **Governance** edits policies, follows
 validations and holds the reviewers' queue; see [In the web app](governance.md#in-the-web-app).
 
+<div class="grid" markdown>
+
+![The workflow editor: palette, canvas with typed ports, node editor](../assets/screenshots/workflows-editor.png){ .mapi-shot }
+
+![A validation waiting for a reviewer, with its checks and evidence](../assets/screenshots/governance-validation.png){ .mapi-shot }
+
+</div>
+
 The screens lead into each other:
 
 - A finished workflow run links each model it fitted to the **Model Explorer** and to the

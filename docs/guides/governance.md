@@ -32,7 +32,9 @@ api() { curl -sS -H "Authorization: Bearer $MAPI_TOKEN" -H "X-Mapi-Project: $MAP
 
 ## What the checks mean, in plain words
 
-Every check has an About card (`GET /v1/catalog/governance-checks`). In short:
+Every check has an About card (`GET /v1/catalog/governance-checks`); the
+[governance checks reference](../reference/generated/governance-checks.md) lists each one
+with its card, metric, default limits, requirements and parameters. In short:
 
 | Check | It asks | How it is measured |
 |---|---|---|
@@ -188,6 +190,8 @@ checks, whether it needs a reviewer and whether it gates promotion), **Tenant-wi
 **Check catalog**, where every check has its About card, what it measures and its default
 limits.
 
+![Governance: the policies in force in the project, tenant-wide first](../assets/screenshots/governance-policies.png){ .mapi-shot }
+
 ### Editing a policy
 
 Open a policy (project admins edit project policies, tenant admins tenant-wide ones; everyone
@@ -201,6 +205,14 @@ else sees them read-only) or press **New policy**:
   parameters (for example the number of shuffles).
 - **Sign-off and promotion**: **Require approval by a reviewer** (and how many),
   **Only validated models can be promoted to an endpoint**, and **Active**.
+
+<div class="grid" markdown>
+
+![A project policy: what it covers, its required checks, and its versions](../assets/screenshots/governance-policy.png){ .mapi-shot }
+
+![Adding a check: its About card shows before it is added](../assets/screenshots/governance-policy-editor.png){ .mapi-shot }
+
+</div>
 
 **Save version N** stores the next version; a concurrent edit is refused and kept on screen.
 **Versions** lists every version and compares two side by side. **Retire policy** keeps its
@@ -221,6 +233,10 @@ default), optionally the data to check against, and a note. The validation page 
   real model's error marked (drawn in the plot sandbox).
 - **Approvals**, **Evidence pack** and **Held to** (the policy versions).
 
+![A validation awaiting approval: where it is on its path, its history, the checks and the reviewer's form](../assets/screenshots/governance-validation.png){ .mapi-shot }
+
+![Evidence of the shuffled-result test: the real model's error against the 19 fits on shuffled results](../assets/screenshots/governance-evidence.png){ .mapi-shot }
+
 Depending on its state the page offers **Cancel checks**, **Resubmit** (after failed checks or
 a rejection) and **Deprecate** (with a reason, for a validated version; project admins).
 **Export evidence pack** saves the readable HTML page or the JSON as a file; the HTML is never
@@ -237,6 +253,8 @@ review it and its buttons are disabled; the server refuses it anyway
 
 Project admins grant and revoke the capability in the **Reviewer** column of **Members**
 (admins hold it implicitly; viewers cannot hold it).
+
+![The review queue: validations whose checks passed and that wait for a second person](../assets/screenshots/governance-review-queue.png){ .mapi-shot }
 
 ### Promotion in the app
 

@@ -40,6 +40,16 @@ Weeks are shuffled **in blocks** (a run of consecutive weeks moves together), so
 inside the data survive; only the link between drivers and result is broken. A model that wins
 only because of a trend still has to beat shuffled data that keeps short-term structure.
 
+![The evidence a reviewer sees: the real model's error (left, marked) against the errors of 19 fits on shuffled results](../assets/screenshots/governance-evidence.png){ .mapi-shot }
+
+Persistence is the honest limit of this test. On a series that wanders (a random walk), a
+model that differences it gets most of its skill from "next week is like this week", and
+blocks of shuffled weeks keep much of that, so shuffled fits can forecast nearly as well. The
+cookbook's ARIMAX on such a series beats naive by 25% on unseen weeks and still sees 2 of 20
+shuffled fits tie it ([the output](workflow-cookbook.md#run-it-with-the-python-client)): the
+test is right that most of the skill is persistence. To measure what the *drivers* add on
+such series, require the fake-driver and shifted-driver tests below as well.
+
 ### Fake drivers: does the model credit anything it is given?
 
 Add three drivers that are pure noise - copies of a real spend column scrambled in time, or
