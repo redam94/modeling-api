@@ -83,7 +83,29 @@ class TestConfig:
         assert cfg.internal_token_file.stat().st_mode & 0o777 == 0o600
         single = _cfg(dev, tmp_path, MAPI_STACK_PROFILE="single-tenant").service_env(None)
         assert single["MAPI_PROFILE"] == "single-tenant" and "MAPI_INTERNAL_TOKEN" not in single
+        # the dev profile mails through the outbox in the data dir (GET /dev/outbox)
+        assert env["MAPI_OUTBOX_DIR"] == str(cfg.data_dir / "outbox")
+        assert "MAPI_OUTBOX_DIR" not in single
         assert dev.main(["status"], {"MAPI_STACK_PROFILE": "nope"}) == 2
+
+    def test_outbox_prints_the_newest_links(
+        self, dev: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        import json
+
+        box = tmp_path / "box"
+        environ = {"MAPI_DATA_DIR": str(tmp_path / "data"), "MAPI_OUTBOX_DIR": str(box)}
+        assert dev.main(["outbox"], environ) == 0
+        assert "no e-mail" in capsys.readouterr().out
+        box.mkdir()
+        for i, to in enumerate(("ana@acme.example", "bo@acme.example")):
+            (box / f"2026-10-16T10-0{i}-00_{i}.json").write_text(
+                json.dumps({"to": to, "subject": "Verify", "sent_at": f"t{i}", "body": "",
+                            "tags": {"link": f"http://web/verify-email?token={i}"}})
+            )  # fmt: skip
+        assert dev.main(["outbox", "--to", "ana@acme.example"], environ) == 0
+        out = capsys.readouterr().out
+        assert "ana@acme.example" in out and "token=0" in out and "bo@" not in out
 
     def test_same_origin_web_and_plots_is_rejected(self, dev: ModuleType) -> None:
         rc = dev.main(
@@ -116,6 +138,7 @@ class TestServiceTable:
         assert services["gcs-shim"].argv[1] == "serve"
         assert services["web"].env["VITE_API_BASE"] == "http://127.0.0.1:8000"
         assert services["plots"].env["VITE_APP_ORIGINS"] == "http://127.0.0.1:5173"
+        assert services["plots"].env["VITE_API_URL"] == "http://127.0.0.1:8000"
         assert services["gcs-shim"].argv[-2:] == ("--root", str(tmp_path / "data" / "gcs"))
         assert [Path(services[n].argv[0]).name for n in ("migrate", "api", "worker")] == [
             "mapi-server"

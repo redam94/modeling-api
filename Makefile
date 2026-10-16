@@ -56,6 +56,10 @@ db-shell: ## Open psql on the dev database (embedded pgserver or DATABASE_URL)
 seed: ## Load the E33 demo datasets + spec into a running stack (`make seed SIZE=full`)
 	$(UV) run python scripts/seed.py $(if $(filter command line,$(origin SIZE)),--size $(SIZE))
 
+.PHONY: outbox
+outbox: ## Show the dev stack's newest e-mails (sign-up verification links; TO=<address> filters)
+	$(UV) run python scripts/dev.py outbox $(if $(TO),--to $(TO))
+
 .PHONY: clean-local
 clean-local: ## Delete local state in MAPI_DATA_DIR (.local: database, objects); YES=1 skips the prompt
 	$(UV) run python scripts/dev.py clean $(if $(YES),--yes)

@@ -40,7 +40,8 @@ stack is stopped and the exit status is non-zero. Nothing is restarted behind yo
 Any service's command can be replaced with ``MAPI_DEV_<NAME>_CMD`` (shell-quoted), e.g.
 ``MAPI_DEV_API_CMD="uvicorn mapi_server.app:app --reload --port 8000"``.
 
-Sub-commands: ``up``, ``stop``, ``status``, ``env``, ``migrate``, ``db-shell``, ``clean``.
+Sub-commands: ``up``, ``stop``, ``status``, ``env``, ``migrate``, ``db-shell``, ``clean``,
+``outbox`` (the dev mailer's newest e-mails, e.g. sign-up verification links).
 """
 
 from __future__ import annotations
@@ -153,6 +154,12 @@ class DevConfig:
     def internal_token_file(self) -> Path:
         return self.data_dir / "dev" / "internal-token"
 
+    @property
+    def outbox_dir(self) -> Path:
+        """Where the dev profile's outbox mailer writes e-mail (sign-up verification links);
+        ``GET /dev/outbox`` and ``dev.py outbox`` read it."""
+        return self.data_dir / "outbox"
+
     def internal_token(self) -> str:
         """The stack's ``MAPI_INTERNAL_TOKEN`` (created once, mode 0600)."""
         path = self.internal_token_file
@@ -190,6 +197,9 @@ class DevConfig:
         }
         if self.profile != "single-tenant":
             env["MAPI_INTERNAL_TOKEN"] = self.internal_token()
+        if self.profile == "dev":
+            # the dev profile mails through the outbox (read at GET /dev/outbox)
+            env["MAPI_OUTBOX_DIR"] = str(self.outbox_dir)
         if database_url:
             env[ENV_DATABASE_URL] = database_url
         return env
@@ -366,7 +376,11 @@ def build_services(cfg: DevConfig, environ: Mapping[str, str]) -> list[Service]:
                 str(plots.port),
                 "--strictPort",
             ),
-            env={"VITE_APP_ORIGINS": cfg.web_origin.rstrip("/")},
+            # the embed page (/embed/<token>) fetches the public view from the API
+            env={
+                "VITE_APP_ORIGINS": cfg.web_origin.rstrip("/"),
+                "VITE_API_URL": cfg.api_url.rstrip("/"),
+            },
             ready=TcpProbe(plots.host, plots.port),
             requires=(
                 pnpm_req,
@@ -1006,6 +1020,23 @@ def cmd_clean(args: argparse.Namespace, cfg: DevConfig, environ: Mapping[str, st
     return 0
 
 
+def cmd_outbox(args: argparse.Namespace, cfg: DevConfig, environ: Mapping[str, str]) -> int:
+    """Print the newest e-mails of the dev outbox (verification links first)."""
+    from mapi_server.services.mail import read_outbox
+
+    directory = Path(environ.get("MAPI_OUTBOX_DIR") or cfg.outbox_dir)
+    messages = read_outbox(directory, to=args.to, limit=args.limit)
+    if not messages:
+        print(f"no e-mail in {directory}" + (f" to {args.to}" if args.to else ""))
+        return 0
+    for msg in messages:
+        tags = msg.get("tags") or {}
+        print(f"{msg.get('sent_at', '?')}  to {msg.get('to', '?')}: {msg.get('subject', '')}")
+        if isinstance(tags, dict) and tags.get("link"):
+            print(f"    {tags['link']}")
+    return 0
+
+
 COMMANDS: dict[str, Callable[[argparse.Namespace, DevConfig, Mapping[str, str]], int]] = {
     "up": cmd_up,
     "stop": cmd_stop,
@@ -1014,6 +1045,7 @@ COMMANDS: dict[str, Callable[[argparse.Namespace, DevConfig, Mapping[str, str]],
     "migrate": cmd_migrate,
     "db-shell": cmd_db_shell,
     "clean": cmd_clean,
+    "outbox": cmd_outbox,
 }
 
 
@@ -1039,6 +1071,9 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     sub.add_parser("db-shell", help="open psql on the dev database")
     clean = sub.add_parser("clean", help="delete MAPI_DATA_DIR (database, objects, logs)")
     clean.add_argument("--yes", action="store_true")
+    outbox = sub.add_parser("outbox", help="show the dev mailer's newest e-mails and links")
+    outbox.add_argument("--to", default=None, help="only e-mail to this address")
+    outbox.add_argument("--limit", type=int, default=10)
     return parser.parse_args(argv)
 
 
