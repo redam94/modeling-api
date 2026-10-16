@@ -1,0 +1,10 @@
+# Security headers of the plot sandbox's embed page (/embed/<token>; plan §10.3 items 4-5):
+# the sandbox policy plus a connect-src for the API's public embed path only. No cookies or
+# credentials are ever sent (the page fetches with credentials: "omit"). Any https site may
+# frame it; the page checks the link's allowed origins before it renders.
+add_header Content-Security-Policy "default-src 'none'; script-src 'self' ${MAPI_PLOTS_ORIGIN}; style-src 'self' ${MAPI_PLOTS_ORIGIN} 'unsafe-inline'; img-src 'self' ${MAPI_PLOTS_ORIGIN} data: blob:; font-src 'self' ${MAPI_PLOTS_ORIGIN} data:; connect-src ${MAPI_PLOTS_ORIGIN}/topojson/ ${MAPI_API_URL}/v1/embeds/; frame-ancestors 'self' https: ${MAPI_WEB_ORIGIN}; base-uri 'none'; form-action 'none'; object-src 'none'" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "no-referrer" always;
+add_header X-Robots-Tag "noindex, nofollow" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()" always;
+add_header Cross-Origin-Resource-Policy "cross-origin" always;
