@@ -106,7 +106,7 @@ def response_grid_view(bundle: Bundle, *, kpi: str | None = None) -> ResponseGri
         else spend[:, int(np.argmin(np.abs(np.asarray(rc["multiplier"].values) - 1.0)))]
     )
     body: dict[str, Any] = {
-        "kpi": (kpi or bundle.binding.to_dataset("y"))[:128],
+        "kpi": (kpi or _target_name(bundle))[:128],
         "kpi_units": _units(da),
         "spend_units": _units(rc["spend"]),
         "periods": max(1, int(rc.attrs.get("periods", 1))),
@@ -130,6 +130,13 @@ def response_grid_view(bundle: Bundle, *, kpi: str | None = None) -> ResponseGri
             sg = rc["spend_by_geo"].transpose("geo", "channel", "multiplier").values
             body["spend_by_geo"] = [[[_f(v) for v in row] for row in per_c] for per_c in sg]
     return ResponseGridView.model_validate(body)
+
+
+def _target_name(bundle: Bundle) -> str:
+    """The dataset name of the model's (first) target."""
+    schema = bundle.resolved.model.input_schema
+    targets = schema.targets if schema is not None else []
+    return bundle.binding.to_dataset(targets[0] if targets else "y")
 
 
 # ============================================================================== score views
