@@ -11,9 +11,10 @@ import numpy as np
 import pytest
 import xarray as xr
 from mapi_runner.worker import fit as fit_mod
+from mapi_runner.worker.guided import response_grid_view
 from mapi_runner.worker.scorecard import _channel_totals, _plausibility
 from mapi_spec.scorecard import rollup
-from mapi_spec.views import RESPONSE_GRID_VIEW
+from mapi_spec.views import MAX_GRID_GEOS, RESPONSE_GRID_VIEW
 
 pytestmark = pytest.mark.unit
 
@@ -58,6 +59,15 @@ def test_the_scorecard_reads_the_curves_at_today_s_spend_exactly() -> None:
     why: dict[str, str] = {}
     _plausibility(fake_bundle(off), out, why)  # type: ignore[arg-type]
     assert not out and "multiplier 1" in why["roi_max"]
+
+
+def test_a_grid_with_more_geos_than_the_view_holds_falls_back_to_the_national_grid() -> None:
+    rc = curves(multipliers=[0.0, 1.0, 2.0], geos=MAX_GRID_GEOS + 44, draws=100)
+    grid = response_grid_view(fake_bundle(rc), kpi="sales")  # type: ignore[arg-type]
+    assert grid is not None and grid.geos is None and grid.contribution_by_geo is None
+    assert grid.draws == 100
+    small = response_grid_view(fake_bundle(curves(multipliers=[0, 1, 2])), kpi="sales")  # type: ignore[arg-type]
+    assert small is not None and small.geos == ["g000", "g001"]
 
 
 def test_a_view_the_contract_refuses_is_reported_as_invalid(

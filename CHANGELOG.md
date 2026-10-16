@@ -435,6 +435,9 @@ milestone releases are tagged on `main`.
   now always holds 1 (inserted when the spacing skips it; `max_multiplier` must be at least
   1), the curves are read at exactly 1, and a what-if grid the view contract refuses is
   reported as `VIEW_INVALID` instead of `VIEW_TOO_LARGE`.
+- **runner**: a model with more than 256 geos lost its whole what-if grid (the per-geo view
+  failed its geo cap and the national grid was dropped with it); it now gets the national
+  grid (`mapi_spec.views.MAX_GRID_GEOS`).
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
