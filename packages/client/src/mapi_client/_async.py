@@ -130,6 +130,7 @@ from mapi_client.transfer import (
     check_upload_size,
     datatree_from_bytes,
     default_mapping,
+    mapping_reads,
     put_headers,
     upload_source,
     xarray_available,
@@ -486,7 +487,7 @@ class AsyncDatasets(_Resource):
             raise ValueError("give exactly one of dataset (a name) or dataset_id")
         src = upload_source(source, filename=filename)
         ingest = mapping or default_mapping(src.format)
-        if ingest.format != src.format:
+        if not mapping_reads(ingest.format, src.format):
             raise ValueError(f"mapping.format {ingest.format!r} does not match {src.format!r}")
         ds_id = dataset_id or (await self.ensure(str(dataset))).id
         session = await self.create_upload(

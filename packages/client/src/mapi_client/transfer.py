@@ -117,6 +117,12 @@ def detect_format(filename: str) -> tuple[UploadFormat, str]:
     raise ValueError(f"cannot tell the format of {filename!r} (known extensions: {known})")
 
 
+def mapping_reads(mapping_format: str, file_format: UploadFormat) -> bool:
+    """Whether an ingest mapping of ``mapping_format`` can read a file of ``file_format``:
+    the same format, or an ``mff`` long table, which is a CSV file."""
+    return mapping_format == file_format or (mapping_format == "mff" and file_format == "csv")
+
+
 def default_mapping(fmt: UploadFormat) -> IngestMapping:
     """Mapping for self-describing formats; csv/parquet need an explicit mapping."""
     if fmt in ("csv", "parquet"):
