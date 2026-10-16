@@ -2829,6 +2829,7 @@ dependencies = [
 dev = [
     { name = "hypothesis" },
     { name = "import-linter" },
+    { name = "markdown" },
     { name = "mypy" },
     { name = "pgserver" },
     { name = "pre-commit" },
@@ -2870,6 +2871,7 @@ requires-dist = [
 dev = [
     { name = "hypothesis", specifier = ">=6.112" },
     { name = "import-linter", specifier = ">=2.1" },
+    { name = "markdown", specifier = ">=3.5" },
     { name = "mypy", specifier = ">=1.13" },
     { name = "pgserver", specifier = ">=0.1.4" },
     { name = "pre-commit", specifier = ">=4.0" },
