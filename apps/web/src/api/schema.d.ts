@@ -85,6 +85,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Signup Route
+         * @description Self-service sign-up. The answer is the same for new and known addresses; the link
+         *     in the e-mail (valid 24 hours, single use) creates a ``public``-tier workspace.
+         */
+        post: operations["signup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Email Route
+         * @description Verify the address with the e-mailed token: creates the workspace (sign in next).
+         */
+        post: operations["verify_email"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -287,6 +328,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/signups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin List Signups
+         * @description Sign-ups, newest first; ``review=flagged`` is the Sybil review queue.
+         */
+        get: operations["admin_list_signups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/signups/{signup_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin Review Signup
+         * @description Approve or reject a sign-up; a rejection suspends the workspace it created.
+         */
+        post: operations["admin_review_signup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/tenants": {
         parameters: {
             query?: never;
@@ -328,6 +409,46 @@ export interface paths {
          *     ``deleting`` tenants are inaccessible (their data is removed by a separate procedure).
          */
         patch: operations["admin_update_tenant"];
+        trace?: never;
+    };
+    "/v1/admin/tenants/{tenant_id}/deletion/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin Retry Tenant Deletion
+         * @description Restart a failed purge (the orchestrator picks it up on its next pass).
+         */
+        post: operations["admin_retry_tenant_deletion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/tenants/{tenant_id}/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Admin Put Tenant Verification
+         * @description Record (or revoke) identity verification of a tenant; audited with the reason.
+         */
+        put: operations["admin_put_tenant_verification"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/admin/usage": {
@@ -1206,6 +1327,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/{tenant_id}/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tenant Deletion
+         * @description The latest deletion of the tenant and its progress per store.
+         */
+        get: operations["get_tenant_deletion"];
+        put?: never;
+        /**
+         * Request Tenant Deletion
+         * @description Schedule the deletion of the whole tenant. ``confirm`` repeats the tenant id. The
+         *     tenant is suspended at once and its unfinished runs are cancelled; the purge starts
+         *     when the grace period ends and can be cancelled until then.
+         */
+        post: operations["request_tenant_deletion"];
+        /**
+         * Cancel Tenant Deletion
+         * @description Cancel a scheduled deletion (``CONFLICT`` once the purge has started).
+         */
+        delete: operations["cancel_tenant_deletion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Tenant Export
+         * @description Queue a GDPR export of everything the tenant stored; poll it for the link.
+         */
+        post: operations["create_tenant_export"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/exports/{export_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tenant Export
+         * @description An export; once ``ready``, ``download_url`` is a fresh short-lived signed link.
+         */
+        get: operations["get_tenant_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/{tenant_id}/members": {
         parameters: {
             query?: never;
@@ -1333,6 +1524,26 @@ export interface paths {
          * @description Cost of the whole tenant (tenant admins).
          */
         get: operations["get_tenant_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tenant Verification
+         * @description E-mail and identity verification, and whether the workspace may upload code.
+         */
+        get: operations["get_tenant_verification"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1622,7 +1833,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -2571,6 +2782,11 @@ export interface components {
          */
         DatasetVersionStatus: "ingesting" | "ready" | "failed";
         /**
+         * DeletionState
+         * @enum {string}
+         */
+        DeletionState: "scheduled" | "cancelled" | "deleting" | "purged" | "failed";
+        /**
          * DerivedDecl
          * @description A derived quantity (contributions, response curves, ...).
          */
@@ -2694,6 +2910,17 @@ export interface components {
             ordered?: boolean;
             /** @default fixed */
             policy?: components["schemas"]["DimPolicy"];
+        };
+        /**
+         * EmailVerify
+         * @description ``POST /auth/verify-email``: the token from the e-mail link (single use).
+         * @example {
+         *       "token": "mev_0123456789abcdefghjkmnpqrstvwxyz01234567"
+         *     }
+         */
+        EmailVerify: {
+            /** Token */
+            token: string;
         };
         /**
          * ErrorCode
@@ -3188,6 +3415,76 @@ export interface components {
          * @enum {string}
          */
         FutureCovariates: "supplied" | "carry_last" | "seasonal_naive" | "zero";
+        /**
+         * GdprExport
+         * @description An export job; ``download_url`` is a short-lived signed link once ``ready``.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "download_url": "https://storage.example/exports/exp_01…?X-Goog-Signature=…",
+         *       "expires_at": "2026-10-16T09:42:00Z",
+         *       "id": "exp_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *       "include": [
+         *         "metadata",
+         *         "datasets",
+         *         "models",
+         *         "audit",
+         *         "usage"
+         *       ],
+         *       "ready_at": "2026-10-15T09:42:00Z",
+         *       "requested_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "size_bytes": 73400320,
+         *       "state": "ready",
+         *       "tenant_id": "acme-retail"
+         *     }
+         */
+        GdprExport: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Download Url */
+            download_url?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Include */
+            include: ("metadata" | "datasets" | "models" | "audit" | "usage")[];
+            /** Ready At */
+            ready_at?: string | null;
+            /** Requested By */
+            requested_by?: string | null;
+            /** Size Bytes */
+            size_bytes?: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "running" | "ready" | "expired" | "failed";
+            /** Tenant Id */
+            tenant_id: string;
+        };
+        /**
+         * GdprExportRequest
+         * @description ``POST /v1/tenants/{tenant_id}/exports``: what to include (default: everything).
+         * @example {
+         *       "include": [
+         *         "metadata",
+         *         "datasets",
+         *         "models",
+         *         "audit",
+         *         "usage"
+         *       ]
+         *     }
+         */
+        GdprExportRequest: {
+            /** Include */
+            include?: ("metadata" | "datasets" | "models" | "audit" | "usage")[];
+        };
         /**
          * GlobalSpend
          * @description Platform spend in the current window of the global spend cap: what the kill switch
@@ -4682,6 +4979,19 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[SignupReview]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_SignupReview_: {
+            /** Items */
+            items: components["schemas"]["SignupReview"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[SpecDoc]
          * @example {
          *       "items": [],
@@ -6113,6 +6423,166 @@ export interface components {
             url: string;
         };
         /**
+         * SignupAccepted
+         * @description ``202`` of ``POST /auth/signup``: identical for new and known addresses.
+         * @example {
+         *       "expires_in_s": 86400,
+         *       "status": "check_email"
+         *     }
+         */
+        SignupAccepted: {
+            /**
+             * Expires In S
+             * @default 86400
+             */
+            expires_in_s?: number;
+            /**
+             * Status
+             * @default check_email
+             * @constant
+             */
+            status?: "check_email";
+        };
+        /**
+         * SignupRequest
+         * @description ``POST /auth/signup`` (public, rate-limited). ``organisation`` names the tenant.
+         * @example {
+         *       "accepted_terms": true,
+         *       "email": "ana@acme.example",
+         *       "name": "Ana Analyst",
+         *       "organisation": "Acme Retail",
+         *       "terms_version": "2026-10"
+         *     }
+         */
+        SignupRequest: {
+            /** Accepted Terms */
+            accepted_terms: boolean;
+            /**
+             * Challenge
+             * @description A bot-check token (e.g. Turnstile), if configured
+             */
+            challenge?: string | null;
+            /** Email */
+            email: string;
+            /** Name */
+            name: string;
+            /** Organisation */
+            organisation?: string | null;
+            /**
+             * Terms Version
+             * @default 2026-10
+             */
+            terms_version?: string;
+        };
+        /**
+         * SignupReview
+         * @description ``GET /v1/admin/signups`` (operators): one sign-up and why it was flagged.
+         *
+         *     Client addresses and browsers appear only as keyed digests (``ip_hash``,
+         *     ``device_hash``), never raw; e-mail addresses are shown to operators for the review.
+         * @example {
+         *       "created_at": "2026-10-15T09:00:00Z",
+         *       "email": "ana@acme.example",
+         *       "email_domain": "acme.example",
+         *       "expires_at": "2026-10-16T09:00:00Z",
+         *       "flags": [
+         *         "same_ip"
+         *       ],
+         *       "id": "sgn_01jaf3s1t2v3w4x5y6z7a8b9c0",
+         *       "ip_hash": "3f7a0c9e1b2d4f6a8c0e2b4d6f8a0c2e",
+         *       "name": "Ana Analyst",
+         *       "organisation": "Acme Retail",
+         *       "reasons_plain": [
+         *         "Several workspaces were created from the same network address"
+         *       ],
+         *       "review": "flagged",
+         *       "state": "verified",
+         *       "tenant_id": "acme-retail",
+         *       "verified_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        SignupReview: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Device Hash */
+            device_hash?: string | null;
+            /** Email */
+            email: string;
+            /** Email Domain */
+            email_domain: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Flags */
+            flags?: string[];
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Ip Hash */
+            ip_hash?: string | null;
+            /** Name */
+            name: string;
+            /** Organisation */
+            organisation?: string | null;
+            /** Reasons Plain */
+            reasons_plain?: string[];
+            /** @default none */
+            review?: components["schemas"]["SignupReviewState"];
+            /** Review Reason */
+            review_reason?: string | null;
+            /** Reviewed At */
+            reviewed_at?: string | null;
+            /** Reviewed By */
+            reviewed_by?: string | null;
+            state: components["schemas"]["SignupState"];
+            /**
+             * Tenant Id
+             * @description The tenant the verification created
+             */
+            tenant_id?: string | null;
+            /** Verified At */
+            verified_at?: string | null;
+        };
+        /**
+         * SignupReviewDecision
+         * @description ``POST /v1/admin/signups/{signup_id}/review`` (operators; audited).
+         *
+         *     ``reject`` suspends the tenant the sign-up created; ``approve`` clears the flag (and
+         *     reactivates a tenant an earlier rejection suspended).
+         * @example {
+         *       "decision": "reject",
+         *       "reason": "one of 14 tenants from one IP"
+         *     }
+         */
+        SignupReviewDecision: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "reject";
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * SignupReviewState
+         * @description The operators' review of a sign-up (Sybil heuristics flag, operators decide).
+         * @enum {string}
+         */
+        SignupReviewState: "none" | "flagged" | "approved" | "rejected";
+        /**
+         * SignupState
+         * @description Where one sign-up is: waiting for its e-mail link, done, or never completed.
+         * @enum {string}
+         */
+        SignupState: "pending" | "verified" | "expired";
+        /**
          * SpecCreate
          * @description Create a spec document with its first revision (YAML 1.2 or JSON text).
          * @example {
@@ -6403,6 +6873,30 @@ export interface components {
          * @enum {string}
          */
         StepKind: "reshape" | "value" | "feature";
+        /** StoreProgress */
+        StoreProgress: {
+            /** Detail */
+            detail?: string | null;
+            /**
+             * Items Done
+             * @default 0
+             */
+            items_done?: number;
+            /** Items Total */
+            items_total?: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "running" | "done" | "failed";
+            /**
+             * Store
+             * @enum {string}
+             */
+            store: "database" | "object_store" | "queue" | "logs" | "webhooks";
+            /** Updated At */
+            updated_at?: string | null;
+        };
         /**
          * TemplateCase
          * @description Conditional fragment merged into the template when all ``when`` params match.
@@ -6557,6 +7051,95 @@ export interface components {
             name: string;
             /** @default verified */
             trust_tier?: components["schemas"]["TrustTier"];
+        };
+        /**
+         * TenantDeletion
+         * @description A tenant deletion and its progress per store.
+         * @example {
+         *       "id": "del_01jaf3q1r2s3t4v5w6x7y8z9a0",
+         *       "purge_after": "2026-10-15T09:30:00Z",
+         *       "requested_at": "2026-10-08T09:30:00Z",
+         *       "requested_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "started_at": "2026-10-15T09:30:00Z",
+         *       "state": "deleting",
+         *       "stores": [
+         *         {
+         *           "items_done": 412,
+         *           "items_total": 412,
+         *           "state": "done",
+         *           "store": "database"
+         *         },
+         *         {
+         *           "items_done": 40,
+         *           "items_total": 96,
+         *           "state": "running",
+         *           "store": "object_store"
+         *         },
+         *         {
+         *           "items_done": 0,
+         *           "items_total": 0,
+         *           "state": "done",
+         *           "store": "queue"
+         *         },
+         *         {
+         *           "state": "pending",
+         *           "store": "logs"
+         *         },
+         *         {
+         *           "state": "pending",
+         *           "store": "webhooks"
+         *         }
+         *       ],
+         *       "tenant_id": "acme-retail"
+         *     }
+         */
+        TenantDeletion: {
+            /** Cancelled At */
+            cancelled_at?: string | null;
+            /** Completed At */
+            completed_at?: string | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /**
+             * Purge After
+             * Format: date-time
+             */
+            purge_after: string;
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            /** Requested By */
+            requested_by?: string | null;
+            /** Retained */
+            retained?: {
+                [key: string]: string;
+            };
+            /** Started At */
+            started_at?: string | null;
+            state: components["schemas"]["DeletionState"];
+            /** Stores */
+            stores?: components["schemas"]["StoreProgress"][];
+            /** Tenant Id */
+            tenant_id: string;
+        };
+        /**
+         * TenantDeletionRequest
+         * @description ``POST /v1/tenants/{tenant_id}/deletion``: ``confirm`` must repeat the tenant id.
+         * @example {
+         *       "confirm": "acme-retail",
+         *       "reason": "closing the account"
+         *     }
+         */
+        TenantDeletionRequest: {
+            /** Confirm */
+            confirm: string;
+            /** Reason */
+            reason?: string | null;
         };
         /**
          * TenantStatus
@@ -7058,6 +7641,84 @@ export interface components {
             units?: string | null;
         };
         /**
+         * VerificationMethod
+         * @enum {string}
+         */
+        VerificationMethod: "none" | "email" | "card" | "document" | "manual";
+        /**
+         * VerificationResult
+         * @description The verified address and the public-tier tenant it now administers; sign in next.
+         * @example {
+         *       "email": "ana@acme.example",
+         *       "login_url": "/auth/login?return_to=%2Fguided",
+         *       "project_id": "default",
+         *       "tenant_id": "acme-retail",
+         *       "trust_tier": "public"
+         *     }
+         */
+        VerificationResult: {
+            /** Email */
+            email: string;
+            /**
+             * Login Url
+             * @default /auth/login
+             */
+            login_url?: string;
+            /** Project Id */
+            project_id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /** @default public */
+            trust_tier?: components["schemas"]["TrustTier"];
+        };
+        /**
+         * VerificationStatus
+         * @description ``GET /v1/tenants/{tenant_id}/verification``.
+         * @example {
+         *       "email_verified": true,
+         *       "identity_verified": false,
+         *       "method": "email",
+         *       "reason_plain": "Public workspaces run built-in models only for now.",
+         *       "tenant_id": "acme-retail",
+         *       "trust_tier": "public",
+         *       "uploaded_code_allowed": false,
+         *       "verified_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        VerificationStatus: {
+            /** Email Verified */
+            email_verified: boolean;
+            /** Identity Verified */
+            identity_verified: boolean;
+            /** @default none */
+            method?: components["schemas"]["VerificationMethod"];
+            /** Reason Plain */
+            reason_plain: string;
+            /** Tenant Id */
+            tenant_id: string;
+            trust_tier: components["schemas"]["TrustTier"];
+            /** Uploaded Code Allowed */
+            uploaded_code_allowed: boolean;
+            /** Verified At */
+            verified_at?: string | null;
+        };
+        /**
+         * VerificationUpdate
+         * @description ``PUT /v1/admin/tenants/{tenant_id}/verification`` (operators; audited).
+         * @example {
+         *       "identity_verified": true,
+         *       "method": "manual",
+         *       "reason": "signed enterprise contract"
+         *     }
+         */
+        VerificationUpdate: {
+            /** Identity Verified */
+            identity_verified: boolean;
+            method: components["schemas"]["VerificationMethod"];
+            /** Reason */
+            reason: string;
+        };
+        /**
          * WarningPayload
          * @description ``warning``: a non-fatal, platform-classified problem.
          */
@@ -7223,6 +7884,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionInfo"];
+                };
+            };
+        };
+    };
+    signup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignupAccepted"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `SCHEMA_INVALID`, `EMAIL_NOT_ALLOWED`, `TERMS_NOT_ACCEPTED` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `RATE_LIMITED` */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    verify_email: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailVerify"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationResult"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `LINK_EXPIRED` */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `SCHEMA_INVALID` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `RATE_LIMITED` */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -7666,6 +8420,111 @@ export interface operations {
             };
         };
     };
+    admin_list_signups: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                review?: components["schemas"]["SignupReviewState"] | null;
+                tenant_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_SignupReview_"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_review_signup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                signup_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignupReviewDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignupReview"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `CONFLICT` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `SCHEMA_INVALID` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     admin_list_tenants: {
         parameters: {
             query?: {
@@ -7795,6 +8654,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_retry_tenant_deletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDeletion"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `CONFLICT` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_put_tenant_verification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationStatus"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `SCHEMA_INVALID` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -9553,6 +10523,287 @@ export interface operations {
             };
         };
     };
+    get_tenant_deletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDeletion"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_tenant_deletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantDeletionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDeletion"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `CONFLICT` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `SCHEMA_INVALID` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cancel_tenant_deletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDeletion"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `CONFLICT` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_tenant_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GdprExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GdprExport"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `SCHEMA_INVALID` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `QUOTA_EXCEEDED` */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_tenant_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GdprExport"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_tenant_members: {
         parameters: {
             query?: {
@@ -9984,6 +11235,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UsageReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_tenant_verification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationStatus"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
             /** @description Validation Error */
