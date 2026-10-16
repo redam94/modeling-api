@@ -12,9 +12,11 @@ governance workflow and store their **evidence**; a reviewer can be required to 
 an endpoint can refuse to serve a model that is not validated.
 
 !!! info "Status"
-    v0.5 defines the contracts in `mapi_spec.governance` (and the `NOT_VALIDATED` rule of the
-    promotion gate in `mapi_spec.scorecard`); see the
-    [HTTP API reference](../reference/http-api.md#m35).
+    The contracts are in `mapi_spec.governance` (and the `NOT_VALIDATED` rule of the
+    promotion gate in `mapi_spec.scorecard`); the server and the sandbox implement every
+    check. The step-by-step guide, the plain-language meaning of each check and the default
+    policies are in [Validate models with governance policies](../guides/governance.md);
+    every operation is in the [HTTP API reference](../reference/http-api.md#m35).
 
 ## Policies
 
