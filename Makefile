@@ -270,7 +270,7 @@ docs-build: docs-catalog ## Build the documentation site into ./site (strict)
 
 .PHONY: docs-test
 docs-test: ## Run every documentation snippet and check every include
-	$(UV) run pytest -q conformance/tests/test_docs_snippets.py conformance/tests/test_docs_platform.py
+	$(UV) run pytest -q conformance/tests/test_docs_snippets.py conformance/tests/test_docs_platform.py conformance/tests/test_docs_tutorials.py
 
 .PHONY: docs-screenshots
 docs-screenshots: ## Recapture docs/assets/screenshots from a running, seeded stack (see the script)
@@ -296,6 +296,14 @@ DOCS_INTEGRATIONS_SHOTS := integrations-overview,integrations-promote-gate,integ
 docs-screenshots-integrations: ## Recapture the Integrations hub and trust-page screenshots from the mock-mode web app (see the script)
 	node scripts/docs_screenshots_integrations.mjs .local/screenshots-integrations
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-integrations docs/assets/screenshots --max-kb 150 --only $(DOCS_INTEGRATIONS_SHOTS)
+
+DOCS_TUTORIAL_SHOTS := integrations-sheets,webhook-secret,embed-page
+
+.PHONY: docs-screenshots-tutorials
+docs-screenshots-tutorials: ## Recapture the v0.4 tutorial screenshots (Sheets card, webhook secret, embed page) from mock mode
+	$(UV) run python scripts/docs_embed_view.py .local/embed-view.json
+	MAPI_EMBED_VIEW=.local/embed-view.json node scripts/docs_screenshots_tutorials.mjs .local/screenshots-tutorials
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-tutorials docs/assets/screenshots --max-kb 150 --only $(DOCS_TUTORIAL_SHOTS)
 
 ## ---------------------------------------------------------------- release
 .PHONY: release-check
