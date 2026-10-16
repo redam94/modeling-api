@@ -441,6 +441,12 @@ milestone releases are tagged on `main`.
   up past 100 %) and squashed the ranges actually stated. The charts show the ticked channels
   only and name the others ("No view on …: … learns them from the data"). The mock engine
   previews every channel, as the server does.
+- **spec**, **web**: a "Results without any media" belief stated without any channel belief
+  was silently dropped (`BusinessPriors.channels` needed at least one entry, and the page then
+  saved "no business priors"). `BusinessPriors` now needs at least one belief of either kind
+  (`channels` defaults to `{}`; a baseline-only block validates, and the "largest shares"
+  warning no longer fires without channel shares), both MMM plugins translate a baseline
+  alone, and the Guided page previews and saves it.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

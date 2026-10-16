@@ -91,6 +91,16 @@ def test_share_beliefs_must_fit_inside_the_kpi() -> None:
     assert warn.severity is Severity.WARNING
 
 
+def test_a_baseline_belief_stands_on_its_own() -> None:
+    # "Results without any media" needs no channel belief beside it (M3 review)
+    only = BusinessPriors.model_validate({"baseline_share": {"share": [0.4, 0.8]}})
+    assert only.channels == {}
+    assert check_business_priors(only) == []  # nothing about channel shares to warn of
+    for empty in ({}, {"channels": {}}, {"channels": {}, "baseline_share": None}):
+        with pytest.raises(ValidationError, match="at least one belief"):
+            BusinessPriors.model_validate(empty)
+
+
 def test_channel_labels_are_printable() -> None:
     with pytest.raises(ValidationError):
         BusinessPriors.model_validate({"channels": {"tv\n": {"roi": [1, 2]}}})

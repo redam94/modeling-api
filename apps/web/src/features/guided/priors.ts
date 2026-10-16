@@ -167,14 +167,17 @@ export function beliefProblems(form: PriorsForm): FormProblem[] {
   return out;
 }
 
-/** `BusinessPriors` for the form (`null` when no belief is stated). */
+/**
+ * `BusinessPriors` for the form (`null` when no belief is stated). A baseline belief stands on
+ * its own: the channels may then be empty.
+ */
 export function toBusinessPriors(form: PriorsForm, units: { kpi?: string | null; spend?: string | null } = {}): BusinessPriors | null {
-  const channels: BusinessPriors["channels"] = {};
+  const channels: NonNullable<BusinessPriors["channels"]> = {};
   for (const c of form.channels) {
     if (!c.enabled) continue;
     channels[c.channel] = form.mode === "roi" ? { roi: [c.low, c.high], credibility: c.credibility } : { contribution_share: [c.low, c.high], credibility: c.credibility };
   }
-  if (!Object.keys(channels).length) return null;
+  if (!Object.keys(channels).length && !form.baseline.enabled) return null;
   const out: BusinessPriors = { channels };
   if (form.baseline.enabled) out.baseline_share = { share: [form.baseline.low, form.baseline.high], credibility: form.baseline.credibility };
   if (units.kpi) out.kpi_units = units.kpi;

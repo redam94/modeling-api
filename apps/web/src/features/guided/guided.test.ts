@@ -117,6 +117,15 @@ describe("business priors", () => {
     expect(lt.tests).toEqual(cal.lift_tests);
   });
 
+  it("keeps a baseline belief stated without any channel belief (M3 review)", () => {
+    const form = formFromCalibration(undefined, ["tv", "search"]);
+    const baselineOnly = { ...form, baseline: { enabled: true, low: 0.4, high: 0.8, credibility: 0.8 } };
+    const bp = toBusinessPriors(baselineOnly);
+    expect(bp).toEqual({ channels: {}, baseline_share: { share: [0.4, 0.8], credibility: 0.8 } });
+    // and it survives a save and reload
+    expect(formFromCalibration({ business_priors: bp }, ["tv", "search"]).baseline).toEqual(baselineOnly.baseline);
+  });
+
   it("without a calibration block no channel carries a belief until it is ticked", () => {
     // a channel the analyst never touched must not become an ROI belief (M3 usability run)
     const form = formFromCalibration(undefined, ["tv"]);

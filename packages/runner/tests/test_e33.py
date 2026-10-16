@@ -268,3 +268,11 @@ def test_e33_validate_fit_derive_score_evaluate_render(
     assert result.preview.kpi_fan is not None and result.preview.roi["tv"].units == "EUR per EUR"
     ids = sorted(p["id"] for p in json.loads(tr.output("plots.json")))
     assert ids == ["core.prior_predictive", "mmm.prior_beliefs"]
+
+    # a baseline belief alone (Guided's "Results without any media", no channel ticked)
+    alone = {**job, "business_priors": {"baseline_share": {"share": [0.5, 0.8]}}}
+    tr = run_supervisor(make_run(gcs, RunKind.TRANSLATE_PRIORS, alone, inputs=inputs))
+    _ok(tr)
+    result = PriorTranslationResult.model_validate_json(tr.output("priors.json"))
+    assert set(result.coverage) == {"baseline"} and "intercept" in result.priors
+    assert {"tv", "search"} <= set(result.preview.roi)

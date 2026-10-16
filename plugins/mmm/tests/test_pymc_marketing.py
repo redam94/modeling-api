@@ -350,6 +350,24 @@ def test_business_priors_translate_to_pymc_marketing_priors(
     assert config["gamma_fourier"].dims == ("geo", "fourier_mode")
 
 
+def test_a_baseline_belief_alone_translates_to_pymc_marketing_priors(
+    data: tuple[xr.Dataset, E33Truth], tables: dict, registry: Registry
+) -> None:
+    from mapi_plugin_mmm.settings import PyMCMarketingSettings
+    from mapi_sdk.harness import prepare_model_stage
+    from mapi_spec.calibration import BusinessPriors, PriorTranslationJob
+    from mapi_spec.errors import Severity
+
+    stage = prepare_model_stage(SPEC, data[0], tables, registry, raw_schema=e33_raw_schema(data[0]))
+    s = PyMCMarketingSettings.model_validate(stage.settings)
+    beliefs = BusinessPriors.model_validate({"baseline_share": BELIEFS["baseline_share"]})
+    job = PriorTranslationJob(spec={}, business_priors=beliefs, draws=400, seed=3)
+    out = PyMCMarketingMMM().translate_priors(stage.data, s, job, stage.fit_context)
+    assert not [i for i in out.result.issues if i.severity is Severity.ERROR]
+    assert out.result.priors["intercept"]["distribution"] == "Normal"
+    assert abs(out.result.coverage["baseline"] - 0.8) < 0.1
+
+
 def test_unknown_channels_in_business_priors_are_errors(
     data: tuple[xr.Dataset, E33Truth], tables: dict, registry: Registry
 ) -> None:

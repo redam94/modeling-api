@@ -1368,7 +1368,7 @@
       },
       "BusinessPriors": {
         "additionalProperties": false,
-        "description": "Beliefs in business units, per channel (keys are channel *labels* as in the data).",
+        "description": "Beliefs in business units, per channel (keys are channel *labels* as in the data),\nand/or about the baseline. At least one belief is stated: a baseline belief alone is\nfine (channels without a belief keep the model's default priors).",
         "examples": [
           {
             "baseline_share": {
@@ -1420,7 +1420,6 @@
               "$ref": "#/components/schemas/ChannelBelief"
             },
             "maxProperties": 64,
-            "minProperties": 1,
             "title": "Channels",
             "type": "object"
           },
@@ -1455,9 +1454,6 @@
             "title": "Spend Units"
           }
         },
-        "required": [
-          "channels"
-        ],
         "title": "BusinessPriors",
         "type": "object"
       },

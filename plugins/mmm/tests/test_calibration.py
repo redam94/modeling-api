@@ -168,6 +168,16 @@ def test_share_ranges_round_trip(lo: float, ratio: float, cred: float) -> None:
     _coverage_ok(result, outcome, "search", cred)
 
 
+def test_a_baseline_belief_alone_translates() -> None:
+    # Guided's "Results without any media" with no channel ticked (M3 review)
+    outcome, scales, ds = _translate({"baseline_share": {"share": [0.5, 0.8], "credibility": 0.8}})
+    assert not [i for i in outcome.issues if i.severity is Severity.ERROR]
+    assert "intercept" in outcome.priors
+    result, _ = prior_preview(outcome, scales, SETTINGS, ds, draws=3000, seed=4)
+    assert result.coverage["baseline"] == pytest.approx(0.8, abs=0.08)
+    assert set(result.preview.roi) == set(CHANNELS)  # every channel at its default
+
+
 def test_mixed_beliefs_baseline_and_the_preview() -> None:
     beliefs = {
         "channels": {

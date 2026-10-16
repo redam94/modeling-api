@@ -197,6 +197,9 @@ calibration:
   central *c* interval is exactly that range (`lognormal_from_range`).
 - Shares must fit inside the KPI: the smallest shares (channels plus baseline) cannot add up
   to more than 100% (`BUSINESS_PRIORS_INVALID`).
+- At least one belief is stated, but any one will do: `baseline_share` alone (no
+  `channels`) narrows only the baseline, and channels without a belief keep the model's
+  default priors.
 - **Lift tests** are experiment results used as calibration data: extra (or removed) spend on
   one channel, optionally in one geo, over a window, and the incremental KPI it caused with a
   standard error or confidence interval. The model treats each as an extra observation of the
