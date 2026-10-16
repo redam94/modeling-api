@@ -325,7 +325,12 @@ class Dispatcher:
             .where(m.Tenant.id == m.Run.tenant_id, m.Tenant.status != TenantStatus.ACTIVE.value)
             .exists()
         )
-        conds: list[ColumnElement[bool]] = [m.Run.state == RunState.QUEUED.value, ~held_tenant]
+        conds: list[ColumnElement[bool]] = [
+            m.Run.state == RunState.QUEUED.value,
+            ~held_tenant,
+            # fan-out parents (workflow runs) never execute: their children do (M3.5)
+            m.Run.kind.notin_([k.value for k in RunKind if k.is_parent]),
+        ]
         if not switches.untrusted_execution_enabled:
             conds.append(m.Run.untrusted_code.is_(False))
         if s.dispatch_tiers:

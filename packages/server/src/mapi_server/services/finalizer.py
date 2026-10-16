@@ -793,6 +793,10 @@ class Finalizer:
             dv.ready_at = now()
             ds.latest_version = max(ds.latest_version or 0, dv.version)
             ds.updated_at = now()
+            # M3.5: dataset.version.created webhooks and workflow triggers
+            from mapi_server.services.workflows.automation import dataset_version_ready
+
+            await dataset_version_ready(session, ds, dv)
 
         return await self._commit(v, apply)
 
