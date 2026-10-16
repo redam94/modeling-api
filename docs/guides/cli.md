@@ -243,12 +243,17 @@ mapi webhooks create https://hooks.example.com/mapi -e endpoint.promoted -e run.
 mapi webhooks ls
 mapi webhooks deliveries WEBHOOK_ID --status failed
 mapi webhooks replay WEBHOOK_ID DELIVERY_ID
+mapi webhooks update WEBHOOK_ID --enable           # back on after --inactive or an auto-disable
+mapi webhooks update WEBHOOK_ID -e run.failed --description "on-call"
 mapi webhooks rotate WEBHOOK_ID > hook.secret      # asks first; the old secret signs for 24 h
 mapi webhooks rm WEBHOOK_ID                        # asks first
 ```
 
 Like tokens, a webhook's signing secret is printed once, alone on stdout, by `create` and
-`rotate`; listings show `whsec_…<last 4>`. Delivery responses are the receiver's text and
+`rotate`; listings show `whsec_…<last 4>`. `update` changes the events (`-e` replaces the
+whole list), `--url` or `--description`, and `--enable`/`--disable` switches deliveries on or
+off: a webhook created with `--inactive`, or disabled automatically after repeated failures,
+goes back on with `--enable`, which also resets its failure count. Delivery responses are the receiver's text and
 are printed with control sequences removed. Verifying deliveries is described in
 [Receiving webhooks](webhook-receivers.md).
 

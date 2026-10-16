@@ -113,8 +113,8 @@ A webhook's page has:
   synthetic test event: a new webhook gets its first delivery from the next subscribed event
   in the project (a fit or score finishing, a version ready, a promotion).
 - A webhook that kept failing (20 consecutive failed events, or a `410 Gone`) is **disabled
-  automatically**: the page says why. Fix the receiver, then switch it back on; that resets
-  the failure count.
+  automatically**: the page says why. Fix the receiver, then switch it back on (here, or
+  with `mapi webhooks update WEBHOOK_ID --enable`); that resets the failure count.
 
 ## Plots and links
 

@@ -248,6 +248,39 @@ def test_webhook_rotate_and_rm_confirm(mapi: Invoke, api: respx.MockRouter, exam
     assert res.exit_code == 0 and rm.called
 
 
+def test_webhook_update_enables_disables_and_edits(
+    mapi: Invoke, api: respx.MockRouter, example: Ex
+) -> None:
+    """A webhook created with --inactive, or disabled automatically after failures, can be
+    switched back on from the command line."""
+    hook = example(Webhook)
+    wid = hook["id"]
+    route = api.patch(f"{V1}/webhooks/{wid}").respond(200, json=hook | {"active": True})
+    res = mapi(*CONN, "webhooks", "update", wid, "--enable")
+    assert res.exit_code == 0, res.output
+    assert body_of(route) == {"active": True}
+    assert "hooks.example.com" in res.stdout
+    res = mapi(*CONN, "webhooks", "update", wid, "--disable")
+    assert res.exit_code == 0, res.output
+    assert body_of(route) == {"active": False}
+    res = mapi(
+        *CONN, "webhooks", "update", wid, "-e", "run.failed", "-e", "endpoint.promoted",
+        "--description", "on-call", "--url", "https://hooks.example.com/v2",
+    )  # fmt: skip
+    assert res.exit_code == 0, res.output
+    assert body_of(route) == {
+        "url": "https://hooks.example.com/v2",
+        "events": ["run.failed", "endpoint.promoted"],
+        "description": "on-call",
+    }
+    res = mapi(*CONN, "--json", "webhooks", "update", wid, "--enable")
+    assert res.exit_code == 0 and json.loads(res.stdout)["id"] == wid
+    calls = route.call_count
+    res = mapi(*CONN, "webhooks", "update", wid)
+    assert res.exit_code != 0 and route.call_count == calls
+    assert "at least one" in res.output
+
+
 def test_webhook_deliveries_and_replay(mapi: Invoke, api: respx.MockRouter, example: Ex) -> None:
     wid = example(Webhook)["id"]
     hostile = example(WebhookDelivery) | {"error": None, "response_excerpt": "ok\x1b]0;pwned\x07"}

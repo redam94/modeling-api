@@ -340,6 +340,8 @@ function createModelVersion(state: GuidedMockState, f: FitRecord): ModelVersion 
   const version = mrec.versions.length + 1;
   const mvId = nid(state, "mv");
   const history = inputs.kpiSeries.length;
+  // one grid for the report, the what-if and the scorecard's media checks, so they agree
+  const mediaGrid = inputs.channels.length ? synthGrid(inputs) : null;
   const mv: ModelVersion = {
     ...fx.modelVersion,
     id: mvId,
@@ -350,7 +352,7 @@ function createModelVersion(state: GuidedMockState, f: FitRecord): ModelVersion 
     ref: `model://${f.run.project_id}/${name}@v${version}`,
     run_id: f.run.id,
     diagnostics: [],
-    scorecard: synthScorecard(tpl, history),
+    scorecard: synthScorecard(tpl, history, mediaGrid),
     metrics: { mape: 12, coverage_90: 0.86 }, // mapi_sdk reports MAPE in percent
     lineage: { ...fx.modelVersion.lineage, run_id: f.run.id, plugin: `${tpl.plugin.split("@")[0]}@1.3.2` },
     capabilities: { inference: "mcmc", representation: "draws", score_modes: ["predict", "forecast", "counterfactual", "evaluate"], loo_valid: true },
@@ -368,8 +370,8 @@ function createModelVersion(state: GuidedMockState, f: FitRecord): ModelVersion 
   });
   putJson(state, mvId, "ui/plotdata/fit.json", fit);
   plots.push({ id: "core.ppc_fan", title: "Model fit against your data", kind: "vega-lite", persona: "both", recipe: "core.ppc_fan@1.0.0", caption_plain: "Dots are your actual results; the band is where the model expected 90% of weeks.", href: `/v1/models/${mrec.model.id}/versions/${version}/plots/core.ppc_fan` });
-  if (inputs.channels.length) {
-    const grid = synthGrid(inputs);
+  if (mediaGrid) {
+    const grid = mediaGrid;
     putJson(state, mvId, "ui/grids/response_curves.json", grid);
     const one = grid.multipliers.indexOf(1);
     const at1 = grid.contribution.map((perC) => perC.map((row) => row[one] as number));

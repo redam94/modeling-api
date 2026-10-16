@@ -164,7 +164,8 @@ mapi endpoints ls | get ALIAS | history ALIAS | schema ALIAS [--example] | snipp
 mapi endpoints promote ALIAS MODEL_REF [--override --reason TEXT] [--expected-revision N]
 mapi endpoints rollback ALIAS --reason TEXT [--to-revision N]
 mapi endpoints score ALIAS [CALL.json | --example] [--mode M] [--periods N] [--data FILE|REF] [-o OUT]
-mapi webhooks ls | get ID | create URL -e EVENT... | rotate ID | deliveries ID [--status S]
+mapi webhooks ls | get ID | create URL -e EVENT... [--inactive] | rotate ID | deliveries ID [--status S]
+mapi webhooks update ID [--enable|--disable] [-e EVENT...] [--url URL] [--description TEXT]
 mapi webhooks replay ID DELIVERY_ID | rm ID
 mapi plots render (--saved ID | --model M --version V --plot P | --spec FILE) [-f png|svg|pdf] [-o OUT]
 mapi plots embed PLOT_ID [--expires-in-days N] [--allow-origin URL] | embeds PLOT_ID | revoke PLOT_ID EMBED_ID
@@ -178,6 +179,7 @@ mapi tenant status | export [-o FILE] | delete [--confirm TENANT] [--cancel]
 |---|---|
 | `endpoints promote`, `endpoints rollback` | Show the current version and ask first (`--yes` skips); `--override` needs `--reason` |
 | `webhooks create`, `webhooks rotate` | Print the signing secret once, alone on stdout; `rotate` and `rm` ask first |
+| `webhooks update` | `--enable` switches a paused or automatically disabled webhook back on and resets its failure count; `-e` replaces the event list |
 | `plots embed` | Prints the embed URL (it carries the token) once; `revoke` asks first |
 | `guided detect`, `guided draft --csv` | Profile the CSV locally and send only column summaries |
 | `signup`, `verify-email` | Public calls: no credentials are sent |

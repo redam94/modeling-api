@@ -333,6 +333,8 @@ at once. Both are audited (`webhook.disabled`). Fix the receiver, then turn it b
 api -X PATCH "$API/v1/webhooks/whk_01jaf3h1j2k3m4n5p6q7r8s9t0" --data '{"active": true}'
 ```
 
+or, from the command line, `mapi webhooks update whk_01jaf3h1j2k3m4n5p6q7r8s9t0 --enable`.
+
 The delivery log has every delivery with its status (`pending`, `retrying`, `succeeded`,
 `failed`, `blocked`), the last response code, duration and the start of the answer:
 

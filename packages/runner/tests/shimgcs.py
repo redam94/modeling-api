@@ -67,19 +67,26 @@ class ShimGcs:
             if scope["type"] != "http":
                 await app(scope, receive, send)
                 return
-            status = 0
+            recorded = False
+
+            def record(status: int) -> None:
+                nonlocal recorded
+                recorded = True
+                with self._lock:
+                    self.requests.append(Recorded(scope["method"], scope["path"], status))
 
             async def capture(message: Message) -> None:
-                nonlocal status
-                if message["type"] == "http.response.start":
-                    status = int(message["status"])
+                # Record before forwarding the response start: once the client has its
+                # answer, a test may read ``requests`` straight away.
+                if message["type"] == "http.response.start" and not recorded:
+                    record(int(message["status"]))
                 await send(message)
 
             try:
                 await app(scope, receive, capture)
             finally:
-                with self._lock:
-                    self.requests.append(Recorded(scope["method"], scope["path"], status))
+                if not recorded:  # failed before answering
+                    record(0)
 
         return recorder
 
