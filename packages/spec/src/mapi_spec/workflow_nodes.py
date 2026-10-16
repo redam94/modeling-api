@@ -283,6 +283,12 @@ def _vars(desc: str, min_items: int = 1) -> dict[str, Any]:
     }
 
 
+_SYSTEM_VARS: Final = _vars(
+    "The series: variable names, or labels along the data's series dimension (every series "
+    "of the target when omitted)"
+)
+
+
 _ALPHA = _num("Significance level", 0.05, 0, 0.5, exclusive=True)
 _PER_SERIES = _bool("For panels, test every series (geo, product) separately", True)
 _DATA_IN = {"data": PortSpec(type=PortType.DATASET, description="The data to work on")}
@@ -456,7 +462,7 @@ _test("test.johansen", _a(
     "from sequential tests at the critical values for the chosen level.",
     refs=[_SM, ("Johansen (1991)", None)],
     fits={"goal": ["compare_series"], "data_shape": ["several_series"]},
-), {"vars": _vars("The series to test (at least two)"),
+), {"vars": _SYSTEM_VARS,
     "det_order": _int("Deterministic terms: -1 none, 0 constant, 1 trend", 0, -1, 1),
     "k_ar_diff": _int("Lagged differences", 1, 0, 24),
     "method": _enum("Test statistic", ["trace", "maxeig"], "trace"),
@@ -464,8 +470,7 @@ _test("test.johansen", _a(
                    ["0.1", "0.05", "0.01"], "0.05")},
     {"rank": _f("integer", "The selected cointegration rank"),
      "trace_stats": _f("array", "Trace statistics per rank"),
-     "max_eig_stats": _f("array", "Maximum-eigenvalue statistics per rank")},
-    required=["vars"])  # fmt: skip
+     "max_eig_stats": _f("array", "Maximum-eigenvalue statistics per rank")},)  # fmt: skip
 
 _test("test.engle_granger", _a(
     "Are two series tied together? (Engle-Granger)",
@@ -1013,9 +1018,9 @@ _node("search.var_lag_order", NodeKind.SEARCH, _a(
     _I, _SEC, "AIC picks 3 lags, BIC 1.",
     related=["ts.var", "ts.vecm"], refs=[_SM],
     fits={"goal": ["compare_series"], "data_shape": ["several_series"]},
-), params={"vars": _vars("The series"), "maxlags": _int("Largest lag", 8, 1, 52),
+), params={"vars": _SYSTEM_VARS, "maxlags": _int("Largest lag", 8, 1, 52),
            "criterion": _IC},
-   required=["vars"], outputs={"table": PortType.TABLE},
+   outputs={"table": PortType.TABLE},
    fields={"best_lag": _f("integer", "Lag by the chosen criterion"),
            "by_criterion": _f("object", "Lag by aic, bic, hqic, fpe")})  # fmt: skip
 
@@ -1031,12 +1036,12 @@ _node("search.coint_rank", NodeKind.SEARCH, _a(
     _X, _SEC, "Rank 1 for three related prices.",
     related=["test.johansen", "ts.vecm"], refs=[_SM],
     fits={"goal": ["compare_series"], "data_shape": ["several_series"]},
-), params={"vars": _vars("The series"),
+), params={"vars": _SYSTEM_VARS,
            "det_order": _int("-1 none, 0 constant, 1 trend", 0, -1, 1),
            "k_ar_diff": _int("Lagged differences", 1, 0, 24),
            "method": _enum("Test", ["trace", "maxeig"], "trace"),
            "signif": _enum("Level", ["0.1", "0.05", "0.01"], "0.05")},
-   required=["vars"], outputs={"table": PortType.TABLE},
+   outputs={"table": PortType.TABLE},
    fields={"rank": _f("integer", "The selected rank")})  # fmt: skip
 
 _node("search.grid", NodeKind.SEARCH, _a(

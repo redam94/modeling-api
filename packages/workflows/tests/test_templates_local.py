@@ -27,7 +27,7 @@ def test_var_vecm_template_takes_the_vecm_path_for_tied_series() -> None:
     res = LocalRunner(registry=registry()).run(
         spec,
         inputs={"data": multi_series(220)},
-        params={"series": ["a", "b"], "target": "a", "driver": "b", "maxlags": 4},
+        params={"target": "a", "driver": "b", "maxlags": 4},
     )
     assert res.status is WorkflowRunStatus.SUCCEEDED, res.error
     runs = {n.node_id: n for n in res.nodes}
@@ -48,7 +48,7 @@ def test_var_vecm_template_takes_the_var_path_for_independent_series() -> None:
     res = LocalRunner(registry=registry()).run(
         spec,
         inputs={"data": multi_series(220, tied=False, seed=9)},
-        params={"series": ["a", "c"], "target": "a", "driver": "c", "maxlags": 4},
+        params={"target": "a", "driver": "c", "maxlags": 4},
     )
     assert res.status is WorkflowRunStatus.SUCCEEDED, res.error
     runs = {n.node_id: n for n in res.nodes}
@@ -262,4 +262,5 @@ def test_backtest_metrics_carry_the_candidate_model() -> None:
     assert res.status is WorkflowRunStatus.SUCCEEDED, res.error
     cand = MetricsPayload.model_validate(res.values["m"]).candidates[0]
     assert cand.model == "ts.ets@^1" and cand.settings == {"trend": "add"}
-    assert cand.metrics["coverage_90"] is None  # point forecasts have no range
+    cov = cand.metrics["coverage_90"]  # the real ETS gives 90% prediction intervals
+    assert cov is not None and 0.0 <= cov <= 1.0

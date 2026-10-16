@@ -273,7 +273,7 @@ Checks whether several wandering series stay tied together in the long run, and 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `alpha` | `0.1` \\| `0.05` \\| `0.01` | `"0.05"` | Level for the rank (critical values exist at 10%, 5%, 1%) |
-| `vars` | array | **required** | The series to test (at least two) |
+| `vars` | array |  | The series: variable names, or labels along the data's series dimension (every series of the target when omitted) |
 | `det_order` | integer | `0` | Deterministic terms: -1 none, 0 constant, 1 trend |
 | `k_ar_diff` | integer | `1` | Lagged differences |
 | `method` | `trace` \\| `maxeig` | `"trace"` | Test statistic |
@@ -899,7 +899,7 @@ Decides how many long-run relationships tie a set of wandering series together, 
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `vars` | array | **required** | The series |
+| `vars` | array |  | The series: variable names, or labels along the data's series dimension (every series of the target when omitted) |
 | `det_order` | integer | `0` | -1 none, 0 constant, 1 trend |
 | `k_ar_diff` | integer | `1` | Lagged differences |
 | `method` | `trace` \\| `maxeig` | `"trace"` | Test |
@@ -983,7 +983,7 @@ Picks how many past periods a model of several related series should use.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `vars` | array | **required** | The series |
+| `vars` | array |  | The series: variable names, or labels along the data's series dimension (every series of the target when omitted) |
 | `maxlags` | integer | `8` | Largest lag |
 | `criterion` | `aic` \\| `bic` \\| `hqic` \\| `aicc` | `"aic"` | Information criterion |
 

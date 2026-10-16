@@ -41,7 +41,12 @@ from mapi_spec.capabilities import Representation
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.schema import DataSchema, Role
 from mapi_spec.spec import ModelSpec, ScoreRequest
-from mapi_workflows.binding import auto_bind, model_input_schema
+from mapi_workflows.binding import (
+    auto_bind,
+    canonical_split,
+    canonical_steps,
+    model_input_schema,
+)
 from mapi_workflows.payloads import MetricsCandidate, MetricsPayload, TablePayload, clean_number
 from mapi_workflows.runtime.data import (
     data_error,
@@ -144,6 +149,9 @@ def build_spec(
         doc["data"]["bind"] = _auto_bind(
             registry, doc["model"]["use"], doc["model"]["settings"], base, doc["data"]["bind"]
         )
+        doc["pipeline"] = canonical_steps(doc["pipeline"], doc["data"]["bind"])
+        if "split" in doc["data"]:
+            doc["data"]["split"] = canonical_split(doc["data"]["split"], doc["data"]["bind"])
     try:
         spec = ModelSpec.model_validate(doc)
     except ValueError as exc:

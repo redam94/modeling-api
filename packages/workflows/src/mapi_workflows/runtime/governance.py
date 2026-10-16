@@ -91,6 +91,8 @@ class GovernanceServices:
     resolver: PolicyResolver | None = None
     runners: dict[str, CheckRunner] = field(default_factory=dict)
     submit: Callable[[ModelValue, EvidencePayload], None] | None = None
+    installed: bool = True
+    """Also use the installed check runners (``mapi.governance_checks``); ``runners`` win."""
 
 
 def load_check_runners() -> dict[str, CheckRunner]:
@@ -246,7 +248,7 @@ def _policy(ctx: NodeContext) -> NodeOutcome:
                 code=ErrorCode.POLICY_INVALID,
             )
     checks = effective_checks(policies)
-    runners = {**load_check_runners(), **svc.runners}
+    runners = {**(load_check_runners() if svc.installed else {}), **svc.runners}
     results = run_checks(
         checks,
         mv,
@@ -301,7 +303,8 @@ def _check(ctx: NodeContext) -> NodeOutcome:
         raise MapiError(
             f"invalid check configuration: {str(exc)[:300]}", code=ErrorCode.POLICY_INVALID
         ) from None
-    runners = {**load_check_runners(), **_services(ctx).runners}
+    svc = _services(ctx)
+    runners = {**(load_check_runners() if svc.installed else {}), **svc.runners}
     (res,) = run_checks(
         [pc],
         mv,

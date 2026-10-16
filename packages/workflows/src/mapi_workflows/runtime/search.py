@@ -246,12 +246,9 @@ def _sarima(ctx: NodeContext) -> NodeOutcome:
 
 
 def variable_matrix(ctx: NodeContext) -> tuple[np.ndarray, list[str]]:
-    from mapi_workflows.runtime.stattests import variable_matrix
+    from mapi_workflows.runtime.stattests import system_names, variable_matrix
 
-    raw = ctx.params.get("vars")
-    names = [str(v) for v in raw] if isinstance(raw, list) else []
-    if len(names) < 2:
-        raise data_error("name at least two series in 'vars'")
+    names = system_names(ctx)
     mat, _ = variable_matrix(ctx, names)
     return mat, names
 

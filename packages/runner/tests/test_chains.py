@@ -112,7 +112,9 @@ def test_store_demand_csv_ingest_fit_and_forecast(gcs: ShimGcs) -> None:
         )
     )
     manifest = _ok(ingest)
-    assert set(manifest.objects) == set(DATASET_OUTPUTS)
+    # M3.5: the cheap Data Explorer sections ride along under ui/explore/
+    assert {o for o in manifest.objects if not o.startswith("ui/explore/")} == set(DATASET_OUTPUTS)
+    assert "ui/explore/index.json" in manifest.objects
     raw = ingest.output("data.zarr.zip")
     profile = json.loads(ingest.output("profile.json"))
     assert profile["sha256"] == hashlib.sha256(raw).hexdigest()

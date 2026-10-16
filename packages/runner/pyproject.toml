@@ -33,6 +33,10 @@ test = ["mapi-gcs-shim", "mapi-conformance"]
 [project.scripts]
 mapi-runner = "mapi_runner.__main__:main"
 
+# Every governance check as a check runner of workflow governance nodes (M3.5).
+[project.entry-points."mapi.governance_checks"]
+runner = "mapi_runner.worker.governance_checks:check_runners"
+
 [build-system]
 requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"

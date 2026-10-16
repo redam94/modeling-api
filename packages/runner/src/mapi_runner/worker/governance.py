@@ -654,6 +654,12 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     ignored = all(v < 1e-12 for v in shares.values()) and all(
         (iv[0] or 0.0) == 0.0 and (iv[1] or 0.0) == 0.0 for iv in intervals.values()
     )
+    if shares and ignored and placebo.how == "variables":
+        den = float(np.nansum(np.abs(np.asarray(full.point.values, dtype=float))))
+        coef = {nm: _coef_effect(env, b, placebo.data, nm) for nm in placebo.names}
+        if den > 0 and all(c is not None for c in coef.values()):
+            shares = {nm: float(c) / den for nm, c in coef.items() if c is not None}
+            ignored = False
     if shares and ignored:
         return _skip(
             check,
@@ -730,6 +736,20 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     )
 
 
+def _coef_effect(env: GovernanceEnv, b: Bundle, data: xr.Dataset, var: str) -> float | None:
+    """``|beta| * sum |x - x_off|`` from the coefficient named after driver ``var`` (``None``
+    without one): the effect of a driver on a model that is linear in it, for plugins whose
+    in-sample predictions follow the stored history rather than the scored drivers (the
+    statsmodels models)."""
+    names = {var, b.binding.to_canonical(var)}
+    betas = [abs(e.estimate) for _v, _c, e in _estimates(b) if e.name in names or _v in names]
+    if not betas:
+        return None
+    x = np.asarray(data[var].values, dtype=float)
+    off = np.asarray(_ablate(env, data, var)[var].values, dtype=float)
+    return float(np.mean(betas) * np.nansum(np.abs(x - off)))
+
+
 def _effect(env: GovernanceEnv, b: Bundle, data: xr.Dataset, drivers: Sequence[str]) -> float:
     full = _first(predict(b, data, env.registry, side_tables=env.side_tables), env.targets[0])
     off = data
@@ -737,6 +757,11 @@ def _effect(env: GovernanceEnv, b: Bundle, data: xr.Dataset, drivers: Sequence[s
         off = _ablate(env, off, v)
     abl = _first(predict(b, off, env.registry, side_tables=env.side_tables), env.targets[0])
     num, _den, _d = _total_effect(full, abl)
+    if num <= 0:
+        coef = [_coef_effect(env, b, data, v) for v in drivers]
+        known = [c for c in coef if c is not None]
+        if known:
+            return float(sum(known))
     return num
 
 
@@ -902,15 +927,38 @@ def _arma_df(settings: Mapping[str, Any]) -> int:
     return 0
 
 
+def _burn_in(settings: Mapping[str, Any]) -> int:
+    """Leading periods whose one-step residuals are start-up values: ``d + D * s`` of an
+    (S)ARIMA ``order``/``seasonal_order`` setting (statsmodels' diffuse start)."""
+    order = settings.get("order")
+    seasonal = settings.get("seasonal_order")
+    d = (
+        int(order[1])
+        if isinstance(order, list | tuple) and len(order) == 3 and isinstance(order[1], int)
+        else 0
+    )
+    sd = 0
+    if (
+        isinstance(seasonal, list | tuple)
+        and len(seasonal) == 4
+        and all(isinstance(x, int) for x in seasonal)
+        and int(seasonal[3]) > 1
+    ):
+        sd = int(seasonal[1]) * int(seasonal[3])
+    return d + sd
+
+
 def _whiteness(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     assert env.time_dim is not None
     lags = _pint(check.params, "lags", 10)
-    model_df = _arma_df(env.bundle.spec.model.plugin_settings)
+    settings = env.bundle.spec.model.plugin_settings
+    model_df = _arma_df(settings)
+    burn = _burn_in(settings)
     t = env.time_dim
     rows: list[tuple[str, float, float]] = []
     for p in env.predictions():
         r = p.resid.transpose(t, ...)
-        arr = np.asarray(r.values, dtype=float).reshape(r.sizes[t], -1)
+        arr = np.asarray(r.values, dtype=float).reshape(r.sizes[t], -1)[burn:]
         for j in range(min(arr.shape[1], 50)):
             res = stats.ljung_box_test(arr[:, j], lags=lags, model_df=model_df, var=p.target)
             if res.status == "ok" and res.p_value is not None and res.statistic is not None:
@@ -946,7 +994,8 @@ def _whiteness(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         check,
         value,
         msg,
-        expert=f"Minimum Ljung-Box p over {len(rows)} series, lags={lags}, model_df={model_df}.",
+        expert=f"Minimum Ljung-Box p over {len(rows)} series, lags={lags}, model_df={model_df}"
+        f" (first {burn} start-up residual(s) of the differencing left out).",
         action="Add lags, seasonality or missing drivers (look at the residual ACF in the "
         "Model Explorer).",
         evidence=ev,
@@ -987,10 +1036,13 @@ def _stability(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             if nm in got:
                 per[nm].append(got[nm])
     variation: dict[str, float] = {}
+    base_sd = {e.name: e.sd for e in key if e.sd is not None and e.sd > 0}
     for nm, vals in per.items():
         if len(vals) >= 2:
             a = np.asarray(vals)
-            variation[nm] = float(a.std(ddof=1) / max(abs(float(a.mean())), 1e-12))
+            # relative to the estimate's size, or to its own uncertainty when it is near 0
+            scale = max(abs(float(a.mean())), base_sd.get(nm, 0.0), 1e-12)
+            variation[nm] = float(a.std(ddof=1) / scale)
     if not variation:
         return _error(check, "no parameter could be estimated in two windows")
     worst = max(variation, key=lambda k_: variation[k_])
@@ -1015,7 +1067,8 @@ def _stability(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         value,
         msg,
         expert=f"Coefficient of variation across {used} rolling refits (window {window}, step "
-        f"{step}); max over {len(variation)} parameters.",
+        f"{step}), relative to max(|mean|, the full fit's standard error); max over "
+        f"{len(variation)} parameters.",
         action="Look for a structural break (CUSUM or Chow tests in a workflow), shorten the "
         "history, or let the effect change over time.",
         evidence=ev,
@@ -1212,9 +1265,19 @@ def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     )
 
 
+_DYNAMIC_FAMILIES: Final = frozenset({"forecast", "ts_multivariate", "regime"})
+
+
 def _recovery(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if not env.targets:
         return _skip(check, "the model has no target to simulate")
+    if env.family in _DYNAMIC_FAMILIES and env.kind != "bayesian":
+        return _skip(
+            check,
+            "the model predicts each period from the series' own past, so data simulated "
+            "around its fitted values would not follow the model (use the backtest and "
+            "residual checks for it)",
+        )
     raw = check.params.get("params")
     wanted = [str(x) for x in raw] if isinstance(raw, list) else None
     truth = [

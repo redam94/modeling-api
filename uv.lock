@@ -2669,17 +2669,29 @@ runtime = [
     { name = "statsmodels" },
     { name = "xarray" },
 ]
+testing = [
+    { name = "mapi-plugin-statsmodels" },
+    { name = "mapi-sdk" },
+    { name = "mapi-steps" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "scipy" },
+    { name = "statsmodels" },
+    { name = "xarray" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "jsonschema", specifier = ">=4.23" },
+    { name = "mapi-plugin-statsmodels", marker = "extra == 'testing'", editable = "plugins/statsmodels" },
     { name = "mapi-sdk", marker = "extra == 'runtime'", editable = "packages/sdk" },
     { name = "mapi-spec", editable = "packages/spec" },
     { name = "mapi-steps", marker = "extra == 'runtime'", editable = "packages/steps-core" },
+    { name = "mapi-workflows", extras = ["runtime"], marker = "extra == 'testing'", editable = "packages/workflows" },
     { name = "numpy", marker = "extra == 'runtime'", specifier = ">=2.0" },
     { name = "pandas", marker = "extra == 'runtime'", specifier = ">=2.2" },
     { name = "scipy", marker = "extra == 'runtime'", specifier = ">=1.13" },
-    { name = "statsmodels", marker = "extra == 'runtime'", specifier = ">=0.14.4" },
+    { name = "statsmodels", marker = "extra == 'runtime'", specifier = ">=0.15,<0.16" },
     { name = "xarray", marker = "extra == 'runtime'", specifier = ">=2025.1" },
 ]
 
@@ -3127,7 +3139,7 @@ dependencies = [
     { name = "mapi-sklearn" },
     { name = "mapi-spec" },
     { name = "mapi-steps" },
-    { name = "mapi-workflows", extra = ["runtime"] },
+    { name = "mapi-workflows", extra = ["runtime", "testing"] },
 ]
 
 [package.dev-dependencies]
@@ -3171,7 +3183,7 @@ requires-dist = [
     { name = "mapi-sklearn", editable = "packages/sdk-sklearn" },
     { name = "mapi-spec", editable = "packages/spec" },
     { name = "mapi-steps", editable = "packages/steps-core" },
-    { name = "mapi-workflows", extras = ["runtime"], editable = "packages/workflows" },
+    { name = "mapi-workflows", extras = ["runtime", "testing"], editable = "packages/workflows" },
 ]
 
 [package.metadata.requires-dev]
