@@ -189,5 +189,8 @@ Platform operators get two more things in **Admin**:
   is allowed, **Mark identity verified** (with the method and a reason) or withdraw it, and its
   deletion's status per store, with **Retry the purge** after a failure.
 
-The **Promotions** tab explains that there is no promotion queue: the gate decides each
-promotion at once, and overrides are in the audit log.
+- **Promotions**: the endpoint promotions that needed attention, across tenants and newest
+  first - admin overrides of the scorecard gate (with the reason and the failing checks) and
+  refused promotions (blocked, or needing an override). Nothing waits in a queue: the gate
+  decides each promotion at once. The rows come from the audit log
+  (`endpoint.promote_override`, and `endpoint.promote` with the outcome `denied`).

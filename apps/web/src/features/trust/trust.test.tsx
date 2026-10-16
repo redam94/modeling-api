@@ -146,6 +146,21 @@ describe("Settings > Data", () => {
 });
 
 describe("admin console", () => {
+  it("lists promotion overrides and refusals across tenants", async () => {
+    renderApp("/admin?tab=promotions");
+    const table = await screen.findByRole("table", { name: "Promotion decisions" });
+    const override = within(table).getByRole("row", { name: /geo-mmm-prod/ });
+    expect(within(override).getByText("Overridden")).toBeInTheDocument();
+    expect(within(override).getByText(/Coverage is fine on the last quarter/)).toBeInTheDocument();
+    expect(within(override).getByText("acme/growth")).toBeInTheDocument();
+    const blocked = within(table).getByRole("row", { name: /churn-prod/ });
+    expect(within(blocked).getByText("Blocked")).toBeInTheDocument();
+    expect(within(blocked).getByText(/convergence\.rhat/)).toBeInTheDocument();
+    expect(within(blocked).getByText("globex/sandbox")).toBeInTheDocument();
+    const queries = seen.filter((r) => r.path === "/v1/admin/audit");
+    expect(queries.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("reviews a flagged sign-up", async () => {
     const user = userEvent.setup();
     renderApp("/admin?tab=signups");

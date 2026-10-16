@@ -169,10 +169,7 @@ export function AdminPage() {
           <AuditTab />
         </TabsContent>
         <TabsContent value="promotions">
-          <EmptyState icon={<ListChecks />} title="No promotion queue">
-            Endpoint promotions are decided at once by the sanity-scorecard gate in each project (Integrations → Endpoints): passing versions are promoted, warnings need a
-            project admin&apos;s audited override, failures are blocked. Overrides appear in the audit log as endpoint.promote_override.
-          </EmptyState>
+          <PromotionsTab />
         </TabsContent>
       </Tabs>
     </>
@@ -1362,6 +1359,125 @@ function AuditTab() {
             <div className="border-t p-2 text-center">
               <Button variant="ghost" size="sm" disabled={audit.isFetchingNextPage} onClick={() => void audit.fetchNextPage()}>
                 Load older events
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===================================================================== promotions
+
+const OVERRIDES: AuditFilters = { action: "endpoint.promote_override" };
+const REFUSALS: AuditFilters = { action: "endpoint.promote", outcome: "denied" };
+
+/** What the gate (or an admin) decided, in words. */
+function promotionDecision(e: AuditEvent): { label: string; variant: "success" | "warning" | "danger" } {
+  if (e.action === "endpoint.promote_override") {
+    return e.outcome === "success" ? { label: "Overridden", variant: "warning" } : { label: "Override refused", variant: "danger" };
+  }
+  if (e.code === "OVERRIDE_REQUIRED") return { label: "Needs an admin override", variant: "warning" };
+  if (e.code === "PROMOTION_BLOCKED") return { label: "Blocked", variant: "danger" };
+  return { label: "Refused", variant: "danger" };
+}
+
+function detail(e: AuditEvent, key: string): string | null {
+  const v = (e.details as Record<string, unknown> | null | undefined)?.[key];
+  return typeof v === "string" && v ? v : null;
+}
+
+function detailList(e: AuditEvent, key: string): string[] {
+  const v = (e.details as Record<string, unknown> | null | undefined)?.[key];
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+
+/**
+ * Endpoint promotions across tenants that needed attention: admin overrides of the scorecard
+ * gate and refused promotions (from the audit log). There is no queue to work through: the
+ * gate decides each promotion at once.
+ */
+function PromotionsTab() {
+  const overrides = useAudit(OVERRIDES, null);
+  const refusals = useAudit(REFUSALS, null);
+  const rows = useMemo(
+    () =>
+      [...(overrides.data?.pages.flatMap((p) => p.items) ?? []), ...(refusals.data?.pages.flatMap((p) => p.items) ?? [])].sort((a, b) =>
+        b.ts.localeCompare(a.ts),
+      ),
+    [overrides.data, refusals.data],
+  );
+  const more = overrides.hasNextPage || refusals.hasNextPage;
+  return (
+    <div className="grid gap-4">
+      <p className="max-w-[80ch] text-[13px] text-muted-foreground">
+        The sanity-scorecard gate decides each endpoint promotion at once, so nothing waits here: a passing version goes live, a warning needs a project admin&apos;s
+        audited override with a reason, a failure is blocked. These are the overrides and refusals across tenants, newest first.
+      </p>
+      {overrides.isPending || refusals.isPending ? (
+        <LoadingRows rows={4} />
+      ) : overrides.isError || refusals.isError ? (
+        <ErrorNotice error={overrides.error ?? refusals.error} title="The promotion decisions could not be loaded" />
+      ) : rows.length === 0 ? (
+        <EmptyState icon={<ListChecks />} title="No overrides or refused promotions">
+          Every endpoint promotion so far passed the scorecard gate.
+        </EmptyState>
+      ) : (
+        <div className="max-h-[70vh] overflow-auto rounded-lg border bg-card [contain:inline-size]">
+          <table className="w-full text-[13px]" aria-label="Promotion decisions">
+            <thead className="sticky top-0 z-[1] bg-card">
+              <tr className="border-b text-left text-xs text-muted-foreground">
+                <th scope="col" className="h-9 px-3 font-medium">Time (UTC)</th>
+                <th scope="col" className="px-3 font-medium">Tenant / project</th>
+                <th scope="col" className="px-3 font-medium">Endpoint</th>
+                <th scope="col" className="px-3 font-medium">Decision</th>
+                <th scope="col" className="px-3 font-medium">Failing checks</th>
+                <th scope="col" className="px-3 font-medium">Reason</th>
+                <th scope="col" className="px-3 font-medium">By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((e) => {
+                const decision = promotionDecision(e);
+                const checks = detailList(e, "failing_checks");
+                return (
+                  <tr key={e.id} className="border-b align-top last:border-0">
+                    <td className="px-3 py-2 whitespace-nowrap tabular" title={e.ts}>
+                      {absoluteTime(e.ts)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Mono>{[e.tenant_id, e.project_id].filter(Boolean).join("/") || "—"}</Mono>
+                    </td>
+                    <td className="px-3 py-2">
+                      <Mono>{detail(e, "alias") ?? "—"}</Mono>
+                      {detail(e, "model_version_id") ? <Mono className="block text-xs text-muted-foreground">{detail(e, "model_version_id")}</Mono> : null}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge variant={decision.variant}>{decision.label}</Badge>
+                    </td>
+                    <td className="px-3 py-2">{checks.length ? <Mono className="text-muted-foreground">{checks.join(", ")}</Mono> : "—"}</td>
+                    <td className="max-w-[40ch] px-3 py-2 break-words">{detail(e, "reason") ?? "—"}</td>
+                    <td className="px-3 py-2">
+                      <Mono className="text-muted-foreground">{e.actor_id ?? e.actor_kind ?? "—"}</Mono>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {more ? (
+            <div className="border-t p-2 text-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={overrides.isFetchingNextPage || refusals.isFetchingNextPage}
+                onClick={() => {
+                  if (overrides.hasNextPage) void overrides.fetchNextPage();
+                  if (refusals.hasNextPage) void refusals.fetchNextPage();
+                }}
+              >
+                Load older decisions
               </Button>
             </div>
           ) : null}

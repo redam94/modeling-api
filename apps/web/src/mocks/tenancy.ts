@@ -187,6 +187,26 @@ export function createTenancyState(): TenancyState {
     ["auth.login", { resource_kind: "tenant", resource_id: "acme" }],
     ["kill_switch.update", { operator: true, tenant_id: null, project_id: null, resource_kind: "kill_switch", resource_id: null }],
     ["auth.login_failed", { outcome: "denied", code: "UNAUTHENTICATED", actor_id: null, resource_kind: "tenant" }],
+    [
+      "endpoint.promote_override",
+      {
+        resource_kind: "endpoint",
+        resource_id: "ep_01jaf3e1n2d3p4o5i6n7t8a9b0",
+        details: { alias: "geo-mmm-prod", revision: 3, model_version_id: "mv_01jaf3c1d2e3f4g5h6j7k8m9n0", gate: "needs_override", reason: "Coverage is fine on the last quarter; refit scheduled", failing_checks: ["holdout.coverage"] },
+      },
+    ],
+    [
+      "endpoint.promote",
+      {
+        outcome: "denied",
+        code: "PROMOTION_BLOCKED",
+        tenant_id: "globex",
+        project_id: "sandbox",
+        resource_kind: "endpoint",
+        resource_id: null,
+        details: { alias: "churn-prod", model_version_id: "mv_01jaf3g1h2j3k4m5n6p7q8r9s0", gate: "blocked", failing_checks: ["convergence.rhat", "holdout.mape"] },
+      },
+    ],
     ["token.auth_failed", { outcome: "denied", code: "UNAUTHENTICATED", actor_kind: "token", resource_kind: "token" }],
   ];
   return {

@@ -425,6 +425,10 @@ milestone releases are tagged on `main`.
   default is forgotten, per-user choices are kept), "Sign in" after the e-mail link opens
   `/guided`, `/` opens the Guided start page in Guided mode, and Expert navigation (`g g`)
   and Home (**Start a guided analysis**) lead to Guided.
+- **web**: the admin console's **Promotions** tab was a placeholder. It lists the endpoint
+  promotions that needed attention across tenants (gate overrides with their reason and
+  failing checks, blocked promotions and those refused for want of an override), from the
+  audit log. There is still no queue: the gate decides each promotion at once.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
