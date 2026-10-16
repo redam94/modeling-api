@@ -28,6 +28,14 @@ lift per period ``delta_y`` with its ``sigma`` - conditioned on the saturation c
 (pymc-marketing's model of a lift; carry-over is not part of it). With panel ``dims`` a test
 must name its ``geo`` (the first panel dim).
 
+Business priors (M3, ``calibration.business_priors``) become pymc-marketing ``model_config``
+priors in ``settings.priors``: a per-channel log-normal ``saturation_beta`` matching each
+ROI or contribution-share range, a Normal ``intercept`` for the baseline share (with the
+control and seasonality priors narrowed when they alone are wider than the range) - solved
+on prior draws of pymc-marketing's own model, so its scaling and transforms are exactly
+the fit's (:mod:`mapi_plugin_mmm.pymc_marketing_calibration`). A ``translate_priors`` run
+previews them in business units; a fit without one translates them itself.
+
 ``pymc_marketing`` is imported lazily, so describing the plugin (manifest, catalog) does
 not pay its import cost.
 """
@@ -47,16 +55,55 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from mapi_pymc.diagnostics import convergence_diagnostics
-from mapi_sdk.models import PREDICTIONS, CustomModel, FitContext, FitOutput, Fitted, ScoreContext
-from mapi_spec.calibration import LiftTest
+from mapi_sdk.models import (
+    PREDICTIONS,
+    CustomModel,
+    FitContext,
+    FitOutput,
+    Fitted,
+    PriorTranslation,
+    ScoreContext,
+)
+from mapi_spec.calibration import BusinessPriors, LiftTest, PriorTranslationJob
 from mapi_spec.capabilities import Capabilities, Diagnostic, Representation, ResourceHint
-from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.errors import ErrorCode, MapiError, Severity
 from mapi_spec.resources import ResourceClass
 from mapi_spec.spec import FitConfig, ScoreRequest
 
+from mapi_plugin_mmm.calibration import TranslationOutcome
+from mapi_plugin_mmm.pymc_marketing_calibration import (
+    BETA_PARAM,
+    PmmPriorDraws,
+    pmm_prior_draws,
+    pmm_prior_preview,
+    translate_pmm_business_priors,
+)
 from mapi_plugin_mmm.settings import PyMCMarketingSettings, mcmc_fit_schema
 
 __all__ = ["SCHEMA_TEMPLATE", "PyMCMarketingMMM", "pymc_marketing_available"]
+
+_TRANSLATION_SOLVE_DRAWS = 1000
+"""Prior draws of the pymc-marketing model when solving a business-prior translation."""
+
+
+def _units(ctx: FitContext, ds: xr.Dataset, name: str) -> str | None:
+    """The business units of model-stage variable ``name`` (``None`` when unknown)."""
+    if ctx.to_original is None or name not in ds:
+        return None
+    try:
+        out = ctx.to_original(xr.ones_like(ds[name]), name)
+    except (MapiError, KeyError, ValueError):
+        return None
+    units = out.attrs.get("units")
+    return units[:64] if isinstance(units, str) and units else None
+
+
+def _with_priors(s: PyMCMarketingSettings, priors: dict[str, Any]) -> PyMCMarketingSettings:
+    """``s`` with prior overrides replaced by ``priors`` (translated keys win)."""
+    raw = s.model_dump(mode="json", exclude_none=True)
+    raw["priors"] = {**raw.get("priors", {}), **priors}
+    return PyMCMarketingSettings.model_validate(raw)
+
 
 TIME = "time"
 CHANNEL = "channel"
@@ -201,7 +248,39 @@ def _make_mmm(s: PyMCMarketingSettings, channels: list[str]) -> Any:
         control_columns=list(s.controls) or None,
         yearly_seasonality=s.yearly_seasonality,
         adstock_first=s.adstock_first,
+        model_config=_model_config(s, len(channels)) or None,
     )
+
+
+def _model_config(s: PyMCMarketingSettings, n_channels: int) -> dict[str, Any]:
+    """``settings.priors`` as pymc-marketing ``model_config`` priors: the channel effect
+    per ``(*dims, channel)`` and the intercept per panel cell."""
+    from pymc_extras.prior import Prior
+
+    out: dict[str, Any] = {}
+
+    def prior(spec: Any, dims: tuple[str, ...]) -> Any:
+        params = {k: np.asarray(v, dtype=float) if isinstance(v, list) else float(v)
+                  for k, v in spec.params.items()}  # fmt: skip
+        for k, v in params.items():
+            if isinstance(v, np.ndarray) and v.shape != (n_channels,):
+                raise MapiError(
+                    f"priors: {k} has {v.size} values for {n_channels} channels",
+                    code=ErrorCode.SETTINGS_INVALID,
+                    pointer="/model/settings/priors",
+                )
+        return Prior(spec.distribution, **params, dims=dims)
+
+    beta = s.priors.saturation_beta
+    if beta is not None:
+        out[f"saturation_{BETA_PARAM[s.saturation.kind]}"] = prior(beta, (*s.dims, CHANNEL))
+    if s.priors.intercept is not None:
+        out["intercept"] = prior(s.priors.intercept, tuple(s.dims))
+    if s.priors.gamma_control is not None:
+        out["gamma_control"] = prior(s.priors.gamma_control, (*s.dims, "control"))
+    if s.priors.gamma_fourier is not None:
+        out["gamma_fourier"] = prior(s.priors.gamma_fourier, (*s.dims, "fourier_mode"))
+    return out
 
 
 def _rebuild(fitted: Fitted) -> Any:
@@ -229,7 +308,7 @@ class PyMCMarketingMMM(CustomModel[PyMCMarketingSettings]):
     """Adapter running ``pymc_marketing.mmm.MMM`` under the platform contract."""
 
     id = "mmm.pymc_marketing"
-    version = "1.0.0"
+    version = "1.1.0"
     Settings = PyMCMarketingSettings
     capabilities = Capabilities(
         inference="mcmc",
@@ -239,7 +318,7 @@ class PyMCMarketingMMM(CustomModel[PyMCMarketingSettings]):
         owns=frozenset({"scaling", "carryover", "inverse_units"}),
         deterministic_given_seed=False,
         checkpointable=False,
-        calibration=frozenset({"lift_tests"}),
+        calibration=frozenset({"business_priors", "lift_tests"}),
     )
     schema_template = SCHEMA_TEMPLATE
     outputs: ClassVar[dict[str, Any]] = {
@@ -287,8 +366,26 @@ class PyMCMarketingMMM(CustomModel[PyMCMarketingSettings]):
                 pointer="/model/fit/engine",
             )
         seed = cfg.seed if cfg.seed is not None else ctx.seed
-        mmm = _make_mmm(s, channels)
         cal = ctx.calibration
+        calibration: dict[str, Any] = {}
+        beliefs = cal.business_priors if cal is not None else None
+        if beliefs is not None and cal is not None and cal.prior_translation_run is None:
+            # no translate_priors run wrote the priors yet: translate them here
+            ctx.progress(0.01, "translating business priors")
+            outcome = self._translate(
+                frame, s, channels, beliefs, draws=_TRANSLATION_SOLVE_DRAWS, seed=seed
+            )
+            errors = [i for i in outcome.issues if i.severity is Severity.ERROR]
+            if errors:
+                raise MapiError(
+                    errors[0].message,
+                    code=ErrorCode.BUSINESS_PRIORS_INVALID,
+                    pointer="/calibration" + errors[0].pointer,
+                    issues=errors,
+                )
+            s = _with_priors(s, outcome.priors)
+            calibration["translated_priors"] = outcome.priors
+        mmm = _make_mmm(s, channels)
         lift = lift_frame(cal.lift_tests, frame, s, channels) if cal and cal.lift_tests else None
         kwargs: dict[str, Any] = {
             "draws": cfg.draws or 1000,
@@ -333,9 +430,65 @@ class PyMCMarketingMMM(CustomModel[PyMCMarketingSettings]):
             "pymc_marketing": {"version": pymc_marketing.__version__, "attrs": attrs},
         }
         if lift is not None:
-            learned["calibration"] = {"lift_rows": len(lift)}
+            calibration["lift_rows"] = len(lift)
+        if calibration:
+            learned["calibration"] = calibration
         ctx.progress(1.0, "fit complete")
         return FitOutput(groups=groups, learned=learned, diagnostics=diagnostics)
+
+    # ------------------------------------------------------------------ business priors
+    @staticmethod
+    def _prior_draws(
+        frame: pd.DataFrame, s: PyMCMarketingSettings, channels: list[str], *, draws: int,
+        seed: int,
+    ) -> PmmPriorDraws:  # fmt: skip
+        """Prior draws of the pymc-marketing model ``s`` describes, built on ``frame``."""
+        mmm = _make_mmm(s, channels)
+        with _quiet():
+            mmm.build_model(frame.drop(columns=[TARGET]), frame[TARGET])
+            return pmm_prior_draws(mmm, s, draws=draws, seed=seed)
+
+    def _translate(
+        self,
+        frame: pd.DataFrame,
+        s: PyMCMarketingSettings,
+        channels: list[str],
+        beliefs: BusinessPriors,
+        *,
+        draws: int,
+        seed: int,
+    ) -> TranslationOutcome:
+        d = self._prior_draws(frame, s, channels, draws=draws, seed=seed)
+        return translate_pmm_business_priors(beliefs, d, frame, channels, s, seed=seed)
+
+    def translate_priors(
+        self,
+        ds: xr.Dataset,
+        s: PyMCMarketingSettings,
+        job: PriorTranslationJob,
+        ctx: FitContext,
+    ) -> PriorTranslation:
+        """Business priors to ``saturation_beta``/``intercept`` priors with a
+        prior-predictive preview in business units
+        (:mod:`mapi_plugin_mmm.pymc_marketing_calibration`)."""
+        frame, channels = _frame(ds, s, with_target=True)
+        seed = job.seed if job.seed is not None else ctx.seed
+        ctx.progress(0.1, "solving for model-space priors")
+        outcome = self._translate(
+            frame, s, channels, job.business_priors,
+            draws=max(_TRANSLATION_SOLVE_DRAWS, job.draws), seed=seed,
+        )  # fmt: skip
+        ctx.check_cancelled()
+        ctx.progress(0.6, "sampling the prior predictive")
+        translated = _with_priors(s, outcome.priors)
+        d = self._prior_draws(frame, translated, channels, draws=job.draws, seed=seed + 1)
+        result, preview = pmm_prior_preview(
+            outcome, d, frame, draws=job.draws, seed=seed + 1, quantiles=job.quantiles,
+            lift_tests=job.lift_tests, kpi_units=_units(ctx, ds, TARGET),
+            spend_units=_units(ctx, ds, SPEND),
+        )  # fmt: skip
+        ctx.progress(1.0, "priors translated")
+        return PriorTranslation(result=result, preview=preview)
 
     @staticmethod
     def _groups(idata: xr.DataTree) -> dict[str, xr.Dataset]:

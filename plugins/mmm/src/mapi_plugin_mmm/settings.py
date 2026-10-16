@@ -29,6 +29,7 @@ __all__ = [
     "GridSettings",
     "HierarchicalGeoSettings",
     "Priors",
+    "PyMCMarketingPriors",
     "PyMCMarketingSettings",
     "SaturationSettings",
     "mcmc_fit_schema",
@@ -197,6 +198,41 @@ class HierarchicalGeoSettings(ModelSettings):
         return resolve_priors(self.priors.as_dict())
 
 
+class PyMCMarketingPriors(_Sub):
+    """Prior overrides of ``mmm.pymc_marketing`` (pymc-marketing's ``model_config``).
+
+    ``saturation_beta`` is the channel effect - pymc-marketing's ``saturation_beta``
+    (``saturation_b`` for ``saturation: none``), drawn per panel cell and channel with the
+    per-channel parameters given here; ``intercept`` the intercept per panel cell;
+    ``gamma_control``/``gamma_fourier`` the control and yearly seasonality coefficients.
+    All are in pymc-marketing's scaled units (the KPI divided by its maximum);
+    business-prior translation writes them (:mod:`mapi_plugin_mmm.pymc_marketing_calibration`).
+    """
+
+    saturation_beta: PositiveChannelPrior | None = Field(
+        None,
+        description="Channel effect (the saturation curve's multiplier), scaled units",
+        json_schema_extra=ADVANCED,
+    )
+    intercept: RealScalarPrior | None = Field(
+        None, description="Intercept, scaled units", json_schema_extra=ADVANCED
+    )
+    gamma_control: RealScalarPrior | None = Field(
+        None,
+        description="Control coefficients, per panel cell and control",
+        json_schema_extra=ADVANCED,
+    )
+    gamma_fourier: RealScalarPrior | None = Field(
+        None,
+        description="Yearly seasonality coefficients, per panel cell and Fourier mode",
+        json_schema_extra=ADVANCED,
+    )
+
+    def as_dict(self) -> dict[str, PriorSpec]:
+        names = ("saturation_beta", "intercept", "gamma_control", "gamma_fourier")
+        return {k: v for k in names if (v := getattr(self, k))}
+
+
 class PyMCMarketingSettings(ModelSettings):
     """Settings of ``mmm.pymc_marketing`` (an adapter around ``pymc_marketing.mmm.MMM``).
 
@@ -228,6 +264,12 @@ class PyMCMarketingSettings(ModelSettings):
         json_schema_extra=BASIC,
     )
     adstock_first: bool = Field(True, json_schema_extra=ADVANCED)
+    priors: PyMCMarketingPriors = Field(
+        PyMCMarketingPriors(),
+        description="Prior overrides handed to pymc-marketing (M3: written by business-prior "
+        "translation)",
+        json_schema_extra=ADVANCED,
+    )
 
     @field_validator("dims", "controls")
     @classmethod
