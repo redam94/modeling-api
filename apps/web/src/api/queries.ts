@@ -665,9 +665,10 @@ export function useModelVersionById(mvId: string | null | undefined) {
   });
 }
 
-export function usePlots(modelId: string, version: number) {
+export function usePlots(modelId: string, version: number, enabled = true) {
   const s = useProjectScope();
   return useQuery({
+    enabled: enabled && Boolean(modelId) && version > 0,
     queryKey: qk.plots(s.key, modelId, version),
     queryFn: ({ signal }) =>
       unwrap(
