@@ -33,12 +33,12 @@ export function NodePalette({ catalog, onAdd, disabled }: { catalog: Catalog; on
   const current = picked ? catalog.get(picked) : undefined;
 
   return (
-    <section aria-label="Node palette" className="grid min-h-0 gap-3">
+    <section aria-label="Node palette" className="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
       <div className="relative">
         <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" aria-hidden />
         <Input aria-label="Search nodes" placeholder="Search nodes" className="pl-8" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
-      <div className="grid max-h-[46vh] gap-1 overflow-y-auto pr-1" role="list" aria-label="Nodes by kind">
+      <div className="grid max-h-[46vh] min-w-0 grid-cols-[minmax(0,1fr)] gap-1 overflow-y-auto pr-1" role="list" aria-label="Nodes by kind">
         {groups.map(([kind, list]) => {
           const about = kindAbout.get(kind);
           return (
@@ -49,7 +49,7 @@ export function NodePalette({ catalog, onAdd, disabled }: { catalog: Catalog; on
                 <span className="ml-auto text-xs text-muted-foreground">{list.length}</span>
               </summary>
               {about ? <p className="px-2 pb-1 text-xs text-muted-foreground">{about.summary_plain}</p> : null}
-              <ul className="grid gap-0.5 pb-1">
+              <ul className="grid grid-cols-[minmax(0,1fr)] gap-0.5 pb-1">
                 {list.map((n) => (
                   <li key={n.id}>
                     <button
@@ -62,6 +62,7 @@ export function NodePalette({ catalog, onAdd, disabled }: { catalog: Catalog; on
                       onClick={() => setPicked(n.id)}
                       aria-pressed={picked === n.id}
                       data-node={n.id}
+                      title={n.about.title}
                       className={cn(
                         "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[13px] hover:bg-accent",
                         picked === n.id && "bg-accent text-accent-foreground",

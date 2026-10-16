@@ -194,7 +194,8 @@ export function OutputView({ runId, nodeId, port, out }: { runId: string; nodeId
       <header className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
           <Mono className="font-medium">{port}</Mono>
-          <Badge variant="outline" style={{ color: meta.color }}>
+          <Badge variant="outline">
+            <span aria-hidden className="size-2 rounded-full" style={{ background: meta.color }} />
             {meta.plain}
           </Badge>
         </span>

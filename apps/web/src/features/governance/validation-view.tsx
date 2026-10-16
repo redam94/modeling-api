@@ -270,7 +270,7 @@ export function ValidationView({ validationId }: { validationId: string }) {
   const mutation = dialog ? actions[dialog] : null;
 
   return (
-    <div className="grid gap-5" data-testid="validation-view">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5" data-testid="validation-view">
       <PageHeader
         title={
           <span className="flex flex-wrap items-center gap-3">

@@ -156,7 +156,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
   const mayCancel = can(ws.grants, "cancel", "workflow") && (run.status === "queued" || run.status === "running");
 
   return (
-    <div className="grid gap-5" data-testid="run-monitor" data-status={run.status}>
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5" data-testid="run-monitor" data-status={run.status}>
       <PageHeader
         title={
           <span className="flex flex-wrap items-center gap-3">

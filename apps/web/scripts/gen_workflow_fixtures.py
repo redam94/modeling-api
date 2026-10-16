@@ -346,7 +346,18 @@ def render() -> str:
         "validation_vectors": validation_vectors(),
         "cron_vectors": cron_vectors(),
     }
-    return stable(json.dumps(doc, indent=1, ensure_ascii=False, sort_keys=False)) + "\n"
+    return stable(json.dumps(rounded(doc), indent=1, ensure_ascii=False, sort_keys=False)) + "\n"
+
+
+def rounded(value: Any) -> Any:
+    """Floats to 6 significant digits: the file must not depend on the last bits of a BLAS."""
+    if isinstance(value, float):
+        return float(f"{value:.6g}")
+    if isinstance(value, list):
+        return [rounded(v) for v in value]
+    if isinstance(value, dict):
+        return {k: rounded(v) for k, v in value.items()}
+    return value
 
 
 def stable(text: str) -> str:

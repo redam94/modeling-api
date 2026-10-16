@@ -156,7 +156,8 @@ export function NodeInspector({
               <div key={port} className="grid gap-1.5 rounded-md border p-2" data-port={port}>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-[13px] font-medium">{port}</span>
-                  <Badge variant="outline" style={{ color: PORT_TYPE_META[spec.type].color }}>
+                  <Badge variant="outline">
+                    <span aria-hidden className="size-2 rounded-full" style={{ background: PORT_TYPE_META[spec.type].color }} />
                     {PORT_TYPE_META[spec.type].plain}
                   </Badge>
                   {spec.required ? <Badge variant="secondary">required</Badge> : <Badge variant="outline">optional</Badge>}

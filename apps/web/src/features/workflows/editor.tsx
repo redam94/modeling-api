@@ -215,7 +215,7 @@ export function WorkflowEditor({
   );
 
   return (
-    <div className="grid gap-3" data-testid="workflow-editor">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-3" data-testid="workflow-editor">
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <SegmentedControl
@@ -264,7 +264,7 @@ export function WorkflowEditor({
       {/* Wide screens: palette | canvas | inspector. Otherwise the canvas gets the full width
           and the palette and inspector sit side by side below it. */}
       <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-[250px_minmax(0,1fr)_380px]">
-        <aside className="order-2 rounded-lg border bg-card p-3 2xl:order-none" aria-label="Add nodes">
+        <aside className="order-2 min-w-0 rounded-lg border bg-card p-3 2xl:order-none" aria-label="Add nodes">
           <h2 className="mb-2 text-sm font-semibold">Nodes</h2>
           <NodePalette catalog={catalog} onAdd={addFromPalette} disabled={readOnly} />
         </aside>
@@ -316,7 +316,7 @@ export function WorkflowEditor({
           ) : null}
           {live.problem && !live.problem.problem?.errors?.length ? <ErrorNotice error={live.problem} title="The document could not be checked" /> : null}
         </div>
-        <aside className={cn("order-3 rounded-lg border bg-card p-4 2xl:order-none", "max-h-[calc(70vh+8rem)] overflow-y-auto")} aria-label={node ? `Edit node ${node.id}` : "Workflow settings"}>
+        <aside className={cn("order-3 min-w-0 rounded-lg border bg-card p-4 2xl:order-none", "max-h-[calc(70vh+8rem)] overflow-y-auto")} aria-label={node ? `Edit node ${node.id}` : "Workflow settings"}>
           {node ? (
             <NodeInspector
               key={node.id}

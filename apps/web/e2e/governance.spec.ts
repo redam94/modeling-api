@@ -140,3 +140,24 @@ test("decisions are hidden without the reviewer capability, which an admin grant
   await expect(toggle).toHaveAttribute("aria-checked", "true");
   await expect(page.getByText("Rui Runner can now approve validations.")).toBeVisible();
 });
+
+test.describe("phone layout (375 px)", () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+  const pages: [string, string][] = [
+    ["/workflows?tab=templates", "Time-series readiness to ARIMAX"],
+    ["/workflows/wf_01jaf3e1f2g3h4j5k6m7n8p9q0?tab=editor", "Workflow settings"],
+    ["/workflow-runs/run_01jaf3w1x2y3z4a5b6c7d8e9f0", "19 of 19 steps finished"],
+    ["/governance", "Forecasts we publish"],
+    ["/governance/policies/pol_01jaf3h1j2k3m4n5p6q7r8s9t1", "Required checks"],
+    [`/validations/${AWAITING}`, "Beats a shuffled result"],
+  ];
+  for (const [path, marker] of pages) {
+    test(`${path} does not scroll horizontally`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.getByRole("main").getByText(marker).first()).toBeVisible();
+      await page.waitForTimeout(500); // lazy content (the canvas, plots) lays out
+      const { scroll, client } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+      expect(scroll, `${path} is ${scroll}px wide in a ${client}px viewport`).toBeLessThanOrEqual(client);
+    });
+  }
+});
