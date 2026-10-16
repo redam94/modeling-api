@@ -1,0 +1,20 @@
+curl -sS -X POST 'https://api.mapi.example/v1/endpoints/geo-mmm-prod/score' \
+  -H "Authorization: Bearer $MAPI_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'X-Mapi-Project: acme/growth' \
+  -H 'Prefer: wait=60' \
+  --data '{
+  "future_covariates": "carry_last",
+  "horizon": {
+    "dim": "time",
+    "periods": 8
+  },
+  "mode": "forecast",
+  "output": {
+    "kind": "expected",
+    "summary": [
+      "mean",
+      "hdi_90"
+    ]
+  }
+}'

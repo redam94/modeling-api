@@ -19,6 +19,8 @@ score      a ``ScoreRequest`` document, or              ``bundle``, optional
 evaluate   :class:`EvaluateJob`                         ``bundle``, ``dataset``, ...
 derive     :class:`DeriveJob`                           ``bundle``, ``dataset``, ``side.<name>``
 render     :class:`RenderJob`                           ``plots`` (a ``plots.json``)
+translate_ :class:`~mapi_spec.calibration.Prior-         ``dataset``, optional ``schema``,
+priors     TranslationJob` (M3)                         ``side.<name>``; output ``priors.json``
 ========== ============================================ ======================================
 
 Datasets are single-object ``*.zarr.zip`` files. A dataset's raw schema comes from the
@@ -38,8 +40,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from mapi_spec._types import StrictModel
 from mapi_spec.api import IngestMapping
+from mapi_spec.calibration import PRIOR_TRANSLATION_OUTPUT, PriorTranslationJob
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
+from mapi_spec.ingest import MffOptions
 from mapi_spec.loader import parse_document
 from mapi_spec.run import INPUT_BUNDLE, INPUT_DATASET
 from mapi_spec.spec import ModelSpec, ScoreRequest
@@ -61,6 +65,7 @@ __all__ = [
     "INPUT_SCENARIO",
     "INPUT_SCHEMA",
     "INPUT_UPLOAD",
+    "PRIOR_TRANSLATION_OUTPUT",
     "SCORE_INPUTS",
     "SCORE_OUTPUT",
     "SIDE_TABLE_PREFIX",
@@ -72,6 +77,7 @@ __all__ = [
     "Job",
     "MetricsSidecar",
     "MffOptions",
+    "PriorTranslationJob",
     "RenderJob",
     "ScoreJob",
     "parse_job",
@@ -129,33 +135,6 @@ SCORE_OUTPUT: Final = "score.zarr.zip"
 
 
 # ------------------------------------------------------------------------------------- jobs
-class MffOptions(StrictModel):
-    """The MFF ("model feature format") long-table preset.
-
-    One row per ``(period, geography, product, campaign, outlet, creative, variable)`` with
-    the value in ``value_column``. ``Period`` becomes the time dim; the other key columns
-    become dims only when they hold more than one distinct value; ``VariableName`` values
-    become data variables.
-    """
-
-    period_column: str = "Period"
-    variable_column: str = "VariableName"
-    value_column: str = "VariableValue"
-    key_columns: dict[str, str] = Field(
-        default_factory=lambda: {
-            "Geography": "geo",
-            "Product": "product",
-            "Campaign": "campaign",
-            "Outlet": "outlet",
-            "Creative": "creative",
-        },
-        description="Key column -> dim name",
-    )
-    time_dim: str = "date"
-    freq: str | None = Field(None, description="Pandas offset alias; inferred when omitted")
-    roles: dict[str, str] = Field(default_factory=dict, description="Variable -> role")
-    units: dict[str, str] = Field(default_factory=dict, description="Variable -> units")
-    missing: Literal["forbid", "allow", "mask"] = "allow"
 
 
 class IngestSource(StrictModel):
@@ -167,7 +146,12 @@ class IngestSource(StrictModel):
 
 
 class IngestJob(StrictModel):
-    """An ingest run: an explicit column mapping, or the MFF preset."""
+    """An ingest run: an explicit column mapping, or the MFF preset.
+
+    From M3 the mapping itself may name a preset (``mapping.preset``: ``mff``,
+    ``meridian`` or ``bayesinsight``, with its options in the mapping); the top-level
+    ``preset``/``mff`` pair stays for v0.2 callers.
+    """
 
     mapping: IngestMapping | None = None
     preset: Literal["mff"] | None = None
@@ -227,14 +211,29 @@ class DeriveJob(StrictModel):
 
 
 class RenderJob(StrictModel):
-    """Render plots from a ``plots.json`` to static images."""
+    """Render plots from a ``plots.json`` to static images (``render/<plot id>.<format>``).
+
+    ``pdf`` (M3) and an explicit ``width``/``height`` in CSS pixels (before ``scale``) are
+    for reports; Vega-Lite renders with vl-convert, Plotly with kaleido, in the sandbox.
+    """
 
     plots: list[str] | None = Field(None, description="Plot ids (default: all)")
-    format: Literal["png", "svg"] = "png"
+    format: Literal["png", "svg", "pdf"] = "png"
     scale: float = Field(2.0, gt=0, le=8)
+    width: int | None = Field(None, ge=16, le=4096)
+    height: int | None = Field(None, ge=16, le=4096)
 
 
-Job = IngestJob | DescribeJob | ModelSpec | ScoreJob | EvaluateJob | DeriveJob | RenderJob
+Job = (
+    IngestJob
+    | DescribeJob
+    | ModelSpec
+    | ScoreJob
+    | EvaluateJob
+    | DeriveJob
+    | RenderJob
+    | PriorTranslationJob
+)
 
 
 class MetricsSidecar(BaseModel):
@@ -314,6 +313,12 @@ def parse_job(kind: RunKind, spec: dict[str, Any]) -> Job:
             return DeriveJob.model_validate(spec)
         if kind is RunKind.RENDER:
             return RenderJob.model_validate(spec)
+        if kind is RunKind.TRANSLATE_PRIORS:
+            job = PriorTranslationJob.model_validate(spec)
+            doc = parse_document(dict(job.spec))
+            if not isinstance(doc, ModelSpec):
+                raise ValueError("expected a ModelSpec document")
+            return job
     except (ValidationError, ValueError) as exc:
         raise _invalid(kind, exc) from None
     except MapiError:

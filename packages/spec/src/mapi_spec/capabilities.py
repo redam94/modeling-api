@@ -211,6 +211,10 @@ def can_aggregate(
 # --------------------------------------------------------------------------- capabilities
 
 
+CalibrationKind = Literal["business_priors", "lift_tests"]
+"""What a ``ModelSpec.calibration`` block may carry for a model (``Capabilities.calibration``)."""
+
+
 class Capabilities(StrictModel):
     """What a model plugin can do (declared in its manifest)."""
 
@@ -228,6 +232,11 @@ class Capabilities(StrictModel):
     owns: SortedFrozenSet[Owned] = frozenset()
     deterministic_given_seed: bool = True
     checkpointable: bool = False
+    calibration: SortedFrozenSet[CalibrationKind] = Field(
+        frozenset(),
+        description="Calibration data the model uses from a spec's calibration block (M3)",
+        exclude_if=lambda v: not v,
+    )
 
     @model_validator(mode="after")
     def _check(self) -> Capabilities:

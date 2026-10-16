@@ -1,0 +1,23 @@
+library(httr2)
+
+resp <- request('https://api.mapi.example/v1/endpoints/geo-mmm-prod/score') |>
+  req_auth_bearer_token(Sys.getenv('MAPI_TOKEN')) |>
+  req_headers(`X-Mapi-Project` = 'acme/growth', Prefer = 'wait=60') |>
+  req_body_raw('{
+  "future_covariates": "carry_last",
+  "horizon": {
+    "dim": "time",
+    "periods": 8
+  },
+  "mode": "forecast",
+  "output": {
+    "kind": "expected",
+    "summary": [
+      "mean",
+      "hdi_90"
+    ]
+  }
+}', type = "application/json") |>
+  req_perform()
+result <- resp_body_json(resp)
+str(result$run$state)
