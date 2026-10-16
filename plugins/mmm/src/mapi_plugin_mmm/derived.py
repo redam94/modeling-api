@@ -316,7 +316,7 @@ def response_curves_dataset(
     )
     total = by_geo.sum(GEO)
     total.attrs = dict(by_geo.attrs)
-    current = by_geo.sel(multiplier=1.0, method="nearest").sum(GEO).drop_vars("multiplier")
+    current = by_geo.sel(multiplier=1.0).sum(GEO).drop_vars("multiplier")  # always on the grid
     current.attrs = dict(by_geo.attrs)
     target_scale, spend_scale = _scales(curves, to_original)
     variables: dict[str, xr.DataArray] = {

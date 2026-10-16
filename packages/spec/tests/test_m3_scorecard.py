@@ -98,6 +98,23 @@ def test_messages_are_plain_and_formatted() -> None:
     assert "-15%" in evaluate_check("holdout.hit_rate", -0.15).message_plain
 
 
+def test_history_is_measured_in_years_whatever_the_frequency() -> None:
+    """104/52 *periods* assumed weekly data: 105 days of daily data passed as 'enough to
+    learn seasonality'. The check reads years of history."""
+    from mapi_spec.guided import GUIDED_TEMPLATES
+
+    check = SCORECARD_CHECKS["data.history"]
+    assert check.metric == "history_years" and (check.warn, check.fail) == (2.0, 1.0)
+    assert evaluate_check("data.history", 105 / 365).status == "fail"
+    assert evaluate_check("data.history", 104 / 52).status == "pass"
+    item = evaluate_check("data.history", 1.5)
+    assert item.status == "warn"
+    assert item.message_plain == "Only 1.5 years of history: seasonal effects are uncertain."
+    forecast = GUIDED_TEMPLATES["weekly_forecast"].scorecard_thresholds["data.history"]
+    assert evaluate_check("data.history", 105 / 365, thresholds=forecast).status == "fail"
+    assert evaluate_check("data.history", 30 / 52, thresholds=forecast).status == "warn"
+
+
 def test_template_thresholds_override_the_defaults() -> None:
     tight = CheckThresholds(warn=0.05, fail=0.1)
     assert evaluate_check("holdout.mape", 0.07).status == "pass"
@@ -197,3 +214,43 @@ def test_override_rules() -> None:
         authorize_promotion(blocked, override=True, reason="please", can_override=True)
     assert exc.value.code is ErrorCode.PROMOTION_BLOCKED
     assert "Holdout error" in exc.value.detail
+
+
+def test_gate_needs_an_override_for_an_evaluate_then_refit_fit_never_evaluated() -> None:
+    """Q13: an ``evaluate_then_refit`` version must have been scored on a holdout. A spec
+    without ``data.split`` fits on all the data and every holdout check is skipped."""
+    no_split = rollup(
+        [evaluate_check("convergence.rhat", 1.001)],
+        {"holdout.mape": "no split", "holdout.coverage_90": "no split"},
+    )
+    assert no_split.overall == "pass"
+    d = promotion_gate(no_split, fit_mode="evaluate_then_refit")
+    assert d.outcome is GateOutcome.NEEDS_OVERRIDE
+    [reason] = d.reasons
+    assert reason.code == "NOT_EVALUATED" and reason.check == "holdout.mape"
+    assert "no split" in reason.message_plain
+    assert "holdout.mape" in d.failing_checks
+    # an exploration fit allowed by the endpoint's policy needs no holdout
+    lenient = promotion_gate(no_split, fit_mode="train_only", allow_train_only=True)
+    assert lenient.outcome is GateOutcome.ALLOWED
+    # any measured holdout check is enough
+    scored = rollup([evaluate_check("holdout.hit_rate", 0.1)], {"holdout.mape": "not choice"})
+    assert promotion_gate(scored).outcome is GateOutcome.ALLOWED
+
+
+def test_gate_needs_an_override_for_a_required_check_that_was_skipped() -> None:
+    card = rollup(
+        [evaluate_check("holdout.mape", 0.05)],
+        {"plausibility.negative_roi": "the model has no response curves"},
+    )
+    assert promotion_gate(card).outcome is GateOutcome.ALLOWED
+    d = promotion_gate(
+        card, required_checks=["holdout.mape", "plausibility.negative_roi", "data.history"]
+    )
+    assert d.outcome is GateOutcome.NEEDS_OVERRIDE
+    assert [(r.code, r.check) for r in d.reasons] == [
+        ("NOT_EVALUATED", "plausibility.negative_roi"),
+        ("NOT_EVALUATED", "data.history"),
+    ]
+    assert "no response curves" in d.reasons[0].message_plain
+    assert d.failing_checks == ["plausibility.negative_roi", "data.history"]

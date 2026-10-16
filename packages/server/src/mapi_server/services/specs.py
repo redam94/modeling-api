@@ -146,9 +146,26 @@ async def resolve_dataset(
 async def resolve_model_version(
     session: AsyncSession, scope: Scope, ref: ModelVersionRef | EndpointRef
 ) -> tuple[m.ModelVersion | None, str | None]:
-    if isinstance(ref, EndpointRef):
-        return None, "endpoint aliases arrive in v0.4 (M3); use model://project/name@vN"
+    """The model version a ref points at (an endpoint: the version it serves now), or
+    ``(None, reason)``."""
     if ref.project != scope.project_id:
+        return None, f"project {ref.project!r} does not exist"
+    if isinstance(ref, EndpointRef):
+        endpoint = (
+            await session.execute(
+                select(m.Endpoint).where(
+                    m.Endpoint.tenant_id == scope.tenant_id,
+                    m.Endpoint.project_id == scope.project_id,
+                    m.Endpoint.alias == ref.alias,
+                )
+            )
+        ).scalar_one_or_none()
+        if endpoint is None:
+            return None, f"endpoint {ref.alias!r} does not exist"
+        served = await session.get(m.ModelVersion, endpoint.model_version_id)
+        if served is None:
+            return None, f"endpoint {ref.alias!r} serves no model version"
+        return served, None
         return None, f"project {ref.project!r} does not exist"
     model = (
         await session.execute(

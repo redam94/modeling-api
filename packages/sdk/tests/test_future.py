@@ -85,6 +85,37 @@ def test_seasonal_naive_repeats_the_last_year() -> None:
     np.testing.assert_array_equal(short["price"].values, history(6)["price"].values[-1])
 
 
+def test_seasonal_naive_aligns_by_date_and_skips_missing_values() -> None:
+    """A horizon that starts later than the period after the history (a gap, or a payload of
+    future months only) used to shift the pattern by the gap; a missing value in the last
+    season was copied forward as NaN."""
+    hist = history()  # 2022-01 .. 2024-06; price follows the month of the year
+    out, issues = fill_future_covariates(
+        horizon(6, start="2024-10-01"), FutureCovariates.SEASONAL_NAIVE, dim="time",
+        schema=SCHEMA, history=hist,
+    )  # fmt: skip
+    months = pd.DatetimeIndex(out["time"].values).month
+    np.testing.assert_array_equal(out["price"].values, 10.0 + (months - 1))
+    # 'b' has no spend in 2024-06: 2025-06 takes the value one more season back (2023-06)
+    june, _ = fill_future_covariates(
+        horizon(1, start="2025-06-01"), FutureCovariates.SEASONAL_NAIVE, dim="time",
+        schema=SCHEMA, history=hist,
+    )  # fmt: skip
+    b = hist["spend"].sel(geo="b")
+    assert june["spend"].sel(geo="b").values[0] == b.sel(time="2023-06-01").item()
+    assert not any(i.severity is Severity.WARNING for i in issues)
+    # a value missing in every season falls back to the last finite one, with a warning
+    gappy = hist.copy(deep=True)
+    gappy["spend"].loc[{"geo": "b", "time": [t for t in gappy["time"].values
+                                             if pd.Timestamp(t).month == 6]}] = np.nan  # fmt: skip
+    filled, warns = fill_future_covariates(
+        horizon(1, start="2025-06-01"), FutureCovariates.SEASONAL_NAIVE, dim="time",
+        schema=SCHEMA, history=gappy,
+    )  # fmt: skip
+    assert filled["spend"].sel(geo="b").values[0] == b.sel(time="2024-05-01").item()
+    assert any(i.severity is Severity.WARNING and "spend" in i.message for i in warns)
+
+
 def test_zero_needs_no_history_and_supplied_values_are_kept() -> None:
     payload = horizon(4).assign(price=("time", np.full(4, 9.0)))
     out, _ = fill_future_covariates(payload, FutureCovariates.ZERO, dim="time", schema=SCHEMA)

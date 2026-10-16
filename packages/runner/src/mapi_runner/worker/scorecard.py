@@ -23,7 +23,8 @@ metric                    measured on
 ``prior_overlap_max``     overlap of prior and posterior draws (needs a ``prior`` group:
                           ``fit.prior_predictive`` or ``fit.keep.prior``)
 ``missing_fraction``      the raw dataset's numeric variables
-``history_periods``       the model stage's time dim
+``history_years``         the model stage's time dim: periods / periods per year (from the
+                          dim's frequency, else the one its labels follow)
 ``spend_cv_min``          the raw spend per channel over time (summed over other dims)
 ========================  ====================================================================
 """
@@ -39,6 +40,8 @@ import numpy as np
 import xarray as xr
 from mapi_plots.recipes._stats import ess_bulk, rhat
 from mapi_sdk.bundle import Bundle
+from mapi_sdk.future import season_length
+from mapi_sdk.schema import infer_freq
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.guided import GUIDED_TEMPLATES
 from mapi_spec.schema import Role
@@ -51,7 +54,7 @@ from mapi_spec.scorecard import (
     rollup,
 )
 
-__all__ = ["GUIDED_LABEL", "fit_scorecard", "scorecard_metrics"]
+__all__ = ["GUIDED_LABEL", "fit_scorecard", "history_years", "scorecard_metrics"]
 
 GUIDED_LABEL: Final = "guided"
 """``metadata.labels`` key naming the guided template a spec was drafted from."""
@@ -176,13 +179,16 @@ def _holdout(bundle: Bundle, out: dict[str, Measured], why: dict[str, str]) -> N
 
 
 def _channel_totals(rc: xr.Dataset) -> tuple[xr.DataArray, xr.DataArray] | None:
-    """``(contribution(sample, channel), spend(channel))`` at the actual spend."""
+    """``(contribution(sample, channel), spend(channel))`` at the actual spend (multiplier
+    exactly 1; ``None`` for a grid without it, never the nearest point)."""
     if "contribution" not in rc or "current_spend" not in rc:
         return None
     da = rc["contribution"]
     if "channel" not in da.dims or "multiplier" not in da.dims or "sample" not in da.dims:
         return None
-    at_one = da.sel(multiplier=1.0, method="nearest")
+    if not np.any(np.asarray(da["multiplier"].values, dtype=float) == 1.0):
+        return None
+    at_one = da.sel(multiplier=1.0)
     other = [d for d in at_one.dims if d not in ("sample", "channel")]
     if other:
         at_one = at_one.sum(other)
@@ -194,8 +200,13 @@ def _plausibility(bundle: Bundle, out: dict[str, Measured], why: dict[str, str])
     rc = bundle.model.derived.get("response_curves")
     totals = _channel_totals(rc) if rc is not None else None
     if rc is None or totals is None:
+        reason = (
+            "the model has no response curves (outputs.derived: response_curves)"
+            if rc is None or "contribution" not in rc
+            else "the response curves have no point at today's spend (multiplier 1)"
+        )
         for m in metrics:
-            why[m] = "the model has no response curves (outputs.derived: response_curves)"
+            why[m] = reason
         return
     contrib, spend = totals
     channels = [str(c) for c in contrib["channel"].values]
@@ -317,10 +328,32 @@ def _data_checks(
         [d for d, spec in schema.dims.items() if spec.kind == "time"] if schema is not None else []
     )
     if coords is None or not time_dims or time_dims[0] not in coords.coords:
-        why["history_periods"] = "the model has no time dim"
+        why["history_years"] = "the model has no time dim"
         return
-    n = int(coords.sizes[time_dims[0]])
-    out["history_periods"] = (float(n), f"{n} periods along {time_dims[0]!r} at the model stage")
+    t = time_dims[0]
+    assert schema is not None
+    got = history_years(np.asarray(coords[t].values), schema.dims[t].freq)
+    if got is None:
+        why["history_years"] = (
+            f"the time dim {t!r} has no regular frequency, so its history cannot be counted "
+            "in years"
+        )
+        return
+    years, expert = got
+    out["history_years"] = (years, f"{expert} along {t!r} at the model stage")
+
+
+def history_years(labels: np.ndarray, freq: str | None) -> Measured | None:
+    """Years covered by the time labels: their count over the periods in a year at ``freq``
+    (or at the frequency the labels follow); ``None`` when neither is known."""
+    n = len(labels)
+    per_year = season_length(freq)
+    if per_year is None and np.asarray(labels).dtype.kind == "M":
+        freq = infer_freq(labels)
+        per_year = season_length(freq)
+    if per_year is None:
+        return None
+    return n / per_year, f"{n} periods at {freq} ({per_year} per year)"
 
 
 def _spend_cv(bundle: Bundle, data: xr.Dataset) -> Measured | None:

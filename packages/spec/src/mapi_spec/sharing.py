@@ -24,11 +24,13 @@ from typing import Final, Literal
 from pydantic import AwareDatetime, Field, field_validator, model_validator
 
 from mapi_spec._dto import EXAMPLE_TS, Id, RequestModel, ResponseModel, TenantId, dto_examples
+from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.plots import PlotSpec
 
 __all__ = [
     "EMBED_TOKEN_RE",
     "MAX_EMBED_DAYS",
+    "MAX_RENDER_PIXELS",
     "PLATFORM_RECIPE_NAMESPACES",
     "EmbedView",
     "ModelPlotRef",
@@ -39,6 +41,7 @@ __all__ = [
     "RenderFormat",
     "SavedPlot",
     "SavedPlotCreate",
+    "check_render_pixels",
     "embeddable",
     "generate_embed_token",
     "is_platform_recipe",
@@ -51,6 +54,25 @@ EMBED_TOKEN_RE: Final = re.compile(r"^mpe_[0-9a-hjkmnp-tv-z]{40}$")
 _ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"
 
 RenderFormat = Literal["png", "svg", "pdf"]
+
+MAX_RENDER_PIXELS: Final = 50_000_000
+"""Cap on a static render's raster: width x height x scale^2 device pixels (50 megapixels,
+~200 MB as RGBA). ``scale <= 8`` and sizes up to 4096 alone would allow 4 GiB."""
+
+
+def check_render_pixels(width: float, height: float, scale: float, *, pointer: str = "") -> None:
+    """Refuse (``PAYLOAD_TOO_LARGE``) a render whose raster would exceed
+    :data:`MAX_RENDER_PIXELS`; ``width``/``height`` are CSS pixels before ``scale``."""
+    pixels = width * height * scale * scale
+    if pixels <= MAX_RENDER_PIXELS:
+        return
+    raise MapiError(
+        f"the image would be {width * scale:,.0f} x {height * scale:,.0f} pixels "
+        f"({pixels / 1e6:,.0f} megapixels); static renders hold at most "
+        f"{MAX_RENDER_PIXELS / 1e6:.0f} megapixels: lower the scale, the width or the height",
+        code=ErrorCode.PAYLOAD_TOO_LARGE,
+        pointer=pointer,
+    )
 
 
 def generate_embed_token() -> str:
@@ -148,8 +170,10 @@ def embeddable(source_kind: str, provenance: str, recipe: str | None) -> bool:
 
 class PlotRenderRequest(RequestModel):
     """``POST /v1/plots:render``: exactly one of ``plot`` (an inline spec, sanitized),
-    ``saved_plot_id`` or ``source``. ``width``/``height`` are CSS pixels before ``scale``.
-    Send ``Prefer: wait=N`` to get the file links in the response."""
+    ``saved_plot_id`` or ``source``. ``width``/``height`` are CSS pixels before ``scale``;
+    the raster (``width x height x scale^2``, with the plot's own size where none is given)
+    holds at most :data:`MAX_RENDER_PIXELS`. Send ``Prefer: wait=N`` to get the file links in
+    the response."""
 
     plot: PlotSpec | None = None
     saved_plot_id: Id | None = Field(None, pattern=r"^plt_[0-9a-z]{26}$")

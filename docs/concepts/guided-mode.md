@@ -256,7 +256,7 @@ multi-class `brier` score (0 is perfect) in the model's metrics.
 | Check | Metric | Thresholds | What to do |
 |---|---|---|---|
 | <a id="check-data-missing"></a>`data.missing` (Few missing values) | `missing_fraction` | warn above 5%, fail above 30% | Fill the gaps in the source data, or drop the affected series. |
-| <a id="check-data-history"></a>`data.history` (Enough history) | `history_periods` | warn below 104, fail below 52 | Add more history if you have it. |
+| <a id="check-data-history"></a>`data.history` (Enough history) | `history_years` | warn below 2 years, fail below 1 year (the `weekly_forecast` template: below 0.5) | Add more history if you have it. |
 | <a id="check-data-spend-variation"></a>`data.spend_variation` (Spend varies enough) | `spend_cv_min` | warn below 10%, fail below 2% | Add a lift test for the channel, or state its ROI in business priors. |
 
 How the runner measures each check is in

@@ -53,7 +53,7 @@ The **promotion gate** decides whether the version may serve:
 | The version | Answer |
 |---|---|
 | Its scorecard passes, it was fitted with `evaluate_then_refit`, and it takes the input the endpoint's callers send | Promoted |
-| Its scorecard warns, or it has none | `409 OVERRIDE_REQUIRED`, unless a project admin overrides |
+| Its scorecard warns, or it has none; it was never scored on a holdout (no `data.split`), or a check its guided template asks for could not run (`NOT_EVALUATED`) | `409 OVERRIDE_REQUIRED`, unless a project admin overrides |
 | Its scorecard fails, the fit was interrupted, or it was fitted `train_only` | `409 PROMOTION_BLOCKED` |
 | It expects different input (a dim removed, a new required variable, ...) | Blocked by default; the endpoint's `schema_change` policy can make it `warn` or `allow` |
 

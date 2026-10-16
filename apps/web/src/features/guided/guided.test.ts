@@ -166,13 +166,24 @@ describe("business priors", () => {
 describe("promotion gate preview (mapi_spec.scorecard.promotion_gate)", () => {
   const item = (status: "pass" | "warn" | "fail", check: string) => ({ code: "X", status, title: check, message_plain: "m", check });
   it("passes, needs an admin or blocks", () => {
-    expect(previewGate({ overall: "pass", items: [item("pass", "a.b")] }).outcome).toBe("allowed");
+    expect(previewGate({ overall: "pass", items: [item("pass", "a.b"), item("pass", "holdout.mape")] }).outcome).toBe("allowed");
     const warn = previewGate({ overall: "warn", items: [item("pass", "a.b"), item("warn", "holdout.mape")] });
     expect(warn).toMatchObject({ outcome: "needs_override", failing_checks: ["holdout.mape"] });
     expect(previewGate({ overall: "fail", items: [item("warn", "a.b"), item("fail", "c.d")] }).outcome).toBe("blocked");
     expect(previewGate(null).reasons?.[0]?.code).toBe("NO_SCORECARD");
     expect(previewGate({ overall: "pass", items: [] }, { partial: true }).outcome).toBe("blocked");
     expect(previewGate({ overall: "pass", items: [] }, { fitMode: "train_only" }).reasons?.[0]?.code).toBe("TRAIN_ONLY");
+    // Q13: an evaluate_then_refit version must have been scored on a holdout
+    const holdout = { ...item("pass", "holdout.mape"), category: "holdout" as const };
+    const noSplit = previewGate({ overall: "pass", items: [item("pass", "convergence.rhat")], skipped: { "holdout.mape": "no split" } });
+    expect(noSplit).toMatchObject({ outcome: "needs_override", failing_checks: ["holdout.mape"] });
+    expect(noSplit.reasons?.[0]).toMatchObject({ code: "NOT_EVALUATED", check: "holdout.mape" });
+    expect(noSplit.reasons?.[0]?.message_plain).toContain("no split");
+    expect(previewGate({ overall: "pass", items: [] }, { fitMode: "train_only" }).reasons?.map((r) => r.code)).toEqual(["TRAIN_ONLY"]);
+    // a guided template's checks must all have run
+    const skipped = previewGate({ overall: "pass", items: [holdout], skipped: { "data.history": "no time dim" } }, { requiredChecks: ["holdout.mape", "data.history"] });
+    expect(skipped.reasons?.map((r) => [r.code, r.check])).toEqual([["NOT_EVALUATED", "data.history"]]);
+    expect(previewGate({ overall: "pass", items: [holdout] }).outcome).toBe("allowed");
     expect(gateSentence("needs_override", false)).toContain("a project admin has to approve");
     expect(gateSentence("needs_override", true)).toContain("As a project admin you can approve it anyway");
   });

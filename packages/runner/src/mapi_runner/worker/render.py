@@ -14,8 +14,10 @@ Rendering never fetches anything:
   control plane pinned the bundle object), anything else is refused;
 * vl-convert runs with ``allowed_base_urls=[]``, so even a loader request is an error.
 
-``RenderJob.width``/``height`` (CSS pixels, before ``scale``) override the plot's size, and
-each image is capped at :data:`MAX_IMAGE_BYTES`.
+``RenderJob.width``/``height`` (CSS pixels, before ``scale``) override the plot's size. The
+raster is capped at :data:`mapi_spec.sharing.MAX_RENDER_PIXELS` *before* anything is drawn
+(Vega-Lite: the laid-out SVG's size, so composite views and the plot's own size count;
+Plotly: the figure's size), and each image at :data:`MAX_IMAGE_BYTES`.
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ import copy
 import importlib
 import json
 import os
+import re
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -36,6 +39,7 @@ from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.jobs import INPUT_PLOTS, PLOT_DATA_INPUT_PREFIX, RenderJob, render_output
 from mapi_spec.plots import PlotSpec
 from mapi_spec.run import RunnerPhase
+from mapi_spec.sharing import check_render_pixels
 from pydantic import ValidationError
 
 from mapi_runner.worker.context import WorkerContext
@@ -53,6 +57,8 @@ MAX_DATA_BYTES: Final = 256 * 1024 * 1024
 MAX_IMAGE_BYTES: Final = 32 * 1024 * 1024
 _MAX_ROWS: Final = 2_000_000
 _COMPOSITE = ("hconcat", "vconcat", "concat", "facet", "repeat")
+_SVG_TAG = re.compile(r"<svg\b[^>]*>", re.S)
+_PLOTLY_DEFAULT_SIZE: Final = (700, 500)
 _FETCH_KEYS = frozenset({"url", "href", "src", "images", "mapbox", "map"})
 _PLOTLY_TILE_TRACES = frozenset(
     {
@@ -216,8 +222,12 @@ def _vega_lite(
     _sized_vega_lite(spec, width, height)
     no_network: dict[str, Any] = {"allowed_base_urls": []}
     try:
+        svg = str(vlc.vegalite_to_svg(spec, **no_network))
         if fmt == "svg":
-            return str(vlc.vegalite_to_svg(spec, **no_network)).encode("utf-8")
+            return svg.encode("utf-8")
+        # the laid-out size (composite cells, the plot's own width/height) before rasterising
+        w, h = _svg_size(svg)
+        check_render_pixels(w, h, scale)
         if fmt == "pdf":
             return bytes(vlc.vegalite_to_pdf(spec, scale=scale, **no_network))
         return bytes(vlc.vegalite_to_png(spec, scale=scale, **no_network))
@@ -227,6 +237,21 @@ def _vega_lite(
             code=ErrorCode.PLOT_UNSAFE if "not allowed" in str(exc) else ErrorCode.SCHEMA_INVALID,
             untrusted_text=str(exc)[:4000],
         ) from None
+
+
+def _svg_size(svg: str) -> tuple[float, float]:
+    """``(width, height)`` of an SVG's root element (CSS pixels)."""
+    tag = _SVG_TAG.search(svg)
+    found: dict[str, float] = {}
+    for key in ("width", "height"):
+        m = re.search(rf'\s{key}="([0-9.]+)', tag.group(0)) if tag else None
+        if m is None:
+            raise MapiError(
+                "the Vega-Lite renderer did not report the plot's size",
+                code=ErrorCode.SCHEMA_INVALID,
+            )
+        found[key] = float(m.group(1))
+    return found["width"], found["height"]
 
 
 def _resolve_refs(node: Any, tables: dict[str, list[dict[str, Any]]]) -> Any:
@@ -270,6 +295,21 @@ def _plotly(
     height: int | None,
     load: LoadData | None,
 ) -> bytes:
+    layout = plot.spec.get("layout") if isinstance(plot.spec, dict) else None
+    own = layout if isinstance(layout, dict) else {}
+
+    def size(override: int | None, key: str, default: int) -> float:
+        if override is not None:
+            return float(override)
+        v = own.get(key)
+        return float(v) if isinstance(v, int | float) and not isinstance(v, bool) else default
+
+    if fmt != "svg":
+        check_render_pixels(
+            size(width, "width", _PLOTLY_DEFAULT_SIZE[0]),
+            size(height, "height", _PLOTLY_DEFAULT_SIZE[1]),
+            scale,
+        )
     chrome = find_chrome()
     try:
         importlib.import_module("kaleido")

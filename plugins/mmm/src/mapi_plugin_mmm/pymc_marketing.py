@@ -70,7 +70,7 @@ from mapi_spec.errors import ErrorCode, MapiError, Severity
 from mapi_spec.resources import ResourceClass
 from mapi_spec.spec import FitConfig, ScoreRequest
 
-from mapi_plugin_mmm.calibration import TranslationOutcome
+from mapi_plugin_mmm.calibration import TranslationOutcome, lift_window_cut
 from mapi_plugin_mmm.pymc_marketing_calibration import (
     BETA_PARAM,
     PmmPriorDraws,
@@ -645,8 +645,9 @@ def lift_frame(
 ) -> pd.DataFrame:
     """Lift tests as pymc-marketing's ``df_lift_test`` (one row per period of a window).
 
-    Tests whose window lies after the data (a holdout fit) are left out; a window inside the
-    data must cover at least one period. Raises ``SCHEMA_INVALID`` at the test's pointer.
+    Tests whose window lies after the data or that the data's periods cut (a holdout fit
+    that ends inside the test) are left out; a window inside the data must cover at least one
+    period. Raises ``SCHEMA_INVALID`` at the test's pointer.
     """
     rows: list[dict[str, Any]] = []
     dates = pd.to_datetime(frame[DATE])
@@ -679,6 +680,8 @@ def lift_frame(
             if pd.Timestamp(test.start) > last:
                 continue
             raise _schema_error(f"lift test {i}: its window covers no period of the data", here)
+        if lift_window_cut(dates.to_numpy(), test.start, test.end):
+            continue
         row: dict[str, Any] = {
             "channel": test.channel,
             "x": float(sub[test.channel].mean()),

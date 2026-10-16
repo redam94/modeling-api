@@ -516,14 +516,77 @@ async def test_promotion_gates_on_the_runner_scorecard(
     assert mv.scorecard["items"][0]["check"] == "plausibility.negative_roi"
     r = await client.put("/v1/endpoints/mmm-prod", json={"model_version_id": mv.id})
     assert r.status_code == 409 and r.json()["code"] == "OVERRIDE_REQUIRED", r.text
-    [reason] = r.json()["errors"]
-    assert reason["context"]["check"] == "plausibility.negative_roi"
+    reasons = r.json()["errors"]
+    assert [x["context"]["check"] for x in reasons] == ["plausibility.negative_roi", None]
+    assert reasons[1]["context"]["gate_code"] == "NOT_EVALUATED"  # no holdout check ran
     async with ctx.db.session() as s:
         fit = await s.get(m.Run, mv.run_id)
         assert fit is not None and fit.spec_id is not None
     ok = await _fit_with_scorecard(
-        ctx, {**RUNNER_CARD, "overall": "pass", "items": []}, spec_id=fit.spec_id
+        ctx, {**RUNNER_CARD, "overall": "pass", "items": [HOLDOUT_PASS]}, spec_id=fit.spec_id
     )
     r = await client.put("/v1/endpoints/mmm-prod", json={"model_version_id": ok.id})
     assert r.status_code == 200, r.text
     assert r.json()["gate"]["outcome"] == "allowed"
+
+
+HOLDOUT_PASS: dict[str, Any] = {
+    "code": "HOLDOUT_MAPE",
+    "status": "pass",
+    "title": "Holdout error",
+    "message_plain": "Forecasts were off by 5% on the held-out periods.",
+    "check": "holdout.mape",
+    "category": "holdout",
+}
+
+
+async def test_a_version_never_evaluated_on_a_holdout_needs_an_override(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """Q13: an evaluate_then_refit spec without data.split fits on all the data; the runner
+    skips every holdout check and the scorecard passes, but the gate wants an override."""
+    no_split = {
+        "overall": "pass",
+        "items": [{**HOLDOUT_PASS, "code": "RHAT", "check": "convergence.rhat",
+                   "category": "convergence", "title": "Chains agree"}],
+        "skipped": {"holdout.mape": "the spec has no holdout split"},
+    }  # fmt: skip
+    mv = await _fit_with_scorecard(ctx, no_split)
+    r = await client.put("/v1/endpoints/mmm-prod", json={"model_version_id": mv.id})
+    assert r.status_code == 409 and r.json()["code"] == "OVERRIDE_REQUIRED", r.text
+    [reason] = r.json()["errors"]
+    assert reason["context"]["gate_code"] == "NOT_EVALUATED"
+    assert reason["context"]["check"] == "holdout.mape"
+    assert "no holdout split" in reason["message"]
+
+
+async def test_a_guided_version_needs_every_check_of_its_template(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    from mapi_server.services.scorecards import promotion_decision
+    from mapi_spec.guided import GUIDED_TEMPLATES
+
+    card = {
+        "overall": "pass",
+        "items": [HOLDOUT_PASS],
+        "skipped": {"data.history": "the model has no time dim"},
+    }
+    mv = await _fit_with_scorecard(ctx, card)
+    r = await client.put("/v1/endpoints/plain", json={"model_version_id": mv.id})
+    assert r.status_code == 200, r.text  # not guided: the catalog is advisory
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, mv.run_id)
+        assert run is not None
+        payload = json.loads(json.dumps(run.payload))
+        payload["metadata"].setdefault("labels", {})["guided"] = "store_demand"
+        run.payload = payload
+    async with ctx.db.session() as s:
+        row = await s.get(m.ModelVersion, mv.id)
+        assert row is not None
+        decision = await promotion_decision(s, row)
+    required = GUIDED_TEMPLATES["store_demand"].scorecard_checks
+    assert decision.outcome == "needs_override"
+    assert [(x.code, x.check) for x in decision.reasons] == [
+        ("NOT_EVALUATED", c) for c in required if c != "holdout.mape"
+    ]
+    assert "no time dim" in decision.reasons[-1].message_plain

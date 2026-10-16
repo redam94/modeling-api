@@ -66,7 +66,9 @@ from mapi_plugin_mmm.calibration import (
     _pointer,
     _quantile_spread,
     _range,
+    _refuse_degenerate,
     _scaled,
+    _share_without_spend,
     _solve_scale,
     _summary,
 )
@@ -198,6 +200,7 @@ def translate_pmm_business_priors(
     kpi_total = _kpi_total(frame)
     declared = s.priors.saturation_beta or _DEFAULT_BETA[s.saturation.kind]
     mu, sigma = _lognormal_like(declared, n_ch, seed + 17)
+    default = (mu.copy(), sigma.copy())
     quantity = np.zeros(n_ch, dtype=int)
     lo_t = np.ones(n_ch)
     hi_t = np.ones(n_ch)
@@ -232,6 +235,12 @@ def translate_pmm_business_priors(
                     pointer=here + "/contribution_share", severity=Severity.ERROR,
                 ))  # fmt: skip
                 continue
+            no_spend = _share_without_spend(
+                label, float(spend_total[c]), here + "/contribution_share"
+            )
+            if no_spend is not None:
+                issues.append(no_spend)
+                continue
             lo, hi = _range(label, belief.contribution_share, issues, here + "/contribution_share")
             quantity[c] = 2
             ranges[label] = ("contribution_share", belief.contribution_share[0],
@@ -262,7 +271,10 @@ def translate_pmm_business_priors(
         centre = _quantile_spread(log_r(sigma)[:, idx], q[idx])[1]
         denom = np.where(quantity[idx] == 1, spend_total[idx], kpi_total or 1.0)
         mu[idx] = (np.log(lo_t[idx]) + np.log(hi_t[idx])) / 2 + np.log(denom) - centre
+        _refuse_degenerate(mu, sigma, default, idx, labels, quantity, ranges, issues, pointer)
         for j, ci in enumerate(idx.tolist()):
+            if labels[ci] not in ranges:
+                continue
             what = "ROI" if quantity[ci] == 1 else "contribution share"
             if narrow[j]:
                 issues.append(_issue(

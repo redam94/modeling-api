@@ -418,6 +418,66 @@ milestone releases are tagged on `main`.
   --example`) asked quantile models for a `mean` they cannot serve; it now asks for the
   representation's default summary.
 
+### Fixed (M3 review: Guided modeling)
+- **spec/server/web**: the promotion gate let through an `evaluate_then_refit` version that
+  was never evaluated on a holdout (a spec without `data.split` skips every holdout check and
+  its scorecard can still pass). Such a version now needs an administrator override with the
+  new gate reason `NOT_EVALUATED`, as does a guided version whose template's scorecard checks
+  did not all run (Q13). The web app's gate preview follows.
+- **mmm**: a contribution-share belief for a channel with no spend in the fit window
+  translated to an absurd prior (`LogNormal(mu≈692)`, so any new spend on the channel
+  predicted ~1e300) with no issue. Both translators (`mmm.hierarchical_geo`,
+  `mmm.pymc_marketing`) now refuse it with an error, as they do for an ROI belief, and refuse
+  any solved prior that is not finite or has `|mu| > 50`, keeping the channel's default.
+- **mmm/runner**: a response grid whose spacing skipped multiplier 1 (`grid.max_multiplier: 3`,
+  `grid.points: 20`, or a maximum below 1) lost its what-if sliders, and the scorecard's ROI,
+  share and baseline checks were read at the nearest point (1.05x or 0.5x spend). The grid
+  now always holds 1 (inserted when the spacing skips it; `max_multiplier` must be at least
+  1), the curves are read at exactly 1, and a what-if grid the view contract refuses is
+  reported as `VIEW_INVALID` instead of `VIEW_TOO_LARGE`.
+- **runner**: a model with more than 256 geos lost its whole what-if grid (the per-geo view
+  failed its geo cap and the national grid was dropped with it); it now gets the national
+  grid (`mapi_spec.views.MAX_GRID_GEOS`).
+- **server**: `POST /v1/guided/requests:compile` answered `404` for an `endpoint://` model
+  target, and `POST /v1/specs:validate` reported a score request aimed at an endpoint as
+  `REF_UNRESOLVED` ("endpoint aliases arrive in v0.4"). An endpoint ref now resolves to the
+  version the endpoint serves.
+- **runner**: a dense ingest (and the MFF pivot) built every combination of the dim labels
+  with no cap, so a 2 MB CSV whose keys rarely repeat asked for ~80 GB and the run was
+  OOM-killed. The cube is now checked before it is built (at most 250 million values, and
+  within the class's scratch budget) and refused as `PAYLOAD_TOO_LARGE` with a hint.
+- **spec/server/runner**: static renders had no pixel cap, so `scale: 8` with a 4096 x 4096
+  size (or a plot that sets its own huge size) asked vl-convert for a ~4 GiB raster and the
+  run was OOM-killed. A PNG or PDF now holds at most 50 megapixels
+  (`mapi_spec.sharing.MAX_RENDER_PIXELS`): `POST /v1/plots:render` refuses a bigger request
+  with `413 PAYLOAD_TOO_LARGE`, and the runner checks the laid-out size (composite views
+  included) before it rasterises.
+- **spec/runner**: the `data.history` check counted periods (warn below 104, fail below 52)
+  whatever the data's frequency, so 105 days of daily data passed as "enough to learn
+  seasonality". It now measures years (`history_years`: periods over the periods in a year
+  at the time dim's frequency, or the one its dates follow; warn below 2 years, fail below
+  1; the `weekly_forecast` template fails below 0.5).
+- **mmm**: a lift test cut by the fit window (one that straddles the end of an
+  `evaluate_then_refit` evaluation fit's training periods, or starts before the data) put
+  all of its spend into the periods left and compared them with the whole test's KPI change,
+  biasing the evaluation fit and the holdout scorecard. Such a test is now skipped and logged,
+  in `mmm.hierarchical_geo`, `mmm.bayesinsight` and `mmm.pymc_marketing`.
+- **runner**: dates with a UTC offset (`2024-01-07T00:00:00+01:00`, common in BI exports) or a
+  tz-aware Parquet timestamp became time zone-aware labels that the ingest then refused as
+  "not dates" (and offsets that change with daylight saving time failed outright). They are
+  now read as the local date and time they name, with an `info` issue saying the offsets
+  were dropped.
+- **sdk**: `future_covariates: seasonal_naive` aligned the last season by position, so a
+  horizon that started after a gap (or a payload of later periods only) shifted the seasonal
+  pattern, and a missing value in the last season was copied forward as NaN. It now takes
+  the value whole seasons before each horizon date, stepping back past missing values, and
+  carries the last value forward (with a warning) only where no season has one.
+- **plots/runner**: a Guided geo MMM's fit chart titled its panels with the spec's internal
+  dim name (`geo`) instead of the analyst's column (`market`), and faceted response curves
+  said `channel` whatever the column was called. Recipes now title facets with the dataset's
+  name for the dim (`RecipeInput.dim_label`, from the bundle's `/binding`), and the fit's
+  holdout prediction tree carries the binding.
+
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
 The platform is now multi-tenant and ready for Google Cloud. Many teams can share one

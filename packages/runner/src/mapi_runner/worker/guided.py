@@ -34,6 +34,7 @@ from mapi_spec.spec import ModelSpec, ScoreRequest
 from mapi_spec.views import (
     MAX_GRID_CELLS,
     MAX_GRID_DRAWS,
+    MAX_GRID_GEOS,
     CounterfactualView,
     ForecastView,
     ResponseGridView,
@@ -96,7 +97,8 @@ def response_grid_view(bundle: Bundle, *, kpi: str | None = None) -> ResponseGri
     n_draws, n_ch, n_m = values.shape[:3]
     n_geo = values.shape[3] if per_geo else 1
     draws = min(n_draws, MAX_GRID_DRAWS, max(1, MAX_GRID_CELLS // max(1, n_ch * n_m)))
-    with_geo = per_geo and draws * n_ch * n_m * n_geo <= MAX_GRID_CELLS
+    # per-geo sliders only while the view holds them (cells and geos); else the national grid
+    with_geo = per_geo and n_geo <= MAX_GRID_GEOS and draws * n_ch * n_m * n_geo <= MAX_GRID_CELLS
     values = values[:draws]
     total = values.sum(axis=3) if per_geo else values
     spend = np.asarray(rc["spend"].transpose("channel", "multiplier").values, dtype=np.float64)

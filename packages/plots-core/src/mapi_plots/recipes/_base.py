@@ -24,6 +24,7 @@ from mapi_spec.capabilities import Representation
 from mapi_spec.catalog import PlotCatalogEntry
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.plots import PlotBindings, PlotSpec
+from mapi_spec.spec import Binding
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from mapi_plots.convert import from_altair
@@ -166,6 +167,23 @@ class RecipeInput:
         if self.tree.has_data and not self.tree.children:
             return self.tree.to_dataset()  # a bare Dataset is the group itself
         return None
+
+    def dim_label(self, dim: str) -> str:
+        """What the dataset calls the canonical dim ``dim`` (``data.bind`` maps a spec's
+        ``geo`` to the analyst's ``market``): read from the bundle's ``/binding`` node, else
+        ``dim`` itself."""
+        for path in ("binding", "model/binding"):
+            try:
+                node = self.tree[path]
+            except KeyError:
+                continue
+            raw = node.attrs.get("json") if isinstance(node, xr.DataTree) else None
+            if isinstance(raw, str):
+                try:
+                    return Binding.model_validate_json(raw).dataset_of().get(dim, dim)
+                except ValidationError:
+                    return dim
+        return dim
 
     def require(self, *names: str) -> xr.Dataset:
         ds = self.find(*names)

@@ -331,6 +331,25 @@ async def test_render_of_inline_saved_and_plotly_plots(
     assert two.status_code == 422
 
 
+async def test_a_render_larger_than_the_pixel_cap_is_refused_before_a_run(
+    client: httpx.AsyncClient, model: dict[str, Any]
+) -> None:
+    """scale 8 x 4096 x 4096 is a 4 GiB raster: refused up front, never OOM-killed."""
+    saved = await _save(client, model, "core.inline")
+    body = {"saved_plot_id": saved.id, "scale": 8, "width": 4096, "height": 4096}
+    r = await client.post("/v1/plots:render", json=body)
+    assert r.status_code == 413 and r.json()["code"] == "PAYLOAD_TOO_LARGE", r.text
+    assert "megapixels" in r.json()["detail"]
+    # an authored plot's own size counts when no override is sent
+    big = dict(PLOTS[0], id="mine.big", spec={**PLOTS[0]["spec"], "width": 20000,
+                                                "height": 20000})  # fmt: skip
+    r = await client.post("/v1/plots:render", json={"plot": big, "scale": 2})
+    assert r.status_code == 413 and r.json()["code"] == "PAYLOAD_TOO_LARGE", r.text
+    ok = await client.post("/v1/plots:render", json={**body, "scale": 1, "width": 1200,
+                                                     "height": 600})  # fmt: skip
+    assert ok.status_code == 202, ok.text
+
+
 async def test_embed_png_fallback_is_rendered_copied_and_signed(
     ctx: ServerContext, client: httpx.AsyncClient, model: dict[str, Any]
 ) -> None:

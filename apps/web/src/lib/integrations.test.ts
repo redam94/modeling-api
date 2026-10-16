@@ -19,7 +19,10 @@ const card = (overall: "pass" | "warn" | "fail", items: NonNullable<ModelVersion
 
 describe("previewGate", () => {
   it("allows a passing scorecard", () => {
-    expect(previewGate(card("pass", [{ code: "RHAT_OK", status: "pass", title: "Chains agree", message_plain: "ok" }])).outcome).toBe("allowed");
+    const holdout = { code: "HOLDOUT_MAPE", check: "holdout.mape", status: "pass" as const, title: "Holdout error", message_plain: "ok" };
+    expect(previewGate(card("pass", [{ code: "RHAT_OK", status: "pass", title: "Chains agree", message_plain: "ok" }, holdout])).outcome).toBe("allowed");
+    // Q13: an evaluate_then_refit version never scored on a holdout needs an override
+    expect(previewGate(card("pass", [{ code: "RHAT_OK", status: "pass", title: "Chains agree", message_plain: "ok" }])).reasons?.map((r) => r.code)).toEqual(["NOT_EVALUATED"]);
   });
 
   it("needs an override for a warning, naming the check", () => {
@@ -36,7 +39,7 @@ describe("previewGate", () => {
   });
 
   it("explains a non-passing verdict even without items", () => {
-    expect(previewGate(card("warn")).reasons?.[0]?.code).toBe("SCORECARD_WARN");
+    expect(previewGate(card("warn")).reasons?.map((r) => r.code)).toEqual(["NOT_EVALUATED", "SCORECARD_WARN"]);
   });
 
   it("blocks a train-only fit, like the server", () => {

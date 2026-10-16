@@ -1015,7 +1015,8 @@ export interface paths {
          * @description Compile a slider scenario (``whatif``), a forecast over a horizon or an intervention
          *     preset (``counterfactual``: channel off, budget x k) into the exact ``ScoreRequest``
          *     ("Run exact" submits it with ``POST /v1/models/{id}/versions/{v}:score``). The request
-         *     is checked statically against the model version's score metadata: an unknown model is
+         *     is checked statically against the model version's score metadata (for an
+         *     ``endpoint://`` target, the version the endpoint serves now): an unknown model is
          *     ``404``, and a request the version cannot score (unknown coordinates, missing future
          *     covariates under ``future_covariates: supplied``) is ``422`` with JSON pointers.
          *     A what-if or preset over the fit window (no horizon) scores the data the version was
@@ -5358,7 +5359,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "SCORECARD_WARN" | "SCORECARD_FAIL" | "NO_SCORECARD" | "TRAIN_ONLY" | "PARTIAL_MODEL" | "SCHEMA_CHANGE";
+            code: "SCORECARD_WARN" | "SCORECARD_FAIL" | "NO_SCORECARD" | "TRAIN_ONLY" | "PARTIAL_MODEL" | "SCHEMA_CHANGE" | "NOT_EVALUATED";
             /** Message Plain */
             message_plain: string;
             outcome: components["schemas"]["GateOutcome"];
@@ -7846,8 +7847,10 @@ export interface components {
         /**
          * PlotRenderRequest
          * @description ``POST /v1/plots:render``: exactly one of ``plot`` (an inline spec, sanitized),
-         *     ``saved_plot_id`` or ``source``. ``width``/``height`` are CSS pixels before ``scale``.
-         *     Send ``Prefer: wait=N`` to get the file links in the response.
+         *     ``saved_plot_id`` or ``source``. ``width``/``height`` are CSS pixels before ``scale``;
+         *     the raster (``width x height x scale^2``, with the plot's own size where none is given)
+         *     holds at most :data:`MAX_RENDER_PIXELS`. Send ``Prefer: wait=N`` to get the file links in
+         *     the response.
          * @example {
          *       "format": "pdf",
          *       "saved_plot_id": "plt_01jaf3n1p2q3r4s5t6v7w8x9y0",

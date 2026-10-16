@@ -316,7 +316,7 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
             "group",
             frame["group"].astype(str),
             columns=s.columns,
-            title=b.facet,
+            title=inp.dim_label(b.facet),
             independent_y=True,
         )
     else:
@@ -412,7 +412,7 @@ def fit_vs_actual(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
         .encode(
             x=alt.X("observed:Q", title=f"actual {b.label}"),
             y=alt.Y("point:Q", title=f"predicted {b.label}"),
-            color=alt.Color("group:N", title=b.facet or ""),
+            color=alt.Color("group:N", title=inp.dim_label(b.facet) if b.facet else ""),
             tooltip=[_xtip(b), "group:N", *_cell_tip(b), "observed:Q", "point:Q"],
         )
     )
@@ -456,7 +456,7 @@ def residuals_over_time(inp: RecipeInput, s: FitVsActualSettings) -> Figure:
         base.mark_line(point=True, strokeWidth=1, opacity=0.6 if b.cells else 1.0).encode(
             x=_xenc(b, title=b.x_dim),
             y=alt.Y("residual:Q", title=f"actual − predicted {b.label}"),
-            color=alt.Color("group:N", title=b.facet or ""),
+            color=alt.Color("group:N", title=inp.dim_label(b.facet) if b.facet else ""),
             tooltip=[_xtip(b), "group:N", *_cell_tip(b), "residual:Q"],
             **({"detail": alt.Detail("cell:N")} if b.cells else {}),
         ),

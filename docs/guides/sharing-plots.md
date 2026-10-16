@@ -54,6 +54,11 @@ curl -s -X POST "$MAPI_URL/v1/plots:render" \
 | `scale` | `2` | Pixel density of PNG and PDF (0 < scale ≤ 8); SVG ignores it |
 | `width`, `height` | the plot's own | Size in CSS pixels before `scale` (16–4096). For a composite plot (facets, concatenations) it is the size of each panel |
 
+A PNG or PDF holds at most 50 megapixels (`width x height x scale²` of the laid-out plot, all
+panels included): a bigger request answers `413 PAYLOAD_TOO_LARGE` up front, or fails the
+render run with that code before anything is drawn when only the layout reveals the size.
+Lower the scale or the size.
+
 Rendering is a `render` run in the sandbox, so it counts against your quotas like any small
 run. With `Prefer: wait=N` (at most 60 seconds) the answer is `200` with signed links to
 `renders/<plot>.<format>` when the run finished in time, otherwise `202` with the run. Poll

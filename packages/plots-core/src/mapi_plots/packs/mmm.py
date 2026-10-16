@@ -134,7 +134,12 @@ def _band_rows(
 
 
 def _curve_chart(
-    name: str, y_title: str, s: ResponseCurveSettings, current: bool, channels: list[str]
+    name: str,
+    y_title: str,
+    s: ResponseCurveSettings,
+    current: bool,
+    channels: list[str],
+    channel_title: str = "channel",
 ) -> Any:
     base = alt.Chart()
     layers: list[Any] = [
@@ -173,7 +178,7 @@ def _curve_chart(
             "channel",
             channels,
             columns=3,
-            title="channel",
+            title=channel_title,
             data=named(name),
         )
     return alt.layer(*layers, data=named(name)).properties(width=s.width, height=s.height)
@@ -217,7 +222,14 @@ def response_curves(inp: RecipeInput, s: ResponseCurveSettings) -> Figure:
     curves = _band_rows(c.channels, c.spend, c.values(), s.hdi_prob)
     current = _current_rows(c, curves, "point")
     datasets = {"curves": _with_current(curves, current)}
-    chart = _curve_chart("curves", c.var, s, current is not None, list(map(str, c.channels)))
+    chart = _curve_chart(
+        "curves",
+        c.var,
+        s,
+        current is not None,
+        list(map(str, c.channels)),
+        inp.dim_label("channel"),
+    )
     caption = (
         f"Each curve shows the expected {c.var} for a level of spend per channel, with the "
         f"{pct(s.hdi_prob)} interval shaded. Steeper curves return more per extra unit of "
@@ -274,7 +286,14 @@ def marginal_cost(inp: RecipeInput, s: MarginalCostSettings) -> Figure:
     label = "cost per extra unit" if s.metric == "cost" else "return per extra unit spent"
     current = _current_rows(c, rows, "point")
     datasets = {"marginal": _with_current(rows, current)}
-    chart = _curve_chart("marginal", label, s, current is not None, list(map(str, c.channels)))
+    chart = _curve_chart(
+        "marginal",
+        label,
+        s,
+        current is not None,
+        list(map(str, c.channels)),
+        inp.dim_label("channel"),
+    )
     caption = (
         f"The {label} of {c.var} at each spend level per channel ({pct(s.hdi_prob)} interval "
         "shaded)."

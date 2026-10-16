@@ -56,7 +56,7 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
   const [done, setDone] = useState<Endpoint | null>(null);
   const [error, setError] = useState<unknown>(null);
   const fitMode = valueAt(session.document, "/model/fit/mode");
-  const gate = previewGate(mv.scorecard, { partial: mv.status === "partial", fitMode: typeof fitMode === "string" ? fitMode : null });
+  const gate = previewGate(mv.scorecard, { partial: mv.status === "partial", fitMode: typeof fitMode === "string" ? fitMode : null, requiredChecks: session.template.scorecard_checks ?? [] });
   const isAdmin = can(grants, "manage", "endpoint");
   const mayPromote = can(grants, "promote", "endpoint");
   const existing = endpoints.data?.items.find((e) => e.alias === alias) ?? null;

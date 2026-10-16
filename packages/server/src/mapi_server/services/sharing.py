@@ -48,6 +48,7 @@ from mapi_spec.sharing import (
     RenderFormat,
     SavedPlot,
     SavedPlotCreate,
+    check_render_pixels,
     embeddable,
     generate_embed_token,
 )
@@ -343,6 +344,32 @@ async def resolve_render_request(
     return resolve_authored(plot, user, "/plot")
 
 
+_DEFAULT_SIZE: Final = {"vega-lite": (200, 200), "plotly": (700, 500)}
+"""The renderers' default sizes (CSS pixels) of a plot that names none: a lower bound."""
+
+
+def _check_pixels(
+    plot: PlotSpec, fmt: str, scale: float, width: int | None, height: int | None
+) -> None:
+    """Refuse up front a raster over ``MAX_RENDER_PIXELS``: the overrides, else the plot's own
+    top-level size, else the renderer's default (the runner measures the laid-out size
+    again before it draws)."""
+    if fmt == "svg":
+        return
+    spec: Any = plot.spec
+    box = spec.get("layout") if plot.kind == "plotly" and isinstance(spec, dict) else spec
+    own = box if isinstance(box, dict) else {}
+    dw, dh = _DEFAULT_SIZE.get(plot.kind, (200, 200))
+
+    def size(override: int | None, key: str, default: int) -> float:
+        if override is not None:
+            return float(override)
+        v = own.get(key)
+        return float(v) if isinstance(v, int | float) and not isinstance(v, bool) else default
+
+    check_render_pixels(size(width, "width", dw), size(height, "height", dh), scale)
+
+
 async def submit_render(
     session: AsyncSession,
     ctx: ServerContext,
@@ -367,6 +394,7 @@ async def submit_render(
             code=ErrorCode.MODE_NOT_SUPPORTED,
             pointer="/plot/kind",
         )
+    _check_pixels(resolved.plot, fmt, scale, width, height)
     doc = _dump(resolved.plot)
     inputs: dict[str, Any] = {}
     datasets: dict[str, Any] = dict(doc.get("datasets") or {})

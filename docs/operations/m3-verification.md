@@ -144,8 +144,9 @@ draft's mapping.
 
 Seen and left for later (not blocking the flow, noted for the testers' sessions):
 
-- the fit chart facets markets under the dim name `geo`, and the forecast chart's y axis
-  starts at zero, which flattens the fan;
+- the forecast chart's y axis starts at zero, which flattens the fan (the fit chart's
+  panels, titled with the dim name `geo`, now take the dataset's own name: fixed after this
+  session);
 - the endpoint page shows who promoted a version as a user id, not a name;
 - going to the Integrations hub switches the header to Expert mode;
 - the fit takes about 80 s with the sturdier settings (30 s before), still well within the

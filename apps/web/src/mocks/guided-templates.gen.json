@@ -1084,8 +1084,8 @@
    ],
    "scorecard_thresholds": {
     "data.history": {
-     "fail": 26.0,
-     "warn": 104.0
+     "fail": 0.5,
+     "warn": 2.0
     }
    },
    "spec_template": {

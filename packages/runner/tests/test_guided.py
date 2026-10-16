@@ -115,7 +115,7 @@ def test_the_scorecard_measures_every_check_it_can(
         assert item.message_expert  # what was measured, on which parameter/channel
         assert (item.suggested_action is None) == (item.status == "pass")
     by = {i.check: i for i in card.items}
-    assert by["data.history"].value == 30  # weekly periods at the model stage
+    assert by["data.history"].value == pytest.approx(30 / 52)  # 30 weeks, in years
     # mapi_sdk reports MAPE in percent; the check's thresholds are fractions.
     assert by["holdout.mape"].value == pytest.approx(bundle.metrics.values["mape"] / 100)
     assert by["plausibility.negative_roi"].value == 0.0  # positive media effects
@@ -148,7 +148,7 @@ def test_a_guided_spec_runs_its_template_checks(
     }
     assert {i.check for i in card.items} | set(card.skipped) == wanted
     history = next(i for i in card.items if i.check == "data.history")
-    assert history.status == "warn" and history.threshold == 104  # template: fail below 26
+    assert history.status == "warn" and history.threshold == 2  # template: fail below 0.5
 
 
 def test_the_choice_template_checks_the_holdout_hit_rate(
@@ -187,6 +187,22 @@ def test_prior_posterior_overlap() -> None:
     _prior_overlap(fake, out, why)  # type: ignore[arg-type]
     value, expert = out["prior_overlap_max"]
     assert value > 0.8 and "b[1]" in expert  # the second channel learned nothing
+
+
+def test_fit_plots_of_the_evaluation_title_panels_with_the_dataset_s_names(
+    bundle: Bundle, registry: Registry, e33: tuple[xr.Dataset, dict[str, xr.Dataset]]
+) -> None:
+    """E33 binds ``geo: market``: the holdout fan chart's panels said 'geo'."""
+    from mapi_plots.recipes import get_recipe
+    from mapi_plots.recipes._base import RecipeInput
+    from mapi_runner.worker.fit import _evaluation_tree
+
+    ctx = SimpleNamespace(registry=registry, warning=lambda *a, **k: None)
+    tree = _evaluation_tree(ctx, bundle.spec, e33[0], bundle, e33[1])  # type: ignore[arg-type]
+    assert tree is not None
+    assert RecipeInput(tree).dim_label("geo") == "market"
+    fan = get_recipe("core.ppc_fan").render(tree)
+    assert fan.spec["facet"]["title"] == "market"
 
 
 # ========================================================================= what-if grid

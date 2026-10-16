@@ -212,7 +212,8 @@ Tests are checked three times, each time where the information is:
 3. **at the model stage**: the window must cover at least one model period, and a holdout
    (negative `spend_delta`) may remove at most the spend the data shows.
 
-During `evaluate_then_refit`, a test whose window lies after the training periods is skipped
+During `evaluate_then_refit`, a test whose window lies after the training periods, or that
+the end of the training periods cuts, is skipped
 by the evaluation fit (logged) and used by the production refit.
 
 `mmm.pymc_marketing` accepts lift tests too, through pymc-marketing's own
@@ -254,7 +255,7 @@ template's checks with its thresholds; any other spec runs the whole catalog.
 | `max_channel_share`, `baseline_share` | a channel's (or the baseline's) share of baseline + every channel, posterior mean |
 | `prior_overlap_max` | the overlap of prior and posterior draws of the model's media parameters (`PyMCModel.prior_overlap_vars`, forward-sampled at fit time; cheap) |
 | `missing_fraction` | the raw dataset's numeric variables |
-| `history_periods` | the model stage's time dim |
+| `history_years` | the model stage's time dim, in years: its periods over the periods in a year at the dim's frequency (or the one its dates follow), so 105 days and 15 weeks both count as about 0.3 years |
 | `spend_cv_min` | the raw spend per channel over time |
 
 A check that cannot be measured - no holdout split, no response curves, a non-MCMC model - is
@@ -286,7 +287,7 @@ to the score run as its `history` input):
 |---|---|
 | `supplied` (default for API callers) | from the request's data or scenario; missing ones are `MISSING_FUTURE_COVARIATE` |
 | `carry_last` (default in Guided mode) | the last observed value of each series |
-| `seasonal_naive` | the last observed year repeated (52 weeks, 12 months, 365 days...); a shorter history falls back to `carry_last` with a warning |
+| `seasonal_naive` | the value one year earlier by date (52 weeks, 12 months, 365 days...), so the last observed year repeats even after a gap; a missing value steps back another year, and one missing in every year (or a history shorter than a year) falls back to `carry_last` with a warning |
 | `zero` | zero - "no spend planned" |
 
 Values the payload does supply are never replaced, and interventions apply after the fill, so

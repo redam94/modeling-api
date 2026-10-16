@@ -651,8 +651,8 @@ class HierarchicalGeoMMM(PyMCModel[HierarchicalGeoSettings]):
     ) -> np.ndarray:
         """``(geo, channel)`` share of each channel's fit-window spend by geo."""
         rc = fitted.derived.get("response_curves")
-        if units == "original" and rc is not None:
-            by_geo = rc["spend_by_geo"].sel(multiplier=1.0, method="nearest")
+        if units == "original" and rc is not None and 1.0 in rc["multiplier"].values:
+            by_geo = rc["spend_by_geo"].sel(multiplier=1.0)
             tot = np.asarray(by_geo.sel({GEO: geos, CHANNEL: channels}).transpose(GEO, CHANNEL))
         else:
             data = fitted.groups.get("constant_data")

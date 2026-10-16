@@ -12,7 +12,7 @@ holdout         holdout error (MAPE) and interval coverage on the evaluation spl
                 popular product
 plausibility    negative or absurd ROI, a channel taking most of the KPI, the baseline share,
                 parameters the data did not inform (prior-posterior overlap)
-data            missing values, history length, spend that never varies
+data            missing values, years of history, spend that never varies
 ==============  =========================================================================
 
 :func:`evaluate_check` turns a metric value into a :class:`ScorecardItem` with the check's
@@ -192,7 +192,7 @@ class CheckThresholds(StrictModel):
         return self
 
 
-ValueFormat = Literal["pct", "num", "int"]
+ValueFormat = Literal["pct", "num", "int", "years"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -347,13 +347,13 @@ SCORECARD_CHECKS: Final[dict[str, ScorecardCheck]] = {
                "{value} of the values are missing: too many to model reliably.",
                "Fill the gaps in the source data, or drop the affected series.",
            ), "pct"),
-        _c("data.history", "data", "DATA_HISTORY", "Enough history", "history_periods", _MIN,
-           104, 52, (
-               "There are {value} periods of history, enough to learn seasonality.",
-               "Only {value} periods of history: seasonal effects are uncertain.",
-               "Only {value} periods of history: too short to separate media from seasonality.",
+        _c("data.history", "data", "DATA_HISTORY", "Enough history", "history_years", _MIN,
+           2.0, 1.0, (
+               "There are {value} years of history, enough to learn seasonality.",
+               "Only {value} years of history: seasonal effects are uncertain.",
+               "Only {value} years of history: too short to separate media from seasonality.",
                "Add more history if you have it.",
-           ), "int"),
+           ), "years"),
         _c("data.spend_variation", "data", "SPEND_VARIATION", "Spend varies enough",
            "spend_cv_min", _MIN, 0.10, 0.02, (
                "Every channel's spend varies enough to measure its effect.",
@@ -372,6 +372,8 @@ def _fmt(value: float, fmt: ValueFormat) -> str:
         return f"{value:.0%}" if abs(value) >= 0.01 or value == 0 else f"{value:.1%}"
     if fmt == "int":
         return f"{round(value):,}"
+    if fmt == "years":
+        return f"{value:.1f}"
     return f"{value:.3g}"
 
 
@@ -442,6 +444,7 @@ class GateReason(ResponseModel):
         "TRAIN_ONLY",
         "PARTIAL_MODEL",
         "SCHEMA_CHANGE",
+        "NOT_EVALUATED",
     ]
     outcome: GateOutcome
     message_plain: str = Field(..., max_length=500)
@@ -481,6 +484,7 @@ def promotion_gate(
     partial: bool = False,
     schema_breaks: Sequence[str] = (),
     schema_change: Literal["block", "warn", "allow"] = "block",
+    required_checks: Sequence[str] = (),
 ) -> PromotionGateDecision:
     """Decide whether a model version may be promoted (pure).
 
@@ -490,7 +494,11 @@ def promotion_gate(
       come from all the data);
     * breaking input-schema changes (``schema_breaks``) follow ``schema_change``;
     * no scorecard needs an override; a ``fail`` scorecard blocks, a ``warn`` one needs an
-      override, a ``pass`` one is allowed.
+      override, a ``pass`` one is allowed;
+    * an ``evaluate_then_refit`` version whose scorecard measured no holdout check (no
+      ``data.split``, or no ``evaluate.metrics``) was never evaluated and needs an override
+      (``NOT_EVALUATED``), as does every check of ``required_checks`` (a guided template's
+      ``scorecard_checks``) that the scorecard skipped or lacks.
     """
     reasons: list[GateReason] = []
 
@@ -531,7 +539,37 @@ def promotion_gate(
                 f"{item.title}: {item.message_plain}",
                 item.check,
             )
-        if scorecard.overall != "pass" and not failing:
+        scored = {i.check for i in scorecard.items if i.check}
+        if fit_mode == "evaluate_then_refit" and not _has_holdout(scorecard):
+            skipped = scorecard.skipped
+            check = next(
+                (c for c in SCORECARD_CHECKS if c.startswith("holdout.") and c in skipped), None
+            )
+            why = scorecard.skipped.get(check or "", "the scorecard has no holdout check")
+            failing.append(check or "holdout")
+            add(
+                "NOT_EVALUATED",
+                GateOutcome.NEEDS_OVERRIDE,
+                "The model was never scored on held-out data, so its forecast error is "
+                f"unknown ({why}). Add a holdout split (data.split) and holdout metrics "
+                "(evaluate.metrics), then refit.",
+                check,
+            )
+        for check in dict.fromkeys(required_checks):
+            if check in scored or check in failing:
+                continue
+            failing.append(check)
+            title = SCORECARD_CHECKS[check].title if check in SCORECARD_CHECKS else check
+            why = scorecard.skipped.get(check, "it is not on the scorecard")
+            add(
+                "NOT_EVALUATED",
+                GateOutcome.NEEDS_OVERRIDE,
+                f"{title}: this check could not be run ({why}).",
+                check,
+            )
+        if scorecard.overall != "pass" and not any(
+            r.code in ("SCORECARD_WARN", "SCORECARD_FAIL") for r in reasons
+        ):
             outcome = (
                 GateOutcome.BLOCKED if scorecard.overall == "fail" else GateOutcome.NEEDS_OVERRIDE
             )
@@ -549,6 +587,16 @@ def promotion_gate(
         scorecard_overall=scorecard.overall if scorecard is not None else None,
         reasons=reasons,
         failing_checks=failing,
+    )
+
+
+def _has_holdout(scorecard: Scorecard) -> bool:
+    """Whether the scorecard measured a holdout check (v0.3 items carry only a code)."""
+    return any(
+        i.category == "holdout"
+        or (i.check or "").startswith("holdout.")
+        or i.code.startswith("HOLDOUT")
+        for i in scorecard.items
     )
 
 
