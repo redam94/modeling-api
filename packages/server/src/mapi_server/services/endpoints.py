@@ -50,11 +50,9 @@ from mapi_spec.schema import DataSchema, DimPolicy, DimSpec, Role
 from mapi_spec.scorecard import (
     GateOutcome,
     PromotionGateDecision,
-    Scorecard,
     authorize_promotion,
-    promotion_gate,
 )
-from mapi_spec.spec import FitMode, ScoreRequest
+from mapi_spec.spec import ScoreRequest
 from mapi_spec.storage import check_segment
 from mapi_spec.tenancy import Action, ResourceKind
 from mapi_spec.validate import ScoreMetadata
@@ -71,6 +69,7 @@ from mapi_server.observability import metrics as obs_metrics
 from mapi_server.services.audit import write_audit
 from mapi_server.services.runs import Scope
 from mapi_server.services.runspec import StoredRef
+from mapi_server.services.scorecards import promotion_decision
 from mapi_server.services.webhooks.outbox import emit_event
 
 __all__ = [
@@ -209,14 +208,6 @@ def snapshot_for(mv: m.ModelVersion) -> EndpointSchemaSnapshot:
     )
 
 
-async def _fit_mode(session: AsyncSession, mv: m.ModelVersion) -> str:
-    """The fit mode the version was produced with (from the pinned spec of its fit run)."""
-    run = await session.get(m.Run, mv.run_id)
-    fit = ((run.payload if run else {}).get("model") or {}).get("fit") or {}
-    mode = fit.get("mode") if isinstance(fit, dict) else None
-    return str(mode) if mode else FitMode.EVALUATE_THEN_REFIT.value
-
-
 async def evaluate_gate(
     session: AsyncSession,
     mv: m.ModelVersion,
@@ -224,18 +215,14 @@ async def evaluate_gate(
     *,
     current: EndpointSchemaSnapshot | None,
 ) -> tuple[PromotionGateDecision, EndpointSchemaSnapshot]:
-    """The promotion gate for ``mv`` under ``policy`` (and the snapshot it would freeze)."""
+    """The promotion gate for ``mv`` under ``policy`` (and the snapshot it would freeze).
+
+    The decision comes from :func:`~mapi_server.services.scorecards.promotion_decision`: the
+    scorecard the runner measured at fit (stored by the finalizer), the fit mode of the
+    version's fit run (Q13) and its status, plus the schema breaks against ``current``."""
     snapshot = snapshot_for(mv)
     breaks = schema_breaks(current.input_schema, snapshot.input_schema) if current else []
-    scorecard = Scorecard.model_validate(mv.scorecard) if mv.scorecard else None
-    decision = promotion_gate(
-        scorecard,
-        fit_mode=await _fit_mode(session, mv),
-        allow_train_only=policy.fit_mode is FitMode.TRAIN_ONLY,
-        partial=mv.status != "ready",
-        schema_breaks=breaks,
-        schema_change=policy.schema_change,
-    )
+    decision = await promotion_decision(session, mv, policy=policy, schema_breaks=breaks)
     return decision, snapshot
 
 

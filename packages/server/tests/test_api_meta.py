@@ -154,7 +154,8 @@ async def test_schemas(client: httpx.AsyncClient) -> None:
 
 
 def test_route_table_covers_every_endpoint() -> None:
-    """Every row of ``mapi_spec.api.ENDPOINTS`` (M1 + M2) is served with its operation id."""
+    """Every row of ``mapi_spec.api.ENDPOINTS`` (M1 + M2 + M3) is served with its operation
+    id."""
     doc = openapi_document()
     served = {
         (method.upper(), path, op.get("operationId"))

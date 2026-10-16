@@ -12,6 +12,11 @@ import pytest
 from mapi_server.auth.identity import LOCAL_USER_ID
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.services.dispatcher import Dispatcher
+from mapi_server.services.finalizer import Finalizer
+from mapi_server.services.runs import apply_transition, load_run
+from mapi_server_testkit.builders import queued_fit, simulate_outputs, submit_fit
+from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_server_testkit.identity import (
     grant_role,
     make_token,
@@ -21,6 +26,8 @@ from mapi_server_testkit.identity import (
 )
 from mapi_server_testkit.integrations import fitted_version, refit_version
 from mapi_spec.endpoints import EndpointSchema, EndpointScoreCall
+from mapi_spec.run import Actor, RunTrigger
+from mapi_spec.scorecard import SCORECARD_OUTPUT
 from mapi_spec.snippets import SNIPPET_LANGUAGES
 from sqlalchemy import select
 
@@ -459,3 +466,64 @@ def test_openapi_documents_the_endpoint_operations() -> None:
     assert body == {"$ref": "#/components/schemas/EndpointScoreCall"}
     assert doc["components"]["schemas"]["EndpointScoreCall"]["examples"]
     assert "Problem" in doc["components"]["schemas"]
+
+
+# ============================================================ the runner's scorecard (M3)
+
+RUNNER_CARD: dict[str, Any] = {
+    "overall": "warn",
+    "items": [
+        {
+            "code": "PLAUSIBILITY_NEGATIVE_ROI",
+            "status": "warn",
+            "title": "Negative ROI",
+            "message_plain": "One channel has a likely negative return.",
+            "check": "plausibility.negative_roi",
+        }
+    ],
+    "skipped": {"holdout.coverage": "no interval forecasts"},
+}
+
+
+async def _fit_with_scorecard(
+    ctx: ServerContext, card: dict[str, Any] | None, *, spec_id: str | None = None
+) -> m.ModelVersion:
+    run_id = await (submit_fit(ctx, spec_id) if spec_id else queued_fit(ctx))
+    await Dispatcher(ctx, FakeExecutor()).dispatch_once()
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, run_id, for_update=True)
+        await apply_transition(s, run, RunTrigger.EVENT, Actor.EVENTS)
+        await apply_transition(s, run, RunTrigger.COMPLETE, Actor.RECONCILER)
+        att = await s.get(m.RunAttempt, (run.id, run.attempt))
+        assert att is not None
+    add = None
+    if card is not None:
+        add = {SCORECARD_OUTPUT: (json.dumps(card).encode(), "application/json")}
+    await simulate_outputs(ctx, run, att, add=add)
+    await Finalizer(ctx).finalize(run.id, run.attempt)
+    async with ctx.db.session() as s:
+        done = await load_run(s, None, run_id)
+        mv = await s.get(m.ModelVersion, done.output_model_version_id)
+        assert mv is not None
+        return mv
+
+
+async def test_promotion_gates_on_the_runner_scorecard(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    mv = await _fit_with_scorecard(ctx, RUNNER_CARD)
+    assert mv.scorecard is not None and mv.scorecard["skipped"] == RUNNER_CARD["skipped"]
+    assert mv.scorecard["items"][0]["check"] == "plausibility.negative_roi"
+    r = await client.put("/v1/endpoints/mmm-prod", json={"model_version_id": mv.id})
+    assert r.status_code == 409 and r.json()["code"] == "OVERRIDE_REQUIRED", r.text
+    [reason] = r.json()["errors"]
+    assert reason["context"]["check"] == "plausibility.negative_roi"
+    async with ctx.db.session() as s:
+        fit = await s.get(m.Run, mv.run_id)
+        assert fit is not None and fit.spec_id is not None
+    ok = await _fit_with_scorecard(
+        ctx, {**RUNNER_CARD, "overall": "pass", "items": []}, spec_id=fit.spec_id
+    )
+    r = await client.put("/v1/endpoints/mmm-prod", json={"model_version_id": ok.id})
+    assert r.status_code == 200, r.text
+    assert r.json()["gate"]["outcome"] == "allowed"

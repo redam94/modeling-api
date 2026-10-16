@@ -164,7 +164,7 @@ async def test_recent_sign_in_can_be_required(
 
 
 class _Revoker:
-    name = "embeds"
+    name = "probe"
 
     def __init__(self) -> None:
         self.calls: list[str] = []
@@ -266,7 +266,9 @@ async def test_full_purge_leaves_other_tenants_untouched(
         [start] = (
             await s.execute(select(m.AuditEvent).where(m.AuditEvent.action == "tenant.delete"))
         ).scalars()
-    assert start.details["revoked"] == {"tokens": 1, "sessions": 1, "runs": 0, "embeds": 3}
+    assert start.details["revoked"] == {
+        "tokens": 1, "sessions": 1, "runs": 0, "embeds": 1, "webhooks": 1, "probe": 3,
+    }  # fmt: skip
     # a second pass is a no-op
     assert (await TenantPurger(ctx).run(deletion_id)).value == "purged"
     assert await TenantPurger(ctx).due() == []

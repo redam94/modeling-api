@@ -15,6 +15,7 @@ dev = [
   "pytest>=8.3", "pytest-cov>=5.0", "pytest-asyncio>=0.24", "pytest-xdist>=3.6", "pytest-timeout>=2.3",
   "hypothesis>=6.112", "ruff>=0.7", "mypy>=1.13", "import-linter>=2.1", "pre-commit>=4.0",
   "pgserver>=0.1.4", "respx>=0.21", "types-pyyaml",
+  "markdown>=3.5",  # scripts/gen_docs_platform.py (anchors), checked by the default test suite
 ]
 docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.26", "mkdocs-macros-plugin>=1.3"]
 

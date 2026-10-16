@@ -127,9 +127,12 @@ services:
       <<: *mapi-env
       MAPI_GCS_ROOT: /shim/gcs    # the shim's principal key files (control, exec)
       MAPI_SIGNING_KEY_CREATE: "false"   # load migrate's key; never mint a private one
+      # dev profile: sign-up e-mails go to the outbox (GET /dev/outbox), kept across restarts
+      MAPI_OUTBOX_DIR: /var/lib/mapi/outbox
     volumes:
       - gcsdata:/shim:ro
       - keys:/var/lib/mapi/keys:ro
+      - outbox:/var/lib/mapi/outbox
     tmpfs:
       - /tmp:size=128m,mode=1777
     depends_on:
@@ -233,3 +236,4 @@ volumes:
   pgdata:
   gcsdata:
   keys:       # the bundle-signing key (migrate writes it; api and worker read it)
+  outbox:     # the dev mailer's e-mails (api only; the dev profile's sign-up links)

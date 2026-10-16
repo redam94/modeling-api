@@ -307,12 +307,12 @@ _NO_BODY_SUCCESS = (204, 302)
 
 
 def test_m2_endpoint_table_is_consistent() -> None:
-    from mapi_spec.api import ENDPOINTS, M2_ENDPOINTS
+    from mapi_spec.api import M2_ENDPOINTS, V03_ENDPOINTS
 
-    assert ENDPOINTS == M1_ENDPOINTS + M2_ENDPOINTS
-    keys = [(e.method, e.path) for e in ENDPOINTS]
+    assert V03_ENDPOINTS == M1_ENDPOINTS + M2_ENDPOINTS
+    keys = [(e.method, e.path) for e in V03_ENDPOINTS]
     assert len(keys) == len(set(keys))
-    ops = [e.operation_id for e in ENDPOINTS]
+    ops = [e.operation_id for e in V03_ENDPOINTS]
     assert len(ops) == len(set(ops))
     for e in M2_ENDPOINTS:
         assert e.path.startswith(("/v1/", "/auth/", "/internal/")), e.path

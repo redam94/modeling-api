@@ -177,6 +177,7 @@ __all__ = [
     "SSE_HEARTBEAT_SECONDS",
     "SSE_RETRY_MS",
     "TOKEN_TENANT_ROUTES",
+    "V03_ENDPOINTS",
     "AdminUsageReport",
     "ApiToken",
     "ArtifactLink",
@@ -2127,8 +2128,8 @@ M2_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
 )  # fmt: skip
 """The M2 endpoint table (additive to :data:`M1_ENDPOINTS`)."""
 
-ENDPOINTS: Final[tuple[EndpointDecl, ...]] = M1_ENDPOINTS + M2_ENDPOINTS
-"""Every endpoint of the v0.3 API."""
+V03_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = M1_ENDPOINTS + M2_ENDPOINTS
+"""Every endpoint of the v0.3 API (M1 + M2)."""
 
 
 # ===================================================================================== M3: DTOs
@@ -2477,14 +2478,14 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         errors=(*_NF, *_FB, _E.CONFLICT),
     ),
 )  # fmt: skip
-"""The M3 endpoint table (guided mode and integrations; additive to :data:`ENDPOINTS`).
+"""The M3 endpoint table (guided mode and integrations; additive to :data:`V03_ENDPOINTS`)."""
 
-It joins :data:`ENDPOINTS` once the server serves every row (release v0.4.0); until then
-the server's route-table test checks :data:`ENDPOINTS` and each M3 component checks its rows.
-"""
+ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
+"""Every endpoint of the v0.4 API (M1 + M2 + M3); the server serves every row."""
 
-ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS + M3_ENDPOINTS
-"""Every endpoint of the v0.4 contract."""
+ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
+"""Every endpoint of the v0.4 contract (an alias of :data:`ENDPOINTS`, kept for the M3
+components that were written against it)."""
 
 _RK, _AC = ResourceKind, Action
 

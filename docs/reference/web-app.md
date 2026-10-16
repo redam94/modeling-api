@@ -29,7 +29,8 @@ In production they are static files, served with the headers described below (th
 `uv run python apps/web/scripts/gen_openapi.py` from `mapi_server.app.openapi_document()`
 (no database needed). `pnpm --filter @mapi/web openapi:types` generates
 `src/api/schema.d.ts` from it, and `openapi-fetch` gives typed calls. CI fails when either
-file drifts from the server (`gen_openapi.py --check`, `openapi:check`). Run-event payloads
+file drifts from the server (`gen_openapi.py --check`, `openapi:check`); `make api-types` runs
+both generators. Run-event payloads
 (`StatePayload`, `ProgressPayload`, …) are published as components so SSE frames are typed
 too.
 

@@ -19,10 +19,12 @@ from mapi_server.services.runs import apply_transition, load_run
 from mapi_server.settings import Settings
 from mapi_server_testkit.builders import ready_dataset, simulate_outputs
 from mapi_server_testkit.fake_executor import FakeExecutor
+from mapi_server_testkit.integrations import fitted_version
 from mapi_spec.errors import PROBLEM_CONTENT_TYPE
 from mapi_spec.guided import GuidedDraft, GuidedTemplate, RoleSuggestions
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
+from mapi_spec.spec import ScoreRequest
 from sqlalchemy import update
 
 GUIDED_CATALOG = Path(__file__).parent / "fixtures" / "catalog_guided.json"
@@ -367,3 +369,31 @@ async def test_the_guided_operations_document_their_problems(client: httpx.Async
 async def test_project_carries_the_guided_lock(client: httpx.AsyncClient) -> None:
     got = (await client.get("/v1/projects/default")).json()
     assert got["guided_locked"] is False
+
+
+async def test_guided_requests_compile_to_checked_score_requests(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    await fitted_version(ctx)
+    body = {"kind": "forecast", "model": "model://default/trend@v1", "periods": 4, "dim": "t"}
+    r = await client.post("/v1/guided/requests:compile", json=body)
+    assert r.status_code == 200, r.text
+    req = ScoreRequest.model_validate(r.json())
+    assert req.mode == "forecast" and req.horizon is not None and req.horizon.periods == 4
+    assert str(req.model) == "model://default/trend@v1"
+    assert req.future_covariates == "carry_last"
+    # an unknown model, a dim the model has never seen
+    r = await client.post(
+        "/v1/guided/requests:compile", json={**body, "model": "model://default/nope@v1"}
+    )
+    assert r.status_code == 404, r.text
+    r = await client.post("/v1/guided/requests:compile", json={**body, "dim": "week"})
+    assert r.status_code == 422, r.text
+    # a what-if scenario on a model without channels is refused with a pointer
+    r = await client.post(
+        "/v1/guided/requests:compile",
+        json={"kind": "whatif", "model": "model://default/trend@v1",
+              "scenario": {"multipliers": {"tv": 0.5}}},
+    )  # fmt: skip
+    assert r.status_code == 422, r.text
+    assert r.json()["errors"][0]["pointer"]

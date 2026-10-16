@@ -90,9 +90,10 @@ RUN apt-get update \
  && groupadd --system --gid 10001 mapi \
  && useradd --system --uid 10001 --gid mapi --home-dir /home/mapi --create-home \
       --shell /usr/sbin/nologin mapi \
- && install -d -o 10001 -g 10001 -m 0700 /var/lib/mapi/keys
+ && install -d -o 10001 -g 10001 -m 0700 /var/lib/mapi/keys /var/lib/mapi/outbox
 # /var/lib/mapi/keys: mount point of the compose `keys` volume (bundle-signing key). A new
 # named volume copies this directory's owner and mode, so uid 10001 can create the key.
+# /var/lib/mapi/outbox: the same for the `outbox` volume (the dev profile's e-mail outbox).
 # MAPI_UV_LOCK_PATH: the image digest `api` and `worker` key the catalog by is the sha256 of
 # the uv.lock the image was built from (Settings.resolve_image_digest), exactly as under
 # `make dev`; without it neither command can start (no uv.lock above the WORKDIR).

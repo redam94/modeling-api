@@ -56,6 +56,10 @@ db-shell: ## Open psql on the dev database (embedded pgserver or DATABASE_URL)
 seed: ## Load the E33 demo datasets + spec into a running stack (`make seed SIZE=full`)
 	$(UV) run python scripts/seed.py $(if $(filter command line,$(origin SIZE)),--size $(SIZE))
 
+.PHONY: outbox
+outbox: ## Show the dev stack's newest e-mails (sign-up verification links; TO=<address> filters)
+	$(UV) run python scripts/dev.py outbox $(if $(TO),--to $(TO))
+
 .PHONY: clean-local
 clean-local: ## Delete local state in MAPI_DATA_DIR (.local: database, objects); YES=1 skips the prompt
 	$(UV) run python scripts/dev.py clean $(if $(YES),--yes)
@@ -167,6 +171,16 @@ _web-check:
 .PHONY: web-dev
 web-dev: ## Run the web app (5173) and the plot sandbox (5174) against VITE_API_BASE
 	$(PNPM) -r --parallel dev
+
+.PHONY: api-types
+api-types: ## Regenerate apps/web/openapi.json, access.gen.json and src/api/schema.d.ts from the server
+	$(UV) run python apps/web/scripts/gen_openapi.py
+	$(PNPM) --filter @mapi/web openapi:types
+
+.PHONY: snapshots
+snapshots: ## Regenerate the contract snapshot (mapi_spec) and the Guided catalog fixture of the server tests
+	MAPI_UPDATE_SNAPSHOTS=1 $(UV) run pytest -q packages/spec/tests/test_contract_snapshot.py \
+		conformance/tests/test_guided_catalog.py
 
 .PHONY: web-check
 web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*

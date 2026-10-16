@@ -35,6 +35,18 @@ exists only for local development. `MAPI_STACK_PROFILE=single-tenant make dev` g
 credential-less v0.2 API. See [Authentication and isolation](authentication.md) for the
 details.
 
+### Signing up <span class="mapi-badge">v0.4</span> { #signing-up }
+
+Self-service sign-up (`POST /auth/signup`) is on in the `dev` profile. Its e-mails are not
+sent: the dev mailer writes each one to an outbox under `MAPI_DATA_DIR/outbox`, and
+`make outbox` prints the newest ones with their verification links (`TO=<address>` keeps one
+recipient's). The API serves the same at `GET /dev/outbox?to=<address>`. A verified sign-up
+creates a `public`-tier workspace; to sign in to it, sign up with one of the seeded addresses
+above, because the development identity provider only knows those. A `public` workspace runs
+built-in models and declarative specs only, and only on an executor with enforced egress and
+DNS, so the `local-process` executor of `make dev` refuses its runs (cut line A; see
+[Sign-up and abuse controls](signup-and-abuse.md)).
+
 ## What `make dev` starts
 
 `scripts/dev.py` is a small process supervisor. It starts each service in dependency order and
@@ -121,6 +133,7 @@ Runs use the same isolation as in production, minus what a laptop cannot do: the
 | `make db-shell` | `psql` on the dev database (the embedded server or `DATABASE_URL`) |
 | `make seed` | Load the E33 demo datasets and the `eu-geo-mmm` spec through the HTTP API (`make seed SIZE=full` for the large variant) |
 | `make e2e` | The end-to-end suites against the running stack: `pytest -m e2e` (`tests/e2e`, through the Python client), then the Playwright `@e2e` suite (`apps/web/e2e`, through the browser) |
+| `make outbox` | The dev mailer's newest e-mails and their links (sign-up verification); `TO=<address>` filters |
 | `make clean-local` | Delete `MAPI_DATA_DIR` (database, objects, supervisor state). It refuses while anything is running; `YES=1` skips the prompt. |
 | `uv run python scripts/dev.py env` | Print the resolved environment as `export` lines, for running a component by hand |
 
@@ -200,6 +213,7 @@ and is ignored by git.
 ├─ gcs/                   GCS shim objects (buckets mapi-local-*)
 │  └─ _shim/keys/         the shim's principals: control.json (control plane), exec.json (runs)
 ├─ keys/                  bundle-signing-p256.pem: signs bundle manifests (stands in for KMS)
+├─ outbox/                the dev mailer's e-mails (make outbox, GET /dev/outbox)
 ├─ executions/            per-run scratch of the local executor (removed when a run ends)
 └─ dev/supervisor.json    pid of the running supervisor and its services (make stop/status)
 ```

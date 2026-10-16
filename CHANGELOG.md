@@ -190,7 +190,34 @@ milestone releases are tagged on `main`.
   project's `_Default` log bucket (tenant deletion does not purge logs).
 - **docs**: Sign-up and abuse controls, Deleting and exporting data, and a Cloud Armor
   section in Security hardening.
+- **integration**: the M3 parts work together.
+  - Tenant deletion revokes the tenant's embed links and disables its webhooks when it starts,
+    purges every M3 table (endpoints and their history, webhooks, events and deliveries,
+    saved plots, embeds, column profiles) and then delivers a signed
+    `tenant.deletion.completed` to the webhooks that subscribed to it, through the same
+    SSRF-guarded sender as every delivery (`mapi_server.services.tenant_hooks`).
+  - Webhook events come from the finalizer's terminal transitions (`run.*`,
+    `model.version.ready` with the runner's scorecard), promotions and rollbacks
+    (`endpoint.promoted`), score runs (`score.completed`) and deletions.
+  - Endpoint promotion gates on the scorecard the runner measured at fit
+    (`services.scorecards.promotion_decision`, the single gate derivation).
+  - Sign-up workspaces are `public` tier: built-ins and declarative specs only, on executors
+    with enforced egress and DNS (cut line A).
+- **server**: `POST /v1/guided/requests:compile` turns a what-if scenario, a forecast or an
+  intervention preset into its `ScoreRequest`, checked against the model version's score
+  metadata ("Run exact").
+- **runner**: score runs read an endpoint call's inline XrJSON payloads (`inline.data`,
+  `inline.scenario`) with the wire-format caps and the model's dim types.
+- **dev**: `make outbox` (`dev.py outbox`) prints the dev mailer's newest e-mails and
+  verification links; `make dev` sets `MAPI_OUTBOX_DIR` and the plot sandbox's `VITE_API_URL`;
+  compose keeps the outbox on a volume. `make api-types` and `make snapshots` regenerate the
+  web API types and the snapshots.
+
 ### Changed
+- **spec**: `mapi_spec.api.ENDPOINTS` is the v0.4 surface (M1 + M2 + M3, every row served);
+  `V03_ENDPOINTS` keeps the v0.3 table and `ALL_ENDPOINTS` is an alias of `ENDPOINTS`.
+- **server**: the M3 migrations run in one chain after `0006_executor_disable`:
+  `0007_guided`, `0008_endpoints_webhooks`, `0009_plots_embeds`, `0010_trust_lifecycle`.
 - **spec**: the `customer_choice` template (1.1.0) targets the built-in
   `choice.multinomial_logit`; wide column labels drop the question's keywords
   (`price_cola` → `cola`); a draft refuses answers that would give two columns the same
