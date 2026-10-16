@@ -33,7 +33,8 @@ def check_fit(bundle: Bundle, data: xr.Dataset, *, ctx: FixtureContext) -> None:
     post = bundle.model.posterior
     assert post.sizes["chain"] == 1 and post.sizes["draw"] == 60
     assert {d.code for d in bundle.diagnostics} == {"FREQUENTIST_FIT"}
-    assert bundle.model.learned["fit_diagnostics"]["estimator"] == "ridge"
+    fit_diagnostics = bundle.model.learned["fit_diagnostics"]
+    assert isinstance(fit_diagnostics, dict) and fit_diagnostics["estimator"] == "ridge"
 
 
 def check_score(
