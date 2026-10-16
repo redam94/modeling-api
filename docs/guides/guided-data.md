@@ -33,7 +33,7 @@ curl -s localhost:8000/v1/guided/templates | jq '.items[] | {id, title, plugin}'
 
 | Template | Built-in model | Data it expects |
 |---|---|---|
-| `geo_mmm` | `mmm.hierarchical_geo` | one row per market and week: the result, one spend column per channel, optional controls |
+| `geo_mmm` | `mmm.bayesian` (mmm-framework) | one row per market and week: the result, one spend column per channel, optional controls |
 | `weekly_forecast` | `ts.hsgp_trend` | one row per week (or day): the series to forecast |
 | `store_demand` | `tabular.regressor` | one row per store and week: units sold and the drivers (price, promotions) |
 | `customer_choice` | `choice.multinomial_logit` | one row per household and shopping trip: the product chosen and one price (and promotion) column per product |

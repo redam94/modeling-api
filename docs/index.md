@@ -32,7 +32,8 @@ sandbox, and every result says how sure it is.</p>
     Analysts get **Guided mode**: templates, questions instead of a column mapper, beliefs as
     ROI ranges and lift tests, a sanity scorecard, what-if sliders and forecasts. Other
     applications get **endpoints** promoted through the scorecard, code snippets, signed
-    **webhooks**, **embeddable charts**, Google Sheets and an **Atlas** budget optimiser.
+    **webhooks**, **embeddable charts**, Google Sheets and **budget optimisation** from the
+    model itself (mmm-framework planning).
     Every number on this page was measured on a laptop running the whole stack
     ([M3 verification](operations/m3-verification.md)); the cloud pieces are tested against
     fakes, and the study with five non-technical testers is still to come.
@@ -70,7 +71,7 @@ sandbox, and every result says how sure it is.</p>
 - Uncertainty is first-class: draws, quantiles or intervals, with the aggregations that are
   valid for each.
 - Promote a version to an **endpoint** through the scorecard gate; copy a snippet for
-  Python, TypeScript, curl, R, Apps Script, Atlas or a notebook.
+  Python, TypeScript, curl, R, Apps Script or a notebook.
 
 [:octicons-arrow-right-24: Quickstart: zero to first model](getting-started/quickstart.md)
 
@@ -91,7 +92,7 @@ flowchart LR
     F --> B[("Signed bundle<br/>states · posterior ·<br/>scorecard · grids")]
     B --> R["Report and<br/>what-if sliders"]
     B --> E["Endpoint<br/>gated on the scorecard"]
-    E --> S["Sheets · BI embeds ·<br/>webhooks · Atlas ·<br/>Python, TS, R"]
+    E --> S["Sheets · BI embeds ·<br/>webhooks ·<br/>Python, TS, R"]
 ```
 
 1. **Your data stays labelled.** The upload becomes an `xr.Dataset` with named dims, roles and
@@ -234,14 +235,14 @@ laptop, almost all of it the platform working: **135 seconds** from upload to sc
 
     [:octicons-arrow-right-24: Embed a chart](tutorials/embed-a-chart.md)
 
--   :material-target:{ .lg .middle } **Atlas and Google Sheets**
+-   :material-target:{ .lg .middle } **Budget plans and Google Sheets**
 
     ---
 
-    `RemoteModel` makes an endpoint an Atlas model for budget optimisation; an Apps Script
-    writes a forecast into a sheet every morning.
+    `POST …:optimize` splits a budget across channels from the model's posterior
+    (mmm-framework planning); an Apps Script writes a forecast into a sheet every morning.
 
-    [:octicons-arrow-right-24: Optimise a budget](guides/atlas.md) ·
+    [:octicons-arrow-right-24: Optimise a budget](tutorials/optimise-a-budget.md) ·
     [Connect Sheets](tutorials/google-sheets.md)
 
 -   :material-account-check-outline:{ .lg .middle } **Sign-up and the data lifecycle**
@@ -284,7 +285,6 @@ Measured on an 8-core laptop against the whole stack, on the data and settings d
 <div class="mapi-stat"><strong>0.01 %</strong><span>"TV off" from the grid vs an exact counterfactual run (−1,046,519 vs −1,046,414)</span></div>
 <div class="mapi-stat"><strong>76–81 %</strong><span>of each translated prior inside the analyst's stated 80% ROI range</span></div>
 <div class="mapi-stat"><strong>&lt; 1 %</strong><span>holdout error of the endpoint's model, with every plausibility check passing</span></div>
-<div class="mapi-stat"><strong>+0.22 %</strong><span>revenue at the same budget, found by Atlas against the live endpoint (25 candidates, 22 requests)</span></div>
 <div class="mapi-stat"><strong>0 objects</strong><span>left in five buckets after a tenant deletion (285 before); only the audit log and cost ledger are kept</span></div>
 <div class="mapi-stat"><strong>15 / 15</strong><span>end-to-end API tests of the M3 journey passing against a live stack</span></div>
 </div>
@@ -309,7 +309,7 @@ workspaces ([what remains](operations/m3-verification.md#what-remains-unverified
 
 <figure markdown>
 [![Generated snippets](assets/screenshots/integrations-snippets.png){ .mapi-shot loading=lazy }](guides/integrations-hub.md#an-endpoints-page)
-<figcaption>Snippets: Python, TypeScript, curl, R, Apps Script, Atlas, notebook.</figcaption>
+<figcaption>Snippets: Python, TypeScript, curl, R, Apps Script, notebook.</figcaption>
 </figure>
 
 <figure markdown>
@@ -341,9 +341,8 @@ flowchart LR
         A["Daily spend & revenue<br/>local currency"] --> B["fx_convert<br/>(side table)"]
         B --> C["resample<br/>daily → weekly"]
         C --> S{{"split<br/>last 8 weeks"}}
-        S --> D["mean_scale<br/><i>learns scale(geo, channel)</i>"]
-        D --> E["lag_tensor<br/><i>stores last 6 weeks per geo</i>"]
-        E --> M["model.fit"]
+        S --> D["holidays<br/><i>pinned side table</i>"]
+        D --> M["model.fit<br/><i>keeps the fitted history<br/>for carry-over</i>"]
     end
     M --> BUN[("Bundle<br/>states · context tails · posterior<br/>hashes · no pickle")]
     subgraph SCORE["Score (any time)"]
@@ -361,10 +360,10 @@ flowchart LR
     pipeline:
       - {id: to_eur, use: core.fx_convert@^1, with: {vars: [y, spend], table: fx, ...}}
       - {id: weekly, use: core.resample@^1,   with: {dim: time, freq: W-SUN, how: sum}}
-      - {id: scale,  use: core.mean_scale@^1, with: {vars: [spend], over: [time]}}
-      - {id: lags,   use: core.lag_tensor@^1, with: {vars: [spend], along: time, within: [geo], l_max: 6}}
+      - {id: hols,   use: core.holidays@^1,   with: {table: holidays, along: time}}
     model:
-      use: mmm.hierarchical_geo@^1.3
+      use: mmm.bayesian@^1                 # mmm-framework: scaling and carry-over inside
+      settings: {hierarchy: {pool_over: [geo]}, new_levels: hyperprior}
       fit: {mode: evaluate_then_refit}
     ```
 
@@ -379,8 +378,8 @@ flowchart LR
 
 === "What you get back"
 
-    - Forecasts in **weekly EUR**, not "model units": scaling is inverted, and inversion stops
-      at the weekly resample because daily values cannot be recovered from weekly sums.
+    - Forecasts in **weekly EUR**, not "model units": the model reports its own units, and
+      they stop at the weekly resample because daily values cannot be recovered from weekly sums.
       The output says so in its `output_space` attribute.
     - A new market drawn from the fitted **hyperprior**, honestly wider than a known one.
     - What-if deltas that share their noise with the baseline (common random numbers), so

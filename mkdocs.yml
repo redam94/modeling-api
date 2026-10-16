@@ -134,7 +134,7 @@ nav:
       - Connect Google Sheets: tutorials/google-sheets.md
       - "Embed a chart in Notion, Slack or BI": tutorials/embed-a-chart.md
       - Receive webhooks: guides/webhook-receivers.md
-      - Optimise a budget with Atlas: guides/atlas.md
+      - Optimise a budget: tutorials/optimise-a-budget.md
   - Concepts:
       - concepts/index.md
       - Architecture overview: concepts/architecture.md
@@ -184,6 +184,7 @@ nav:
       - Built-in steps: reference/steps.md
       - Steps catalog: reference/generated/steps-catalog.md
       - Built-in models: reference/models.md
+      - "Marketing-mix models (mmm-framework)": models/mmm-framework.md
       - Models catalog: reference/generated/models-catalog.md
       - Plots and the sanitizer: reference/plots.md
       - Plot recipes catalog: reference/generated/plots-catalog.md

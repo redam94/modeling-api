@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from mapi_spec.calibration import PriorTranslationJob
 from mapi_spec.executor import RunKind
+from mapi_spec.optimize import OptimizeJob
 from mapi_spec.spec import ModelSpec
 
 from mapi_runner.jobs import (
@@ -69,5 +70,10 @@ def run_kind(ctx: WorkerContext) -> None:
 
         assert isinstance(job, PriorTranslationJob)
         run_translate_priors(ctx, job)
+    elif kind is RunKind.OPTIMIZE:
+        from mapi_runner.worker.optimize import run_optimize
+
+        assert isinstance(job, OptimizeJob)
+        run_optimize(ctx, job)
     else:  # pragma: no cover - parse_job raises first
         raise NotImplementedError(f"the runner does not execute {kind.value!r} runs")

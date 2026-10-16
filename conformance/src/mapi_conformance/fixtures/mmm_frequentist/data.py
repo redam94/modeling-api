@@ -1,4 +1,4 @@
-"""pymc-marketing fixture data: the E33 simulation (daily local-currency spend, a GBP
+"""mmm.frequentist fixture data: the E33 simulation (daily local-currency spend, a GBP
 market, FX and holiday tables) with markets as a fixed panel dim."""
 
 from __future__ import annotations
@@ -29,7 +29,8 @@ def generate(seed: int = 0, size: Size = "tiny") -> tuple[xr.Dataset, dict[str, 
 
 
 def schema() -> DataSchema:
-    """Markets are fixed: pymc-marketing cannot score panel levels unseen at fit."""
+    """Markets are fixed (the spec sets ``new_levels: error``): the ridge estimator has no
+    geo spread to draw an unseen market from."""
     return DataSchema.model_validate(
         {
             "dims": {

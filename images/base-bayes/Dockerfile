@@ -19,13 +19,13 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.5.13@sha256:ea61e006cfec0e8d81fae901ad703e09
 
 # ------------------------------------------------------------------- image-specific settings
 ARG MAPI_IMAGE_NAME=base-bayes
-ARG MAPI_DESCRIPTION="modeling-api runner: PyMC models (mmm.*, tabular.*), steps and plot recipes"
+ARG MAPI_DESCRIPTION="modeling-api runner: PyMC models (mmm.* on mmm-framework, tabular.*), steps and plot recipes"
 ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-pymc mapi-plugin-mmm mapi-plugin-tabular"
 # xgboost pulls a 300 MB NVIDIA NCCL wheel on Linux; it is only used for multi-GPU training.
 ARG MAPI_NO_INSTALL="nvidia-nccl-cu13"
 # PyTensor compiles C at run time, so the Bayesian images need a C++ compiler.
 ARG MAPI_APT_PACKAGES="tini g++"
-ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-pymc mapi-plugin-mmm mapi-plugin-tabular pymc pytensor nutpie vl-convert-python"
+ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-pymc mapi-plugin-mmm mapi-plugin-tabular mmm-framework pymc pytensor nutpie numpyro vl-convert-python"
 ARG MAPI_ASSERT_ABSENT="mapi-server mapi-gcs-shim mapi-plugin-ts nvidia-nccl-cu13"
 
 # ===================================== shared runner build: part 1 (identical in base-* images)

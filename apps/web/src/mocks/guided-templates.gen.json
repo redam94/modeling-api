@@ -1,6 +1,43 @@
 {
  "items": [
   {
+   "about": {
+    "assumptions": [
+     "Customers weigh price and promotions when they choose"
+    ],
+    "avoid_when": [
+     "You only have total sales"
+    ],
+    "data_needs": [
+     "A table with customer, trip number, the product chosen and each product's price"
+    ],
+    "difficulty": "intermediate",
+    "example": "See how a 10% price cut on one brand changes its share.",
+    "expert_notes": null,
+    "fits": {
+     "data_shape": [
+      "choices"
+     ],
+     "goal": [
+      "understand_choices"
+     ]
+    },
+    "outputs": [
+     "Price sensitivity",
+     "Choice shares",
+     "What-if shares"
+    ],
+    "references": [],
+    "related": [
+     "choice.multinomial_logit"
+    ],
+    "summary_plain": "Understand which product customers pick on each shopping trip, and how price and promotions shift the choice.",
+    "title": "Customer choice",
+    "typical_runtime": "minutes",
+    "use_when": [
+     "You have purchase records with the prices on offer at each trip"
+    ]
+   },
    "defaults": {},
    "description_plain": "Understand which product customers pick on each shopping trip, and how price and promotions shift the choice.",
    "family": "choice",
@@ -251,6 +288,64 @@
    "version": "1.2.0"
   },
   {
+   "about": {
+    "assumptions": [
+     "Advertising lingers and has diminishing returns",
+     "Other drivers (price, promotions) are included if they matter"
+    ],
+    "avoid_when": [
+     "You have less than a year of data",
+     "Spend never changes"
+    ],
+    "data_needs": [
+     "A table with date, market, the result (sales) and one spend column per channel"
+    ],
+    "difficulty": "beginner",
+    "example": "Upload 2 years of weekly sales and TV, search and social spend for 10 markets.",
+    "expert_notes": null,
+    "fits": {
+     "data_shape": [
+      "panel"
+     ],
+     "drivers": [
+      "yes"
+     ],
+     "frequency": [
+      "daily",
+      "weekly"
+     ],
+     "goal": [
+      "explain_marketing",
+      "plan_budget"
+     ],
+     "history": [
+      "medium",
+      "long"
+     ],
+     "uncertainty": [
+      "essential",
+      "nice"
+     ]
+    },
+    "outputs": [
+     "Return and contribution per channel",
+     "What-if sliders",
+     "A budget plan",
+     "A scorecard"
+    ],
+    "references": [],
+    "related": [
+     "mmm.bayesian",
+     "core.resample"
+    ],
+    "summary_plain": "Find out how much each marketing channel adds to your results in each market, and what happens if you move budget between channels.",
+    "title": "Geo marketing mix",
+    "typical_runtime": "long",
+    "use_when": [
+     "You have weekly sales and spend per channel, by market",
+     "You want returns per channel and a budget plan"
+    ]
+   },
    "defaults": {
     "frequency": "weekly",
     "holdout_periods": 8
@@ -259,7 +354,7 @@
    "family": "mmm",
    "id": "geo_mmm",
    "lookups": {},
-   "plugin": "mmm.hierarchical_geo@^1",
+   "plugin": "mmm.bayesian@^1",
    "plugin_available": true,
    "plugin_note": null,
    "questions": [
@@ -552,14 +647,24 @@
      "settings": {
       "adstock": {
        "kind": "geometric",
-       "l_max": 6
+       "l_max": 8
       },
-      "pooling": "partial",
+      "hierarchy": {
+       "pool_over": [
+        "geo"
+       ]
+      },
       "saturation": {
-       "kind": "logistic"
+       "kind": "hill"
+      },
+      "seasonality": {
+       "yearly_order": 3
+      },
+      "trend": {
+       "kind": "linear"
       }
      },
-     "use": "mmm.hierarchical_geo@^1"
+     "use": "mmm.bayesian@^1"
     },
     "outputs": {
      "derived": [
@@ -585,57 +690,6 @@
        "full_periods_only": true,
        "how": "sum"
       }
-     },
-     {
-      "id": "scale_spend",
-      "use": "core.mean_scale@^1",
-      "with": {
-       "over": [
-        "time"
-       ],
-       "unseen_levels": "pooled",
-       "vars": [
-        "spend"
-       ]
-      }
-     },
-     {
-      "id": "scale_y",
-      "use": "core.mean_scale@^1",
-      "with": {
-       "over": [
-        "time"
-       ],
-       "unseen_levels": "pooled",
-       "vars": [
-        "y"
-       ]
-      }
-     },
-     {
-      "id": "lags",
-      "use": "core.lag_tensor@^1",
-      "with": {
-       "along": "time",
-       "l_max": 6,
-       "pad": "first",
-       "vars": [
-        "spend"
-       ],
-       "within": [
-        "geo"
-       ]
-      }
-     },
-     {
-      "id": "season",
-      "use": "core.fourier@^1",
-      "with": {
-       "along": "time",
-       "order": 3,
-       "out": "fourier",
-       "period": 52.18
-      }
      }
     ]
    },
@@ -651,13 +705,59 @@
     "/execution": "advanced",
     "/model/fit": "advanced",
     "/model/settings/adstock": "advanced",
-    "/model/settings/pooling": "basic",
+    "/model/settings/hierarchy": "basic",
     "/model/settings/saturation": "advanced",
+    "/model/settings/seasonality": "advanced",
+    "/model/settings/trend": "advanced",
     "/pipeline": "hidden"
    },
-   "version": "1.1.0"
+   "version": "2.0.0"
   },
   {
+   "about": {
+    "assumptions": [
+     "Planned drivers are known for the weeks you forecast"
+    ],
+    "avoid_when": [
+     "You only have one total series"
+    ],
+    "data_needs": [
+     "A table with store, week, units sold and optional drivers"
+    ],
+    "difficulty": "beginner",
+    "example": "Predict next month's units for 300 stores.",
+    "expert_notes": null,
+    "fits": {
+     "data_shape": [
+      "panel"
+     ],
+     "drivers": [
+      "yes"
+     ],
+     "frequency": [
+      "daily",
+      "weekly"
+     ],
+     "goal": [
+      "predict_values",
+      "forecast"
+     ]
+    },
+    "outputs": [
+     "A forecast per store with low and high values",
+     "A scorecard"
+    ],
+    "references": [],
+    "related": [
+     "tabular.regressor"
+    ],
+    "summary_plain": "Predict how much each store will sell each week, with a low and a high estimate, from prices, promotions and the calendar.",
+    "title": "Demand by store",
+    "typical_runtime": "seconds",
+    "use_when": [
+     "You have sales per store and week and know planned prices or promotions"
+    ]
+   },
    "defaults": {
     "holdout_periods": 12
    },
@@ -915,6 +1015,54 @@
    "version": "1.0.0"
   },
   {
+   "about": {
+    "assumptions": [
+     "The trend changes gradually and the season repeats"
+    ],
+    "avoid_when": [
+     "You need a forecast for every store (use Demand by store)"
+    ],
+    "data_needs": [
+     "A table with a date and the number to forecast"
+    ],
+    "difficulty": "beginner",
+    "example": "Forecast weekly visits 26 weeks ahead from 3 years of history.",
+    "expert_notes": null,
+    "fits": {
+     "data_shape": [
+      "one_series"
+     ],
+     "frequency": [
+      "daily",
+      "weekly"
+     ],
+     "goal": [
+      "forecast"
+     ],
+     "history": [
+      "medium",
+      "long"
+     ],
+     "uncertainty": [
+      "essential",
+      "nice"
+     ]
+    },
+    "outputs": [
+     "A forecast chart with a range",
+     "A scorecard"
+    ],
+    "references": [],
+    "related": [
+     "ts.hsgp_trend"
+    ],
+    "summary_plain": "Forecast one series, such as sales, visits or demand, a few weeks or months ahead, with a range of likely values.",
+    "title": "Weekly forecast",
+    "typical_runtime": "minutes",
+    "use_when": [
+     "You need a forecast of one number"
+    ]
+   },
    "defaults": {
     "frequency": "weekly",
     "holdout_periods": 8,

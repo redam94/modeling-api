@@ -229,7 +229,7 @@ export function createTenancyState(): TenancyState {
         tenant_id: "acme",
         project_id: "growth",
         owner_id: ana.id,
-        name: "atlas-optimiser",
+        name: "budget-planner",
         prefix: "7k2m9q4x",
         display: "mapi_7k2m9q4x_…",
         scopes: ["score:geo-mmm-prod", "models:read"],

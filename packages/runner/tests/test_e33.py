@@ -1,7 +1,8 @@
-"""E33-style geo MMM through the runner: validate, fit (side tables, evaluate_then_refit,
-derived quantities, MMM plots, response grids, the scorecard and the what-if grid view),
-derive, score an 8-week EUR forecast (with its guided view), a channel-off counterfactual,
-evaluate, render (which needs vl-convert, absent here) and translate business priors."""
+"""E33-style geo MMM (mmm-framework's ``mmm.bayesian``) through the runner: validate, fit
+(side tables, evaluate_then_refit, derived quantities, MMM plots, response grids, the
+scorecard and the what-if grid view), derive, score an 8-week EUR forecast (with its guided
+view), a channel-off counterfactual, evaluate, optimise the budget, render (which needs
+vl-convert, absent here) and translate business priors."""
 
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from mapi_spec.api import ValidateResponse
 from mapi_spec.calibration import PriorTranslationResult
 from mapi_spec.executor import RunKind
 from mapi_spec.loader import canonical_json, load_model_spec
+from mapi_spec.optimize import OPTIMIZE_OUTPUT, OptimizeResult
 from mapi_spec.run import ErrorPayload, OutputManifest, RunnerExit, verify_output_objects
 from mapi_spec.scorecard import SCORECARD_OUTPUT, Scorecard
 from mapi_spec.views import (
@@ -96,18 +98,8 @@ def test_e33_validate_fit_derive_score_evaluate_render(
             if ref["kind"] == "data_ref":
                 assert ref["path"] in names
     pre = PreprocessView.model_validate_json(fit.output("ui/preprocess.json"))
-    assert [s.id for s in pre.steps] == [
-        "to_eur",
-        "weekly",
-        "scale_spend",
-        "scale_y",
-        "lags",
-        "season",
-        "hols",
-    ]
-    scale = next(s for s in pre.steps if s.id == "scale_spend")
-    heat = next(a for a in scale.arrays if a.name == "scale__spend")
-    assert scale.stateful and len(heat.dims) == 2 and set(heat.dims) == {"geo", "channel"}
+    # mmm-framework owns scaling and carry-over: no scaling or lag steps
+    assert [s.id for s in pre.steps] == ["to_eur", "weekly", "hols"]
     thin = read_datatree_zip(fit.output("ui/thin.zarr.zip"))
     assert thin["posterior"].to_dataset().sizes["sample"] == 100
     card = Scorecard.model_validate_json(fit.output(SCORECARD_OUTPUT))
@@ -225,6 +217,30 @@ def test_e33_validate_fit_derive_score_evaluate_render(
     metrics = json.loads(ev.output("metrics.json"))
     assert metrics["values"]["mape"] is not None and metrics["n_holdout"] > 0
 
+    # ---- optimise the budget (mmm-framework planning over the posterior) ---------------------
+    opt = run_supervisor(
+        make_run(
+            gcs,
+            RunKind.OPTIMIZE,
+            {
+                "model": "model://growth/eu-geo-mmm@v1",
+                "request": {"budget_change_pct": 10, "max_draws": 40, "frontier": {"n_points": 4},
+                            "channels": {"tv": {"min_multiplier": 0.5, "max_multiplier": 1.5}}},
+            },
+            inputs=bundle_inputs,
+        )
+    )  # fmt: skip
+    manifest = _ok(opt)
+    assert {OPTIMIZE_OUTPUT, "plots.json"} <= set(manifest.objects)
+    plan = OptimizeResult.model_validate_json(opt.output(OPTIMIZE_OUTPUT))
+    assert plan.kpi == "revenue_local" and plan.kpi_units == "EUR" and plan.spend_units == "EUR"
+    assert plan.total_budget == pytest.approx(1.1 * plan.current_total, rel=1e-6)
+    assert sum(a.optimal_spend for a in plan.allocation) == pytest.approx(
+        plan.total_budget, rel=0.005
+    )
+    assert len(plan.frontier) == 4 and plan.n_draws == 40 and plan.computed_at is not None
+    assert [p["id"] for p in json.loads(opt.output("plots.json"))] == ["mmm.budget_plans"]
+
     # ---- render: vl-convert is not installed here -------------------------------------------
     gcs.put(runs, "t/default/x/plots.json", fit.output("plots.json"))
     render = run_supervisor(
@@ -263,7 +279,7 @@ def test_e33_validate_fit_derive_score_evaluate_render(
     manifest = _ok(tr)
     assert {"priors.json", "plots.json"} <= set(manifest.objects)
     result = PriorTranslationResult.model_validate_json(tr.output("priors.json"))
-    assert result.priors["beta_channel"]["distribution"] == "LogNormal"
+    assert set(result.priors["roi"]) == {"tv", "search"} and "intercept" in result.priors
     assert set(result.coverage) == {"tv", "search", "baseline"}
     assert result.preview.kpi_fan is not None and result.preview.roi["tv"].units == "EUR per EUR"
     ids = sorted(p["id"] for p in json.loads(tr.output("plots.json")))

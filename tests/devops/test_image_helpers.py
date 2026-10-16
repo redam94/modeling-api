@@ -292,7 +292,7 @@ def test_warm_exports_the_catalog(tmp_path: Path) -> None:
     digest = (tmp_path / "catalog.digest").read_text().strip()
     assert digest == summary["digest"] and digest.startswith("sha256:")
     assert {"steps", "models", "plots"} <= set(catalog)
-    assert "mmm.hierarchical_geo" in summary["models"]
+    assert {"mmm.bayesian", "mmm.frequentist"} <= set(summary["models"])
 
     from mapi_spec.catalog import Catalog
     from mapi_spec.run import catalog_digest

@@ -52,8 +52,9 @@ libraries; it is a platform that runs MMMs and puts them in front of planners.
 excellent at the model. They are libraries: you run them in a notebook, and serving,
 scenario tools for analysts, versioning and access control are up to you.
 
-- PyMC-Marketing models run on the platform through the `mmm.pymc_marketing` adapter, with
-  business priors translated into its own `model_config` ([MMM guide](guides/mmm.md)).
+- The built-in MMMs run on [mmm-framework](models/mmm-framework.md), an open-source
+  (Apache-2.0) Bayesian MMM framework on PyMC; business priors become its ROI priors and lift
+  tests its experiment likelihoods ([MMM guide](guides/mmm.md)).
 - Meridian-shaped tables (`time`, `geo`, `kpi`, `<channel>_spend`) are recognised by the
   ingest; the Meridian model itself is not shipped (it needs TensorFlow).
 - Robyn (R) is not supported.
@@ -67,10 +68,10 @@ platform, and connect the result to your own tools.
 | | Typical managed MMM service | Open-source MMM library | modeling-api |
 |---|---|---|---|
 | Data collection from ad platforms | Often included | No | No: upload CSV, Parquet, MFF or Meridian-shaped tables |
-| The model | The vendor's | Yours, in code | A built-in hierarchical geo MMM, the PyMC-Marketing adapter, or your own plugin |
+| The model | The vendor's | Yours, in code | mmm-framework's Bayesian (or fast frequentist) MMM, national or per geo, or your own plugin |
 | Priors and calibration | Varies, often hidden | Yours, in code | Business priors as ROI or share ranges, lift tests, all visible in the spec |
 | Analyst scenarios | Dashboards | You build them | What-if sliders with joint uncertainty, "Run exact", forecasts and counterfactuals |
-| Budget optimisation | Usually included | Library functions | Atlas against an endpoint today; an in-sandbox `optimize` job in v0.5 |
+| Budget optimisation | Usually included | Library functions | In-sandbox `optimize` runs on mmm-framework planning: bounds, groups, risk objectives, the frontier |
 | Other models on the same platform | No | No | Forecasting, store demand, customer choice, your own |
 | Who owns the posterior | The vendor | You | You |
 

@@ -4,7 +4,9 @@ These model plugins ship with the platform (tier T0). They register through the
 `mapi.models` entry point, so `default_registry()` and the control-plane catalog list them
 without any configuration. Every one passes the contract kit (`mapi_sdk.testing.check_model`)
 and has a conformance fixture (see [Conformance corpus](../guides/conformance.md)).
-v0.5 removed `mmm.bayesinsight`.
+From v0.5 the marketing-mix models run on [mmm-framework](../models/mmm-framework.md);
+v0.5 removed `mmm.hierarchical_geo`, the pymc-marketing adapter (`mmm.pymc_marketing`) and
+`mmm.bayesinsight`.
 
 **Calibration** (M3, the spec's `calibration` block, Guided task 3) is declared per plugin in
 `Capabilities.calibration`; a spec with calibration data for a plugin that does not declare
@@ -12,16 +14,16 @@ it fails static validation with `CALIBRATION_UNSUPPORTED`:
 
 | Plugin | Business priors | Lift tests |
 |---|---|---|
-| `mmm.hierarchical_geo` | yes - `beta_channel` and `intercept` priors | yes - with carry-over inside the test window |
-| `mmm.pymc_marketing` | yes - `saturation_beta`, `intercept` (and narrowed `gamma_control`/`gamma_fourier`) priors | yes - pymc-marketing's `add_lift_test_measurements` |
+| `mmm.bayesian` | yes - log-normal ROI priors per channel (`priors.roi`) and the `intercept` | yes - mmm-framework experiment likelihoods (marginal ROAS or contribution) |
+| `mmm.frequentist` | no | no |
 
 The math of the translation and of each lift likelihood is in
 [Guided modelling](../guides/guided-modelling.md).
 
 | Plugin | Package | Representation | Score modes | Corpus fixture |
 |---|---|---|---|---|
-| `mmm.hierarchical_geo@1` | `mapi-plugin-mmm` | draws | predict, forecast, counterfactual, simulate, evaluate | `e33` |
-| `mmm.pymc_marketing@1` | `mapi-plugin-mmm` | draws | predict, forecast, counterfactual, evaluate | `pymc_marketing` |
+| `mmm.bayesian@1` | `mapi-plugin-mmm` | draws | predict, forecast, counterfactual, evaluate | `e33`, `guided_mmm` |
+| `mmm.frequentist@1` | `mapi-plugin-mmm` | draws (bootstrap) | predict, forecast, counterfactual, evaluate | `mmm_frequentist` |
 | `ts.hsgp_trend@1` | `mapi-plugin-ts` | draws | predict, forecast, evaluate | `c08` |
 | `ts.gaussian_hmm@1` | `mapi-plugin-ts` | draws | predict, forecast, filter, evaluate | `e24` |
 | `tabular.hierarchical_glm@1` | `mapi-plugin-tabular` | draws | predict, counterfactual, evaluate | `e02` |
@@ -42,44 +44,37 @@ The `mapi-sklearn` package also registers five general-purpose tabular plugins,
     manifests: capabilities, outputs, derived quantities, every setting with its default and
     Guided-mode level, and the input data contract.
 
-## `mmm.hierarchical_geo`: geo marketing mix
+## `mmm.bayesian`: marketing mix on mmm-framework
 
-A hierarchical marketing-mix model: adstock over a `core.lag_tensor` spend tensor, logistic or
-Hill saturation, channel effects partially pooled across geos, a hierarchical intercept and
-controls. New geos are drawn from the fitted hyperprior. Contributions are additive and, with
-`outputs.derived`, the fit caches contributions, per-draw response curves and marginal costs
-**in original units**. It declares a decision objective for budget optimisation.
+mmm-framework's `BayesianMMM`: adstock (geometric, delayed, Weibull) and saturation
+(logistic, Hill, Michaelis-Menten, tanh, root) per channel, a trend (none, linear,
+piecewise, spline, GP), Fourier seasonality, baselines partially pooled across geos and
+products (optionally channel effects per geo), and channel effects stated as returns on
+spend. The model owns scaling, carry-over and units (`owns: [scaling, carryover,
+inverse_units]`): the pipeline only converts currencies and resamples. With
+`outputs.derived` the fit caches contributions, per-draw response curves and marginal
+costs; budgets are optimised with mmm-framework planning (`POST …:optimize`) and the
+model declares a decision objective.
 
-**Inputs.** `y(geo, time)`, `spend(geo, channel, time, lag)` from `core.lag_tensor` (the
-`adstock.l_max` setting must equal the step's `l_max`), and any other numeric variable along
-time as a control. `geo` is `new_levels` (hyperprior), `channel` is `fixed`, `time` extends.
+**Inputs.** `y(*panel, time)`, `spend(*panel, channel, time)` and any other numeric
+variable over time as a control; the panel dims are `hierarchy.pool_over` (`geo`,
+`product`). New panel levels follow `new_levels` (`pooled` by default), `channel` is
+`fixed`, `time` extends.
 
-**Outputs.** `y_hat(geo, time)` and `contributions(component, geo, time)` (one component per
-channel, `baseline` and one per control; they sum to `y_hat`).
+**Outputs.** `y_hat(*panel, time)` and `contributions(component, *panel, time)` (one
+component per channel, `baseline`, `trend`, `seasonality` and one per control; they sum to
+`y_hat`).
 
-Read the [marketing-mix guide](../guides/mmm.md) for the model, its priors and a complete
-spec.
+Read [Marketing-mix models on mmm-framework](../models/mmm-framework.md) for how the
+settings map onto mmm-framework, priors, lift tests and optimisation, and the
+[marketing-mix guide](../guides/mmm.md) for a complete analysis.
 
-## `mmm.pymc_marketing`: the pymc-marketing adapter
+## `mmm.frequentist`: fast marketing mix
 
-Runs `pymc_marketing.mmm.MMM` behind the platform. The model scales data, carries spend over
-and reports original units itself, so the plugin declares `owns: [scaling, carryover,
-inverse_units]` and the platform skips its own versions of those. Bundles store the posterior,
-pymc-marketing's `fit_data` and its JSON model description, never a pickle. Markets are a
-`fixed` dim: pymc-marketing cannot score a market it has not seen. See
-[the adapter section](../guides/mmm.md#the-pymc-marketing-adapter).
-
-**Priors and calibration.** `settings.priors` hands prior overrides to pymc-marketing's
-`model_config`, in its scaled units (the KPI divided by its maximum): `saturation_beta` (the
-channel effect, one parameter per channel; `saturation_b` for `saturation: none`),
-`intercept`, `gamma_control` and `gamma_fourier`. Business priors are translated into them
-on prior draws of pymc-marketing's own model, so its scaling, adstock and curves are exactly
-the fit's: a log-normal `saturation_beta` per channel matches each ROI or contribution-share
-range at its credibility, a Normal `intercept` the baseline share, and the control and
-seasonality priors are narrowed when they alone spread the baseline share wider than the
-range (an `info` issue says by how much). A `translate_priors` run previews them; a fit
-without one translates them itself (`learned.calibration.translated_priors`). Lift tests go
-through pymc-marketing's `add_lift_test_measurements` (the saturation curve, no carry-over).
+mmm-framework's ridge estimator: adstock and saturation chosen by an out-of-sample search,
+non-negative channel effects, bootstrap confidence intervals (the replicates are the
+draws). Same data contract and outputs as `mmm.bayesian`; no priors, no lift tests, no
+convergence diagnostics. Seed-deterministic, seconds to fit.
 
 ## `ts.hsgp_trend` — smooth trend with seasonality
 

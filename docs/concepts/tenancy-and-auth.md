@@ -156,7 +156,7 @@ read its own tenant (`GET /v1/tenants/{tenant}`) and list its own project.
 
 ## API tokens
 
-Programs (the Python client, the CLI, Atlas, BI exports) use API tokens:
+Programs (the Python client, the CLI, BI exports) use API tokens:
 
 ```text
 mapi_7k2m9q4x_0123456789abcdefghjkmnpqrstvwxyz072gj7d

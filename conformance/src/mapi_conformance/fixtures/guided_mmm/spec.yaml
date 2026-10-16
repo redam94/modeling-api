@@ -1,7 +1,8 @@
-# Guided MMM: the geo_mmm template's draft (POST /v1/guided/drafts) for a weekly
-# Week/Region/Revenue/TV Spend/Search Spend/Avg Price table, with the calibration a Guided
-# user enters - ROI and contribution-share ranges, a baseline share and one lift test.
-# The ranges and the lift hold for the simulation at every seed and size (data.truth).
+# Guided MMM: the geo_mmm template's draft (POST /v1/guided/drafts, template 2.0.0 on
+# mmm-framework) for a weekly Week/Region/Revenue/TV Spend/Search Spend/Avg Price table,
+# with the calibration a Guided user enters - ROI and contribution-share ranges, a baseline
+# share and one lift test. The ranges and the lift hold for the simulation at every seed
+# and size (data.truth).
 apiVersion: mapi/v1
 kind: ModelSpec
 metadata: {name: guided-geo, project: growth, labels: {family: mmm, guided: geo_mmm, corpus: guided_mmm}}
@@ -12,18 +13,16 @@ data:
     vars: {y: revenue, spend: spend}
   split: {after_step: weekly, kind: time_holdout, dim: time, last: 8}
 pipeline:
-  - {id: weekly,      use: core.resample@^1,   with: {dim: time, freq: W-SUN, how: sum, full_periods_only: true}}
-  - {id: scale_spend, use: core.mean_scale@^1, with: {vars: [spend], over: [time], unseen_levels: pooled}}
-  - {id: scale_y,     use: core.mean_scale@^1, with: {vars: [y], over: [time], unseen_levels: pooled}}
-  - {id: lags,        use: core.lag_tensor@^1, with: {vars: [spend], along: time, within: [geo], l_max: 6, pad: first}}
-  - {id: season,      use: core.fourier@^1,    with: {along: time, period: 52.18, order: 3, out: fourier}}
+  - {id: weekly, use: core.resample@^1, with: {dim: time, freq: W-SUN, how: sum, full_periods_only: true}}
 model:
-  use: mmm.hierarchical_geo@^1
+  use: mmm.bayesian@^1
   settings:
-    pooling: partial
-    adstock: {kind: geometric, l_max: 6}
-    saturation: {kind: logistic}
-  fit: {mode: evaluate_then_refit, tune: 500, draws: 500, chains: 4, seed: 20261015}
+    adstock: {kind: geometric, l_max: 8}
+    saturation: {kind: hill}
+    trend: {kind: linear}
+    seasonality: {yearly_order: 3}
+    hierarchy: {pool_over: [geo]}
+  fit: {mode: evaluate_then_refit, tune: 1000, draws: 1000, chains: 4, target_accept: 0.95, seed: 20261015}
 calibration:
   business_priors:
     channels:
@@ -36,5 +35,6 @@ calibration:
 outputs:
   derived: [contributions, response_curves, marginal_cost]
   plots: [core.ppc_fan, core.convergence, mmm.decomposition, mmm.response_curves]
+  ui_draws: 300
 evaluate: {metrics: [mape, coverage_90]}
 execution: {resource_class: M, timeout: 45m}

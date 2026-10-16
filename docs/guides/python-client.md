@@ -309,7 +309,7 @@ before anything is sent).
 
 `api.endpoints.snippets(alias, languages)` returns the code the
 [Integrations hub](../concepts/integrations.md#snippets) shows, in Python, TypeScript, curl,
-R, Apps Script, Atlas and a notebook cell. The Python snippet is exactly the
+R, Apps Script and a notebook cell. The Python snippet is exactly the
 `api.endpoints.score(...)` call above, the notebook cell the `api.endpoint(alias).score(...)`
 form; both run as generated (the client's tests execute them).
 
@@ -390,7 +390,7 @@ iterated with `async for`:
 List calls return lazy paginators that follow `next_cursor`. `api.health()` and `api.ready()`
 call `/healthz` and `/readyz`; `api.me()` calls `/v1/me` and `api.use(project)` changes the
 selected project; `api.signup()`, `api.verify_email()` and `api.endpoint(alias)` are v0.4.
-`mapi_client.webhooks` verifies deliveries, `mapi_client.atlas` adapts an endpoint to
-[Atlas](atlas.md) and `mapi_client.xrjson` encodes inline payloads. The DTOs are documented in
+`mapi_client.webhooks` verifies deliveries and `mapi_client.xrjson` encodes inline payloads
+(v0.5 removed the Atlas adapter: see [Optimise a budget](../tutorials/optimise-a-budget.md)). The DTOs are documented in
 [`mapi_spec`](../reference/api/spec.md#rest-dtos) and the endpoints in the
 [HTTP API reference](../reference/http-api.md).

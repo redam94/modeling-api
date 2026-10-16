@@ -32,6 +32,7 @@ export const GATE_REASON_LABEL: Record<GateReason["code"], string> = {
   PARTIAL_MODEL: "Interrupted fit",
   SCHEMA_CHANGE: "Input contract changed",
   NOT_EVALUATED: "Check did not run",
+  NOT_VALIDATED: "Not validated by its governance policy",
 };
 
 /** The holdout checks of the catalog, in catalog order (`mapi_spec.scorecard.SCORECARD_CHECKS`). */

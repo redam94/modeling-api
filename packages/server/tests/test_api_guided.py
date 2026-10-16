@@ -203,12 +203,6 @@ def _geo_answers() -> dict[str, Any]:
     }  # fmt: skip
 
 
-_NEEDS_MMM_FRAMEWORK = pytest.mark.xfail(
-    reason="geo_mmm targets mmm.bayesian (v0.5), which the mmm-framework plugin provides"
-)
-
-
-@_NEEDS_MMM_FRAMEWORK
 async def test_a_geo_mmm_draft_is_validated_against_the_catalog(
     client: httpx.AsyncClient,
 ) -> None:
@@ -225,17 +219,17 @@ async def test_a_geo_mmm_draft_is_validated_against_the_catalog(
     assert saved.status_code == 201, saved.text
 
 
-@_NEEDS_MMM_FRAMEWORK
 async def test_draft_validation_reports_what_the_model_cannot_use(
     client: httpx.AsyncClient,
 ) -> None:
     body = _geo_answers()
+    # v0.5: mmm-framework owns seasonality, so the template's pipeline adds no Fourier step
+    # and a control named like one is just another control
     body["columns"] = [*MMM_COLUMNS, {"name": "Fourier", "dtype": "number", "n_rows": 520}]
     body["answers"]["controls"] = ["avg_price", "Fourier"]
     draft = GuidedDraft.model_validate((await client.post("/v1/guided/drafts", json=body)).json())
-    errors = [i for i in draft.issues if i.severity.value == "error"]
-    # the control would clash with the seasonality the template's pipeline adds
-    assert [(i.pointer, "already exists" in i.message) for i in errors] == [("/pipeline/4", True)]
+    assert not [i for i in draft.issues if i.severity.value == "error"], draft.issues
+    assert [s["id"] for s in draft.spec["pipeline"]] == ["weekly"]  # type: ignore[index,union-attr]
     body["columns"] = [{**c, "dtype": "string"} if c["name"] == "Revenue" else c
                        for c in MMM_COLUMNS]  # fmt: skip
     body["answers"]["controls"] = ["avg_price"]

@@ -34,7 +34,7 @@ texts are in the repository root: `LICENSE.md`, `LICENSE-APACHE.txt`, `LICENSE-A
 ## Third-party libraries
 
 The SDK builds on xarray, numpy, pandas, zarr and Pydantic; the model packages on PyMC,
-ArviZ, scikit-learn, xgboost and skops; the marketing-mix adapter on pymc-marketing; the plot
+ArviZ, scikit-learn, xgboost and skops; the marketing-mix models on mmm-framework (Apache-2.0); the plot
 recipes on Altair and Plotly. Each keeps its own licence.
 
 ## Contributions

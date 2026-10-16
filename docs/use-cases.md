@@ -1,5 +1,5 @@
 ---
-description: Four problems modeling-api is built for - marketing-mix budget planning with Atlas, weekly forecasting, demand by store and customer choice - with the data each needs, what you get and the tutorials that walk through them.
+description: Four problems modeling-api is built for - marketing-mix budget planning on mmm-framework, weekly forecasting, demand by store and customer choice - with the data each needs, what you get and the tutorials that walk through them.
 ---
 
 # Use cases
@@ -10,12 +10,12 @@ share the platform: sandboxed runs, the scorecard, endpoints, snippets, webhooks
 
 | Use case | Guided template | Model | The question it answers |
 |---|---|---|---|
-| [Budget planning](#marketing-mix-budget-planning-with-atlas) | Geo marketing mix | `mmm.hierarchical_geo` (or `mmm.pymc_marketing`) | What does each channel bring in, and where should the next euro go? |
+| [Budget planning](#marketing-mix-budget-planning) | Geo marketing mix | `mmm.bayesian` (or `mmm.frequentist`), on mmm-framework | What does each channel bring in, and where should the next euro go? |
 | [Weekly forecasting](#weekly-forecasting) | Weekly forecast | `ts.hsgp_trend` | What will this series do over the next weeks, and how sure are we? |
 | [Store demand](#demand-by-store) | Demand by store | `tabular.regressor` (xgboost, quantiles) | How much will each store sell, including a store that opens next month? |
 | [Customer choice](#customer-choice) | Customer choice | `choice.multinomial_logit` | Which product does a shopper pick, and how does a price change shift that? |
 
-## Marketing-mix budget planning with Atlas
+## Marketing-mix budget planning
 
 **The question.** Media spend goes to TV, search and social in several markets. What did each
 channel add to revenue, what is each euro returning now, and how should next quarter's budget
@@ -33,15 +33,15 @@ and Meridian-shaped tables are recognised directly.
   model priors in a sandbox with a preview in business units.
 - **What-if sliders** whose ranges stay joint when several channels move, "Run exact",
   channel-off counterfactuals and forecasts.
-- An **endpoint** that a planning tool calls, and an **Atlas** `RemoteModel` that optimises
-  allocations against it. On a laptop, Atlas found **+0.22 %** revenue at the same budget by
-  moving spend from TV to search ([measured](operations/m3-verification.md#atlas-against-the-live-endpoint)).
+- **Budget plans** from the model itself (`POST …:optimize`, mmm-framework planning): the
+  allocation within your bounds, the uplift and the chance it helps, how stable each move
+  is, and the efficient frontier - and an **endpoint** a planning tool calls.
 
 **Start here.**
 [Your first MMM in Guided mode](guides/guided-tutorial.md) →
 [Priors, lift tests and the scorecard](guides/guided-modelling.md) →
-[Optimise a budget with Atlas](guides/atlas.md).
-Writing your own MMM: [the marketing-mix guide](guides/mmm.md).
+[Optimise a budget](tutorials/optimise-a-budget.md).
+Writing your own MMM spec: [the marketing-mix guide](guides/mmm.md) and [mmm-framework on the platform](models/mmm-framework.md).
 
 ## Weekly forecasting
 

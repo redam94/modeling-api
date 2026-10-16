@@ -50,6 +50,28 @@ milestone releases are tagged on `main`.
   (`check_about`, and an `about` check in `check_step`/`check_model`).
 - **docs**: Workflows, Governance and About cards concept pages; the v0.5 section of the HTTP
   API reference.
+- **plugins/mmm**: mmm-framework (`mmm-framework==1.5.0`) is the MMM engine.
+  `mmm.bayesian` (mmm-framework's `BayesianMMM`: national, or partially pooled over geos
+  and products; NUTS on nutpie, PyMC or NumPyro, or MAP/ADVI/Pathfinder/Laplace/SMC) and
+  `mmm.frequentist` (its ridge estimator with bootstrap intervals). Both own scaling,
+  carry-over and units, score by replaying the fitted model per draw in NumPy (checked
+  against mmm-framework's forecaster), prepend the fitted history so carry-over reaches
+  scored periods, follow `new_levels` (`pooled`, `hyperprior`, `zero`, `error`) for unseen
+  geos/products, and cache contributions, response curves and marginal costs. Business
+  priors translate in closed form into log-normal ROI priors (and an intercept prior solved
+  against mmm-framework's own baseline prior); lift tests become mmm-framework experiment
+  likelihoods (marginal ROAS or contribution). MFF panels are handed over in the layout
+  `MFFLoader` builds.
+- **runner, server, sdk**: the `optimize` run kind and `POST /v1/models/{model_id}/versions/{version}:optimize`
+  with `GET /v1/optimizations/{run_id}` (`Prefer: wait`, `Idempotency-Key`, an
+  `optimize.completed` webhook): budgets split across channels (or geo x channel) by
+  mmm-framework's planning module from the posterior's response curves, with bounds,
+  groups, risk objectives, a horizon and the efficient frontier; the `mmm.budget_plans`
+  plot. `CustomModel.optimize` and `mapi_sdk.models.BudgetPlan` are the plugin hook.
+- **conformance**: `e33` and `guided_mmm` fit `mmm.bayesian`; the `mmm_frequentist` fixture.
+- **docs**: "Marketing-mix models on mmm-framework" (data contract, how the spec maps onto
+  mmm-framework, priors, lift tests, optimisation, limits), the rewritten marketing-mix guide
+  and the "Optimise a budget" tutorial.
 
 ### Removed
 - **spec**: BayesInsight (`mapi_spec.bayesinsight`, `mapi_spec.bayesinsight_model`, the
@@ -59,6 +81,15 @@ milestone releases are tagged on `main`.
   `mmm.bayesian` (mmm-framework). mmm-framework is the only MMM engine.
 - **server, runner, client, plugins**: the BayesInsight import route, ingest preset, client
   calls and the `mmm.bayesinsight` plugin; the "Import a BayesInsight model" tutorial.
+- **plugins/mmm** (breaking): `mmm.hierarchical_geo` and the pymc-marketing adapter
+  `mmm.pymc_marketing` (and the `pymc-marketing` dependency); specs move to `mmm.bayesian`
+  and drop their scaling and `core.lag_tensor` steps. The `pymc_marketing` conformance
+  fixture is now `mmm_frequentist`.
+- **client, web, docs, images** (breaking): Atlas. `mapi_client.atlas` (`RemoteModel`) and
+  the `atlas` extra, the Atlas snippet tab, the "Optimise a budget with Atlas" tutorial and
+  snippet, the Makefile's Atlas targets and the e2e Atlas step; budgets are optimised with
+  `POST …:optimize`. The `base-bayes` and `base-forecast` images warm mmm-framework
+  instead of pymc-marketing.
 
 ### Fixed
 

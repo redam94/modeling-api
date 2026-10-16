@@ -136,7 +136,7 @@ the token scopes and the operators' permissions side by side.
 
 ## API tokens
 
-Programs (the Python client, the CLI in CI, Atlas, BI exports) use **API tokens**. A token is
+Programs (the Python client, the CLI in CI, BI exports) use **API tokens**. A token is
 minted by a person in one project, **acts as that person** narrowed by its scopes, and is bound
 to that project. Anyone with a role can mint tokens for themselves; project admins can list
 and revoke everyone's.

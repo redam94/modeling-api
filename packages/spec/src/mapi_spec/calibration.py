@@ -67,8 +67,9 @@ PRIOR_TRANSLATION_FORMAT: Final = "mapi.prior-translation/v1"
 PRIOR_TRANSLATION_OUTPUT: Final = "priors.json"
 """The output object of a ``translate_priors`` run."""
 PRIORS_POINTER: Final = "/model/settings/priors"
-"""Where translated priors go in a ``ModelSpec``: engine-neutral ``{distribution, <params>,
-dims}`` dicts, which the mmm-framework plugin maps onto its prior config."""
+"""Where translated priors go in a ``ModelSpec``: the model plugin's own prior slots
+(``mmm.bayesian``: ``roi.<channel> = {mu, sigma}``, a log-normal prior on each channel's
+return on spend, and ``intercept = {mu, sigma}``), merged key by key."""
 
 Credibility = Annotated[
     float,
@@ -477,12 +478,12 @@ class PriorTranslationResult(ResponseModel):
             "format": PRIOR_TRANSLATION_FORMAT,
             "channels": ["tv", "search", "social"],
             "priors": {
-                "beta_channel": {
-                    "distribution": "LogNormal",
-                    "mu": [-1.2, -0.9, -2.1],
-                    "sigma": [0.38, 0.33, 0.5],
-                    "dims": ["channel"],
-                }
+                "roi": {
+                    "tv": {"mu": 0.9, "sigma": 0.38},
+                    "search": {"mu": 1.2, "sigma": 0.33},
+                    "social": {"mu": 0.1, "sigma": 0.5},
+                },
+                "intercept": {"mu": 0.2, "sigma": 0.3},
             },
             "preview": PriorPreview.model_json_schema()["examples"][0],
             "coverage": {"tv": 0.79, "search": 0.88, "social": 0.81},

@@ -46,6 +46,7 @@ from mapi_spec.jobs import (
     MetricsSidecar,
 )
 from mapi_spec.loader import canonical_json, spec_hash
+from mapi_spec.optimize import OPTIMIZE_OUTPUT
 from mapi_spec.plots import PlotSpec
 from mapi_spec.run import (
     MANIFEST_OBJECT_NAME,
@@ -83,6 +84,7 @@ from mapi_server.db import models as m
 from mapi_server.jsonlimits import JsonTooDeep, loads_limited
 from mapi_server.observability import metrics as obs_metrics
 from mapi_server.observability.tracing import run_span
+from mapi_server.services.optimize import parse_optimize_result
 from mapi_server.services.prior_translations import parse_prior_translation
 from mapi_server.services.runs import append_event, apply_transition, now
 from mapi_server.services.runspec import EMPTY_CATALOG_DIGEST, MANIFEST_MAX_BYTES
@@ -334,6 +336,8 @@ class Finalizer:
             return await self._describe(v)
         if kind is RunKind.TRANSLATE_PRIORS:
             return await self._translate_priors(v)
+        if kind is RunKind.OPTIMIZE:
+            return await self._optimize(v)
         return await self._outputs_only(v)
 
     async def _commit(
@@ -821,6 +825,26 @@ class Finalizer:
         )
         try:
             parse_prior_translation(raw)
+        except MapiError as exc:
+            raise IntegrityError(exc.detail, untrusted_text=exc.untrusted_text) from None
+        return await self._commit(v)
+
+    # ......................................................................... optimize
+    async def _optimize(self, v: _Verified) -> RunState | None:
+        """An optimize run must upload a valid ``optimize.json`` (size-capped JSON)."""
+        meta = v.objects.get(OPTIMIZE_OUTPUT)
+        if meta is None:
+            if v.partial:
+                return await self._commit(v)
+            raise IntegrityError(f"an optimize run must upload {OPTIMIZE_OUTPUT}")
+        cap = self.ctx.settings.max_sidecar_bytes
+        if meta.size > cap:
+            raise IntegrityError(f"{OPTIMIZE_OUTPUT} exceeds the {cap}-byte limit")
+        raw = await self.ctx.store.get(
+            meta.bucket, meta.name, generation=meta.generation, max_bytes=cap
+        )
+        try:
+            parse_optimize_result(raw)
         except MapiError as exc:
             raise IntegrityError(exc.detail, untrusted_text=exc.untrusted_text) from None
         return await self._commit(v)

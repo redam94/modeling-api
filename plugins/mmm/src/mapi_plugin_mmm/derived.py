@@ -1,53 +1,44 @@
-"""Derived quantities of ``mmm.hierarchical_geo``, computed from posterior draws.
+"""Derived quantities of the mmm-framework plugins, from posterior draws.
 
-All curves come from :mod:`mapi_plugin_mmm.transforms` (the functions that build the PyMC
-graph), evaluated with NumPy on the thinned posterior, so they agree with the fitted model
-exactly. Results are mapped to original units with the platform's ``to_original`` callback
-(the inverse of the pipeline back to its last reshape step, e.g. weekly EUR): channel
-contributions and the target through ``y``'s inverse chain, spend through ``spend``'s.
-Without a callback (a direct call outside the harness) values stay in model units and are
-labelled ``output_space = "model"``.
+Everything is computed with :class:`~mapi_plugin_mmm.forward.Replay` - the fitted model's
+own forward pass - on the fit window, over the thinned draws the harness asks for, in KPI
+and spend units of the model stage (the model owns scaling, so these are business units;
+``to_original`` maps them further when the pipeline converts them).
 
-* ``contributions`` - ``channel_contribution(sample, channel, geo, time)``,
-  ``baseline(sample, geo, time)`` and one ``(sample, geo, time)`` variable per control,
-  over the fit window. They sum to the model's expected target.
-* ``response_curves`` - ``contribution(sample, channel, multiplier, geo)``: the total
-  contribution over the fit window when a channel's spend is scaled by ``multiplier``
-  (``0 .. grid.max_multiplier``); ``spend(channel, multiplier)`` and
-  ``spend_by_geo(geo, channel, multiplier)`` give the spend on each grid point and
-  ``current_spend(channel)`` the actual spend; ``baseline(sample)`` and
-  ``baseline_by_geo(sample, geo)`` are the KPI over the window that no channel explains
-  (intercepts plus controls), so ``baseline + sum_c contribution(at 1)`` is the expected
-  KPI (M3: the what-if grid view). ``target_scale(geo)`` and
-  ``spend_scale(geo, channel)`` convert model units to original units (used by the decision
-  objective). Guided-mode sliders interpolate these grids per draw, so bands stay joint.
-* ``marginal_cost`` - ``marginal_cost(sample, channel, geo)``: extra spend per extra unit
-  of the target at current spend (central difference of ``grid.marginal_step``), its
-  inverse ``marginal_roi`` and channel totals over all geos.
+* ``contributions`` - ``channel_contribution(sample, channel, *panel, time)``,
+  ``baseline`` (intercept and geo/product levels), ``trend``, ``seasonality`` and one
+  ``(sample, *panel, time)`` variable per control, over the fit window. They sum to the
+  model's expected KPI.
+* ``response_curves`` - ``contribution(sample, channel, multiplier[, geo])``: the total
+  contribution over the fit window when a channel's spend is scaled by ``multiplier``;
+  ``spend(channel, multiplier)``, ``spend_by_geo(geo, channel, multiplier)``,
+  ``current_spend(channel)``, ``max_period_spend(channel)``, and ``baseline(sample)`` /
+  ``baseline_by_geo(sample, geo)`` - the KPI no channel explains - so ``baseline +
+  sum_c contribution(at 1)`` is the expected KPI (the what-if grid view and the scorecard
+  read these). Product panels are summed over products.
+* ``marginal_cost`` - ``marginal_cost(sample, channel[, geo])``: extra spend per extra unit
+  of the KPI at current spend (central difference of ``grid.marginal_step``), its inverse
+  ``marginal_roi`` and channel totals.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
 import xarray as xr
-from mapi_sdk.summarise import select_draws
 from mapi_spec.errors import ErrorCode, MapiError
 
-from mapi_plugin_mmm.design import BASELINE, CHANNEL, GEO, TIME, ControlDesign
-from mapi_plugin_mmm.settings import GridSettings, HierarchicalGeoSettings
-from mapi_plugin_mmm.transforms import adstock_weights, saturate, saturation_params
+from mapi_plugin_mmm.forward import Components, Replay, history_arrays
+from mapi_plugin_mmm.framework import CHANNEL, GEO, PRODUCT, TIME, PanelData
+from mapi_plugin_mmm.settings import GridSettings
 
 __all__ = [
     "SAMPLE",
-    "ChannelCurves",
-    "ToOriginal",
-    "baseline_cube",
+    "FitWindow",
     "contributions_dataset",
-    "draw_samples",
     "marginal_cost_dataset",
     "response_curves_dataset",
 ]
@@ -56,325 +47,287 @@ SAMPLE = "sample"
 ToOriginal = Callable[[xr.DataArray, str], xr.DataArray]
 
 
-def draw_samples(posterior: xr.Dataset, draw_index: np.ndarray | None) -> xr.Dataset:
-    """Posterior draws along one ``sample`` dim.
+def _convert(
+    to_original: ToOriginal | None, da: xr.DataArray, src: str, win: FitWindow
+) -> xr.DataArray:
+    """``da`` (model-stage units of input ``src``) in the output space, labelled.
 
-    ``draw_index`` is the bundle thinning index (``(n, 2)`` chain/draw pairs): its pairs are
-    used in order. ``None`` uses every draw; an empty index uses the posterior mean.
-    """
-    if draw_index is None:
-        stacked = posterior.stack({SAMPLE: ("chain", "draw")}, create_index=False)
-        stacked = stacked.drop_vars(["chain", "draw"], errors="ignore")
-        return stacked.assign_coords({SAMPLE: np.arange(stacked.sizes[SAMPLE])})
-    if len(draw_index) == 0:
-        return posterior.mean(("chain", "draw")).expand_dims({SAMPLE: [0]})
-    out = select_draws(posterior, np.asarray(draw_index), len(draw_index))
-    return out.drop_vars(["chain", "draw"], errors="ignore")
-
-
-def _per_channel(post: xr.Dataset, name: str, channels: np.ndarray) -> np.ndarray:
-    """``(sample, channel)`` values of a parameter that may be shared across channels."""
-    if name not in post:
-        raise MapiError(
-            f"the posterior has no {name!r} (was the model fitted with other settings?)",
-            code=ErrorCode.INTEGRITY_FAILURE,
-        )
-    da = post[name]
-    if CHANNEL not in da.dims:
-        da = da.expand_dims({CHANNEL: channels})
-    da = da.sel({CHANNEL: channels}) if CHANNEL in da.coords else da
-    return np.asarray(da.transpose(SAMPLE, CHANNEL).values, dtype=np.float64)
+    The model owns scaling, so the pipeline after its last reshape step must leave ``y``
+    and ``spend`` unscaled (or scaled by one constant): the conversion is read once from a
+    probe array with ``src``'s own dims and applied as a factor, which also labels the
+    units (``to_original`` cannot label a total that has no time dim by itself)."""
+    if to_original is None:
+        out = da.copy()
+        out.attrs = {**da.attrs, "output_space": "model", "units_of": src}
+        return out
+    factor, attrs = win.unit_map(to_original, src)
+    out = da * factor if factor != 1.0 else da.copy()
+    out.attrs = {**da.attrs, **attrs, "units_of": src}
+    return out
 
 
 @dataclass(slots=True)
-class ChannelCurves:
-    """Adstock + saturation + channel effect per posterior sample.
+class FitWindow:
+    """The replay over the fit window: fitted cells, history arrays and labels."""
 
-    ``x`` is the model-stage spend tensor ``(geo, channel, time, lag)``.
-    """
+    replay: Replay
+    fit: PanelData
+    _units: dict[str, tuple[float, dict[str, Any]]] = field(default_factory=dict)
 
-    settings: HierarchicalGeoSettings
-    x: np.ndarray
-    geos: np.ndarray
-    channels: np.ndarray
-    times: np.ndarray
-    weights: np.ndarray  # (sample, channel, lag)
-    sat: dict[str, np.ndarray]  # name -> (sample, channel)
-    beta: np.ndarray  # (sample, geo, channel)
-    _adstocked: np.ndarray | None = field(default=None, init=False)
-
-    @classmethod
-    def from_samples(
-        cls,
-        post: xr.Dataset,
-        x: np.ndarray,
-        settings: HierarchicalGeoSettings,
-        *,
-        geos: np.ndarray,
-        channels: np.ndarray,
-        times: np.ndarray,
-    ) -> ChannelCurves:
-        lags = np.arange(x.shape[-1])
-        alpha = _per_channel(post, "alpha", channels)
-        theta = (
-            _per_channel(post, "theta", channels)[..., None]
-            if settings.adstock.kind == "delayed"
-            else None
-        )
-        weights = adstock_weights(
-            settings.adstock.kind,
-            lags,
-            alpha=alpha[..., None],
-            theta=theta,
-            normalize=settings.adstock.normalize,
-        )
-        sat = {
-            p: _per_channel(post, p, channels) for p in saturation_params(settings.saturation.kind)
-        }
-        beta_da = post["beta"]
-        if GEO in beta_da.coords:
-            beta_da = beta_da.sel({GEO: geos})
-        if CHANNEL in beta_da.coords:
-            beta_da = beta_da.sel({CHANNEL: channels})
-        beta = np.asarray(beta_da.transpose(SAMPLE, GEO, CHANNEL).values, dtype=np.float64)
-        return cls(settings, x, geos, channels, times, np.asarray(weights), sat, beta)
+    def unit_map(self, to_original: ToOriginal, src: str) -> tuple[float, dict[str, Any]]:
+        """``(factor, attrs)`` of ``to_original`` for input ``src`` (``y`` or ``spend``)."""
+        if src in self._units:
+            return self._units[src]
+        fit = self.fit
+        dims: list[str] = [d for d in (GEO, PRODUCT) if d in fit.panel]
+        coords: dict[str, Any] = {TIME: fit.times, **self.panel_coords()}
+        if src == "spend":
+            dims = [*dims, CHANNEL, TIME]
+            coords[CHANNEL] = np.asarray(fit.channels)
+        else:
+            dims = [*dims, TIME]
+        shape = [len(coords[d]) for d in dims]
+        probe = xr.DataArray(np.ones(shape), dims=dims, coords={d: coords[d] for d in dims})
+        out = to_original(probe, src)
+        vals = np.asarray(out.values, dtype=float)
+        finite = vals[np.isfinite(vals)]
+        factor = float(finite.flat[0]) if finite.size else 1.0
+        if finite.size and not np.allclose(finite, factor, rtol=1e-9, atol=1e-12):
+            raise MapiError(
+                f"the pipeline rescales {src!r} after its last reshape step; the mmm-framework "
+                "model owns scaling, so drop that step",
+                code=ErrorCode.SCHEMA_INVALID,
+                pointer="/pipeline",
+            )
+        attrs = {k: v for k, v in out.attrs.items() if k in ("units", "output_space")}
+        self._units[src] = (factor, attrs)
+        return factor, attrs
 
     @property
-    def n_samples(self) -> int:
-        return int(self.beta.shape[0])
+    def cells(self) -> list[Any]:
+        return self.replay.fit_cells()
 
-    def adstocked(self) -> np.ndarray:
-        """``(sample, geo, channel, time)`` adstocked spend at the observed spend."""
-        if self._adstocked is None:
-            self._adstocked = np.einsum("gctl,scl->sgct", self.x, self.weights)
-        return self._adstocked
+    def arrays(self) -> tuple[np.ndarray, np.ndarray]:
+        return history_arrays(self.fit)
 
-    def contribution(self, multiplier: float = 1.0) -> np.ndarray:
-        """``(sample, geo, channel, time)`` channel contributions with every channel's
-        spend scaled by ``multiplier`` (channels do not interact, so each channel's curve
-        is read off independently)."""
-        ad = self.adstocked() * multiplier
-        params = {k: v[:, None, :, None] for k, v in self.sat.items()}
-        return self.beta[:, :, :, None] * saturate(ad, self.settings.saturation.kind, **params)
+    def evaluate(self, multiplier: float = 1.0) -> Components:
+        spend, ctrl = self.arrays()
+        return self.replay.evaluate(
+            spend * multiplier, ctrl, np.arange(self.fit.n_periods), self.cells
+        )
 
-    def steady_state(self, spend: np.ndarray) -> np.ndarray:
-        """``(sample, geo, channel)`` contribution per period of a constant spend
-        ``(geo, channel)`` sustained long enough for the carry-over to settle."""
-        level = spend[None, :, :] * self.weights.sum(axis=-1)[:, None, :]
-        params = {k: v[:, None, :] for k, v in self.sat.items()}
-        return self.beta * saturate(level, self.settings.saturation.kind, **params)
+    def channel_totals(self, multiplier: float) -> np.ndarray:
+        """``(S, C, n_cell)`` channel contributions over the window at ``multiplier``."""
+        spend, _ = self.arrays()
+        ch = self.replay.channel_at(spend * multiplier, np.arange(self.fit.n_periods), self.cells)
+        return np.asarray(ch.sum(axis=3) * self.replay.y_std)
 
+    # labelled helpers ----------------------------------------------------------------
+    def panel_dims(self) -> list[str]:
+        return [d for d in (GEO, PRODUCT) if d in self.fit.panel]
 
-def _model_units(da: xr.DataArray, src: str) -> xr.DataArray:
-    out = da.copy()
-    out.attrs = {**da.attrs, "output_space": "model", "units_of": src}
-    return out
+    def panel_coords(self) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        if self.fit.geos:
+            out[GEO] = np.asarray(self.fit.geos)
+        if self.fit.products:
+            out[PRODUCT] = np.asarray(self.fit.products)
+        return out
 
-
-def _convert(to_original: ToOriginal | None, da: xr.DataArray, src: str) -> xr.DataArray:
-    if to_original is None:
-        return _model_units(da, src)
-    out = to_original(da, src)
-    out.attrs = {**out.attrs, "units_of": src}
-    return out
-
-
-def _cube(values: np.ndarray, curves: ChannelCurves) -> xr.DataArray:
-    """``(sample, geo, channel, time)`` NumPy values as a labelled array."""
-    return xr.DataArray(
-        values,
-        dims=[SAMPLE, GEO, CHANNEL, TIME],
-        coords={
-            SAMPLE: np.arange(values.shape[0]),
-            GEO: curves.geos,
-            CHANNEL: curves.channels,
-            TIME: curves.times,
-        },
-    )
+    def cube(
+        self, values: np.ndarray, lead: list[str], lead_coords: dict[str, Any]
+    ) -> xr.DataArray:
+        """``(*lead, n_cell, T)`` to a labelled ``(*lead, *panel, time)`` array."""
+        shape = [*values.shape[: len(lead)], self.fit.n_geos, self.fit.n_products, values.shape[-1]]
+        arr = values.reshape(shape)
+        dims = [*lead, GEO, PRODUCT, TIME]
+        da = xr.DataArray(arr, dims=dims, coords={**lead_coords, TIME: self.fit.times})
+        drop = [d for d in (GEO, PRODUCT) if d not in self.fit.panel]
+        da = da.isel({d: 0 for d in drop}, drop=True)
+        return da.assign_coords(self.panel_coords())
 
 
-def baseline_cube(curves: ChannelCurves, post: xr.Dataset, design: ControlDesign) -> xr.DataArray:
-    """``(sample, geo, time)`` KPI no channel explains (intercept + controls), model units."""
-    intercept = post["intercept"]
-    if GEO in intercept.coords:
-        intercept = intercept.sel({GEO: curves.geos})
-    base = np.asarray(intercept.transpose(SAMPLE, GEO).values, dtype=np.float64)
-    cube = np.broadcast_to(base[:, :, None], (*base.shape, curves.times.size)).copy()
-    if not design.empty:
-        gamma = post["gamma_control"].sel(control_feature=design.features)
-        g = np.asarray(gamma.transpose(SAMPLE, "control_feature").values, dtype=np.float64)
-        cube = cube + np.einsum("gtf,sf->sgt", design.values, g)
-    return xr.DataArray(
-        cube,
-        dims=[SAMPLE, GEO, TIME],
-        coords={SAMPLE: np.arange(cube.shape[0]), GEO: curves.geos, TIME: curves.times},
-    )
-
-
-def contributions_dataset(
-    curves: ChannelCurves,
-    post: xr.Dataset,
-    controls: Sequence[str],
-    design: ControlDesign,
-    to_original: ToOriginal | None,
-) -> xr.Dataset:
-    """Channel, baseline and control contributions over the fit window."""
-    geo_coords = {SAMPLE: np.arange(curves.n_samples), GEO: curves.geos, TIME: curves.times}
+def contributions_dataset(win: FitWindow, to_original: ToOriginal | None) -> xr.Dataset:
+    """Channel, baseline, trend, seasonality and control contributions over the window."""
+    comps = win.evaluate(1.0)
+    n = comps.baseline.shape[0]
+    sample = {SAMPLE: np.arange(n)}
     out: dict[str, xr.DataArray] = {}
-    channel = _cube(curves.contribution(1.0), curves).transpose(SAMPLE, CHANNEL, GEO, TIME)
-    out["channel_contribution"] = _convert(to_original, channel, "y")
-    intercept = post["intercept"]
-    if GEO in intercept.coords:
-        intercept = intercept.sel({GEO: curves.geos})
-    base = np.asarray(intercept.transpose(SAMPLE, GEO).values, dtype=np.float64)
-    base_cube = np.broadcast_to(base[:, :, None], (*base.shape, curves.times.size)).copy()
-    out[BASELINE] = _convert(
-        to_original, xr.DataArray(base_cube, dims=[SAMPLE, GEO, TIME], coords=geo_coords), "y"
+    ch = win.cube(comps.channel, [SAMPLE, CHANNEL], {**sample, CHANNEL: win.fit.channels})
+    out["channel_contribution"] = _convert(to_original, ch, "y", win)
+    out["baseline"] = _convert(to_original, win.cube(comps.baseline, [SAMPLE], sample), "y", win)
+    n_cell = comps.baseline.shape[1]
+    trend = np.broadcast_to(comps.trend[:, None, :], (n, n_cell, comps.trend.shape[1]))
+    season = np.broadcast_to(comps.seasonality[:, None, :], (n, n_cell, comps.seasonality.shape[1]))
+    out["trend"] = _convert(to_original, win.cube(np.asarray(trend), [SAMPLE], sample), "y", win)
+    out["seasonality"] = _convert(
+        to_original, win.cube(np.asarray(season), [SAMPLE], sample), "y", win
     )
-    if not design.empty:
-        gamma = post["gamma_control"].sel(control_feature=design.features)
-        g = np.asarray(gamma.transpose(SAMPLE, "control_feature").values, dtype=np.float64)
-        for name in controls:
-            block = design.blocks[name]
-            vals = np.einsum("gtf,sf->sgt", design.values[:, :, block], g[:, block])
-            label = name if name not in out else f"{name}_contribution"
-            out[label] = _convert(
-                to_original, xr.DataArray(vals, dims=[SAMPLE, GEO, TIME], coords=geo_coords), "y"
-            )
+    for k, name in enumerate(win.fit.controls.variables):
+        label = name if name not in out else f"{name}_contribution"
+        out[label] = _convert(
+            to_original, win.cube(comps.controls[:, k], [SAMPLE], sample), "y", win
+        )
     ds = xr.Dataset(out)
     ds.attrs = {"description": "Additive contributions over the fit window"}
     return ds
 
 
-def _spend_at(curves: ChannelCurves, multiplier: float) -> xr.DataArray:
-    lag0 = curves.x[..., 0] * multiplier  # lag 0 of the tensor is the period's own spend
-    return xr.DataArray(
-        lag0,
-        dims=[GEO, CHANNEL, TIME],
-        coords={GEO: curves.geos, CHANNEL: curves.channels, TIME: curves.times},
-    )
-
-
-def _scales(curves: ChannelCurves, to_original: ToOriginal | None) -> tuple[xr.DataArray, ...]:
-    """Original units per model unit: target ``(geo,)`` and spend ``(geo, channel)``."""
-    ones_y = xr.DataArray(
-        np.ones((curves.geos.size, curves.times.size)),
-        dims=[GEO, TIME],
-        coords={GEO: curves.geos, TIME: curves.times},
-    )
-    ones_x = xr.DataArray(
-        np.ones((curves.geos.size, curves.channels.size, curves.times.size)),
-        dims=[GEO, CHANNEL, TIME],
-        coords={GEO: curves.geos, CHANNEL: curves.channels, TIME: curves.times},
-    )
-    ty = _convert(to_original, ones_y, "y")
-    tx = _convert(to_original, ones_x, "spend")
-    target = ty.mean(TIME)
-    target.attrs = {**ty.attrs, "description": "original target units per model unit"}
-    spend = tx.mean(TIME)
-    spend.attrs = {**tx.attrs, "description": "original spend units per model unit"}
-    return target, spend
+def _by_geo(values: np.ndarray, fit: PanelData) -> np.ndarray:
+    """``(..., n_cell)`` summed over products to ``(..., G)``."""
+    return values.reshape(*values.shape[:-1], fit.n_geos, fit.n_products).sum(axis=-1)
 
 
 def response_curves_dataset(
-    curves: ChannelCurves,
+    win: FitWindow,
     grid: GridSettings,
     to_original: ToOriginal | None,
     *,
-    baseline: xr.DataArray | None = None,
+    multipliers: list[float] | None = None,
 ) -> xr.Dataset:
-    """Per-draw response grids (spend multiplier x channel x geo) over the fit window;
-    ``baseline`` (``(sample, geo, time)``, model units) adds the unexplained KPI."""
-    mults = np.asarray(grid.multipliers(), dtype=np.float64)
+    """Per-draw response grids (spend multiplier x channel [x geo]) over the fit window,
+    with the spend on each grid point and the baseline (see the module doc)."""
+    fit = win.fit
+    mults = np.asarray(multipliers if multipliers is not None else grid.multipliers(), dtype=float)
+    if 1.0 not in mults:
+        mults = np.sort(np.append(mults, 1.0))
+    per_geo = bool(fit.geos)
+    spend, _ = win.arrays()  # (T, n_cell, C)
+    base_cells = spend.sum(axis=0).T  # (C, n_cell)
     resp: list[np.ndarray] = []
-    spend: list[np.ndarray] = []
-    attrs_y: dict[str, Any] = {}
-    attrs_x: dict[str, Any] = {}
     for m in mults:
-        c = _convert(to_original, _cube(curves.contribution(float(m)), curves), "y")
-        attrs_y = dict(c.attrs)
-        resp.append(np.asarray(c.sum(TIME).transpose(SAMPLE, CHANNEL, GEO).values))
-        sp = _convert(to_original, _spend_at(curves, float(m)), "spend")
-        attrs_x = dict(sp.attrs)
-        spend.append(np.asarray(sp.sum(TIME).transpose(GEO, CHANNEL).values))
-    contribution = xr.DataArray(
-        np.stack(resp, axis=2),
-        dims=[SAMPLE, CHANNEL, "multiplier", GEO],
-        coords={
-            SAMPLE: np.arange(curves.n_samples),
-            CHANNEL: curves.channels,
-            "multiplier": mults,
-            GEO: curves.geos,
-        },
-        attrs={**attrs_y, "description": "total contribution over the fit window"},
-    )
-    by_geo = xr.DataArray(
-        np.stack(spend, axis=-1),
+        tot = win.channel_totals(float(m))  # (S, C, n_cell)
+        resp.append(_by_geo(tot, fit) if per_geo else tot.sum(axis=2))
+    n = resp[0].shape[0]
+    channels = list(fit.channels)
+    if per_geo:
+        contrib = np.stack(resp, axis=2)  # (S, C, M, G)
+        dims = [SAMPLE, CHANNEL, "multiplier", GEO]
+        coords: dict[str, Any] = {
+            SAMPLE: np.arange(n), CHANNEL: channels, "multiplier": mults,
+            GEO: np.asarray(fit.geos),
+        }  # fmt: skip
+    else:
+        contrib = np.stack(resp, axis=2)  # (S, C, M)
+        dims = [SAMPLE, CHANNEL, "multiplier"]
+        coords = {SAMPLE: np.arange(n), CHANNEL: channels, "multiplier": mults}
+    contribution = _convert(to_original, xr.DataArray(contrib, dims=dims, coords=coords), "y", win)
+    contribution.attrs["description"] = "total contribution over the fit window"
+    by_geo_spend = _by_geo(base_cells, fit)  # (C, G)
+    spend_by_geo = xr.DataArray(
+        by_geo_spend.T[:, :, None] * mults[None, None, :],
         dims=[GEO, CHANNEL, "multiplier"],
-        coords={GEO: curves.geos, CHANNEL: curves.channels, "multiplier": mults},
-        attrs={**attrs_x, "description": "total spend over the fit window"},
+        coords={GEO: np.asarray(fit.geos or ["__all__"]), CHANNEL: channels, "multiplier": mults},
     )
-    total = by_geo.sum(GEO)
-    total.attrs = dict(by_geo.attrs)
-    current = by_geo.sel(multiplier=1.0).sum(GEO).drop_vars("multiplier")  # always on the grid
-    current.attrs = dict(by_geo.attrs)
-    target_scale, spend_scale = _scales(curves, to_original)
+    spend_by_geo = _convert(to_original, spend_by_geo, "spend", win)
+    spend_by_geo.attrs["description"] = "total spend over the fit window"
+    total = spend_by_geo.sum(GEO)
+    total.attrs = dict(spend_by_geo.attrs)
+    current = spend_by_geo.sel(multiplier=1.0).sum(GEO).drop_vars("multiplier")
+    current.attrs = dict(spend_by_geo.attrs)
+    peak = xr.DataArray(
+        spend.max(axis=(0, 1)), dims=[CHANNEL], coords={CHANNEL: channels}
+    )  # largest single-cell, single-period spend
+    peak = _convert(to_original, peak, "spend", win)
+    peak.attrs["description"] = "largest spend of one cell in one period"
+    comps = win.evaluate(1.0)
+    base_cell = (
+        comps.baseline
+        + comps.trend[:, None, :]
+        + comps.seasonality[:, None, :]
+        + (comps.controls.sum(axis=1) if comps.controls.shape[1] else 0.0)
+    ).sum(axis=2)  # (S, n_cell)
     variables: dict[str, xr.DataArray] = {
         "contribution": contribution,
         "spend": total,
-        "spend_by_geo": by_geo,
         "current_spend": current,
-        "target_scale": target_scale,
-        "spend_scale": spend_scale,
+        "max_period_spend": peak,
     }
-    if baseline is not None:
-        base = _convert(to_original, baseline, "y").sum(TIME)
-        base_attrs = dict(base.attrs)
-        variables["baseline_by_geo"] = base.transpose(SAMPLE, GEO).assign_attrs(
-            {**base_attrs, "description": "KPI over the fit window that no channel explains"}
+    base_geo = _by_geo(base_cell, fit)  # (S, G)
+    if per_geo:
+        variables["spend_by_geo"] = spend_by_geo
+        bg = _convert(
+            to_original,
+            xr.DataArray(
+                base_geo,
+                dims=[SAMPLE, GEO],
+                coords={SAMPLE: np.arange(n), GEO: np.asarray(fit.geos)},
+            ),
+            "y",
+            win,
         )
-        variables["baseline"] = base.sum(GEO).assign_attrs(
-            {**base_attrs, "description": "KPI over the fit window that no channel explains"}
-        )
+        bg.attrs["description"] = "KPI over the fit window that no channel explains"
+        variables["baseline_by_geo"] = bg
+    base = _convert(
+        to_original,
+        xr.DataArray(base_geo.sum(axis=1), dims=[SAMPLE], coords={SAMPLE: np.arange(n)}),
+        "y",
+        win,
+    )
+    base.attrs["description"] = "KPI over the fit window that no channel explains"
+    variables["baseline"] = base
     ds = xr.Dataset(variables)
     ds.attrs = {
-        "periods": int(curves.times.size),
-        "description": "Response of the target to scaling each channel's spend over the "
-        "fit window, per thinned posterior draw",
+        "periods": int(fit.n_periods),
+        "cells": int(fit.n_cells),
+        "description": "Response of the KPI to scaling each channel's spend over the fit "
+        "window, per thinned posterior draw",
     }
     return ds
 
 
 def marginal_cost_dataset(
-    curves: ChannelCurves, grid: GridSettings, to_original: ToOriginal | None
+    win: FitWindow, grid: GridSettings, to_original: ToOriginal | None
 ) -> xr.Dataset:
     """Marginal cost and ROI at current spend (central difference of ``marginal_step``)."""
+    fit = win.fit
     h = grid.marginal_step
-    lo, hi = 1.0 - h, 1.0 + h
-    resp_lo = _convert(to_original, _cube(curves.contribution(lo), curves), "y").sum(TIME)
-    resp_hi = _convert(to_original, _cube(curves.contribution(hi), curves), "y").sum(TIME)
-    sp_lo = _convert(to_original, _spend_at(curves, lo), "spend").sum(TIME)
-    sp_hi = _convert(to_original, _spend_at(curves, hi), "spend").sum(TIME)
-    d_out = (resp_hi - resp_lo).transpose(SAMPLE, CHANNEL, GEO)
-    d_in = (sp_hi - sp_lo).transpose(CHANNEL, GEO)
+    lo = win.channel_totals(1.0 - h)  # (S, C, n_cell)
+    hi = win.channel_totals(1.0 + h)
+    spend, _ = win.arrays()
+    base = spend.sum(axis=0).T  # (C, n_cell)
+    per_geo = bool(fit.geos)
+    d_out = _by_geo(hi - lo, fit) if per_geo else (hi - lo).sum(axis=2)
+    d_in = (_by_geo(base, fit) if per_geo else base.sum(axis=1)) * 2 * h
+    channels = list(fit.channels)
+    n = d_out.shape[0]
+    if per_geo:
+        dims = [SAMPLE, CHANNEL, GEO]
+        coords: dict[str, Any] = {
+            SAMPLE: np.arange(n),
+            CHANNEL: channels,
+            GEO: np.asarray(fit.geos),
+        }
+        din = xr.DataArray(
+            d_in, dims=[CHANNEL, GEO], coords={CHANNEL: channels, GEO: np.asarray(fit.geos)}
+        )
+    else:
+        dims = [SAMPLE, CHANNEL]
+        coords = {SAMPLE: np.arange(n), CHANNEL: channels}
+        din = xr.DataArray(d_in, dims=[CHANNEL], coords={CHANNEL: channels})
+    dout = _convert(to_original, xr.DataArray(d_out, dims=dims, coords=coords), "y", win)
+    din = _convert(to_original, din, "spend", win)
     with np.errstate(divide="ignore", invalid="ignore"):
-        cost = xr.where(d_out > 0, d_in / d_out, np.nan)
-        roi = xr.where(d_in > 0, d_out / d_in, np.nan)
-        total_out = d_out.sum(GEO)
-        total_in = d_in.sum(GEO)
-        cost_total = xr.where(total_out > 0, total_in / total_out, np.nan)
-        roi_total = xr.where(total_in > 0, total_out / total_in, np.nan)
+        cost = xr.where(dout > 0, din / dout, np.nan)
+        roi = xr.where(din > 0, dout / din, np.nan)
+        if per_geo:
+            total_out = dout.sum(GEO)
+            total_in = din.sum(GEO)
+            cost_total = xr.where(total_out > 0, total_in / total_out, np.nan)
+            roi_total = xr.where(total_in > 0, total_out / total_in, np.nan)
+        else:
+            cost_total, roi_total = cost, roi
     ds = xr.Dataset(
         {
-            "marginal_cost": cost.transpose(SAMPLE, CHANNEL, GEO),
-            "marginal_roi": roi.transpose(SAMPLE, CHANNEL, GEO),
+            "marginal_cost": cost.transpose(*dims),
+            "marginal_roi": roi.transpose(*dims),
             "marginal_cost_total": cost_total.transpose(SAMPLE, CHANNEL),
             "marginal_roi_total": roi_total.transpose(SAMPLE, CHANNEL),
         }
     )
     for v in ds.data_vars:
-        ds[v].attrs = {"output_space": resp_lo.attrs.get("output_space", "model")}
-    ds["marginal_cost"].attrs["description"] = "extra spend per extra unit of the target"
-    ds["marginal_roi"].attrs["description"] = "extra target per extra unit of spend"
+        ds[v].attrs = {"output_space": dout.attrs.get("output_space", "model")}
+    ds["marginal_cost"].attrs["description"] = "extra spend per extra unit of the KPI"
+    ds["marginal_roi"].attrs["description"] = "extra KPI per extra unit of spend"
     ds.attrs = {"step": float(h), "description": "Marginal cost and ROI at current spend"}
     return ds

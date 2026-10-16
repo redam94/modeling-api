@@ -164,15 +164,15 @@ make e2e                                     # shell 2: about 25 minutes
 ```
 
 `make e2e` also runs the M2 tenancy suite and the M3 suites: the trust lifecycle and the
-whole Guided journey to an endpoint, webhooks, embeds, Atlas, export and deletion (see
+whole Guided journey to an endpoint, webhooks, embeds, budget optimisation, export and
+deletion (see
 [M3 verification](m3-verification.md)). Two settings make the deletion checks complete: start
 the stack with `MAPI_TENANT_DELETION_GRACE_S=0` (no grace period) and, on a fresh
 `MAPI_DATA_DIR`, `MAPI_BUNDLE_RETENTION_DAYS=0` (no retention lock on model bundles).
 Otherwise those checks stop where the platform waits and are skipped. Each run signs up two
 workspaces; the default sign-up limits (5 per address and hour, 25 per `dev.local` and day)
 allow two runs an hour, so raise `MAPI_SIGNUP_PER_IP_PER_HOUR` and
-`MAPI_SIGNUP_PER_DOMAIN_PER_DAY` on a stack you test repeatedly. The Atlas step uses
-Atlas itself when `ATLAS_DIR` (default `../optimizer-framework`) holds a checkout.
+`MAPI_SIGNUP_PER_DOMAIN_PER_DAY` on a stack you test repeatedly.
 
 Webhooks reach receivers on your machine: in the `dev` profile `make dev` writes a throwaway
 CA and a certificate for `127.0.0.1` and `localhost` to `$MAPI_DATA_DIR/dev/webhook-tls/`

@@ -157,10 +157,10 @@ path for the same spend.
 
 ## Models that own their preprocessing
 
-Some models do their own scaling or carry-over (pymc-marketing's `MMM` does both). They declare
+Some models do their own scaling or carry-over (the mmm-framework MMMs do both). They declare
 `owns: [scaling, carryover, inverse_units]` in their capabilities, the platform steps aside,
 and outputs are labelled as already in original units. See
-[the pymc-marketing adapter](../guides/mmm.md#the-pymc-marketing-adapter).
+[the mmm-framework models](../models/mmm-framework.md#what-the-data-looks-like).
 
 ## Recursion
 

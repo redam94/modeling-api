@@ -1,14 +1,13 @@
-"""Marketing-mix model plugins (hierarchical geo MMM, pymc-marketing adapter).
+"""Marketing-mix model plugins on mmm-framework (the platform's only MMM engine, v0.5).
 
-* :class:`~mapi_plugin_mmm.hierarchical_geo.HierarchicalGeoMMM` - ``mmm.hierarchical_geo``,
-  the E33 hierarchical geo MMM (PyMC);
-* :class:`~mapi_plugin_mmm.pymc_marketing.PyMCMarketingMMM` - ``mmm.pymc_marketing``, an
-  adapter around ``pymc_marketing.mmm.MMM`` that owns scaling, carry-over and units;
+* :class:`~mapi_plugin_mmm.bayesian.MMMBayesian` - ``mmm.bayesian``, mmm-framework's
+  ``BayesianMMM`` (national, or hierarchical over geos and products);
+* :class:`~mapi_plugin_mmm.frequentist.MMMFrequentist` - ``mmm.frequentist``, its ridge
+  estimator with bootstrap intervals.
 
-v0.5 removed ``mmm.bayesinsight``: mmm-framework becomes the only MMM engine.
-
-All are registered through the ``mapi.models`` entry point (``mapi_plugin_mmm.plugins``).
-Attributes are imported lazily, so ``import mapi_plugin_mmm`` stays cheap.
+Both are registered through the ``mapi.models`` entry point (``mapi_plugin_mmm.plugins``).
+Attributes are imported lazily, so ``import mapi_plugin_mmm`` stays cheap (mmm-framework
+is only imported when a model is built).
 """
 
 from __future__ import annotations
@@ -18,16 +17,16 @@ from typing import TYPE_CHECKING, Any
 
 __version__ = "0.4.0"
 
-__all__ = ["PLUGINS", "HierarchicalGeoMMM", "PyMCMarketingMMM", "__version__"]
+__all__ = ["PLUGINS", "MMMBayesian", "MMMFrequentist", "__version__"]
 
 if TYPE_CHECKING:
-    from mapi_plugin_mmm.hierarchical_geo import HierarchicalGeoMMM
+    from mapi_plugin_mmm.bayesian import MMMBayesian
+    from mapi_plugin_mmm.frequentist import MMMFrequentist
     from mapi_plugin_mmm.plugins import PLUGINS
-    from mapi_plugin_mmm.pymc_marketing import PyMCMarketingMMM
 
 _LAZY = {
-    "HierarchicalGeoMMM": "mapi_plugin_mmm.hierarchical_geo",
-    "PyMCMarketingMMM": "mapi_plugin_mmm.pymc_marketing",
+    "MMMBayesian": "mapi_plugin_mmm.bayesian",
+    "MMMFrequentist": "mapi_plugin_mmm.frequentist",
     "PLUGINS": "mapi_plugin_mmm.plugins",
 }
 

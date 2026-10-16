@@ -31,7 +31,7 @@ FIXTURES: list[str] = [
     "xgb_store_demand",
     "sklearn_store_demand",
     "e33",
-    "pymc_marketing",
+    "mmm_frequentist",
     "e84_lite",
     "guided_mmm",
 ]
