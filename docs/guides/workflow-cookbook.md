@@ -84,20 +84,72 @@ Three details worth copying into your own workflows:
 with an expanding-window backtest) under your name and project; save the document above as
 `weekly-readiness.yaml` instead to get the rolling origin and the evidence pack. `--watch`
 shows every node's status as the run goes (redrawn in place on a terminal, one line per change
-in a log) and the summary at the end:
+in a log) and the summary at the end. This is a real run on a local stack, the second on this
+data: the unit-root tests, the holdout split and the fit had not changed since the first run,
+so they were **reused from its cache** rather than recomputed (shortened):
 
 ```text
-following workflow run run_01m53… (23 nodes)
-  adf running
-  adf succeeded
+started workflow run run_01m53hawnnyn7cyeptj70cxkk0 of workflow://growth/weekly-readiness
+following workflow run run_01m53hawnnyn7cyeptj70cxkk0 (23 nodes)
+  run started
+  adf cached
+  kpss cached
+  pp cached
+  za cached
+  seas cached
+  folds queued
+  holdout cached
   wanders took the then arm
   seasonal took the else arm
   sdiff skipped: branch 'seasonal' took the else path
   …
+  backtest succeeded
+  compare succeeded
+  select succeeded
+  dm succeeded
   governance succeeded
   trusted took the then arm
+  pack succeeded
   run succeeded
+
+ node       ┃ kind       ┃ status      ┃ took  ┃ found
+━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ adf        │ test       │ ✓ cached    │ 0.0s  │ The series wanders: consider differencing it. (cached
+            │            │             │       │ from run_01m53h6m9np4gtfzvrkwrr4bh9)
+ za         │ test       │ ✓ cached    │ 0.0s  │ The series wanders even allowing for one break:
+            │            │             │       │ consider differencing it. (cached from …)
+ seas       │ test       │ ✓ cached    │ 0.0s  │ No clear repeating pattern was found. (cached from …)
+ wanders    │ branch     │ ✓ succeeded │ 0.0s  │ took the then arm
+ order      │ search     │ ✓ succeeded │ 22.9s │ {"best_p": 1, "best_q": 1}
+ sdiff      │ transform  │ – skipped   │ 0.0s  │ branch 'seasonal' took the else path
+ dm         │ compare    │ ✓ succeeded │ 18.7s │ The difference between backtest and naive at
+            │            │             │       │ horizon 1 may be luck.
+ acf        │ test       │ ✓ succeeded │ 13.4s │ No past period is related to the present beyond
+            │            │             │       │ chance.
+ select     │ select     │ ✓ succeeded │ 0.0s  │ backtest has the best average error (1.78) and beats
+            │            │             │       │ every benchmark (the strongest, naiv…
+ governance │ governance │ ✓ succeeded │ 48.5s │ Every blocking check passed (7 check(s) ran);
+            │            │             │       │ warnings on null.permutation_target, stabil…
+ …
+Decisions
+ branch   ┃ arm  ┃ condition                                   ┃ read
+━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ wanders  │ then │ (not nodes.adf.reject or nodes.kpss.reject) │ {"nodes.pp.reject": false,
+          │      │ and not (nodes.pp.reject and                │ "nodes.za.reject": false,
+          │      │ nodes.za.reject)                            │ "nodes.adf.reject": false,
+          │      │                                             │ "nodes.kpss.reject": true}
+ seasonal │ else │ nodes.seas.seasonal                         │ {"nodes.seas.seasonal": false}
+ trusted  │ then │ nodes.governance.passed                     │ {"nodes.governance.passed": true}
+Outputs
+ output   ┃ type          ┃ where
+━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ model    │ model_version │ model://growth/wf-weekly-readiness-fit@v1
+ …
 ```
+
+The whole run took 1.6 minutes on a laptop; the live board goes to standard error and the
+summary to standard output, so `mapi workflows run … --watch > summary.txt` keeps only the
+summary.
 
 Then inspect, download and automate:
 
@@ -136,23 +188,37 @@ The governance node measured the selected model against the policy in force and,
 --8<-- "client_v05.py:governance"
 ```
 
+What it printed on a live local stack (the walkthrough's first run on this data):
+
 ```text
+passed
 validated
 data.quality                 pass    No data problems found (156 periods of history).
 convergence                  pass    The fit reported no convergence problems.
 baseline.beats_naive         pass    On the 13 held-out periods the model's error is 25% lower than 'same as last period' (the strongest simple benchmark).
 holdout.accuracy             pass    On data it was not fitted on, the model's average percentage error is 1.8% (limit 15%).
 residuals.whiteness          pass    No pattern is left in the errors (Ljung-Box p = 0.39 at 10 lags).
-null.permutation_target      warn    1 of 20 fits on shuffled results did as well as the real model (p = 0.095): it may be fitting noise rather than signal.
+null.permutation_target      fail    2 of 20 fits on shuffled results did as well as the real model (p = 0.143): it may be fitting noise rather than signal.
 stability.rolling_params     fail    ar.L1 changes a lot across windows of history (variation 1205%): the relationship may not be stable over time.
 ```
 
 Read it like a reviewer would: the model beats naive by 25% on unseen weeks and leaves no
-pattern in its errors, but one shuffled fit in twenty did as well, and the AR coefficient is
-not stable across windows. The default forecasting policy treats stability as information and
-the permutation test as a warning, so the version is `validated`; a stricter policy (see
-[governance](governance.md)) would ask for more history or a simpler model. That is the point:
-the evidence is written down, and the decision is explicit.
+pattern in its errors, but two shuffled fits in twenty did as well, and the AR coefficient is
+not stable across windows. Two checks *failed* and the version is still `validated`, because
+a check's status and its severity are different things: the default forecasting policy holds
+the shuffled-result test at *warning* and stability at *information*, so neither blocks; both
+are on the record for the reviewer and in the evidence pack. A stricter policy (see
+[governance](governance.md)) makes them blocking, and this model would then need more history
+or a simpler specification. That is the point: the evidence is written down, and the decision
+is explicit.
+
+!!! note "Why a random walk is hard for the shuffle test"
+    The shuffled-result test permutes the series in blocks of about a twentieth of its
+    history. For a model that differences the series, those blocks keep most of the
+    persistence the model exploits, so shuffled fits forecast nearly as well, and most of the
+    skill on a random walk *is* persistence. The test is right to warn; to measure what the
+    drivers add, require `null.placebo_time_shift` or `null.noise_regressors` as well
+    ([null tests explained](null-tests.md)).
 
 Finally, keep it current:
 

@@ -89,7 +89,7 @@ result = api.models.score(
 )
 print(result.run.state.value, [link.name for link in result.outputs])
 summary = result.tree["summary"]  # an xr.DataTree (needs the `xarray` extra)
-print(result.tree.attrs["output_space"])  # {"y_hat": "weekly", ...}: weekly EUR, inverted
+print(result.tree.attrs["output_space"])  # {"y_hat": "model-owned", ...}: weekly EUR
 print(summary["y_hat"].sel(stat="mean", market="NL").round(0).values)
 # --8<-- [end:score]
 
