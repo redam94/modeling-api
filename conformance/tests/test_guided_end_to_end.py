@@ -17,6 +17,7 @@ import pytest
 from mapi_plugin_tabular.datasets import CHOICE_TRUTH
 from mapi_runner.jobs import IngestJob
 from mapi_runner.worker.ingest import build_dataset
+from mapi_runner.worker.scorecard import fit_scorecard
 from mapi_runner.worker.tabular import IngestLimits, column_profiles, read_table
 from mapi_sdk.harness import fit_spec
 from mapi_sdk.registry import Registry, default_registry
@@ -134,6 +135,11 @@ def test_the_choice_draft_fits(tmp_path: Path, registry: Registry) -> None:
     beta = bundle.model.posterior["beta"].mean().item()
     assert beta < 0  # price lowers the choice probability
     assert bundle.evaluation is not None  # evaluate, then refit on everything
+    # the template's scorecard: the holdout hit rate against always guessing one product
+    assert {"accuracy", "accuracy_naive", "log_score", "brier"} <= set(bundle.metrics.values)
+    card = fit_scorecard(bundle, ds)
+    [item] = card.items
+    assert item.check == "holdout.hit_rate" and item.message_plain
 
 
 def test_the_imported_bayesinsight_model_fits(registry: Registry) -> None:
