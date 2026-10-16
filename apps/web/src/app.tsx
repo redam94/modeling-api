@@ -1,11 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { ApiError } from "./api/client";
 import { TooltipProvider } from "./components/ui/overlays";
 import { WorkspaceGate } from "./features/auth/gate";
+import { publicPathOf } from "./features/trust/public-paths";
 import { createAppRouter } from "./router";
+
+// Sign-up and the e-mail link's landing page work without a session (their own chunk).
+const PublicApp = lazy(() => import("./features/trust/public-pages").then((m) => ({ default: m.PublicApp })));
 
 export function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -23,6 +27,14 @@ export function createQueryClient(): QueryClient {
 
 export function App({ queryClient }: { queryClient: QueryClient }) {
   const [router] = useState(() => createAppRouter(queryClient));
+  const [publicPath] = useState(() => (typeof window === "undefined" ? null : publicPathOf(window.location.pathname)));
+  if (publicPath) {
+    return (
+      <Suspense fallback={null}>
+        <PublicApp path={publicPath} />
+      </Suspense>
+    );
+  }
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delayDuration={300}>

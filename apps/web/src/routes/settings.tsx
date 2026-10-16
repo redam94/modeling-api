@@ -5,6 +5,7 @@ import { useReady } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/features/auth/gate";
 import { useWorkspace } from "@/features/auth/workspace";
+import { DataSettings } from "@/features/trust/data-settings";
 import { KeyValues, Mono, PageHeader } from "@/components/common";
 import { SegmentedControl } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/primitives";
@@ -130,6 +131,7 @@ export function SettingsPage() {
             />
           </CardContent>
         </Card>
+        {ws.mode === "session" && ws.current?.tenantRole === "admin" ? <DataSettings tenant={ws.current.tenant} /> : null}
       </div>
     </>
   );

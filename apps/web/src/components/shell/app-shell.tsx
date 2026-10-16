@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { AlertTriangle, LogIn, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
+import { LogIn, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { useReady } from "@/api/queries";
@@ -18,6 +18,7 @@ import {
 import { Kbd } from "@/components/ui/primitives";
 import { Logo, NoProjectScreen } from "@/features/auth/gate";
 import { useWorkspace } from "@/features/auth/workspace";
+import { TenantStatusBanner } from "@/features/trust/tenant-banner";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { useApplyTheme } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
@@ -159,24 +160,6 @@ function SignedOutBanner() {
       <Button size="sm" variant="outline" className="h-7" onClick={() => signIn()}>
         Sign in again
       </Button>
-    </div>
-  );
-}
-
-function TenantStatusBanner() {
-  const ws = useWorkspace();
-  const t = ws.current?.tenant;
-  if (!t || !t.status || t.status === "active") return null;
-  return (
-    <div role="status" className="flex items-start gap-2 border-b border-warning/35 bg-warning/10 px-4 py-2 text-[13px] md:px-6">
-      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
-      <p>
-        <span className="font-medium">{t.name} is {t.status === "suspended" ? "suspended" : "being deleted"}.</span>{" "}
-        <span className="text-muted-foreground">
-          {t.status === "suspended" ? "Everything is read-only: nothing can be changed or run." : "Nothing can be changed."}
-          {t.status_reason ? ` Reason: ${t.status_reason}` : ""}
-        </span>
-      </p>
     </div>
   );
 }

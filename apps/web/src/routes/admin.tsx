@@ -1,6 +1,7 @@
 /**
  * Operator console (`/v1/admin/*`): tenants and trust tiers, quota policies, kill switches
- * (with spend against the global cap), cost by tenant, executor health and the audit log. Operators see metadata only, never tenant content, and
+ * (with spend against the global cap), cost by tenant, executor health, the audit log and (v0.4) the sign-up review
+ * queue, identity verification and tenant deletions. Operators see metadata only, never tenant content, and
  * every change is audited server-side. Destructive switches need a typed confirmation.
  */
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
@@ -22,6 +23,7 @@ import {
   ShieldCheck,
   ShieldOff,
   Trash2,
+  UserCheck,
   XCircle,
 } from "lucide-react";
 import { Fragment, useMemo, useState, type FormEvent, type ReactNode } from "react";
@@ -78,6 +80,7 @@ import {
 } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, NativeSelect, Textarea } from "@/components/ui/primitives";
 import { useWorkspace } from "@/features/auth/workspace";
+import { SignupsTab, TenantTrustDialog } from "@/features/trust/admin-trust";
 import { formatMicros, formatVcpuSeconds, MICROS_PER_UNIT } from "@/lib/cost";
 import { absoluteTime, formatBytes, relativeTime } from "@/lib/format";
 import { periodKey, periodLabel, periodStart, shiftPeriod } from "@/lib/period";
@@ -102,6 +105,7 @@ const STATUS_VARIANT: Record<TenantStatus, "success" | "warning" | "danger"> = {
 
 const TAB_META: Record<AdminTab, { label: string; icon: ReactNode }> = {
   tenants: { label: "Tenants", icon: <Building2 /> },
+  signups: { label: "Sign-ups", icon: <UserCheck /> },
   quotas: { label: "Quotas", icon: <Gauge /> },
   "kill-switches": { label: "Kill switches", icon: <Power /> },
   cost: { label: "Cost", icon: <Receipt /> },
@@ -146,6 +150,9 @@ export function AdminPage() {
         <TabsContent value="tenants">
           <TenantsTab />
         </TabsContent>
+        <TabsContent value="signups">
+          <SignupsTab />
+        </TabsContent>
         <TabsContent value="quotas">
           <QuotasTab />
         </TabsContent>
@@ -162,8 +169,9 @@ export function AdminPage() {
           <AuditTab />
         </TabsContent>
         <TabsContent value="promotions">
-          <EmptyState icon={<ListChecks />} title="No promotions waiting">
-            Endpoint promotions gated on the sanity scorecard arrive with endpoints and aliases in v0.4. Requests to promote a model version to an endpoint will queue here for review.
+          <EmptyState icon={<ListChecks />} title="No promotion queue">
+            Endpoint promotions are decided at once by the sanity-scorecard gate in each project (Integrations → Endpoints): passing versions are promoted, warnings need a
+            project admin&apos;s audited override, failures are blocked. Overrides appear in the audit log as endpoint.promote_override.
           </EmptyState>
         </TabsContent>
       </Tabs>
@@ -179,6 +187,7 @@ function TenantsTab() {
   const tenants = useAdminTenants({ ...(status ? { status } : {}), ...(tier ? { trust_tier: tier } : {}) });
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Tenant | null>(null);
+  const [trust, setTrust] = useState<Tenant | null>(null);
   const columns = useMemo<ColumnDef<Tenant, unknown>[]>(
     () => [
       {
@@ -222,9 +231,14 @@ function TenantsTab() {
         header: () => <span className="sr-only">Actions</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <Button variant="ghost" size="sm" onClick={() => setEditing(row.original)} aria-label={`Edit ${row.original.name}`}>
-            <Pencil /> Edit
-          </Button>
+          <span className="flex justify-end gap-1">
+            <Button variant="ghost" size="sm" onClick={() => setTrust(row.original)} aria-label={`Trust and deletion of ${row.original.name}`}>
+              <ShieldCheck /> Trust
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setEditing(row.original)} aria-label={`Edit ${row.original.name}`}>
+              <Pencil /> Edit
+            </Button>
+          </span>
         ),
       },
     ],
@@ -258,6 +272,7 @@ function TenantsTab() {
       </QueryView>
       {creating ? <CreateTenantDialog onClose={() => setCreating(false)} /> : null}
       {editing ? <EditTenantDialog tenant={editing} onClose={() => setEditing(null)} /> : null}
+      {trust ? <TenantTrustDialog tenant={trust} onClose={() => setTrust(null)} /> : null}
     </div>
   );
 }
