@@ -79,6 +79,7 @@ fmt: ## Auto-format Python code
 # Packages checked with ``mypy --strict`` one at a time (per-package strictness is part of
 # their contract: e.g. untyped third-party calls need explicit ignores only under --strict).
 STRICT_PY := packages/spec/src packages/gcs-shim/src packages/runner/src packages/server/src \
+	packages/workflows/src \
 	packages/client/src packages/cli/src
 
 .PHONY: typecheck

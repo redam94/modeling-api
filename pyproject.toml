@@ -78,7 +78,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.importlinter]
-root_packages = ["mapi_server", "mapi_spec", "mapi_plots", "mapi_runner"]
+root_packages = ["mapi_server", "mapi_spec", "mapi_plots", "mapi_runner", "mapi_workflows"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
@@ -89,7 +89,8 @@ forbidden_modules = [
   "mapi_sdk", "mapi_runner", "mapi_pymc", "mapi_sklearn", "mapi_steps",
   "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular",
   "mapi_plots.recipes", "mapi_plots.packs",
-  "numpy", "xarray", "pandas", "pyarrow", "zarr",
+  "mapi_workflows.runtime", "mapi_workflows.testing",
+  "numpy", "xarray", "pandas", "pyarrow", "zarr", "scipy", "statsmodels",
 ]
 
 [[tool.importlinter.contracts]]
@@ -115,5 +116,18 @@ source_modules = [
 forbidden_modules = [
   "mapi_runner.worker", "mapi_runner.testing", "mapi_sdk", "mapi_pymc", "mapi_sklearn",
   "mapi_steps", "mapi_plots", "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular",
+  "mapi_workflows",
   "numpy", "xarray", "pandas",
+]
+
+[[tool.importlinter.contracts]]
+name = "The workflow engine core is JSON-only (control-plane safe)"
+type = "forbidden"
+source_modules = [
+  "mapi_workflows.engine", "mapi_workflows.orchestrator", "mapi_workflows.payloads",
+  "mapi_workflows.binding", "mapi_workflows.reference",
+]
+forbidden_modules = [
+  "mapi_workflows.runtime", "mapi_workflows.testing", "mapi_sdk", "mapi_steps",
+  "numpy", "xarray", "pandas", "scipy", "statsmodels",
 ]
