@@ -415,6 +415,11 @@ def generate(out: Path = OUT, *, only: Iterable[str] | None = None) -> list[Path
             text = json.dumps(schema, indent=2, sort_keys=True) + "\n"
             if _write(out / "schemas" / name, text):
                 changed.append(out / "schemas" / name)
+        # schemas of DTOs that no longer exist would still be served: remove them
+        for stale in sorted((out / "schemas").glob("*.json")):
+            if stale.name not in schemas:
+                stale.unlink()
+                changed.append(stale)
     return changed
 
 

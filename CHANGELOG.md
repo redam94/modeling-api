@@ -145,6 +145,50 @@ milestone releases are tagged on `main`.
 - **docs**: guides "Validate models with governance policies", "Explore a dataset" and
   "Explore a model".
 
+- **integration** (M3.5 parts working together):
+  - Workflow model nodes fit the real models: `mapi_workflows.testing.test_registry()`
+    registers the statsmodels plugin (extra `mapi-workflows[testing]`), and the canonical
+    readiness -> ARIMAX workflow runs end to end on the real `ts.sarimax` (in-process,
+    through the server and on the real runner). Model nodes bind a model's target, other
+    roles, time dim and categorical dims (a panel's `geo`, a multivariate model's
+    `variable`) to the data automatically, and rewrite carried transform steps and holdout
+    splits in the model's names. Multivariate nodes read the series along the data's
+    series dimension (the layout of `ts.var`/`ts.vecm`); `test.vif` expands a channel
+    dimension into columns. The `mmm_governed` template fits `mmm.bayesian` on a geo panel.
+  - Governance inside workflows: `mapi-runner` exports every governance check as a
+    workflow check runner (entry point `mapi.governance_checks`), so `governance.policy` and
+    `governance.check` nodes measure models with the same family-aware implementations as
+    a validation request. In the server the policies in force come from the policy store,
+    and `submit: true` on a passing node records the evidence as a validation
+    (`validated`, or `awaiting_approval` when a policy wants a reviewer).
+  - Checks and explorers on every family (statsmodels, mmm-framework Bayesian and
+    frequentist, PyMC time series, tabular, scikit-learn, choice), tested on every
+    conformance fixture: the Model Explorer prefers a plugin's own views
+    (`explorer_views`, e.g. the statsmodels IRF/FEVD and test tables); predictions are
+    compared with the observed target at the model's stage (pipelines that resample or
+    convert currencies); score requests name the spec's supplied side tables.
+  - Catalog About cards and *Help me choose* are served: `GET /v1/catalog/abouts`,
+    `GET /v1/catalog/chooser` and `GET /v1/catalog/recommendations`; every operation of
+    the endpoint table is now served. About cards for the five scikit-learn models; a test
+    holds every selectable item of the installed catalog (models, steps, splits, guided and
+    workflow templates, workflow node kinds and nodes, governance checks) to a complete
+    card.
+  - Images assert the workflow runtime, statsmodels and scipy in the runner images (JAX
+    with mmm-framework in `base-bayes`) and the JSON-only workflow engine in the server
+    image; `packages/sdk` joins the strict mypy list.
+
+### Changed
+- **workflows**: the `var_vecm_cointegration` template (and `test.johansen`,
+  `search.var_lag_order`, `search.coint_rank`) take the series along the data's series
+  dimension; `vars` is optional (labels or variable names) and the template's `series`
+  parameter was dropped.
+- **governance**: whiteness leaves out the start-up residuals of differencing; driver
+  effects fall back to the coefficient for models whose in-sample predictions follow the
+  stored history (statsmodels); recovery is skipped for autoregressive models; parameter
+  stability is relative to the estimate's own uncertainty near zero and tolerates windows
+  the model cannot be refitted on; checks that compare numeric predictions skip choice
+  models instead of failing.
+
 ### Removed
 - **spec**: BayesInsight (`mapi_spec.bayesinsight`, `mapi_spec.bayesinsight_model`, the
   `bayesinsight` ingest preset with `BayesInsightMetadata`/`BayesInsightModelDef`,
