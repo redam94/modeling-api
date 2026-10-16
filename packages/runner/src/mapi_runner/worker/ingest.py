@@ -1,34 +1,60 @@
 """``ingest``: an uploaded file becomes a validated, content-addressed dataset version.
 
-Inputs: ``upload`` (CSV, Parquet, ``*.zarr.zip`` or netCDF). Outputs::
+Inputs: ``upload`` (CSV - optionally gzip-compressed -, Parquet, ``*.zarr.zip`` or netCDF).
+Outputs::
 
     data.zarr.zip   the dataset (zarr v3 zip; root attr ``mapi_schema`` holds the schema)
     schema.json     its DataSchema
     profile.json    sha256 + size of data.zarr.zip, coordinate summary, per-variable stats,
                     plain-language validation issues
     preview.json    the first rows as a tidy table
+    columns.json    one ColumnProfile per column of the uploaded table (tabular uploads;
+                    MFF: per pivoted VariableName) - what Guided role detection reads
 
-Tabular uploads map columns to dims and variables (:class:`~mapi_spec.api.IngestMapping`,
-Meridian ``CoordToColumns`` style) or use the MFF preset (long ``VariableName`` /
-``VariableValue`` rows). Every byte of user data is parsed here, in the sandbox.
+Tabular uploads map columns to dims and variables (:class:`~mapi_spec.ingest.IngestMapping`,
+Meridian ``CoordToColumns`` style), with **wide** variables gathered from one column per
+label of a new dim, or use a preset:
+
+* ``mff`` - the long ``Period`` / key columns / ``VariableName`` / ``VariableValue`` table
+  is pivoted to one column per variable; key columns with several values become dims, and
+  ``MffOptions.combine`` joins key columns into one dim. An explicit mapping then picks and
+  renames variables (and may gather them into wide variables) exactly as for a CSV;
+* ``bayesinsight`` - an MFF table restricted to what BayesInsight's ``metadata.json``
+  allows (``allowed_*`` key values, ``start_period``/``end_period``);
+* ``meridian`` - Google Meridian's column contract on a wide CSV/Parquet table.
+
+Every byte of user data is parsed here, in the sandbox, under the caps of
+:class:`~mapi_runner.worker.tabular.IngestLimits`.
 """
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 import math
 import warnings
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
 import xarray as xr
-from mapi_sdk.errors import WireFormatError
+from mapi_sdk.errors import PayloadLimitError, WireFormatError
 from mapi_sdk.schema import data_summary, infer_freq, infer_schema, validate_dataset
-from mapi_sdk.wire import read_zarr_zip, write_zarr_zip
-from mapi_spec.api import IngestMapping
+from mapi_sdk.wire import WireLimits, read_zarr_zip, write_zarr_zip
 from mapi_spec.errors import ErrorCode, MapiError, Severity
+from mapi_spec.guided import ColumnProfile, safe_name
+from mapi_spec.ingest import (
+    COMBINE_SEPARATOR,
+    MFF_COLUMNS,
+    BayesInsightMetadata,
+    DimMapping,
+    IngestMapping,
+    IngestPreset,
+    VarMapping,
+    WideVarMapping,
+)
 from mapi_spec.run import INPUT_DATASET, RunnerPhase
 from mapi_spec.schema import DataSchema, DimPolicy, DimSpec, Role
 from mapi_spec.views import (
@@ -44,49 +70,81 @@ from mapi_spec.views import (
 from mapi_runner.jobs import INGEST_DATA, INGEST_SCHEMA, INPUT_UPLOAD, IngestJob, MffOptions
 from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.data import SCHEMA_ATTR
+from mapi_runner.worker.tabular import (
+    HDF5_MAGIC,
+    IngestLimits,
+    check_zip_archive,
+    column_profiles,
+    problem,
+    read_table,
+    sniff,
+    write_profiles,
+)
 
-__all__ = ["dataset_from_mff", "dataset_from_table", "run_ingest"]
+__all__ = [
+    "INGEST_COLUMNS",
+    "dataset_from_meridian",
+    "dataset_from_mff",
+    "dataset_from_table",
+    "mff_table",
+    "run_ingest",
+]
 
-_PARQUET_MAGIC = b"PAR1"
-_HDF5_MAGIC = b"\x89HDF\r\n\x1a\n"
-_ZIP_MAGIC = b"PK\x03\x04"
+INGEST_COLUMNS = "columns.json"
+_UNLIMITED = IngestLimits()
 
 
 def _schema_error(message: str, pointer: str = "", **kw: Any) -> MapiError:
-    return MapiError(message, code=ErrorCode.SCHEMA_INVALID, pointer=pointer, **kw)
+    action = kw.pop("action", None)
+    untrusted = kw.pop("untrusted_text", None)
+    return problem(
+        ErrorCode.SCHEMA_INVALID, message, pointer=pointer, action=action, untrusted=untrusted
+    )
+
+
+def _missing_column(column: str, what: str, pointer: str, columns: list[str]) -> MapiError:
+    close = difflib.get_close_matches(column, columns, n=3, cutoff=0.6)
+    hint = (
+        f"Did you mean {', '.join(repr(c[:64]) for c in close)}?"
+        if close
+        else ("Check the spelling, or pick one of the upload's columns.")
+    )
+    return _schema_error(
+        f"column {column[:64]!r} ({what}) is not in the upload", pointer, action=hint
+    )
 
 
 # ======================================================================== tabular readers
 
 
-def _read_table(path: Path, fmt: str, *, max_rows: int) -> pd.DataFrame:
-    try:
-        if fmt == "parquet":
-            df = pd.read_parquet(path)
-        else:
-            df = pd.read_csv(path, nrows=max_rows + 1, low_memory=False)
-    except (ValueError, OSError, pd.errors.ParserError, UnicodeDecodeError) as exc:
-        raise _schema_error(
-            f"the upload is not a readable {fmt} file", untrusted_text=str(exc)[:4000]
-        ) from None
-    if len(df) > max_rows:
-        raise MapiError(
-            f"the upload has more than {max_rows} rows", code=ErrorCode.PAYLOAD_TOO_LARGE
+def _read_table(
+    path: Path, fmt: str, *, max_rows: int, limits: IngestLimits | None = None
+) -> pd.DataFrame:
+    """Parse a CSV or Parquet upload (kept for callers of v0.2; see :func:`read_table`)."""
+    lim = limits or IngestLimits(max_rows=max_rows)
+    if lim.max_rows != max_rows:
+        lim = IngestLimits(
+            max_rows=max_rows,
+            max_columns=lim.max_columns,
+            max_cell_chars=lim.max_cell_chars,
+            max_decompression_ratio=lim.max_decompression_ratio,
+            max_uncompressed_bytes=lim.max_uncompressed_bytes,
+            ratio_floor_bytes=lim.ratio_floor_bytes,
         )
-    df.columns = [str(c).strip() for c in df.columns]
-    return df
+    return read_table(path, fmt, lim)
 
 
 def _sniff(path: Path) -> str:
-    with open(path, "rb") as fh:
-        head = fh.read(8)
-    if head.startswith(_PARQUET_MAGIC):
-        return "parquet"
-    if head.startswith(_ZIP_MAGIC):
-        return "zarr_zip"
-    if head.startswith(_HDF5_MAGIC) or head.startswith(b"CDF"):
-        return "netcdf"
-    return "csv"
+    kind = sniff(path)
+    return kind if kind in ("parquet", "zarr_zip", "netcdf") else "csv"
+
+
+def _empty_labels(series: pd.Series, n: int, pointer: str) -> MapiError:
+    return _schema_error(
+        f"dim column {str(series.name)[:64]!r} has empty labels ({n} rows)",
+        pointer,
+        action="Fill in the label in every row, or remove rows without one.",
+    )
 
 
 def _coerce_dim(series: pd.Series, spec: DimSpec, pointer: str) -> pd.Series:
@@ -94,20 +152,36 @@ def _coerce_dim(series: pd.Series, spec: DimSpec, pointer: str) -> pd.Series:
         if spec.kind == "time":
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)
-                return pd.to_datetime(series, errors="raise")
-        if spec.kind in ("integer", "index"):
-            return pd.to_numeric(series, errors="raise").astype("int64")
-        if spec.kind == "float":
-            return pd.to_numeric(series, errors="raise").astype("float64")
-    except (ValueError, TypeError) as exc:
+                out = pd.to_datetime(series, errors="raise")
+            if out.isna().any():
+                raise _empty_labels(series, int(out.isna().sum()), pointer)
+            return out
+        if spec.kind in ("integer", "index", "float"):
+            num = pd.to_numeric(series, errors="raise")
+            if num.isna().any():
+                raise _empty_labels(series, int(num.isna().sum()), pointer)
+            if spec.kind == "float":
+                return num.astype("float64")
+            if not np.all(np.isclose(num % 1, 0)):
+                raise ValueError("not whole numbers")
+            return num.astype("int64")
+    except (ValueError, TypeError, OverflowError) as exc:
+        hint = {
+            "time": "Use one date format for the whole column, such as 2026-01-31.",
+            "integer": "Use whole numbers (1, 2, 3) in this column.",
+            "index": "Use whole numbers (1, 2, 3) in this column.",
+            "float": "Use numbers in this column.",
+        }[spec.kind]
         raise _schema_error(
-            f"column {series.name!r} cannot be read as a {spec.kind} dim",
+            f"column {str(series.name)[:64]!r} cannot be read as a {spec.kind} dim",
             pointer,
+            action=hint,
             untrusted_text=str(exc)[:2000],
         ) from None
-    if series.isna().any():
-        raise _schema_error(f"dim column {series.name!r} has empty labels", pointer)
-    return series.astype(str)
+    blank = series.isna() | (series.astype(str).str.strip() == "")
+    if blank.any():
+        raise _empty_labels(series, int(blank.sum()), pointer)
+    return series.astype(str).str.strip()
 
 
 def _coerce_var(series: pd.Series) -> pd.Series:
@@ -123,6 +197,35 @@ def _coerce_var(series: pd.Series) -> pd.Series:
     return series.fillna("").astype(str)
 
 
+def _coerce_wide(series: pd.Series, var: str, label: str, pointer: str) -> pd.Series:
+    """A cell column of a wide variable: numbers (or booleans) only."""
+    if pd.api.types.is_bool_dtype(series):
+        return series.astype("float64")
+    if pd.api.types.is_numeric_dtype(series):
+        return series.astype("float64")
+    text = series.astype("string").str.strip().str.lower()
+    if text.dropna().isin(["true", "false"]).all() and text.notna().any():
+        return text.map({"true": 1.0, "false": 0.0}).astype("float64")
+    numeric = pd.to_numeric(series, errors="coerce")
+    bad = numeric.isna() & series.notna() & (series.astype(str).str.strip() != "")
+    if bad.any():
+        sample = ", ".join(repr(str(v)[:40]) for v in series[bad].head(3))
+        raise _schema_error(
+            f"column {str(series.name)[:64]!r} ({var!r} for {label!r}) has {int(bad.sum())} "
+            "cells that are not numbers",
+            pointer,
+            action="Use plain numbers without currency signs or thousands separators.",
+            untrusted_text=sample,
+        )
+    return numeric.astype("float64")
+
+
+def _labels(values: Any) -> np.ndarray:
+    """Categorical coordinate labels as a fixed-width unicode array (pandas 3 string
+    arrays and numpy ``StringDType`` do not cast to it directly)."""
+    return np.array([str(v) for v in np.asarray(values, dtype=object).ravel()], dtype=str)
+
+
 def _text_vars(ds: xr.Dataset) -> xr.Dataset:
     """Text variables as fixed-width strings; cells a dense cube had to invent become ''."""
     for name in list(ds.data_vars):
@@ -133,47 +236,130 @@ def _text_vars(ds: xr.Dataset) -> xr.Dataset:
     return ds
 
 
-def dataset_from_table(df: pd.DataFrame, mapping: IngestMapping) -> tuple[xr.Dataset, DataSchema]:
-    """Build a dataset + schema from a parsed table and a column mapping."""
-    columns = set(df.columns)
+def _check_columns(df: pd.DataFrame, mapping: IngestMapping) -> None:
+    columns = [str(c) for c in df.columns]
+    have = set(columns)
     for name, dm in mapping.dims.items():
-        if dm.column not in columns:
-            raise _schema_error(
-                f"column {dm.column!r} (dim {name!r}) is not in the upload",
-                f"/mapping/dims/{name}/column",
+        if dm.column not in have:
+            raise _missing_column(
+                dm.column, f"dim {name!r}", f"/mapping/dims/{name}/column", columns
             )
     for name, vm in mapping.vars.items():
-        if vm.column not in columns:
-            raise _schema_error(
-                f"column {vm.column!r} (variable {name!r}) is not in the upload",
-                f"/mapping/vars/{name}/column",
+        if vm.column not in have:
+            raise _missing_column(
+                vm.column, f"variable {name!r}", f"/mapping/vars/{name}/column", columns
             )
+    for name, w in mapping.wide.items():
+        for label, col in w.columns.items():
+            if col not in have:
+                raise _missing_column(
+                    col,
+                    f"{name!r} for {label!r}",
+                    f"/mapping/wide/{name}/columns/{label}",
+                    columns,
+                )
+
+
+def _wide_labels(mapping: IngestMapping) -> dict[str, list[str]]:
+    """Labels per wide dim (variables sharing a dim must agree; their order is the first's)."""
+    labels: dict[str, list[str]] = {}
+    owner: dict[str, str] = {}
+    for name, w in mapping.wide.items():
+        if w.dim in mapping.dims or w.dim in mapping.vars or w.dim in mapping.wide:
+            raise _schema_error(
+                f"wide variable {name!r} creates dim {w.dim!r}, which is already a dim or variable",
+                f"/mapping/wide/{name}/dim",
+                action="Give the new dim another name.",
+            )
+        mine = list(w.columns)
+        if w.dim in labels:
+            if set(labels[w.dim]) != set(mine):
+                diff = sorted(set(labels[w.dim]) ^ set(mine))[:5]
+                raise _schema_error(
+                    f"wide variables {owner[w.dim]!r} and {name!r} label {w.dim!r} "
+                    f"differently ({diff})",
+                    f"/mapping/wide/{name}/columns",
+                    action="Map one column per label for every variable along the same dim.",
+                )
+        else:
+            labels[w.dim] = mine
+            owner[w.dim] = name
+    return labels
+
+
+def dataset_from_table(df: pd.DataFrame, mapping: IngestMapping) -> tuple[xr.Dataset, DataSchema]:
+    """Build a dataset + schema from a parsed table and a column mapping (``dims``,
+    ``vars`` and ``wide`` variables: one column per label of a new dim)."""
+    _check_columns(df, mapping)
     if mapping.layout == "long" and len(mapping.dims) != 1:
         raise _schema_error(
-            "a long-layout upload maps exactly one column to the observation dim", "/mapping/dims"
+            "a long-layout upload maps exactly one column to the observation dim",
+            "/mapping/dims",
+            action="Map only the row number (or an id column) as the dim of a long table.",
         )
+    if mapping.layout == "long" and mapping.wide:
+        raise _schema_error(
+            "wide variables need a dense layout", "/mapping/wide",
+            action="Set layout to dense, or map each column as its own variable.",
+        )  # fmt: skip
+    wide_labels = _wide_labels(mapping)
     frame = pd.DataFrame(index=df.index)
     for name, dm in mapping.dims.items():
         frame[name] = _coerce_dim(df[dm.column], dm.spec, f"/mapping/dims/{name}")
     for name, vm in mapping.vars.items():
         frame[name] = _coerce_var(df[vm.column])
+    tmp: dict[str, list[str]] = {}
+    for name, w in mapping.wide.items():
+        cols: list[str] = []
+        for i, label in enumerate(wide_labels[w.dim]):
+            key = f"__wide__{name}__{i}"
+            frame[key] = _coerce_wide(
+                df[w.columns[label]], name, label, f"/mapping/wide/{name}/columns/{label}"
+            )
+            cols.append(key)
+        tmp[name] = cols
     dims = list(mapping.dims)
     dup = frame.duplicated(subset=dims)
     if dup.any():
-        first = frame.loc[dup, dims].iloc[0].to_dict()
+        first = {k: str(v)[:40] for k, v in frame.loc[dup, dims].iloc[0].to_dict().items()}
+        unmapped = [
+            str(c)
+            for c in df.columns
+            if c not in {dm.column for dm in mapping.dims.values()}
+            and not pd.api.types.is_numeric_dtype(df[c])
+            and 1 < df[c].nunique() <= 1000
+        ][:3]
+        hint = (
+            f"Columns such as {', '.join(repr(c[:40]) for c in unmapped)} vary within a "
+            "combination: map them as dims too, or aggregate the rows first."
+            if unmapped
+            else "Remove duplicate rows, or map another column as a dim."
+        )
         raise _schema_error(
-            f"{int(dup.sum())} rows repeat a ({', '.join(dims)}) combination, e.g. {first}",
+            f"{int(dup.sum())} rows repeat a ({', '.join(dims)}) combination",
             "/mapping/dims",
+            action=hint,
+            untrusted_text=str(first),
         )
     ds = _text_vars(frame.set_index(dims).sort_index().to_xarray())
+    for name, cols in tmp.items():
+        w = mapping.wide[name]
+        stacked = xr.concat(
+            [ds[c] for c in cols], dim=pd.Index(wide_labels[w.dim], name=w.dim)
+        ).transpose(*dims, w.dim)
+        ds = ds.drop_vars(cols).assign({name: stacked})
     for name in dims:  # categorical labels as plain str coords
         if mapping.dims[name].spec.kind not in ("time", "integer", "index", "float"):
-            ds = ds.assign_coords({name: np.asarray(ds[name].values, dtype=str)})
-    draft = infer_schema(
-        ds,
-        roles={n: vm.role for n, vm in mapping.vars.items()},
-        units={n: vm.units for n, vm in mapping.vars.items() if vm.units},
-    )
+            ds = ds.assign_coords({name: _labels(ds[name].values)})
+    for dim in wide_labels:
+        ds = ds.assign_coords({dim: _labels(ds[dim].values)})
+    roles = {n: vm.role for n, vm in mapping.vars.items()} | {
+        n: w.role for n, w in mapping.wide.items()
+    }
+    units = {n: vm.units for n, vm in mapping.vars.items() if vm.units} | {
+        n: w.units for n, w in mapping.wide.items() if w.units
+    }
+    draft = infer_schema(ds, roles=roles, units=units)
     dim_specs: dict[str, DimSpec] = {}
     for name, dm in mapping.dims.items():
         spec = dm.spec
@@ -182,62 +368,194 @@ def dataset_from_table(df: pd.DataFrame, mapping: IngestMapping) -> tuple[xr.Dat
             if freq is not None:
                 spec = spec.model_copy(update={"freq": freq})
         dim_specs[name] = spec
+    for w in mapping.wide.values():
+        dim_specs.setdefault(w.dim, w.dim_spec)
     var_specs = {
         name: draft.vars[name].model_copy(
             update={"missing": vm.missing, "description": vm.description}
         )
         for name, vm in mapping.vars.items()
+    } | {
+        name: draft.vars[name].model_copy(
+            update={"missing": w.missing, "description": w.description}
+        )
+        for name, w in mapping.wide.items()
     }
     schema = DataSchema(layout=mapping.layout, dims=dim_specs, vars=var_specs)
     return ds, schema
 
 
-def dataset_from_mff(df: pd.DataFrame, opts: MffOptions) -> tuple[xr.Dataset, DataSchema]:
-    """The MFF preset: long ``(period, keys..., variable) -> value`` rows."""
+# ======================================================================================= MFF
+
+
+def _mff_error(message: str, pointer: str = "/mapping/mff", **kw: Any) -> MapiError:
+    kw.setdefault(
+        "action",
+        f"An MFF table has the columns {', '.join(MFF_COLUMNS)}: one row per period, key "
+        "combination and variable.",
+    )
+    return _schema_error(message, pointer, **kw)
+
+
+def mff_table(
+    df: pd.DataFrame,
+    opts: MffOptions,
+    limits: IngestLimits = _UNLIMITED,
+    *,
+    bayesinsight: BayesInsightMetadata | None = None,
+) -> tuple[pd.DataFrame, dict[str, str], list[str]]:
+    """Pivot an MFF long table to one column per variable.
+
+    Returns ``(table, dims, variables)``: the wide table (``Period``, the key columns that
+    vary, combined dims, then one column per ``VariableName``), the dims it is indexed by
+    (``column -> dim name``) and the variable columns. With ``bayesinsight`` metadata, rows
+    outside its ``allowed_*`` values and period range are dropped first.
+    """
     for col in (opts.period_column, opts.variable_column, opts.value_column):
         if col not in df.columns:
-            raise _schema_error(f"MFF upload has no {col!r} column", "/mff")
-    keys = {
-        col: dim
-        for col, dim in opts.key_columns.items()
-        if col in df.columns and df[col].dropna().astype(str).nunique() > 1
-    }
-    frame = pd.DataFrame(
-        {
-            opts.time_dim: _coerce_dim(
-                df[opts.period_column], DimSpec(kind="time"), f"/mff/{opts.period_column}"
-            ),
-            "__var__": df[opts.variable_column].astype(str).str.strip(),
-            "__value__": pd.to_numeric(df[opts.value_column], errors="coerce"),
-        }
-    )
-    for col, dim in keys.items():
-        frame[dim] = df[col].astype(str).str.strip()
-    bad = frame["__value__"].isna() & df[opts.value_column].notna()
-    if bad.any():
-        raise _schema_error(
-            f"{int(bad.sum())} MFF values are not numbers", f"/mff/{opts.value_column}"
+            raise _mff_error(f"MFF upload has no {col!r} column")
+    if bayesinsight is not None:
+        df = _bayesinsight_rows(df, opts, bayesinsight)
+    names = df[opts.variable_column].astype(str).str.strip()
+    variables = sorted(set(names) - {""})
+    if (names == "").any():
+        raise _mff_error(f"{int((names == '').sum())} MFF rows have no {opts.variable_column}")
+    if len(variables) > limits.max_columns:
+        raise problem(
+            ErrorCode.PAYLOAD_TOO_LARGE,
+            f"the MFF table has {len(variables):,} variables; at most "
+            f"{limits.max_columns:,} are allowed",
+            pointer="/mapping/mff",
+            action="Drop the variables the model does not need.",
         )
-    index = [opts.time_dim, *keys.values()]
-    dup = frame.duplicated(subset=[*index, "__var__"])
+    values = pd.to_numeric(df[opts.value_column], errors="coerce")
+    bad = values.isna() & df[opts.value_column].notna()
+    if bad.any():
+        raise _mff_error(
+            f"{int(bad.sum())} MFF values are not numbers",
+            f"/mapping/mff/{opts.value_column}",
+            action="Use plain numbers in VariableValue (no currency signs or separators).",
+            untrusted_text=", ".join(
+                repr(str(v)[:40]) for v in df.loc[bad, opts.value_column].head(3)
+            ),
+        )
+    period = _coerce_dim(
+        df[opts.period_column], DimSpec(kind="time"), f"/mapping/mff/{opts.period_column}"
+    )
+    table = pd.DataFrame({opts.period_column: period, "__var__": names, "__value__": values})
+    combined: set[str] = set()
+    index: dict[str, str] = {opts.period_column: opts.time_dim}
+    for dim, cols in opts.combine.items():
+        missing = [c for c in cols if c not in df.columns]
+        if missing:
+            raise _mff_error(f"MFF upload has no {missing[0]!r} column to combine into {dim!r}")
+        parts = [df[c].astype("string").fillna("").str.strip() for c in cols]
+        label = parts[0]
+        for p in parts[1:]:
+            label = label + COMBINE_SEPARATOR + p
+        table[dim] = label.astype(str)
+        index[dim] = dim
+        combined |= set(cols)
+    for col, dim in opts.key_columns.items():
+        if col in combined or col not in df.columns:
+            continue
+        labels = df[col].astype("string").fillna("").str.strip()
+        if labels.nunique() > 1:
+            table[col] = labels.astype(str)
+            index[col] = dim
+    clash = sorted(set(variables) & (set(index) | set(index.values())))
+    if clash:
+        raise _mff_error(
+            f"the variable {clash[0][:64]!r} has the name of an MFF key column or dim",
+            action="Rename the variable in VariableName.",
+        )
+    keys = [*index, "__var__"]
+    dup = table.duplicated(subset=keys)
     if dup.any():
-        raise _schema_error(f"{int(dup.sum())} MFF rows repeat a key and variable", "/mff")
-    wide = frame.pivot_table(
-        index=index, columns="__var__", values="__value__", aggfunc="first", dropna=False
+        first = {k: str(v)[:40] for k, v in table.loc[dup, keys].iloc[0].to_dict().items()}
+        raise _mff_error(
+            f"{int(dup.sum())} MFF rows repeat a key and variable",
+            action="Every (Period, key columns, VariableName) combination may appear once; "
+            "aggregate duplicates first.",
+            untrusted_text=str(first),
+        )
+    wide = table.pivot_table(
+        index=list(index), columns="__var__", values="__value__", aggfunc="first", dropna=False
     )
     wide.columns = [str(c) for c in wide.columns]
-    ds = wide.sort_index().to_xarray()
-    for dim in keys.values():
-        ds = ds.assign_coords({dim: np.asarray(ds[dim].values, dtype=str)})
+    out = wide.reset_index()
+    return out, index, variables
+
+
+def _bayesinsight_rows(
+    df: pd.DataFrame, opts: MffOptions, meta: BayesInsightMetadata
+) -> pd.DataFrame:
+    allowed = {
+        "Geography": meta.allowed_geos,
+        "Product": meta.allowed_products,
+        "Outlet": meta.allowed_outlets,
+        "Campaign": meta.allowed_campaigns,
+        "Creative": meta.allowed_creatives,
+    }
+    keep = pd.Series(True, index=df.index)
+    for col, values in allowed.items():
+        if values is not None and col in df.columns:
+            keep &= df[col].astype("string").str.strip().isin([str(v) for v in values])
+    if meta.start_period or meta.end_period:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            period = pd.to_datetime(df[opts.period_column], errors="coerce")
+        if meta.start_period:
+            keep &= period >= pd.Timestamp(meta.start_period)
+        if meta.end_period:
+            keep &= period <= pd.Timestamp(meta.end_period)
+    out = df.loc[keep]
+    if out.empty:
+        raise _schema_error(
+            "no MFF rows match the BayesInsight metadata (allowed_* values and periods)",
+            "/mapping/bayesinsight",
+            action="Check that metadata.json belongs to this data file.",
+        )
+    if meta.necessary_variables:
+        present = set(out[opts.variable_column].astype(str).str.strip())
+        lacking = [v for v in meta.necessary_variables if v not in present]
+        if lacking:
+            raise _schema_error(
+                f"the MFF table lacks {len(lacking)} necessary variable(s), e.g. "
+                f"{lacking[0][:64]!r}",
+                "/mapping/bayesinsight/necessary_variables",
+                action="Upload the data file the BayesInsight model was built on.",
+            )
+    return out
+
+
+def dataset_from_mff(
+    df: pd.DataFrame,
+    opts: MffOptions,
+    *,
+    limits: IngestLimits = _UNLIMITED,
+    bayesinsight: BayesInsightMetadata | None = None,
+) -> tuple[xr.Dataset, DataSchema]:
+    """The MFF preset: long ``(period, keys..., variable) -> value`` rows, every variable
+    kept under its own name."""
+    table, index, variables = mff_table(df, opts, limits, bayesinsight=bayesinsight)
+    frame = table.rename(columns=index)
+    ds = frame.set_index(list(index.values())).sort_index().to_xarray()
+    for dim in list(index.values())[1:]:
+        ds = ds.assign_coords({dim: _labels(ds[dim].values)})
     for var, role in opts.roles.items():
         if var not in ds.data_vars:
-            raise _schema_error(f"MFF has no variable {var!r} to assign a role to", "/mff/roles")
+            raise _schema_error(
+                f"MFF has no variable {var!r} to assign a role to",
+                "/mapping/mff/roles",
+                action=f"Use one of the VariableName values ({len(variables)} found).",
+            )
         Role(role)
     draft = infer_schema(ds, roles=dict(opts.roles), units=dict(opts.units))
-    freq = opts.freq or infer_freq(ds[opts.time_dim].values)
+    freq = _mff_freq(opts, ds[opts.time_dim].values)
     dims = {
         opts.time_dim: DimSpec(kind="time", policy=DimPolicy.EXTEND, freq=freq),
-        **{dim: DimSpec(kind="categorical") for dim in keys.values()},
+        **{dim: DimSpec(kind="categorical") for dim in list(index.values())[1:]},
     }
     vars_ = {
         name: spec.model_copy(update={"missing": opts.missing}) for name, spec in draft.vars.items()
@@ -245,21 +563,150 @@ def dataset_from_mff(df: pd.DataFrame, opts: MffOptions) -> tuple[xr.Dataset, Da
     return ds, DataSchema(layout="dense", dims=dims, vars=vars_)
 
 
+def _mff_freq(opts: MffOptions, dates: Any) -> str | None:
+    """The time dim's frequency: the declared one, unless the data has the same base
+    frequency with another anchor (BayesInsight's 'Weekly' is ``W``, i.e. Sundays, while
+    its periods are often Mondays)."""
+    inferred = infer_freq(dates)
+    if opts.freq is None:
+        return inferred
+    if inferred is not None and inferred.split("-")[0] == opts.freq.split("-")[0]:
+        return inferred
+    return opts.freq
+
+
+def _mff_mapping(
+    mapping: IngestMapping, index: Mapping[str, str], opts: MffOptions, table: pd.DataFrame
+) -> IngestMapping:
+    """An explicit mapping over a pivoted MFF table: default dims are the preset's."""
+    if mapping.dims:
+        dims = dict(mapping.dims)
+    else:
+        dims = {
+            dim: DimMapping(
+                column=col,
+                spec=DimSpec(
+                    kind="time",
+                    policy=DimPolicy.EXTEND,
+                    freq=_mff_freq(opts, pd.DatetimeIndex(table[col].unique()).sort_values()),
+                )
+                if col == opts.period_column
+                else DimSpec(kind="categorical"),
+            )
+            for col, dim in index.items()
+        }
+    vars_ = {
+        name: vm.model_copy(update={"units": vm.units or opts.units.get(vm.column)})
+        for name, vm in mapping.vars.items()
+    }
+    return IngestMapping(format="csv", layout="dense", dims=dims, vars=vars_, wide=mapping.wide)
+
+
+# ================================================================================== Meridian
+
+
+def meridian_mapping(mapping: IngestMapping) -> IngestMapping:
+    """The column mapping Meridian's ``CoordToColumns`` contract stands for (explicit
+    ``dims``/``vars``/``wide`` entries of the mapping win)."""
+    m = mapping.meridian
+    assert m is not None
+    dims: dict[str, DimMapping] = {
+        "time": DimMapping(
+            column=m.time, spec=DimSpec(kind="time", policy=DimPolicy.EXTEND, freq=None)
+        )
+    }
+    if m.geo:
+        dims["geo"] = DimMapping(
+            column=m.geo,
+            spec=DimSpec(kind="categorical", policy="new_levels", new_level_strategy="pooled"),
+        )
+    vars_: dict[str, VarMapping] = {"kpi": VarMapping(column=m.kpi, role=Role.TARGET)}
+    if m.revenue_per_kpi:
+        vars_["revenue_per_kpi"] = VarMapping(column=m.revenue_per_kpi, role=Role.COVARIATE)
+    if m.population:
+        vars_["population"] = VarMapping(column=m.population, role=Role.COVARIATE)
+
+    def add(cols: list[str], role: Role, pointer: str) -> None:
+        for col in cols:
+            name = safe_name(col)
+            if name in vars_ or name in dims:
+                raise _schema_error(
+                    f"two Meridian columns become the variable {name!r}",
+                    f"/mapping/meridian/{pointer}",
+                    action="Rename one of the columns.",
+                )
+            vars_[name] = VarMapping(column=col, role=role)
+
+    add(m.controls, Role.CONTROL, "controls")
+    add(m.organic_media, Role.MEDIA, "organic_media")
+    add(m.non_media_treatments, Role.COVARIATE, "non_media_treatments")
+    wide: dict[str, WideVarMapping] = dict(m.wide_vars())
+    clash = sorted(set(wide) & set(vars_))
+    if clash:
+        raise _schema_error(
+            f"a control column becomes {clash[0]!r}, a Meridian channel variable",
+            "/mapping/meridian/controls",
+            action="Rename the column.",
+        )
+    return IngestMapping(
+        format="csv",
+        layout="dense",
+        dims={**dims, **mapping.dims},
+        vars={**vars_, **mapping.vars},
+        wide={**wide, **mapping.wide},
+    )
+
+
+def dataset_from_meridian(
+    df: pd.DataFrame, mapping: IngestMapping
+) -> tuple[xr.Dataset, DataSchema]:
+    """The ``meridian`` preset: a wide table under Meridian's column contract."""
+    m = mapping.meridian
+    assert m is not None
+    ds, schema = dataset_from_table(df, meridian_mapping(mapping))
+    if m.freq and schema.dims["time"].freq is None:
+        schema.dims["time"] = schema.dims["time"].model_copy(update={"freq": m.freq})
+    if m.kpi_type == "revenue":
+        schema.vars["kpi"] = schema.vars["kpi"].model_copy(
+            update={"description": "Meridian KPI (revenue)"}
+        )
+    return ds, schema
+
+
 # ========================================================================= self-describing
 
 
 def _self_describing(
-    path: Path, fmt: str, mapping: IngestMapping | None
+    path: Path,
+    fmt: str,
+    mapping: IngestMapping | None,
+    limits: IngestLimits = _UNLIMITED,
 ) -> tuple[xr.Dataset, DataSchema]:
     if fmt == "zarr_zip":
+        check_zip_archive(path, limits)
+        wire = WireLimits(
+            max_uncompressed_bytes=limits.max_uncompressed_bytes,
+            max_string_chars=limits.max_cell_chars,
+            max_variables=limits.max_columns,
+        )
         try:
-            ds = read_zarr_zip(path)
+            ds = read_zarr_zip(path, limits=wire)
+        except PayloadLimitError as exc:
+            raise problem(
+                ErrorCode.PAYLOAD_TOO_LARGE,
+                "the zarr zip is larger than an upload may be once decoded",
+                action="Split the dataset, or use a larger resource class.",
+                untrusted=exc.detail,
+            ) from None
         except WireFormatError as exc:
             raise _schema_error(
-                "the upload is not a readable zarr zip", untrusted_text=exc.detail
+                "the upload is not a readable zarr zip",
+                action="Write it with mapi_sdk.wire.write_zarr_zip (zarr v3, blosc or zstd "
+                "codecs).",
+                untrusted_text=exc.detail,
             ) from None
     else:
-        ds = _read_netcdf(path)
+        ds = _read_netcdf(path, limits)
     stored = ds.attrs.get(SCHEMA_ATTR)
     base: DataSchema | None = None
     if isinstance(stored, str):
@@ -272,7 +719,11 @@ def _self_describing(
         rename |= {vm.column: n for n, vm in mapping.vars.items() if vm.column != n}
         missing = [c for c in rename if c not in ds.variables and c not in ds.dims]
         if missing:
-            raise _schema_error(f"the upload has no variable or dim {missing[0]!r}", "/mapping")
+            raise _schema_error(
+                f"the upload has no variable or dim {missing[0]!r}",
+                "/mapping",
+                action=f"It has {', '.join(repr(str(v)[:40]) for v in list(ds.variables)[:8])}.",
+            )
         keep = list(mapping.vars) or [str(v) for v in ds.data_vars]
         renamed = ds.rename(rename)
         ds = renamed[[v for v in keep if v in renamed.data_vars]]
@@ -297,21 +748,38 @@ def _self_describing(
     return ds, base or infer_schema(ds)
 
 
-def _read_netcdf(path: Path) -> xr.Dataset:
+def _read_netcdf(path: Path, limits: IngestLimits = _UNLIMITED) -> xr.Dataset:
     with open(path, "rb") as fh:
-        hdf5 = fh.read(8).startswith(_HDF5_MAGIC)
+        hdf5 = fh.read(8).startswith(HDF5_MAGIC)
     engines = ("h5netcdf", "netcdf4") if hdf5 else ("scipy", "h5netcdf", "netcdf4")
+    budget = limits.expansion_budget(path.stat().st_size)
     last: Exception | None = None
     for engine in engines:
         try:
             with xr.open_dataset(path, engine=engine) as opened:
+                if opened.nbytes > budget:
+                    raise problem(
+                        ErrorCode.PAYLOAD_TOO_LARGE,
+                        f"the netCDF file decodes to {opened.nbytes:,} bytes (at most "
+                        f"{limits.max_decompression_ratio:g} times its size and "
+                        f"{limits.max_uncompressed_bytes:,} bytes are allowed)",
+                        action="Split the dataset, or write it with less compression.",
+                    )
+                if len(opened.data_vars) > limits.max_columns:
+                    raise problem(
+                        ErrorCode.PAYLOAD_TOO_LARGE,
+                        f"the netCDF file has {len(opened.data_vars):,} variables",
+                        action="Drop the variables the model does not need.",
+                    )
                 return opened.load()
         except (ValueError, ImportError, ModuleNotFoundError) as exc:
             last = exc
             continue
         except OSError as exc:
             raise _schema_error(
-                "the upload is not a readable netCDF file", untrusted_text=str(exc)[:2000]
+                "the upload is not a readable netCDF file",
+                action="Write it with xarray's Dataset.to_netcdf.",
+                untrusted_text=str(exc)[:2000],
             ) from None
     if hdf5:
         raise MapiError(
@@ -321,6 +789,7 @@ def _read_netcdf(path: Path) -> xr.Dataset:
         )
     raise _schema_error(
         "the upload is not a readable netCDF file",
+        action="Write it with xarray's Dataset.to_netcdf.",
         untrusted_text=str(last)[:2000] if last else None,
     )
 
@@ -439,23 +908,53 @@ def preview(ds: xr.Dataset, rows: int) -> dict[str, Any]:
 # ==================================================================================== run
 
 
+def build_dataset(
+    path: Path, job: IngestJob
+) -> tuple[xr.Dataset, DataSchema, list[ColumnProfile] | None]:
+    """Parse ``path`` as ``job`` says: ``(dataset, schema, column profiles)``."""
+    limits = IngestLimits.from_job(job)
+    mapping = job.mapping
+    if mapping is None:  # the v0.2 top-level preset
+        mapping = IngestMapping(format="mff", preset=IngestPreset.MFF, mff=job.mff)
+    preset = mapping.preset
+    if mapping.format in ("zarr_zip", "netcdf"):
+        if sniff(path) != mapping.format:
+            raise _schema_error(
+                f"the upload is not a {mapping.format} file",
+                "/mapping/format",
+                action="Set the mapping's format to what the file is (csv, parquet, mff, "
+                "zarr_zip or netcdf).",
+            )
+        ds, schema = _self_describing(path, mapping.format, mapping, limits)
+        return ds, schema, None
+    fmt = "parquet" if mapping.format == "parquet" else "csv"
+    df = read_table(path, fmt, limits)
+    if preset in (IngestPreset.MFF, IngestPreset.BAYESINSIGHT):
+        opts = mapping.effective_mff
+        assert opts is not None
+        meta = mapping.bayesinsight if preset is IngestPreset.BAYESINSIGHT else None
+        table, index, variables = mff_table(df, opts, limits, bayesinsight=meta)
+        profiles = column_profiles(table, variables=variables)
+        if mapping.vars or mapping.wide:
+            ds, schema = dataset_from_table(table, _mff_mapping(mapping, index, opts, table))
+        else:
+            ds, schema = dataset_from_mff(df, opts, limits=limits, bayesinsight=meta)
+        return ds, schema, profiles
+    profiles = column_profiles(df)
+    if preset is IngestPreset.MERIDIAN:
+        ds, schema = dataset_from_meridian(df, mapping)
+    else:
+        ds, schema = dataset_from_table(df, mapping)
+    return ds, schema, profiles
+
+
 def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
     ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the upload")
     name = INPUT_UPLOAD if ctx.has_input(INPUT_UPLOAD) else INPUT_DATASET
     path = ctx.download(name)
     assert path is not None
     ctx.state(RunnerPhase.VALIDATE, "parsing and validating the upload")
-    if job.preset == "mff":
-        fmt = "parquet" if _sniff(path) == "parquet" else "csv"
-        ds, schema = dataset_from_mff(_read_table(path, fmt, max_rows=job.max_rows), job.mff)
-    else:
-        mapping = job.mapping
-        assert mapping is not None
-        if mapping.format in ("csv", "parquet"):
-            df = _read_table(path, mapping.format, max_rows=job.max_rows)
-            ds, schema = dataset_from_table(df, mapping)
-        else:
-            ds, schema = _self_describing(path, mapping.format, mapping)
+    ds, schema, columns = build_dataset(path, job)
     ctx.cancel.check()
     found = validate_dataset(schema, ds)
     issues = [i.to_issue() for i in found]
@@ -478,5 +977,7 @@ def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
     ctx.write_output("summary.json", data_summary(ds, schema).model_dump_json(indent=2).encode())
     ctx.write_json("profile.json", profile(ds, schema, issues, raw))
     ctx.write_json("preview.json", preview(ds, job.preview_rows))
+    if columns is not None:
+        ctx.write_output(INGEST_COLUMNS, write_profiles(columns))
     ctx.progress(1.0, "dataset ready", force=True)
     return schema
