@@ -7,6 +7,17 @@ a deletion's grace period) queues an export; the orchestrator's procrastinate jo
 then answers with a short-lived signed download link (``MAPI_EXPORT_LINK_TTL_S``). The
 archive is deleted after ``MAPI_EXPORT_RETENTION_S`` (and by a tenant deletion's purge).
 
+A build holds a lease: ``started_at`` plus ``MAPI_EXPORT_BUILD_TIMEOUT_S`` (the builder gives
+up at that point) plus :data:`LEASE_SLACK`. A row still ``running`` after its lease belongs to
+a process that died (an OOM kill, a lost orchestrator): :meth:`ExportBuilder.due` queues it
+again once, then fails it (:data:`INTERRUPTED`), so a tenant is never blocked from exporting.
+Only the build that holds the current lease may mark the export ready.
+
+A tenant deletion's start cancels the tenant's queued and running exports
+(:data:`CANCELLED`) and waits for a running build to end (:data:`DISCARDED`) or its lease to
+pass before it purges any store. A build that lost its lease never uploads, and deletes an
+archive it uploaded after losing it, so nothing outlives the purge.
+
 Contents (``include`` selects the parts):
 
 * ``metadata/<table>.jsonl``: every row of every tenant table (projects, members, tokens,
@@ -29,6 +40,7 @@ rows. The control plane reads object bytes but never parses them.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
 import json
@@ -59,6 +71,10 @@ from mapi_server.services.audit import write_audit
 from mapi_server.services.runs import now as utcnow
 
 __all__ = [
+    "CANCELLED",
+    "DISCARDED",
+    "INTERRUPTED",
+    "LEASE_SLACK",
     "REDACTED",
     "ExportBuilder",
     "create_export",
@@ -66,6 +82,7 @@ __all__ = [
     "export_dto",
     "export_object_name",
     "get_export",
+    "list_exports",
 ]
 
 log = logging.getLogger(__name__)
@@ -74,6 +91,20 @@ REDACTED: Final = "[redacted]"
 _SECRET_COLUMN: Final = re.compile(r"(secret|hmac|nonce|password|token_hash|^key$|_key$)")
 _SPLIT_TABLES: Final = {"audit_events": "audit", "cost_ledger": "usage"}
 """Tables exported under their own part instead of ``metadata``."""
+INTERRUPTED: Final = "interrupted: built again"
+"""``error`` of an export whose first build died: a second death fails it."""
+LEASE_SLACK: Final = timedelta(minutes=5)
+CANCELLED: Final = "cancelled: the workspace is being deleted"
+"""``error`` of an export a tenant deletion cancelled; its build may still be running."""
+DISCARDED: Final = "cancelled: the workspace is being deleted (build ended)"
+"""``error`` once the cancelled export's build has ended without leaving an archive."""
+
+
+def export_lease(settings: Any) -> timedelta:
+    """How long after ``started_at`` a build may still upload its archive."""
+    return timedelta(seconds=settings.export_build_timeout_s) + LEASE_SLACK
+
+
 READ_CHUNK: Final = 8 * 1024 * 1024
 ROW_BATCH: Final = 2000
 _README: Final = """modeling-api data export
@@ -89,7 +120,8 @@ This archive holds everything your workspace stored on modeling-api when the exp
   usage/cost_ledger.jsonl    metered compute usage
 
 Credentials (API token hashes, signing keys, webhook secrets) are never exported.
-Dataset objects beyond the export size limit are listed in manifest.json ("skipped").
+Dataset objects and metadata rows beyond the export size limits are listed in
+manifest.json ("skipped").
 """
 
 
@@ -182,6 +214,20 @@ async def create_export(
     return row
 
 
+async def list_exports(
+    session: AsyncSession, tenant_id: str, *, limit: int, after: str | None
+) -> tuple[list[GdprExport], bool]:
+    """A page of the tenant's exports, newest first (ids sort by creation time), without
+    download links (``GET`` one for a fresh link), and whether more exist."""
+    stmt = select(m.TenantExport).where(m.TenantExport.tenant_id == tenant_id)
+    if after is not None:
+        stmt = stmt.where(m.TenantExport.id < after)
+    rows = list(
+        (await session.execute(stmt.order_by(m.TenantExport.id.desc()).limit(limit + 1))).scalars()
+    )
+    return [export_dto(r) for r in rows[:limit]], len(rows) > limit
+
+
 async def get_export(
     session: AsyncSession, ctx: ServerContext, tenant_id: str, export_id: str
 ) -> GdprExport:
@@ -272,7 +318,39 @@ class ExportBuilder:
     def __init__(self, ctx: ServerContext) -> None:
         self.ctx = ctx
 
+    def _lease(self) -> timedelta:
+        return export_lease(self.ctx.settings)
+
+    async def recover(self, *, at: datetime | None = None) -> int:
+        """Re-queue (once) or fail exports whose build died: ``running`` past the lease."""
+        ts = at or utcnow()
+        stale = (m.TenantExport.state == "running") & (
+            m.TenantExport.started_at < ts - self._lease()
+        )
+        async with self.ctx.db.session() as s:
+            failed = await s.execute(
+                update(m.TenantExport)
+                .where(stale, m.TenantExport.error == INTERRUPTED)
+                .values(state="failed", error="the export was interrupted twice; ask again")
+            )
+            requeued = await s.execute(
+                update(m.TenantExport)
+                .where(
+                    stale, (m.TenantExport.error.is_(None)) | (m.TenantExport.error != INTERRUPTED)
+                )
+                .values(state="queued", started_at=None, error=INTERRUPTED)
+                .returning(m.TenantExport.id)
+            )
+            ids = list(requeued.scalars())
+            n_failed = int(getattr(failed, "rowcount", 0) or 0)
+        for export_id in ids:
+            log.warning("export %s: its build was interrupted; building it again", export_id)
+        if n_failed:
+            log.warning("%d export(s) failed after a second interrupted build", n_failed)
+        return len(ids) + n_failed
+
     async def due(self) -> list[str]:
+        await self.recover()
         async with self.ctx.db.session() as s:
             return list(
                 (
@@ -286,37 +364,58 @@ class ExportBuilder:
 
     async def run(self, export_id: str) -> str:
         """Build one export (idempotent: only a ``queued`` export is built)."""
+        claimed_at = utcnow()
         async with self.ctx.db.session() as s:
             row = (
                 await s.execute(
                     update(m.TenantExport)
                     .where(m.TenantExport.id == export_id, m.TenantExport.state == "queued")
-                    .values(state="running", started_at=utcnow())
+                    .values(state="running", started_at=claimed_at)
                     .returning(m.TenantExport.tenant_id, m.TenantExport.include)
                 )
             ).first()
         if row is None:
             return "skipped"
         tenant_id, include = str(row[0]), [str(p) for p in row[1] or []]
+        bucket = self.ctx.buckets.data
+        name = export_object_name(tenant_id, export_id)
+        mine = (
+            (m.TenantExport.id == export_id)
+            & (m.TenantExport.state == "running")
+            & (m.TenantExport.started_at == claimed_at)
+        )
+        timeout = self.ctx.settings.export_build_timeout_s
         try:
-            data, manifest = await self._build(tenant_id, export_id, include)
-            bucket = self.ctx.buckets.data
-            name = export_object_name(tenant_id, export_id)
-            await self.ctx.store.put(bucket, name, data, content_type="application/zip")
+            data, manifest = await asyncio.wait_for(
+                self._build(tenant_id, export_id, include), timeout
+            )
+            if not await self._holds(mine):
+                await self._ended(export_id)
+                log.warning("export %s of tenant %s: cancelled while it was built", export_id,
+                            tenant_id)  # fmt: skip
+                return "discarded"
+            await asyncio.wait_for(
+                self.ctx.store.put(bucket, name, data, content_type="application/zip"), timeout
+            )
         except Exception as exc:
-            log.exception("export %s of tenant %s failed", export_id, tenant_id)
+            if isinstance(exc, TimeoutError):
+                log.error("export %s of tenant %s timed out after %ss", export_id, tenant_id,
+                          timeout)  # fmt: skip
+                error = f"timed out after {int(timeout)} s"
+                await self._discard(bucket, name)  # an upload cut short may still land
+            else:
+                log.exception("export %s of tenant %s failed", export_id, tenant_id)
+                error = f"{type(exc).__name__}"
             async with self.ctx.db.session() as s:
                 await s.execute(
-                    update(m.TenantExport)
-                    .where(m.TenantExport.id == export_id)
-                    .values(state="failed", error=f"{type(exc).__name__}"[:500])
+                    update(m.TenantExport).where(mine).values(state="failed", error=error[:500])
                 )
             return "failed"
         at = utcnow()
         async with self.ctx.db.session() as s:
-            await s.execute(
+            done = await s.execute(
                 update(m.TenantExport)
-                .where(m.TenantExport.id == export_id)
+                .where(mine)
                 .values(
                     state="ready",
                     ready_at=at,
@@ -325,26 +424,61 @@ class ExportBuilder:
                     sha256="sha256:" + hashlib.sha256(data).hexdigest(),
                     bucket=bucket,
                     object_name=name,
+                    error=None,
                 )
+                .returning(m.TenantExport.id)
             )
-            await write_audit(
-                self.ctx.db,
-                [
-                    make_audit_event(
-                        action=AuditAction.TENANT_EXPORT,
-                        resource_kind=ResourceKind.TENANT_EXPORT,
-                        outcome=AuditOutcome.SUCCESS,
-                        ts=at,
-                        fingerprint_key=self.ctx.secrets.audit_key,
-                        tenant_id=tenant_id,
-                        resource_id=export_id,
-                        details={"state": "ready", "size_bytes": len(data),
-                                 "skipped": len(manifest["skipped"])},
-                    )
-                ],
-                session=s,
-            )  # fmt: skip
+            if done.first() is None:
+                lost = True
+            else:
+                lost = False
+                await write_audit(
+                    self.ctx.db,
+                    [
+                        make_audit_event(
+                            action=AuditAction.TENANT_EXPORT,
+                            resource_kind=ResourceKind.TENANT_EXPORT,
+                            outcome=AuditOutcome.SUCCESS,
+                            ts=at,
+                            fingerprint_key=self.ctx.secrets.audit_key,
+                            tenant_id=tenant_id,
+                            resource_id=export_id,
+                            details={"state": "ready", "size_bytes": len(data),
+                                     "skipped": len(manifest["skipped"])},
+                        )
+                    ],
+                    session=s,
+                )  # fmt: skip
+        if lost:
+            # the lease went to another build, the export was cancelled (a tenant deletion
+            # started) or its row is gone (purged): this archive must not stay behind
+            await self._discard(bucket, name)
+            await self._ended(export_id)
+            log.warning("export %s of tenant %s: lease lost, archive discarded", export_id,
+                        tenant_id)  # fmt: skip
+            return "discarded"
         return "ready"
+
+    async def _holds(self, mine: Any) -> bool:
+        async with self.ctx.db.session() as s:
+            return (await s.execute(select(m.TenantExport.id).where(mine))).first() is not None
+
+    async def _ended(self, export_id: str) -> None:
+        """Tell a waiting tenant purge that this cancelled build is over."""
+        async with self.ctx.db.session() as s:
+            await s.execute(
+                update(m.TenantExport)
+                .where(m.TenantExport.id == export_id, m.TenantExport.error == CANCELLED)
+                .values(error=DISCARDED)
+            )
+
+    async def _discard(self, bucket: str, name: str) -> None:
+        try:
+            await self.ctx.store.delete(bucket, name)
+        except NotFound:
+            pass
+        except Exception:
+            log.exception("could not delete the export archive %s/%s", bucket, name)
 
     # -------------------------------------------------------------------------- content
     async def _tables(self) -> list[tuple[str, bool]]:
@@ -369,8 +503,16 @@ class ExportBuilder:
         return self.ctx.db.tenant_session(tenant_id) if through_rls else self.ctx.db.session()
 
     async def _dump_table(
-        self, archive: _Archive, path: str, table: str, tenant_id: str, through_rls: bool
-    ) -> int:
+        self,
+        archive: _Archive,
+        path: str,
+        table: str,
+        tenant_id: str,
+        through_rls: bool,
+        budget: list[int],
+    ) -> tuple[int, bool]:
+        """Rows written, and whether the metadata budget (``budget[0]`` bytes left) cut the
+        table short: the archive is built in memory, so its size is bounded."""
         quoted = '"' + table.replace('"', '""') + '"'
         n = 0
         async with self._session(tenant_id, through_rls) as s, archive.stream(path) as out:
@@ -382,10 +524,17 @@ class ExportBuilder:
                 buf = io.BytesIO()
                 for rec in part:
                     line = json.dumps(_redact(dict(rec)), default=_json_default, sort_keys=True)
-                    buf.write(line.encode() + b"\n")
+                    data = line.encode() + b"\n"
+                    if len(data) > budget[0]:
+                        out.write(buf.getvalue())
+                        budget[0] = 0
+                        await result.close()
+                        return n, True
+                    budget[0] -= len(data)
+                    buf.write(data)
                     n += 1
                 out.write(buf.getvalue())
-        return n
+        return n, False
 
     async def _build(
         self, tenant_id: str, export_id: str, include: list[str]
@@ -394,14 +543,21 @@ class ExportBuilder:
         counts: dict[str, int] = {}
         skipped: list[dict[str, Any]] = []
         archive.write("README.txt", _README.encode())
+        budget = [self.ctx.settings.export_max_metadata_bytes]
         for table, readable in await self._tables():
             part = _SPLIT_TABLES.get(table, "metadata")
             if part not in include:
                 continue
             path = f"{part}/{table}.jsonl"
-            counts[path] = await self._dump_table(archive, path, table, tenant_id, readable)
+            counts[path], cut = await self._dump_table(
+                archive, path, table, tenant_id, readable, budget
+            )
+            if cut:
+                skipped.append(
+                    {"path": path, "reason": "export size limit", "rows_written": counts[path]}
+                )
         if "datasets" in include:
-            skipped = await self._datasets(archive, tenant_id)
+            skipped.extend(await self._datasets(archive, tenant_id))
         if "models" in include:
             await self._models(archive, tenant_id)
         manifest: dict[str, Any] = {

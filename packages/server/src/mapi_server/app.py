@@ -55,6 +55,7 @@ from mapi_server.api import auth as auth_routes
 from mapi_server.api.problems import JsonBodyLimit
 from mapi_server.auth.oidc import HttpOidcProvider, OidcClient
 from mapi_server.auth.request import CSRF_HEADER, access_for, authenticate
+from mapi_server.clientaddr import ClientAddressMiddleware, parse_trusted_proxies
 from mapi_server.context import FinalizeQueue, ServerContext
 from mapi_server.db import Database, acting_as_gateway, resolve_database_url
 from mapi_server.devidp import DevIdP, mount_devidp
@@ -385,6 +386,11 @@ def create_app(
     # Every request's platform sessions run as the gateway role, never the bypass role
     # (plan §9): what a handler reads before (or besides) its tenant stays under RLS.
     app.add_middleware(GatewayRoleMiddleware)
+    # Outermost of all: the caller's address behind trusted proxies (MAPI_TRUSTED_PROXIES),
+    # before the access log, rate limits, audit or the Sybil checks read request.client.
+    app.add_middleware(
+        ClientAddressMiddleware, trusted=parse_trusted_proxies(settings.trusted_proxies or [])
+    )
     for router in (
         meta.router,
         auth_routes.router,

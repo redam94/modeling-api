@@ -14,7 +14,7 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.finalizer import Finalizer
-from mapi_server.services.runs import apply_transition, load_run
+from mapi_server.services.runs import apply_transition, load_run, now
 from mapi_server_testkit.builders import queued_fit, simulate_outputs, submit_fit
 from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_server_testkit.identity import (
@@ -230,6 +230,70 @@ async def test_breaking_input_changes_follow_the_schema_policy_and_rollback(
     assert ("endpoint.delete", "success") in await _audit_actions(ctx)
 
 
+async def test_a_laxer_evaluation_policy_needs_an_admin(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """A promoter (an ``endpoints:promote`` token) cannot switch off the schema or
+    train-only gates by sending a laxer policy with the promotion: that is an admin's
+    decision, like an override, and the policy change is audited."""
+    v1 = await fitted_version(ctx)
+    v2 = await refit_version(ctx, v1)
+    assert (
+        await client.put("/v1/endpoints/p", json={"model_version_id": v1.id})
+    ).status_code == 200
+    meta = json.loads(json.dumps(v2.score_meta))
+    meta["resolved"]["stages"]["raw"]["vars"]["price"] = {
+        "dims": ["t"], "dtype": "float64", "role": "covariate",
+    }  # fmt: skip
+    await _set(ctx, v2.id, score_meta=meta)
+    owner = await make_user(ctx, "owner@default.test")
+    await grant_role(ctx, owner, "default", "default", "admin")
+    promo = token_caller(
+        client, await make_token(ctx, owner, "default", "default", ["endpoints:promote"])
+    )
+    r = await promo.put("/v1/endpoints/p", json={"model_version_id": v2.id})
+    assert r.status_code == 409 and r.json()["code"] == "PROMOTION_BLOCKED"
+    lax = {"schema_change": "allow", "fit_mode": "train_only"}
+    r = await promo.put("/v1/endpoints/p", json={"model_version_id": v2.id,
+                                                 "evaluation_policy": lax})  # fmt: skip
+    assert r.status_code == 403 and r.json()["code"] == "FORBIDDEN", r.text
+    assert "evaluation policy" in r.json()["detail"]
+    ep = (await client.get("/v1/endpoints/p")).json()
+    assert ep["revision"] == 1 and ep["evaluation_policy"]["schema_change"] == "block"
+    # a new endpoint starts from the default policy: a token cannot create a lax one either
+    r = await promo.put("/v1/endpoints/q", json={"model_version_id": v1.id,
+                                                 "evaluation_policy": lax})  # fmt: skip
+    assert r.status_code == 403
+    # the same or a stricter policy is fine for the token
+    strict = {"model_version_id": v1.id, "evaluation_policy": {"schema_change": "block"}}
+    r = await promo.put("/v1/endpoints/q", json=strict)
+    assert r.status_code == 200, r.text
+    # a signed-in admin may relax it; the audit records the change
+    admin = await session_caller(ctx, client, owner)
+    r = await admin.put("/v1/endpoints/p", json={"model_version_id": v2.id,
+                                                 "evaluation_policy": lax})  # fmt: skip
+    assert r.status_code == 200 and r.json()["revision"] == 2, r.text
+    async with ctx.db.session() as s:
+        rows = (
+            (
+                await s.execute(
+                    select(m.AuditEvent).where(
+                        m.AuditEvent.action == "endpoint.promote", m.AuditEvent.outcome == "success"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        changed = [r for r in rows if "evaluation_policy" in (r.details or {})]
+        [ev] = [r for r in changed if r.details["alias"] == "p"]
+        assert ev.details["evaluation_policy"] == {
+            "from": {"fit_mode": "evaluate_then_refit", "schema_change": "block"},
+            "to": lax,
+        }
+    assert ("endpoint.promote", "denied") in await _audit_actions(ctx)
+
+
 async def test_schema_example_validate_and_snippets(
     client: httpx.AsyncClient, ctx: ServerContext
 ) -> None:
@@ -318,8 +382,8 @@ async def test_scoring_through_the_alias(client: httpx.AsyncClient, ctx: ServerC
         run = await s.get(m.Run, run_id)
         via = await s.get(m.EndpointRun, run_id)
         assert run is not None and via is not None
-        assert run.payload["model"] == "model://default/trend@v1"
-        assert run.payload["horizon"] == {"dim": "t", "periods": 6}
+        assert run.payload["request"]["model"] == "model://default/trend@v1"
+        assert run.payload["request"]["horizon"] == {"dim": "t", "periods": 6}
         assert (via.alias, via.revision) == ("trend-prod", 1)
     # inline data is stored (content-addressed) as a run input, decoded only in the sandbox
     inline = {
@@ -336,7 +400,7 @@ async def test_scoring_through_the_alias(client: httpx.AsyncClient, ctx: ServerC
         assert run is not None
         ref = run.inputs["inline.data"]
         assert ref["bucket"] == ctx.buckets.quarantine and "/inline/" in ref["name"]
-        assert "data" not in run.payload
+        assert "data" not in run.payload["request"]
     stored = json.loads(await ctx.store.get(ref["bucket"], ref["name"]))
     assert stored["data_vars"]["y"]["data"] == [1.0, 2.0]
     # invalid calls are refused before anything is created
@@ -345,6 +409,107 @@ async def test_scoring_through_the_alias(client: httpx.AsyncClient, ctx: ServerC
         json={"mode": "forecast", "horizon": {"dim": "nope", "periods": 2}},
     )
     assert r.status_code == 422 and r.json()["code"] == "COORD_NOT_ALLOWED"
+
+
+async def _tier(ctx: ServerContext, tier: str) -> None:
+    async with ctx.db.session() as s:
+        tenant = await s.get(m.Tenant, "default")
+        assert tenant is not None
+        tenant.trust_tier = tier
+
+
+async def test_returned_draws_are_capped_per_tier(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """Q2: draws on request, at most 300 (500 on paid tiers), enforced by the server."""
+    mv = await fitted_version(ctx)
+    await client.put("/v1/endpoints/trend-prod", json={"model": "model://default/trend@v1"})
+
+    def call(draws: int) -> dict[str, Any]:
+        return {
+            "mode": "forecast",
+            "horizon": {"dim": "t", "periods": 2},
+            "output": {"kind": "predictive", "draws": draws},
+        }
+
+    await _tier(ctx, "public")
+    for path in ("/v1/endpoints/trend-prod/score", "/v1/endpoints/trend-prod/validate"):
+        r = await client.post(path, json=call(301))
+        body = r.json()
+        issues = body.get("errors") or body.get("issues") or []
+        assert any(
+            i["code"] == "QUOTA_EXCEEDED" and i["pointer"] == "/output/draws" for i in issues
+        ), (path, body)
+        assert "at most 300 draws" in json.dumps(body)
+    r = await client.post("/v1/endpoints/trend-prod/score", json=call(300))
+    assert r.status_code == 202, r.text
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, r.json()["run"]["id"])
+        assert run is not None and run.payload["max_draws"] == 300  # the runner enforces it too
+    # a model score through POST /v1/models/...:score is capped the same way
+    request = {"apiVersion": "mapi/v1", "kind": "ScoreRequest",
+               "model": "model://default/trend@v1", **call(301)}  # fmt: skip
+    r = await client.post(f"/v1/models/{mv.model_id}/versions/1:score", json={"request": request})
+    assert r.status_code in (409, 422, 429) and "at most 300 draws" in r.text, r.text
+    # paid tiers: 500
+    await _tier(ctx, "verified")
+    assert (await client.post("/v1/endpoints/trend-prod/score", json=call(500))).status_code == 202
+    r = await client.post("/v1/endpoints/trend-prod/score", json=call(501))
+    assert r.status_code >= 400 and "at most 500 draws" in r.text
+
+
+async def _finish_score(ctx: ServerContext, run_id: str, outputs: dict[str, bytes]) -> None:
+    """Mark a score run succeeded with these outputs stored (what the finalizer records)."""
+    stored = {}
+    for name, data in outputs.items():
+        meta = await ctx.store.put(ctx.buckets.runs, f"t/default/runs/{run_id}/1/{name}", data)
+        stored[name] = {"bucket": meta.bucket, "name": meta.name, "generation": meta.generation,
+                        "size": meta.size}  # fmt: skip
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, run_id)
+        assert run is not None
+        run.state, run.attempt, run.finished_at = "succeeded", 1, now()
+        s.add(
+            m.RunAttempt(
+                run_id=run_id, attempt=1, tenant_id=run.tenant_id, project_id=run.project_id,
+                nonce="n" + run_id, hmac_key="k" * 64, executor="fake", status="finished",
+                deadline=now(), outputs=stored,
+            )
+        )  # fmt: skip
+
+
+async def test_finished_scores_answer_with_the_summary_inline(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """Q2: a caller without zarr or Arrow (a spreadsheet, curl) gets the numbers - the mean
+    and HDI per coordinate - in the answer itself, next to the output links."""
+    from mapi_spec.api import SCORE_SUMMARY_MAX_BYTES, ScoreCallResult, ScoreSummary
+
+    await fitted_version(ctx)
+    await client.put("/v1/endpoints/trend-prod", json={"model": "model://default/trend@v1"})
+    body = {"mode": "forecast", "horizon": {"dim": "t", "periods": 2}}
+    headers = {"Idempotency-Key": "sheet-1", "Prefer": "wait=0"}
+    r = await client.post("/v1/endpoints/trend-prod/score", json=body, headers=headers)
+    assert r.status_code == 202 and r.json()["summary"] is None
+    summary = ScoreSummary.model_validate(ScoreSummary.model_json_schema()["examples"][0])
+    await _finish_score(ctx, r.json()["run"]["id"], {
+        "score.zarr.zip": b"PK\x05\x06" + b"\x00" * 18,
+        "summary.json": summary.model_dump_json().encode(),
+    })  # fmt: skip
+    r = await client.post("/v1/endpoints/trend-prod/score", json=body, headers=headers)
+    assert r.status_code == 200, r.text
+    done = ScoreCallResult.model_validate(r.json())
+    assert done.done and done.summary == summary
+    assert {o.name for o in done.outputs} == {"score.zarr.zip", "summary.json"}
+    # a summary that is not a ScoreSummary, or too large, is left out (the links remain)
+    r2 = await client.post("/v1/endpoints/trend-prod/score", json=body,
+                           headers={**headers, "Idempotency-Key": "sheet-2"})  # fmt: skip
+    await _finish_score(ctx, r2.json()["run"]["id"], {"summary.json": b'{"tables": "nope"}'})
+    r2 = await client.post("/v1/endpoints/trend-prod/score", json=body,
+                           headers={**headers, "Idempotency-Key": "sheet-2"})  # fmt: skip
+    assert r2.status_code == 200 and r2.json()["summary"] is None
+    assert r2.json()["outputs"][0]["name"] == "summary.json"
+    assert SCORE_SUMMARY_MAX_BYTES >= 1024 * 1024
 
 
 async def test_score_bodies_are_capped_and_depth_checked(
@@ -433,6 +598,43 @@ async def test_score_alias_tokens_authorize_exactly_their_endpoint(
     )
     r = await broke.post("/v1/endpoints/trend-prod/score", json=body)
     assert r.status_code == 429 and r.json()["code"] == "QUOTA_EXCEEDED"
+
+
+async def test_score_tokens_cannot_score_or_probe_other_datasets(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """A ``score:<alias>`` token has no dataset read access: it sends inline data, or
+    names the endpoint's own fit dataset, and learns nothing about other datasets."""
+    from mapi_server_testkit.builders import ready_dataset
+
+    await fitted_version(ctx)  # fitted on dataset://default/co2
+    await ready_dataset(ctx, "secret")
+    assert (
+        await client.put("/v1/endpoints/p", json={"model": "model://default/trend@v1"})
+    ).status_code == 200
+    async with ctx.db.session() as s:
+        owner = await s.get(m.User, LOCAL_USER_ID)
+        assert owner is not None
+    tok = token_caller(client, await make_token(ctx, owner, "default", "default", ["score:p"]))
+    assert (await tok.get("/v1/datasets/secret")).status_code == 403
+
+    def call(ref: str) -> dict[str, Any]:
+        return {"mode": "predict", "data": ref}
+
+    answers = []
+    for ref in ("dataset://default/secret", "dataset://default/nonexistent"):
+        for path in ("/v1/endpoints/p/validate", "/v1/endpoints/p/score"):
+            r = await tok.post(path, json=call(ref))
+            assert r.status_code == 403 and r.json()["code"] == "FORBIDDEN", (path, r.text)
+            answers.append(r.json()["detail"])
+    assert len(set(answers)) == 1  # the same answer whether or not the dataset exists
+    side = {"mode": "predict", "side_tables": {"prices": "dataset://default/secret"}}
+    assert (await tok.post("/v1/endpoints/p/validate", json=side)).status_code == 403
+    # the endpoint's own fit dataset is fine, and a caller with dataset read may name any
+    r = await tok.post("/v1/endpoints/p/validate", json=call("dataset://default/co2"))
+    assert r.status_code == 200 and r.json()["valid"], r.text
+    r = await client.post("/v1/endpoints/p/validate", json=call("dataset://default/secret"))
+    assert r.status_code == 200
 
 
 def test_openapi_documents_the_endpoint_operations() -> None:

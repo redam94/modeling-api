@@ -3,7 +3,8 @@
 Outputs:
 
 * score - ``score.zarr.zip`` (the result ``DataTree``), ``result.json`` (representation, units,
-  output space, issues, metrics), ``ui/summary.arrow`` and ``plots.json``; forecasts add
+  output space, issues, metrics), ``summary.json`` (the summary as plain tables, which the API
+  inlines in its answer), ``ui/summary.arrow`` and ``plots.json``; forecasts add
   ``ui/guided/forecast.json`` and counterfactuals ``ui/guided/counterfactual.json`` (M3,
   :mod:`mapi_runner.worker.guided`), and a forecast's fan chart shows the fitted history
   with the split line;
@@ -18,6 +19,7 @@ import json
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from mapi_sdk._util import normalise_dataset
 from mapi_sdk.bundle import Bundle, MetricsReport
@@ -26,6 +28,7 @@ from mapi_sdk.errors import PayloadLimitError
 from mapi_sdk.harness import _to_original, score_bundle
 from mapi_sdk.models import ScoreContext
 from mapi_sdk.wire import to_arrow_table, write_arrow_ipc, write_datatree_zip
+from mapi_spec.api import SCORE_SUMMARY_MAX_CELLS, SCORE_SUMMARY_OUTPUT
 from mapi_spec.capabilities import REPRESENTATION_RULES
 from mapi_spec.endpoints import INPUT_INLINE_DATA, INPUT_INLINE_SCENARIO
 from mapi_spec.errors import ErrorCode, MapiError
@@ -79,6 +82,55 @@ def _result_json(tree: xr.DataTree) -> dict[str, Any]:
         else:
             out[key] = value
     return out
+
+
+def _cell(value: Any) -> Any:
+    """A JSON cell: ISO text for dates (just the day at midnight), ``None`` for NaN."""
+    if isinstance(value, np.datetime64 | pd.Timestamp):
+        ts = pd.Timestamp(value)
+        if pd.isna(ts):
+            return None
+        return ts.date().isoformat() if ts == ts.normalize() else ts.isoformat()
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, bytes):
+        return value.decode("utf-8", "replace")
+    if isinstance(value, float) and not np.isfinite(value):
+        return None
+    if isinstance(value, str | int | float | bool) or value is None:
+        return value
+    return str(value)
+
+
+def summary_tables(ds: xr.Dataset, *, max_cells: int = SCORE_SUMMARY_MAX_CELLS) -> dict[str, Any]:
+    """The ``summary`` group (variables with a leading ``stat`` dim) as plain tables: the
+    coordinate columns, then one column per statistic; at most ``max_cells`` cells."""
+    tables: list[dict[str, Any]] = []
+    cells = 0
+    truncated = False
+    for name in sorted(ds.data_vars, key=str):
+        da = ds[name]
+        if "stat" not in da.dims:
+            continue
+        da = da.transpose("stat", ...)
+        dims = [str(d) for d in da.dims if d != "stat"]
+        stats = [str(s) for s in da["stat"].values]
+        labels = [ds[d].values if d in ds.coords else np.arange(da.sizes[d]) for d in dims]
+        values = da.values
+        rows: list[list[Any]] = []
+        for idx in np.ndindex(*[da.sizes[d] for d in dims]):
+            if cells + len(dims) + len(stats) > max_cells:
+                truncated = True
+                break
+            rows.append(
+                [_cell(labels[k][i]) for k, i in enumerate(idx)]
+                + [_cell(v) for v in values[(slice(None), *idx)]]
+            )
+            cells += len(dims) + len(stats)
+        tables.append({"variable": str(name), "columns": [*dims, *stats], "rows": rows})
+        if truncated:
+            break
+    return {"tables": tables, "truncated": truncated}
 
 
 _FULL_GROUPS = ("/predictions", "/baseline/predictions", "/delta/predictions")
@@ -136,6 +188,7 @@ def _write_tree(
     if "summary" in tree:
         node = tree["summary"]
         assert isinstance(node, xr.DataTree)
+        ctx.write_json(SCORE_SUMMARY_OUTPUT, summary_tables(node.to_dataset()))
         try:
             ctx.write_output("ui/summary.arrow", write_arrow_ipc(to_arrow_table(node.to_dataset())))
         except PayloadLimitError as exc:

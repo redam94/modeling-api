@@ -18,14 +18,20 @@ curl -s -b cookies -H "X-CSRF-Token: $CSRF" -X POST "$API/v1/tenants/acme/export
   -H 'Content-Type: application/json' -d '{}'
 # poll it; once "ready", download_url is a signed link valid for 15 minutes
 curl -s -b cookies "$API/v1/tenants/acme/exports/exp_01jaf3r1s2t3v4w5x6y7z8a9b0"
+# every export of the workspace, newest first (any admin, any browser)
+curl -s -b cookies "$API/v1/tenants/acme/exports"
 ```
+
+Settings > Data shows the newest export from that list, so another admin (or another
+browser) sees an export that is still being built and can download a finished one; the
+Python client has `client.tenants.exports("acme")`.
 
 The orchestrator builds the archive in the background (usually within a minute). It is a zip:
 
 | Path | Content |
 |---|---|
 | `README.txt`, `manifest.json` | What is inside, with the size and SHA-256 of every file |
-| `metadata/<table>.jsonl` | Every record of the workspace, one JSON object per line: projects, members, API tokens, datasets and versions (schemas, profiles), specs and revisions (YAML), runs, models and versions, plots, endpoints, webhooks… |
+| `metadata/<table>.jsonl` | Every record of the workspace, one JSON object per line: projects, members, API tokens, datasets and versions (schemas, profiles), specs and revisions (YAML), runs, models and versions, plots, endpoints, webhooks…, up to `MAPI_EXPORT_MAX_METADATA_BYTES` (256 MiB) in total; a table cut short is listed under `skipped` with the rows written |
 | `datasets/<dataset>/v<n>/...` | The stored dataset objects, byte for byte, up to `MAPI_EXPORT_MAX_INLINE_BYTES` (256 MiB) in total; the rest is listed in `manifest.json` under `skipped` with sizes and checksums |
 | `models/<model>/v<n>/manifest.json`, `model_version.json` | The signed bundle manifest, lineage, diagnostics, scorecard and metrics of every model version |
 | `audit/audit_events.jsonl`, `usage/cost_ledger.jsonl` | The workspace's audit log and metered usage |
@@ -73,7 +79,14 @@ The deletion becomes `deleting`. This cannot be undone:
 2. Its API tokens are revoked, and the browser sessions of people who belong to no other
    workspace are ended. Components that hand out links (webhooks, embed links) revoke theirs.
 3. Unfinished runs are cancelled again, and the purge waits for them to stop (at most
-   `MAPI_DELETION_RUN_STOP_TIMEOUT_S`, one hour).
+   `MAPI_DELETION_RUN_STOP_TIMEOUT_S`, one hour). A run that still has not stopped after
+   that could keep uploading results under the workspace's prefix while its signed upload
+   links are valid (its timeout plus 30 minutes), so the purge then waits for those links to
+   expire before it deletes anything; the `queue` store's detail says until when.
+4. Exports that are queued or still being built are cancelled (state `failed`). The purge
+   waits for a build in progress to end (at most its `MAPI_EXPORT_BUILD_TIMEOUT_S` lease); a
+   cancelled build never uploads its archive, and deletes one that landed after the purge
+   listed the objects.
 
 Then the purge goes store by store, and `GET /v1/tenants/{id}/deletion` shows each one's
 progress:
@@ -137,6 +150,12 @@ The purge is idempotent: a retry starts where the last pass stopped.
 * The scheduler runs in the orchestrator (`mapi-server worker`) every
   `MAPI_LIFECYCLE_INTERVAL_S`; purges and exports run as procrastinate jobs on the
   `lifecycle` queue, one at a time per deletion or export, and are re-queued if a worker dies.
+* An export build may take `MAPI_EXPORT_BUILD_TIMEOUT_S` (one hour) and then fails. An
+  export still `running` five minutes after that belongs to a process that died (an OOM
+  kill, a lost orchestrator): the scheduler builds it once more, and fails it if that build
+  dies too, so a workspace can always ask for a new export. The archive is built in memory,
+  so size the orchestrator for `MAPI_EXPORT_MAX_INLINE_BYTES` plus
+  `MAPI_EXPORT_MAX_METADATA_BYTES`.
 * Database rows are deleted through the tenant's own row-level-security session wherever the
   request-path role may delete them, so a purge cannot touch another tenant's rows.
 * Components that own credentials or links of a tenant register a

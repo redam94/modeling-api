@@ -463,6 +463,18 @@ def create_tenant_export(tenant_id: str, body: GdprExportRequest) -> Call[GdprEx
     )
 
 
+def list_tenant_exports(
+    tenant_id: str, limit: int | None, cursor: str | None
+) -> Call[Page[GdprExport]]:
+    return Call(
+        "GET",
+        f"{_tenant(tenant_id)}/exports",
+        parse_model(Page[GdprExport]),
+        params=page_params(limit, cursor),
+        scoped=False,
+    )
+
+
 def get_tenant_export(tenant_id: str, export_id: str) -> Call[GdprExport]:
     path = f"{_tenant(tenant_id)}/exports/{segment(export_id)}"
     return Call("GET", path, parse_model(GdprExport), scoped=False)

@@ -21,3 +21,5 @@ resp <- request('https://api.mapi.example/v1/endpoints/geo-mmm-prod/score') |>
   req_perform()
 result <- resp_body_json(resp)
 str(result$run$state)
+# the numbers: one table per output (coordinates, then mean and HDI)
+str(result$summary$tables)

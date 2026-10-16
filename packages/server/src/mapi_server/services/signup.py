@@ -30,7 +30,7 @@ import logging
 import re
 import secrets
 from datetime import datetime, timedelta
-from typing import Final
+from typing import Any, Final
 
 from mapi_spec.api import new_id
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome, client_fingerprint
@@ -48,6 +48,7 @@ from mapi_spec.trust import (
     VerificationResult,
     check_signup,
     generate_verification_token,
+    is_shared_email_domain,
 )
 from pydantic import JsonValue
 from sqlalchemy import ColumnElement, delete, func, select, update
@@ -181,21 +182,27 @@ async def _rejected(
 async def _check_rate(
     s: AsyncSession, ctx: ServerContext, *, ip_hash: str | None, domain: str, at: datetime
 ) -> None:
+    """The sign-up limits. Per client address, every request counts: that is what holds
+    back unverified floods. The platform and per-domain caps count *verified* sign-ups only,
+    so made-up addresses cannot lock a domain (or everyone) out of sign-up; shared free-mail
+    domains (``MAPI_SIGNUP_SHARED_EMAIL_DOMAINS``) have no per-domain cap."""
     st = ctx.settings
-    checks: list[tuple[str, ColumnElement[bool] | None, timedelta, int]] = [
-        ("on this platform", None, timedelta(hours=1), st.signup_global_per_hour),
-        ("from this e-mail domain", m.Signup.email_domain == domain, timedelta(days=1),
-         st.signup_per_domain_per_day),
-    ]  # fmt: skip
+    verified = m.Signup.verified_at
+    checks: list[tuple[str, ColumnElement[bool] | None, Any, timedelta, int]] = [
+        ("on this platform", None, verified, timedelta(hours=1), st.signup_global_per_hour),
+    ]
+    if not is_shared_email_domain(domain, st.signup_shared_email_domains):
+        checks.append(
+            ("from this e-mail domain", m.Signup.email_domain == domain, verified,
+             timedelta(days=1), st.signup_per_domain_per_day)
+        )  # fmt: skip
     if ip_hash is not None:
         checks.append(
-            ("from this network address", m.Signup.ip_hash == ip_hash, timedelta(hours=1),
-             st.signup_per_ip_per_hour)
+            ("from this network address", m.Signup.ip_hash == ip_hash, m.Signup.created_at,
+             timedelta(hours=1), st.signup_per_ip_per_hour)
         )  # fmt: skip
-    for what, cond, window, limit in checks:
-        stmt = select(func.count(), func.min(m.Signup.created_at)).where(
-            m.Signup.created_at > at - window
-        )
+    for what, cond, ts, window, limit in checks:
+        stmt = select(func.count(), func.min(ts)).where(ts > at - window)
         if cond is not None:
             stmt = stmt.where(cond)
         count, oldest = (await s.execute(stmt)).one()
@@ -334,6 +341,8 @@ async def _sybil_flags(
         n = (await s.execute(select(func.count()).where(cond, *verified))).scalar_one()
         if int(n) >= st.signup_sybil_threshold:
             flags.append(flag)
+    if is_shared_email_domain(row.email_domain, st.signup_shared_email_domains):
+        return flags  # many unrelated people share gmail.com: a burst there means nothing
     burst = (
         await s.execute(
             select(func.count()).where(

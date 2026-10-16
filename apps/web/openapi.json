@@ -9730,6 +9730,39 @@
         "title": "Page[ExecutorHealth]",
         "type": "object"
       },
+      "Page_GdprExport_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GdprExport"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[GdprExport]",
+        "type": "object"
+      },
       "Page_GuidedTemplate_": {
         "examples": [
           {
@@ -14320,7 +14353,7 @@
         "type": "object"
       },
       "ScoreCallResult": {
-        "description": "``done`` with output links (200), or the still-running run (202).",
+        "description": "``done`` with output links (200), or the still-running run (202). ``summary`` is the\nrequested summary (mean and HDI by default) inline, once the run succeeded.",
         "examples": [
           {
             "done": true,
@@ -14372,6 +14405,16 @@
           },
           "run": {
             "$ref": "#/components/schemas/Run"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -14555,6 +14598,124 @@
           "model"
         ],
         "title": "ScoreRequest",
+        "type": "object"
+      },
+      "ScoreSummary": {
+        "description": "The requested summary of a score run as plain tables (``summary.json``), inlined in\n:class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without\nzarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the\n``score.zarr.zip`` output for everything).",
+        "examples": [
+          {
+            "tables": [
+              {
+                "columns": [
+                  "geo",
+                  "time",
+                  "mean",
+                  "hdi_90_lower",
+                  "hdi_90_upper"
+                ],
+                "rows": [
+                  [
+                    "de",
+                    "2026-01-05",
+                    1520.4,
+                    1402.1,
+                    1633.9
+                  ]
+                ],
+                "variable": "revenue"
+              }
+            ],
+            "truncated": false
+          }
+        ],
+        "properties": {
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreSummaryTable"
+            },
+            "maxItems": 1000,
+            "title": "Tables",
+            "type": "array"
+          },
+          "truncated": {
+            "default": false,
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "title": "ScoreSummary",
+        "type": "object"
+      },
+      "ScoreSummaryTable": {
+        "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.",
+        "examples": [
+          {
+            "columns": [
+              "geo",
+              "time",
+              "mean",
+              "hdi_90_lower",
+              "hdi_90_upper"
+            ],
+            "rows": [
+              [
+                "de",
+                "2026-01-05",
+                1520.4,
+                1402.1,
+                1633.9
+              ]
+            ],
+            "variable": "revenue"
+          }
+        ],
+        "properties": {
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Columns",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "variable": {
+            "maxLength": 256,
+            "title": "Variable",
+            "type": "string"
+          }
+        },
+        "required": [
+          "variable",
+          "columns",
+          "rows"
+        ],
+        "title": "ScoreSummaryTable",
         "type": "object"
       },
       "Scorecard": {
@@ -27584,6 +27745,96 @@
       }
     },
     "/v1/tenants/{tenant_id}/exports": {
+      "get": {
+        "description": "The tenant's exports, newest first: what is being built and what can be downloaded\n(``GET`` one export for its download link).",
+        "operationId": "list_tenant_exports",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_GdprExport_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem document (`application/problem+json`); code `FORBIDDEN`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem document (`application/problem+json`); code `NOT_FOUND`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tenant Exports",
+        "tags": [
+          "tenants"
+        ]
+      },
       "post": {
         "description": "Queue a GDPR export of everything the tenant stored; poll it for the link.",
         "operationId": "create_tenant_export",

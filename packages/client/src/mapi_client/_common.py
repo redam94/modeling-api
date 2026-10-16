@@ -17,6 +17,7 @@ from mapi_spec.api import (
     RunCreate,
     RunEventView,
     ScoreCallResult,
+    ScoreSummary,
 )
 from mapi_spec.errors import (
     ErrorCode,
@@ -163,11 +164,14 @@ class ScoreResult:
 
     ``tree`` is the scored ``xr.DataTree`` when the ``xarray`` extra is installed and the
     output was downloaded (``download=True``); otherwise fetch ``outputs`` yourself.
+    ``summary`` is the requested summary (mean and HDI by default) as plain tables, inlined
+    by the server once the run succeeded (no extra needed).
     """
 
     run: Run
     outputs: list[ArtifactLink] = field(default_factory=list)
     tree: xr.DataTree | None = None
+    summary: ScoreSummary | None = None
 
     @property
     def done(self) -> bool:
@@ -180,4 +184,4 @@ class ScoreResult:
 
     @classmethod
     def from_call(cls, res: ScoreCallResult, tree: xr.DataTree | None = None) -> ScoreResult:
-        return cls(run=res.run, outputs=list(res.outputs), tree=tree)
+        return cls(run=res.run, outputs=list(res.outputs), tree=tree, summary=res.summary)

@@ -15,8 +15,10 @@ from mapi_spec.endpoints import (
     EndpointRollback,
     EndpointSchemaSnapshot,
     EndpointScoreCall,
+    EvaluationPolicy,
     endpoint_ref,
     example_score_call,
+    policy_relaxations,
     schema_breaks,
 )
 from mapi_spec.errors import ErrorCode, MapiError
@@ -198,3 +200,18 @@ def test_other_endpoints_get_an_inline_predict_example() -> None:
     assert req.mode == "predict"
     # the example survives the JSON round trip GET /schema serves it through
     assert EndpointScoreCall.model_validate_json(ex.model_dump_json()) == ex
+
+
+def test_policy_relaxations() -> None:
+    strict = EvaluationPolicy()
+    assert policy_relaxations(strict, strict) == []
+    assert policy_relaxations(EvaluationPolicy(schema_change="allow"), strict) == []
+    assert policy_relaxations(strict, EvaluationPolicy(schema_change="warn")) == [
+        "schema_change block -> warn"
+    ]
+    lax = EvaluationPolicy(schema_change="allow", fit_mode="train_only")
+    assert policy_relaxations(EvaluationPolicy(schema_change="warn"), lax) == [
+        "schema_change warn -> allow",
+        "fit_mode evaluate_then_refit -> train_only",
+    ]
+    assert policy_relaxations(lax, lax) == []

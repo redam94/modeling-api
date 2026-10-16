@@ -118,6 +118,11 @@ class TestConfig:
         assert "MAPI_WEBHOOK_CA_FILE" not in mine and "MAPI_WEBHOOK_DEV_ALLOWLIST" not in mine
         multi = _cfg(dev, tmp_path, MAPI_STACK_PROFILE="multi-tenant").service_env(None)
         assert "MAPI_WEBHOOK_CA_FILE" not in multi and "MAPI_WEBHOOK_DEV_ALLOWLIST" not in multi
+        # the multi-tenant profile needs an explicit proxy decision: the local API is direct
+        assert multi["MAPI_TRUSTED_PROXIES"] == "none"
+        assert "MAPI_TRUSTED_PROXIES" not in cfg.service_env(None)
+        lb = _cfg(dev, tmp_path, MAPI_STACK_PROFILE="multi-tenant", MAPI_TRUSTED_PROXIES="10.0.0.1")
+        assert "MAPI_TRUSTED_PROXIES" not in lb.service_env(None)  # the caller's own value
 
     def test_outbox_prints_the_newest_links(
         self, dev: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]

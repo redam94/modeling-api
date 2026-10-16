@@ -41,7 +41,13 @@ from mapi_server.db import models as m
 from mapi_server.services.runs import now
 from mapi_server.storage import list_all
 
-__all__ = ["EMPTY_CATALOG_DIGEST", "MANIFEST_MAX_BYTES", "StoredRef", "build_runspec"]
+__all__ = [
+    "EMPTY_CATALOG_DIGEST",
+    "MANIFEST_MAX_BYTES",
+    "StoredRef",
+    "build_runspec",
+    "signed_links_ttl",
+]
 
 MANIFEST_MAX_BYTES = 4 * 1024 * 1024
 EMPTY_CATALOG_DIGEST = catalog_digest(Catalog())
@@ -56,6 +62,12 @@ def StoredRef(bucket: str, name: str, generation: int) -> dict[str, Any]:
 
 def _ttl(timeout_s: int) -> timedelta:
     return min(timedelta(seconds=timeout_s) + _URL_MARGIN, MAX_SIGNED_URL_TTL)
+
+
+def signed_links_ttl(timeout_s: int) -> timedelta:
+    """How long the signed links (inputs, output and checkpoint upload policies) of an
+    attempt of a run with ``timeout_s`` stay valid after its RunSpec is built."""
+    return _ttl(timeout_s)
 
 
 def _io_name(rel: str, i: int) -> str:

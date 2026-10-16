@@ -25,6 +25,7 @@ import json
 import logging
 import time
 from collections import OrderedDict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Final
@@ -36,7 +37,7 @@ from mapi_spec.errors import ErrorCode, Issue, MapiError
 from mapi_spec.executor import RunKind
 from mapi_spec.jobs import INPUT_PLOTS, RenderJob, plot_data_input, render_output
 from mapi_spec.loader import spec_hash
-from mapi_spec.plots import MAX_INLINE_ARROW_B64, DataRef, PlotSpec
+from mapi_spec.plots import MAX_INLINE_ARROW_B64, DataRef, InlineArrow, PlotSpec
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.sharing import (
@@ -63,7 +64,7 @@ from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError, ProblemWithHeaders
 from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import verified_bundle_object, verified_manifest
-from mapi_server.services.quotas import count_requests
+from mapi_server.services.quotas import charge_egress, count_requests
 from mapi_server.services.runs import apply_transition, create_run, now
 from mapi_server.services.runspec import StoredRef
 from mapi_server.services.submit import admit
@@ -126,6 +127,24 @@ def _dump(plot: PlotSpec) -> dict[str, Any]:
 # ----------------------------------------------------------------------------- resolving
 
 
+def ran_uploaded_code(mv: m.ModelVersion | None) -> bool:
+    """Was ``mv`` fitted with uploaded plugin code (an overlay)? Its worker wrote the plot
+    documents, provenance included, so none of them can count as a platform recipe (plan
+    §10.3 item 4): the server decides from the version's lineage, never from the plot."""
+    return mv is not None and bool((mv.lineage or {}).get("overlay_hash"))
+
+
+async def uploaded_code_versions(session: AsyncSession, ids: Iterable[str | None]) -> set[str]:
+    """Which of these model versions ran uploaded code (see :func:`ran_uploaded_code`)."""
+    wanted = {i for i in ids if i}
+    if not wanted:
+        return set()
+    rows = await session.execute(
+        select(m.ModelVersion.id, m.ModelVersion.lineage).where(m.ModelVersion.id.in_(wanted))
+    )
+    return {mv_id for mv_id, lineage in rows if (lineage or {}).get("overlay_hash")}
+
+
 @dataclass(frozen=True, slots=True)
 class ResolvedPlot:
     """A sanitized plot and where its ``data_ref`` datasets live (a verified model version)."""
@@ -140,7 +159,9 @@ class ResolvedPlot:
 
     @property
     def embeddable(self) -> bool:
-        return embeddable(self.source_kind, self.provenance, self.recipe)
+        return embeddable(self.source_kind, self.provenance, self.recipe) and not (
+            ran_uploaded_code(self.model_version)
+        )
 
 
 async def _model_version(
@@ -172,11 +193,14 @@ async def resolve_model_plot(
     if row is None:
         raise NotFoundError("plot", ref.plot_id)
     plot = _sanitized(row.spec, "/source")
+    provenance = plot.provenance.source
+    if provenance == "recipe" and ran_uploaded_code(mv):
+        provenance = "plugin"  # what the plot document claims cannot be trusted
     return ResolvedPlot(
         plot=plot,
         model_version=mv,
         source_kind="model_plot",
-        provenance=plot.provenance.source,
+        provenance=provenance,
         recipe=plot.provenance.recipe,
         source=ref,
     )
@@ -232,7 +256,8 @@ async def resolve_saved(
 # ----------------------------------------------------------------------------- saved plots
 
 
-def saved_plot_dto(row: m.SavedPlot, *, with_spec: bool) -> SavedPlot:
+def saved_plot_dto(row: m.SavedPlot, *, with_spec: bool, uploaded_code: bool = False) -> SavedPlot:
+    """``uploaded_code``: the plot's model version ran uploaded code (never embeddable)."""
     return SavedPlot(
         id=row.id,
         tenant_id=row.tenant_id,
@@ -244,7 +269,7 @@ def saved_plot_dto(row: m.SavedPlot, *, with_spec: bool) -> SavedPlot:
         source=ModelPlotRef.model_validate(row.source) if row.source else None,
         recipe=row.recipe,
         provenance=row.provenance,
-        embeddable=embeddable(row.source_kind, row.provenance, row.recipe),
+        embeddable=embeddable(row.source_kind, row.provenance, row.recipe) and not uploaded_code,
         spec=sanitize_plot(row.spec).plot if with_spec else None,
         created_by=row.created_by,
         created_at=row.created_at,
@@ -726,14 +751,18 @@ async def embed_view(ctx: ServerContext, token: str, client_ip: str | None) -> E
         if row is None or row.revoked_at is not None or row.expires_at <= at:
             raise _expired()
         saved = await session.get(m.SavedPlot, row.plot_id)
-        if saved is None:
+        if saved is None or ran_uploaded_code(
+            await session.get(m.ModelVersion, saved.model_version_id or "")
+        ):  # checked before the cache: plugin-written plots are never served
             raise NotFoundError("embed", "link")
         key = (row.id, saved.updated_at.isoformat())
         view = _cache_get(key, settings.embed_cache_s)
         if view is None:
             view = await _build_view(ctx, session, row, saved)
             _cache_put(key, view)
-        image_url = await _image_url(ctx, session, row)
+        image_url, image_bytes = await _image_url(ctx, session, row)
+        # a public view is the tenant's download egress: the inline data and the PNG link
+        await charge_egress(ctx, tenant_id, _view_bytes(view) + image_bytes, now=at)
         await session.execute(
             update(m.PlotEmbed)
             .where(m.PlotEmbed.id == row.id)
@@ -749,7 +778,7 @@ async def _build_view(
     if not embeddable(saved.source_kind, saved.provenance, saved.recipe):
         raise NotFoundError("embed", "link")  # defence in depth: never serve non-recipes
     mv = await session.get(m.ModelVersion, saved.model_version_id or "")
-    if mv is None:
+    if mv is None or ran_uploaded_code(mv):
         raise NotFoundError("embed", "link")
     plot = sanitize_plot(saved.spec).plot
     datasets: dict[str, Any] = {}
@@ -785,7 +814,14 @@ async def _build_view(
     )
 
 
-async def _image_url(ctx: ServerContext, session: AsyncSession, row: m.PlotEmbed) -> str | None:
+def _view_bytes(view: EmbedView) -> int:
+    """The inline data an embed view carries (its Arrow datasets, base64)."""
+    return sum(len(ds.data) for ds in view.plot.datasets.values() if isinstance(ds, InlineArrow))
+
+
+async def _image_url(
+    ctx: ServerContext, session: AsyncSession, row: m.PlotEmbed
+) -> tuple[str | None, int]:
     """A signed link to the PNG fallback: copied (server side, write-once) out of the render
     run's scratch into the bundles bucket the first time it is asked for after the run
     succeeded."""
@@ -793,7 +829,7 @@ async def _image_url(ctx: ServerContext, session: AsyncSession, row: m.PlotEmbed
     if row.image is None and row.render_run_id is not None:
         row.image = await _copy_fallback(ctx, session, row)
     if not row.image:
-        return None
+        return None, 0
     try:
         signed = await ctx.store.sign_get(
             str(row.image["bucket"]),
@@ -803,8 +839,8 @@ async def _image_url(ctx: ServerContext, session: AsyncSession, row: m.PlotEmbed
         )
     except NotFound:
         row.image = None
-        return None
-    return signed.url
+        return None, 0
+    return signed.url, int(signed.size or 0)
 
 
 async def _copy_fallback(

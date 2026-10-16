@@ -478,6 +478,89 @@ milestone releases are tagged on `main`.
   name for the dim (`RecipeInput.dim_label`, from the bundle's `/binding`), and the fit's
   holdout prediction tree carries the binding.
 
+### Fixed (M3 review: integrations and trust)
+- **server**: every per-address control saw the proxy's address, not the caller's, so the
+  sign-up, verification and embed-view limits and the Sybil `same_ip` check applied to the
+  whole platform behind a load balancer. New `MAPI_TRUSTED_PROXIES` (addresses or CIDR
+  ranges): a request from a trusted proxy takes the right-most untrusted `X-Forwarded-For`
+  hop as the client; any other peer's header is ignored. The multi-tenant profile refuses to
+  start without it (`none` when clients connect directly); Terraform sets Cloud Run's and the
+  load balancer's hops and `make dev` sets `none` for its multi-tenant stack.
+- **server**: a promoter, an `endpoints:promote` token included, could switch off the
+  schema-change and train-only gates by sending a laxer `evaluation_policy` with the
+  promotion. Relaxing the policy (`schema_change` toward `allow`, `fit_mode` to `train_only`)
+  now needs a signed-in endpoint admin, like an override (`403 FORBIDDEN` otherwise, audited
+  as a denial), and the promotion's audit event records the policy before and after
+  (`mapi_spec.endpoints.policy_relaxations`).
+- **server**: the per-domain (25 a day) and platform (500 an hour) sign-up caps counted
+  unverified sign-ups, so made-up addresses could lock a whole e-mail domain, or everyone,
+  out of sign-up. They now count verified sign-ups only (the per-address limit still counts
+  every request), and large free-mail domains (`MAPI_SIGNUP_SHARED_EMAIL_DOMAINS`, default
+  `mapi_spec.trust.SHARED_EMAIL_DOMAINS`) have no per-domain cap and never trip the
+  `domain_burst` Sybil flag.
+- **server**: the plan's draw cap (Q2: 300, 500 on paid tiers) was enforced only by the
+  Python client, so any caller could ask a model or endpoint for 10,000 draws. Score
+  requests asking for more than the tenant tier's `MAX_SCORE_DRAWS` (`public` 300, other
+  tiers 500) are refused with `QUOTA_EXCEEDED` at `/output/draws`, and the score job carries
+  the cap (`ScoreJob.max_draws`: score runs now store a `{request, max_draws}` payload) so the
+  runner enforces it too.
+- **server**: a `score:<alias>` token could score any dataset of the project by
+  `dataset://` reference (and probe which exist through `…/validate`) without dataset read
+  access. Callers without it now send inline data or name the endpoint's own fit dataset;
+  any other reference, existing or not, gets the same `403 FORBIDDEN`.
+- **server**: a GDPR export whose build process died stayed `running` forever and blocked
+  every later export of the tenant. A build now holds a lease (`MAPI_EXPORT_BUILD_TIMEOUT_S`,
+  after which it fails, plus five minutes); a `running` export past its lease is built once
+  more, then failed, and only the build holding the lease may mark it ready. Metadata rows
+  are capped at `MAPI_EXPORT_MAX_METADATA_BYTES` (tables cut short are listed under
+  `skipped`), so the in-memory archive stays bounded.
+- **server**: an export still building when a tenant purge started wrote the whole archive
+  after the purge, where nothing would ever delete it. The deletion's start cancels the
+  tenant's queued and running exports (`revoked.exports` in the audit event), the `queue`
+  store waits for a cancelled build to end (or its lease to pass), and a build that lost its
+  lease never uploads and deletes an archive it uploaded after losing it.
+- **server**: a purge went on after `MAPI_DELETION_RUN_STOP_TIMEOUT_S` while cancelled runs
+  that never stopped still held signed upload policies under `t/{tenant}/`, so they could
+  write objects after the object store was purged. The `queue` store now also waits until
+  those runs' signed links have expired (attempt start + run timeout + 30 minutes) and says
+  until when.
+- **server, web, client**: GDPR exports could not be listed, and Settings > Data found the last
+  export only through the browser's `localStorage`, so another admin or browser could neither
+  see nor download an export that was running or finished (and could not start another one
+  while it ran). New `GET /v1/tenants/{tenant_id}/exports` (newest first, paged, tenant
+  admins); Settings > Data shows the newest export from it, and the Python client has
+  `tenants.exports(tenant_id)`.
+- **server**: the `storage_bytes` quota left out model bundles although the docs count them;
+  a tenant's storage now adds the size of every model version's stored objects.
+- **server**: the per-tier egress cap (`egress_bytes_per_month`, 5 GiB on the free tier) was
+  defined but never measured. Every signed download link the API mints (dataset and model
+  artifacts, `ui/` views, score and render outputs) and every public embed view (its inline
+  data and PNG link) is now charged to the tenant's monthly egress, which `GET /v1/usage`
+  reports; past the cap the link is refused with `429 QUOTA_EXCEEDED` (with `Retry-After`
+  until the month resets). GDPR exports are never charged; a purge deletes the counter.
+- **server**: the embeds' "platform recipes only" rule trusted the provenance in
+  `plots.json`, which the worker writes while it runs plugin code, so uploaded code could
+  label any spec `core.*` and get it onto public embed links. Plots of model versions fitted
+  with uploaded code (an overlay in their lineage) are saved with `plugin` provenance, are
+  never embeddable, and existing links stop serving them.
+- **server, runner, spec**: endpoint and model scores answered only with signed links to zarr
+  and Arrow files, so the Google Sheets card wrote the word "done" into `A1` and the curl, R
+  and TypeScript snippets printed links nobody could open without those libraries. Score runs
+  now write `summary.json` (the requested summary - mean and 90% HDI by default - as plain
+  tables: coordinate columns, then one column per statistic, at most 100,000 cells), and
+  `ScoreCallResult.summary` carries it inline once the run succeeded. The Apps Script builds
+  its payload from an `Input` sheet (long format) when there is one and writes the summary
+  tables to a `Result` sheet; the other snippets print the tables.
+- **web, plot-sandbox, docs**: embed links were advertised for Slack, but Slack does not frame
+  pages and the embed page had no unfurl tags, so a pasted link showed a bare "Shared plot".
+  The page now carries static Open Graph tags (a "Shared chart" card, never the plot's name or
+  the token), and the UI and guides recommend posting the rendered PNG to Slack instead of
+  promising a live chart there.
+- **docs**: webhooks do not attach rendered plots, a deliberate deviation from the plan
+  (bodies carry ids and states only, so no chart or signed link reaches a third-party
+  receiver); the webhooks guide says so and shows how a receiver renders a chart with
+  `POST /v1/plots:render` when `model.version.ready` arrives.
+
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
 The platform is now multi-tenant and ready for Google Cloud. Many teams can share one

@@ -68,6 +68,7 @@ from mapi_server.services.specs import (
     data_cap_issue,
     pin_document,
     resolve_dataset,
+    score_draw_cap,
     validate_document,
 )
 from mapi_server.services.verification import require_uploaded_code_allowed
@@ -365,6 +366,11 @@ async def _fit_dataset(session: AsyncSession, mv: m.ModelVersion) -> m.DatasetVe
     return dv
 
 
+async def fit_dataset_version(session: AsyncSession, mv: m.ModelVersion) -> m.DatasetVersion:
+    """The ready dataset version ``mv`` was fitted on (``REF_UNRESOLVED`` otherwise)."""
+    return await _fit_dataset(session, mv)
+
+
 async def fit_dataset_ref(session: AsyncSession, mv: m.ModelVersion) -> str:
     """``dataset://<project>/<name>@v<n>``: the dataset version ``mv`` was fitted on
     (``REF_UNRESOLVED`` when it is not recorded or no longer ready)."""
@@ -471,8 +477,10 @@ async def submit_model_run(
         )
         if any(i.severity == "error" for i in issues):
             raise ValidationFailed(issues)
-        payload = request.model_dump(mode="json", by_alias=True, exclude_none=True)
-        payload["model"] = ref
+        req_payload = request.model_dump(mode="json", by_alias=True, exclude_none=True)
+        req_payload["model"] = ref
+        # the runner enforces the tier's draw cap again (plan Q2)
+        payload = {"request": req_payload, "max_draws": await score_draw_cap(session, scope)}
         for name, dv in datasets.items():
             inputs[name] = data_ref(dv)
             read.append(dv)

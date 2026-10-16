@@ -26,6 +26,7 @@ from mapi_spec.errors import (
 )
 from mapi_spec.jobs import INPUT_DATASET, INPUT_SCENARIO, SCORE_INPUTS, side_table_input
 from mapi_spec.loader import check_limits, parse_document, parse_text, spec_hash
+from mapi_spec.quotas import max_score_draws
 from mapi_spec.refs import DatasetRef, EndpointRef, ModelVersionRef
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.schema import DataSchema
@@ -49,6 +50,7 @@ __all__ = [
     "pin_document",
     "resolve_dataset",
     "resolve_model_version",
+    "score_draw_cap",
     "validate_document",
 ]
 
@@ -315,6 +317,14 @@ async def _validate_score(
     await check_score_request(session, scope, req, mv, out.issues)
 
 
+async def score_draw_cap(session: AsyncSession, scope: Scope) -> int:
+    """How many draws a score request of this tenant may return (plan Q2, per tier)."""
+    tier = (
+        await session.execute(select(m.Tenant.trust_tier).where(m.Tenant.id == scope.tenant_id))
+    ).scalar_one_or_none()
+    return max_score_draws(tier)
+
+
 async def check_score_request(
     session: AsyncSession,
     scope: Scope,
@@ -357,7 +367,8 @@ async def check_score_request(
     summary = inline
     if payload is not None and payload.summary is not None:
         summary = DataSummary.model_validate(payload.summary)
-    issues.extend(validate_score_request(req, meta, summary))
+    cap = await score_draw_cap(session, scope)
+    issues.extend(validate_score_request(req, meta, summary, max_draws=cap))
     if req.data is None and req.scenario is None and req.horizon is None and inline is None:
         # the sandbox would fail the run with the same message; say it before a run starts
         issues.append(

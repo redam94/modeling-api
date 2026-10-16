@@ -269,3 +269,18 @@ describe("embed CSP", () => {
     expect(() => parseApiUrl("javascript:alert(1)", "x")).toThrow();
   });
 });
+
+describe("embed page unfurl", () => {
+  it("unfurls as a titled card in chat tools, naming no plot and no token", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const html = fs.readFileSync(path.join(process.cwd(), "embed.html"), "utf-8"); // vitest runs in the package
+    const meta = (property: string) => new RegExp(`<meta property="${property}" content="([^"]+)"`).exec(html)?.[1];
+    // Chat tools (Slack, Teams) do not frame embeds: they show these tags. Static on purpose:
+    // the page is the same for every link, so the card names neither the plot nor the token.
+    expect(meta("og:title")).toBe("Shared chart");
+    expect(meta("og:site_name")).toBe("modeling-api");
+    expect(meta("og:description")).toMatch(/read-only chart.*open the link/i);
+    expect(html).not.toMatch(/mpe_[0-9a-z]/);
+  });
+});

@@ -83,14 +83,25 @@ blocks its subdomains. Deployments that want a vendor check plug a
 | Limit | Default | Variable |
 |---|---|---|
 | Sign-ups per client address and hour | 5 | `MAPI_SIGNUP_PER_IP_PER_HOUR` |
-| Sign-ups per e-mail domain and day | 25 | `MAPI_SIGNUP_PER_DOMAIN_PER_DAY` |
-| Sign-ups on the whole platform per hour | 500 | `MAPI_SIGNUP_GLOBAL_PER_HOUR` |
+| *Verified* sign-ups per e-mail domain and day | 25 | `MAPI_SIGNUP_PER_DOMAIN_PER_DAY` |
+| *Verified* sign-ups on the whole platform per hour | 500 | `MAPI_SIGNUP_GLOBAL_PER_HOUR` |
 | Verification attempts per client address and minute | 20 | `MAPI_VERIFY_PER_IP_PER_MINUTE` |
 
 They are counted in Postgres from the sign-ups themselves, so they hold across API
-instances. Behind the Google Cloud load balancer, [Cloud Armor](security-hardening.md#cloud-armor)
+instances. Every request counts toward the per-address limit, which is what holds back
+unverified floods. The domain and platform caps count only sign-ups whose link was
+opened: otherwise anyone could send 25 made-up `@gmail.com` (or `@your-customer.com`)
+addresses and lock that domain out of sign-up for a day. Large free-mail domains
+(`MAPI_SIGNUP_SHARED_EMAIL_DOMAINS`, by default `gmail.com`, `outlook.com`, `yahoo.com`,
+`icloud.com`, `proton.me` and similar) have no per-domain cap at all. Behind the Google Cloud load balancer, [Cloud Armor](security-hardening.md#cloud-armor)
 adds per-IP rate *bans* in front of `/auth/signup` and `/auth/*` before a request reaches the
 API. Client addresses are stored only as keyed digests.
+
+The client address is the connecting peer unless that peer is a trusted proxy
+(`MAPI_TRUSTED_PROXIES`): then it is the right-most `X-Forwarded-For` hop that is not a
+trusted proxy, so callers behind one load balancer keep separate limits and a caller cannot
+forge its address by sending the header itself. The multi-tenant profile refuses to start
+without the setting (`none` when clients reach the API directly).
 
 ## Sybil heuristics and the review queue
 
@@ -102,7 +113,7 @@ for workspaces created from the same signals:
 | `same_ip` | the same client address (keyed digest) |
 | `same_device` | the same browser: a random, HttpOnly `mapi_device` cookie set at sign-up |
 | `same_email` | the same e-mail address |
-| `domain_burst` | many sign-ups from one domain within an hour (twice the threshold) |
+| `domain_burst` | many verified sign-ups from one domain within an hour (twice the threshold); never for the shared free-mail domains |
 
 At `MAPI_SIGNUP_SYBIL_THRESHOLD` (3) earlier workspaces the new sign-up is **flagged**: the
 workspace works, and it waits in the review queue (`auth.signup_flagged` in the audit log).

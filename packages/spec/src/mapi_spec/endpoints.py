@@ -57,6 +57,7 @@ __all__ = [
     "EvaluationPolicy",
     "endpoint_ref",
     "example_score_call",
+    "policy_relaxations",
     "schema_breaks",
 ]
 
@@ -406,6 +407,23 @@ class EndpointValidation(ResponseModel):
 
 
 # ================================================================================ compatibility
+
+_SCHEMA_CHANGE_RANK: Final = {"block": 0, "warn": 1, "allow": 2}
+
+
+def policy_relaxations(old: EvaluationPolicy, new: EvaluationPolicy) -> list[str]:
+    """How ``new`` lets through what ``old`` stops (plain text; empty: same or stricter).
+
+    Relaxing a policy disarms the promotion gate as an override would, so the server lets
+    only those who may override (a signed-in endpoint admin, never a token) do it.
+    """
+    out: list[str] = []
+    if _SCHEMA_CHANGE_RANK[new.schema_change] > _SCHEMA_CHANGE_RANK[old.schema_change]:
+        out.append(f"schema_change {old.schema_change} -> {new.schema_change}")
+    if old.fit_mode is FitMode.EVALUATE_THEN_REFIT and new.fit_mode is FitMode.TRAIN_ONLY:
+        out.append(f"fit_mode {old.fit_mode.value} -> {new.fit_mode.value}")
+    return out
+
 
 _FAMILY = {"float64": "num", "float32": "num", "int64": "num", "int32": "num", "bool": "bool",
            "str": "str", "datetime64[ns]": "time"}  # fmt: skip

@@ -57,6 +57,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_TENANT_ID`, `MAPI_PROJECT_ID` | `default` | The platform's own tenant and project (the only ones of a single-tenant install; platform runs such as `describe` live there) |
 | `MAPI_API_HOST`, `MAPI_API_PORT` | `127.0.0.1`, `8000` | Bind address of `mapi-server api` when started without `--host`/`--port` |
 | `MAPI_ALLOWED_HOSTS` | `127.0.0.1,localhost,api` | `Host` header values the API answers (comma-separated; the host of `MAPI_API_URL` is always allowed; `*` turns the check off). The DNS-rebinding guard of the unauthenticated M1 API |
+| `MAPI_TRUSTED_PROXIES` | unset | Addresses or CIDR ranges of the proxies in front of the API (load balancer, Cloud Run front end, the web container's `/v1/` proxy), comma-separated. A request from one of them takes the right-most `X-Forwarded-For` hop that is not a trusted proxy as the client address, which the per-address limits (sign-up, verification, embed views), the Sybil `same_ip` check and audit fingerprints use. `none`: clients connect directly and `X-Forwarded-For` is ignored. **Required in the `multi-tenant` profile**; `make dev` sets `none` for its multi-tenant stack |
 | `MAPI_DEBUG` | `false` | Put tracebacks into problem documents' `untrusted_text`. Never in production |
 | `MAPI_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
 | `MAPI_LOG_JSON` | `true` | One JSON object per log line (structlog, with `trace_id`/`span_id` and the request, run and tenant context); `false` gives a human console format |
@@ -254,8 +255,9 @@ server secret makes every webhook secret unusable (rotate them afterwards).
 | `MAPI_SIGNUP_BLOCKED_DOMAINS` | none | E-mail domains refused besides the built-in disposable list (comma-separated; subdomains included) |
 | `MAPI_SIGNUP_BLOCKLIST_PATH` | unset | A file of disposable domains, one per line (`#` comments), for example a maintained public list |
 | `MAPI_SIGNUP_PER_IP_PER_HOUR` | `5` | Sign-ups accepted per client address and hour |
-| `MAPI_SIGNUP_PER_DOMAIN_PER_DAY` | `25` | Sign-ups accepted per e-mail domain and day |
-| `MAPI_SIGNUP_GLOBAL_PER_HOUR` | `500` | Sign-ups accepted per hour on the whole platform |
+| `MAPI_SIGNUP_PER_DOMAIN_PER_DAY` | `25` | Verified sign-ups per e-mail domain and day (unverified ones do not count; the shared free-mail domains are exempt) |
+| `MAPI_SIGNUP_GLOBAL_PER_HOUR` | `500` | Verified sign-ups per hour on the whole platform (unverified ones do not count) |
+| `MAPI_SIGNUP_SHARED_EMAIL_DOMAINS` | built-in list (`gmail.com`, `outlook.com`, ...) | Free-mail domains shared by unrelated people (comma-separated; replaces the built-in list): no per-domain cap and no `domain_burst` flag |
 | `MAPI_VERIFY_PER_IP_PER_MINUTE` | `20` | E-mail verification attempts per client address and minute |
 | `MAPI_SIGNUP_SYBIL_WINDOW_DAYS` | `30` | Look-back of the Sybil heuristics |
 | `MAPI_SIGNUP_SYBIL_THRESHOLD` | `3` | Workspaces from one client address, browser or e-mail within the window before the next one is flagged for review (a domain is flagged at twice as many within an hour) |
@@ -277,6 +279,8 @@ server secret makes every webhook secret unusable (rotate them afterwards).
 | `MAPI_EXPORT_RETENTION_S` | `604800` (7 days) | How long an export archive is kept |
 | `MAPI_EXPORT_LINK_TTL_S` | `900` | Lifetime of an export's signed download link (a fresh one on every `GET`) |
 | `MAPI_EXPORTS_PER_DAY` | `3` | Exports a tenant may request per day (one at a time) |
+| `MAPI_EXPORT_MAX_METADATA_BYTES` | 256 MiB | Metadata rows an export archive includes; tables cut short are listed in its manifest |
+| `MAPI_EXPORT_BUILD_TIMEOUT_S` | `3600` | How long an export build may take; a build still `running` five minutes later (its process died) is built again once, then failed |
 
 ## The runner (per run)
 

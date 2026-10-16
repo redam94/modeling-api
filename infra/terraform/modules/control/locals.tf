@@ -127,6 +127,14 @@ locals {
     MAPI_DB_GATEWAY_ROLE = "mapi_gateway"
     # every service (and the migration's adoption of v0.2 rows) agrees on the default
     MAPI_DEFAULT_RESIDENCY = local.default_residency
+    # The hops in front of the API, skipped when it reads the caller's address from
+    # X-Forwarded-For: Cloud Run's front end (link-local to the container), Google's load
+    # balancer front ends, and this deployment's load balancer address. Without them every
+    # per-address limit (sign-up, verification, embeds) would apply platform-wide.
+    MAPI_TRUSTED_PROXIES = join(",", concat(
+      ["169.254.0.0/16", "35.191.0.0/16", "130.211.0.0/22"],
+      google_compute_global_address.lb[*].address,
+    ))
   }
 
   env = {

@@ -71,8 +71,12 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError, unauthenticated
 from mapi_server.services.audit import write_audit
+from mapi_server.services.gdpr_export import CANCELLED as EXPORT_CANCELLED
+from mapi_server.services.gdpr_export import export_lease
+from mapi_server.services.quotas import egress_subject
 from mapi_server.services.runs import apply_transition
 from mapi_server.services.runs import now as utcnow
+from mapi_server.services.runspec import signed_links_ttl
 from mapi_server.services.trust import trust_services
 
 __all__ = [
@@ -110,6 +114,8 @@ PURGE_BUCKETS: Final = (
 """Buckets with ``t/{tenant}/`` prefixes (the bootstrap bucket is keyed by nonce)."""
 BATCH: Final = 5000
 RUN_WAIT: Final = timedelta(seconds=30)
+LINK_SLACK: Final = timedelta(minutes=5)
+"""Added to an attempt's link lifetime: its RunSpec is signed shortly after the attempt row."""
 RETRY_BASE: Final = timedelta(minutes=5)
 RETRY_CAP: Final = timedelta(hours=6)
 MAX_RETAINED_LISTED: Final = 1000
@@ -468,11 +474,21 @@ class TenantPurger:
         sole = await self._sole_members(s, tenant_id)
         sessions = await s.execute(delete(m.WebSession).where(m.WebSession.user_id.in_(sole)))
         cancelled = await cancel_unfinished_runs(s, tenant_id)
+        # an export requested in the grace period must not write its archive after the purge
+        exports = await s.execute(
+            update(m.TenantExport)
+            .where(
+                m.TenantExport.tenant_id == tenant_id,
+                m.TenantExport.state.in_(("queued", "running")),
+            )
+            .values(state="failed", error=EXPORT_CANCELLED)
+        )
         trust = trust_services(self.ctx)
         revoked: dict[str, JsonValue] = {
             "tokens": int(getattr(tokens, "rowcount", 0) or 0),
             "sessions": int(getattr(sessions, "rowcount", 0) or 0),
             "runs": len(cancelled),
+            "exports": int(getattr(exports, "rowcount", 0) or 0),
         }
         for revoker in trust.revokers:
             revoked[revoker.name] = await revoker.revoke(s, tenant_id, now=at)
@@ -554,6 +570,23 @@ class TenantPurger:
                     )
                 )
             ).scalar_one()
+            # cancelled exports whose build may still upload an archive (within its lease)
+            building = (
+                await s.execute(
+                    select(func.count()).where(
+                        m.TenantExport.tenant_id == tenant_id,
+                        m.TenantExport.error == EXPORT_CANCELLED,
+                        m.TenantExport.started_at > at - export_lease(self.ctx.settings),
+                    )
+                )
+            ).scalar_one()
+        if building:
+            await self._update(
+                deletion_id, "queue", "running", at,
+                detail=f"waiting for {building} cancelled export build(s) to end",
+                next_attempt_at=at + RUN_WAIT,
+            )  # fmt: skip
+            return False
         timeout = timedelta(seconds=self.ctx.settings.deletion_run_stop_timeout_s)
         if unfinished and at - started < timeout:
             await self._update(
@@ -562,6 +595,18 @@ class TenantPurger:
                 next_attempt_at=at + RUN_WAIT,
             )  # fmt: skip
             return False
+        if unfinished:
+            # A run that ignored its cancel may still be executing, and its attempts' signed
+            # upload policies write under t/{tenant}/: purge nothing until they expired.
+            links_expire = await self._upload_links_expire(tenant_id)
+            if links_expire is not None and at < links_expire:
+                await self._update(
+                    deletion_id, "queue", "running", at,
+                    detail=f"{unfinished} run(s) have not stopped; the purge resumes when "
+                    f"their upload links expire ({links_expire.isoformat(timespec='minutes')})",
+                    next_attempt_at=links_expire,
+                )  # fmt: skip
+                return False
         async with self.ctx.db.session() as s:
             run_ids = list(
                 (await s.execute(select(m.Run.id).where(m.Run.tenant_id == tenant_id))).scalars()
@@ -598,6 +643,25 @@ class TenantPurger:
             detail=detail,
         )  # fmt: skip
         return True
+
+    async def _upload_links_expire(self, tenant_id: str) -> datetime | None:
+        """When the last signed link of the tenant's unfinished runs' attempts expires (their
+        RunSpec is built when the attempt is dispatched; plus :data:`LINK_SLACK`)."""
+        async with self.ctx.db.session() as s:
+            rows = (
+                await s.execute(
+                    select(m.RunAttempt.created_at, m.Run.timeout_s)
+                    .join(m.Run, m.Run.id == m.RunAttempt.run_id)
+                    .where(
+                        m.Run.tenant_id == tenant_id,
+                        m.Run.state.not_in([st.value for st in RunState if st.terminal]),
+                    )
+                )
+            ).all()
+        ends = [
+            created + signed_links_ttl(int(timeout_s)) + LINK_SLACK for created, timeout_s in rows
+        ]
+        return max(ends) if ends else None
 
     async def _tables(self, s: AsyncSession) -> list[str]:
         """Tables with a ``tenant_id`` column, children before parents (foreign keys)."""
@@ -703,7 +767,11 @@ class TenantPurger:
                     break
             await self._update(deletion_id, "database", "running", at, total=total, done=done)
         async with self.ctx.db.session() as s:
-            subjects = [f"tenant:{tenant_id}", *(f"token:{t}" for t in tokens)]
+            subjects = [
+                f"tenant:{tenant_id}",
+                egress_subject(tenant_id),
+                *(f"token:{t}" for t in tokens),
+            ]
             await s.execute(delete(m.RateCounter).where(m.RateCounter.subject.in_(subjects)))
             await s.execute(
                 delete(m.QuotaPolicy).where(

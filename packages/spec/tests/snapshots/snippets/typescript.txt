@@ -28,4 +28,5 @@ if (!response.ok) {
   throw new Error(`${response.status}: ${await response.text()}`);
 }
 const result = await response.json(); // 200: done with outputs; 202: still running
-console.log(result.done ? result.outputs : result.run.id);
+// the numbers: one table per output (coordinates, then mean and HDI)
+console.log(result.done ? result.summary?.tables : result.run.id);

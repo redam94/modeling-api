@@ -231,6 +231,66 @@ async def test_storage_quota_blocks_uploads_only(
     assert (await client.get(f"/v1/datasets/{ds['id']}")).status_code == 200
 
 
+async def test_storage_counts_model_bundles(ctx: ServerContext, client: httpx.AsyncClient) -> None:
+    """``storage_bytes`` counts datasets, uploads *and* model bundles (their artifacts)."""
+    from mapi_server.services.quotas import quota_usage
+    from mapi_server_testkit.integrations import fitted_version
+    from mapi_spec.quotas import QuotaScope
+
+    async def stored() -> int:
+        async with ctx.db.session() as s:
+            usage = await quota_usage(s, QuotaScope.TENANT, "default", now=now())
+        return usage.storage_bytes
+
+    mv = await fitted_version(ctx)
+    before = await stored()
+    sizes = [int(a["size"]) for a in mv.artifacts]
+    assert sizes and sum(sizes) > 0
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.ModelVersion)
+            .where(m.ModelVersion.id == mv.id)
+            .values(artifacts=[{"name": "fit.bundle", "size": 10_000_000}])
+        )
+    assert await stored() == before - sum(sizes) + 10_000_000
+    await _policy(ctx, "tenant", "default", storage_bytes=before - sum(sizes) + 10_000_000)
+    ds = (await client.post("/v1/datasets", json={"name": "more"})).json()
+    body = {"filename": "x.csv", "content_type": "text/csv", "size_bytes": 10}
+    r = await client.post(f"/v1/datasets/{ds['id']}/uploads", json=body)
+    assert r.status_code == 429 and "storage_bytes" in r.json()["detail"]
+
+
+async def test_download_egress_is_metered_and_capped(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """``egress_bytes_per_month``: every signed download link the API hands out (dataset
+    and model artifacts, score and render outputs, ui views, embed images) is charged with
+    the object's size; past the tier's monthly cap the link is refused."""
+    ds, _ = await ready_dataset(ctx)  # data.zarr.zip: 1,024 bytes
+    url = f"/v1/datasets/{ds.id}/versions/1/artifacts/data.zarr.zip"
+
+    async def egress() -> int:
+        report = (await client.get("/v1/usage")).json()
+        [row] = [q for q in report["quotas"] if q["limit_name"] == "egress_bytes_per_month"
+                 and q["scope"] == "tenant"]  # fmt: skip
+        return int(row["used"])
+
+    await _policy(ctx, "tenant", "default", egress_bytes_per_month=2500)
+    assert await egress() == 0
+    assert (await client.get(url)).status_code == 200
+    assert await egress() == 1024
+    assert (await client.get(url)).status_code == 200
+    assert await egress() == 2048
+    r = await client.get(url)  # 3 x 1,024 > 2,500
+    assert r.status_code == 429 and r.json()["code"] == "QUOTA_EXCEEDED", r.text
+    assert "egress_bytes_per_month" in r.json()["detail"]
+    assert int(r.headers["retry-after"]) > 0
+    assert await egress() == 2048  # a refused link is not charged
+    # a tenant without an egress limit is still metered (the usage page shows it)
+    await _policy(ctx, "tenant", "default")
+    assert (await client.get(url)).status_code == 200
+
+
 async def test_concurrent_uploads_cannot_overrun_the_storage_quota(
     ctx: ServerContext, client: httpx.AsyncClient
 ) -> None:

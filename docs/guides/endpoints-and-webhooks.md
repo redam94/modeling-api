@@ -57,6 +57,12 @@ The **promotion gate** decides whether the version may serve:
 | Its scorecard fails, the fit was interrupted, or it was fitted `train_only` | `409 PROMOTION_BLOCKED` |
 | It expects different input (a dim removed, a new required variable, ...) | Blocked by default; the endpoint's `schema_change` policy can make it `warn` or `allow` |
 
+Relaxing the endpoint's `evaluation_policy` (`schema_change` from `block` to `warn` or
+`allow`, or `fit_mode` to `train_only`) disarms the gate as an override does, so only a
+signed-in project admin may send a laxer policy; an `endpoints:promote` token gets
+`403 FORBIDDEN` (the same or a stricter policy is fine). The promotion's audit event records
+the policy before and after.
+
 Each refusal lists the gate's reasons in the problem's `errors`, with the scorecard check
 that caused it:
 
@@ -119,7 +125,18 @@ api "$API/v1/endpoints/geo-mmm-prod/schema" | jq .example
 ```
 
 Then score. `Prefer: wait=60` waits up to a minute: `200` with links to the outputs if the run
-finished, `202` with the run otherwise.
+finished, `202` with the run otherwise. A finished answer also carries the numbers inline in
+`summary`: one table per output, the coordinate columns then one column per statistic (the
+mean and the 90% HDI by default), so a spreadsheet or a shell script needs no zarr or Arrow
+reader. A result above 100,000 cells is cut short (`truncated`); `score.zarr.zip` always has
+everything.
+
+```json
+"summary": {"tables": [{"variable": "revenue",
+                        "columns": ["geo", "time", "mean", "hdi_90_lower", "hdi_90_upper"],
+                        "rows": [["de", "2026-01-05", 1520.4, 1402.1, 1633.9]]}],
+            "truncated": false}
+```
 
 ```bash
 api -X POST "$API/v1/endpoints/geo-mmm-prod/score" \
@@ -137,7 +154,10 @@ endpoint and nothing else.
 
 `data` and `scenario` can be `dataset://` references, or small datasets sent inline as XrJSON
 (the shape of `xr.Dataset.to_dict()`, up to 5 MB each), so scripts and spreadsheets need no
-upload:
+upload. A caller that cannot read datasets (a `score:<alias>` token) sends data inline or
+names the dataset the endpoint's model was fitted on; any other reference, and a missing one,
+gets the same `403 FORBIDDEN`, so such a token can neither score the project's other
+datasets nor find out which exist:
 
 ```json
 {
@@ -249,6 +269,15 @@ Events are recorded in the same database transaction as what caused them, so an 
 if and only if it happened. Delivery is *at least once*: deduplicate on `Mapi-Event-Id`.
 Envelopes carry ids and states, never data, signed URLs or secrets; fetch results with the
 API.
+
+**No plot attachments.** Webhooks do not attach rendered plots (the platform plan had them as
+an option). A receiver is a third party reached over the internet, often a chat or automation
+service that logs or forwards what it gets, so a chart - or a signed link to one - in the body
+would publish model results beyond the project. A receiver that wants a chart renders it with
+its own token when the event arrives: on `model.version.ready`, call
+`POST /v1/plots:render` with `{"source": {"model_id": ..., "version": ..., "plot_id":
+"core.ppc_fan"}, "format": "png"}` and `Prefer: wait=60`, then download the PNG from the
+answer's link (render runs need a token with `runs:create`).
 
 ### Verify it
 

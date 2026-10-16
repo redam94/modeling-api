@@ -1894,7 +1894,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Tenant Exports
+         * @description The tenant's exports, newest first: what is being built and what can be downloaded
+         *     (``GET`` one export for its download link).
+         */
+        get: operations["list_tenant_exports"];
         put?: never;
         /**
          * Create Tenant Export
@@ -7264,6 +7269,19 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[GdprExport]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_GdprExport_: {
+            /** Items */
+            items: components["schemas"]["GdprExport"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[GuidedTemplate]
          * @example {
          *       "items": [],
@@ -9354,7 +9372,8 @@ export interface components {
         };
         /**
          * ScoreCallResult
-         * @description ``done`` with output links (200), or the still-running run (202).
+         * @description ``done`` with output links (200), or the still-running run (202). ``summary`` is the
+         *     requested summary (mean and HDI by default) inline, once the run succeeded.
          * @example {
          *       "done": true,
          *       "outputs": [
@@ -9397,6 +9416,7 @@ export interface components {
             /** Outputs */
             outputs?: components["schemas"]["ArtifactLink"][];
             run: components["schemas"]["Run"];
+            summary?: components["schemas"]["ScoreSummary"] | null;
         };
         /**
          * ScorePolicy
@@ -9455,6 +9475,78 @@ export interface components {
             side_tables?: {
                 [key: string]: string;
             };
+        };
+        /**
+         * ScoreSummary
+         * @description The requested summary of a score run as plain tables (``summary.json``), inlined in
+         *     :class:`ScoreCallResult` so spreadsheets, BI tools and curl callers get numbers without
+         *     zarr or Arrow. ``truncated``: more than :data:`SCORE_SUMMARY_MAX_CELLS` cells (use the
+         *     ``score.zarr.zip`` output for everything).
+         * @example {
+         *       "tables": [
+         *         {
+         *           "columns": [
+         *             "geo",
+         *             "time",
+         *             "mean",
+         *             "hdi_90_lower",
+         *             "hdi_90_upper"
+         *           ],
+         *           "rows": [
+         *             [
+         *               "de",
+         *               "2026-01-05",
+         *               1520.4,
+         *               1402.1,
+         *               1633.9
+         *             ]
+         *           ],
+         *           "variable": "revenue"
+         *         }
+         *       ],
+         *       "truncated": false
+         *     }
+         */
+        ScoreSummary: {
+            /** Tables */
+            tables?: components["schemas"]["ScoreSummaryTable"][];
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated?: boolean;
+        };
+        /**
+         * ScoreSummaryTable
+         * @description One output variable's summary as a table: the coordinate columns (one per dim), then
+         *     one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.
+         * @example {
+         *       "columns": [
+         *         "geo",
+         *         "time",
+         *         "mean",
+         *         "hdi_90_lower",
+         *         "hdi_90_upper"
+         *       ],
+         *       "rows": [
+         *         [
+         *           "de",
+         *           "2026-01-05",
+         *           1520.4,
+         *           1402.1,
+         *           1633.9
+         *         ]
+         *       ],
+         *       "variable": "revenue"
+         *     }
+         */
+        ScoreSummaryTable: {
+            /** Columns */
+            columns: string[];
+            /** Rows */
+            rows: (string | number | boolean | null)[][];
+            /** Variable */
+            variable: string;
         };
         /**
          * Scorecard
@@ -16310,6 +16402,58 @@ export interface operations {
             };
             /** @description Problem document (`application/problem+json`); code `CONFLICT` */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tenant_exports: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GdprExport_"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -4,10 +4,10 @@
  * the deletion can be cancelled, then purged store by store.
  */
 import { AlertTriangle, Archive, Download, Trash2, Undo2 } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
 import { errorMessage } from "@/api/client";
-import { DELETION_GRACE_DAYS, useCancelTenantDeletion, useCreateTenantExport, useRequestTenantDeletion, useTenantDeletion, useTenantExport } from "@/api/trust";
+import { DELETION_GRACE_DAYS, useCancelTenantDeletion, useCreateTenantExport, useLatestTenantExport, useRequestTenantDeletion, useTenantDeletion, useTenantExport } from "@/api/trust";
 import type { GdprExport, GdprExportRequest, Tenant } from "@/api/types";
 import { ErrorNotice, Mono, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -30,17 +30,6 @@ const PARTS: { id: Part; label: string; description: string }[] = [
 
 const EXPORT_VARIANT: Record<GdprExport["state"], "info" | "success" | "outline" | "danger"> = { queued: "info", running: "info", ready: "success", expired: "outline", failed: "danger" };
 
-const lastExportKey = (tenant: string) => `mapi.export.${tenant}`;
-
-function readLastExport(tenant: string): string | null {
-  try {
-    const v = localStorage.getItem(lastExportKey(tenant));
-    return v && /^exp_[0-9a-z]{26}$/.test(v) ? v : null;
-  } catch {
-    return null;
-  }
-}
-
 /** A signed link we are willing to hand to the browser: http(s) only. */
 export function safeDownloadUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -54,16 +43,12 @@ export function safeDownloadUrl(url: string | null | undefined): string | null {
 
 export function ExportCard({ tenant }: { tenant: Tenant }) {
   const [parts, setParts] = useState<Part[]>(PARTS.map((p) => p.id));
-  const [exportId, setExportId] = useState<string | null>(() => readLastExport(tenant.id));
+  const [requested, setRequested] = useState<string | null>(null);
   const create = useCreateTenantExport(tenant.id);
+  // the newest export from the server: any admin, in any browser, sees what is being built
+  const latest = useLatestTenantExport(tenant.id);
+  const exportId = requested ?? latest.data?.id ?? null;
   const current = useTenantExport(tenant.id, exportId);
-  useEffect(() => {
-    try {
-      if (exportId) localStorage.setItem(lastExportKey(tenant.id), exportId);
-    } catch {
-      // the last export is only a convenience
-    }
-  }, [exportId, tenant.id]);
   const exp = current.data;
   const href = exp?.state === "ready" ? safeDownloadUrl(exp.download_url) : null;
   const working = exp?.state === "queued" || exp?.state === "running";
@@ -96,7 +81,7 @@ export function ExportCard({ tenant }: { tenant: Tenant }) {
                 { include: parts },
                 {
                   onSuccess: (e) => {
-                    setExportId(e.id);
+                    setRequested(e.id);
                     toast.info("Export requested", "The archive is packed in the background; this page updates when it is ready.");
                   },
                 },
@@ -133,8 +118,8 @@ export function ExportCard({ tenant }: { tenant: Tenant }) {
             {exp.state === "expired" ? <p className="text-muted-foreground">The archive expired. Request a new export.</p> : null}
             {exp.state === "failed" ? <p className="text-destructive">The export failed. Request it again; operators were notified.</p> : null}
           </div>
-        ) : current.isError ? (
-          <ErrorNotice error={current.error} title="The last export could not be loaded" />
+        ) : current.isError || latest.isError ? (
+          <ErrorNotice error={current.error ?? latest.error} title="The last export could not be loaded" />
         ) : null}
       </CardContent>
     </Card>

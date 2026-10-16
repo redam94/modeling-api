@@ -27,10 +27,12 @@ from mapi_spec.localdev import (
 )
 from mapi_spec.storage import Buckets
 from mapi_spec.tenancy import DEFAULT_RESIDENCY, TrustTier, residency_of_region
+from mapi_spec.trust import SHARED_EMAIL_DOMAINS
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from mapi_server import __version__
+from mapi_server.clientaddr import normalise_trusted_proxies
 
 __all__ = [
     "DEFAULT_CLOUDRUN_BASES",
@@ -537,6 +539,14 @@ class Settings(BaseSettings):
     log_json: bool = Field(
         True, description="Emit JSON logs (structlog); off gives a human console renderer"
     )
+    trusted_proxies: Annotated[list[str] | None, NoDecode] = Field(
+        None,
+        description="Addresses or CIDR ranges of the proxies in front of the API (load "
+        "balancer, Cloud Run front end, the web container's /v1/ proxy), comma-separated. A "
+        "request from one of them takes the right-most untrusted X-Forwarded-For hop as the "
+        "client address (per-address limits, Sybil checks, audit). 'none': clients reach the "
+        "API directly and X-Forwarded-For is ignored. Required in the multi-tenant profile",
+    )
     metrics_enabled: bool = Field(True, description="Mount GET /metrics (Prometheus)")
     worker_metrics_port: int | None = Field(
         None,
@@ -641,10 +651,18 @@ class Settings(BaseSettings):
         5, ge=1, description="Sign-ups accepted per client address and hour"
     )
     signup_per_domain_per_day: int = Field(
-        25, ge=1, description="Sign-ups accepted per e-mail domain and day"
+        25,
+        ge=1,
+        description="Verified sign-ups per e-mail domain and day (shared free-mail domains "
+        "are exempt)",
     )
     signup_global_per_hour: int = Field(
-        500, ge=1, description="Sign-ups accepted per hour on the whole platform"
+        500, ge=1, description="Verified sign-ups per hour on the whole platform"
+    )
+    signup_shared_email_domains: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: list(SHARED_EMAIL_DOMAINS),
+        description="Free-mail domains shared by unrelated people (comma-separated; replaces "
+        "the built-in list): no per-domain sign-up cap and no domain-burst Sybil flag",
     )
     verify_per_ip_per_minute: int = Field(
         20, ge=1, description="E-mail verification attempts per client address and minute"
@@ -712,6 +730,18 @@ class Settings(BaseSettings):
         900.0, gt=0, le=7 * 86400, description="Lifetime of an export's signed download link"
     )
     exports_per_day: int = Field(3, ge=1, description="GDPR exports a tenant may request per day")
+    export_max_metadata_bytes: int = Field(
+        256 * 1024 * 1024,
+        ge=0,
+        description="Bytes of metadata rows (runs, logs, events, audit, ...) a GDPR export "
+        "archive includes; the tables cut short are listed in its manifest",
+    )
+    export_build_timeout_s: float = Field(
+        3600.0,
+        gt=0,
+        description="How long one GDPR export build may take; a build still marked running "
+        "5 minutes after that (its process died) is built again once, then failed",
+    )
 
     def obs_settings(self) -> Any:
         """The :class:`~mapi_server.observability.ObsSettings` for this process."""
@@ -749,12 +779,24 @@ class Settings(BaseSettings):
         "dispatch_tiers",
         "webhook_dev_allowlist",
         "signup_blocked_domains",
+        "signup_shared_email_domains",
         mode="before",
     )
     @classmethod
     def _hosts(cls, v: object) -> object:
         if isinstance(v, str):
             return [h.strip() for h in v.split(",") if h.strip()]
+        return v
+
+    @field_validator("trusted_proxies", mode="before")
+    @classmethod
+    def _proxies(cls, v: object) -> object:
+        if isinstance(v, str):
+            if v.strip().lower() == "none":
+                return []
+            v = v.split(",")
+        if isinstance(v, list | tuple):
+            return normalise_trusted_proxies(str(x) for x in v)
         return v
 
     @field_validator("env")
@@ -812,6 +854,12 @@ class Settings(BaseSettings):
         weak = [a for a in self.oidc_algorithms if a.upper().startswith("HS") or a == "none"]
         if weak:
             raise ValueError("oidc_algorithms must be asymmetric (RS*, ES*, PS* or EdDSA)")
+        if self.profile is Profile.MULTI_TENANT and self.trusted_proxies is None:
+            raise ValueError(
+                "the multi-tenant profile needs MAPI_TRUSTED_PROXIES: the proxies in front of "
+                "the API (so per-address limits see the caller, not the load balancer), or "
+                "'none' when clients connect to the API directly"
+            )
         return self
 
     # ------------------------------------------------------------------------- derived
