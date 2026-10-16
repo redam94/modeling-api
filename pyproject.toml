@@ -7,7 +7,8 @@ requires-python = ">=3.12"
 dependencies = [
   "mapi-spec", "mapi-sdk", "mapi-pymc", "mapi-sklearn", "mapi-steps", "mapi-plots[recipes]",
   "mapi-runner", "mapi-server[docker,otlp]", "mapi-gcs-shim", "mapi-cli", "mapi-client",
-  "mapi-plugin-mmm", "mapi-plugin-ts", "mapi-plugin-tabular", "mapi-conformance",
+  "mapi-plugin-mmm", "mapi-plugin-ts", "mapi-plugin-tabular", "mapi-plugin-statsmodels",
+  "mapi-conformance",
 ]
 
 [dependency-groups]
@@ -41,6 +42,7 @@ mapi-client = { workspace = true }
 mapi-plugin-mmm = { workspace = true }
 mapi-plugin-ts = { workspace = true }
 mapi-plugin-tabular = { workspace = true }
+mapi-plugin-statsmodels = { workspace = true }
 mapi-conformance = { workspace = true }
 
 [tool.ruff]
@@ -85,8 +87,8 @@ type = "forbidden"
 source_modules = ["mapi_server"]
 forbidden_modules = [
   "mapi_sdk", "mapi_runner", "mapi_pymc", "mapi_sklearn", "mapi_steps",
-  "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular",
-  "mapi_plots.recipes", "mapi_plots.packs",
+  "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular", "mapi_plugin_statsmodels",
+  "statsmodels", "mapi_plots.recipes", "mapi_plots.packs",
   "numpy", "xarray", "pandas", "pyarrow", "zarr",
 ]
 
@@ -113,5 +115,5 @@ source_modules = [
 forbidden_modules = [
   "mapi_runner.worker", "mapi_runner.testing", "mapi_sdk", "mapi_pymc", "mapi_sklearn",
   "mapi_steps", "mapi_plots", "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular",
-  "numpy", "xarray", "pandas",
+  "mapi_plugin_statsmodels", "statsmodels", "numpy", "xarray", "pandas",
 ]
