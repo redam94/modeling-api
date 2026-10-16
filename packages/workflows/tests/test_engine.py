@@ -71,8 +71,9 @@ def _canonical_fakes(*, adf_p: float, kpss_p: float, seasonal: bool) -> dict[str
 def test_canonical_template_runs_through_the_engine() -> None:
     spec = TS_READINESS_ARIMAX.spec
     assert validate_workflow(spec).valid
-    eng = WorkflowEngine(spec, params={k: p.default for k, p in spec.params.items()},
-                         inputs={"data": DATA})  # fmt: skip
+    eng = WorkflowEngine(
+        spec, params={k: p.default for k, p in spec.params.items()}, inputs={"data": DATA}
+    )
     drive(eng, _canonical_fakes(adf_p=0.6, kpss_p=0.01, seasonal=False))
     assert eng.status is WorkflowRunStatus.SUCCEEDED
     runs = {n.node_id: n for n in eng.node_runs()}
@@ -116,8 +117,9 @@ def test_canonical_template_runs_through_the_engine() -> None:
 
 def test_stationary_series_skips_differencing() -> None:
     spec = TS_READINESS_ARIMAX.spec
-    eng = WorkflowEngine(spec, params={k: p.default for k, p in spec.params.items()},
-                         inputs={"data": DATA})  # fmt: skip
+    eng = WorkflowEngine(
+        spec, params={k: p.default for k, p in spec.params.items()}, inputs={"data": DATA}
+    )
     drive(eng, _canonical_fakes(adf_p=0.01, kpss_p=0.5, seasonal=True))
     runs = {n.node_id: n for n in eng.node_runs()}
     assert runs["wanders"].result == {"value": False, "arm": "else"}
@@ -130,8 +132,9 @@ def test_stationary_series_skips_differencing() -> None:
 
 def test_select_refuses_a_model_that_loses_to_the_benchmarks() -> None:
     spec = TS_READINESS_ARIMAX.spec
-    eng = WorkflowEngine(spec, params={k: p.default for k, p in spec.params.items()},
-                         inputs={"data": DATA})  # fmt: skip
+    eng = WorkflowEngine(
+        spec, params={k: p.default for k, p in spec.params.items()}, inputs={"data": DATA}
+    )
     fakes = _canonical_fakes(adf_p=0.6, kpss_p=0.01, seasonal=False)
     fakes["backtest"] = metrics("ts.sarimax@^1", 4.5)
     drive(eng, fakes)
@@ -148,13 +151,19 @@ def test_select_refuses_a_model_that_loses_to_the_benchmarks() -> None:
 
 
 def test_alternatives_take_the_first_available_source() -> None:
-    spec = _spec([
-        {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
-        {"id": "b", "use": "branch.if", "with": {"condition": "not nodes.adf.reject"}},
-        {"id": "diff", "use": "transform.difference", "inputs": {"data": "inputs.data"},
-         "when": "b.then"},
-        {"id": "kpss", "use": "test.kpss", "inputs": {"data": ["diff.data", "inputs.data"]}},
-    ])  # fmt: skip
+    spec = _spec(
+        [
+            {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
+            {"id": "b", "use": "branch.if", "with": {"condition": "not nodes.adf.reject"}},
+            {
+                "id": "diff",
+                "use": "transform.difference",
+                "inputs": {"data": "inputs.data"},
+                "when": "b.then",
+            },
+            {"id": "kpss", "use": "test.kpss", "inputs": {"data": ["diff.data", "inputs.data"]}},
+        ]
+    )
     seen: dict[str, Any] = {}
 
     def kpss(a: Any) -> Any:
@@ -163,20 +172,28 @@ def test_alternatives_take_the_first_available_source() -> None:
 
     for adf_p, expected in ((0.01, DATA.ref), (0.9, "run://diff")):
         eng = WorkflowEngine(spec, inputs={"data": DATA})
-        drive(eng, {"adf": stat_result("test.adf", adf_p), "diff": dataset("run://diff"),
-                    "kpss": kpss})  # fmt: skip
+        drive(
+            eng,
+            {"adf": stat_result("test.adf", adf_p), "diff": dataset("run://diff"), "kpss": kpss},
+        )
         assert seen["data"] == expected
         assert eng.status is WorkflowRunStatus.SUCCEEDED
 
 
 def test_required_input_without_any_source_is_skipped() -> None:
-    spec = _spec([
-        {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
-        {"id": "b", "use": "branch.if", "with": {"condition": "nodes.adf.reject"}},
-        {"id": "diff", "use": "transform.difference", "inputs": {"data": "inputs.data"},
-         "when": "b.then"},
-        {"id": "kpss", "use": "test.kpss", "inputs": {"data": "diff.data"}},
-    ])  # fmt: skip
+    spec = _spec(
+        [
+            {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
+            {"id": "b", "use": "branch.if", "with": {"condition": "nodes.adf.reject"}},
+            {
+                "id": "diff",
+                "use": "transform.difference",
+                "inputs": {"data": "inputs.data"},
+                "when": "b.then",
+            },
+            {"id": "kpss", "use": "test.kpss", "inputs": {"data": "diff.data"}},
+        ]
+    )
     eng = WorkflowEngine(spec, inputs={"data": DATA})
     drive(eng, {"adf": stat_result("test.adf", 0.9)})
     runs = {n.node_id: n for n in eng.node_runs()}
@@ -198,8 +215,9 @@ def test_cache_hits_reuse_results_without_running() -> None:
     drive(first, {"adf": stat_result("test.adf", 0.3), "kpss": stat_result("test.kpss", 0.3)})
     for n in first.node_runs():
         assert n.cache_key is not None
-        store[n.cache_key] = CacheHit(result=n.result or {}, outputs=n.outputs,
-                                      workflow_run_id="run_first")  # fmt: skip
+        store[n.cache_key] = CacheHit(
+            result=n.result or {}, outputs=n.outputs, workflow_run_id="run_first"
+        )
     second = WorkflowEngine(spec, inputs={"data": DATA}, cache=store.get)
     rounds = drive(second, {"kpss": stat_result("test.kpss", 0.3)})
     runs = {n.node_id: n for n in second.node_runs()}
@@ -208,24 +226,37 @@ def test_cache_hits_reuse_results_without_running() -> None:
     assert runs["kpss"].status is NodeRunStatus.SUCCEEDED  # cache: false
     assert rounds == [["kpss"]]
     # another dataset version gives other keys
-    other = WorkflowEngine(spec, inputs={"data": DATA}, cache=store.get,
-                           input_identities={"data": "sha256:" + "1" * 64})  # fmt: skip
-    rounds = drive(other, {"adf": stat_result("test.adf", 0.3),
-                           "kpss": stat_result("test.kpss", 0.3)})  # fmt: skip
+    other = WorkflowEngine(
+        spec,
+        inputs={"data": DATA},
+        cache=store.get,
+        input_identities={"data": "sha256:" + "1" * 64},
+    )
+    rounds = drive(
+        other, {"adf": stat_result("test.adf", 0.3), "kpss": stat_result("test.kpss", 0.3)}
+    )
     assert sorted(rounds[0]) == ["adf", "kpss"]
     no_cache = WorkflowEngine(spec, inputs={"data": DATA}, cache=store.get, use_cache=False)
-    rounds = drive(no_cache, {"adf": stat_result("test.adf", 0.3),
-                              "kpss": stat_result("test.kpss", 0.3)})  # fmt: skip
+    rounds = drive(
+        no_cache, {"adf": stat_result("test.adf", 0.3), "kpss": stat_result("test.kpss", 0.3)}
+    )
     assert sorted(rounds[0]) == ["adf", "kpss"]
 
 
 def test_fail_fast_cancels_the_rest() -> None:
-    spec = _spec([
-        {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
-        {"id": "kpss", "use": "test.kpss", "inputs": {"data": "inputs.data"}},
-        {"id": "diff", "use": "transform.difference", "inputs": {"data": "inputs.data"},
-         "with": {"order": {"$expr": "if(nodes.adf.reject, 1, 2)"}}},
-    ], execution={"max_parallel": 1})  # fmt: skip
+    spec = _spec(
+        [
+            {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
+            {"id": "kpss", "use": "test.kpss", "inputs": {"data": "inputs.data"}},
+            {
+                "id": "diff",
+                "use": "transform.difference",
+                "inputs": {"data": "inputs.data"},
+                "with": {"order": {"$expr": "if(nodes.adf.reject, 1, 2)"}},
+            },
+        ],
+        execution={"max_parallel": 1},
+    )
     eng = WorkflowEngine(spec, inputs={"data": DATA})
     drive(eng, {"adf": fails(ErrorCode.SCHEMA_INVALID, "no target")})
     runs = {n.node_id: n for n in eng.node_runs()}
@@ -238,16 +269,32 @@ def test_fail_fast_cancels_the_rest() -> None:
 
 
 def test_continue_counts_as_skipped_for_dependants() -> None:
-    spec = _spec([
-        {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"},
-         "on_failure": "continue"},
-        {"id": "diff", "use": "transform.difference", "inputs": {"data": "inputs.data"}},
-        {"id": "b", "use": "branch.if", "with": {"condition": "coalesce(nodes.adf.reject, true)"}},
-        {"id": "kpss", "use": "test.kpss", "inputs": {"data": "diff.data"}, "when": "b.then"},
-    ])  # fmt: skip
+    spec = _spec(
+        [
+            {
+                "id": "adf",
+                "use": "test.adf",
+                "inputs": {"data": "inputs.data"},
+                "on_failure": "continue",
+            },
+            {"id": "diff", "use": "transform.difference", "inputs": {"data": "inputs.data"}},
+            {
+                "id": "b",
+                "use": "branch.if",
+                "with": {"condition": "coalesce(nodes.adf.reject, true)"},
+            },
+            {"id": "kpss", "use": "test.kpss", "inputs": {"data": "diff.data"}, "when": "b.then"},
+        ]
+    )
     eng = WorkflowEngine(spec, inputs={"data": DATA})
-    drive(eng, {"adf": fails(ErrorCode.USER_CODE_ERROR), "diff": dataset("run://d"),
-                "kpss": stat_result("test.kpss", 0.2)})  # fmt: skip
+    drive(
+        eng,
+        {
+            "adf": fails(ErrorCode.USER_CODE_ERROR),
+            "diff": dataset("run://d"),
+            "kpss": stat_result("test.kpss", 0.2),
+        },
+    )
     runs = {n.node_id: n for n in eng.node_runs()}
     assert runs["adf"].status is NodeRunStatus.FAILED
     assert runs["b"].result == {"value": True, "arm": "then"}
@@ -256,11 +303,18 @@ def test_continue_counts_as_skipped_for_dependants() -> None:
 
 
 def test_retries_requeue_retryable_failures_only() -> None:
-    spec = _spec([
-        {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}, "retries": 2},
-        {"id": "kpss", "use": "test.kpss", "inputs": {"data": "inputs.data"}, "retries": 2,
-         "on_failure": "continue"},
-    ])  # fmt: skip
+    spec = _spec(
+        [
+            {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}, "retries": 2},
+            {
+                "id": "kpss",
+                "use": "test.kpss",
+                "inputs": {"data": "inputs.data"},
+                "retries": 2,
+                "on_failure": "continue",
+            },
+        ]
+    )
     calls = {"adf": 0}
 
     def flaky(a: Any) -> Any:
@@ -281,12 +335,18 @@ def test_retries_requeue_retryable_failures_only() -> None:
 
 
 def test_cancel_stops_pending_and_lists_running() -> None:
-    spec = _spec([
-        {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
-        {"id": "b", "use": "branch.if", "with": {"condition": "nodes.adf.reject"}},
-        {"id": "diff", "use": "transform.difference", "inputs": {"data": "inputs.data"},
-         "when": "b.then"},
-    ])  # fmt: skip
+    spec = _spec(
+        [
+            {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
+            {"id": "b", "use": "branch.if", "with": {"condition": "nodes.adf.reject"}},
+            {
+                "id": "diff",
+                "use": "transform.difference",
+                "inputs": {"data": "inputs.data"},
+                "when": "b.then",
+            },
+        ]
+    )
     eng = WorkflowEngine(spec, inputs={"data": DATA})
     actions = eng.step()
     assert [a.node_id for a in actions] == ["adf"]
@@ -301,10 +361,16 @@ def test_cancel_stops_pending_and_lists_running() -> None:
 
 
 def test_max_parallel_limits_what_starts() -> None:
-    nodes = [{"id": f"t{i}", "use": "test.adf", "inputs": {"data": "inputs.data"}}
-             for i in range(5)]  # fmt: skip
-    nodes.append({"id": "rep", "use": "report.summary",
-                  "inputs": {"tests": [f"t{i}.result" for i in range(5)]}})  # fmt: skip
+    nodes = [
+        {"id": f"t{i}", "use": "test.adf", "inputs": {"data": "inputs.data"}} for i in range(5)
+    ]
+    nodes.append(
+        {
+            "id": "rep",
+            "use": "report.summary",
+            "inputs": {"tests": [f"t{i}.result" for i in range(5)]},
+        }
+    )
     spec = _spec(nodes, execution={"max_parallel": 2})
     eng = WorkflowEngine(spec, inputs={"data": DATA})
     rounds = drive(eng, {"test.adf": stat_result("test.adf", 0.2)})
@@ -313,11 +379,17 @@ def test_max_parallel_limits_what_starts() -> None:
 
 
 def test_expression_errors_fail_the_node_with_a_plain_message() -> None:
-    spec = _spec([
-        {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
-        {"id": "diff", "use": "transform.difference", "inputs": {"data": "inputs.data"},
-         "with": {"order": {"$expr": "nodes.adf.statistic + 'x'"}}},
-    ])  # fmt: skip
+    spec = _spec(
+        [
+            {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
+            {
+                "id": "diff",
+                "use": "transform.difference",
+                "inputs": {"data": "inputs.data"},
+                "with": {"order": {"$expr": "nodes.adf.statistic + 'x'"}},
+            },
+        ]
+    )
     eng = WorkflowEngine(spec, inputs={"data": DATA})
     drive(eng, {"adf": stat_result("test.adf", 0.2)})
     runs = {n.node_id: n for n in eng.node_runs()}
@@ -327,11 +399,17 @@ def test_expression_errors_fail_the_node_with_a_plain_message() -> None:
 
 
 def test_resolved_params_are_checked_against_the_schema() -> None:
-    spec = _spec([
-        {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
-        {"id": "diff", "use": "transform.difference", "inputs": {"data": "inputs.data"},
-         "with": {"order": {"$expr": "nodes.adf.n_obs"}}},
-    ])  # fmt: skip
+    spec = _spec(
+        [
+            {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
+            {
+                "id": "diff",
+                "use": "transform.difference",
+                "inputs": {"data": "inputs.data"},
+                "with": {"order": {"$expr": "nodes.adf.n_obs"}},
+            },
+        ]
+    )
     eng = WorkflowEngine(spec, inputs={"data": DATA})
     drive(eng, {"adf": stat_result("test.adf", 0.2, n_obs=40)})
     runs = {n.node_id: n for n in eng.node_runs()}
@@ -356,9 +434,12 @@ def test_restore_rebuilds_the_same_state() -> None:
         result, outputs = fakes[a.node_id](a)
         eng.succeeded(a.node_id, result, outputs)
     restored = WorkflowEngine.restore(
-        spec, copy.deepcopy(eng.node_runs()), list(eng.decisions.values()),
-        params=params, inputs={"data": DATA},
-    )  # fmt: skip
+        spec,
+        copy.deepcopy(eng.node_runs()),
+        list(eng.decisions.values()),
+        params=params,
+        inputs={"data": DATA},
+    )
     drive(restored, fakes)
     assert restored.status is WorkflowRunStatus.SUCCEEDED
     assert restored.outputs()["model"].ref == "model://growth/arimax@v1"

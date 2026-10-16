@@ -84,9 +84,11 @@ def model(ref: str) -> Fn:
     def fn(a: Action) -> tuple[dict[str, Any], dict[str, NodeOutputRef]]:
         return (
             {"model_version": ref, "metrics": {"mape": 0.1}, "scorecard": "pass"},
-            {"model": NodeOutputRef(type=PortType.MODEL_VERSION, ref=ref),
-             "metrics": inline(PortType.METRICS, MetricsPayload())},
-        )  # fmt: skip
+            {
+                "model": NodeOutputRef(type=PortType.MODEL_VERSION, ref=ref),
+                "metrics": inline(PortType.METRICS, MetricsPayload()),
+            },
+        )
 
     return fn
 

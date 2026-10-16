@@ -482,11 +482,14 @@ class WorkflowEngine:
         key: str | None = None
         if impl.cacheable and impl.kind is not NodeKind.BRANCH:
             key = node_cache_key(
-                impl.ref, params,
-                {p: [self._identity(nid, p, i, ref) for i, ref in enumerate(refs)]
-                 for p, refs in inputs.items()},
+                impl.ref,
+                params,
+                {
+                    p: [self._identity(nid, p, i, ref) for i, ref in enumerate(refs)]
+                    for p, refs in inputs.items()
+                },
                 salt=self.salt,
-            )  # fmt: skip
+            )
         st.cache_key = key
         if impl.kind is NodeKind.BRANCH:
             st.attempt += 1
@@ -506,8 +509,12 @@ class WorkflowEngine:
                 st.outputs = dict(hit.outputs)
                 st.cached_from = hit.workflow_run_id
                 st.started_at = st.finished_at = self.clock()
-                self._emit(WorkflowEventType.NODE_CACHED, nid, cache_key=key,
-                           cached_from=hit.workflow_run_id)  # fmt: skip
+                self._emit(
+                    WorkflowEventType.NODE_CACHED,
+                    nid,
+                    cache_key=key,
+                    cached_from=hit.workflow_run_id,
+                )
                 return True
         if not can_start:
             return False
@@ -516,9 +523,16 @@ class WorkflowEngine:
         st.error = None
         self._emit(WorkflowEventType.NODE_QUEUED, nid, attempt=st.attempt, use=impl.ref)
         return Action(
-            node_id=nid, impl=impl, node=node, params=params, inputs=inputs, sources=sources,
-            cache_key=key, attempt=st.attempt, runs_in=impl.runs_in,
-        )  # fmt: skip
+            node_id=nid,
+            impl=impl,
+            node=node,
+            params=params,
+            inputs=inputs,
+            sources=sources,
+            cache_key=key,
+            attempt=st.attempt,
+            runs_in=impl.runs_in,
+        )
 
     def _identity(self, nid: str, port: str, index: int, ref: NodeOutputRef) -> str:
         node = self.nodes[nid]
@@ -663,7 +677,7 @@ class WorkflowEngine:
                 for ref, src in zip(refs, sources[port], strict=True)
             ]
             for port, refs in inputs.items()
-        }  # fmt: skip
+        }
         ctx = OrchestratorContext(
             node_id=nid,
             node=self.nodes[nid],
@@ -712,25 +726,37 @@ class WorkflowEngine:
         result = dict(result or {})
         outputs = dict(outputs or {})
         if json_size(result) > NODE_RESULT_MAX_BYTES:
-            self._fail(node_id, NodeError(
-                code=ErrorCode.PAYLOAD_TOO_LARGE,
-                message=f"the node's result exceeds {NODE_RESULT_MAX_BYTES} bytes",
-            ), retry=False)  # fmt: skip
+            self._fail(
+                node_id,
+                NodeError(
+                    code=ErrorCode.PAYLOAD_TOO_LARGE,
+                    message=f"the node's result exceeds {NODE_RESULT_MAX_BYTES} bytes",
+                ),
+                retry=False,
+            )
             return
         declared = self._declared_outputs(node_id, impl)
         for port, ref in outputs.items():
             want = declared.get(port)
             if want is not None and ref.type is not want:
-                self._fail(node_id, NodeError(
-                    code=ErrorCode.INTEGRITY_FAILURE,
-                    message=f"output {port!r} is a {ref.type.value}, not a {want.value}",
-                ), retry=False)  # fmt: skip
+                self._fail(
+                    node_id,
+                    NodeError(
+                        code=ErrorCode.INTEGRITY_FAILURE,
+                        message=f"output {port!r} is a {ref.type.value}, not a {want.value}",
+                    ),
+                    retry=False,
+                )
                 return
             if want is None and impl.id != SUBWORKFLOW_NODE:
-                self._fail(node_id, NodeError(
-                    code=ErrorCode.INTEGRITY_FAILURE,
-                    message=f"{impl.id} has no output {port!r}",
-                ), retry=False)  # fmt: skip
+                self._fail(
+                    node_id,
+                    NodeError(
+                        code=ErrorCode.INTEGRITY_FAILURE,
+                        message=f"{impl.id} has no output {port!r}",
+                    ),
+                    retry=False,
+                )
                 return
         if st.started_at is None:
             st.started_at = self.clock()
@@ -804,16 +830,22 @@ class WorkflowEngine:
             st.status = NodeRunStatus.PENDING
             st.error = error
             st.run_id = None
-            self._emit(WorkflowEventType.NODE_RETRYING, nid, attempt=st.attempt,
-                       code=error.code.value, message=error.message[:500])  # fmt: skip
+            self._emit(
+                WorkflowEventType.NODE_RETRYING,
+                nid,
+                attempt=st.attempt,
+                code=error.code.value,
+                message=error.message[:500],
+            )
             return
         st.status = NodeRunStatus.FAILED
         st.error = error
         st.finished_at = self.clock()
         if st.started_at is None:
             st.started_at = st.finished_at
-        self._emit(WorkflowEventType.NODE_FAILED, nid, code=error.code.value,
-                   message=error.message[:500])  # fmt: skip
+        self._emit(
+            WorkflowEventType.NODE_FAILED, nid, code=error.code.value, message=error.message[:500]
+        )
         if node.on_failure == "fail":
             if self.error is None:
                 self.error = NodeError(

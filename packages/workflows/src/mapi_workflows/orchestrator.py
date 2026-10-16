@@ -175,10 +175,12 @@ def compare_models(params: Mapping[str, JsonValue], values: Sequence[BoundValue]
         kind="comparison",
         columns=["candidate", "node", "kind", "model", "rank", "n_folds", *names],
         rows=rows,
-        meta={"metric": metric, "direction": direction,
-              "candidates": {c.key: c.model_dump(mode="json", exclude={"errors"})
-                             for c in cands}},
-    )  # fmt: skip
+        meta={
+            "metric": metric,
+            "direction": direction,
+            "candidates": {c.key: c.model_dump(mode="json", exclude={"errors"}) for c in cands},
+        },
+    )
     result: dict[str, JsonValue] = {"ranking": ranking, "best": best}
     return result, {"table": inline(PortType.TABLE, table)}
 
@@ -255,10 +257,13 @@ def select_best(
         reason = (
             f"{win_key} has the best {plain_metric} ({fmt_metric(metric, score)}) and beats "
             f"every benchmark"
-            + (f" (the strongest, {worst[0]}, scored {fmt_metric(metric, worst[1])})"
-               if worst else "")
+            + (
+                f" (the strongest, {worst[0]}, scored {fmt_metric(metric, worst[1])})"
+                if worst
+                else ""
+            )
             + "."
-        )  # fmt: skip
+        )
     else:
         losing = [k for k, _ in bench_scores if k not in beaten]
         reason = (
@@ -340,8 +345,9 @@ def _metrics_text(payload: MetricsPayload) -> str:
             f"{m.upper()} {fmt_metric(m, v)}" for m, v in sorted(c.metrics.items()) if v is not None
         )
         label = c.name if c.name == c.group else f"{c.group} ({c.name})"
-        parts.append(f"{label}: {shown or 'no scores'}" + (f" over {c.n_folds} folds" if c.n_folds
-                                                            else ""))  # fmt: skip
+        parts.append(
+            f"{label}: {shown or 'no scores'}" + (f" over {c.n_folds} folds" if c.n_folds else "")
+        )
     return "; ".join(parts) + "." if parts else "No scores."
 
 
@@ -385,25 +391,30 @@ def report_summary(
         except ValidationError:
             continue
         label = _label(ctx, v.source) or t.test
-        sections.append(ReportSection(title=label, node_id=v.source, kind="test",
-                                      status=t.decision, text=_test_text(t)))  # fmt: skip
+        sections.append(
+            ReportSection(
+                title=label, node_id=v.source, kind="test", status=t.decision, text=_test_text(t)
+            )
+        )
         covered.add(v.source or "")
     for d in ctx.decisions:
         if not keep(d.node_id):
             continue
         label = _label(ctx, d.node_id) or d.node_id
         gated = sorted(
-            n.id for n in ctx.nodes.values() if n.when and n.when.startswith(d.node_id + ".")
-            and n.when.endswith("." + d.arm)
-        )  # fmt: skip
+            n.id
+            for n in ctx.nodes.values()
+            if n.when and n.when.startswith(d.node_id + ".") and n.when.endswith("." + d.arm)
+        )
         values = ", ".join(f"{k} = {_short(v)}" for k, v in d.inputs.items())
         text = (
             f"The condition `{d.condition}` was {'true' if d.value else 'false'}"
             + (f" ({values})" if values else "")
             + (f", so {', '.join(gated)} ran." if gated else ".")
         )
-        sections.append(ReportSection(title=label, node_id=d.node_id, kind="decision",
-                                      status=d.arm, text=text))  # fmt: skip
+        sections.append(
+            ReportSection(title=label, node_id=d.node_id, kind="decision", status=d.arm, text=text)
+        )
         covered.add(d.node_id)
     for v in inputs.get("items", ()):
         if not keep(v.source) or not isinstance(v.ref.inline, dict):
@@ -412,9 +423,15 @@ def report_summary(
             t2 = TablePayload.model_validate(v.ref.inline)
         except ValidationError:
             continue
-        sections.append(ReportSection(title=_label(ctx, v.source) or t2.title or "Table",
-                                      node_id=v.source, kind="table", text=_table_text(t2),
-                                      table=t2))  # fmt: skip
+        sections.append(
+            ReportSection(
+                title=_label(ctx, v.source) or t2.title or "Table",
+                node_id=v.source,
+                kind="table",
+                text=_table_text(t2),
+                table=t2,
+            )
+        )
         covered.add(v.source or "")
     for v in inputs.get("metrics", ()):
         if not keep(v.source) or not isinstance(v.ref.inline, dict):
@@ -423,47 +440,76 @@ def report_summary(
             mp = MetricsPayload.model_validate(v.ref.inline)
         except ValidationError:
             continue
-        sections.append(ReportSection(title=_label(ctx, v.source) or "Scores",
-                                      node_id=v.source, kind="metrics",
-                                      text=_metrics_text(mp)))  # fmt: skip
+        sections.append(
+            ReportSection(
+                title=_label(ctx, v.source) or "Scores",
+                node_id=v.source,
+                kind="metrics",
+                text=_metrics_text(mp),
+            )
+        )
         covered.add(v.source or "")
     # nodes that were skipped or failed are worth a line too
     for nr in ctx.node_runs:
         if nr.node_id in covered or nr.node_id == ctx.node_id or not keep(nr.node_id):
             continue
         if nr.status is NodeRunStatus.SKIPPED and nr.kind is not NodeKind.BRANCH:
-            sections.append(ReportSection(
-                title=_label(ctx, nr.node_id) or nr.node_id, node_id=nr.node_id,
-                kind="skipped", status="skipped",
-                text=f"Skipped: {nr.skipped_reason or 'not needed'}.",
-            ))  # fmt: skip
+            sections.append(
+                ReportSection(
+                    title=_label(ctx, nr.node_id) or nr.node_id,
+                    node_id=nr.node_id,
+                    kind="skipped",
+                    status="skipped",
+                    text=f"Skipped: {nr.skipped_reason or 'not needed'}.",
+                )
+            )
         elif nr.status is NodeRunStatus.FAILED:
             msg = nr.error.message if nr.error else "it failed"
-            sections.append(ReportSection(
-                title=_label(ctx, nr.node_id) or nr.node_id, node_id=nr.node_id,
-                kind="failed", status="failed", text=f"Failed: {msg}",
-            ))  # fmt: skip
+            sections.append(
+                ReportSection(
+                    title=_label(ctx, nr.node_id) or nr.node_id,
+                    node_id=nr.node_id,
+                    kind="failed",
+                    status="failed",
+                    text=f"Failed: {msg}",
+                )
+            )
         elif nr.kind is NodeKind.SELECT and nr.result is not None:
             reason = nr.result.get("reason_plain")
             if isinstance(reason, str):
-                sections.append(ReportSection(title=_label(ctx, nr.node_id) or "Selection",
-                                              node_id=nr.node_id, kind="selection",
-                                              text=reason))  # fmt: skip
+                sections.append(
+                    ReportSection(
+                        title=_label(ctx, nr.node_id) or "Selection",
+                        node_id=nr.node_id,
+                        kind="selection",
+                        text=reason,
+                    )
+                )
         elif nr.kind is NodeKind.SEARCH and nr.result is not None:
-            sections.append(ReportSection(
-                title=_label(ctx, nr.node_id) or nr.node_id, node_id=nr.node_id,
-                kind="search", text=_search_text(nr.result),
-            ))  # fmt: skip
+            sections.append(
+                ReportSection(
+                    title=_label(ctx, nr.node_id) or nr.node_id,
+                    node_id=nr.node_id,
+                    kind="search",
+                    text=_search_text(nr.result),
+                )
+            )
     model_ref: str | None = None
     for v in inputs.get("model", ()):
         model_ref = v.ref.ref
     if model_ref:
-        sections.append(ReportSection(title="Chosen model", kind="model",
-                                      text=f"The workflow's model is {model_ref}."))  # fmt: skip
+        sections.append(
+            ReportSection(
+                title="Chosen model", kind="model", text=f"The workflow's model is {model_ref}."
+            )
+        )
     summary = _summary(sections, model_ref)
     report = ReportPayload(title=title, summary_plain=summary, sections=sections, model=model_ref)
-    result: dict[str, JsonValue] = {"title": title, "summary_plain": summary,
-                                    "n_sections": len(sections)}  # fmt: skip
+    result: dict[str, JsonValue] = {
+        "title": title,
+        "summary_plain": summary,
+        "n_sections": len(sections),
+    }
     return result, {"report": inline(PortType.REPORT, report)}
 
 
@@ -547,22 +593,51 @@ def evidence_pack(
             continue
         passed = ev.passed if passed is None else passed and ev.passed
         rows: list[dict[str, JsonValue]] = [
-            {k: r.get(k) for k in ("check", "status", "severity", "metric", "value",
-                                   "threshold", "message_plain")}
+            {
+                k: r.get(k)
+                for k in (
+                    "check",
+                    "status",
+                    "severity",
+                    "metric",
+                    "value",
+                    "threshold",
+                    "message_plain",
+                )
+            }
             for r in ev.results
-        ]  # fmt: skip
-        sections.append(ReportSection(
-            title="Governance checks", node_id=v.source, kind="evidence",
-            status=ev.status, text=ev.message_plain or ev.status,
-            table=TablePayload(title="Check results", kind="evidence",
-                               columns=["check", "status", "severity", "metric", "value",
-                                        "threshold", "message_plain"], rows=rows),
-        ))  # fmt: skip
+        ]
+        sections.append(
+            ReportSection(
+                title="Governance checks",
+                node_id=v.source,
+                kind="evidence",
+                status=ev.status,
+                text=ev.message_plain or ev.status,
+                table=TablePayload(
+                    title="Check results",
+                    kind="evidence",
+                    columns=[
+                        "check",
+                        "status",
+                        "severity",
+                        "metric",
+                        "value",
+                        "threshold",
+                        "message_plain",
+                    ],
+                    rows=rows,
+                ),
+            )
+        )
     if lineage:
-        sections.append(ReportSection(
-            title="Lineage", kind="lineage",
-            text="; ".join(f"{k}: {_short(v)}" for k, v in sorted(lineage.items())),
-        ))  # fmt: skip
+        sections.append(
+            ReportSection(
+                title="Lineage",
+                kind="lineage",
+                text="; ".join(f"{k}: {_short(v)}" for k, v in sorted(lineage.items())),
+            )
+        )
     if scorecard:
         sections.append(
             ReportSection(
@@ -577,10 +652,17 @@ def evidence_pack(
         summary = "Every blocking governance check passed."
     else:
         summary = "At least one blocking governance check failed."
-    report = ReportPayload(title=f"Evidence pack for {model_ref or 'the model'}",
-                           summary_plain=summary, sections=sections, model=model_ref)  # fmt: skip
-    result: dict[str, JsonValue] = {"format": str(params.get("format") or "json"),
-                                    "passed": passed, "summary_plain": summary}  # fmt: skip
+    report = ReportPayload(
+        title=f"Evidence pack for {model_ref or 'the model'}",
+        summary_plain=summary,
+        sections=sections,
+        model=model_ref,
+    )
+    result: dict[str, JsonValue] = {
+        "format": str(params.get("format") or "json"),
+        "passed": passed,
+        "summary_plain": summary,
+    }
     return result, {"report": inline(PortType.REPORT, report)}
 
 
