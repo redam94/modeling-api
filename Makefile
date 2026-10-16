@@ -185,12 +185,14 @@ snapshots: ## Regenerate the contract snapshot (mapi_spec), the server's Guided 
 		conformance/tests/test_guided_catalog.py
 	$(UV) run python apps/web/scripts/gen_guided_fixtures.py
 	$(UV) run python apps/web/scripts/gen_integration_fixtures.py
+	$(UV) run python apps/web/scripts/gen_explorer_fixtures.py
 
 .PHONY: web-check
 web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*
 	$(UV) run python apps/web/scripts/gen_openapi.py --check
 	$(UV) run python apps/web/scripts/gen_guided_fixtures.py --check
 	$(UV) run python apps/web/scripts/gen_integration_fixtures.py --check
+	$(UV) run python apps/web/scripts/gen_explorer_fixtures.py --check
 	$(PNPM) -r lint
 	$(PNPM) -r typecheck
 	$(PNPM) -r test
@@ -290,6 +292,14 @@ docs-screenshots-tutorials: ## Recapture the v0.4 tutorial screenshots (Sheets c
 	$(UV) run python scripts/docs_embed_view.py .local/embed-view.json
 	MAPI_EMBED_VIEW=.local/embed-view.json node scripts/docs_screenshots_tutorials.mjs .local/screenshots-tutorials
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-tutorials docs/assets/screenshots --max-kb 150 --only $(DOCS_TUTORIAL_SHOTS)
+
+DOCS_EXPLORER_SHOTS := explorer-chooser,explorer-about-card,explorer-data-overview-guided,explorer-data-stationarity,explorer-data-stl,explorer-model-summary,explorer-model-params,explorer-model-residuals,explorer-model-irf,explorer-model-governance,explorer-model-compare,explorer-optimize
+
+.PHONY: docs-screenshots-explorers
+docs-screenshots-explorers: ## Recapture the v0.5 explorer, About-card, chooser and optimisation screenshots from mock mode (Playwright)
+	MAPI_EXPLORER_SCREENSHOTS=1 MAPI_SMOKE_WEB_PORT=$${MAPI_SMOKE_WEB_PORT:-15173} MAPI_SMOKE_PLOTS_PORT=$${MAPI_SMOKE_PLOTS_PORT:-15174} \
+		$(PNPM) --filter @mapi/web exec playwright test e2e/explorer-screenshots.spec.ts
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-explorers docs/assets/screenshots --max-kb 150 --only $(DOCS_EXPLORER_SHOTS)
 
 ## ---------------------------------------------------------------- release
 .PHONY: release-check

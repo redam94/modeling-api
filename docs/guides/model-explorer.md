@@ -8,7 +8,62 @@ The **Model Explorer** shows what a fitted model learned and how well it works, 
 model family: Bayesian (posterior means with highest-density intervals, R-hat), frequentist
 (estimates with confidence intervals and p-values, information criteria) and machine learning
 (coefficients or importances). Views are computed in the sandbox from the bundle and the data
-it was fitted on, and come with Vega-Lite plots.
+it was fitted on, and come with Vega-Lite plots. The [web app](#in-the-web-app) shows every
+section with governance evidence and lineage, compares versions and optimises budgets; the
+rest of this guide uses the HTTP API it calls.
+
+## In the web app
+
+A model version's page has **Explore**, **Compare** and, for marketing-mix models,
+**Optimise budget**. The Model Explorer (`/models/<model>/versions/<n>/explore`) groups its
+sections by the question they answer:
+
+| Group | Sections |
+|---|---|
+| Overview | *At a glance*: the plain readings of the diagnostics and the fit, the holdout metrics and the model's [About card](../concepts/about-and-choosing.md) |
+| What it learned | Parameters (a sortable, filterable table with intervals, p-values, R-hat and ESS, and a forest plot per parameter), contributions, response curves, impulse responses and variance decomposition |
+| Can you trust it? | Diagnostics (convergence, fit statistics per series, the model's own tests), fit vs actual (with the band's coverage in plain words), residuals (over time, ACF, histogram, QQ plot, Ljung-Box, Jarque-Bera, Breusch-Pagan and ARCH-LM), backtest |
+| Looking ahead | Forecast (a fan per series) |
+| Trust and origin | Governance (the latest validation's status badge, every check with its evidence, the status history) and lineage (dataset, spec revision, fit run and workflow run, plus plugin, image, seed and libraries) |
+
+Sections that do not apply to the model (an MMM has no impulse responses) are listed last
+with the reason. Forecasts and backtests are computed on demand (**Compute forecast and
+backtest**, or **Explore with options** for the horizon, the interval and the backtest plan:
+expanding window or rolling origin, horizons, folds, minimum training periods and gap). As
+in the Data Explorer, Guided mode puts the plain reading first and Expert mode every number.
+
+![At a glance: the plain readings, the holdout metrics and the model's About card](../assets/screenshots/explorer-model-summary.png){ .mapi-shot }
+
+![Parameters: estimates with their 90% intervals, R-hat and ESS](../assets/screenshots/explorer-model-params.png){ .mapi-shot }
+
+![Residuals: over time, their ACF, histogram and QQ plot, and the tests per series](../assets/screenshots/explorer-model-residuals.png){ .mapi-shot }
+
+![Impulse responses of a VECM: pick the shock and the response](../assets/screenshots/explorer-model-irf.png){ .mapi-shot }
+
+![Governance evidence: each check's result, measured value, limit and evidence](../assets/screenshots/explorer-model-governance.png){ .mapi-shot }
+
+**Compare** (`/models/compare`) puts two to eleven versions side by side: pick each model
+and version (the first is the one the tests use as reference), then **Compare**. The page
+shows the holdout metrics with the best value of each metric marked, the Diebold-Mariano
+tests in plain words ("about equally accurate", or an edge that is more than chance), the
+ranking per metric and every version's own fit statistics.
+
+![Three versions side by side with Diebold-Mariano tests](../assets/screenshots/explorer-model-compare.png){ .mapi-shot }
+
+**Optimise budget** (`/models/<model>/versions/<n>/optimize`, marketing-mix models only)
+asks how much to spend (today's total, a new total, a change in percent, or - in Expert mode
+- the total the model would choose), how cautious to be (the expected result, the 25th or
+10th percentile, or the average of the worst 10%), limits per channel (multiples of today's
+spend or money, or kept as is), portfolio groups and the frontier. Bounds that cannot be met
+are explained before anything runs. The plan reads "Move money from tv (−7,491) to search
+(+7,491). That adds about +3,063 to revenue (90% likely between +674 and +6,030)…", with
+the allocation per channel (and market), the expected result today and with the plan, the
+chance the plan beats today's, the return of the next unit per channel and the efficient
+frontier. In Guided mode the *What if…* step leads here with **Optimise my budget**. The
+request and result are those of
+[`POST …:optimize`](../models/mmm-framework.md#budget-optimisation).
+
+![A budget plan: the allocation, the expected result and the efficient frontier](../assets/screenshots/explorer-optimize.png){ .mapi-shot }
 
 ## Views written at fit
 
