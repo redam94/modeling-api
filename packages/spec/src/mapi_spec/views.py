@@ -38,6 +38,7 @@ __all__ = [
     "FORECAST_VIEW",
     "MAX_GRID_CELLS",
     "MAX_GRID_DRAWS",
+    "MAX_GRID_POINTS",
     "MAX_LEARNED_BYTES",
     "MAX_STATE_ARRAYS",
     "MAX_STATE_ARRAY_CELLS",
@@ -81,6 +82,9 @@ COUNTERFACTUAL_VIEW: Final = "ui/guided/counterfactual.json"
 MAX_GRID_DRAWS: Final = 500
 MAX_GRID_CELLS: Final = 2_000_000
 """Cap on the number of floats in one response grid (draws x channels x points [x geos])."""
+MAX_GRID_POINTS: Final = 202
+"""Cap on a response grid's multipliers: up to 201 evenly spaced points plus 1 (today's spend)
+when the spacing skips it."""
 
 ViewScalar = str | int | float | bool | None
 """A JSON scalar (datetimes are ISO strings; NaN is ``null``)."""
@@ -253,7 +257,7 @@ class ResponseGridView(_View):
     periods: int = Field(..., ge=1)
     channels: list[str] = Field(..., min_length=1, max_length=64)
     geos: list[str] | None = Field(None, max_length=256)
-    multipliers: list[float] = Field(..., min_length=2, max_length=201)
+    multipliers: list[float] = Field(..., min_length=2, max_length=MAX_GRID_POINTS)
     draws: int = Field(..., ge=1, le=MAX_GRID_DRAWS)
     contribution: list[list[list[float]]]
     spend: list[list[float]]

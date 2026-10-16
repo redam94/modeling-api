@@ -176,13 +176,16 @@ def _holdout(bundle: Bundle, out: dict[str, Measured], why: dict[str, str]) -> N
 
 
 def _channel_totals(rc: xr.Dataset) -> tuple[xr.DataArray, xr.DataArray] | None:
-    """``(contribution(sample, channel), spend(channel))`` at the actual spend."""
+    """``(contribution(sample, channel), spend(channel))`` at the actual spend (multiplier
+    exactly 1; ``None`` for a grid without it, never the nearest point)."""
     if "contribution" not in rc or "current_spend" not in rc:
         return None
     da = rc["contribution"]
     if "channel" not in da.dims or "multiplier" not in da.dims or "sample" not in da.dims:
         return None
-    at_one = da.sel(multiplier=1.0, method="nearest")
+    if not np.any(np.asarray(da["multiplier"].values, dtype=float) == 1.0):
+        return None
+    at_one = da.sel(multiplier=1.0)
     other = [d for d in at_one.dims if d not in ("sample", "channel")]
     if other:
         at_one = at_one.sum(other)
@@ -194,8 +197,13 @@ def _plausibility(bundle: Bundle, out: dict[str, Measured], why: dict[str, str])
     rc = bundle.model.derived.get("response_curves")
     totals = _channel_totals(rc) if rc is not None else None
     if rc is None or totals is None:
+        reason = (
+            "the model has no response curves (outputs.derived: response_curves)"
+            if rc is None or "contribution" not in rc
+            else "the response curves have no point at today's spend (multiplier 1)"
+        )
         for m in metrics:
-            why[m] = "the model has no response curves (outputs.derived: response_curves)"
+            why[m] = reason
         return
     contrib, spend = totals
     channels = [str(c) for c in contrib["channel"].values]

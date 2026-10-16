@@ -95,8 +95,12 @@ def write_guided_views(ctx: WorkerContext, bundle: Bundle, data: xr.Dataset) -> 
     ctx.write_json(SCORECARD_OUTPUT, card.model_dump(mode="json", exclude_none=True))
     try:
         grid = response_grid_view(bundle)
-    except ValueError as exc:  # the contract's own caps (never fail a fit on a view)
-        ctx.warning("VIEW_TOO_LARGE", "the what-if grid was not written", str(exc)[:8000])
+    except ValueError as exc:  # the view contract refused it (never fail a fit on a view)
+        ctx.warning(
+            "VIEW_INVALID",
+            "the what-if grid was not written: it does not meet the view contract",
+            str(exc)[:8000],
+        )
         grid = None
     if grid is not None:
         ctx.write_json(RESPONSE_GRID_VIEW, grid.model_dump(mode="json", exclude_none=True))

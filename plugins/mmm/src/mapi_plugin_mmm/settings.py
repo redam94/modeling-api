@@ -83,16 +83,18 @@ class GridSettings(_Sub):
 
     max_multiplier: float = Field(
         2.0,
-        gt=0,
+        ge=1,
         le=20,
-        description="Largest spend multiplier on the grid (1 = spend over the fit window)",
+        description="Largest spend multiplier on the grid (1 = spend over the fit window, "
+        "which the grid always holds)",
         json_schema_extra=ADVANCED,
     )
     points: int = Field(
         21,
         ge=3,
         le=201,
-        description="Grid points from 0 to max_multiplier",
+        description="Grid points from 0 to max_multiplier (plus 1, today's spend, when the "
+        "spacing skips it)",
         json_schema_extra=ADVANCED,
     )
     marginal_step: float = Field(
@@ -104,8 +106,12 @@ class GridSettings(_Sub):
     )
 
     def multipliers(self) -> list[float]:
+        """``points`` evenly spaced multipliers from 0 to ``max_multiplier``, with ``1.0``
+        (today's spend, which the what-if grid and the scorecard read) inserted when the
+        spacing skips it."""
         step = self.max_multiplier / (self.points - 1)
-        return [round(i * step, 12) for i in range(self.points)]
+        grid = [round(i * step, 12) for i in range(self.points)]
+        return grid if 1.0 in grid else sorted([*grid, 1.0])
 
 
 def _slot(name: str) -> Any:

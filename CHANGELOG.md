@@ -429,6 +429,12 @@ milestone releases are tagged on `main`.
   predicted ~1e300) with no issue. Both translators (`mmm.hierarchical_geo`,
   `mmm.pymc_marketing`) now refuse it with an error, as they do for an ROI belief, and refuse
   any solved prior that is not finite or has `|mu| > 50`, keeping the channel's default.
+- **mmm/runner**: a response grid whose spacing skipped multiplier 1 (`grid.max_multiplier: 3`,
+  `grid.points: 20`, or a maximum below 1) lost its what-if sliders, and the scorecard's ROI,
+  share and baseline checks were read at the nearest point (1.05x or 0.5x spend). The grid
+  now always holds 1 (inserted when the spacing skips it; `max_multiplier` must be at least
+  1), the curves are read at exactly 1, and a what-if grid the view contract refuses is
+  reported as `VIEW_INVALID` instead of `VIEW_TOO_LARGE`.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
