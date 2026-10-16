@@ -19,6 +19,7 @@ from mapi_server.services.runs import apply_transition, load_run, now
 from mapi_server.services.webhooks.crypto import SecretBox
 from mapi_server.services.webhooks.manage import new_webhook
 from mapi_server.services.workflows import (
+    DEFAULT_RESOLVER,
     WorkflowOrchestrator,
     dataset_version_ready,
     fire_due_schedules,
@@ -31,6 +32,7 @@ from mapi_server_testkit.workflows import catalog_file, drive, put_dataset
 from mapi_spec.api import M35_ENDPOINTS
 from mapi_spec.governance import GovernancePolicy, PolicyCheck
 from mapi_spec.run import Actor, RunState, RunTrigger
+from mapi_spec.scorecard import CheckThresholds
 from mapi_spec.webhooks import WebhookEventType
 from mapi_spec.workflow import WorkflowRunStatus
 from mapi_spec.workflow_templates import TS_READINESS_ARIMAX
@@ -413,9 +415,10 @@ async def test_a_workflow_cannot_run_itself(client: httpx.AsyncClient, ctx: Serv
 async def test_governance_policies_gate_the_run(
     client: httpx.AsyncClient, ctx: ServerContext
 ) -> None:
-    """A resolved policy whose blocking check cannot run (no check runner is installed)
-    records a failed governance result (``passed: false``) with its evidence; the run itself
-    finishes, so a branch on ``nodes.gov.passed`` decides what happens next."""
+    """A resolved policy's checks run in the node's sandbox with the runner's real check
+    implementations. A failing blocking check records ``passed: false`` with its evidence
+    (the run itself finishes, so a branch on ``nodes.gov.passed`` decides what happens
+    next); a passing one with ``submit: true`` records a validated ``ModelValidation``."""
     await put_dataset(ctx, "sales", weekly_series(100))
     doc = _doc(
         [
@@ -425,40 +428,59 @@ async def test_governance_policies_gate_the_run(
                 "inputs": {"data": "inputs.data"},
                 "with": {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0]}},
             },
-            {"id": "gov", "use": "governance.policy", "inputs": {"model": "fit.model"}},
+            {
+                "id": "gov",
+                "use": "governance.policy",
+                "inputs": {"model": "fit.model", "data": "inputs.data"},
+                "with": {"submit": True},
+            },
         ],
         name="governed",
     )
     wf = await _create(client, doc)
-    policy = GovernancePolicy(
-        id="pol_1",
-        tenant_id="default",
-        project_id=None,
-        scope="tenant",
-        version=1,
-        name="all",
-        checks=[PolicyCheck(check="convergence")],
-        created_at=datetime.now(UTC),
-    )
+
+    def policy(*checks: PolicyCheck) -> GovernancePolicy:
+        return GovernancePolicy(
+            id="pol_1",
+            tenant_id="default",
+            project_id=None,
+            scope="tenant",
+            version=1,
+            name="all",
+            checks=list(checks),
+            created_at=datetime.now(UTC),
+        )
+
     seen: list[str] = []
+    strict = policy(
+        PolicyCheck(check="convergence"),
+        # any variation across windows fails: a blocking check that cannot pass
+        PolicyCheck(
+            check="stability.rolling_params", thresholds=CheckThresholds(warn=0.0, fail=0.0)
+        ),
+    )
 
     async def resolver(session: Any, ctx_: Any, mv: m.ModelVersion, pid: str | None) -> list[Any]:
         seen.append(mv.id)
-        return [policy]
+        return [strict]
 
     set_policy_resolver(resolver)
     try:
         run = await _start(client, wf["id"])
         assert await drive(ctx, run["run_id"]) is WorkflowRunStatus.SUCCEEDED
     finally:
-        set_policy_resolver(None)
+        set_policy_resolver(DEFAULT_RESOLVER)
     view = (await client.get(f"/v1/workflow-runs/{run['run_id']}")).json()
     nodes = {n["node_id"]: n for n in view["nodes"]}
     assert seen
     gov = nodes["gov"]
-    assert gov["result"]["passed"] is False and gov["result"]["failed_checks"] == ["convergence"]
+    assert gov["result"]["passed"] is False
+    assert gov["result"]["failed_checks"] == ["stability.rolling_params"]
+    assert "validation_id" not in gov["result"]  # failed checks are never submitted
     ev = gov["outputs"]["evidence"]["inline"]
-    assert ev["policies"] == ["pol_1@1"] and ev["results"][0]["status"] == "error"
+    assert ev["policies"] == ["pol_1@1"]
+    statuses = {r["check"]: r["status"] for r in ev["results"]}
+    assert statuses == {"convergence": "pass", "stability.rolling_params": "fail"}
     # the fit is an ordinary model version of the spec wf-<workflow>-<node>
     fit = nodes["fit"]
     assert fit["result"]["model_version"] == "model://default/wf-governed-fit@v1"
@@ -466,6 +488,28 @@ async def test_governance_policies_gate_the_run(
     assert [s_["name"] for s_ in spec] == ["wf-governed-fit"]
     child = (await client.get(f"/v1/runs/{fit['run_id']}")).json()
     assert child["kind"] == "fit" and child["parent_run_id"] == run["run_id"]
+
+    # with the platform's own policy store (the default resolver) and a passing policy,
+    # submit: true records the workflow's evidence as a validation of the version
+    r = await client.post(
+        "/v1/governance/policies",
+        json={
+            "name": "Forecasts converge",
+            "applies_to": {"families": ["forecast"]},
+            "checks": [{"check": "convergence"}],
+        },
+    )
+    assert r.status_code == 201, r.text
+    run = await _start(client, wf["id"], use_cache=False)
+    assert await drive(ctx, run["run_id"]) is WorkflowRunStatus.SUCCEEDED
+    view = (await client.get(f"/v1/workflow-runs/{run['run_id']}")).json()
+    gov = {n["node_id"]: n for n in view["nodes"]}["gov"]
+    assert gov["result"]["passed"] is True, gov
+    vid = gov["result"]["validation_id"]
+    val = (await client.get(f"/v1/validations/{vid}")).json()
+    assert val["status"] == "validated", val
+    assert val["workflow_run_id"] == run["run_id"]
+    assert {r_["check"] for r_ in val["results"]} >= {"convergence"}
 
 
 async def test_the_canonical_readiness_to_arimax_template_through_the_server(
@@ -496,7 +540,14 @@ async def test_the_canonical_readiness_to_arimax_template_through_the_server(
     assert nodes["select"]["result"]["beats_baselines"] is True
     model_ref = view["outputs"]["model"]["ref"]
     assert model_ref.startswith("model://default/wf-ts-readiness-arimax-fit@v")
-    assert nodes["governance"]["result"]["passed"] is True  # no policy store: none applies
+    # the platform's default forecasting policy ran its checks on the real ARIMAX
+    gov = nodes["governance"]
+    assert gov["result"]["passed"] is True, gov["result"]
+    ev = gov["outputs"]["evidence"]["inline"]
+    assert len(ev["policies"]) == 1
+    checks = {r["check"]: r["status"] for r in ev["results"]}
+    assert checks["convergence"] == "pass" and checks["data.quality"] == "pass"
+    assert "error" not in checks.values(), ev["results"]
     report = view["outputs"]["report"]["inline"]
     assert report["format"] == "mapi.report/v1" and report["model"] == model_ref
     mv = (await client.get("/v1/models")).json()["items"]

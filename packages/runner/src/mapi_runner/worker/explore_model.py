@@ -20,7 +20,10 @@ section              source
 ``comparison``       holdout metrics of several versions, a ranking and Diebold-Mariano tests
 ==================== ========================================================================
 
-:data:`FIT_SECTIONS` are written by every fit (``ui/explore/``); the rest on demand.
+:data:`FIT_SECTIONS` are written by every fit (``ui/explore/``); the rest on demand. A
+plugin that computes its own views (``explorer_views(fitted)`` on the model class, such as
+the statsmodels plugin) supplies the sections of :data:`PLUGIN_SECTIONS` it returns; the
+generic implementation is the fallback.
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ from mapi_sdk.harness import score_bundle
 from mapi_sdk.metrics import point_estimate
 from mapi_sdk.registry import Registry
 from mapi_spec.calibration import FanChart
+from mapi_spec.errors import MapiError
 from mapi_spec.explore import ModelExploreRequest
 from mapi_spec.spec import ScoreRequest
 from mapi_spec.splitplan import ExpandingWindowPlan, RollingOriginPlan, plan_folds
@@ -74,6 +78,7 @@ from mapi_runner.worker.modelview import (
     holdout_mask,
     param_rows,
     predict,
+    supplied_tables,
     target_vars,
     time_dim_of,
 )
@@ -125,6 +130,28 @@ class ModelContext:
     evaluation: Bundle | None = None
     refitter: Refitter | None = None
     _pred: list[Prediction] | None = None
+    _plugin: dict[str, BaseModel] | None = None
+    plugin_error: str | None = None
+
+    def plugin_views(self) -> dict[str, BaseModel]:
+        """The plugin's own Model Explorer sections (``explorer_views(fitted)`` on the model
+        class, e.g. the statsmodels plugin's parameter, test, IRF and FEVD views); empty
+        when the plugin has none or they fail (the generic sections are used then)."""
+        if self._plugin is None:
+            self._plugin = {}
+            man = self.bundle.model.manifest
+            try:
+                cls = self.registry.model(f"{man.id}@{man.version}")
+                hook = getattr(cls(), "explorer_views", None)
+                if callable(hook):
+                    views = hook(self.bundle.model)
+                    if isinstance(views, dict):
+                        self._plugin = {
+                            str(k): v for k, v in views.items() if isinstance(v, BaseModel)
+                        }
+            except Exception as exc:
+                self.plugin_error = f"{type(exc).__name__}: {exc}"[:2000]
+        return self._plugin
 
     @property
     def time_dim(self) -> str | None:
@@ -390,7 +417,10 @@ def response_curves(c: ModelContext) -> ResponseCurvesView:
 
     grid = response_grid_view(c.bundle)
     if grid is None:
-        raise SectionSkipped("this model has no response curves (only marketing mix models do)")
+        raise SectionSkipped(
+            "this model has no response curves (marketing mix models keep them when the "
+            "spec asks for the derived response_curves)"
+        )
     contrib = np.asarray(grid.contribution, dtype=float)  # draw, channel, multiplier
     mean = contrib.mean(axis=0)
     lo = np.quantile(contrib, 0.05, axis=0) if grid.draws > 1 else None
@@ -488,6 +518,7 @@ def forecast(c: ModelContext) -> ModelForecastView:
             "horizon": {"dim": canon_t, "periods": horizon},
             "future_covariates": "carry_last",
             "output": {"kind": "expected"},
+            "side_tables": supplied_tables(c.bundle, c.side_tables),
         }
     )
     tree = score_bundle(
@@ -512,6 +543,8 @@ def forecast(c: ModelContext) -> ModelForecastView:
         if name is None or t not in pred[name].dims:
             continue
         da = pred[name]
+        if not np.issubdtype(da.dtype, np.number):
+            continue  # predicted categories (choice, classification) have no fan
         other = [d for d in da.dims if d not in (t, "chain", "draw", "quantile", "bound", "moment")]
         from mapi_runner.worker.modelview import _band
 
@@ -523,6 +556,8 @@ def forecast(c: ModelContext) -> ModelForecastView:
                 (band[0].sum(other), band[1].sum(other)) if band and rep.value == "draws" else None
             )
         hist = c.data.get(var)
+        if hist is not None and not np.issubdtype(hist.dtype, np.number):
+            continue  # a categorical target (choice models) has no history line
         hist_vals: list[float | None] = []
         hist_coords: list[Any] = []
         if hist is not None and t in hist.dims:
@@ -618,10 +653,15 @@ def backtest(c: ModelContext) -> BacktestView:
     if c.refitter is None:
         raise SectionSkipped("refits are not available in this run")
     dim = plan.dim if plan.dim in c.data.dims else c.bundle.binding.to_dataset(plan.dim)
+    if dim not in c.data.dims:
+        dim = t  # window plans run along time: the default dim name means the data's time
     if dim != t:
         raise SectionSkipped(f"the plan's dim {plan.dim!r} is not the data's time dimension")
     n = int(c.data.sizes[t])
-    folds = plan_folds(plan, n)[-MAX_BACKTEST_FOLDS:]
+    try:
+        folds = plan_folds(plan, n)[-MAX_BACKTEST_FOLDS:]
+    except MapiError as exc:
+        raise SectionSkipped(f"the history is too short for this plan ({exc.detail})") from None
     targets = target_vars(c.bundle)
     if not targets:
         raise SectionSkipped("the model has no target to score")
@@ -733,7 +773,8 @@ def comparison(c: ModelContext) -> ComparisonView:
                 continue
             if preds:
                 p = preds[0]
-                e = (p.observed - p.point).where(mask, drop=True)
+                pmask = holdout_mask(c.bundle, p.observed, c.evaluation)
+                e = (p.observed - p.point).where(pmask if pmask is not None else mask, drop=True)
                 errs[ref] = _tot(e, dim)
         refs = list(errs)
         for ra, rb in itertools.combinations(refs, 2):
@@ -782,15 +823,34 @@ def _dm_result(
     )
 
 
+PLUGIN_SECTIONS: Final = ("params", "diagnostics", "residuals", "decomposition", "irf", "fevd")
+"""Sections a plugin may compute itself (``explorer_views``); its view wins over the generic
+one, which stays the fallback."""
+
+
+def _plugin_first(
+    section: str, generic: Callable[[ModelContext], BaseModel]
+) -> Callable[[ModelContext], BaseModel]:
+    def run(c: ModelContext) -> BaseModel:
+        view = c.plugin_views().get(section)
+        if view is not None:
+            return view
+        return generic(c)
+
+    run.__name__ = generic.__name__
+    run.__doc__ = generic.__doc__
+    return run
+
+
 MODEL_SECTION_FUNCS: Final[dict[str, Callable[[ModelContext], BaseModel]]] = {
-    "params": params,
-    "diagnostics": diagnostics,
+    "params": _plugin_first("params", params),
+    "diagnostics": _plugin_first("diagnostics", diagnostics),
     "fit": fit,
-    "residuals": residuals,
-    "decomposition": decomposition,
+    "residuals": _plugin_first("residuals", residuals),
+    "decomposition": _plugin_first("decomposition", decomposition),
     "response_curves": response_curves,
-    "irf": irf,
-    "fevd": fevd,
+    "irf": _plugin_first("irf", irf),
+    "fevd": _plugin_first("fevd", fevd),
     "forecast": forecast,
     "backtest": backtest,
     "comparison": comparison,

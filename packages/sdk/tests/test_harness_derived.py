@@ -58,7 +58,7 @@ class DerivedLinear(toy.LinearModel):
 
 
 class OwnedLinear(toy.LinearModel):
-    """Claims its outputs are already in original units (pymc-marketing style)."""
+    """Claims its outputs are already in original units (a model that owns the inverse)."""
 
     id = "toy.owned_linear"
     capabilities = Capabilities(

@@ -12,9 +12,8 @@ platform contract as two built-in models:
 
 Both carry a plain-language **About card** (what the model is for, when not to use it,
 what data it needs, what you get out); the web app's *Help me choose* recommends them
-for "explain my marketing" and "plan my budget" goals. The earlier engines -
-`mmm.hierarchical_geo`, the pymc-marketing adapter and BayesInsight - were removed in
-v0.5, as was the Atlas adapter: budgets are optimised by the platform itself
+for "explain my marketing" and "plan my budget" goals. mmm-framework is the platform's only
+marketing-mix engine, and budgets are optimised by the platform itself
 ([below](#budget-optimisation)).
 
 ## What the data looks like

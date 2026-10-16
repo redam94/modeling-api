@@ -17,9 +17,6 @@ Wide tables (one column per channel) become one variable along a new dim through
 :class:`WideVarMapping` - the shape Meridian and most spreadsheets use.
 
 This module only *describes* files; every byte of an upload is parsed inside the sandbox.
-
-v0.5 removed the ``bayesinsight`` preset and its ``model_def.json``/``metadata.json``
-contracts: mmm-framework is the only MMM engine (see the CHANGELOG).
 """
 
 from __future__ import annotations

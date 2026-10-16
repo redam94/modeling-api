@@ -8,7 +8,7 @@ dependencies = [
   "mapi-spec", "mapi-sdk", "mapi-pymc", "mapi-sklearn", "mapi-steps", "mapi-plots[recipes]",
   "mapi-runner", "mapi-server[docker,otlp]", "mapi-gcs-shim", "mapi-cli", "mapi-client",
   "mapi-plugin-mmm", "mapi-plugin-ts", "mapi-plugin-tabular", "mapi-plugin-statsmodels",
-  "mapi-conformance", "mapi-workflows[runtime]",
+  "mapi-conformance", "mapi-workflows[runtime,testing]",
 ]
 
 [dependency-groups]

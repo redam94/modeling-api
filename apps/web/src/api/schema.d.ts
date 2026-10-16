@@ -489,6 +489,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/catalog/abouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * About cards of catalog items (filter: kind)
+         * @description The plain-language About card of every model, preprocessing step, split, template,
+         *     workflow template, workflow node and governance check a user can pick.
+         */
+        get: operations["list_catalog_abouts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/catalog/chooser": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The Help-me-choose questions
+         * @description The questions of "Help me choose", in the order to ask them; answer them as the
+         *     query of ``GET /v1/catalog/recommendations``.
+         */
+        get: operations["get_chooser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/catalog/governance-checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The governance check catalog
+         * @description Every check a policy can require, with its About card, metric, direction, default
+         *     thresholds and parameter schema.
+         */
+        get: operations["list_governance_checks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/catalog/models": {
         parameters: {
             query?: never;
@@ -540,6 +603,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/catalog/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ranked recommendations for chooser answers (query: one parameter per question)
+         * @description Catalog items ranked for the answers (``?goal=forecast&data_shape=panel``; repeat
+         *     a question or separate values with commas), each with plain reasons and cautions.
+         *     Without ``kind`` the candidates are models, guided templates and workflow templates;
+         *     ``kind`` ranks one kind (steps, nodes, checks, ...). An unknown question or answer is
+         *     ``CHOOSER_ANSWER_INVALID``.
+         */
+        get: operations["recommend_catalog_items"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/catalog/steps": {
         parameters: {
             query?: never;
@@ -549,6 +636,40 @@ export interface paths {
         };
         /** List Catalog Steps */
         get: operations["list_catalog_steps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/catalog/workflow-nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Workflow node implementations with ports, parameters and About cards */
+        get: operations["list_workflow_nodes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/catalog/workflow-nodes/{node_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One node implementation */
+        get: operations["get_workflow_node"];
         put?: never;
         post?: never;
         delete?: never;
@@ -590,6 +711,28 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/datasets/{dataset_id}/about": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The owner's description and the generated summary of the latest version
+         * @description A plain-language summary from the latest version's schema and coordinates: periods,
+         *     markets, what each measure is.
+         */
+        get: operations["get_dataset_about"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the owner's description */
+        patch: operations["update_dataset_about"];
         trace?: never;
     };
     "/v1/datasets/{dataset_id}/uploads": {
@@ -654,11 +797,32 @@ export interface paths {
         /**
          * Get Dataset Artifact
          * @description Signed, generation-pinned URL for ``data.zarr.zip``/``schema.json``/``profile.json``/
-         *     ``preview.json``/``summary.json``/``columns.json`` (15 min, HTTP Range works).
+         *     ``preview.json``/``summary.json``/``columns.json`` and (M3.5) the Data Explorer views
+         *     ``ui/explore/…`` written at ingest (15 min, HTTP Range works).
          */
         get: operations["get_dataset_artifact"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/datasets/{dataset_id}/versions/{version}/explore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compute Data Explorer sections (an explore run)
+         * @description STL, stationarity, cross-correlations, VIF and every other section on demand.
+         */
+        post: operations["explore_dataset_version"];
         delete?: never;
         options?: never;
         head?: never;
@@ -876,6 +1040,87 @@ export interface paths {
          *     unseen levels, future covariates) and dataset references. ``200`` even when invalid.
          */
         post: operations["validate_endpoint_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/explorations/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An explore run and, once done, links to its views
+         * @description ``done`` once the run is terminal; ``index`` and ``views`` only when it succeeded.
+         */
+        get: operations["get_exploration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/governance/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Policies in force in the project (its own and the tenant's)
+         * @description Tenant-wide policies first (every project's floor), then the project's own. The
+         *     platform's default policies are seeded on the tenant's first use.
+         */
+        get: operations["list_policies"];
+        put?: never;
+        /** Add a project policy (version 1) */
+        post: operations["create_policy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/governance/policies/{policy_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The latest version of a policy
+         * @description A project policy, or a tenant-wide one in force in the project.
+         */
+        get: operations["get_policy"];
+        /** Save a new version (expected_version guards concurrent edits) */
+        put: operations["update_policy"];
+        post?: never;
+        /** Retire a policy (its versions stay for audit) */
+        delete: operations["delete_policy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/governance/policies/{policy_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every version of a policy, newest first */
+        get: operations["list_policy_versions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1151,6 +1396,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/models/{model_id}/versions/{version}/explore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compute Model Explorer sections (an explore run)
+         * @description Forecasts, backtests (refits on a split plan) and comparisons on demand; the fit
+         *     sections were already written by the fit.
+         */
+        post: operations["explore_model_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/models/{model_id}/versions/{version}/plots": {
         parameters: {
             query?: never;
@@ -1203,6 +1469,28 @@ export interface paths {
         get: operations["redirect_model_ui"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models/{model_id}/versions/{version}/validations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Validations of a model version, newest first */
+        get: operations["list_model_validations"];
+        put?: never;
+        /**
+         * Submit a model version: runs the policy checks as a governance run
+         * @description The policies in force for the model's family (or ``policy_ids``) decide the checks;
+         *     they run in the sandbox and the validation advances when they finish.
+         */
+        post: operations["request_model_validation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1267,6 +1555,27 @@ export interface paths {
          *     200 with output links if the run finished, else 202 with the run.
          */
         post: operations["score_model"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/models:compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compare several model versions side by side
+         * @description Holdout metrics of every version, a ranking per metric and pairwise Diebold-Mariano
+         *     tests on the first version's held-out periods.
+         */
+        post: operations["compare_model_versions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1952,6 +2261,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/{tenant_id}/governance/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tenant-wide policies (every project's floor) */
+        get: operations["list_tenant_policies"];
+        put?: never;
+        /** Add a tenant-wide policy */
+        post: operations["create_tenant_policy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/governance/policies/{policy_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A tenant-wide policy */
+        get: operations["get_tenant_policy"];
+        /** Save a new version of a tenant-wide policy */
+        put: operations["update_tenant_policy"];
+        post?: never;
+        /** Retire a tenant-wide policy */
+        delete: operations["delete_tenant_policy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/{tenant_id}/members": {
         parameters: {
             query?: never;
@@ -2172,6 +2518,155 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/validations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Validations of the project (filter: status, e.g. the reviewers' queue)
+         * @description ``?status=awaiting_approval`` is the reviewers' queue.
+         */
+        get: operations["list_validations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A validation: status, results, approvals, history */
+        get: operations["get_validation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A reviewer approves or rejects (never the submitter; audited)
+         * @description Needs the ``reviewer`` capability (or project admin) and a signed-in session; a
+         *     rejection needs a comment.
+         */
+        post: operations["decide_validation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every check result with its evidence */
+        get: operations["list_validation_evidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}/evidence-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The audit export (JSON, and a signed link to the HTML rendering)
+         * @description Self-contained: the HTML has inline styles, no scripts and no external assets.
+         */
+        post: operations["export_evidence_pack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}:cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop running checks (back to draft) */
+        post: operations["cancel_validation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}:deprecate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire a validated model version (audited with the reason) */
+        post: operations["deprecate_validation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validations/{validation_id}:resubmit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run the checks again after a failure or a rejection
+         * @description A new round under the policies in force now (earlier approvals no longer count).
+         */
+        post: operations["resubmit_validation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/webhooks": {
         parameters: {
             query?: never;
@@ -2280,6 +2775,365 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/workflow-runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A workflow run with every node, decision and output */
+        get: operations["get_workflow_run"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-runs/{run_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Workflow run events (SSE, Last-Event-ID)
+         * @description ``Accept: text/event-stream`` → a live stream: ``snapshot`` (the run), then one frame
+         *     per event (``event:`` is its type, ``id:`` its sequence number), then ``end``; anything
+         *     else → a JSON page of events after ``after``.
+         */
+        get: operations["workflow_run_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-runs/{run_id}/nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The node runs of a workflow run */
+        get: operations["list_workflow_node_runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-runs/{run_id}/nodes/{node_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One node's status, result and outputs */
+        get: operations["get_workflow_node_run"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-runs/{run_id}/nodes/{node_id}/outputs/{port}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A signed link to a node output's object
+         * @description A dataset output links to its ``data.zarr.zip``, a model output to its bundle; JSON
+         *     outputs (test results, metrics, tables, reports) are inline in the node and have no
+         *     object (``404``).
+         */
+        get: operations["get_workflow_node_output"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-runs/{run_id}:cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a workflow run and its running children
+         * @description Idempotent: ``cancelling`` until every running child stopped, then ``cancelled``
+         *     (a finished run is returned as it is).
+         */
+        post: operations["cancel_workflow_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The gallery of workflow templates */
+        get: operations["list_workflow_templates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflow-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One gallery template */
+        get: operations["get_workflow_template"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Workflows of the project */
+        get: operations["list_workflows"];
+        put?: never;
+        /**
+         * Create a workflow from a document, YAML text or a gallery template
+         * @description Stores revision 1 with its static validation (a document with errors is stored but
+         *     cannot run until a valid revision is added). The workflow's name is
+         *     ``metadata.name``; ``409 CONFLICT`` when the project already has one of that name.
+         */
+        post: operations["create_workflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A workflow */
+        get: operations["get_workflow"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a workflow (its runs, schedules and triggers go with it)
+         * @description ``409 CONFLICT`` while one of its runs is still going (cancel it first).
+         */
+        delete: operations["delete_workflow"];
+        options?: never;
+        head?: never;
+        /** Change the description or archive it */
+        patch: operations["update_workflow"];
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Revisions, newest first */
+        get: operations["list_workflow_revisions"];
+        put?: never;
+        /**
+         * Save a new revision (validated; errors make it unrunnable)
+         * @description ``expected_revision`` guards concurrent edits (``409`` when another revision was
+         *     saved in between). The document's ``metadata.name`` must stay the workflow's name.
+         */
+        post: operations["create_workflow_revision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/revisions/{revision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A revision with its validation */
+        get: operations["get_workflow_revision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Runs of a workflow, newest first */
+        get: operations["list_workflow_runs"];
+        put?: never;
+        /**
+         * Run a revision (a workflow parent run)
+         * @description Starts a run of a revision (default: the latest). Inputs are references
+         *     (``dataset://project/name@latest`` is pinned to the version ready now); parameters are
+         *     checked against the workflow's ``params``. The orchestrator then starts every node that
+         *     can run; follow it with ``GET /v1/workflow-runs/{run_id}/events``.
+         */
+        post: operations["start_workflow_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cron schedules */
+        get: operations["list_workflow_schedules"];
+        put?: never;
+        /**
+         * Run the workflow on a cron schedule
+         * @description Five-field cron in an IANA time zone, at most every 15 minutes
+         *     (``SCHEDULE_INVALID``). Inputs may say ``@latest``: each run pins the version ready then.
+         *     At most ``MAPI_WORKFLOW_MAX_SCHEDULES`` active schedules per project (429).
+         */
+        post: operations["create_workflow_schedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/schedules/{schedule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a schedule */
+        delete: operations["delete_workflow_schedule"];
+        options?: never;
+        head?: never;
+        /** Change or pause a schedule */
+        patch: operations["update_workflow_schedule"];
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/triggers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dataset triggers */
+        get: operations["list_workflow_triggers"];
+        put?: never;
+        /**
+         * Run the workflow when a dataset gets a new version
+         * @description The new version is bound to the workflow input ``input`` (a dataset input of the
+         *     latest revision, ``SCHEDULE_INVALID`` otherwise); versions arriving within
+         *     ``debounce_seconds`` start one run.
+         */
+        post: operations["create_workflow_trigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows/{workflow_id}/triggers/{trigger_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a trigger */
+        delete: operations["delete_workflow_trigger"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workflows:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Static checks of a workflow document (JSON pointers); stores nothing
+         * @description 200 even for invalid documents: the verdict is ``valid`` + ``issues``.
+         */
+        post: operations["validate_workflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2370,6 +3224,12 @@ export interface components {
             /** Use When */
             use_when: string[];
         };
+        /**
+         * AboutKind
+         * @description What an About describes (chooser results and the catalog say which).
+         * @enum {string}
+         */
+        AboutKind: "model" | "step" | "split" | "template" | "workflow_template" | "node_kind" | "node" | "check" | "dataset" | "spec";
         /**
          * AboutReference
          * @description A source for the expert detail (a paper, a book chapter, library documentation).
@@ -2546,6 +3406,59 @@ export interface components {
             vcpu_seconds_budget?: number | null;
         };
         /**
+         * Approval
+         * @example {
+         *       "approver_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "decided_at": "2026-10-15T09:30:00Z",
+         *       "decision": "approve",
+         *       "id": "apv_01jaf3j1k2m3n4p5q6r7s8t9v0",
+         *       "validation_id": "val_01jaf3k1m2n3p4q5r6s7t8v9w0"
+         *     }
+         */
+        Approval: {
+            /** Approver Id */
+            approver_id: string;
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "reject";
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /**
+             * Validation Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            validation_id: string;
+        };
+        /**
+         * ApprovalCreate
+         * @description ``POST /v1/validations/{validation_id}/approvals``: a reviewer's decision.
+         * @example {
+         *       "comment": "Evidence reviewed; null tests are convincing.",
+         *       "decision": "approve"
+         *     }
+         */
+        ApprovalCreate: {
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "reject";
+        };
+        /**
          * ArtifactLink
          * @description A short-lived, generation-pinned signed GET URL for one artifact (HTTP Range works).
          * @example {
@@ -2586,6 +3499,37 @@ export interface components {
             size: number;
             /** Url */
             url: string;
+        };
+        /**
+         * AsOfSplit
+         * @description Train on coords up to and including ``as_of``; hold out the rest (optionally ``gap``).
+         */
+        AsOfSplit: {
+            /**
+             * After Step
+             * @description Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix
+             */
+            after_step?: string | null;
+            /**
+             * Allow Leakage
+             * @description Downgrade LEAKAGE_RISK to a warning (acknowledged)
+             * @default false
+             */
+            allow_leakage?: boolean;
+            /** As Of */
+            as_of: string | number | boolean;
+            /** Dim */
+            dim: string;
+            /**
+             * Gap
+             * @default 0
+             */
+            gap?: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "as_of";
         };
         /**
          * AuditAction
@@ -2704,6 +3648,75 @@ export interface components {
             vars?: {
                 [key: string]: string;
             };
+        };
+        /**
+         * BlockedKFoldPlan
+         * @description ``k`` contiguous blocks; ``gap`` periods on each side of the test block are dropped.
+         */
+        BlockedKFoldPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /**
+             * Dim
+             * @default time
+             */
+            dim?: string;
+            /**
+             * Gap
+             * @default 0
+             */
+            gap?: number;
+            /** K */
+            k: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "blocked_kfold";
+        };
+        /**
+         * BranchDecision
+         * @description Why a branch went one way: the condition, its value and the values it read.
+         * @example {
+         *       "arm": "then",
+         *       "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
+         *       "decided_at": "2026-10-15T09:30:00Z",
+         *       "inputs": {
+         *         "nodes.adf.p_value": 0.57,
+         *         "nodes.kpss.reject": true,
+         *         "params.alpha": 0.05
+         *       },
+         *       "node_id": "wanders",
+         *       "value": true
+         *     }
+         */
+        BranchDecision: {
+            /**
+             * Arm
+             * @enum {string}
+             */
+            arm: "then" | "else";
+            /** Condition */
+            condition: string;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
+            /**
+             * Inputs
+             * @description Each reference in the condition -> its value
+             */
+            inputs?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Node Id */
+            node_id: string;
+            /** Value */
+            value: boolean;
         };
         /**
          * BudgetPeriod
@@ -2989,6 +4002,50 @@ export interface components {
          */
         CaseOutcome: "passed" | "failed" | "skipped" | "error";
         /**
+         * CatalogAbout
+         * @description ``GET /v1/catalog/abouts``: one catalog item's About card (``kind`` + ``id``).
+         * @example {
+         *       "about": {
+         *         "assumptions": [
+         *           "Numbers can be added up (spend, sales); averages are averaged"
+         *         ],
+         *         "avoid_when": [
+         *           "Your data already has one row per week"
+         *         ],
+         *         "data_needs": [
+         *           "A date column"
+         *         ],
+         *         "difficulty": "beginner",
+         *         "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+         *         "fits": {
+         *           "goal": [
+         *             "check_data"
+         *           ]
+         *         },
+         *         "outputs": [
+         *           "The same columns, one row per week"
+         *         ],
+         *         "related": [
+         *           "core.calendar"
+         *         ],
+         *         "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+         *         "title": "Weekly totals",
+         *         "typical_runtime": "instant",
+         *         "use_when": [
+         *           "Your data is daily but you want to plan or report by week"
+         *         ]
+         *       },
+         *       "id": "core.resample",
+         *       "kind": "step"
+         *     }
+         */
+        CatalogAbout: {
+            about: components["schemas"]["About"];
+            /** Id */
+            id: string;
+            kind: components["schemas"]["AboutKind"];
+        };
+        /**
          * CatalogResponse
          * @description The static catalog the control plane validates against (no plugin code involved).
          * @example {
@@ -3158,6 +4215,81 @@ export interface components {
             kind: "channel_off";
         };
         /**
+         * CheckDirection
+         * @enum {string}
+         */
+        CheckDirection: "max" | "min" | "band";
+        /**
+         * CheckResult
+         * @description The outcome of one check on one model version.
+         * @example {
+         *       "check": "null.permutation_target",
+         *       "computed_at": "2026-10-15T09:30:00Z",
+         *       "evidence": [
+         *         {
+         *           "inline": {
+         *             "real": 0.081,
+         *             "shuffled_min": 0.079
+         *           },
+         *           "kind": "table",
+         *           "name": "permutation_scores"
+         *         }
+         *       ],
+         *       "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+         *       "metric": "permutation_p_value",
+         *       "severity": "blocking",
+         *       "status": "pass",
+         *       "threshold": 0.05,
+         *       "value": 0.048
+         *     }
+         */
+        CheckResult: {
+            /** Check */
+            check: string;
+            /** Computed At */
+            computed_at?: string | null;
+            /** Evidence */
+            evidence?: components["schemas"]["EvidenceItem"][];
+            /** Message Expert */
+            message_expert?: string | null;
+            /** Message Plain */
+            message_plain: string;
+            /** Metric */
+            metric?: string | null;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /**
+             * Run Id
+             * @description The run that computed it
+             */
+            run_id?: string | null;
+            severity: components["schemas"]["CheckSeverity"];
+            status: components["schemas"]["CheckStatus"];
+            /**
+             * Suggested Action
+             * @description What to do about a warning or failure (plain words)
+             */
+            suggested_action?: string | null;
+            /** Threshold */
+            threshold?: number | null;
+            /** Value */
+            value?: number | null;
+        };
+        /**
+         * CheckSeverity
+         * @description What a failing check does: ``blocking`` stops validation, ``warning`` is recorded and
+         *     shown to the approver, ``info`` is evidence only.
+         * @enum {string}
+         */
+        CheckSeverity: "blocking" | "warning" | "info";
+        /**
+         * CheckStatus
+         * @enum {string}
+         */
+        CheckStatus: "pass" | "warn" | "fail" | "error" | "skipped";
+        /**
          * CheckThresholds
          * @description Warn and fail thresholds of a check (in the check's direction).
          */
@@ -3192,6 +4324,110 @@ export interface components {
             segment: number;
             /** Size */
             size: number;
+        };
+        /** ChooserChoice */
+        ChooserChoice: {
+            /** Help Plain */
+            help_plain?: string | null;
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * ChooserQuestion
+         * @description One plain-language question of the chooser (``multiple``: several answers allowed).
+         */
+        ChooserQuestion: {
+            /** Choices */
+            choices: components["schemas"]["ChooserChoice"][];
+            /** Help Plain */
+            help_plain?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Multiple
+             * @default false
+             */
+            multiple?: boolean;
+            /** Prompt Plain */
+            prompt_plain: string;
+            /**
+             * Weight
+             * @description How much a match on it counts
+             * @default 1
+             */
+            weight?: number;
+        };
+        /**
+         * ChooserQuestionnaire
+         * @description ``GET /v1/catalog/chooser``: the questions, in the order to ask them.
+         * @example {
+         *       "questions": [
+         *         {
+         *           "choices": [
+         *             {
+         *               "label": "Forecast the future",
+         *               "value": "forecast"
+         *             },
+         *             {
+         *               "label": "Measure what my marketing adds",
+         *               "value": "explain_marketing"
+         *             }
+         *           ],
+         *           "id": "goal",
+         *           "multiple": true,
+         *           "prompt_plain": "What do you want to do?",
+         *           "weight": 3
+         *         }
+         *       ]
+         *     }
+         */
+        ChooserQuestionnaire: {
+            /** Questions */
+            questions: components["schemas"]["ChooserQuestion"][];
+        };
+        /**
+         * ChooserResult
+         * @description ``GET /v1/catalog/recommendations``: candidates ranked best first.
+         * @example {
+         *       "answered": [
+         *         "goal",
+         *         "data_shape"
+         *       ],
+         *       "items": [
+         *         {
+         *           "cautions_plain": [],
+         *           "difficulty": "beginner",
+         *           "id": "weekly_forecast",
+         *           "kind": "template",
+         *           "reasons_plain": [
+         *             "Made for forecasting",
+         *             "Works on one series"
+         *           ],
+         *           "score": 0.92,
+         *           "summary_plain": "Forecasts one weekly number a few months ahead, with a range of likely values.",
+         *           "title": "Weekly forecast",
+         *           "typical_runtime": "minutes"
+         *         }
+         *       ],
+         *       "unanswered": [
+         *         "frequency",
+         *         "history",
+         *         "drivers",
+         *         "uncertainty",
+         *         "experience",
+         *         "speed"
+         *       ]
+         *     }
+         */
+        ChooserResult: {
+            /** Answered */
+            answered?: string[];
+            /** Items */
+            items?: components["schemas"]["Recommendation"][];
+            /** Unanswered */
+            unanswered?: string[];
         };
         /**
          * ColumnProfile
@@ -3492,6 +4728,92 @@ export interface components {
             spend_var?: string;
         };
         /**
+         * DataExploreRequest
+         * @description Which Data Explorer sections to compute, and how.
+         *
+         *     ``kpi`` is the result the cross-correlations are computed against (default: the
+         *     dataset's target variable); ``facet_by`` splits series by up to two dims; ``period``
+         *     is the season length for STL and seasonal strength (default: from the frequency).
+         * @example {
+         *       "facet_by": [
+         *         "geo"
+         *       ],
+         *       "kpi": "revenue",
+         *       "max_lag": 12,
+         *       "sections": [
+         *         "overview",
+         *         "timeseries",
+         *         "stationarity",
+         *         "ccf",
+         *         "stl",
+         *         "quality"
+         *       ]
+         *     }
+         */
+        DataExploreRequest: {
+            /**
+             * Alpha
+             * @default 0.05
+             */
+            alpha?: number;
+            /**
+             * Correlation
+             * @default pearson
+             * @enum {string}
+             */
+            correlation?: "pearson" | "spearman";
+            /** Facet By */
+            facet_by?: string[];
+            /**
+             * Group By
+             * @description Dim for group comparisons
+             */
+            group_by?: string | null;
+            /** Kpi */
+            kpi?: string | null;
+            /**
+             * Max Lag
+             * @default 26
+             */
+            max_lag?: number;
+            /**
+             * Max Series
+             * @default 50
+             */
+            max_series?: number;
+            /**
+             * Outlier Threshold
+             * @default 3.5
+             */
+            outlier_threshold?: number;
+            /**
+             * Outliers
+             * @default mad
+             * @enum {string}
+             */
+            outliers?: "iqr" | "mad" | "zscore";
+            /** Period */
+            period?: number | null;
+            /**
+             * Prewhiten
+             * @description Prewhiten before cross-correlations
+             * @default false
+             */
+            prewhiten?: boolean;
+            /** Sections */
+            sections?: ("overview" | "distributions" | "timeseries" | "missingness" | "outliers" | "correlation" | "ccf" | "acf_pacf" | "stationarity" | "stl" | "vif" | "groups" | "quality")[];
+            /**
+             * Time Dim
+             * @description Default: the dataset's time dim
+             */
+            time_dim?: string | null;
+            /**
+             * Vars
+             * @description Default: all
+             */
+            vars?: string[];
+        };
+        /**
          * DataRef
          * @description A dataset stored next to the bundle (path relative to the bundle root).
          */
@@ -3651,6 +4973,17 @@ export interface components {
             summary_generated: string;
             /** Warnings Plain */
             warnings_plain?: string[];
+        };
+        /**
+         * DatasetAboutUpdate
+         * @description ``PATCH /v1/datasets/{dataset_id}/about``: the owner's own description.
+         * @example {
+         *       "description_user": "Weekly media spend and revenue from the finance warehouse."
+         *     }
+         */
+        DatasetAboutUpdate: {
+            /** Description User */
+            description_user?: string | null;
         };
         /**
          * DatasetCreate
@@ -4412,7 +5745,9 @@ export interface components {
          * EndpointRollback
          * @description ``POST /v1/endpoints/{alias}/rollback``: point the alias back at the version of an
          *     earlier revision (default: the one before the current). The gate is not re-run - the
-         *     version was promoted before - but the rollback is audited with its reason.
+         *     version was promoted before - but the rollback is audited with its reason. M3.5: when a
+         *     governance policy requires validated models, the earlier version must still be
+         *     ``validated`` (``NOT_VALIDATED`` otherwise).
          * @example {
          *       "reason": "v3 over-forecasts after the price change"
          *     }
@@ -4851,6 +6186,165 @@ export interface components {
              * @enum {string}
              */
             schema_change?: "block" | "warn" | "allow";
+        };
+        /**
+         * EvidenceItem
+         * @description One piece of evidence behind a check: a number, a small table, a plot or a stored
+         *     artifact (``ref`` is a run artifact name or a ``model://`` reference).
+         */
+        EvidenceItem: {
+            /** Caption Plain */
+            caption_plain?: string | null;
+            inline?: components["schemas"]["JsonValue"];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "metric" | "table" | "plot" | "artifact" | "text";
+            /** Name */
+            name: string;
+            /** Ref */
+            ref?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+            /** Value */
+            value?: number | null;
+        };
+        /**
+         * EvidencePack
+         * @description The audit export of a validation (``format`` ``mapi.evidence-pack/v1``; the HTML
+         *     rendering is a static, script-free document with the same content).
+         * @example {
+         *       "generated_at": "2026-10-15T09:30:00Z",
+         *       "lineage": {
+         *         "dataset": "dataset://growth/weekly_sales@v4",
+         *         "plugin": "mmm.bayesian@1.0.0"
+         *       },
+         *       "model_ref": "model://growth/geo-mmm@v7",
+         *       "policies": [
+         *         {
+         *           "checks": [
+         *             {
+         *               "check": "convergence"
+         *             },
+         *             {
+         *               "check": "data.quality"
+         *             },
+         *             {
+         *               "check": "null.permutation_target"
+         *             }
+         *           ],
+         *           "created_at": "2026-10-15T09:30:00Z",
+         *           "id": "pol_01jaf3h1j2k3m4n5p6q7r8s9t0",
+         *           "name": "All models",
+         *           "require_approval": true,
+         *           "scope": "tenant",
+         *           "tenant_id": "acme",
+         *           "version": 3
+         *         }
+         *       ],
+         *       "validation": {
+         *         "id": "val_01jaf3k1m2n3p4q5r6s7t8v9w0",
+         *         "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+         *         "policies": [
+         *           "pol_01jaf3h1j2k3m4n5p6q7r8s9t0@3"
+         *         ],
+         *         "project_id": "growth",
+         *         "require_approval": true,
+         *         "results": [
+         *           {
+         *             "check": "null.permutation_target",
+         *             "computed_at": "2026-10-15T09:30:00Z",
+         *             "evidence": [
+         *               {
+         *                 "inline": {
+         *                   "real": 0.081,
+         *                   "shuffled_min": 0.079
+         *                 },
+         *                 "kind": "table",
+         *                 "name": "permutation_scores"
+         *               }
+         *             ],
+         *             "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+         *             "metric": "permutation_p_value",
+         *             "severity": "blocking",
+         *             "status": "pass",
+         *             "threshold": 0.05,
+         *             "value": 0.048
+         *           }
+         *         ],
+         *         "status": "awaiting_approval",
+         *         "submitted_at": "2026-10-15T09:30:00Z",
+         *         "submitted_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0",
+         *         "tenant_id": "acme",
+         *         "updated_at": "2026-10-15T09:30:00Z",
+         *         "version": 7
+         *       }
+         *     }
+         */
+        EvidencePack: {
+            /**
+             * Digest
+             * @description sha256 of the canonical JSON content
+             */
+            digest?: string | null;
+            /**
+             * Download
+             * @description Signed link to the HTML rendering (ArtifactLink)
+             */
+            download?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Format
+             * @default mapi.evidence-pack/v1
+             * @constant
+             */
+            format?: "mapi.evidence-pack/v1";
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Generated By */
+            generated_by?: string | null;
+            /** Lineage */
+            lineage?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /**
+             * Model Ref
+             * @description model://project/name@vN
+             */
+            model_ref: string;
+            /** Policies */
+            policies?: components["schemas"]["GovernancePolicy"][];
+            /** Scorecard */
+            scorecard?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            validation: components["schemas"]["ModelValidation"];
+        };
+        /**
+         * EvidencePackRequest
+         * @description ``POST /v1/validations/{validation_id}/evidence-pack``.
+         * @example {
+         *       "format": "html",
+         *       "include_plots": true
+         *     }
+         */
+        EvidencePackRequest: {
+            /**
+             * Format
+             * @default html
+             * @enum {string}
+             */
+            format?: "html" | "json";
+            /**
+             * Include Plots
+             * @default true
+             */
+            include_plots?: boolean;
         };
         /**
          * ExecutorAttestation
@@ -5293,6 +6787,188 @@ export interface components {
             reason: string;
         };
         /**
+         * ExpandingWindowPlan
+         * @description Training from the first period up to each origin.
+         */
+        ExpandingWindowPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /**
+             * Anchor
+             * @description end: the last test window ends at the last period
+             * @default end
+             * @enum {string}
+             */
+            anchor?: "end" | "start";
+            /**
+             * Dim
+             * @default time
+             */
+            dim?: string;
+            /**
+             * Gap
+             * @description Periods between training and test (not scored)
+             * @default 0
+             */
+            gap?: number;
+            /**
+             * Horizons
+             * @description Forecast horizons scored per fold
+             */
+            horizons: number[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "expanding_window";
+            /**
+             * Min Train
+             * @description Fewest training periods a fold may have
+             * @default 1
+             */
+            min_train?: number;
+            /** N Folds */
+            n_folds?: number | null;
+            /**
+             * Step
+             * @description Periods between origins (default: max)
+             */
+            step?: number | null;
+        };
+        /**
+         * Exploration
+         * @description ``POST …/explore`` (``202``) and ``GET /v1/explorations/{run_id}``: the ``explore``
+         *     run and, once done, its index and signed links to every section view.
+         * @example {
+         *       "done": true,
+         *       "index": {
+         *         "ref": "dataset://growth/weekly_sales@v4",
+         *         "sections": [
+         *           {
+         *             "section": "stationarity",
+         *             "view": "ui/explore/stationarity.json"
+         *           }
+         *         ],
+         *         "target": "dataset"
+         *       },
+         *       "ref": "dataset://growth/weekly_sales@v4",
+         *       "run": {
+         *         "attempt": 1,
+         *         "cost": {
+         *           "estimated": true
+         *         },
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "executor": "local-process",
+         *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *         "kind": "explore",
+         *         "project_id": "default",
+         *         "queued_at": "2026-10-15T09:30:00Z",
+         *         "resource_class": "M",
+         *         "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *         "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+         *         "spec_revision": 2,
+         *         "started_at": "2026-10-15T09:30:05Z",
+         *         "state": "succeeded",
+         *         "tenant_id": "default",
+         *         "timeout": "45m",
+         *         "updated_at": "2026-10-15T09:31:00Z"
+         *       },
+         *       "target": "dataset",
+         *       "views": [
+         *         {
+         *           "content_type": "application/zip",
+         *           "crc32c": "4waSgw==",
+         *           "expires_at": "2026-10-15T09:45:00Z",
+         *           "generation": 7,
+         *           "name": "ui/explore/stationarity.json",
+         *           "size": 2097152,
+         *           "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault%2Fmodels%2Fmdl_01%2F1%2Fbundle.zarr.zip?generation=7&X-Goog-Signature=…"
+         *         }
+         *       ]
+         *     }
+         */
+        Exploration: {
+            /** Done */
+            done: boolean;
+            index?: components["schemas"]["ExplorerIndex"] | null;
+            /** Ref */
+            ref: string;
+            run: components["schemas"]["Run"];
+            /**
+             * Target
+             * @enum {string}
+             */
+            target: "dataset" | "model";
+            /** Views */
+            views?: components["schemas"]["ArtifactLink"][];
+        };
+        /**
+         * ExplorerIndex
+         * @description ``ui/explore/index.json``: what an explore run produced (and why a section is
+         *     missing).
+         * @example {
+         *       "ref": "dataset://growth/weekly_sales@v4",
+         *       "sections": [
+         *         {
+         *           "section": "stationarity",
+         *           "view": "ui/explore/stationarity.json"
+         *         },
+         *         {
+         *           "message_plain": "Less than two seasons of data.",
+         *           "section": "stl",
+         *           "status": "skipped",
+         *           "view": "ui/explore/stl.json"
+         *         }
+         *       ],
+         *       "target": "dataset"
+         *     }
+         */
+        ExplorerIndex: {
+            /**
+             * Format
+             * @default mapi.explorer-index/v1
+             * @constant
+             */
+            format?: "mapi.explorer-index/v1";
+            /**
+             * Ref
+             * @description dataset://… or model://…
+             */
+            ref: string;
+            /** Sections */
+            sections?: components["schemas"]["ExplorerSectionRef"][];
+            /**
+             * Target
+             * @enum {string}
+             */
+            target: "dataset" | "model";
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExplorerSectionRef */
+        ExplorerSectionRef: {
+            /** Message Plain */
+            message_plain?: string | null;
+            /** Section */
+            section: string;
+            /**
+             * Status
+             * @default ok
+             * @enum {string}
+             */
+            status?: "ok" | "skipped" | "error";
+            /**
+             * View
+             * @description ui/explore/<section>.json
+             */
+            view: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * FailureClass
          * @description Why a run ended ``FAILED``; each maps to one stable :class:`ErrorCode`.
          * @enum {string}
@@ -5530,6 +7206,53 @@ export interface components {
             include?: ("metadata" | "datasets" | "models" | "audit" | "usage")[];
         };
         /**
+         * GeoHoldoutPlan
+         * @description Hold out whole groups along ``dim``: the explicit ``groups`` (one fold), or ``n``
+         *     seeded random groups in each of ``n_folds`` folds. With ``time_dim``/``test_last``, the
+         *     held-out groups are tested on their last periods only, and ``include_pre_period``
+         *     trains on their earlier periods too (a geo experiment readout).
+         */
+        GeoHoldoutPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /**
+             * Dim
+             * @default geo
+             */
+            dim?: string;
+            /** Groups */
+            groups?: (string | number | boolean)[] | null;
+            /**
+             * Include Pre Period
+             * @default false
+             */
+            include_pre_period?: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "geo_holdout";
+            /** N */
+            n?: number | null;
+            /**
+             * N Folds
+             * @default 1
+             */
+            n_folds?: number;
+            /**
+             * Seed
+             * @default 0
+             */
+            seed?: number;
+            /** Test Last */
+            test_last?: number | null;
+            /** Time Dim */
+            time_dim?: string | null;
+        };
+        /**
          * GlobalSpend
          * @description Platform spend in the current window of the global spend cap: what the kill switch
          *     compares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in
@@ -5568,6 +7291,305 @@ export interface components {
              * Format: date-time
              */
             start: string;
+        };
+        /**
+         * GovernanceCheckDef
+         * @description One check of the governance catalog (``GET /v1/catalog/governance-checks``).
+         * @example {
+         *       "about": {
+         *         "assumptions": [
+         *           "Numbers can be added up (spend, sales); averages are averaged"
+         *         ],
+         *         "avoid_when": [
+         *           "Your data already has one row per week"
+         *         ],
+         *         "data_needs": [
+         *           "A date column"
+         *         ],
+         *         "difficulty": "beginner",
+         *         "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+         *         "fits": {
+         *           "goal": [
+         *             "check_data"
+         *           ]
+         *         },
+         *         "outputs": [
+         *           "The same columns, one row per week"
+         *         ],
+         *         "related": [
+         *           "core.calendar"
+         *         ],
+         *         "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+         *         "title": "Weekly totals",
+         *         "typical_runtime": "instant",
+         *         "use_when": [
+         *           "Your data is daily but you want to plan or report by week"
+         *         ]
+         *       },
+         *       "category": "baseline",
+         *       "direction": "min",
+         *       "fail": 0,
+         *       "id": "baseline.beats_naive",
+         *       "metric": "relative_skill",
+         *       "requires": [
+         *         "holdout",
+         *         "time_series"
+         *       ],
+         *       "title": "Beats simple benchmarks",
+         *       "warn": 0.05
+         *     }
+         */
+        GovernanceCheckDef: {
+            about: components["schemas"]["About"];
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "null_test" | "baseline" | "residuals" | "stability" | "plausibility" | "sensitivity" | "recovery" | "convergence" | "holdout" | "data";
+            /** @default blocking */
+            default_severity?: components["schemas"]["CheckSeverity"];
+            direction: components["schemas"]["CheckDirection"];
+            /** Fail */
+            fail: number;
+            /**
+             * Families
+             * @description Model families it applies to (None: every family)
+             */
+            families?: string[] | null;
+            /** Id */
+            id: string;
+            /** Metric */
+            metric: string;
+            /** Params Schema */
+            params_schema?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Requires */
+            requires?: ("bayesian" | "holdout" | "time_series" | "channels" | "residuals")[];
+            /** Target */
+            target?: number | null;
+            /** Title */
+            title: string;
+            /**
+             * Version
+             * @default 1.0.0
+             */
+            version?: string;
+            /** Warn */
+            warn: number;
+        };
+        /**
+         * GovernancePolicy
+         * @description A versioned policy. ``project_id`` is ``None`` for tenant-wide policies.
+         * @example {
+         *       "checks": [
+         *         {
+         *           "check": "convergence"
+         *         },
+         *         {
+         *           "check": "data.quality"
+         *         },
+         *         {
+         *           "check": "null.permutation_target"
+         *         }
+         *       ],
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "id": "pol_01jaf3h1j2k3m4n5p6q7r8s9t0",
+         *       "name": "All models",
+         *       "require_approval": true,
+         *       "scope": "tenant",
+         *       "tenant_id": "acme",
+         *       "version": 3
+         *     }
+         */
+        GovernancePolicy: {
+            /**
+             * Active
+             * @default true
+             */
+            active?: boolean;
+            applies_to?: components["schemas"]["PolicyMatch"];
+            /**
+             * Approvals Required
+             * @default 1
+             */
+            approvals_required?: number;
+            /** Checks */
+            checks: components["schemas"]["PolicyCheck"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Description */
+            description?: string | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Project Id */
+            project_id?: string | null;
+            /**
+             * Require Approval
+             * @default false
+             */
+            require_approval?: boolean;
+            /**
+             * Require Validated For Promotion
+             * @default true
+             */
+            require_validated_for_promotion?: boolean;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "tenant" | "project";
+            /** Tenant Id */
+            tenant_id: string;
+            /** Version */
+            version: number;
+        };
+        /**
+         * GovernancePolicyCreate
+         * @description ``POST /v1/governance/policies`` (project) or ``/v1/tenants/{id}/governance/policies``.
+         * @example {
+         *       "applies_to": {
+         *         "families": [
+         *           "ts"
+         *         ]
+         *       },
+         *       "checks": [
+         *         {
+         *           "check": "baseline.beats_naive",
+         *           "severity": "blocking"
+         *         },
+         *         {
+         *           "check": "residuals.whiteness",
+         *           "severity": "warning"
+         *         },
+         *         {
+         *           "check": "null.permutation_target",
+         *           "params": {
+         *             "n_permutations": 20
+         *           },
+         *           "severity": "blocking"
+         *         },
+         *         {
+         *           "check": "holdout.accuracy",
+         *           "thresholds": {
+         *             "fail": 0.2,
+         *             "warn": 0.1
+         *           }
+         *         }
+         *       ],
+         *       "name": "Forecast models",
+         *       "require_approval": true
+         *     }
+         */
+        GovernancePolicyCreate: {
+            /**
+             * Active
+             * @default true
+             */
+            active?: boolean;
+            applies_to?: components["schemas"]["PolicyMatch"];
+            /**
+             * Approvals Required
+             * @default 1
+             */
+            approvals_required?: number;
+            /** Checks */
+            checks: components["schemas"]["PolicyCheck"][];
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Require Approval
+             * @default false
+             */
+            require_approval?: boolean;
+            /**
+             * Require Validated For Promotion
+             * @default true
+             */
+            require_validated_for_promotion?: boolean;
+        };
+        /**
+         * GovernancePolicyUpdate
+         * @description ``PUT …/policies/{policy_id}``: a new version (the old one stays for audit).
+         * @example {
+         *       "applies_to": {
+         *         "families": [
+         *           "ts"
+         *         ]
+         *       },
+         *       "checks": [
+         *         {
+         *           "check": "baseline.beats_naive",
+         *           "severity": "blocking"
+         *         },
+         *         {
+         *           "check": "residuals.whiteness",
+         *           "severity": "warning"
+         *         },
+         *         {
+         *           "check": "null.permutation_target",
+         *           "params": {
+         *             "n_permutations": 20
+         *           },
+         *           "severity": "blocking"
+         *         },
+         *         {
+         *           "check": "holdout.accuracy",
+         *           "thresholds": {
+         *             "fail": 0.2,
+         *             "warn": 0.1
+         *           }
+         *         }
+         *       ],
+         *       "name": "Forecast models",
+         *       "require_approval": true
+         *     }
+         */
+        GovernancePolicyUpdate: {
+            /**
+             * Active
+             * @default true
+             */
+            active?: boolean;
+            applies_to?: components["schemas"]["PolicyMatch"];
+            /**
+             * Approvals Required
+             * @default 1
+             */
+            approvals_required?: number;
+            /** Checks */
+            checks: components["schemas"]["PolicyCheck"][];
+            /** Description */
+            description?: string | null;
+            /**
+             * Expected Version
+             * @description 409 when it changed
+             */
+            expected_version?: number | null;
+            /** Name */
+            name: string;
+            /**
+             * Require Approval
+             * @default false
+             */
+            require_approval?: boolean;
+            /**
+             * Require Validated For Promotion
+             * @default true
+             */
+            require_validated_for_promotion?: boolean;
         };
         /**
          * GuidedAnswers
@@ -5999,6 +8021,24 @@ export interface components {
              */
             status: "ok" | "degraded" | "fail";
         };
+        /**
+         * HoldoutPlan
+         * @description One fold: the existing train/holdout split.
+         */
+        HoldoutPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "holdout";
+            /** Split */
+            split: components["schemas"]["TimeHoldoutSplit"] | components["schemas"]["LastPerGroupSplit"] | components["schemas"]["AsOfSplit"] | components["schemas"]["LeaveGroupOutSplit"] | components["schemas"]["MaskBlockSplit"];
+        };
         /** Horizon */
         Horizon: {
             /** Dim */
@@ -6322,6 +8362,72 @@ export interface components {
             updated_by?: string | null;
         };
         /**
+         * LastPerGroupSplit
+         * @description Hold out the last ``last`` rows along ``dim`` within each group (``min_len`` kept).
+         */
+        LastPerGroupSplit: {
+            /**
+             * After Step
+             * @description Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix
+             */
+            after_step?: string | null;
+            /**
+             * Allow Leakage
+             * @description Downgrade LEAKAGE_RISK to a warning (acknowledged)
+             * @default false
+             */
+            allow_leakage?: boolean;
+            /** Dim */
+            dim: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "last_per_group";
+            /**
+             * Last
+             * @default 1
+             */
+            last?: number;
+            /**
+             * Min Len
+             * @default 1
+             */
+            min_len?: number;
+            /** Within */
+            within: string[];
+        };
+        /**
+         * LeaveGroupOutSplit
+         * @description Hold out whole groups of ``dim`` (explicit ``groups`` or ``n`` random ones).
+         */
+        LeaveGroupOutSplit: {
+            /**
+             * After Step
+             * @description Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix
+             */
+            after_step?: string | null;
+            /**
+             * Allow Leakage
+             * @description Downgrade LEAKAGE_RISK to a warning (acknowledged)
+             * @default false
+             */
+            allow_leakage?: boolean;
+            /** Dim */
+            dim: string;
+            /** Groups */
+            groups?: (string | number | boolean)[] | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "leave_group_out";
+            /** N */
+            n?: number | null;
+            /** Seed */
+            seed?: number | null;
+        };
+        /**
          * LiftTest
          * @description One experiment: ``spend_delta`` extra spend on ``channel`` (optionally in one ``geo``)
          *     from ``start`` to ``end`` (inclusive) caused ``kpi_delta`` incremental KPI.
@@ -6537,6 +8643,38 @@ export interface components {
             key_id: string;
             /** Value */
             value: string;
+        };
+        /**
+         * MaskBlockSplit
+         * @description Hold out random blocks over ``dims`` (block sizes per dim) covering ``fraction``.
+         */
+        MaskBlockSplit: {
+            /**
+             * After Step
+             * @description Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix
+             */
+            after_step?: string | null;
+            /**
+             * Allow Leakage
+             * @description Downgrade LEAKAGE_RISK to a warning (acknowledged)
+             * @default false
+             */
+            allow_leakage?: boolean;
+            /** Block */
+            block?: {
+                [key: string]: number;
+            };
+            /** Dims */
+            dims: string[];
+            /** Fraction */
+            fraction: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "mask_block";
+            /** Seed */
+            seed?: number | null;
         };
         /**
          * Me
@@ -6986,6 +9124,81 @@ export interface components {
             yanked?: boolean;
         };
         /**
+         * ModelCompareRequest
+         * @description ``POST /v1/models:compare``: several model versions of the project side by side.
+         *
+         *     Starts an ``explore`` run on the first version with the others as ``compare_with`` and
+         *     the ``comparison`` section (plus ``backtest`` when a split plan is given): a metrics
+         *     table, a ranking per metric and pairwise Diebold-Mariano tests on the shared holdout.
+         * @example {
+         *       "models": [
+         *         "model://growth/sales-arimax@v3",
+         *         "model://growth/sales-ets@v1"
+         *       ],
+         *       "sections": [
+         *         "comparison",
+         *         "params"
+         *       ]
+         *     }
+         */
+        ModelCompareRequest: {
+            /** Backtest */
+            backtest?: (components["schemas"]["HoldoutPlan"] | components["schemas"]["RollingOriginPlan"] | components["schemas"]["ExpandingWindowPlan"] | components["schemas"]["BlockedKFoldPlan"] | components["schemas"]["PurgedKFoldPlan"] | components["schemas"]["GeoHoldoutPlan"] | components["schemas"]["NestedPlan"]) | null;
+            /** Horizon */
+            horizon?: number | null;
+            /**
+             * Models
+             * @description model:// refs
+             */
+            models: string[];
+            /** Sections */
+            sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "forecast" | "backtest" | "comparison")[];
+        };
+        /**
+         * ModelExploreRequest
+         * @description Which Model Explorer sections to compute. ``compare_with`` adds other model versions
+         *     (``model://…``) to the comparison section; ``backtest`` runs a split plan for the
+         *     backtest section (fits run as child runs).
+         * @example {
+         *       "compare_with": [
+         *         "model://growth/sales-arimax@v2"
+         *       ],
+         *       "horizon": 12,
+         *       "sections": [
+         *         "params",
+         *         "fit",
+         *         "residuals",
+         *         "irf",
+         *         "fevd",
+         *         "comparison"
+         *       ]
+         *     }
+         */
+        ModelExploreRequest: {
+            /** Backtest */
+            backtest?: (components["schemas"]["HoldoutPlan"] | components["schemas"]["RollingOriginPlan"] | components["schemas"]["ExpandingWindowPlan"] | components["schemas"]["BlockedKFoldPlan"] | components["schemas"]["PurgedKFoldPlan"] | components["schemas"]["GeoHoldoutPlan"] | components["schemas"]["NestedPlan"]) | null;
+            /** Compare With */
+            compare_with?: string[];
+            /**
+             * Horizon
+             * @description Forecast/IRF horizon
+             */
+            horizon?: number | null;
+            /**
+             * Interval
+             * @default hdi_90
+             * @enum {string}
+             */
+            interval?: "hdi_90" | "hdi_95" | "ci_90" | "ci_95";
+            /**
+             * Max Params
+             * @default 500
+             */
+            max_params?: number;
+            /** Sections */
+            sections?: ("params" | "diagnostics" | "fit" | "residuals" | "decomposition" | "response_curves" | "irf" | "fevd" | "forecast" | "backtest" | "comparison")[];
+        };
+        /**
          * ModelManifest
          * @description Everything the control plane knows about a model plugin version (static JSON).
          */
@@ -7042,6 +9255,105 @@ export interface components {
             plot_id: string;
             /** Version */
             version: number;
+        };
+        /**
+         * ModelValidation
+         * @description A validation of one model version: status, policies, results, approvals, history.
+         * @example {
+         *       "id": "val_01jaf3k1m2n3p4q5r6s7t8v9w0",
+         *       "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+         *       "policies": [
+         *         "pol_01jaf3h1j2k3m4n5p6q7r8s9t0@3"
+         *       ],
+         *       "project_id": "growth",
+         *       "require_approval": true,
+         *       "results": [
+         *         {
+         *           "check": "null.permutation_target",
+         *           "computed_at": "2026-10-15T09:30:00Z",
+         *           "evidence": [
+         *             {
+         *               "inline": {
+         *                 "real": 0.081,
+         *                 "shuffled_min": 0.079
+         *               },
+         *               "kind": "table",
+         *               "name": "permutation_scores"
+         *             }
+         *           ],
+         *           "message_plain": "The model did better than all but 1 of 20 fits on shuffled results.",
+         *           "metric": "permutation_p_value",
+         *           "severity": "blocking",
+         *           "status": "pass",
+         *           "threshold": 0.05,
+         *           "value": 0.048
+         *         }
+         *       ],
+         *       "status": "awaiting_approval",
+         *       "submitted_at": "2026-10-15T09:30:00Z",
+         *       "submitted_by": "usr_01jaf3a0b0c0d0e0f0g0h0j0k0",
+         *       "tenant_id": "acme",
+         *       "updated_at": "2026-10-15T09:30:00Z",
+         *       "version": 7
+         *     }
+         */
+        ModelValidation: {
+            /** Approvals */
+            approvals?: components["schemas"]["Approval"][];
+            /**
+             * Approvals Required
+             * @default 1
+             */
+            approvals_required?: number;
+            /** Failing Checks */
+            failing_checks?: string[];
+            /** History */
+            history?: components["schemas"]["ValidationTransitionRecord"][];
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /**
+             * Model Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            model_id: string;
+            /**
+             * Policies
+             * @description <policy id>@<version>
+             */
+            policies?: string[];
+            /** Project Id */
+            project_id: string;
+            /**
+             * Require Approval
+             * @default false
+             */
+            require_approval?: boolean;
+            /** Required Checks */
+            required_checks?: components["schemas"]["PolicyCheck"][];
+            /** Results */
+            results?: components["schemas"]["CheckResult"][];
+            status: components["schemas"]["ValidationStatus"];
+            /** Submitted At */
+            submitted_at?: string | null;
+            /** Submitted By */
+            submitted_by?: string | null;
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /**
+             * Workflow Run Id
+             * @description The governance workflow run
+             */
+            workflow_run_id?: string | null;
         };
         /**
          * ModelVersion
@@ -7205,6 +9517,253 @@ export interface components {
             /** Version */
             version: number;
         };
+        /**
+         * NestedPlan
+         * @description An ``inner`` plan inside every training window of an ``outer`` ordered plan.
+         */
+        NestedPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /** Inner */
+            inner: components["schemas"]["HoldoutPlan"] | components["schemas"]["RollingOriginPlan"] | components["schemas"]["ExpandingWindowPlan"] | components["schemas"]["BlockedKFoldPlan"] | components["schemas"]["PurgedKFoldPlan"] | components["schemas"]["GeoHoldoutPlan"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "nested";
+            /** Outer */
+            outer: components["schemas"]["HoldoutPlan"] | components["schemas"]["RollingOriginPlan"] | components["schemas"]["ExpandingWindowPlan"] | components["schemas"]["BlockedKFoldPlan"] | components["schemas"]["PurgedKFoldPlan"] | components["schemas"]["GeoHoldoutPlan"];
+        };
+        /** NodeError */
+        NodeError: {
+            code: components["schemas"]["ErrorCode"];
+            /** Message */
+            message: string;
+            /** Untrusted Text */
+            untrusted_text?: string | null;
+        };
+        /**
+         * NodeImplementation
+         * @description One node implementation of the catalog (``GET /v1/catalog/workflow-nodes``).
+         * @example {
+         *       "about": {
+         *         "assumptions": [
+         *           "Numbers can be added up (spend, sales); averages are averaged"
+         *         ],
+         *         "avoid_when": [
+         *           "Your data already has one row per week"
+         *         ],
+         *         "data_needs": [
+         *           "A date column"
+         *         ],
+         *         "difficulty": "beginner",
+         *         "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+         *         "fits": {
+         *           "goal": [
+         *             "check_data"
+         *           ]
+         *         },
+         *         "outputs": [
+         *           "The same columns, one row per week"
+         *         ],
+         *         "related": [
+         *           "core.calendar"
+         *         ],
+         *         "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+         *         "title": "Weekly totals",
+         *         "typical_runtime": "instant",
+         *         "use_when": [
+         *           "Your data is daily but you want to plan or report by week"
+         *         ]
+         *       },
+         *       "id": "test.adf",
+         *       "inputs": {
+         *         "data": {
+         *           "description": "The data to work on",
+         *           "type": "dataset"
+         *         }
+         *       },
+         *       "kind": "test",
+         *       "outputs": {
+         *         "result": "test_result"
+         *       },
+         *       "params_schema": {
+         *         "properties": {
+         *           "alpha": {
+         *             "type": "number"
+         *           }
+         *         },
+         *         "type": "object"
+         *       },
+         *       "result_fields": {
+         *         "p_value": {
+         *           "description": "The p-value",
+         *           "type": "number"
+         *         }
+         *       },
+         *       "version": "1.0.0"
+         *     }
+         */
+        NodeImplementation: {
+            about: components["schemas"]["About"];
+            /**
+             * Cacheable
+             * @description Same inputs and params give the same result
+             * @default true
+             */
+            cacheable?: boolean;
+            /** Id */
+            id: string;
+            /** Inputs */
+            inputs?: {
+                [key: string]: components["schemas"]["PortSpec"];
+            };
+            kind: components["schemas"]["NodeKind"];
+            /** Outputs */
+            outputs?: {
+                [key: string]: components["schemas"]["PortType"];
+            };
+            /** Params Schema */
+            params_schema?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Result Fields */
+            result_fields?: {
+                [key: string]: components["schemas"]["ResultField"];
+            };
+            /**
+             * Runs In
+             * @default sandbox
+             * @enum {string}
+             */
+            runs_in?: "orchestrator" | "sandbox" | "child_run";
+            /**
+             * Version
+             * @default 1.0.0
+             */
+            version?: string;
+        };
+        /**
+         * NodeKind
+         * @enum {string}
+         */
+        NodeKind: "test" | "transform" | "branch" | "split" | "search" | "model" | "evaluate" | "compare" | "select" | "governance" | "report" | "subworkflow";
+        /**
+         * NodeOutputRef
+         * @description Where a node output lives: a reference (``dataset://``, ``model://``), a run artifact
+         *     (``run_id`` + ``object``) or, for small JSON payloads (test results, split plans,
+         *     metrics), ``inline``.
+         */
+        NodeOutputRef: {
+            inline?: components["schemas"]["JsonValue"];
+            /** Object */
+            object?: string | null;
+            /** Ref */
+            ref?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+            type: components["schemas"]["PortType"];
+        };
+        /**
+         * NodeRun
+         * @description One node of a workflow run.
+         * @example {
+         *       "attempt": 1,
+         *       "cache_key": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *       "finished_at": "2026-10-15T09:30:04Z",
+         *       "kind": "test",
+         *       "node_id": "adf",
+         *       "outputs": {
+         *         "result": {
+         *           "inline": {
+         *             "test": "test.adf"
+         *           },
+         *           "type": "test_result"
+         *         }
+         *       },
+         *       "params": {
+         *         "alpha": 0.05,
+         *         "regression": "c"
+         *       },
+         *       "result": {
+         *         "decision": "unit_root",
+         *         "p_value": 0.57,
+         *         "reject": false,
+         *         "statistic": -1.42
+         *       },
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "started_at": "2026-10-15T09:30:00Z",
+         *       "status": "succeeded",
+         *       "use": "test.adf@1.0.0"
+         *     }
+         */
+        NodeRun: {
+            /**
+             * Attempt
+             * @default 0
+             */
+            attempt?: number;
+            /** Cache Key */
+            cache_key?: string | null;
+            /**
+             * Cached From
+             * @description Workflow run whose result was reused
+             */
+            cached_from?: string | null;
+            /**
+             * Child Runs
+             * @description Fits and other children
+             */
+            child_runs?: string[];
+            cost?: components["schemas"]["RunCost"] | null;
+            error?: components["schemas"]["NodeError"] | null;
+            /** Finished At */
+            finished_at?: string | null;
+            kind: components["schemas"]["NodeKind"];
+            /** Node Id */
+            node_id: string;
+            /** Outputs */
+            outputs?: {
+                [key: string]: components["schemas"]["NodeOutputRef"];
+            };
+            /**
+             * Params
+             * @description Resolved params
+             */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /**
+             * Result
+             * @description JSON result conditions read (nodes.<id>.<field>)
+             */
+            result?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Run Id
+             * @description The workflow_node run that executed it
+             */
+            run_id?: string | null;
+            /** Skipped Reason */
+            skipped_reason?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            status: components["schemas"]["NodeRunStatus"];
+            /**
+             * Use
+             * @description Resolved implementation ref (id@version)
+             */
+            use: string;
+        };
+        /**
+         * NodeRunStatus
+         * @enum {string}
+         */
+        NodeRunStatus: "pending" | "queued" | "running" | "succeeded" | "cached" | "skipped" | "failed" | "cancelled";
         /**
          * ObjectRef
          * @description A stored object exposed through ``…/artifacts/{name}`` (fetch it as an ArtifactLink).
@@ -7639,6 +10198,32 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[CatalogAbout]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_CatalogAbout_: {
+            /** Items */
+            items: components["schemas"]["CatalogAbout"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[CheckResult]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_CheckResult_: {
+            /** Items */
+            items: components["schemas"]["CheckResult"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[DatasetVersion]
          * @example {
          *       "items": [],
@@ -7717,6 +10302,32 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[GovernanceCheckDef]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_GovernanceCheckDef_: {
+            /** Items */
+            items: components["schemas"]["GovernanceCheckDef"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[GovernancePolicy]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_GovernancePolicy_: {
+            /** Items */
+            items: components["schemas"]["GovernancePolicy"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[GuidedTemplate]
          * @example {
          *       "items": [],
@@ -7769,6 +10380,19 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[ModelValidation]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_ModelValidation_: {
+            /** Items */
+            items: components["schemas"]["ModelValidation"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[ModelVersion]
          * @example {
          *       "items": [],
@@ -7791,6 +10415,32 @@ export interface components {
         Page_Model_: {
             /** Items */
             items: components["schemas"]["Model"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[NodeImplementation]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_NodeImplementation_: {
+            /** Items */
+            items: components["schemas"]["NodeImplementation"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[NodeRun]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_NodeRun_: {
+            /** Items */
+            items: components["schemas"]["NodeRun"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -7999,6 +10649,97 @@ export interface components {
         Page_Webhook_: {
             /** Items */
             items: components["schemas"]["Webhook"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WorkflowEvent]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WorkflowEvent_: {
+            /** Items */
+            items: components["schemas"]["WorkflowEvent"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WorkflowRevision]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WorkflowRevision_: {
+            /** Items */
+            items: components["schemas"]["WorkflowRevision"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WorkflowRun]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WorkflowRun_: {
+            /** Items */
+            items: components["schemas"]["WorkflowRun"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WorkflowSchedule]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WorkflowSchedule_: {
+            /** Items */
+            items: components["schemas"]["WorkflowSchedule"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WorkflowTemplate]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WorkflowTemplate_: {
+            /** Items */
+            items: components["schemas"]["WorkflowTemplate"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[WorkflowTrigger]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_WorkflowTrigger_: {
+            /** Items */
+            items: components["schemas"]["WorkflowTrigger"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[Workflow]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_Workflow_: {
+            /** Items */
+            items: components["schemas"]["Workflow"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -8440,6 +11181,65 @@ export interface components {
             /** Valid */
             valid: boolean;
         };
+        /**
+         * PolicyCheck
+         * @description A required check in a policy: thresholds, severity and parameters.
+         */
+        PolicyCheck: {
+            /** Check */
+            check: string;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** @default blocking */
+            severity?: components["schemas"]["CheckSeverity"];
+            thresholds?: components["schemas"]["CheckThresholds"] | null;
+        };
+        /**
+         * PolicyMatch
+         * @description Which models a policy covers; an empty list matches everything on that axis.
+         */
+        PolicyMatch: {
+            /** Families */
+            families?: string[];
+            /**
+             * Models
+             * @description Model ids
+             */
+            models?: string[];
+            /** Templates */
+            templates?: string[];
+        };
+        /**
+         * PortSpec
+         * @description An input port: its type, whether it must be bound and whether it takes several.
+         */
+        PortSpec: {
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Multiple
+             * @description Accepts a list of bindings (e.g. models)
+             * @default false
+             */
+            multiple?: boolean;
+            /**
+             * Required
+             * @default true
+             */
+            required?: boolean;
+            type: components["schemas"]["PortType"];
+        };
+        /**
+         * PortType
+         * @description What flows along a workflow edge.
+         * @enum {string}
+         */
+        PortType: "dataset" | "test_result" | "split_plan" | "model_version" | "metrics" | "table" | "plot" | "report" | "evidence";
         /**
          * PrincipalKind
          * @enum {string}
@@ -9052,6 +11852,40 @@ export interface components {
             /** Scorecard Overall */
             scorecard_overall?: ("pass" | "warn" | "fail") | null;
         };
+        /**
+         * PurgedKFoldPlan
+         * @description Blocked k-fold with ``purge`` periods before and ``embargo`` after each test block
+         *     removed from training (labels that overlap the test window).
+         */
+        PurgedKFoldPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /**
+             * Dim
+             * @default time
+             */
+            dim?: string;
+            /**
+             * Embargo
+             * @default 0
+             */
+            embargo?: number;
+            /** K */
+            k: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "purged_kfold";
+            /**
+             * Purge
+             * @default 0
+             */
+            purge?: number;
+        };
         /** QuestionChoice */
         QuestionChoice: {
             /** Label */
@@ -9203,6 +12037,28 @@ export interface components {
             within_dim: string;
         };
         /**
+         * Recommendation
+         * @description One ranked candidate with the reasons in plain words.
+         */
+        Recommendation: {
+            about?: components["schemas"]["About"] | null;
+            /** Cautions Plain */
+            cautions_plain?: string[];
+            difficulty: components["schemas"]["Difficulty"];
+            /** Id */
+            id: string;
+            kind: components["schemas"]["AboutKind"];
+            /** Reasons Plain */
+            reasons_plain?: string[];
+            /** Score */
+            score: number;
+            /** Summary Plain */
+            summary_plain: string;
+            /** Title */
+            title: string;
+            typical_runtime: components["schemas"]["TypicalRuntime"];
+        };
+        /**
          * Representation
          * @description How a model encodes uncertainty in its outputs.
          * @enum {string}
@@ -9304,6 +12160,19 @@ export interface components {
          */
         ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export" | "workflow" | "policy" | "tenant_policy";
         /**
+         * ResultField
+         * @description A field of a node's JSON result that conditions may read (``nodes.<id>.<field>``).
+         */
+        ResultField: {
+            /** Description */
+            description: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "number" | "integer" | "boolean" | "string" | "object" | "array";
+        };
+        /**
          * Role
          * @description What a variable means to a model.
          * @enum {string}
@@ -9363,6 +12232,63 @@ export interface components {
              * @description Columns no answer uses
              */
             unassigned?: string[];
+        };
+        /**
+         * RollingOriginPlan
+         * @description A fixed-length training ``window`` sliding forward.
+         */
+        RollingOriginPlan: {
+            /**
+             * After Step
+             * @description Stage the folds are cut at (a step id or 'raw'), as data.split
+             */
+            after_step?: string | null;
+            /**
+             * Anchor
+             * @description end: the last test window ends at the last period
+             * @default end
+             * @enum {string}
+             */
+            anchor?: "end" | "start";
+            /**
+             * Dim
+             * @default time
+             */
+            dim?: string;
+            /**
+             * Gap
+             * @description Periods between training and test (not scored)
+             * @default 0
+             */
+            gap?: number;
+            /**
+             * Horizons
+             * @description Forecast horizons scored per fold
+             */
+            horizons: number[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "rolling_origin";
+            /**
+             * Min Train
+             * @description Fewest training periods a fold may have
+             * @default 1
+             */
+            min_train?: number;
+            /** N Folds */
+            n_folds?: number | null;
+            /**
+             * Step
+             * @description Periods between origins (default: max)
+             */
+            step?: number | null;
+            /**
+             * Window
+             * @description Training periods per fold
+             */
+            window: number;
         };
         /**
          * Run
@@ -9651,7 +12577,7 @@ export interface components {
          *     M4): they own child runs and never execute on an executor themselves.
          * @enum {string}
          */
-        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors" | "workflow" | "workflow_node" | "explore";
+        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors" | "workflow" | "workflow_node" | "explore" | "governance";
         /**
          * RunRetry
          * @description ``POST /runs/{id}:retry``: a *new* run from a failed one, optionally one class up.
@@ -9775,6 +12701,79 @@ export interface components {
             spec?: components["schemas"]["PlotSpec"] | null;
             /** Title */
             title: string;
+        };
+        /**
+         * ScheduleCreate
+         * @description ``POST /v1/workflows/{workflow_id}/schedules``: run on a cron schedule.
+         * @example {
+         *       "cron": "0 6 * * 1",
+         *       "description": "Every Monday at 06:00",
+         *       "inputs": {
+         *         "data": "dataset://growth/weekly_sales@latest"
+         *       },
+         *       "timezone": "Europe/Berlin"
+         *     }
+         */
+        ScheduleCreate: {
+            /**
+             * Active
+             * @default true
+             */
+            active?: boolean;
+            /**
+             * Cron
+             * @example 0 6 * * 1
+             */
+            cron: string;
+            /** Description */
+            description?: string | null;
+            /** Inputs */
+            inputs?: {
+                [key: string]: string;
+            };
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /**
+             * Revision
+             * @description Pin a revision (default: latest)
+             */
+            revision?: number | null;
+            /**
+             * Timezone
+             * @default UTC
+             * @example Europe/Berlin
+             */
+            timezone?: string;
+        };
+        /**
+         * ScheduleUpdate
+         * @description ``PATCH /v1/workflows/{workflow_id}/schedules/{schedule_id}``.
+         * @example {
+         *       "active": false
+         *     }
+         * @example {
+         *       "cron": "0 7 * * 1-5"
+         *     }
+         */
+        ScheduleUpdate: {
+            /** Active */
+            active?: boolean | null;
+            /** Cron */
+            cron?: string | null;
+            /** Inputs */
+            inputs?: {
+                [key: string]: string;
+            } | null;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Revision */
+            revision?: number | null;
+            /** Timezone */
+            timezone?: string | null;
         };
         /**
          * ScoreCall
@@ -11107,6 +14106,36 @@ export interface components {
             name: string;
         };
         /**
+         * TimeHoldoutSplit
+         * @description Hold out the end of an ordered dim: ``last`` periods, a ``fraction`` or ``after`` a coord.
+         */
+        TimeHoldoutSplit: {
+            /** After */
+            after?: string | number | boolean | null;
+            /**
+             * After Step
+             * @description Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix
+             */
+            after_step?: string | null;
+            /**
+             * Allow Leakage
+             * @description Downgrade LEAKAGE_RISK to a warning (acknowledged)
+             * @default false
+             */
+            allow_leakage?: boolean;
+            /** Dim */
+            dim: string;
+            /** Fraction */
+            fraction?: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "time_holdout";
+            /** Last */
+            last?: number | null;
+        };
+        /**
          * TokenCreate
          * @description ``POST /v1/tokens``: mint a token for the caller in the selected project.
          *
@@ -11216,6 +14245,52 @@ export interface components {
          * @enum {string}
          */
         TokenStatus: "active" | "expired" | "revoked";
+        /**
+         * TriggerCreate
+         * @description ``POST /v1/workflows/{workflow_id}/triggers``: run when a new version of a dataset
+         *     is ready; the version is bound to workflow input ``input``.
+         * @example {
+         *       "dataset": "dataset://growth/weekly_sales",
+         *       "debounce_seconds": 600,
+         *       "input": "data"
+         *     }
+         */
+        TriggerCreate: {
+            /**
+             * Active
+             * @default true
+             */
+            active?: boolean;
+            /**
+             * Dataset
+             * @description dataset://project/name (any version)
+             * @example dataset://growth/eu_media_daily@latest
+             */
+            dataset: string;
+            /**
+             * Debounce Seconds
+             * @description Collapse versions arriving within this window
+             * @default 300
+             */
+            debounce_seconds?: number;
+            /**
+             * Event
+             * @default dataset.version.created
+             * @constant
+             */
+            event?: "dataset.version.created";
+            /**
+             * Input
+             * @description The workflow input the new version is bound to
+             */
+            input: string;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Revision */
+            revision?: number | null;
+        };
         /**
          * TrustTier
          * @description How much the platform trusts a tenant's code and data (plan §2, §7, §9).
@@ -11522,6 +14597,67 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * ValidationEvent
+         * @enum {string}
+         */
+        ValidationEvent: "submit" | "cancel" | "checks_passed" | "checks_failed" | "request_approval" | "validate" | "approve" | "reject" | "resubmit" | "deprecate";
+        /**
+         * ValidationNote
+         * @description ``POST /v1/validations/{validation_id}:cancel|:resubmit|:deprecate``: why (a
+         *     deprecation needs a reason; it is audited).
+         * @example {
+         *       "note": "Superseded by v8 after the Q1 data refresh."
+         *     }
+         */
+        ValidationNote: {
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * ValidationRequest
+         * @description ``POST /v1/models/{model_id}/versions/{version}/validations``: run the checks.
+         * @example {
+         *       "note": "Q4 refresh of the geo MMM"
+         *     }
+         */
+        ValidationRequest: {
+            /**
+             * Dataset
+             * @description dataset:// for data checks (default: the fit's)
+             */
+            dataset?: string | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Policy Ids
+             * @description Default: every policy that applies
+             */
+            policy_ids?: string[];
+        };
+        /**
+         * ValidationStatus
+         * @enum {string}
+         */
+        ValidationStatus: "draft" | "checks_running" | "checks_passed" | "checks_failed" | "awaiting_approval" | "validated" | "rejected" | "deprecated";
+        /**
+         * ValidationTransitionRecord
+         * @description One step of a validation's history (also an audit event).
+         */
+        ValidationTransitionRecord: {
+            /** Actor Id */
+            actor_id?: string | null;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            event: components["schemas"]["ValidationEvent"];
+            from_status: components["schemas"]["ValidationStatus"];
+            /** Note */
+            note?: string | null;
+            to_status: components["schemas"]["ValidationStatus"];
         };
         /**
          * VarMapping
@@ -11989,6 +15125,900 @@ export interface components {
             role?: components["schemas"]["Role"];
             /** Units */
             units?: string | null;
+        };
+        /**
+         * Workflow
+         * @description A saved workflow (``workflow://project/name``) and its latest revision.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "id": "wf_01jaf3e1f2g3h4j5k6m7n8p9q0",
+         *       "latest_revision": 2,
+         *       "name": "ts-readiness",
+         *       "project_id": "growth",
+         *       "ref": "workflow://growth/ts-readiness",
+         *       "tenant_id": "acme",
+         *       "updated_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        Workflow: {
+            /**
+             * Archived
+             * @default false
+             */
+            archived?: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Description */
+            description?: string | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Latest Revision */
+            latest_revision: number;
+            /** Name */
+            name: string;
+            /** Project Id */
+            project_id: string;
+            /**
+             * Ref
+             * @description workflow://project/name
+             */
+            ref: string;
+            /**
+             * Template
+             * @description Gallery template it was created from
+             */
+            template?: string | null;
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * WorkflowCreate
+         * @description ``POST /v1/workflows``: a workflow with its first revision (the document).
+         * @example {
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "inputs": {
+         *           "data": {
+         *             "type": "dataset"
+         *           }
+         *         },
+         *         "kind": "Workflow",
+         *         "metadata": {
+         *           "name": "ts-readiness",
+         *           "project": "growth"
+         *         },
+         *         "nodes": [
+         *           {
+         *             "id": "adf",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.adf",
+         *             "with": {
+         *               "alpha": {
+         *                 "$param": "alpha"
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "id": "kpss",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.kpss"
+         *           },
+         *           {
+         *             "id": "wanders",
+         *             "use": "branch.if",
+         *             "with": {
+         *               "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject"
+         *             }
+         *           },
+         *           {
+         *             "id": "diff",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "transform.difference",
+         *             "when": "wanders.then"
+         *           },
+         *           {
+         *             "id": "order",
+         *             "inputs": {
+         *               "data": [
+         *                 "diff.data",
+         *                 "inputs.data"
+         *               ]
+         *             },
+         *             "use": "search.arma_order"
+         *           }
+         *         ],
+         *         "outputs": {
+         *           "orders": "order.table"
+         *         },
+         *         "params": {
+         *           "alpha": {
+         *             "default": 0.05,
+         *             "type": "number"
+         *           }
+         *         }
+         *       },
+         *       "message": "first version"
+         *     }
+         */
+        WorkflowCreate: {
+            /**
+             * Document
+             * @description The WorkflowSpec as JSON
+             */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Message */
+            message?: string | null;
+            /**
+             * Template
+             * @description Or a gallery template id
+             */
+            template?: string | null;
+            /**
+             * Text
+             * @description Or YAML/JSON text
+             */
+            text?: string | null;
+        };
+        /**
+         * WorkflowEvent
+         * @example {
+         *       "data": {
+         *         "arm": "then"
+         *       },
+         *       "node_id": "wanders",
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "seq": 7,
+         *       "ts": "2026-10-15T09:30:00Z",
+         *       "type": "workflow.branch.decided"
+         *     }
+         */
+        WorkflowEvent: {
+            /** Data */
+            data?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Node Id */
+            node_id?: string | null;
+            /**
+             * Run Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            run_id: string;
+            /** Seq */
+            seq: number;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+            type: components["schemas"]["WorkflowEventType"];
+        };
+        /**
+         * WorkflowEventType
+         * @description Events of a workflow run (SSE on ``…/events``; the terminal ones also go to
+         *     webhooks as ``workflow.run.succeeded`` / ``workflow.run.failed``).
+         * @enum {string}
+         */
+        WorkflowEventType: "workflow.run.started" | "workflow.node.queued" | "workflow.node.started" | "workflow.node.succeeded" | "workflow.node.cached" | "workflow.node.skipped" | "workflow.node.failed" | "workflow.node.retrying" | "workflow.branch.decided" | "workflow.run.succeeded" | "workflow.run.failed" | "workflow.run.cancelled";
+        /**
+         * WorkflowRevision
+         * @description An immutable, hashed revision; ``validation`` is its static check at save time
+         *     (revisions with errors are stored but cannot run: ``WORKFLOW_NOT_RUNNABLE``).
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "inputs": {
+         *           "data": {
+         *             "type": "dataset"
+         *           }
+         *         },
+         *         "kind": "Workflow",
+         *         "metadata": {
+         *           "name": "ts-readiness",
+         *           "project": "growth"
+         *         },
+         *         "nodes": [
+         *           {
+         *             "id": "adf",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.adf",
+         *             "with": {
+         *               "alpha": {
+         *                 "$param": "alpha"
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "id": "kpss",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.kpss"
+         *           },
+         *           {
+         *             "id": "wanders",
+         *             "use": "branch.if",
+         *             "with": {
+         *               "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject"
+         *             }
+         *           },
+         *           {
+         *             "id": "diff",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "transform.difference",
+         *             "when": "wanders.then"
+         *           },
+         *           {
+         *             "id": "order",
+         *             "inputs": {
+         *               "data": [
+         *                 "diff.data",
+         *                 "inputs.data"
+         *               ]
+         *             },
+         *             "use": "search.arma_order"
+         *           }
+         *         ],
+         *         "outputs": {
+         *           "orders": "order.table"
+         *         },
+         *         "params": {
+         *           "alpha": {
+         *             "default": 0.05,
+         *             "type": "number"
+         *           }
+         *         }
+         *       },
+         *       "ref": "workflow://growth/ts-readiness@r2",
+         *       "revision": 2,
+         *       "spec_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *       "validation": {
+         *         "issues": [],
+         *         "order": [
+         *           "adf",
+         *           "kpss",
+         *           "wanders",
+         *           "diff",
+         *           "order"
+         *         ],
+         *         "valid": true
+         *       },
+         *       "workflow_id": "wf_01jaf3e1f2g3h4j5k6m7n8p9q0"
+         *     }
+         */
+        WorkflowRevision: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Document */
+            document: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Message */
+            message?: string | null;
+            /**
+             * Ref
+             * @description workflow://project/name@rN
+             */
+            ref: string;
+            /** Revision */
+            revision: number;
+            /** Spec Hash */
+            spec_hash: string;
+            validation: components["schemas"]["WorkflowValidation"];
+            /**
+             * Workflow Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            workflow_id: string;
+        };
+        /**
+         * WorkflowRevisionCreate
+         * @description ``POST /v1/workflows/{workflow_id}/revisions``.
+         * @example {
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "inputs": {
+         *           "data": {
+         *             "type": "dataset"
+         *           }
+         *         },
+         *         "kind": "Workflow",
+         *         "metadata": {
+         *           "name": "ts-readiness",
+         *           "project": "growth"
+         *         },
+         *         "nodes": [
+         *           {
+         *             "id": "adf",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.adf",
+         *             "with": {
+         *               "alpha": {
+         *                 "$param": "alpha"
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "id": "kpss",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.kpss"
+         *           },
+         *           {
+         *             "id": "wanders",
+         *             "use": "branch.if",
+         *             "with": {
+         *               "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject"
+         *             }
+         *           },
+         *           {
+         *             "id": "diff",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "transform.difference",
+         *             "when": "wanders.then"
+         *           },
+         *           {
+         *             "id": "order",
+         *             "inputs": {
+         *               "data": [
+         *                 "diff.data",
+         *                 "inputs.data"
+         *               ]
+         *             },
+         *             "use": "search.arma_order"
+         *           }
+         *         ],
+         *         "outputs": {
+         *           "orders": "order.table"
+         *         },
+         *         "params": {
+         *           "alpha": {
+         *             "default": 0.05,
+         *             "type": "number"
+         *           }
+         *         }
+         *       },
+         *       "expected_revision": 1
+         *     }
+         */
+        WorkflowRevisionCreate: {
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Expected Revision
+             * @description Refuse (409) when the latest revision is different
+             */
+            expected_revision?: number | null;
+            /** Message */
+            message?: string | null;
+            /** Text */
+            text?: string | null;
+        };
+        /**
+         * WorkflowRun
+         * @description ``GET /v1/workflow-runs/{run_id}``: a run of a workflow revision with every node.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "decisions": [
+         *         {
+         *           "arm": "then",
+         *           "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject",
+         *           "decided_at": "2026-10-15T09:30:00Z",
+         *           "inputs": {
+         *             "nodes.adf.p_value": 0.57,
+         *             "nodes.kpss.reject": true,
+         *             "params.alpha": 0.05
+         *           },
+         *           "node_id": "wanders",
+         *           "value": true
+         *         }
+         *       ],
+         *       "inputs": {
+         *         "data": "dataset://growth/weekly_sales@v4"
+         *       },
+         *       "nodes": [
+         *         {
+         *           "attempt": 1,
+         *           "cache_key": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+         *           "finished_at": "2026-10-15T09:30:04Z",
+         *           "kind": "test",
+         *           "node_id": "adf",
+         *           "outputs": {
+         *             "result": {
+         *               "inline": {
+         *                 "test": "test.adf"
+         *               },
+         *               "type": "test_result"
+         *             }
+         *           },
+         *           "params": {
+         *             "alpha": 0.05,
+         *             "regression": "c"
+         *           },
+         *           "result": {
+         *             "decision": "unit_root",
+         *             "p_value": 0.57,
+         *             "reject": false,
+         *             "statistic": -1.42
+         *           },
+         *           "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *           "started_at": "2026-10-15T09:30:00Z",
+         *           "status": "succeeded",
+         *           "use": "test.adf@1.0.0"
+         *         }
+         *       ],
+         *       "params": {
+         *         "alpha": 0.05
+         *       },
+         *       "project_id": "growth",
+         *       "revision": 2,
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "started_at": "2026-10-15T09:30:00Z",
+         *       "status": "running",
+         *       "tenant_id": "acme",
+         *       "workflow_id": "wf_01jaf3e1f2g3h4j5k6m7n8p9q0"
+         *     }
+         */
+        WorkflowRun: {
+            cost?: components["schemas"]["RunCost"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Decisions */
+            decisions?: components["schemas"]["BranchDecision"][];
+            error?: components["schemas"]["NodeError"] | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Inputs */
+            inputs?: {
+                [key: string]: string;
+            };
+            /** Nodes */
+            nodes?: components["schemas"]["NodeRun"][];
+            /** Outputs */
+            outputs?: {
+                [key: string]: components["schemas"]["NodeOutputRef"];
+            };
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Parent Run Id */
+            parent_run_id?: string | null;
+            /** Project Id */
+            project_id: string;
+            /** Revision */
+            revision: number;
+            /**
+             * Run Id
+             * @description The parent run (kind workflow)
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            run_id: string;
+            /** Started At */
+            started_at?: string | null;
+            status: components["schemas"]["WorkflowRunStatus"];
+            /** Tenant Id */
+            tenant_id: string;
+            /** @default manual */
+            trigger?: components["schemas"]["WorkflowTriggerEvent"];
+            /**
+             * Trigger Id
+             * @description The schedule or trigger that started it
+             */
+            trigger_id?: string | null;
+            /**
+             * Workflow Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            workflow_id: string;
+        };
+        /**
+         * WorkflowRunCreate
+         * @description ``POST /v1/workflows/{workflow_id}/runs`` (``Idempotency-Key``).
+         * @example {
+         *       "inputs": {
+         *         "data": "dataset://growth/weekly_sales@v4"
+         *       },
+         *       "params": {
+         *         "alpha": 0.05
+         *       }
+         *     }
+         */
+        WorkflowRunCreate: {
+            /**
+             * Inputs
+             * @description input name -> reference
+             */
+            inputs?: {
+                [key: string]: string;
+            };
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            resource_class?: components["schemas"]["ResourceClass"] | null;
+            /**
+             * Revision
+             * @description Default: the latest revision
+             */
+            revision?: number | null;
+            /**
+             * Use Cache
+             * @description Reuse unchanged node results
+             * @default true
+             */
+            use_cache?: boolean;
+        };
+        /**
+         * WorkflowRunStatus
+         * @enum {string}
+         */
+        WorkflowRunStatus: "queued" | "running" | "succeeded" | "failed" | "cancelling" | "cancelled";
+        /**
+         * WorkflowSchedule
+         * @example {
+         *       "active": true,
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "cron": "0 6 * * 1",
+         *       "id": "sch_01jaf3f1g2h3j4k5m6n7p8q9r0",
+         *       "next_run_at": "2026-10-19T04:00:00Z",
+         *       "timezone": "Europe/Berlin",
+         *       "workflow_id": "wf_01jaf3e1f2g3h4j5k6m7n8p9q0"
+         *     }
+         */
+        WorkflowSchedule: {
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Cron */
+            cron: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Inputs */
+            inputs?: {
+                [key: string]: string;
+            };
+            /** Last Run At */
+            last_run_at?: string | null;
+            /** Last Run Id */
+            last_run_id?: string | null;
+            /** Next Run At */
+            next_run_at?: string | null;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Revision */
+            revision?: number | null;
+            /** Timezone */
+            timezone: string;
+            /**
+             * Workflow Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            workflow_id: string;
+        };
+        /**
+         * WorkflowTemplate
+         * @description A gallery template: its About card and the workflow document.
+         * @example {
+         *       "about": {
+         *         "assumptions": [
+         *           "Numbers can be added up (spend, sales); averages are averaged"
+         *         ],
+         *         "avoid_when": [
+         *           "Your data already has one row per week"
+         *         ],
+         *         "data_needs": [
+         *           "A date column"
+         *         ],
+         *         "difficulty": "beginner",
+         *         "example": "Daily TV spend of 100 each day becomes 700 for the week.",
+         *         "fits": {
+         *           "goal": [
+         *             "check_data"
+         *           ]
+         *         },
+         *         "outputs": [
+         *           "The same columns, one row per week"
+         *         ],
+         *         "related": [
+         *           "core.calendar"
+         *         ],
+         *         "summary_plain": "Adds up daily numbers into one number per week (or month), so that every row covers the same length of time.",
+         *         "title": "Weekly totals",
+         *         "typical_runtime": "instant",
+         *         "use_when": [
+         *           "Your data is daily but you want to plan or report by week"
+         *         ]
+         *       },
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "inputs": {
+         *           "data": {
+         *             "type": "dataset"
+         *           }
+         *         },
+         *         "kind": "Workflow",
+         *         "metadata": {
+         *           "name": "readiness",
+         *           "project": "templates"
+         *         },
+         *         "nodes": [
+         *           {
+         *             "id": "adf",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.adf"
+         *           }
+         *         ]
+         *       },
+         *       "id": "readiness",
+         *       "tags": [
+         *         "forecast"
+         *       ]
+         *     }
+         */
+        WorkflowTemplate: {
+            about: components["schemas"]["About"];
+            /** Document */
+            document: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Id */
+            id: string;
+            /** Tags */
+            tags?: string[];
+            /**
+             * Version
+             * @default 1.0.0
+             */
+            version?: string;
+        };
+        /**
+         * WorkflowTrigger
+         * @example {
+         *       "active": true,
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "dataset": "dataset://growth/weekly_sales",
+         *       "event": "dataset.version.created",
+         *       "id": "trg_01jaf3g1h2j3k4m5n6p7q8r9s0",
+         *       "input": "data",
+         *       "workflow_id": "wf_01jaf3e1f2g3h4j5k6m7n8p9q0"
+         *     }
+         */
+        WorkflowTrigger: {
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /** Dataset */
+            dataset: string;
+            /**
+             * Debounce Seconds
+             * @default 300
+             */
+            debounce_seconds?: number;
+            /**
+             * Event
+             * @constant
+             */
+            event: "dataset.version.created";
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Input */
+            input: string;
+            /** Last Fired At */
+            last_fired_at?: string | null;
+            /** Last Run Id */
+            last_run_id?: string | null;
+            /** Params */
+            params?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Revision */
+            revision?: number | null;
+            /**
+             * Workflow Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            workflow_id: string;
+        };
+        /**
+         * WorkflowTriggerEvent
+         * @enum {string}
+         */
+        WorkflowTriggerEvent: "manual" | "schedule" | "dataset.version.created" | "parent" | "validation";
+        /**
+         * WorkflowUpdate
+         * @description ``PATCH /v1/workflows/{workflow_id}``: metadata only (documents are revisions).
+         * @example {
+         *       "archived": false,
+         *       "description": "Weekly readiness checks"
+         *     }
+         */
+        WorkflowUpdate: {
+            /** Archived */
+            archived?: boolean | null;
+            /** Description */
+            description?: string | null;
+        };
+        /**
+         * WorkflowValidateRequest
+         * @description ``POST /v1/workflows:validate`` (sync, stores nothing).
+         * @example {
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "inputs": {
+         *           "data": {
+         *             "type": "dataset"
+         *           }
+         *         },
+         *         "kind": "Workflow",
+         *         "metadata": {
+         *           "name": "ts-readiness",
+         *           "project": "growth"
+         *         },
+         *         "nodes": [
+         *           {
+         *             "id": "adf",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.adf",
+         *             "with": {
+         *               "alpha": {
+         *                 "$param": "alpha"
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "id": "kpss",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "test.kpss"
+         *           },
+         *           {
+         *             "id": "wanders",
+         *             "use": "branch.if",
+         *             "with": {
+         *               "condition": "nodes.adf.p_value >= params.alpha or nodes.kpss.reject"
+         *             }
+         *           },
+         *           {
+         *             "id": "diff",
+         *             "inputs": {
+         *               "data": "inputs.data"
+         *             },
+         *             "use": "transform.difference",
+         *             "when": "wanders.then"
+         *           },
+         *           {
+         *             "id": "order",
+         *             "inputs": {
+         *               "data": [
+         *                 "diff.data",
+         *                 "inputs.data"
+         *               ]
+         *             },
+         *             "use": "search.arma_order"
+         *           }
+         *         ],
+         *         "outputs": {
+         *           "orders": "order.table"
+         *         },
+         *         "params": {
+         *           "alpha": {
+         *             "default": 0.05,
+         *             "type": "number"
+         *           }
+         *         }
+         *       }
+         *     }
+         */
+        WorkflowValidateRequest: {
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Text */
+            text?: string | null;
+        };
+        /**
+         * WorkflowValidation
+         * @description ``POST /v1/workflows:validate``: issues located by JSON pointers, the execution order
+         *     and the resolved implementation of every node.
+         * @example {
+         *       "issues": [
+         *         {
+         *           "code": "WORKFLOW_INVALID",
+         *           "message": "node 'order' binds 'diff.series', but transform.difference has no output 'series' (it has: data)",
+         *           "pointer": "/nodes/3/inputs/data",
+         *           "severity": "error"
+         *         }
+         *       ],
+         *       "order": [],
+         *       "valid": false
+         *     }
+         */
+        WorkflowValidation: {
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /** Order */
+            order?: string[];
+            /**
+             * Resolved
+             * @description node id -> implementation ref (id@version)
+             */
+            resolved?: {
+                [key: string]: string;
+            };
+            /** Valid */
+            valid: boolean;
         };
         /**
          * XrJsonDataset
@@ -13116,6 +17146,163 @@ export interface operations {
             };
         };
     };
+    list_catalog_abouts: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                kind?: components["schemas"]["AboutKind"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_CatalogAbout_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_chooser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChooserQuestionnaire"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_governance_checks: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GovernanceCheckDef_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_catalog_models: {
         parameters: {
             query?: {
@@ -13212,6 +17399,74 @@ export interface operations {
             };
         };
     };
+    recommend_catalog_items: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["AboutKind"] | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChooserResult"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CHOOSER_ANSWER_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_catalog_steps: {
         parameters: {
             query?: {
@@ -13240,6 +17495,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_workflow_nodes: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                kind?: components["schemas"]["NodeKind"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_NodeImplementation_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow_node: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeImplementation"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -13336,6 +17727,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dataset_about: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetAbout"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_dataset_about: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatasetAboutUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetAbout"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -13507,6 +17991,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    explore_dataset_version: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                dataset_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataExploreRequest"];
+            };
+        };
+        responses: {
+            /** @description Already computed (or an idempotent replay) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `EXPLORE_INVALID`: The explorer request is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -13788,7 +18337,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: CONFLICT, PROMOTION_BLOCKED, OVERRIDE_REQUIRED */
+            /** @description Problem: CONFLICT, PROMOTION_BLOCKED, OVERRIDE_REQUIRED, NOT_VALIDATED */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -14006,7 +18555,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: CONFLICT */
+            /** @description Problem: CONFLICT, NOT_VALIDATED */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -14356,6 +18905,313 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_exploration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_policies: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                scope?: ("tenant" | "project") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GovernancePolicy_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GovernancePolicyCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GovernancePolicy"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `POLICY_INVALID`: The governance policy is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GovernancePolicy"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GovernancePolicyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GovernancePolicy"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `CONFLICT`: Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `POLICY_INVALID`: The governance policy is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_policy_versions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GovernancePolicy_"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -14932,6 +19788,71 @@ export interface operations {
             };
         };
     };
+    explore_model_version: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelExploreRequest"];
+            };
+        };
+        responses: {
+            /** @description Already computed (or an idempotent replay) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `EXPLORE_INVALID`: The explorer request is not valid; `CAPABILITY_UNSUPPORTED`: The model lacks this capability */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_plots: {
         parameters: {
             query?: {
@@ -15027,6 +19948,124 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_model_validations: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ModelValidation_"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_model_validation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                model_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationRequest"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `VALIDATION_TRANSITION_INVALID`: The model's validation status does not allow this */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `POLICY_INVALID`: The governance policy is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -15188,6 +20227,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_model_versions: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelCompareRequest"];
+            };
+        };
+        responses: {
+            /** @description Already computed (or an idempotent replay) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exploration"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `EXPLORE_INVALID`: The explorer request is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -17107,6 +22208,272 @@ export interface operations {
             };
         };
     };
+    list_tenant_policies: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GovernancePolicy_"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_tenant_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GovernancePolicyCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GovernancePolicy"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `POLICY_INVALID`: The governance policy is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_tenant_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GovernancePolicy"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_tenant_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GovernancePolicyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GovernancePolicy"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `CONFLICT`: Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema; `POLICY_INVALID`: The governance policy is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_tenant_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_tenant_members: {
         parameters: {
             query?: {
@@ -17760,6 +23127,405 @@ export interface operations {
             };
         };
     };
+    list_validations: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                status?: components["schemas"]["ValidationStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ModelValidation_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_validation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_validation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed; `SELF_APPROVAL_FORBIDDEN`: Approver and submitter must be different people */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `VALIDATION_TRANSITION_INVALID`: The model's validation status does not allow this; `CONFLICT`: Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_validation_evidence: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_CheckResult_"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_evidence_pack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvidencePackRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidencePack"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cancel_validation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationNote"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `VALIDATION_TRANSITION_INVALID`: The model's validation status does not allow this */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deprecate_validation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationNote"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `FORBIDDEN`: Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `VALIDATION_TRANSITION_INVALID`: The model's validation status does not allow this */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    resubmit_validation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                validation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationNote"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelValidation"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `NOT_FOUND`: Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `VALIDATION_TRANSITION_INVALID`: The model's validation status does not allow this */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `SCHEMA_INVALID`: The document does not match its schema */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (application/problem+json) - `QUOTA_EXCEEDED`: Quota exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_webhooks: {
         parameters: {
             query?: {
@@ -18311,6 +24077,1913 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRun"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    workflow_run_events: {
+        parameters: {
+            query?: {
+                after?: number | null;
+                limit?: number;
+            };
+            header?: {
+                "Last-Event-ID"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkflowEvent_"];
+                    "text/event-stream": unknown;
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflow_node_runs: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                status?: components["schemas"]["NodeRunStatus"] | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_NodeRun_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow_node_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeRun"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow_node_output: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                node_id: string;
+                port: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactLink"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cancel_workflow_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRun"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflow_templates: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkflowTemplate_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowTemplate"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflows: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                archived?: boolean | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Workflow_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_workflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Problem: SPEC_PARSE_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, WORKFLOW_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_workflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_workflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflow_revisions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkflowRevision_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_workflow_revision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowRevisionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRevision"];
+                };
+            };
+            /** @description Problem: SPEC_PARSE_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_workflow_revision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+                revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRevision"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflow_runs: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                status?: components["schemas"]["WorkflowRunStatus"] | null;
+            };
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkflowRun_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    start_workflow_run: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowRunCreate"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRun"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRun"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: WORKFLOW_NOT_RUNNABLE, IDEMPOTENCY_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, WORKFLOW_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflow_schedules: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkflowSchedule_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_workflow_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowSchedule"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, SCHEDULE_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_workflow_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+                schedule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_workflow_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+                schedule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowSchedule"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, SCHEDULE_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_workflow_triggers: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkflowTrigger_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_workflow_trigger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TriggerCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowTrigger"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, SCHEDULE_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_workflow_trigger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+                trigger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    validate_workflow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowValidation"];
+                };
+            };
+            /** @description Problem: SPEC_PARSE_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Problem: RATE_LIMITED */

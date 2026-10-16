@@ -336,7 +336,7 @@ def test_lineage_pins_data_side_tables_and_runtime(
     data_version = api.datasets.version(main.id, main.latest_version or 1)
     assert lineage.dataset_sha == data_version.sha256
     assert set(lineage.side_tables) == {"fx", "holidays"}
-    assert lineage.plugin is not None and lineage.plugin.startswith("mmm.hierarchical_geo@1.3")
+    assert lineage.plugin is not None and lineage.plugin.startswith("mmm.bayesian@1.")
     assert (lineage.executor, lineage.engine, lineage.seed) == ("local-process", "pymc", 20261014)
     assert lineage.spec_hash == fit.version.spec_hash and lineage.catalog_digest
 

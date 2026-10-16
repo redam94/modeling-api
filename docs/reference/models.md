@@ -4,9 +4,8 @@ These model plugins ship with the platform (tier T0). They register through the
 `mapi.models` entry point, so `default_registry()` and the control-plane catalog list them
 without any configuration. Every one passes the contract kit (`mapi_sdk.testing.check_model`)
 and has a conformance fixture (see [Conformance corpus](../guides/conformance.md)).
-From v0.5 the marketing-mix models run on [mmm-framework](../models/mmm-framework.md);
-v0.5 removed `mmm.hierarchical_geo`, the pymc-marketing adapter (`mmm.pymc_marketing`) and
-`mmm.bayesinsight`.
+From v0.5 the marketing-mix models run on [mmm-framework](../models/mmm-framework.md), the
+platform's only marketing-mix engine.
 
 **Calibration** (M3, the spec's `calibration` block, Guided task 3) is declared per plugin in
 `Capabilities.calibration`; a spec with calibration data for a plugin that does not declare

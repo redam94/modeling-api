@@ -340,11 +340,15 @@ def _total_effect(full: Prediction, ablated: Prediction) -> tuple[float, float, 
     return float(np.nansum(np.abs(delta))), float(np.nansum(np.abs(base))), per_draw
 
 
+class _NoPrediction(ValueError):
+    """The model's predictions do not line up with a numeric target (choice models)."""
+
+
 def _first(preds: list[Prediction], target: str | None = None) -> Prediction:
     for p in preds:
         if target is None or p.target == target:
             return p
-    raise ValueError("the model produced no prediction of its target")
+    raise _NoPrediction("the model produced no prediction of its target")
 
 
 def _ablate(
@@ -595,10 +599,12 @@ def _placebo_drivers(
             )
         ).astype(float)
         spec_src = schema.vars.get(src)
-        vars_[nm] = VarSpec(
-            dims=tuple(str(d) for d in src_da.dims),
-            dtype="float64",
-            role=spec_src.role if spec_src else Role.COVARIATE,
+        vars_[nm] = (
+            spec_src.model_copy(update={"dtype": "float64", "units": None})
+            if spec_src is not None
+            else VarSpec(
+                dims=tuple(str(d) for d in src_da.dims), dtype="float64", role=Role.COVARIATE
+            )
         )
     new_schema = schema.model_copy(update={"vars": vars_})
     existing = {str(v) for v in data.data_vars} | {
@@ -654,6 +660,12 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     ignored = all(v < 1e-12 for v in shares.values()) and all(
         (iv[0] or 0.0) == 0.0 and (iv[1] or 0.0) == 0.0 for iv in intervals.values()
     )
+    if shares and ignored and placebo.how == "variables":
+        den = float(np.nansum(np.abs(np.asarray(full.point.values, dtype=float))))
+        coef = {nm: _coef_effect(env, b, placebo.data, nm) for nm in placebo.names}
+        if den > 0 and all(c is not None for c in coef.values()):
+            shares = {nm: float(c) / den for nm, c in coef.items() if c is not None}
+            ignored = False
     if shares and ignored:
         return _skip(
             check,
@@ -730,6 +742,24 @@ def _noise(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     )
 
 
+def _coef_effect(env: GovernanceEnv, b: Bundle, data: xr.Dataset, var: str) -> float | None:
+    """``|beta| * sum |x - x_off|`` from the coefficient named after driver ``var`` (``None``
+    without one): the effect of a driver on a model that is linear in it, for plugins whose
+    in-sample predictions follow the stored history rather than the scored drivers (the
+    statsmodels models)."""
+    names = {var, b.binding.to_canonical(var)}
+
+    def named(label: str) -> bool:  # ``price`` or a panel cell's ``north/price``
+        return label in names or label.rsplit("/", 1)[-1] in names
+
+    betas = [abs(e.estimate) for v, _c, e in _estimates(b) if named(e.name) or named(v)]
+    if not betas:
+        return None
+    x = np.asarray(data[var].values, dtype=float)
+    off = np.asarray(_ablate(env, data, var)[var].values, dtype=float)
+    return float(np.mean(betas) * np.nansum(np.abs(x - off)))
+
+
 def _effect(env: GovernanceEnv, b: Bundle, data: xr.Dataset, drivers: Sequence[str]) -> float:
     full = _first(predict(b, data, env.registry, side_tables=env.side_tables), env.targets[0])
     off = data
@@ -737,6 +767,11 @@ def _effect(env: GovernanceEnv, b: Bundle, data: xr.Dataset, drivers: Sequence[s
         off = _ablate(env, off, v)
     abl = _first(predict(b, off, env.registry, side_tables=env.side_tables), env.targets[0])
     num, _den, _d = _total_effect(full, abl)
+    if num <= 0:
+        coef = [_coef_effect(env, b, data, v) for v in drivers]
+        known = [c for c in coef if c is not None]
+        if known:
+            return float(sum(known))
     return num
 
 
@@ -828,6 +863,9 @@ def _beats_naive(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     t = env.time_dim
     preds = predict(trained, env.data, env.registry, side_tables=env.side_tables)
     p = _first(preds, env.targets[0] if env.targets else None)
+    mask = holdout_mask(env.bundle, p.observed, trained)  # on the model's periods
+    if mask is None:
+        return _skip(check, "the model has no held-out periods at the end of its data")
     held = np.asarray(mask.values)
     n_train = int((~held).sum())
     h = int(held.sum())
@@ -902,15 +940,38 @@ def _arma_df(settings: Mapping[str, Any]) -> int:
     return 0
 
 
+def _burn_in(settings: Mapping[str, Any]) -> int:
+    """Leading periods whose one-step residuals are start-up values: ``d + D * s`` of an
+    (S)ARIMA ``order``/``seasonal_order`` setting (statsmodels' diffuse start)."""
+    order = settings.get("order")
+    seasonal = settings.get("seasonal_order")
+    d = (
+        int(order[1])
+        if isinstance(order, list | tuple) and len(order) == 3 and isinstance(order[1], int)
+        else 0
+    )
+    sd = 0
+    if (
+        isinstance(seasonal, list | tuple)
+        and len(seasonal) == 4
+        and all(isinstance(x, int) for x in seasonal)
+        and int(seasonal[3]) > 1
+    ):
+        sd = int(seasonal[1]) * int(seasonal[3])
+    return d + sd
+
+
 def _whiteness(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     assert env.time_dim is not None
     lags = _pint(check.params, "lags", 10)
-    model_df = _arma_df(env.bundle.spec.model.plugin_settings)
+    settings = env.bundle.spec.model.plugin_settings
+    model_df = _arma_df(settings)
+    burn = _burn_in(settings)
     t = env.time_dim
     rows: list[tuple[str, float, float]] = []
     for p in env.predictions():
         r = p.resid.transpose(t, ...)
-        arr = np.asarray(r.values, dtype=float).reshape(r.sizes[t], -1)
+        arr = np.asarray(r.values, dtype=float).reshape(r.sizes[t], -1)[burn:]
         for j in range(min(arr.shape[1], 50)):
             res = stats.ljung_box_test(arr[:, j], lags=lags, model_df=model_df, var=p.target)
             if res.status == "ok" and res.p_value is not None and res.statistic is not None:
@@ -946,7 +1007,8 @@ def _whiteness(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         check,
         value,
         msg,
-        expert=f"Minimum Ljung-Box p over {len(rows)} series, lags={lags}, model_df={model_df}.",
+        expert=f"Minimum Ljung-Box p over {len(rows)} series, lags={lags}, model_df={model_df}"
+        f" (first {burn} start-up residual(s) of the differencing left out).",
         action="Add lags, seasonality or missing drivers (look at the residual ACF in the "
         "Model Explorer).",
         evidence=ev,
@@ -975,23 +1037,37 @@ def _stability(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     names = [e.name for e in key]
     per: dict[str, list[float]] = {nm: [] for nm in names}
     used = 0
+    failed: list[str] = []
     for s in starts:
         part = env.data.isel({env.time_dim: slice(s, s + window)})
         try:
             b = env.refitter.fit(part, spec)
         except BudgetExhausted:
             break
+        except Exception as exc:  # a window the model cannot be fitted on (too short, ...)
+            failed.append(f"{type(exc).__name__}: {str(exc)[:300]}")
+            continue
         used += 1
         got = {e.name: e.estimate for _v, _c, e in _estimates(b)}
         for nm in names:
             if nm in got:
                 per[nm].append(got[nm])
     variation: dict[str, float] = {}
+    base_sd = {e.name: e.sd for e in key if e.sd is not None and e.sd > 0}
     for nm, vals in per.items():
         if len(vals) >= 2:
             a = np.asarray(vals)
-            variation[nm] = float(a.std(ddof=1) / max(abs(float(a.mean())), 1e-12))
+            # relative to the estimate's size, or to its own uncertainty when it is near 0
+            scale = max(abs(float(a.mean())), base_sd.get(nm, 0.0), 1e-12)
+            variation[nm] = float(a.std(ddof=1) / scale)
     if not variation:
+        if failed:
+            return _error(
+                check,
+                f"the model could not be refitted on windows of {window} periods; give a longer "
+                "'window' in the check's parameters",
+                failed[0],
+            )
         return _error(check, "no parameter could be estimated in two windows")
     worst = max(variation, key=lambda k_: variation[k_])
     value = variation[worst]
@@ -1015,7 +1091,8 @@ def _stability(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         value,
         msg,
         expert=f"Coefficient of variation across {used} rolling refits (window {window}, step "
-        f"{step}); max over {len(variation)} parameters.",
+        f"{step}), relative to max(|mean|, the full fit's standard error); max over "
+        f"{len(variation)} parameters.",
         action="Look for a structural break (CUSUM or Chow tests in a workflow), shorten the "
         "history, or let the effect change over time.",
         evidence=ev,
@@ -1212,9 +1289,19 @@ def _sensitivity(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     )
 
 
+_DYNAMIC_FAMILIES: Final = frozenset({"forecast", "ts_multivariate", "regime"})
+
+
 def _recovery(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
     if not env.targets:
         return _skip(check, "the model has no target to simulate")
+    if env.family in _DYNAMIC_FAMILIES and env.kind != "bayesian":
+        return _skip(
+            check,
+            "the model predicts each period from the series' own past, so data simulated "
+            "around its fitted values would not follow the model (use the backtest and "
+            "residual checks for it)",
+        )
     raw = check.params.get("params")
     wanted = [str(x) for x in raw] if isinstance(raw, list) else None
     truth = [
@@ -1379,6 +1466,9 @@ def _accuracy(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
             predict(trained, env.data, env.registry, side_tables=env.side_tables),
             env.targets[0] if env.targets else None,
         )
+        mask = holdout_mask(env.bundle, p.observed, trained)  # on the model's periods
+        if mask is None:
+            return _skip(check, f"the fit did not evaluate {metric} on held-out data")
         dim = str(mask.dims[0])
         obs = p.observed.where(mask, drop=True)
         pt = p.point.where(mask, drop=True)
@@ -1484,6 +1574,12 @@ def measure(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         return impl(env, check)
     except BudgetExhausted as exc:
         return _error(check, f"{exc}; raise the budget or lower the check's sample sizes.")
+    except _NoPrediction:
+        return _skip(
+            check,
+            "the model's predictions are not numbers over its target (a choice or "
+            "classification model), which this check compares",
+        )
     except Exception as exc:
         env.log("".join(traceback.format_exception(type(exc), exc, exc.__traceback__))[-4000:])
         return _error(

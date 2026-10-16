@@ -387,6 +387,7 @@ def test_policy_runs_checks_and_missing_runners_block() -> None:
         resolver=lambda m, p: [_POLICY],
         runners={"convergence": ok},
         submit=lambda m, ev: submitted.append(ev),
+        installed=False,  # only the runners given here (data.quality has none)
     )
     out = run_node("governance.policy", {"submit": True}, model=_mv(), services={"governance": svc})
     ev = EvidencePayload.model_validate(out.outputs["evidence"])

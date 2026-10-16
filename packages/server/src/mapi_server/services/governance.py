@@ -122,6 +122,8 @@ __all__ = [
     "seed_default_policies",
     "update_policy",
     "validation_dto",
+    "workflow_policy_resolver",
+    "workflow_validation_submitter",
 ]
 
 log = logging.getLogger(__name__)
@@ -1112,6 +1114,104 @@ async def governance_run_finished(session: AsyncSession, run: m.Run, state: RunS
     v.failing_checks = failing
     for event in after_checks(passed, require_approval=v.require_approval):
         await _apply(session, v, event, actor)
+
+
+# ============================================================================ workflows
+
+
+async def workflow_policy_resolver(
+    session: AsyncSession, ctx: ServerContext, mv: m.ModelVersion, policy_id: str | None
+) -> list[GovernancePolicy]:
+    """The policies a workflow's ``governance.policy`` node holds ``mv`` to: the policies in
+    force for its family, or the named one (empty when it is not an active policy of the
+    project or tenant: the node then fails with ``POLICY_INVALID``)."""
+    if policy_id is None:
+        return await policies_in_force(session, ctx, mv)
+    try:
+        return await _resolve_policies(session, ctx, mv, [policy_id])
+    except MapiError:
+        return []
+
+
+async def workflow_validation_submitter(
+    session: AsyncSession,
+    ctx: ServerContext,
+    mv: m.ModelVersion,
+    evidence: dict[str, object],
+    workflow_run_id: str,
+) -> str | None:
+    """Record a workflow's governance evidence as a validation of ``mv`` (``submit: true``
+    on a ``governance.policy`` node whose checks passed): the checks already ran in the
+    workflow's sandboxed node, so the validation goes straight from ``checks_running`` to
+    ``validated``, or to ``awaiting_approval`` when a policy wants a reviewer. ``None``
+    when the version already has an open or validated validation."""
+    latest = await _latest_validation(session, mv.id)
+    if latest is not None and ValidationStatus(latest.status) in _OPEN:
+        return None
+    raw_results = evidence.get("results")
+    results = [
+        CheckResult.model_validate(r)
+        for r in (raw_results if isinstance(raw_results, list) else [])
+        if isinstance(r, dict)
+    ]
+    pols = await policies_in_force(session, ctx, mv)
+    named = evidence.get("policies")
+    if isinstance(named, list) and named:
+        keep = {str(x).split("@", 1)[0] for x in named}
+        pols = [p for p in pols if p.id in keep] or pols
+    required = effective_checks(pols)
+    actor = _Actor(None, SYSTEM_ACTOR)
+    ts = now()
+    passed, failing = rollup_results(results, required)
+    v = m.ModelValidation(
+        id=new_id("val"),
+        tenant_id=mv.tenant_id,
+        project_id=mv.project_id,
+        model_id=mv.model_id,
+        model_version_id=mv.id,
+        version=mv.version,
+        status=ValidationStatus.DRAFT.value,
+        round=1,
+        policies=[f"{p.id}@{p.version}" for p in pols],
+        required_checks=[c.model_dump(mode="json", exclude_none=True) for c in required],
+        results=[r.model_dump(mode="json", exclude_none=True) for r in results],
+        failing_checks=failing,
+        require_approval=any(p.require_approval for p in pols),
+        approvals_required=max(
+            (p.approvals_required for p in pols if p.require_approval), default=1
+        ),
+        history=[],
+        run_id=workflow_run_id,
+        note="Checks run by a workflow's governance node.",
+        submitted_by=SYSTEM_ACTOR,
+        submitted_at=ts,
+        created_at=ts,
+        updated_at=ts,
+    )
+    session.add(v)
+    await session.flush()
+    await add_audit(
+        session,
+        [
+            actor.audit(
+                AuditAction.MODEL_VALIDATION_REQUEST,
+                ResourceKind.MODEL,
+                tenant_id=v.tenant_id,
+                project_id=v.project_id,
+                resource_id=v.id,
+                details={
+                    "model_version_id": mv.id,
+                    "policies": list(v.policies),
+                    "checks": [c.check for c in required],
+                    "workflow_run_id": workflow_run_id,
+                },
+            )
+        ],
+    )
+    await _apply(session, v, ValidationEvent.SUBMIT, actor, note="submitted by a workflow")
+    for event in after_checks(passed, require_approval=v.require_approval):
+        await _apply(session, v, event, actor)
+    return v.id
 
 
 # ======================================================================== evidence pack

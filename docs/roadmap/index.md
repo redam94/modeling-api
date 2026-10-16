@@ -11,7 +11,7 @@ timeline
     v0.1 · M0 · contract layer : SDK, specs and schemas : 28 steps, PyMC and sklearn base classes : 11 built-in models, plots, sanitizer : conformance corpus
     v0.2 · M1 · local platform : HTTP API, queue, sandboxed runner : GCS shim, signed bundles : Expert web app, CLI, Python client : make dev and Docker Compose
     v0.3 · M2 · cloud and multi-tenant : tenants, OIDC sign-in, tokens, row-level security : quotas, fair share, cost ledger, kill switches : Cloud Run Jobs executor, Terraform : observability, security suite, chaos
-    v0.4 · M3 · Guided mode and integrations (now) : templates, question flow, business priors : scorecard, what-if, forecasts : endpoints, snippets, webhooks, embeds, Atlas : sign-up, deletion, GDPR export
+    v0.4 · M3 · Guided mode and integrations (now) : templates, question flow, business priors : scorecard, what-if, forecasts : endpoints, snippets, webhooks, embeds : sign-up, deletion, GDPR export
     v0.5 · M4 · expert plugins (next) : plugin upload for allow-listed teams : curated MCP server : in-sandbox optimize jobs : sweeps, backtests, SBC
 ```
 
@@ -29,8 +29,7 @@ timeline
       customer choice), a question flow with role detection, drafts with "View as YAML", the
       persona lock ([tutorial](../guides/guided-tutorial.md))
 - [x] **Sandboxed ingest** of CSV, Parquet, MFF and Meridian-shaped tables with plain-language
-      refusals; the **BayesInsight** import and the `mmm.bayesinsight` model (removed in
-      v0.5: mmm-framework is the only MMM engine)
+      refusals
 - [x] **Business priors** as ROI or share ranges, translated in a sandbox with a
       prior-predictive preview, and **lift tests** as calibration
       ([Guided modelling](../guides/guided-modelling.md))
@@ -42,8 +41,7 @@ timeline
 - [x] **Signed webhooks** with an outbox, retries, a delivery log, replays and an SSRF guard
       ([Receive webhooks](../guides/webhook-receivers.md))
 - [x] **Saved plots, static renders and embed links** ([Embed a chart](../tutorials/embed-a-chart.md))
-- [x] The Python client's endpoints and **Atlas `RemoteModel`** (removed in v0.5)
-      ([Optimise a budget](../tutorials/optimise-a-budget.md)); new CLI commands
+- [x] The Python client's endpoints; new CLI commands
 - [x] **Sign-up** with e-mail verification and abuse controls, **tenant deletion**, the
       **GDPR export**, and a **Cloud Armor** policy
 - [x] The Integrations hub, trust pages and admin additions in the web app

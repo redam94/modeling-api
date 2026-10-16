@@ -398,7 +398,7 @@ def test_tokens_create_prints_the_secret_once_to_stdout(
     secret = created["secret"]
     route = api.post(f"{V1}/tokens").respond(201, json=created)
     res = mapi(
-        "--url", URL, "--project", "acme/growth", "tokens", "create", "atlas",
+        "--url", URL, "--project", "acme/growth", "tokens", "create", "budget-planner",
         "-s", "score:geo-mmm-prod", "-s", "models:read", "--expires-in-days", "30",
         "--rate-limit", "120", "--budget", "36000",
     )  # fmt: skip
@@ -407,7 +407,7 @@ def test_tokens_create_prints_the_secret_once_to_stdout(
     assert secret not in res.stderr and "not shown again" in res.stderr
     body = json.loads(route.calls.last.request.content)
     assert body == {
-        "name": "atlas",
+        "name": "budget-planner",
         "scopes": ["score:geo-mmm-prod", "models:read"],
         "expires_in_days": 30,
         "rate_limit_per_minute": 120,

@@ -354,7 +354,7 @@ function createModelVersion(state: GuidedMockState, f: FitRecord): ModelVersion 
     diagnostics: [],
     scorecard: synthScorecard(tpl, history, mediaGrid),
     metrics: { mape: 12, coverage_90: 0.86 }, // mapi_sdk reports MAPE in percent
-    lineage: { ...fx.modelVersion.lineage, run_id: f.run.id, plugin: `${tpl.plugin.split("@")[0]}@1.3.2` },
+    lineage: { ...fx.modelVersion.lineage, run_id: f.run.id, plugin: `${tpl.plugin.split("@")[0]}@1.0.0` },
     capabilities: { inference: "mcmc", representation: "draws", score_modes: ["predict", "forecast", "counterfactual", "evaluate"], loo_valid: true },
     artifacts: [{ name: "bundle.zarr.zip", size: 2_097_152, content_type: "application/zip" }],
     created_at: now(),

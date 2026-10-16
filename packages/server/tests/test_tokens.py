@@ -292,7 +292,6 @@ async def test_token_scopes_gate_every_endpoint(
     await grant_role(ctx, owner, "acme", None, "admin")
     tok = token_caller(client, await make_token(ctx, owner, "acme", "growth", [scope]))
     from mapi_server.app import openapi_document
-    from mapi_spec.api import M35_ENDPOINTS
 
     served = {
         op.get("operationId")
@@ -300,24 +299,11 @@ async def test_token_scopes_gate_every_endpoint(
         for op in item.values()
         if isinstance(op, dict)
     }
-    # v0.5 operations land component by component; the route table test tracks the rest
-    pending = {e.operation_id for e in M35_ENDPOINTS} - served
+    assert {e.operation_id for e in ENDPOINTS} <= served  # every row of the table is served
     checked = 0
-    from mapi_server.app import openapi_document
-
-    served = {
-        op.get("operationId")
-        for item in openapi_document()["paths"].values()
-        for op in item.values()
-        if isinstance(op, dict)
-    }
     for e in ENDPOINTS:
-        if e.operation_id in pending:
-            continue
         access = route_access(e.operation_id)
         if access.scope in (RouteScope.PUBLIC, RouteScope.INTERNAL):
-            continue
-        if e.operation_id not in served:  # M3.5 rows land component by component
             continue
         body = {} if e.method in ("POST", "PUT", "PATCH") else None
         path = _path(e.path)

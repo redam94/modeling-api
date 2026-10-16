@@ -2,8 +2,8 @@
 (``saturation``) with fixed, user-given parameters.
 
 Bayesian models learn these transforms inside the model; point models (sklearn, ridge) get
-them as preprocessing. The formulas follow pymc-marketing's conventions (implemented here in
-numpy; pymc-marketing is not a dependency):
+them as preprocessing. The formulas are the usual marketing-mix conventions (implemented
+here in numpy):
 
 adstock (weights over lags ``l = 0 .. l_max-1``, optional ``normalize`` to sum 1)
     ``geometric``  ``w_l = alpha ** l``

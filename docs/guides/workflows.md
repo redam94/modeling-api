@@ -218,18 +218,22 @@ the rows of a comparison table within limits (`max`, `min`) when there is no sin
 ### Long-run relationships: VECM or VAR
 
 ```yaml
-- {id: joh, use: test.johansen, inputs: {data: inputs.data}, with: {vars: [sales, price, dist]}}
+- {id: joh, use: test.johansen, inputs: {data: inputs.data}}
 - {id: tied, use: branch.if, with: {condition: "nodes.joh.rank > 0"}}
 - {id: vecm, use: model.fit, inputs: {data: inputs.data}, when: tied.then,
-   with: {model: ts.vecm@^1, settings: {vars: [sales, price, dist], coint_rank: {$expr: "nodes.joh.rank"}}}}
+   with: {model: ts.vecm@^1, settings: {coint_rank: {$expr: "nodes.joh.rank"}}}}
 - {id: d, use: transform.difference, inputs: {data: inputs.data}, when: tied.else}
-- {id: lags, use: search.var_lag_order, inputs: {data: d.data}, with: {vars: [sales, price, dist]}}
+- {id: lags, use: search.var_lag_order, inputs: {data: d.data}}
 - {id: var, use: model.fit, inputs: {data: d.data},
-   with: {model: ts.var@^1, settings: {vars: [sales, price, dist], lags: {$expr: "nodes.lags.best_lag"}}}}
+   with: {model: ts.var@^1, settings: {lags: {$expr: "nodes.lags.best_lag"}}}}
 ```
 
-The `var_vecm_cointegration` template is the complete version, with Granger tests and a
-report.
+The data holds the series along one dimension, one value per series and period
+(`value(series, quarter)`: the layout of the statsmodels multivariate models; ingest a wide
+sheet with the `wide` mapping). The tests and searches use every series of that dimension,
+or the ones named in `vars` (labels such as `[sales, price]`), and the model nodes bind the
+models' `variable` dimension to it. The `var_vecm_cointegration` template is the complete
+version, with Granger tests and a report.
 
 ### Search model settings on a plan
 
@@ -263,8 +267,13 @@ fails the node (`WORKFLOW_INVALID`) before any point is fitted.
 named by `policy`) as evidence; it does not fail when a check fails, so the evidence of a
 rejected model is kept too. The branch makes everything after it depend on the verdict.
 `governance.check` runs a single check with its own thresholds, which is handy while a policy
-is being designed. With `submit: true` a passing model is submitted for approval. Governance
-nodes are never cached: the checks run again on every run.
+is being designed. The checks are the platform's own implementations (the same as a
+validation request's), measured in the node's sandbox on the model and its data; the policy
+in force is the one the project or tenant set up for the model's family (the platform's
+default policies apply until you add your own). With `submit: true` a passing model is
+recorded as a validation of that model version: `validated`, or `awaiting_approval` when the
+policy asks for a reviewer (see [governance](governance.md)). Governance nodes are never
+cached: the checks run again on every run.
 
 ### Reuse a workflow as a node
 
@@ -395,10 +404,13 @@ branches, alternatives, retries, timeouts and cancellation, and caches results i
 --8<-- "workflows_local.py:cache"
 ```
 
-The example uses `mapi_workflows.testing.test_registry()`, whose `ts.*` models are small
-stand-ins for the statsmodels plugin; with the plugin installed, pass its registry (or
-`mapi_sdk.default_registry()`) instead. `LocalRunner(governance=GovernanceServices(...))`
-supplies the policy resolver and check runners for governance nodes.
+The example uses `mapi_workflows.testing.test_registry()`: the real statsmodels models
+(`ts.sarimax`, `ts.var`, `ts.vecm`, ...) with the SDK's toy models and the built-in steps
+(install `mapi-workflows[testing]`). `mapi_sdk.default_registry()` gives every installed
+plugin. `LocalRunner(governance=GovernanceServices(...))` supplies the policy resolver for
+governance nodes; the check runners are the installed ones (`mapi-runner` exports every
+check through the `mapi.governance_checks` entry point), and `runners=` adds or replaces
+some.
 
 ## Limits and settings
 

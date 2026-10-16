@@ -1,6 +1,5 @@
 """Guided mode, data path (plan §11 tasks 1-2; M3): templates, role detection and drafts,
-plus the compiler behind "Run exact" (task 6). (The BayesInsight import was removed in v0.5:
-mmm-framework is the only MMM engine.)
+plus the compiler behind "Run exact" (task 6).
 
 Everything here is JSON in, JSON out: the control plane never sees an upload's bytes.
 Role detection reads column *profiles* - sent by the browser (which profiles the file

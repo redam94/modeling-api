@@ -19,8 +19,10 @@ runtime = [
   "pandas>=2.2",
   "xarray>=2025.1",
   "scipy>=1.13",
-  "statsmodels>=0.14.4",
+  "statsmodels>=0.15,<0.16",
 ]
+# mapi_workflows.testing: the real statsmodels models for tests, examples and the docs.
+testing = ["mapi-workflows[runtime]", "mapi-plugin-statsmodels"]
 
 [project.entry-points."mapi.workflow_nodes"]
 core = "mapi_workflows.runtime.nodes:builtin_nodes"
@@ -36,3 +38,4 @@ packages = ["src/mapi_workflows"]
 mapi-spec = { workspace = true }
 mapi-sdk = { workspace = true }
 mapi-steps = { workspace = true }
+mapi-plugin-statsmodels = { workspace = true }

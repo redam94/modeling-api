@@ -1,10 +1,12 @@
 """Extension points the governance component plugs into (resolved in the control plane).
 
 ``governance.policy`` nodes need the policies in force for the model they check, which live
-in the governance component's tables. It registers a :data:`PolicyResolver` here (and,
-for ``submit: true``, a :data:`ValidationSubmitter` that records the evidence on a
-``ModelValidation``) when the app and the orchestrator start. Without a resolver no policy
-applies (the node says so); a node that names a policy then fails with ``POLICY_INVALID``.
+in the governance tables. The defaults are the governance service's
+(:func:`mapi_server.services.governance.workflow_policy_resolver` and, for ``submit: true``,
+:func:`~mapi_server.services.governance.workflow_validation_submitter`, which records the
+evidence as a ``ModelValidation``). Tests and embedders may replace them; with the resolver
+set to ``None`` no policy applies (the node says so) and a node that names a policy fails
+with ``POLICY_INVALID``.
 """
 
 from __future__ import annotations
@@ -22,6 +24,8 @@ if TYPE_CHECKING:
     from mapi_server.context import ServerContext
 
 __all__ = [
+    "DEFAULT_RESOLVER",
+    "DEFAULT_SUBMITTER",
     "GovernanceHooks",
     "PolicyResolver",
     "ValidationSubmitter",
@@ -50,7 +54,30 @@ class GovernanceHooks:
     notes: list[str] = field(default_factory=list)
 
 
-_HOOKS = GovernanceHooks()
+async def _default_resolver(
+    session: AsyncSession, ctx: ServerContext, mv: m.ModelVersion, policy_id: str | None
+) -> Sequence[GovernancePolicy]:
+    from mapi_server.services.governance import workflow_policy_resolver
+
+    return await workflow_policy_resolver(session, ctx, mv, policy_id)
+
+
+async def _default_submitter(
+    session: AsyncSession,
+    ctx: ServerContext,
+    mv: m.ModelVersion,
+    evidence: dict[str, object],
+    workflow_run_id: str,
+) -> str | None:
+    from mapi_server.services.governance import workflow_validation_submitter
+
+    return await workflow_validation_submitter(session, ctx, mv, evidence, workflow_run_id)
+
+
+DEFAULT_RESOLVER: PolicyResolver = _default_resolver
+DEFAULT_SUBMITTER: ValidationSubmitter = _default_submitter
+
+_HOOKS = GovernanceHooks(resolver=DEFAULT_RESOLVER, submitter=DEFAULT_SUBMITTER)
 
 
 def governance_hooks() -> GovernanceHooks:

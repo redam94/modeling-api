@@ -391,6 +391,6 @@ List calls return lazy paginators that follow `next_cursor`. `api.health()` and 
 call `/healthz` and `/readyz`; `api.me()` calls `/v1/me` and `api.use(project)` changes the
 selected project; `api.signup()`, `api.verify_email()` and `api.endpoint(alias)` are v0.4.
 `mapi_client.webhooks` verifies deliveries and `mapi_client.xrjson` encodes inline payloads
-(v0.5 removed the Atlas adapter: see [Optimise a budget](../tutorials/optimise-a-budget.md)). The DTOs are documented in
+(budgets are optimised by the platform: see [Optimise a budget](../tutorials/optimise-a-budget.md)). The DTOs are documented in
 [`mapi_spec`](../reference/api/spec.md#rest-dtos) and the endpoints in the
 [HTTP API reference](../reference/http-api.md).

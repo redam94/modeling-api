@@ -61,7 +61,7 @@ def registry() -> Registry:
 
 
 def catalog_file(tmp: Path) -> Path:
-    """The test registry's catalog (toy models, the stand-in statsmodels models, steps)."""
+    """The test registry's catalog (toy models, the statsmodels models, the steps)."""
     path = tmp / "catalog.json"
     path.write_text(registry().catalog().model_dump_json())
     return path

@@ -299,7 +299,7 @@ limits and prices in [Quotas and cost](../concepts/quotas-and-cost.md).
 | Caller | Credential | Notes |
 |---|---|---|
 | Browser (the web app) | Session cookie `__Host-mapi_session` (`HttpOnly; Secure; SameSite=Strict; Path=/`), set by `GET /auth/callback` | OpenID Connect Authorization Code flow with PKCE (S256) and a `nonce`, run by the API as a backend-for-frontend. The browser never holds an OAuth token. |
-| Programs, SDKs, CLI, Atlas | `Authorization: Bearer mapi_<prefix>_<secret><checksum>` | An API token. It acts as its owner, narrowed by its scopes, in the one project it is bound to. |
+| Programs, SDKs, CLI | `Authorization: Bearer mapi_<prefix>_<secret><checksum>` | An API token. It acts as its owner, narrowed by its scopes, in the one project it is bound to. |
 | Google Pub/Sub | A Google-signed OIDC ID token on `POST /internal/events` | Audience, issuer and the push service account are checked. Nothing in the body authenticates. |
 
 Responses for authentication and authorization:
@@ -518,7 +518,7 @@ from `ColumnProfile`s computed in the browser (or from a stored dataset version:
 with a confidence and a `reason_plain`. A draft (`POST /v1/guided/drafts`) turns
 `GuidedAnswers` into an `IngestMapping` for the upload, a `ModelSpec` document and its YAML
 ("View as YAML") without storing anything, with the static validator's findings in `issues`;
-save it with `POST /v1/specs`. (The BayesInsight import of v0.4 was removed in v0.5.)
+save it with `POST /v1/specs`.
 Business priors become
 model-space priors in a sandboxed `translate_priors` run (`PriorTranslationRequest` →
 `PriorTranslation`, whose `result` is a `PriorTranslationResult` with a prior-predictive
@@ -568,7 +568,7 @@ override the gate.
 | `GET /v1/endpoints/{alias}/schema` | Input schema of the current version and an example payload | — | `EndpointSchema` | 200 | `NOT_FOUND` |
 | `POST /v1/endpoints/{alias}/validate` | Static checks of a score call without running it | `EndpointScoreCall` | `EndpointValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE` |
 | `POST /v1/endpoints/{alias}/rollback` | Point the alias back at an earlier revision's version (audited) | `EndpointRollback` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `NOT_VALIDATED` |
-| `GET /v1/endpoints/{alias}/snippets` | Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint | — | `SnippetSet` | 200 | `NOT_FOUND` |
+| `GET /v1/endpoints/{alias}/snippets` | Python, TypeScript, curl, R, Apps Script and notebook code for the endpoint | — | `SnippetSet` | 200 | `NOT_FOUND` |
 
 ### Webhooks
 
@@ -651,9 +651,8 @@ permission. The ideas are explained in [Workflows](../concepts/workflows.md),
 [Governance](../concepts/governance.md) and
 [About cards and choosing](../concepts/about-and-choosing.md).
 
-v0.5 also **removes** the BayesInsight import (`POST /v1/guided/import/bayesinsight`,
-`BayesInsightImport`, the `bayesinsight` ingest preset) and the `atlas` snippet language:
-mmm-framework is the only MMM engine. The contract version is `0.2`.
+v0.5 also **removes** an importer route of v0.4, its ingest preset and one snippet language
+(see the CHANGELOG): mmm-framework is the only MMM engine. The contract version is `0.2`.
 
 **Permissions.** Workflows are read by viewers, written by editors, run (and scheduled) by
 runners and deleted by admins. Project policies are managed by project admins, tenant-wide

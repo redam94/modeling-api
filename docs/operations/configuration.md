@@ -230,6 +230,17 @@ See [Sharing plots](../guides/sharing-plots.md).
 Webhook signing secrets are sealed with a key derived from `MAPI_SERVER_SECRET`: changing the
 server secret makes every webhook secret unusable (rotate them afterwards).
 
+**Workflows (v0.5)** (see [Workflows](../guides/workflows.md))
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_WORKFLOW_TICK_S` | `1` | How often (seconds) the orchestrator's workflow loop advances active workflow runs, fires due schedules and debounced triggers |
+| `MAPI_WORKFLOW_MAX_ACTIVE_RUNS` | `20` | Workflow runs one project may have going at once (`429` beyond) |
+| `MAPI_WORKFLOW_MAX_SCHEDULES` | `20` | Active cron schedules per project |
+| `MAPI_WORKFLOW_MAX_TRIGGERS` | `20` | Active dataset-version triggers per project |
+| `MAPI_WORKFLOW_NODE_TIMEOUT_S` | `1800` | Timeout of a node's child run when the node sets none |
+| `MAPI_WORKFLOW_MAX_JSON_OUTPUT_BYTES` | `1048576` | Largest JSON output (tables, metrics, reports) a node may return |
+
 **Pub/Sub push events** (`POST /internal/events`)
 
 | Variable | Default | Meaning |

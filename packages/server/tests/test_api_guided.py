@@ -310,14 +310,13 @@ async def test_the_guided_operations_document_their_problems(client: httpx.Async
     }
     assert {"list_guided_templates", "get_guided_template", "detect_roles",
             "create_guided_draft"} <= set(ops)  # fmt: skip
-    assert "import_bayesinsight" not in ops  # removed in v0.5
     draft = ops["create_guided_draft"]
     problem = draft["responses"]["422"]["content"][PROBLEM_CONTENT_TYPE]
     assert problem["schema"] == {"$ref": "#/components/schemas/Problem"}
     assert {"SCHEMA_INVALID", "GUIDED_ANSWERS_INVALID"} <= set(problem["examples"])
     assert "401" in draft["responses"] and "403" in draft["responses"]
     schemas = doc["components"]["schemas"]
-    assert schemas["GuidedAnswers"]["examples"] and "BayesInsightImport" not in schemas
+    assert schemas["GuidedAnswers"]["examples"]
 
 
 async def test_project_carries_the_guided_lock(client: httpx.AsyncClient) -> None:

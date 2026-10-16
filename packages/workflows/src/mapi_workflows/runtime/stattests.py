@@ -28,7 +28,9 @@ from dataclasses import dataclass, field
 from typing import Any, Final
 
 import numpy as np
+import xarray as xr
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.schema import DataSchema
 from mapi_spec.stattests import (
     TEST_DEFINITIONS,
     SeriesTestResult,
@@ -391,18 +393,61 @@ def _zivot_andrews(ctx: NodeContext) -> NodeOutcome:
 # ============================================================================ cointegration
 
 
+def _series_dim(ds: xr.Dataset, schema: DataSchema, tdim: str) -> tuple[str, str] | None:
+    """``(variable, dim)`` when the data keeps several series along one dim of its target
+    (``value(series, quarter)``, the layout of the multivariate models)."""
+    try:
+        var = target_var(ds, schema)
+    except MapiError:
+        return None
+    others = [str(d) for d in ds[var].dims if d != tdim]
+    if len(others) != 1:
+        return None
+    return var, others[0]
+
+
+def system_names(ctx: NodeContext, key: str = "vars", min_n: int = 2) -> list[str]:
+    """The series a multivariate node works on: ``params[key]`` (variable names or labels
+    along the series dim), else every label along the target's series dim."""
+    raw = ctx.params.get(key)
+    names = [str(v) for v in raw] if isinstance(raw, list) else []
+    if not names:
+        dv = ctx.dataset("data")
+        assert dv is not None
+        schema = schema_of(dv)
+        found = _series_dim(dv.data, schema, time_dim(dv.data, schema))
+        if found is not None:
+            names = [str(label_of(v)) for v in dv.data[found[1]].values]
+    if len(names) < min_n:
+        raise data_error(
+            f"name at least {min_n} series in {key!r} (variables, or labels along the data's "
+            "series dimension)"
+        )
+    return names
+
+
 def variable_matrix(ctx: NodeContext, names: Sequence[str]) -> tuple[np.ndarray, np.ndarray]:
+    """Columns of ``names`` along time: data variables (a panel summed), or labels along the
+    series dim of the target (long layout)."""
     dv = ctx.dataset("data")
     assert dv is not None
     schema = schema_of(dv)
     ds = dv.data
     tdim = time_dim(ds, schema)
+    long = _series_dim(ds, schema, tdim)
     cols = []
     labels: np.ndarray | None = None
     for n in names:
-        if n not in ds.data_vars:
-            raise data_error(f"the data has no variable {n!r}")
-        (s,) = list(iter_series(ds, n, tdim, per_series=False))
+        if n in ds.data_vars:
+            (s,) = list(iter_series(ds, n, tdim, per_series=False))
+        elif long is not None and n in {str(label_of(v)) for v in ds[long[1]].values}:
+            var, dim = long
+            pos = [str(label_of(v)) for v in ds[dim].values].index(n)
+            sub = ds[[var]].isel({dim: pos}, drop=True)
+            (s,) = list(iter_series(sub, var, tdim, per_series=False))
+        else:
+            where = f" or a label of {long[1]!r}" if long is not None else ""
+            raise data_error(f"the data has no variable{where} named {n!r}")
         cols.append(s.values)
         labels = s.labels
     mat = np.column_stack(cols)
@@ -422,7 +467,7 @@ def _vars(ctx: NodeContext, key: str = "vars", min_n: int = 2) -> list[str]:
 def _johansen(ctx: NodeContext) -> NodeOutcome:
     from statsmodels.tsa.vector_ar.vecm import coint_johansen
 
-    names = _vars(ctx)
+    names = system_names(ctx)
     det = int(_int(ctx.params.get("det_order")) or 0)
     k_raw = _int(ctx.params.get("k_ar_diff"))
     k = 1 if k_raw is None else k_raw
@@ -869,19 +914,43 @@ def _seasonal_strength(ctx: NodeContext) -> NodeOutcome:
 def _vif(ctx: NodeContext) -> NodeOutcome:
     from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-    names = _vars(ctx, "vars", 2)
+    raw = ctx.params.get("vars")
+    given = [str(v) for v in raw] if isinstance(raw, list) else []
+    if not given:
+        raise data_error("name the drivers to check in 'vars'")
     limit = float(_f(ctx.params.get("limit")) or 10.0)
     dv = ctx.dataset("data")
     assert dv is not None
     schema = schema_of(dv)
-    tdim = time_dim(dv.data, schema)
+    ds = dv.data
+    tdim = time_dim(ds, schema)
+    try:  # rows are the target's cells (periods x panel); other dims become columns
+        rows_dims = [str(d) for d in ds[target_var(ds, schema)].dims]
+    except MapiError:
+        rows_dims = [tdim]
+    names: list[str] = []
     cols = []
-    for n in names:
-        if n not in dv.data.data_vars:
+    for n in given:
+        if n not in ds.data_vars:
             raise data_error(f"the data has no variable {n!r}")
-        da = dv.data[n]
-        others = [d for d in da.dims if d != tdim]
-        cols.append(np.asarray(da.transpose(tdim, *others).values, dtype=float).reshape(-1))
+        da = ds[n]
+        lead = [d for d in rows_dims if d in da.dims] or [tdim]
+        extra = [str(d) for d in da.dims if d not in lead]
+        if not extra:
+            names.append(n)
+            cols.append(np.asarray(da.transpose(*lead).values, dtype=float).reshape(-1))
+            continue
+        # spend(channel, ...) -> one column per channel: spend[tv], spend[search]
+        stacked = da.transpose(*lead, *extra).stack(_col=extra)
+        for j in range(stacked.sizes["_col"]):
+            label = stacked["_col"].values[j]
+            parts = label if isinstance(label, tuple) else (label,)
+            names.append(f"{n}[{','.join(str(label_of(x)) for x in parts)}]")
+            cols.append(np.asarray(stacked.isel(_col=j).values, dtype=float).reshape(-1))
+    if len(names) < 2:
+        raise data_error(
+            "test.vif needs at least two drivers (variables, or a variable with a channel dim)"
+        )
     mat = np.column_stack(cols)
     mat = mat[np.all(np.isfinite(mat), axis=1)]
     if mat.shape[0] <= len(names) + 1:

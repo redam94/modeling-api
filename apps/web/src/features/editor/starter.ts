@@ -1,4 +1,6 @@
-/** Starter document for a new spec (an E33-style hierarchical geo MMM, plan §6.1). */
+/** Starter document for a new spec: a geo marketing-mix model on mmm-framework (plan §6.1).
+ * The model owns scaling and carry-over, so the pipeline only aggregates to weeks, fills
+ * missing spend and adds calendar controls. */
 export const STARTER_SPEC = `apiVersion: mapi/v1
 kind: ModelSpec
 metadata:
@@ -12,16 +14,16 @@ data:
   split: {kind: time_holdout, dim: time, last: 8, after_step: weekly}
 pipeline:
   - {id: weekly, use: core.resample@^1, with: {dim: time, freq: W-SUN, how: sum, full_periods_only: true}}
-  - {id: scale_spend, use: core.mean_scale@^1, with: {vars: [spend], over: [time], unseen_levels: pooled}}
-  - {id: scale_y, use: core.mean_scale@^1, with: {vars: [y], over: [time], unseen_levels: pooled}}
-  - {id: lags, use: core.lag_tensor@^1, with: {vars: [spend], along: time, within: [geo], l_max: 6, pad: first}}
-  - {id: season, use: core.fourier@^1, with: {along: time, period: 52.18, order: 3, out: fourier}}
+  - {id: fill, use: core.impute@^1, with: {vars: [spend], method: median, over: [time]}}
+  - {id: cal, use: core.calendar@^1, with: {along: time, features: [month], out: calendar}}
 model:
-  use: mmm.hierarchical_geo@^1
+  use: mmm.bayesian@^1
   settings:
-    pooling: partial
+    hierarchy: {pool_over: [geo]}
     adstock: {kind: geometric, l_max: 6}
     saturation: {kind: logistic}
+    trend: {kind: linear}
+    seasonality: {yearly_order: 3}
   fit:
     mode: evaluate_then_refit
     tune: 400
@@ -29,7 +31,8 @@ model:
     chains: 4
     seed: 20261014
 outputs:
-  plots: [core.ppc_fan, core.convergence, mmm.decomposition]
+  derived: [contributions, response_curves, marginal_cost]
+  plots: [core.ppc_fan, core.convergence, mmm.decomposition, mmm.response_curves]
 execution: {resource_class: M, timeout: 45m}
 `;
 

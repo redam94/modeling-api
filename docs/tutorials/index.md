@@ -65,7 +65,7 @@ Apps Scripts run against stand-ins for Google's services.
   embedded charts are loaded from Google's and your viewers' machines.
 - **A fitted model.** The Guided tutorial makes one; `make seed` loads a demo marketing-mix
   spec you can fit from the web app.
-- **An endpoint**, for Sheets and Atlas: put a model live from the Guided *Share* step or the
+- **An endpoint**, for Sheets and other tools: put a model live from the Guided *Share* step or the
   [Integrations hub](../guides/integrations-hub.md#promoting-through-the-gate).
 
 More task-oriented guides are under [Guides](../guides/web-ui.md); the ideas behind them are in

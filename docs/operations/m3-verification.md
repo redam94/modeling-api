@@ -8,7 +8,7 @@ Milestone M3 (Guided mode and integrations) has three exit criteria:
 
 1. five non-technical testers complete **upload → report → scenario** unaided in under 30
    minutes;
-2. **Atlas optimises against an endpoint**;
+2. **an external budget optimiser works against an endpoint**;
 3. **cut line A**: public launch of declarative specs and built-ins (untrusted data, trusted
    code).
 
@@ -36,7 +36,7 @@ laptop (8 cores, 16 GB, macOS), against a live `make dev` stack:
 | Exit criterion | Verified locally | Result | Still needs |
 |---|---|---|---|
 | 5 non-technical testers: upload → report → scenario unaided in < 30 min | The browser script `apps/web/e2e/m3-guided.e2e.spec.ts` clicks the whole Guided flow on a realistic spreadsheet, timing each step; every screen was reviewed for plain language, next steps and dead ends | **135 s** of automated wall time, nearly all of it the system working (the beliefs preview, the fit, the exact runs). Six usability defects found and fixed, among them two dead ends | Five real testers ([protocol](#protocol-for-the-five-non-technical-testers)) |
-| Atlas optimises against an endpoint | `mapi_client.atlas.RemoteModel` against the live endpoint, with Atlas installed (`atlas.core.interfaces`), an optimiser written against Atlas's `OptimizerProtocol` | The chosen allocation beats the current one under the model: **+0.22 %** revenue for next quarter at the same budget, from 25 candidate allocations (22 score requests) in 220 s | The in-sandbox `optimize` job (M4) |
+| An external optimiser works against an endpoint | The v0.4 client's optimiser adapter (removed in v0.5) against the live endpoint, an optimiser written against the external framework's protocol | The chosen allocation beats the current one under the model: **+0.22 %** revenue for next quarter at the same budget, from 25 candidate allocations (22 score requests) in 220 s | The in-sandbox `optimize` job (M4) |
 | Cut line A | A self-service sign-up creates a `public` workspace: e-mail verified, uploaded code refused (`uploaded_code_allowed: false`); built-ins and declarative specs run (here on an operator-promoted `internal` workspace, because the local executor admits only trusted tiers) | Pass | Public workspaces running on `docker-gvisor` or Cloud Run Jobs, the only executors shared tiers may use |
 
 Everything M3 added was also exercised end to end through the API by
@@ -56,7 +56,7 @@ times are wall-clock seconds of the last run.
 |---|---|---|
 | Sign-up | `POST /auth/signup` → the verification e-mail read from `GET /dev/outbox` → `POST /auth/verify-email` creates a `public` workspace whose signer is admin; the operator promotes it to `internal` (the local executor runs trusted tiers only) | 0.03 |
 | Guided data | All four templates listed; the analyst's CSV (5 regions × 3 channels × 104 weeks, columns `Week, Region, Revenue, TV Spend, Search Spend, Social Spend, Avg Price`) profiled locally like the browser does; role detection fills every question correctly, each with a plain reason; the draft validates; the upload ingests with the draft's mapping; detection on the stored version (`columns.json`) gives the same answers | 13.3 |
-| MFF | The same data as a BayesInsight MFF long table (`Period, Geography, VariableName, VariableValue`) ingests to the same variables and roles | 8.3 |
+| MFF | The same data as an MFF long table (`Period, Geography, VariableName, VariableValue`) ingests to the same variables and roles | 8.3 |
 | Business priors | ROI and share ranges and a baseline share (true to the simulation) plus a lift test, translated by a sandboxed `translate_priors` run: the translated priors hold 81 %, 76 % and 80 % of their mass inside the stated 80 % ranges; written into the spec with the run's id | 13.3 |
 | Tiny fit | 150 tuning steps and draws × 2 chains: every check of the template's scorecard is measured, in plain words with a docs anchor and an action; its gate (**blocked**: chains disagree) is exactly what `mapi_spec.scorecard.promotion_gate` derives, and the server refuses the promotion with that gate's checks | 30.9 |
 | Endpoint fit | 1000 × 4 chains, `target_accept` 0.95: convergence passes or warns, holdout error under 1 %, coverage passes, every plausibility check passes | 61.0 |
@@ -66,15 +66,15 @@ times are wall-clock seconds of the last run.
 | Score token | A `score:<alias>` token scores the endpoint's example (8-week forecast) as an `xarray` tree, and gets `403` on datasets, specs, webhooks and models | 10.0 |
 | Webhooks | An HTTPS receiver on `127.0.0.1` (the dev profile's certificate) receives `run.succeeded`, `model.version.ready`, `endpoint.promoted` and `score.completed`, each verified with `mapi_client.webhooks.verify`; no body carries a data value, link or secret; the delivery log shows them; a replay arrives as the same event with a new delivery id; another secret fails verification | 0.3 |
 | Embed | A saved platform-recipe plot as an embed link: the public view needs no credentials, every write method answers `405`, the sandbox page carries its CSP; after revocation `410 LINK_EXPIRED` | < 1 |
-| Atlas | See [Atlas](#atlas-against-the-live-endpoint) | 219.6 |
+| Budget optimisation | See [An external optimiser](#an-external-optimiser-against-the-live-endpoint) | 219.6 |
 | GDPR export | A 49-file zip downloads; it holds the workspace's records and objects, and none of the webhook secret, the score token or the ID token | 16.4 |
 | Deletion | 645 tenant rows and 285 objects before. After the purge: no row in any table with a `tenant_id` except the retained `audit_events` (53), `cost_ledger` (33) and the deletion record; **no object** under `t/<tenant>/` in any of the five buckets; a signed `tenant.deletion.completed` reaches the receiver; the admin and the score token are refused | 13.4 |
 
-### Atlas against the live endpoint
+### An external optimiser against the live endpoint
 
-Atlas (`../optimizer-framework`) ships the model and optimiser *interfaces*. The test
-registers `RemoteModel` as an `atlas.core.interfaces.AbstractModel` and runs an optimiser
-written against `OptimizerProtocol` that returns Atlas's own `OptimizationResult`: it moves
+An external optimisation framework (a sibling project) ships the model and optimiser
+*interfaces*. The test registered the v0.4 client's endpoint-backed model adapter as one of
+its models and ran an optimiser written against its protocol: it moves
 a step of budget between two channels while that raises the endpoint's predicted revenue,
 halving the step when no move does. Every candidate is one score request against the live
 endpoint (inline XrJSON, `score:<alias>` token).
@@ -258,7 +258,7 @@ Copy one per tester.
 - **Real Google Cloud.** Cloud Storage (the GCS shim stood in), Cloud Run Jobs (the
   `local-process` executor ran every run), Pub/Sub, Cloud SQL, Identity Platform, Cloud
   Armor (the policy is Terraform, validated and never applied) and Cloud Logging retention.
-  The cold start of the base images adds to every fit, exact run and Atlas evaluation.
+  The cold start of the base images adds to every fit, exact run and optimiser evaluation.
 - **Docker.** No daemon here: the images, the `docker` and `docker-gvisor` executors and
   the compose stack were not run, so public (shared-tier) workspaces never ran a fit; cut
   line A's admission rule was checked, its sandbox was not.
@@ -275,4 +275,5 @@ Copy one per tester.
   purge stops at the model bundles and resumes when the lock expires; locally this was
   checked only up to the stop (the journey's deletion test does so on a stack without
   `MAPI_BUNDLE_RETENTION_DAYS=0`), not the resumption after 30 days.
-- **The Atlas in-sandbox `optimize` job** is M4; here Atlas ran on the client.
+- **The in-sandbox `optimize` job** came later (v0.5, on mmm-framework); here the optimiser
+  ran on the client.

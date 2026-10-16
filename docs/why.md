@@ -48,7 +48,7 @@ Marketing-mix modelling is the first domain pack, so this comparison comes up mo
 is **not** a new MMM methodology and does not compete with the statistics of the established
 libraries; it is a platform that runs MMMs and puts them in front of planners.
 
-**Open-source MMM libraries** (such as PyMC-Marketing, Google's Meridian, Meta's Robyn) are
+**Open-source MMM libraries** (such as Google's Meridian and Meta's Robyn) are
 excellent at the model. They are libraries: you run them in a notebook, and serving,
 scenario tools for analysts, versioning and access control are up to you.
 

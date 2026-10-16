@@ -46,8 +46,10 @@ their goal and their data into a ranked list with the reasons.
 Cards are attached to model manifests and catalog entries (`ModelManifest.about`,
 `StepCatalogEntry.about`), guided templates (`GuidedTemplate.about`), workflow templates,
 node kinds and node implementations, and governance checks. Your own specs, pipelines and
-workflows can carry one too, in `metadata.about`, so colleagues know when to reuse them. `GET /v1/catalog/abouts` lists
-them all (filter with `kind`). Datasets have a `DatasetAbout`: the owner's own description
+workflows can carry one too, in `metadata.about`, so colleagues know when to reuse them.
+`GET /v1/catalog/abouts` lists the cards of everything a user can pick (filter with
+`kind`): the installed models and preprocessing steps, the splits, guided templates,
+workflow templates, workflow node kinds and nodes, and the governance checks. Datasets have a `DatasetAbout`: the owner's own description
 plus a summary generated from the schema and coordinate summary, for example *"Weekly data
 from 2023-01-01 to 2024-12-29 (104 weeks) for 10 geos and 3 channels, with 3 measures:
 revenue (the result you want to explain), spend (marketing spend), price."*
@@ -84,3 +86,7 @@ by commas. The ranking (`mapi_spec.about.recommend`) is deterministic: a matchin
 the question's weight (the goal counts most), a mismatch subtracts it, items that do not mind
 a question are neutral, and items harder than your experience or slower than your patience
 lose points. When some items match your goal, the others are left out.
+Without `kind` the candidates are the places a user starts from: models, guided templates
+and workflow templates; `kind=step`, `kind=node` or `kind=check` ranks one kind of
+building block. A question or answer the chooser does not know is `422
+CHOOSER_ANSWER_INVALID`.

@@ -1224,15 +1224,158 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
         refs=[_TS_REF],
         fits={"goal": ["forecast"], "data_shape": ["one_series"], "drivers": ["no"]},
     ),
+    # ------------------------------------------------------ scikit-learn tabular (mapi-sklearn)
+    "sklearn.tabular_regressor": _a(
+        "Predict a number from a table",
+        "Predicts a number for each row of a table, such as a store and week, from the other "
+        "columns, using a well-known machine-learning method you pick.",
+        [
+            "You have many rows with drivers (price, promotion, weather) and want one best "
+            "guess per row",
+            "You want to see how much each driver adds to a prediction",
+        ],
+        [
+            "You need a range of likely values (use the quantile, bootstrap or conformal versions)",
+            "You have a single short series over time",
+        ],
+        ["A table of the number to predict and the columns that explain it"],
+        [
+            "Rows you predict look like the rows the model learnt from",
+            "Future values of the drivers are known when you forecast",
+        ],
+        ["One prediction per row", "Each driver's contribution (linear and tree models)"],
+        _B,
+        _SEC,
+        "Predict next week's units per store and product from planned prices with gradient "
+        "boosting.",
+        related=["sklearn.tabular_quantiles", "sklearn.tabular_conformal", "core.one_hot"],
+        expert="An allow-listed scikit-learn or xgboost regressor on rows stacked from the "
+        "labelled dims (coordinates become features); point representation; exact linear or "
+        "counterfactual-zeroing contributions; models stored as skops or xgboost JSON.",
+        fits={
+            "goal": ["predict_values", "explain_drivers"],
+            "data_shape": ["table", "panel"],
+            "drivers": ["yes"],
+            "uncertainty": ["no"],
+        },
+    ),
+    "sklearn.tabular_quantiles": _a(
+        "Predict a number with a low and high estimate",
+        "Predicts a low, middle and high value for each row of a table, so you see how sure "
+        "the prediction is.",
+        [
+            "You need a best and worst case per store, product or customer",
+            "Stock or staffing decisions depend on the high or low end",
+        ],
+        [
+            "You need to add predictions up into totals with a range (ranges per row cannot be "
+            "added)"
+        ],
+        ["A table of the number to predict and the columns that explain it"],
+        ["Rows you predict look like the rows the model learnt from"],
+        ["A low, middle and high prediction per row"],
+        _I,
+        _SEC,
+        "Plan stock at the 90% level: the high estimate of next week's demand per store.",
+        related=["sklearn.tabular_regressor", "sklearn.tabular_bootstrap"],
+        expert="xgboost multi-quantile regression or one scikit-learn quantile model per level; "
+        "quantile representation (per-cell quantiles cannot be aggregated across cells).",
+        fits={
+            "goal": ["predict_values", "forecast"],
+            "data_shape": ["table", "panel"],
+            "drivers": ["yes"],
+            "uncertainty": ["essential", "nice"],
+        },
+    ),
+    "sklearn.tabular_bootstrap": _a(
+        "Predict a number with ranges you can add up",
+        "Fits the same method many times on resampled data, which gives ranges that stay "
+        "correct when you add predictions up into totals.",
+        [
+            "You need a range for totals (all stores, a whole region)",
+            "The data has groups (stores) that should be resampled together",
+        ],
+        ["You need results in seconds on a very large table (it fits many models)"],
+        ["A table of the number to predict and the columns that explain it"],
+        [
+            "Rows you predict look like the rows the model learnt from",
+            "Resampling whole groups captures how uncertain the model is",
+        ],
+        ["Many joint simulated predictions per row", "Ranges for any total"],
+        _I,
+        _MIN,
+        "A range for next month's total sales across 300 stores.",
+        related=["sklearn.tabular_quantiles", "sklearn.tabular_regressor"],
+        expert="A bootstrap ensemble (optionally resampling whole groups with 'by'); each "
+        "replicate is a joint draw, so aggregation is valid (draws representation).",
+        fits={
+            "goal": ["predict_values", "forecast"],
+            "data_shape": ["table", "panel"],
+            "drivers": ["yes"],
+            "uncertainty": ["essential"],
+        },
+    ),
+    "sklearn.tabular_conformal": _a(
+        "Predict a number with a guaranteed range",
+        "Predicts a number for each row with a range that contains the true value about as "
+        "often as you ask for, such as nine times out of ten.",
+        [
+            "You need ranges whose coverage you can rely on, row by row",
+            "You do not want to make assumptions about the shape of the errors",
+        ],
+        [
+            "You need ranges for totals (use the bootstrap version)",
+            "You have very little data (part of it is kept aside to size the ranges)",
+        ],
+        ["A table of the number to predict and the columns that explain it"],
+        ["New rows behave like the rows kept aside for sizing the ranges"],
+        ["One prediction and a range per row"],
+        _I,
+        _SEC,
+        "Ranges that hold next week's demand for 90% of store-product pairs.",
+        related=["sklearn.tabular_quantiles", "sklearn.tabular_regressor"],
+        expert="Split-conformal prediction intervals at level 1 - alpha with a calibration "
+        "fraction; marginal per-cell coverage; interval representation (not aggregatable).",
+        fits={
+            "goal": ["predict_values"],
+            "data_shape": ["table", "panel"],
+            "drivers": ["yes"],
+            "uncertainty": ["essential", "nice"],
+        },
+    ),
+    "sklearn.tabular_classifier": _a(
+        "Predict yes or no",
+        "Estimates the chance that something happens for each row of a table, such as a "
+        "customer buying again or an order arriving late.",
+        ["The result is yes or no for each row", "You want a probability to rank or target rows"],
+        ["The result is a number or has more than two outcomes"],
+        ["A table with a yes/no column and the columns that explain it"],
+        ["Rows you score look like the rows the model learnt from"],
+        ["The probability of 'yes' for each row"],
+        _B,
+        _SEC,
+        "The chance each customer orders again next month, to decide who gets a voucher.",
+        related=["sklearn.tabular_regressor", "choice.multinomial_logit"],
+        expert="An allow-listed scikit-learn or xgboost binary classifier on stacked rows; "
+        "point representation of the positive-class probability.",
+        fits={
+            "goal": ["predict_values", "understand_choices"],
+            "data_shape": ["table", "panel", "choices"],
+            "drivers": ["yes"],
+        },
+    ),
 }
 """Cards of every model the v0.5 catalog offers (built-in plugins, mmm-framework,
 statsmodels)."""
 
 SURVIVING_MODEL_IDS: Final[frozenset[str]] = frozenset(
     {"tabular.regressor", "tabular.hierarchical_glm", "choice.multinomial_logit",
-     "ts.gaussian_hmm", "ts.hsgp_trend"}
+     "ts.gaussian_hmm", "ts.hsgp_trend", "sklearn.tabular_regressor",
+     "sklearn.tabular_quantiles", "sklearn.tabular_bootstrap", "sklearn.tabular_conformal",
+     "sklearn.tabular_classifier"}
 )  # fmt: skip
-"""Built-in models shipped before v0.5 that remain (``mapi-plugin-tabular``, ``-ts``)."""
+"""Built-in models shipped before v0.5 that remain (``mapi-plugin-tabular``, ``-ts`` and
+the scikit-learn models of ``mapi-sklearn``)."""
 
 PLANNED_MODEL_IDS: Final[frozenset[str]] = frozenset(MODEL_ABOUTS) - SURVIVING_MODEL_IDS
 """Model ids the v0.5 mmm-framework and statsmodels plugins implement (their cards are

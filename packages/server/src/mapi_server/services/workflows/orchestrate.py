@@ -65,7 +65,12 @@ from mapi_spec.workflow import (
     WorkflowTriggerEvent,
 )
 from mapi_spec.workflow_nodes import SUBWORKFLOW_NODE, PortSpec, PortType
-from mapi_workflows.binding import auto_bind, model_input_schema
+from mapi_workflows.binding import (
+    auto_bind,
+    canonical_split,
+    canonical_steps,
+    model_input_schema,
+)
 from mapi_workflows.engine import UNKNOWN, Action, CacheHit, WorkflowEngine
 from mapi_workflows.orchestrator import BoundValue, evidence_pack
 from mapi_workflows.payloads import MetricsCandidate, MetricsPayload, clean_number
@@ -679,6 +684,11 @@ class WorkflowOrchestrator:
                         doc["data"]["bind"] = auto_bind(
                             schema, DataSchema.model_validate(dv.data_schema), doc["data"]["bind"]
                         )
+                        doc["pipeline"] = canonical_steps(doc["pipeline"], doc["data"]["bind"])
+                        if "split" in doc["data"]:
+                            doc["data"]["split"] = canonical_split(
+                                doc["data"]["split"], doc["data"]["bind"]
+                            )
         v = await validate_document(s, env.scope, self.ctx.catalogs, document=doc)
         if not v.valid or v.resolved is None or v.dataset is None:
             raise ValidationFailed(v.issues)
@@ -1009,7 +1019,41 @@ class WorkflowOrchestrator:
                     },
                 }
                 return
+        if row.use.split("@", 1)[0] == "governance.policy":
+            await self._submit_validation(env, row, result, outputs)
         env.engine.succeeded(nid, result, outputs)
+
+    async def _submit_validation(
+        self,
+        env: _Env,
+        row: m.WorkflowNodeRunRow,
+        result: dict[str, JsonValue],
+        outputs: Mapping[str, NodeOutputRef],
+    ) -> None:
+        """``submit: true`` on a passing ``governance.policy`` node records its evidence as a
+        validation of the checked model version (the governance hooks' submitter)."""
+        params = env.engine.node_run(row.node_id).params
+        if not params.get("submit") or result.get("passed") is not True:
+            return
+        hooks = governance_hooks()
+        evidence = outputs.get("evidence")
+        refs = self._action_for(env, row).inputs.get("model") or []
+        warns = result.setdefault("warnings_plain", [])
+        assert isinstance(warns, list)
+        if hooks.submitter is None or evidence is None or not isinstance(evidence.inline, dict):
+            warns.append("submit was requested but no validation service is available")
+            return
+        if not refs or refs[0].ref is None:
+            return
+        mv = await self._model(env, refs[0].ref)
+        vid = await hooks.submitter(env.session, self.ctx, mv, dict(evidence.inline), env.wr.run_id)
+        if vid is None:
+            warns.append(
+                "the model version already has an open or validated validation; the evidence "
+                "was not submitted again"
+            )
+        else:
+            result["validation_id"] = vid
 
     def _action_for(self, env: _Env, row: m.WorkflowNodeRunRow) -> Action:
         node = env.spec.node(row.node_id)

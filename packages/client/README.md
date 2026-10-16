@@ -57,7 +57,7 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / MAPI_PROJECT / ~/.config/mapi/c
 - `Client().endpoint("geo-mmm-prod").score(ds)` sends an `xr.Dataset` inline (XrJSON) and
   returns the scored `xr.Dataset` (`xarray` extra).
 - `mapi_client.webhooks.verify(headers, body, secret)` checks a delivery's `Mapi-Signature`.
-- v0.5 removed the Atlas adapter (`mapi_client.atlas`, the `atlas` extra): budgets are
-  optimised by the platform with mmm-framework (`POST /v1/models/{id}/versions/{v}:optimize`).
+- Budgets are optimised by the platform with mmm-framework
+  (`POST /v1/models/{id}/versions/{v}:optimize`).
 
 License: Apache License 2.0.

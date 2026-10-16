@@ -293,8 +293,8 @@ def test_ingest_mapping_presets_and_compat() -> None:
     assert set(v02.model_dump(mode="json")) == {"format", "layout", "dims", "vars"}
     mff = IngestMapping(format="mff")
     assert mff.preset is IngestPreset.MFF and mff.effective_mff == MffOptions()
-    with pytest.raises(ValidationError):  # the bayesinsight preset was removed in v0.5
-        IngestMapping.model_validate({"format": "csv", "preset": "bayesinsight"})
+    with pytest.raises(ValidationError):  # only the documented presets
+        IngestMapping.model_validate({"format": "csv", "preset": "spreadsheet_magic"})
     assert IngestMapping(format="zarr_zip").effective_mff is None
 
 
@@ -309,7 +309,7 @@ def test_ingest_mapping_presets_and_compat() -> None:
                                                          "media": ["tv"]}}, "only used"),
         ({"format": "csv", "preset": "meridian", "mff": {},
           "meridian": {"media_channels": ["tv"], "media": ["tv"]}}, "'mff' options"),
-        ({"format": "csv", "preset": "mff", "bayesinsight": {}}, "Extra inputs"),
+        ({"format": "csv", "preset": "mff", "model_def": {}}, "Extra inputs"),
         ({"format": "csv", "dims": {"d": {"column": "d", "spec": {"kind": "time"}}},
           "vars": {"spend": {"column": "s"}},
           "wide": {"spend": {"dim": "channel", "columns": {"tv": "tv"}}}}, "twice"),

@@ -20,8 +20,8 @@ mapi use                                        # show the selection and where i
 # --8<-- [end:use]
 
 # --8<-- [start:tokens]
-mapi tokens create atlas-optimiser -s score:geo-mmm-prod -s models:read \
-    --expires-in-days 30 --rate-limit 120 > atlas.token   # the secret, once, on stdout
+mapi tokens create budget-planner -s score:geo-mmm-prod -s models:read \
+    --expires-in-days 30 --rate-limit 120 > planner.token   # the secret, once, on stdout
 mapi tokens ls
 mapi tokens revoke tok_01jaf3r1s2t3v4w5x6y7z8a9b0      # asks first; --yes for scripts
 # --8<-- [end:tokens]
