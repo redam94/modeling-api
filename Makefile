@@ -180,6 +180,7 @@ api-types: ## Regenerate apps/web/openapi.json, access.gen.json and src/api/sche
 .PHONY: snapshots
 snapshots: ## Regenerate the contract snapshot (mapi_spec) and the Guided catalog fixture of the server tests
 	MAPI_UPDATE_SNAPSHOTS=1 $(UV) run pytest -q packages/spec/tests/test_contract_snapshot.py \
+		packages/spec/tests/test_m3_whatif_golden.py \
 		conformance/tests/test_guided_catalog.py
 
 .PHONY: web-check
