@@ -32,10 +32,12 @@ from mapi_spec.catalog import Catalog
 from mapi_spec.coords import CoordSummary, DataSummary
 from mapi_spec.errors import ErrorCode, MapiError, Problem
 from mapi_spec.executor import RunEventType, RunKind
+from mapi_spec.guided import ColumnProfile
 from mapi_spec.jobs import (
     DESCRIBE_OUTPUT,
     FIT_BUNDLE,
     FIT_SIDECARS,
+    INGEST_COLUMNS,
     INGEST_DATA,
     INGEST_SCHEMA,
     SIDE_TABLE_PREFIX,
@@ -716,6 +718,11 @@ class Finalizer:
                 if "summary.json" in v.objects
                 else None
             )
+            columns = (
+                await self._columns(run_bucket(v), v.objects[INGEST_COLUMNS], cap)
+                if INGEST_COLUMNS in v.objects
+                else None
+            )
         except ValidationError as exc:
             raise IntegrityError(
                 "an ingest sidecar does not match its schema", untrusted_text=str(exc)[:8000]
@@ -760,12 +767,22 @@ class Finalizer:
             dv.summary = summary.model_dump(mode="json") if summary else None
             dv.profile = ref("profile.json")
             dv.preview = ref("preview.json")
+            dv.columns = columns
             dv.objects = stored
             dv.ready_at = now()
             ds.latest_version = max(ds.latest_version or 0, dv.version)
             ds.updated_at = now()
 
         return await self._commit(v, apply)
+
+    async def _columns(self, bucket: str, meta: ObjectMeta, cap: int) -> list[dict[str, Any]]:
+        """``columns.json`` (Guided role detection): a list of ``ColumnProfile``."""
+        raw = await self._read_json(bucket, meta, cap)
+        if not isinstance(raw, list) or len(raw) > MAX_COLUMN_PROFILES:
+            raise IntegrityError(
+                f"{INGEST_COLUMNS} must be a list of at most {MAX_COLUMN_PROFILES} profiles"
+            )
+        return [ColumnProfile.model_validate(c).model_dump(mode="json") for c in raw]
 
     # ......................................................................... describe
     async def _describe(self, v: _Verified) -> RunState | None:
@@ -797,6 +814,10 @@ class Finalizer:
             )
 
         return await self._commit(v, apply)
+
+
+MAX_COLUMN_PROFILES = 100_000
+"""Profiles one ``columns.json`` may hold (the ingest caps columns far below this)."""
 
 
 def _md5(copied: ObjectMeta, source: ObjectMeta) -> str:

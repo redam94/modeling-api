@@ -90,6 +90,15 @@ def _targets(schema: DataSchema | None, ds: xr.Dataset) -> list[str]:
     return names
 
 
+def _observed(da: xr.DataArray) -> xr.DataArray:
+    """Cells with a target value: not missing, and for text targets (a chosen product) not
+    the empty string a dense cube puts where a group has no observation."""
+    present = da.notnull()
+    if da.dtype.kind in "UO":
+        present = present & (da.astype(str) != "")
+    return present
+
+
 def _masked(ds: xr.Dataset, mask: xr.DataArray, targets: list[str], kind: str) -> SplitResult:
     if not bool(mask.any()):
         raise _err("the split leaves no holdout data")
@@ -98,7 +107,8 @@ def _masked(ds: xr.Dataset, mask: xr.DataArray, targets: list[str], kind: str) -
         m = mask.broadcast_like(ds[t]).transpose(*ds[t].dims)
         if bool(m.all()):
             raise _err("the split leaves no training data")
-        train[t] = ds[t].where(~m)
+        # text targets (a chosen product) keep their dtype: "" marks a held-out cell
+        train[t] = ds[t].where(~m, "") if ds[t].dtype.kind == "U" else ds[t].where(~m)
     return SplitResult(train, ds, mask, kind)
 
 
@@ -166,9 +176,9 @@ def _last_per_group(
     _require_dim(ds, dim)
     if all(w in ds.dims for w in split.within):
         targets = _targets(schema, ds)
-        valid = ds[targets[0]].notnull()
+        valid = _observed(ds[targets[0]])
         for t in targets[1:]:
-            valid = valid | ds[t].notnull()
+            valid = valid | _observed(ds[t])
         other = [d for d in valid.dims if d != dim and d not in split.within]
         if other:
             valid = valid.any(other)

@@ -2248,7 +2248,7 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     ),
     EndpointDecl(
         "POST", "/v1/guided/import/bayesinsight", "import_bayesinsight",
-        "BayesInsight model_def.json + metadata.json -> draft for mmm.bayesinsight",
+        "BayesInsight model_def.json + metadata.json -> draft for the geo MMM",
         "GuidedDraft", 200, request="BayesInsightImport",
         errors=(*_BODY, _E.IMPORT_UNSUPPORTED), headers=_PH,
     ),

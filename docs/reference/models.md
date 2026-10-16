@@ -13,6 +13,7 @@ and has a conformance fixture (see [Conformance corpus](../guides/conformance.md
 | `ts.gaussian_hmm@1` | `mapi-plugin-ts` | draws | predict, forecast, filter, evaluate | `e24` |
 | `tabular.hierarchical_glm@1` | `mapi-plugin-tabular` | draws | predict, counterfactual, evaluate | `e02` |
 | `tabular.regressor@1` | `mapi-plugin-tabular` | quantiles | predict, forecast, counterfactual, evaluate | `xgb_store_demand` |
+| `choice.multinomial_logit@1` | `mapi-plugin-tabular` | draws (Bayesian bootstrap) | predict, forecast, counterfactual, evaluate | `e84_lite` |
 
 Plugins use **canonical names** for their inputs; bind your dataset's names onto them in the
 spec's `data.bind` block. Outputs come back under your names (reverse binding) unless they
@@ -175,3 +176,45 @@ regression), so other estimators are rejected at validation.
 
 All other settings are those of `mapi_sklearn` (see
 [Tabular models](../guides/sklearn.md)).
+
+## `choice.multinomial_logit` — which product customers pick
+
+The built-in model of the Guided **customer choice** template (E84-style household panels): on
+every shopping trip a household picks one product, and price and promotions shift the choice.
+
+**Inputs.** A dense `hh × trip` panel - `hh` (categorical, `new_levels` with strategy
+`hyperprior`), `trip` (`index`, `extend`) - with the alternatives along `product`
+(categorical, `fixed`). The target `y(hh, trip)` is text: the product chosen, empty where a
+household made no trip (ragged panels are fine). Covariates are alternative-specific
+variables along `product`, such as `price(hh, trip, product)` and `promo(hh, trip, product)`;
+by default every numeric variable with the `product` dim is one. A product whose covariates
+are missing on a trip was not available on that trip (off the shelf).
+
+**Model.** A conditional logit with household-specific product intercepts:
+`U[h, t, j] = asc[j] + Σ_k beta[k]·x_k[h, t, j] + u[h, j]`, the choice probabilities a softmax
+over the available products, `u[h, j] ~ Normal(0, effect_sd)` (a random-intercept logit). It
+is fitted by penalised maximum likelihood, the posterior mode of that model. **Uncertainty**
+comes from the Bayesian bootstrap: each of `fit.draws` draws refits with Dirichlet weights on
+households, so every household keeps its own effect in every draw and the draws are joint
+(`draws` representation: shares, counterfactual deltas and sums over trips are valid).
+There is no pointwise log-likelihood, so LOO is not offered.
+
+**Scoring.** `y_hat(hh, trip, product)` is the choice probability (`expected`) or one sampled
+choice per draw (`predictive`, one-hot). A household never seen at fit draws its preferences
+from `Normal(0, sd)` per draw, `sd` being the spread of the fitted effects in that draw. Trips
+never made have probability 0 for every product, so sums over trips count expected
+purchases. Price scenarios are interventions, e.g.
+`{var: price, sel: {product: cola}, multiply: 1.1}` in a `counterfactual` request. Choice
+values match product labels after lower-casing and replacing punctuation with `_`.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `covariates` | every numeric variable along `product` | Alternative-specific covariates |
+| `random_effects` | `[hh]` | Household product intercepts (`[]`: none) |
+| `effect_sd` | 1.0 | Prior sd of the household effects (smaller pools more) |
+| `coef_sd` | 10.0 | Prior sd of the product intercepts and coefficients |
+| `reference` | the first product | The product whose intercept is fixed at 0 |
+| `max_iter` | 500 | Iterations of each L-BFGS fit |
+
+`fit.draws` (default 100, at most 2000) sets the bootstrap draws and `fit.seed` makes them
+reproducible. The in-sample hit rate is reported as the `CHOICE_HIT_RATE` diagnostic.

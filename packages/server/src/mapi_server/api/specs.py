@@ -38,6 +38,7 @@ from mapi_server.api.common import (
 from mapi_server.api.runs import render_run
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
+from mapi_server.services.guided import enforce_guided_lock
 from mapi_server.services.runs import now
 from mapi_server.services.specs import Validation, validate_document
 from mapi_server.services.submit import submit_spec_run
@@ -162,9 +163,13 @@ def _revision_row(
     "", response_model=SpecDoc, status_code=status.HTTP_201_CREATED, operation_id="create_spec"
 )
 async def create_spec(ctx: Ctx, session: Session, body: SpecCreate) -> SpecDoc:
-    """Store revision 1 (invalid documents are stored too, with ``valid: false``)."""
+    """Store revision 1 (invalid documents are stored too, with ``valid: false``).
+
+    In a Guided-locked project, members below admin may store Guided specs only (``403``
+    with the offending pointers otherwise; see ``Project.guided_locked``)."""
     v = await validate_document(session, ctx.scope, ctx.catalogs, text=body.yaml)
     name, kind = _name_and_kind(v)
+    await enforce_guided_lock(session, ctx.scope, ctx.request, v.document)
     ts = now()
     spec = m.Spec(
         id=new_id("spc"),
@@ -248,6 +253,8 @@ async def create_spec_revision(
         )
     v = await validate_document(session, ctx.scope, ctx.catalogs, text=body.yaml)
     name, kind = _name_and_kind(v)
+    parent = await _rev(session, spec, spec.latest_revision)
+    await enforce_guided_lock(session, ctx.scope, ctx.request, v.document, parent.document)
     if name != spec.name:
         raise Conflict("metadata.name differs from the spec's name; renaming is not supported")
     if kind != spec.kind:

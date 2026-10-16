@@ -24,6 +24,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     func,
     text,
 )
@@ -169,6 +170,8 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    # M3 persona lock (0007_guided): non-admins see and write Guided specs only
+    guided_locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     __table_args__ = (CheckConstraint("project_id = id", name="project_id_is_id"),)
 
@@ -366,6 +369,8 @@ class DatasetVersion(_Scoped, Base):
     message: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
     ready_at: Mapped[datetime | None] = mapped_column()
+    # columns.json of the ingest run (0007_guided): ColumnProfile per uploaded column
+    columns: Mapped[list[Any] | None] = mapped_column(JSONB)
 
     __table_args__ = (
         CheckConstraint("status in ('ingesting','ready','failed')", name="status"),

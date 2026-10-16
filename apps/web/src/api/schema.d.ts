@@ -533,7 +533,7 @@ export interface paths {
         /**
          * Get Dataset Artifact
          * @description Signed, generation-pinned URL for ``data.zarr.zip``/``schema.json``/``profile.json``/
-         *     ``preview.json`` (15 min, HTTP Range works).
+         *     ``preview.json``/``summary.json``/``columns.json`` (15 min, HTTP Range works).
          */
         get: operations["get_dataset_artifact"];
         put?: never;
@@ -556,6 +556,117 @@ export interface paths {
          * @description ``…/preview``, ``…/schema``, ``…/profile``, ``…/summary``: 307 to the signed URL.
          */
         get: operations["redirect_dataset_view"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/detect-roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suggest a column for every question from column profiles
+         * @description Rank the columns for each question of a template and pre-fill the answers.
+         *
+         *     Send ``columns`` (profiled in the browser) or name a stored ``dataset`` version; the
+         *     profiles of a stored version come from its ingest run (``columns.json``: the uploaded
+         *     columns, for MFF uploads the pivoted variables) or, for older versions, from its dims
+         *     and variables.
+         */
+        post: operations["detect_roles"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answers -> ingest mapping + ModelSpec draft (+ YAML); stores nothing
+         * @description Turn answers into the ingest mapping for the upload, the ``ModelSpec`` (and its YAML)
+         *     for the request's project, and the static validator's findings. ``422
+         *     GUIDED_ANSWERS_INVALID`` points at ``/answers/<question>`` for a missing or impossible
+         *     answer; problems the validator finds come back as ``issues`` (200).
+         */
+        post: operations["create_guided_draft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/import/bayesinsight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * BayesInsight model_def.json + metadata.json -> a draft for the geo MMM
+         * @description Import a BayesInsight project (Q8). With the default ``target:
+         *     mmm.hierarchical_geo`` the draft maps media transforms, priors, controls, seasonality
+         *     and pooling to the built-in geo MMM and lists every feature without an equivalent as
+         *     an ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` keeps ``model_def``
+         *     verbatim for the planned dedicated plugin. ``422 IMPORT_UNSUPPORTED`` when the model
+         *     cannot run at all (no single KPI, no media, split series).
+         */
+        post: operations["import_bayesinsight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Guided templates (geo marketing mix, weekly forecast, demand by store, choice)
+         * @description The built-in templates in id order: questions, the spec template, scorecard checks
+         *     and ``x-ui-level`` hints. Templates are data and the same for every tenant.
+         */
+        get: operations["list_guided_templates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/guided/templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One template: questions, spec template, scorecard checks, UI levels */
+        get: operations["get_guided_template"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1028,6 +1139,9 @@ export interface paths {
         /**
          * Create Spec
          * @description Store revision 1 (invalid documents are stored too, with ``valid: false``).
+         *
+         *     In a Guided-locked project, members below admin may store Guided specs only (``403``
+         *     with the offending pointers otherwise; see ``Project.guided_locked``).
          */
         post: operations["create_spec"];
         delete?: never;
@@ -1719,6 +1833,90 @@ export interface components {
          */
         AuditOutcome: "success" | "denied" | "error";
         /**
+         * BayesInsightImport
+         * @description ``POST /v1/guided/import/bayesinsight``: a BayesInsight project as a draft (Q8: an
+         *     ingest adapter plus the ``mmm.bayesinsight`` plugin, not a separate spec kind).
+         * @example {
+         *       "dataset": "bi_mff",
+         *       "format": "mff",
+         *       "metadata": {
+         *         "allowed_campaigns": [
+         *           "Total"
+         *         ],
+         *         "allowed_creatives": [
+         *           "Total"
+         *         ],
+         *         "allowed_geos": [
+         *           "US",
+         *           "DE"
+         *         ],
+         *         "allowed_outlets": [
+         *           "Total"
+         *         ],
+         *         "allowed_products": [
+         *           "Total"
+         *         ],
+         *         "periodicity": "Weekly",
+         *         "row_ids": [
+         *           "Geography",
+         *           "Product",
+         *           "Period"
+         *         ]
+         *       },
+         *       "model_def": {
+         *         "variable_details": [
+         *           {
+         *             "likelihood": {
+         *               "type": "Normal"
+         *             },
+         *             "variable_name": "Sales_Total_Total_Total",
+         *             "variable_type": "exog"
+         *           },
+         *           {
+         *             "adstock": "delayed",
+         *             "media_transform": "hill",
+         *             "variable_name": "TV_Total_Total_Total",
+         *             "variable_type": "media"
+         *           },
+         *           {
+         *             "variable_name": "annual_seasonality",
+         *             "variable_type": "season"
+         *           }
+         *         ]
+         *       },
+         *       "name": "bi-import"
+         *     }
+         */
+        BayesInsightImport: {
+            /**
+             * Dataset
+             * @description Name of the dataset the MFF upload becomes
+             */
+            dataset: string;
+            /**
+             * Format
+             * @default mff
+             * @enum {string}
+             */
+            format?: "csv" | "parquet" | "mff";
+            /**
+             * Holdout Periods
+             * @default 8
+             */
+            holdout_periods?: number;
+            metadata: components["schemas"]["BayesInsightMetadata"];
+            model_def: components["schemas"]["BayesInsightModelDef"];
+            /** Name */
+            name: string;
+            /**
+             * Target
+             * @description M3: the plugin to import for. mmm.hierarchical_geo (default) maps every feature with an equivalent and warns about the rest (mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight keeps model_def verbatim for the planned dedicated plugin
+             * @default mmm.hierarchical_geo
+             * @enum {string}
+             */
+            target?: "mmm.hierarchical_geo" | "mmm.bayesinsight";
+        };
+        /**
          * BayesInsightMetadata
          * @description BayesInsight's ``metadata.json`` (``{"metadata": {...}}`` is accepted too).
          *
@@ -1756,6 +1954,50 @@ export interface components {
             row_ids?: string[];
             /** Start Period */
             start_period?: string | null;
+        };
+        /**
+         * BayesInsightModelDef
+         * @description BayesInsight's ``model_def.json``. ``artifact``, ``fitted`` and ``VOF`` describe a
+         *     local fit and are ignored by the import.
+         */
+        BayesInsightModelDef: {
+            VOF?: components["schemas"]["JsonValue"] | null;
+            /** Artifact */
+            artifact?: string | null;
+            /**
+             * Fitted
+             * @default false
+             */
+            fitted?: boolean;
+            /** Variable Details */
+            variable_details: components["schemas"]["BayesInsightVariable"][];
+        };
+        /**
+         * BayesInsightVariable
+         * @description One entry of ``model_def.json``'s ``variable_details``.
+         *
+         *     The fields the import interprets are typed; everything else (priors, transforms,
+         *     likelihood parameters) is kept verbatim for the ``mmm.bayesinsight`` plugin, which
+         *     validates it in the sandbox.
+         */
+        BayesInsightVariable: {
+            /** Fixed Ind Coeff Dims */
+            fixed_ind_coeff_dims?: string[] | null;
+            /** Normalization */
+            normalization?: string | null;
+            /** Random Coeff Dims */
+            random_coeff_dims?: string[] | null;
+            /** Sign */
+            sign?: ("positive" | "negative") | null;
+            /** Variable Name */
+            variable_name: string;
+            /**
+             * Variable Type
+             * @enum {string}
+             */
+            variable_type: "control" | "media" | "exog" | "localtrend" | "season";
+        } & {
+            [key: string]: unknown;
         };
         /**
          * Binding
@@ -1906,6 +2148,60 @@ export interface components {
             size: number;
         };
         /**
+         * BusinessPriors
+         * @description Beliefs in business units, per channel (keys are channel *labels* as in the data).
+         * @example {
+         *       "baseline_share": {
+         *         "credibility": 0.8,
+         *         "share": [
+         *           0.5,
+         *           0.8
+         *         ]
+         *       },
+         *       "channels": {
+         *         "search": {
+         *           "credibility": 0.9,
+         *           "roi": [
+         *             2,
+         *             6
+         *           ]
+         *         },
+         *         "social": {
+         *           "contribution_share": [
+         *             0.02,
+         *             0.1
+         *           ]
+         *         },
+         *         "tv": {
+         *           "credibility": 0.8,
+         *           "roi": [
+         *             1.5,
+         *             4
+         *           ]
+         *         }
+         *       },
+         *       "kpi_units": "EUR",
+         *       "spend_units": "EUR"
+         *     }
+         */
+        BusinessPriors: {
+            baseline_share?: components["schemas"]["ShareBelief"] | null;
+            /** Channels */
+            channels: {
+                [key: string]: components["schemas"]["ChannelBelief"];
+            };
+            /**
+             * Kpi Units
+             * @example EUR
+             */
+            kpi_units?: string | null;
+            /**
+             * Spend Units
+             * @example EUR
+             */
+            spend_units?: string | null;
+        };
+        /**
          * Capabilities
          * @description What a model plugin can do (declared in its manifest).
          */
@@ -2038,6 +2334,55 @@ export interface components {
             tuning?: boolean;
         };
         /**
+         * ChannelBelief
+         * @description What the user believes about one channel: exactly one of ``roi`` or
+         *     ``contribution_share``, held with ``credibility``.
+         *
+         *     * ``roi``: KPI units gained per spend unit over the fit window (``[1.5, 4]`` = "every
+         *       euro returns between 1.5 and 4 euros of revenue");
+         *     * ``contribution_share``: the channel's share of the KPI over the fit window.
+         */
+        ChannelBelief: {
+            /**
+             * Contribution Share
+             * @example [
+             *       0.05,
+             *       0.15
+             *     ]
+             */
+            contribution_share?: [
+                number,
+                number
+            ] | null;
+            /**
+             * Credibility
+             * @description Probability that the true value lies inside the range (0.8 = 'I am 80% sure')
+             * @default 0.8
+             */
+            credibility?: number;
+            /**
+             * Roi
+             * @example [
+             *       1.5,
+             *       4
+             *     ]
+             */
+            roi?: [
+                number,
+                number
+            ] | null;
+        };
+        /**
+         * CheckThresholds
+         * @description Warn and fail thresholds of a check (in the check's direction).
+         */
+        CheckThresholds: {
+            /** Fail */
+            fail: number;
+            /** Warn */
+            warn: number;
+        };
+        /**
          * CheckpointPayload
          * @description ``checkpoint``: a checkpoint object was uploaded under the checkpoint prefix.
          */
@@ -2062,6 +2407,73 @@ export interface components {
             segment: number;
             /** Size */
             size: number;
+        };
+        /**
+         * ColumnProfile
+         * @description What the browser (DuckDB-WASM/papaparse preview) or an ingest profile knows about a
+         *     column. ``name`` and ``sample`` are user data: render them as text only.
+         * @example {
+         *       "dtype": "number",
+         *       "max": 98312,
+         *       "min": 1520.5,
+         *       "n_distinct": 1012,
+         *       "n_rows": 1040,
+         *       "name": "revenue_eur"
+         *     }
+         * @example {
+         *       "detected_freq": "W-SUN",
+         *       "dtype": "date",
+         *       "max_date": "2025-12-28",
+         *       "min_date": "2024-01-07",
+         *       "n_distinct": 104,
+         *       "n_rows": 1040,
+         *       "name": "week"
+         *     }
+         */
+        ColumnProfile: {
+            /**
+             * Detected Freq
+             * @example W-SUN
+             * @example D
+             * @example MS
+             */
+            detected_freq?: string | null;
+            /**
+             * Dtype
+             * @enum {string}
+             */
+            dtype: "number" | "integer" | "string" | "date" | "boolean";
+            /** Max */
+            max?: number | null;
+            /** Max Date */
+            max_date?: string | null;
+            /** Min */
+            min?: number | null;
+            /** Min Date */
+            min_date?: string | null;
+            /**
+             * Monotonic
+             * @description Values never decrease in file order (dates of a single series, trip numbers); repeated panels of dates are not monotonic
+             */
+            monotonic?: boolean | null;
+            /** N Distinct */
+            n_distinct?: number | null;
+            /**
+             * N Missing
+             * @default 0
+             */
+            n_missing?: number;
+            /** N Rows */
+            n_rows: number;
+            /** Name */
+            name: string;
+            /**
+             * Origin
+             * @description Where the profile comes from: a table column, a VariableName of an MFF table, or a dim/variable of a stored dataset
+             */
+            origin?: ("column" | "mff_variable" | "dim" | "variable") | null;
+            /** Sample */
+            sample?: (string | number | boolean | null)[];
         };
         /**
          * CompletePayload
@@ -2589,6 +3001,54 @@ export interface components {
             name: string;
             /** Units */
             units?: string | null;
+        };
+        /**
+         * DetectRolesRequest
+         * @description ``POST /v1/guided/detect-roles``: exactly one of ``dataset`` (a stored version:
+         *     its schema and profile are used) or ``columns`` (profiled in the browser).
+         * @example {
+         *       "columns": [
+         *         {
+         *           "dtype": "number",
+         *           "max": 98312,
+         *           "min": 1520.5,
+         *           "n_distinct": 1012,
+         *           "n_rows": 1040,
+         *           "name": "revenue_eur"
+         *         },
+         *         {
+         *           "detected_freq": "W-SUN",
+         *           "dtype": "date",
+         *           "max_date": "2025-12-28",
+         *           "min_date": "2024-01-07",
+         *           "n_distinct": 104,
+         *           "n_rows": 1040,
+         *           "name": "week"
+         *         },
+         *         {
+         *           "dtype": "string",
+         *           "n_distinct": 10,
+         *           "n_rows": 1040,
+         *           "name": "market"
+         *         },
+         *         {
+         *           "dtype": "number",
+         *           "max": 90000,
+         *           "min": 0,
+         *           "n_rows": 1040,
+         *           "name": "tv_spend"
+         *         }
+         *       ],
+         *       "template_id": "geo_mmm"
+         *     }
+         */
+        DetectRolesRequest: {
+            /** Columns */
+            columns?: components["schemas"]["ColumnProfile"][] | null;
+            /** Dataset */
+            dataset?: string | null;
+            /** Template Id */
+            template_id: string;
         };
         /**
          * Diagnostic
@@ -3228,6 +3688,334 @@ export interface components {
              */
             start: string;
         };
+        /**
+         * GuidedAnswers
+         * @description ``POST /v1/guided/drafts``: answers to a template's questions.
+         *
+         *     Column answers are *column names* of the upload (a list for ``columns`` questions).
+         *     ``dataset`` names the dataset the upload will become (``dataset://<project>/<name>``);
+         *     ``columns`` (optional) lets the draft use detected types and frequencies.
+         * @example {
+         *       "answers": {
+         *         "controls": [
+         *           "avg_price"
+         *         ],
+         *         "date": "week",
+         *         "frequency": "weekly",
+         *         "geo": "market",
+         *         "holdout_periods": 8,
+         *         "kpi": "revenue_eur",
+         *         "spend": [
+         *           "tv_spend",
+         *           "search_spend",
+         *           "social_spend"
+         *         ]
+         *       },
+         *       "dataset": "eu_media_weekly",
+         *       "format": "csv",
+         *       "name": "eu-geo-mmm",
+         *       "template_id": "geo_mmm"
+         *     }
+         */
+        GuidedAnswers: {
+            /** Answers */
+            answers?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            business_priors?: components["schemas"]["BusinessPriors"] | null;
+            /** Columns */
+            columns?: components["schemas"]["ColumnProfile"][] | null;
+            /**
+             * Dataset
+             * @description Name of the dataset the upload becomes
+             */
+            dataset: string;
+            /**
+             * Format
+             * @description The upload's format; for 'mff' (M3) column answers name VariableName values, Period and the MFF key columns
+             * @default csv
+             * @enum {string}
+             */
+            format?: "csv" | "parquet" | "mff";
+            /** Lift Tests */
+            lift_tests?: components["schemas"]["LiftTest"][];
+            /**
+             * Name
+             * @description Name of the spec (and model) to create
+             */
+            name: string;
+            /** Template Id */
+            template_id: string;
+        };
+        /**
+         * GuidedDraft
+         * @description The draft a template and its answers produce: how to ingest the upload, the spec,
+         *     the spec as YAML ("View as YAML") and anything worth a second look.
+         * @example {
+         *       "dataset_ref": "dataset://growth/eu_media_weekly@latest",
+         *       "issues": [],
+         *       "mapping": {
+         *         "dims": {
+         *           "market": {
+         *             "column": "market",
+         *             "spec": {
+         *               "kind": "categorical"
+         *             }
+         *           },
+         *           "week": {
+         *             "column": "week",
+         *             "spec": {
+         *               "freq": "W-SUN",
+         *               "kind": "time",
+         *               "policy": "extend"
+         *             }
+         *           }
+         *         },
+         *         "format": "csv",
+         *         "vars": {
+         *           "revenue": {
+         *             "column": "revenue",
+         *             "role": "target",
+         *             "units": "EUR"
+         *           }
+         *         },
+         *         "wide": {
+         *           "spend": {
+         *             "columns": {
+         *               "search": "search_spend",
+         *               "social": "social_spend",
+         *               "tv": "tv_spend"
+         *             },
+         *             "dim": "channel",
+         *             "role": "spend",
+         *             "units": "EUR"
+         *           }
+         *         }
+         *       },
+         *       "spec": {
+         *         "apiVersion": "mapi/v1",
+         *         "kind": "ModelSpec"
+         *       },
+         *       "template_id": "geo_mmm",
+         *       "template_version": "1.0.0",
+         *       "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\n…"
+         *     }
+         */
+        GuidedDraft: {
+            /** Dataset Ref */
+            dataset_ref: string;
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            mapping: components["schemas"]["IngestMapping"];
+            /** Spec */
+            spec: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Template Id */
+            template_id: string;
+            /** Template Version */
+            template_version: string;
+            /** Yaml */
+            yaml: string;
+        };
+        /**
+         * GuidedQuestion
+         * @description One plain-language question. Column questions name what the column becomes:
+         *
+         *     * ``dim``: the column labels a dataset dim (``dim_spec`` describes it); the placeholder
+         *       ``{{<id>}}`` is the dataset dim name;
+         *     * ``role`` (``column``): the column is a data variable with that role; the placeholder is
+         *       the dataset variable name;
+         *     * ``role`` + ``wide_dim`` (``columns``): the columns become *one* variable ``as_var``
+         *       along ``wide_dim`` (one label per column, e.g. spend per channel);
+         *     * ``role`` without ``wide_dim`` (``columns``): each column is its own variable.
+         */
+        GuidedQuestion: {
+            /** Accepts */
+            accepts?: ("number" | "integer" | "string" | "date" | "boolean")[];
+            /** As Var */
+            as_var?: string | null;
+            /** Choices */
+            choices?: components["schemas"]["QuestionChoice"][];
+            default?: components["schemas"]["JsonValue"];
+            /**
+             * Dim
+             * @description Canonical dim this column labels
+             */
+            dim?: string | null;
+            dim_spec?: components["schemas"]["DimSpec"] | null;
+            /** Help Plain */
+            help_plain?: string | null;
+            /** Id */
+            id: string;
+            /** Keywords */
+            keywords?: string[];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "column" | "columns" | "choice" | "number" | "text";
+            /** Maximum */
+            maximum?: number | null;
+            /** Minimum */
+            minimum?: number | null;
+            /**
+             * Missing
+             * @description M3: missing-value policy of the variables a column answer becomes (default forbid; 'allow' for ragged panels such as shopping trips per household)
+             */
+            missing?: ("forbid" | "allow" | "mask") | null;
+            /** Prompt Plain */
+            prompt_plain: string;
+            /**
+             * Required
+             * @default true
+             */
+            required?: boolean;
+            role?: components["schemas"]["Role"] | null;
+            /**
+             * Ui Level
+             * @default basic
+             * @enum {string}
+             */
+            ui_level?: "basic" | "advanced" | "hidden";
+            /** Wide Dim */
+            wide_dim?: string | null;
+        };
+        /**
+         * GuidedTemplate
+         * @description A guided task: questions, the spec they fill and what to check afterwards.
+         *
+         *     ``ui_levels`` maps JSON pointers of the spec to ``x-ui-level`` hints (``hidden`` fields
+         *     are kept but not shown; Expert edits round-trip). ``plugin_available`` is false while
+         *     the template's built-in plugin is not shipped (``plugin_note`` says what is missing).
+         * @example {
+         *       "description_plain": "Forecast one series a few weeks ahead.",
+         *       "family": "forecast",
+         *       "id": "weekly_forecast",
+         *       "plugin": "ts.hsgp_trend@^1",
+         *       "questions": [
+         *         {
+         *           "accepts": [
+         *             "number",
+         *             "integer"
+         *           ],
+         *           "id": "kpi",
+         *           "keywords": [
+         *             "sales"
+         *           ],
+         *           "kind": "column",
+         *           "prompt_plain": "Which column do you want to forecast?",
+         *           "role": "target"
+         *         },
+         *         {
+         *           "accepts": [
+         *             "date"
+         *           ],
+         *           "dim": "time",
+         *           "dim_spec": {
+         *             "kind": "time",
+         *             "policy": "extend"
+         *           },
+         *           "id": "date",
+         *           "kind": "column",
+         *           "prompt_plain": "Which column holds the date or week?"
+         *         }
+         *       ],
+         *       "scorecard_checks": [
+         *         "convergence.rhat",
+         *         "holdout.mape"
+         *       ],
+         *       "spec_template": {
+         *         "apiVersion": "mapi/v1",
+         *         "data": {
+         *           "bind": {
+         *             "dims": {
+         *               "t": "{{date}}"
+         *             },
+         *             "vars": {
+         *               "y": "{{kpi}}"
+         *             }
+         *           },
+         *           "dataset": "{{dataset}}"
+         *         },
+         *         "kind": "ModelSpec",
+         *         "metadata": {
+         *           "name": "{{name}}",
+         *           "project": "{{project}}"
+         *         },
+         *         "model": {
+         *           "settings": {
+         *             "max_extension": 26
+         *           },
+         *           "use": "ts.hsgp_trend@^1"
+         *         }
+         *       },
+         *       "tasks": [
+         *         "forecast"
+         *       ],
+         *       "title": "Weekly forecast",
+         *       "ui_levels": {
+         *         "/model/fit": "advanced"
+         *       },
+         *       "version": "1.0.0"
+         *     }
+         */
+        GuidedTemplate: {
+            /** Defaults */
+            defaults?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Description Plain */
+            description_plain: string;
+            /**
+             * Family
+             * @enum {string}
+             */
+            family: "mmm" | "forecast" | "tabular" | "choice";
+            /** Id */
+            id: string;
+            /** Lookups */
+            lookups?: {
+                [key: string]: components["schemas"]["TemplateLookup"];
+            };
+            /**
+             * Plugin
+             * @description UseRef of the built-in plugin (id@range)
+             */
+            plugin: string;
+            /**
+             * Plugin Available
+             * @default true
+             */
+            plugin_available?: boolean;
+            /** Plugin Note */
+            plugin_note?: string | null;
+            /** Questions */
+            questions: components["schemas"]["GuidedQuestion"][];
+            /** Scorecard Checks */
+            scorecard_checks?: string[];
+            /** Scorecard Thresholds */
+            scorecard_thresholds?: {
+                [key: string]: components["schemas"]["CheckThresholds"];
+            };
+            /** Spec Template */
+            spec_template: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Tasks */
+            tasks?: ("whatif" | "forecast" | "counterfactual" | "business_priors" | "lift_tests")[];
+            /** Title */
+            title: string;
+            /** Ui Levels */
+            ui_levels?: {
+                [key: string]: "basic" | "advanced" | "hidden";
+            };
+            /**
+             * Version
+             * @default 1.0.0
+             */
+            version?: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -3308,6 +4096,12 @@ export interface components {
          *
          *     Tabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit
          *     ``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.
+         *
+         *     With the ``mff``/``bayesinsight`` presets the long table is first pivoted to one column
+         *     per ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then
+         *     pick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may
+         *     refine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and
+         *     ``wide`` every variable is kept under its own name.
          * @example {
          *       "dims": {
          *         "date": {
@@ -3612,6 +4406,78 @@ export interface components {
             updated_at?: string | null;
             /** Updated By */
             updated_by?: string | null;
+        };
+        /**
+         * LiftTest
+         * @description One experiment: ``spend_delta`` extra spend on ``channel`` (optionally in one ``geo``)
+         *     from ``start`` to ``end`` (inclusive) caused ``kpi_delta`` incremental KPI.
+         *
+         *     Give the measurement's uncertainty as a standard error ``se`` *or* a confidence interval
+         *     ``ci`` at ``ci_level``. A holdout ("turn the channel off") is a negative ``spend_delta``
+         *     with (usually) a negative ``kpi_delta``.
+         * @example {
+         *       "channel": "tv",
+         *       "ci": [
+         *         -380000,
+         *         -140000
+         *       ],
+         *       "ci_level": 0.9,
+         *       "description": "TV off in Germany for four weeks",
+         *       "end": "2026-05-03",
+         *       "geo": "de",
+         *       "id": "tv-holdout-2026q2",
+         *       "kpi_delta": -260000,
+         *       "spend_delta": -120000,
+         *       "start": "2026-04-06"
+         *     }
+         */
+        LiftTest: {
+            /** Channel */
+            channel: string;
+            /**
+             * Ci
+             * @description Confidence interval of kpi_delta
+             */
+            ci?: [
+                number,
+                number
+            ] | null;
+            /**
+             * Ci Level
+             * @default 0.9
+             */
+            ci_level?: number;
+            /** Description */
+            description?: string | null;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Geo */
+            geo?: string | null;
+            /** Id */
+            id?: string | null;
+            /**
+             * Kpi Delta
+             * @description Measured incremental KPI (KPI units)
+             */
+            kpi_delta: number;
+            /**
+             * Se
+             * @description Standard error of kpi_delta
+             */
+            se?: number | null;
+            /**
+             * Spend Delta
+             * @description Extra spend during the test (spend units)
+             */
+            spend_delta: number;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
         };
         /**
          * LimitName
@@ -4057,8 +4923,20 @@ export interface components {
          *     the value in ``value_column``. ``Period`` becomes the time dim; the other key columns
          *     become dims only when they hold more than one distinct value; ``VariableName`` values
          *     become data variables.
+         *
+         *     ``combine`` joins several key columns into one dim (``{"geo": ["Geography", "Product"]}``
+         *     gives labels such as ``US|Watches``) - a model with one panel dim can then fit a
+         *     geography x product panel. A combined dim is created even when it has a single label,
+         *     so ``{"geo": ["Geography"]}`` keeps a national table's geo dim.
          */
         MffOptions: {
+            /**
+             * Combine
+             * @description M3: dim -> key columns whose labels are joined ('|') into that one dim
+             */
+            combine?: {
+                [key: string]: string[];
+            };
             /**
              * Freq
              * @description Pandas offset alias; inferred when omitted
@@ -4522,6 +5400,19 @@ export interface components {
         Page_ExecutorHealth_: {
             /** Items */
             items: components["schemas"]["ExecutorHealth"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[GuidedTemplate]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_GuidedTemplate_: {
+            /** Items */
+            items: components["schemas"]["GuidedTemplate"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -5132,6 +6023,24 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /** QuestionChoice */
+        QuestionChoice: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * QuestionSuggestion
+         * @description Candidates for one question (best first) and the pre-filled answer.
+         */
+        QuestionSuggestion: {
+            answer?: components["schemas"]["JsonValue"];
+            /** Candidates */
+            candidates?: components["schemas"]["RoleCandidate"][];
+            /** Question Id */
+            question_id: string;
+        };
         /**
          * QuotaLimitStatus
          * @description One limit of one level as shown in ``/usage`` (``remaining`` is ``None`` if unlimited).
@@ -5371,6 +6280,61 @@ export interface components {
          * @enum {string}
          */
         Role: "target" | "covariate" | "media" | "spend" | "control" | "index" | "mask" | "constant" | "weight" | "exposure";
+        /** RoleCandidate */
+        RoleCandidate: {
+            /** Column */
+            column: string;
+            /** Confidence */
+            confidence: number;
+            /** Reason Plain */
+            reason_plain: string;
+        };
+        /**
+         * RoleSuggestions
+         * @example {
+         *       "questions": [
+         *         {
+         *           "answer": "revenue_eur",
+         *           "candidates": [
+         *             {
+         *               "column": "revenue_eur",
+         *               "confidence": 0.9,
+         *               "reason_plain": "named like a revenue column; numbers"
+         *             }
+         *           ],
+         *           "question_id": "kpi"
+         *         },
+         *         {
+         *           "answer": [
+         *             "tv_spend"
+         *           ],
+         *           "candidates": [
+         *             {
+         *               "column": "tv_spend",
+         *               "confidence": 0.8,
+         *               "reason_plain": "named like spend; never negative"
+         *             }
+         *           ],
+         *           "question_id": "spend"
+         *         }
+         *       ],
+         *       "template_id": "geo_mmm",
+         *       "unassigned": []
+         *     }
+         */
+        RoleSuggestions: {
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /** Questions */
+            questions: components["schemas"]["QuestionSuggestion"][];
+            /** Template Id */
+            template_id: string;
+            /**
+             * Unassigned
+             * @description Columns no answer uses
+             */
+            unassigned?: string[];
+        };
         /**
          * Run
          * @description A unit of work and its lifecycle (see the state machine in ``mapi_spec.run``).
@@ -6070,6 +7034,23 @@ export interface components {
          */
         Severity: "info" | "warning" | "error";
         /**
+         * ShareBelief
+         * @description A share range (for example of the baseline: KPI that happens without any media).
+         */
+        ShareBelief: {
+            /**
+             * Credibility
+             * @description Probability that the true value lies inside the range (0.8 = 'I am 80% sure')
+             * @default 0.8
+             */
+            credibility?: number;
+            /** Share */
+            share: [
+                number,
+                number
+            ];
+        };
+        /**
          * SignedPut
          * @description A signed PUT URL for exactly one object name.
          *
@@ -6416,6 +7397,18 @@ export interface components {
             when: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
+        };
+        /**
+         * TemplateLookup
+         * @description A placeholder derived from an answer: ``map[answer]`` (e.g. frequency → season).
+         */
+        TemplateLookup: {
+            /** Map */
+            map: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Source */
+            source: string;
         };
         /**
          * TemplateParam
@@ -8265,6 +9258,285 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detect_roles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DetectRolesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleSuggestions"];
+                };
+            };
+            /** @description Authentication required (UNAUTHENTICATED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not allowed (FORBIDDEN) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The document does not match its schema (SCHEMA_INVALID) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_guided_draft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuidedAnswers"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidedDraft"];
+                };
+            };
+            /** @description Authentication required (UNAUTHENTICATED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not allowed (FORBIDDEN) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The document does not match its schema (SCHEMA_INVALID); The guided answers do not fit the template (GUIDED_ANSWERS_INVALID) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    import_bayesinsight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BayesInsightImport"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidedDraft"];
+                };
+            };
+            /** @description Authentication required (UNAUTHENTICATED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not allowed (FORBIDDEN) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The document does not match its schema (SCHEMA_INVALID); The imported model uses an unsupported feature (IMPORT_UNSUPPORTED) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_guided_templates: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GuidedTemplate_"];
+                };
+            };
+            /** @description Authentication required (UNAUTHENTICATED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not allowed (FORBIDDEN) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The document does not match its schema (SCHEMA_INVALID) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_guided_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidedTemplate"];
+                };
+            };
+            /** @description Authentication required (UNAUTHENTICATED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not allowed (FORBIDDEN) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
             };
             /** @description Validation Error */
             422: {

@@ -36,6 +36,7 @@ import mapi_server
 from mapi_server.api import (
     admin,
     datasets,
+    guided,
     internal,
     meta,
     models,
@@ -316,6 +317,7 @@ def create_app(
                 "catalog",
                 "datasets",
                 "specs",
+                "guided",
                 "runs",
                 "models",
                 "plots",
@@ -366,6 +368,7 @@ def create_app(
         admin.router,
         datasets.router,
         specs.router,
+        guided.router,
         runs.router,
         models.router,
         models.plots_router,
