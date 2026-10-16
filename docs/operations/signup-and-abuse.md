@@ -92,6 +92,12 @@ instances. Behind the Google Cloud load balancer, [Cloud Armor](security-hardeni
 adds per-IP rate *bans* in front of `/auth/signup` and `/auth/*` before a request reaches the
 API. Client addresses are stored only as keyed digests.
 
+The client address is the connecting peer unless that peer is a trusted proxy
+(`MAPI_TRUSTED_PROXIES`): then it is the right-most `X-Forwarded-For` hop that is not a
+trusted proxy, so callers behind one load balancer keep separate limits and a caller cannot
+forge its address by sending the header itself. The multi-tenant profile refuses to start
+without the setting (`none` when clients reach the API directly).
+
 ## Sybil heuristics and the review queue
 
 When a sign-up is verified, the platform looks back `MAPI_SIGNUP_SYBIL_WINDOW_DAYS` (30) days

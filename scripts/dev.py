@@ -79,6 +79,7 @@ EXECUTOR_ENV = "MAPI_EXECUTOR"
 STACK_PROFILE_ENV = "MAPI_STACK_PROFILE"
 WEBHOOK_CA_ENV = "MAPI_WEBHOOK_CA_FILE"
 WEBHOOK_ALLOWLIST_ENV = "MAPI_WEBHOOK_DEV_ALLOWLIST"
+TRUSTED_PROXIES_ENV = "MAPI_TRUSTED_PROXIES"
 DEV_WEBHOOK_HOSTS = ("127.0.0.1", "localhost")
 """Receiver hosts the dev profile delivers webhooks to (with the local-receiver TLS bundle)."""
 STACK_PROFILES = ("dev", "single-tenant", "multi-tenant")
@@ -125,6 +126,8 @@ class DevConfig:
     """The caller set ``MAPI_WEBHOOK_CA_FILE`` (the dev receiver bundle is then not used)."""
     caller_webhook_allowlist: bool = False
     """The caller set ``MAPI_WEBHOOK_DEV_ALLOWLIST`` (kept as given)."""
+    caller_trusted_proxies: bool = False
+    """The caller set ``MAPI_TRUSTED_PROXIES`` (kept as given)."""
 
     @classmethod
     def from_environ(cls, environ: Mapping[str, str], root: Path = ROOT) -> DevConfig:
@@ -150,6 +153,7 @@ class DevConfig:
             profile=profile,
             caller_webhook_ca=bool(environ.get(WEBHOOK_CA_ENV, "").strip()),
             caller_webhook_allowlist=WEBHOOK_ALLOWLIST_ENV in environ,
+            caller_trusted_proxies=TRUSTED_PROXIES_ENV in environ,
         )
 
     @property
@@ -237,6 +241,10 @@ class DevConfig:
                 env[WEBHOOK_CA_ENV] = str(self.webhook_tls())
             if not self.caller_webhook_allowlist:
                 env[WEBHOOK_ALLOWLIST_ENV] = ",".join(DEV_WEBHOOK_HOSTS)
+        if self.profile == "multi-tenant" and not self.caller_trusted_proxies:
+            # browsers and the CLI call this API directly (the Vite servers proxy nothing), so
+            # the peer is the client; the multi-tenant profile wants that decision explicit
+            env[TRUSTED_PROXIES_ENV] = "none"
         if database_url:
             env[ENV_DATABASE_URL] = database_url
         return env

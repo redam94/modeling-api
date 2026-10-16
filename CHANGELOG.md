@@ -418,6 +418,15 @@ milestone releases are tagged on `main`.
   --example`) asked quantile models for a `mean` they cannot serve; it now asks for the
   representation's default summary.
 
+### Fixed (M3 review: integrations and trust)
+- **server**: every per-address control saw the proxy's address, not the caller's, so the
+  sign-up, verification and embed-view limits and the Sybil `same_ip` check applied to the
+  whole platform behind a load balancer. New `MAPI_TRUSTED_PROXIES` (addresses or CIDR
+  ranges): a request from a trusted proxy takes the right-most untrusted `X-Forwarded-For`
+  hop as the client; any other peer's header is ignored. The multi-tenant profile refuses to
+  start without it (`none` when clients connect directly); Terraform sets Cloud Run's and the
+  load balancer's hops and `make dev` sets `none` for its multi-tenant stack.
+
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
 The platform is now multi-tenant and ready for Google Cloud. Many teams can share one

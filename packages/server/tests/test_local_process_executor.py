@@ -57,6 +57,7 @@ def test_refuses_multi_tenant_profile(tmp_path: Path) -> None:
         profile=Profile.MULTI_TENANT,
         executor=ExecutorName.LOCAL_PROCESS,
         data_dir=tmp_path,
+        trusted_proxies="none",
     )
     with pytest.raises(ExecutorRefused):
         build_executor(settings)

@@ -31,6 +31,7 @@ from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from mapi_server import __version__
+from mapi_server.clientaddr import normalise_trusted_proxies
 
 __all__ = [
     "DEFAULT_CLOUDRUN_BASES",
@@ -537,6 +538,14 @@ class Settings(BaseSettings):
     log_json: bool = Field(
         True, description="Emit JSON logs (structlog); off gives a human console renderer"
     )
+    trusted_proxies: Annotated[list[str] | None, NoDecode] = Field(
+        None,
+        description="Addresses or CIDR ranges of the proxies in front of the API (load "
+        "balancer, Cloud Run front end, the web container's /v1/ proxy), comma-separated. A "
+        "request from one of them takes the right-most untrusted X-Forwarded-For hop as the "
+        "client address (per-address limits, Sybil checks, audit). 'none': clients reach the "
+        "API directly and X-Forwarded-For is ignored. Required in the multi-tenant profile",
+    )
     metrics_enabled: bool = Field(True, description="Mount GET /metrics (Prometheus)")
     worker_metrics_port: int | None = Field(
         None,
@@ -757,6 +766,17 @@ class Settings(BaseSettings):
             return [h.strip() for h in v.split(",") if h.strip()]
         return v
 
+    @field_validator("trusted_proxies", mode="before")
+    @classmethod
+    def _proxies(cls, v: object) -> object:
+        if isinstance(v, str):
+            if v.strip().lower() == "none":
+                return []
+            v = v.split(",")
+        if isinstance(v, list | tuple):
+            return normalise_trusted_proxies(str(x) for x in v)
+        return v
+
     @field_validator("env")
     @classmethod
     def _env(cls, v: str) -> str:
@@ -812,6 +832,12 @@ class Settings(BaseSettings):
         weak = [a for a in self.oidc_algorithms if a.upper().startswith("HS") or a == "none"]
         if weak:
             raise ValueError("oidc_algorithms must be asymmetric (RS*, ES*, PS* or EdDSA)")
+        if self.profile is Profile.MULTI_TENANT and self.trusted_proxies is None:
+            raise ValueError(
+                "the multi-tenant profile needs MAPI_TRUSTED_PROXIES: the proxies in front of "
+                "the API (so per-address limits see the caller, not the load balancer), or "
+                "'none' when clients connect to the API directly"
+            )
         return self
 
     # ------------------------------------------------------------------------- derived

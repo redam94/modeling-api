@@ -482,7 +482,9 @@ def test_multi_tenant_sign_up_refuses_readable_mailers() -> None:
         Settings(database_url="postgresql://x/y", profile="multi-tenant", mailer="console")
     with pytest.raises(ValidationError, match="needs a mailer"):
         Settings(database_url="postgresql://x/y", profile="multi-tenant", signup_enabled=True)
-    quiet = Settings(database_url="postgresql://x/y", profile="multi-tenant")
+    quiet = Settings(
+        database_url="postgresql://x/y", profile="multi-tenant", trusted_proxies="none"
+    )
     assert not quiet.signup_open  # no SMTP host: sign-up is simply off
 
 

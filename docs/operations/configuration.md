@@ -57,6 +57,7 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_TENANT_ID`, `MAPI_PROJECT_ID` | `default` | The platform's own tenant and project (the only ones of a single-tenant install; platform runs such as `describe` live there) |
 | `MAPI_API_HOST`, `MAPI_API_PORT` | `127.0.0.1`, `8000` | Bind address of `mapi-server api` when started without `--host`/`--port` |
 | `MAPI_ALLOWED_HOSTS` | `127.0.0.1,localhost,api` | `Host` header values the API answers (comma-separated; the host of `MAPI_API_URL` is always allowed; `*` turns the check off). The DNS-rebinding guard of the unauthenticated M1 API |
+| `MAPI_TRUSTED_PROXIES` | unset | Addresses or CIDR ranges of the proxies in front of the API (load balancer, Cloud Run front end, the web container's `/v1/` proxy), comma-separated. A request from one of them takes the right-most `X-Forwarded-For` hop that is not a trusted proxy as the client address, which the per-address limits (sign-up, verification, embed views), the Sybil `same_ip` check and audit fingerprints use. `none`: clients connect directly and `X-Forwarded-For` is ignored. **Required in the `multi-tenant` profile**; `make dev` sets `none` for its multi-tenant stack |
 | `MAPI_DEBUG` | `false` | Put tracebacks into problem documents' `untrusted_text`. Never in production |
 | `MAPI_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
 | `MAPI_LOG_JSON` | `true` | One JSON object per log line (structlog, with `trace_id`/`span_id` and the request, run and tenant context); `false` gives a human console format |

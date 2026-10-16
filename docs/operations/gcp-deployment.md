@@ -433,6 +433,7 @@ server does not read. Plain values:
 | `MAPI_SIGNER`, `MAPI_KMS_KEY_VERSION` | all | `kms` and `…/cryptoKeyVersions/<control.kms_key_version>` of the EC P-256 key that signs bundle manifests |
 | `MAPI_DB_APP_ROLE`, `MAPI_DB_SYSTEM_ROLE`, `MAPI_DB_GATEWAY_ROLE` | all | `mapi_app` (row-level security), `mapi_orchestrator` (the platform role, the only RLS bypass) and `mapi_gateway` (the API's lookups before a tenant is known, RLS applies) |
 | `MAPI_DEFAULT_RESIDENCY` | all | Residency of the platform tenant and of tenants created without one: the control module's `default_residency`, else what the dispatch pool's region satisfies (`eu` for `europe-west4`) |
+| `MAPI_TRUSTED_PROXIES` | all | `169.254.0.0/16` (Cloud Run's front end), `35.191.0.0/16` and `130.211.0.0/22` (Google load balancer front ends) and the load balancer's address: the hops skipped when the API reads the caller's address from `X-Forwarded-For`. Check a sign-up's audit fingerprint differs between two networks after the first deployment; add hops through `extra_env` if your topology has more |
 | `MAPI_API_URL`, `MAPI_WEB_ORIGIN`, `MAPI_PLOTS_ORIGIN` | all, web | Public origins (the API shares the app origin behind the load balancer) |
 | `MAPI_DATA_DIR` | all | `/tmp/mapi` (in-memory scratch) |
 | `MAPI_ALLOWED_HOSTS` | api, events | Host names the service answers |
