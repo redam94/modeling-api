@@ -33,13 +33,14 @@ import type {
 import { env } from "@/env";
 
 import { artifactLink, fanArrow, MODEL_ID, modelVersion, MV_ID, plotSpec, runDone } from "./fixtures";
+import generated from "./integrations.gen.json";
 import { mockPersonaId, PERSONAS } from "./tenancy";
 
 const API = env.apiBase;
 const API_RE = API.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const enc = new TextEncoder();
 
-export const ENDPOINT_ALIAS = "geo-mmm-prod";
+export const ENDPOINT_ALIAS = generated.alias;
 export const WEBHOOK_ID = "whk_01jaf3w1x2y3z4a5b6c7d8e9f0";
 export const WEBHOOK_DISABLED_ID = "whk_01jaf3w1x2y3z4a5b6c7d8e9g1";
 export const SAVED_PLOT_ID = "plt_01jaf3p1q2r3s4t5v6w7x8y9z0";
@@ -105,19 +106,13 @@ const WARN_GATE: PromotionGateDecision = {
   reasons: [{ code: "SCORECARD_WARN", outcome: "needs_override", check: "holdout.mape", message_plain: "Forecasts were off by 14% on the last 8 weeks." }],
 };
 
-const SNAPSHOT: Endpoint["schema_snapshot"] = {
-  input_schema: {
-    dims: { date: { kind: "time", policy: "extend", freq: "W-SUN" }, market: { kind: "categorical", policy: "fixed" }, channel: { kind: "categorical", policy: "fixed" } },
-    vars: { spend_local: { dims: ["market", "channel", "date"], dtype: "float64", role: "spend", units: "local" } },
-  },
-  schema_hash: `sha256:${"ab".repeat(32)}`,
-  inputs_stage: "raw",
-  horizon_dim: "date",
-  score_modes: ["predict", "forecast", "counterfactual", "evaluate"],
-  future_required: [],
-};
+/**
+ * The endpoint's input contract, validated as `EndpointSchemaSnapshot`, with the example call and
+ * the snippets the server's own functions make for it (`scripts/gen_integration_fixtures.py`).
+ */
+const SNAPSHOT = generated.snapshot as unknown as Endpoint["schema_snapshot"];
 
-export const EXAMPLE_CALL = { mode: "forecast", horizon: { dim: "date", periods: 8 }, future_covariates: "carry_last" };
+export const EXAMPLE_CALL = generated.example as unknown as EndpointScoreCall;
 
 function endpointOf(alias: string, revision: number, patch: Partial<Endpoint> = {}): Endpoint {
   return {
@@ -297,17 +292,25 @@ export function createIntegrationsState(): IntegrationsState {
 
 // ---------------------------------------------------------------------------- snippets
 
-function snippetsFor(alias: string): Snippet[] {
-  const url = `${API}/v1/endpoints/${alias}/score`;
-  const body = JSON.stringify(EXAMPLE_CALL, null, 2);
-  return [
-    { language: "python", title: "Python (mapi-client)", requires: "pip install mapi-client", code: `import os\n\nfrom mapi_client import Client\n\napi = Client(${JSON.stringify(API)}, token=os.environ["MAPI_TOKEN"], project="acme/growth")\nresult = api.endpoints.score(${JSON.stringify(alias)}, ${body.replace(/\n/g, "\n    ")}, wait=60)\nprint(result.run.state)\n` },
-    { language: "typescript", title: "TypeScript (fetch, Node 18+ or a browser)", code: `const response = await fetch(${JSON.stringify(url)}, {\n  method: "POST",\n  headers: { Authorization: \`Bearer \${process.env["MAPI_TOKEN"]}\`, "Content-Type": "application/json", "X-Mapi-Project": "acme/growth", Prefer: "wait=60" },\n  body: JSON.stringify(${body}),\n});\nconsole.log(await response.json());\n` },
-    { language: "curl", title: "curl", code: `curl -sS -X POST '${url}' \\\n  -H "Authorization: Bearer $MAPI_TOKEN" \\\n  -H 'Content-Type: application/json' \\\n  -H 'X-Mapi-Project: acme/growth' \\\n  -H 'Prefer: wait=60' \\\n  --data '${body}'\n` },
-    { language: "r", title: "R (httr2)", requires: 'install.packages("httr2")', code: `library(httr2)\n\nresp <- request('${url}') |>\n  req_auth_bearer_token(Sys.getenv('MAPI_TOKEN')) |>\n  req_headers(\`X-Mapi-Project\` = 'acme/growth', Prefer = 'wait=60') |>\n  req_body_raw('${body}', type = "application/json") |>\n  req_perform()\n` },
-    { language: "apps_script", title: "Google Sheets (Apps Script)", code: `// Extensions > Apps Script. Store the token under Project Settings > Script properties as MAPI_TOKEN.\nfunction scoreGeoMmmProd() {\n  const token = PropertiesService.getScriptProperties().getProperty("MAPI_TOKEN");\n  const response = UrlFetchApp.fetch(${JSON.stringify(url)}, {\n    method: "post",\n    contentType: "application/json",\n    headers: { Authorization: "Bearer " + token, "X-Mapi-Project": "acme/growth", Prefer: "wait=60" },\n    payload: JSON.stringify(${body.replace(/\n/g, "\n    ")}),\n    muteHttpExceptions: true,\n  });\n  const result = JSON.parse(response.getContentText());\n  SpreadsheetApp.getActiveSheet().getRange("A1").setValue(result.done ? "done" : result.run.state);\n  return result;\n}\n` },
-    { language: "atlas", title: "Atlas (RemoteModel)", requires: "pip install 'mapi-client[atlas]'", code: `import os\n\nfrom mapi_client import Client\nfrom mapi_client.atlas import RemoteModel\n\napi = Client(${JSON.stringify(API)}, token=os.environ["MAPI_TOKEN"], project="acme/growth")\nmodel = RemoteModel(api, endpoint=${JSON.stringify(alias)})\n` },
-  ];
+const camel = (alias: string) =>
+  alias
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join("");
+
+/**
+ * The server's snippets (`mapi_spec.snippets.render_snippets`), verbatim for the fixture endpoint.
+ * Another alias (one a Guided session promoted) or another API base is substituted in: aliases are
+ * slugs and the base a plain URL, so neither needs quoting in any language.
+ */
+export function snippetsFor(alias: string): Snippet[] {
+  const swap = (code: string) =>
+    code
+      .replaceAll(generated.base_url, API)
+      .replaceAll(generated.alias, alias)
+      .replaceAll(camel(generated.alias), camel(alias));
+  return (generated.snippets.items as Snippet[]).map((s) => ({ ...s, code: swap(s.code) }));
 }
 
 // ---------------------------------------------------------------------------- render bytes

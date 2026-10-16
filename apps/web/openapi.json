@@ -4415,7 +4415,7 @@
         "type": "object"
       },
       "EndpointSchemaSnapshot": {
-        "description": "The input contract of the promoted version, frozen at promotion: what callers send.\n\n``input_schema`` is the raw (dataset-name) schema at ``inputs_stage``; ``horizon_dim``\nthe canonical name of the dim a forecast extends.",
+        "description": "The input contract of the promoted version, frozen at promotion: what callers send.\n\n``input_schema`` is the schema at ``inputs_stage`` under the spec's canonical names\n(``data.bind`` applied: ``time``, ``y``), which inline payloads use; the runner renames\nthem to the dataset's own names before scoring. ``horizon_dim`` is the canonical name of\nthe dim a forecast extends.",
         "examples": [
           {
             "fit_coords": {
@@ -15531,7 +15531,8 @@
           "curl",
           "r",
           "apps_script",
-          "atlas"
+          "atlas",
+          "notebook"
         ],
         "title": "SnippetLanguage",
         "type": "string"
@@ -22990,7 +22991,7 @@
             "description": "Problem: RATE_LIMITED"
           }
         },
-        "summary": "Python, TypeScript, curl, R, Apps Script and Atlas code for the endpoint",
+        "summary": "Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint",
         "tags": [
           "endpoints"
         ]

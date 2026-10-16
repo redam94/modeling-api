@@ -219,7 +219,7 @@ export function IntegrationsOverview({ goTo }: { goTo: (tab: HubTab) => void }) 
         </h2>
         <ul className="grid gap-2">
           <ExpertLink icon={<Plug />} title="Endpoints and aliases" action={<Button size="sm" variant="outline" onClick={() => goTo("endpoints")}>Open</Button>}>
-            Promotion gated on the scorecard, history and rollback, the input contract, Try it, and snippets for Python, TypeScript, curl, R, Apps Script and Atlas.
+            Promotion gated on the scorecard, history and rollback, the input contract, Try it, and snippets for Python, TypeScript, curl, R, Apps Script, Atlas and a notebook cell.
           </ExpertLink>
           <ExpertLink
             icon={<KeyRound />}

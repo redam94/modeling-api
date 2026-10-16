@@ -162,7 +162,13 @@ input; a `predict` call must send every input - and then runs the usual
 covariates). It reads only the payload's coordinates for that: the values are decoded inside
 the sandboxed score run, never by the API. The score run gives each coordinate the type of the
 model's dim (dates arrive as ISO strings), so an inline payload scores exactly like the same
-rows uploaded as a dataset. `POST …/validate` runs the same checks and answers
+rows uploaded as a dataset.
+
+The input contract (`GET …/schema` → `snapshot.input_schema`) names dims and variables the way
+the spec does after `data.bind`: if the spec binds `time: week` and `y: revenue`, an inline
+payload sends a `time` dim, not `week`. The score run renames the payload to the dataset's own
+names before scoring, and results come back under the dataset's names, as for any score.
+`POST …/validate` runs the same checks and answers
 `200` with the issues, without running anything.
 
 Bodies above 10.25 MB are refused with `413 PAYLOAD_TOO_LARGE`; upload larger data as a

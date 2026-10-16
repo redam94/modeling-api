@@ -7,6 +7,7 @@ import copy
 from typing import Any
 
 import pytest
+from mapi_spec.capabilities import Representation, summary_allowed
 from mapi_spec.endpoints import (
     INPUT_INLINE_DATA,
     INPUT_INLINE_SCENARIO,
@@ -168,6 +169,22 @@ def test_forecasting_endpoints_get_a_forecast_example() -> None:
     ex = example_score_call(SNAP)
     assert ex.mode == "forecast" and ex.horizon is not None and ex.horizon.dim == "time"
     ex.to_score_request(REF)
+
+
+@pytest.mark.parametrize(
+    ("rep", "summary"),
+    [
+        ("draws", ["mean", "hdi_90"]),
+        ("quantiles", ["median", "q5", "q95"]),
+        ("interval", ["point", "interval"]),
+        ("point", ["point"]),
+    ],
+)
+def test_the_example_asks_for_summaries_the_model_can_serve(rep: str, summary: list[str]) -> None:
+    snap = SNAP.model_copy(update={"representation": Representation(rep)})
+    ex = example_score_call(snap)
+    assert ex.output.summary == summary
+    assert all(summary_allowed(Representation(rep), s) for s in summary)
 
 
 def test_other_endpoints_get_an_inline_predict_example() -> None:

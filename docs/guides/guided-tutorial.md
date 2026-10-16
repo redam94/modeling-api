@@ -149,7 +149,12 @@ spent).
 - **Share a chart** creates a read-only link to one chart for a slide, a Notion page or a
   dashboard. The link is shown once, expires, and can be revoked. Only charts the platform
   itself drew can be shared ([Sharing plots](sharing-plots.md)).
-- **Open the Integrations hub** for spreadsheets, BI tools, scheduled exports and webhooks.
+- Once the model is live, **Code for this endpoint** opens its page in the
+  [Integrations hub](integrations-hub.md) on the Snippets tab (Google Sheets, Python, a
+  notebook cell and more), and **Create a token for it** a key that may score only this
+  endpoint. The chart link can be revoked later under **Plots and links**.
+- **Open the Integrations hub** for spreadsheets, BI tools, scheduled exports and webhooks. In a
+  project locked to Guided mode the hub stays in the navigation.
 
 ## View as YAML and Expert mode
 

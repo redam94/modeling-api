@@ -26,7 +26,7 @@ from pydantic import AwareDatetime, Field, JsonValue, field_serializer, model_va
 from mapi_spec._dto import EXAMPLE_TS, Id, RequestModel, ResponseModel, Sha256, TenantId
 from mapi_spec._dto import dto_examples as _examples
 from mapi_spec._types import Duration, LabelKey, LabelValue, Name, Scalar, Slug
-from mapi_spec.capabilities import OutputSelector, Representation, ScoreMode
+from mapi_spec.capabilities import OutputSelector, Representation, ScoreMode, default_summary
 from mapi_spec.coords import CoordSummary
 from mapi_spec.errors import Issue
 from mapi_spec.refs import DatasetRef
@@ -93,8 +93,10 @@ class EvaluationPolicy(RequestModel):
 class EndpointSchemaSnapshot(ResponseModel):
     """The input contract of the promoted version, frozen at promotion: what callers send.
 
-    ``input_schema`` is the raw (dataset-name) schema at ``inputs_stage``; ``horizon_dim``
-    the canonical name of the dim a forecast extends.
+    ``input_schema`` is the schema at ``inputs_stage`` under the spec's canonical names
+    (``data.bind`` applied: ``time``, ``y``), which inline payloads use; the runner renames
+    them to the dataset's own names before scoring. ``horizon_dim`` is the canonical name of
+    the dim a forecast extends.
     """
 
     inputs_stage: str = "raw"
@@ -449,8 +451,14 @@ def example_score_call(snapshot: EndpointSchemaSnapshot, *, periods: int = 8) ->
     Forecasting endpoints get a forecast of ``periods`` that carries covariates forward
     (no inline data needed); others get a ``predict`` call with a one-cell-per-level inline
     dataset over the last fitted period, with placeholder zeros for every input variable.
+    The summary is the model's representation default (``mean``/``hdi_90`` for draws,
+    ``median``/``q5``/``q95`` for quantile models, which have no mean), so the example scores.
     """
-    output = OutputSelector(kind="expected", summary=["mean", "hdi_90"])
+    rep = snapshot.representation
+    output = OutputSelector(
+        kind="expected",
+        summary=default_summary(rep) if rep is not None else ["mean", "hdi_90"],
+    )
     if "forecast" in snapshot.score_modes and snapshot.horizon_dim is not None:
         return EndpointScoreCall(
             mode="forecast",

@@ -7,6 +7,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { env } from "@/env";
 import { createHandlers } from "@/mocks/handlers";
 import { ENDPOINT_ALIAS, SAVED_PLOT_ID, WEBHOOK_DISABLED_ID, WEBHOOK_ID } from "@/mocks/integrations";
+import generated from "@/mocks/integrations.gen.json";
+import { SNIPPET_LANGUAGES } from "@/lib/integrations";
 import { renderApp } from "@/test/render-app";
 
 const server = setupServer(...createHandlers());
@@ -113,13 +115,20 @@ describe("Integrations hub", () => {
     expect(screen.getByText("ui/plotdata/ppc_fan.arrow")).toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "Snippets" }));
-    for (const tab of ["Python", "TypeScript", "curl", "R", "Apps Script", "Atlas", "Notebook"]) {
-      expect(await screen.findByRole("tab", { name: tab })).toBeInTheDocument();
+    // Every tab shows, and copies, exactly the code the server generates (mapi_spec.snippets).
+    // (The mock app's API base is the one the fixture was generated with, unless overridden.)
+    const server = generated.snippets.items.map((s) => ({ ...s, code: s.code.replaceAll(generated.base_url, env.apiBase) }));
+    expect(server.map((s) => s.language)).toEqual(SNIPPET_LANGUAGES.map((l) => l.id));
+    for (const snippet of server) {
+      const label = SNIPPET_LANGUAGES.find((l) => l.id === snippet.language)!.label;
+      await user.click(await screen.findByRole("tab", { name: label }));
+      expect((await screen.findByLabelText(`${snippet.title} snippet`)).textContent).toBe(snippet.code);
     }
+    await user.click(screen.getByRole("tab", { name: "Python" }));
     await user.click(screen.getByRole("button", { name: "Copy Python (mapi-client) snippet" }));
-    await waitFor(async () => expect(await navigator.clipboard.readText()).toContain("api.endpoints.score"));
+    await waitFor(async () => expect(await navigator.clipboard.readText()).toBe(server[0]!.code));
     await user.click(screen.getByRole("tab", { name: "Notebook" }));
-    expect(await screen.findByLabelText("Notebook cell")).toHaveTextContent('project="acme/growth"');
+    expect(await screen.findByLabelText("Notebook (mapi-client, xarray) snippet")).toHaveTextContent("endpoint = api.endpoint('geo-mmm-prod')");
   });
 });
 

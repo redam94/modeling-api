@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import xarray as xr
+from mapi_sdk.binding import BindingMap
 from mapi_sdk.bundle import BUNDLE_FILE, Bundle, BundleManifest, file_digest
 from mapi_sdk.errors import BundleError, WireFormatError
 from mapi_sdk.wire import DEFAULT_LIMITS, loads_xrjson, read_datatree_zip, read_zarr_zip
@@ -60,11 +61,22 @@ _INLINE_LIMITS = replace(DEFAULT_LIMITS, max_json_bytes=MAX_XRJSON_BYTES + 64 * 
 stored document adds only the envelope's own keys."""
 
 
-def load_inline(ctx: WorkerContext, name: str, schema: DataSchema | None) -> xr.Dataset:
+def load_inline(
+    ctx: WorkerContext,
+    name: str,
+    schema: DataSchema | None,
+    binding: BindingMap | None = None,
+) -> xr.Dataset:
     """Decode an inline XrJSON score payload (``inline.data`` / ``inline.scenario``, stored by
     the API from an endpoint call) with the wire format's caps, then give its dim coordinates
     the types of ``schema``'s dims (JSON carries dates as ISO strings and every number as a
-    float). Strict JSON only: no NaN or Infinity constants; nulls become missing values."""
+    float). Strict JSON only: no NaN or Infinity constants; nulls become missing values.
+
+    An endpoint's input contract (``EndpointSchemaSnapshot.input_schema``, which the API
+    validates the call against) names dims and variables canonically (``time``, ``y``), while
+    ``schema`` is the bundle's raw schema under the dataset's names (``week``,
+    ``units_sold``): with ``binding`` the payload's canonical names are renamed to the dataset
+    names first, so it is typed and scored like the same rows uploaded as a dataset."""
     path = ctx.download(name)
     assert path is not None
     pointer = "/" + name.removeprefix("inline.")
@@ -77,6 +89,8 @@ def load_inline(ctx: WorkerContext, name: str, schema: DataSchema | None) -> xr.
             pointer=pointer,
             untrusted_text=exc.detail,
         ) from None
+    if binding is not None:
+        ds = binding.reverse(ds)
     if schema is None:
         return ds
     coords: dict[str, Any] = {}

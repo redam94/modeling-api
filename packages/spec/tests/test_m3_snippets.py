@@ -101,6 +101,34 @@ def test_atlas_is_valid_python() -> None:
     assert ast.literal_eval(model.keywords[0].value) == "geo-mmm-prod"
 
 
+def test_notebook_carries_the_exact_payload() -> None:
+    payload = {"mode": "predict", "data": {"coords": {}, "data_vars": {}}} | HOSTILE
+    code = render_snippet("notebook", HOSTILE_CTX.model_copy(update={"payload": payload})).code
+    tree = ast.parse(code)
+    assert ast.literal_eval(_call(tree, "endpoint").args[0]) == "geo-mmm-prod"
+    assigned = {
+        t.id: node.value
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        for t in node.targets
+        if isinstance(t, ast.Name)
+    }
+    fields = {k: v for k, v in payload.items() if k != "data"}
+    assert ast.literal_eval(assigned["data"]) == payload["data"]
+    assert ast.literal_eval(assigned["call"]) == fields
+    score = _call(tree, "score")
+    assert [k.arg for k in score.keywords] == ["wait", None]  # wait=60, **call
+
+
+def test_notebook_falls_back_when_a_field_shadows_a_keyword() -> None:
+    payload = {"mode": "predict", "timeout": "10m"}
+    code = render_snippet("notebook", CTX.model_copy(update={"payload": payload})).code
+    tree = ast.parse(code)
+    score = _call(tree, "score")
+    assert ast.literal_eval(score.args[0]) == "geo-mmm-prod"
+    assert "api.endpoints.score(" in code and "endpoint.score(" not in code
+
+
 def _js_payload(code: str) -> Any:
     m = re.search(r"const payload = (.*?);\n", code, re.DOTALL)
     assert m is not None

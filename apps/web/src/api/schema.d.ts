@@ -847,7 +847,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Python, TypeScript, curl, R, Apps Script and Atlas code for the endpoint
+         * Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint
          * @description Ready-to-run code that scores the endpoint with its example payload. The API token is
          *     read from ``MAPI_TOKEN`` (an Apps Script property): snippets never contain a secret.
          */
@@ -4490,8 +4490,10 @@ export interface components {
          * EndpointSchemaSnapshot
          * @description The input contract of the promoted version, frozen at promotion: what callers send.
          *
-         *     ``input_schema`` is the raw (dataset-name) schema at ``inputs_stage``; ``horizon_dim``
-         *     the canonical name of the dim a forecast extends.
+         *     ``input_schema`` is the schema at ``inputs_stage`` under the spec's canonical names
+         *     (``data.bind`` applied: ``time``, ``y``), which inline payloads use; the runner renames
+         *     them to the dataset's own names before scoring. ``horizon_dim`` is the canonical name of
+         *     the dim a forecast extends.
          * @example {
          *       "fit_coords": {
          *         "channel": {
@@ -9936,7 +9938,7 @@ export interface components {
          * SnippetLanguage
          * @enum {string}
          */
-        SnippetLanguage: "python" | "typescript" | "curl" | "r" | "apps_script" | "atlas";
+        SnippetLanguage: "python" | "typescript" | "curl" | "r" | "apps_script" | "atlas" | "notebook";
         /**
          * SnippetSet
          * @description ``GET /v1/endpoints/{alias}/snippets`` (``?language=`` narrows it).

@@ -169,7 +169,9 @@
      "wide_dim": "product"
     }
    ],
-   "scorecard_checks": [],
+   "scorecard_checks": [
+    "holdout.hit_rate"
+   ],
    "scorecard_thresholds": {},
    "spec_template": {
     "apiVersion": "mapi/v1",
@@ -194,6 +196,15 @@
        "hh"
       ]
      }
+    },
+    "evaluate": {
+     "metrics": [
+      "accuracy",
+      "accuracy_naive",
+      "accuracy_lift",
+      "log_score",
+      "brier"
+     ]
     },
     "execution": {
      "resource_class": "S",
@@ -237,7 +248,7 @@
     "/model/fit": "advanced",
     "/model/settings": "advanced"
    },
-   "version": "1.1.0"
+   "version": "1.2.0"
   },
   {
    "defaults": {

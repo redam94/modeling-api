@@ -28,7 +28,7 @@ import { useAuth } from "@/stores/auth";
 import { useScope } from "@/stores/scope";
 
 import { CommandPalette, ShortcutsDialog } from "./command-palette";
-import { ADMIN_NAV, EXPERT_NAV, GUIDED_NAV, PROJECT_NAV, SETTINGS_NAV, type NavItem } from "./nav";
+import { ADMIN_NAV, EXPERT_NAV, GUIDED_NAV, INTEGRATIONS_NAV, PROJECT_NAV, SETTINGS_NAV, type NavItem } from "./nav";
 import { ProjectSwitcher } from "./project-switcher";
 import { Toaster } from "./toaster";
 import { UserMenu } from "./user-menu";
@@ -181,8 +181,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const setShortcutsOpen = useUi((s) => s.setShortcutsOpen);
   const navigate = useNavigate();
 
-  // A Guided-locked project shows members below admin the Guided screens only.
-  const nav = lock.locked ? [GUIDED_NAV] : persona === "guided" ? [GUIDED_NAV, ...EXPERT_NAV.slice(1)] : EXPERT_NAV;
+  // A Guided-locked project shows members below admin the Guided screens only, and the
+  // Integrations hub that Guided mode's "Share" step leads to.
+  const nav = lock.locked ? [GUIDED_NAV, INTEGRATIONS_NAV] : persona === "guided" ? [GUIDED_NAV, ...EXPERT_NAV.slice(1)] : EXPERT_NAV;
   useEffect(() => {
     if (lock.locked && pathname === "/") void navigate({ to: "/guided", replace: true });
   }, [lock.locked, pathname, navigate]);

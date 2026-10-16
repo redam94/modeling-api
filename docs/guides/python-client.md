@@ -309,8 +309,9 @@ before anything is sent).
 
 `api.endpoints.snippets(alias, languages)` returns the code the
 [Integrations hub](../concepts/integrations.md#snippets) shows, in Python, TypeScript, curl,
-R, Apps Script and Atlas. The Python snippet is exactly the `api.endpoints.score(...)` call
-above and runs as generated.
+R, Apps Script, Atlas and a notebook cell. The Python snippet is exactly the
+`api.endpoints.score(...)` call above, the notebook cell the `api.endpoint(alias).score(...)`
+form; both run as generated (the client's tests execute them).
 
 ### Webhooks
 

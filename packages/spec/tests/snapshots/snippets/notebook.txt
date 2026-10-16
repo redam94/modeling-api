@@ -1,0 +1,30 @@
+# A notebook cell (Jupyter or marimo): the endpoint as an object, results as xarray.
+import os
+
+from mapi_client import Client
+
+api = Client(
+    'https://api.mapi.example',
+    token=os.environ['MAPI_TOKEN'],
+    project='acme/growth',
+)
+endpoint = api.endpoint('geo-mmm-prod')
+schema = endpoint.schema()  # the input contract and an example call
+
+# The example call. For your own inputs, pass an xarray.Dataset shaped like
+# schema.snapshot.input_schema as `data`.
+data = None
+call = {
+    'future_covariates': 'carry_last',
+    'horizon': {
+        'dim': 'time',
+        'periods': 8,
+    },
+    'mode': 'forecast',
+    'output': {
+        'kind': 'expected',
+        'summary': ['mean', 'hdi_90'],
+    },
+}
+ds = endpoint.score(data, wait=60, **call)
+ds  # the summary: one variable per output, with a `stat` dim (mean, hdi_90_lower, ...)

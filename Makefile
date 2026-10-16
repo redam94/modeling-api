@@ -186,15 +186,18 @@ api-types: ## Regenerate apps/web/openapi.json, access.gen.json and src/api/sche
 	$(PNPM) --filter @mapi/web openapi:types
 
 .PHONY: snapshots
-snapshots: ## Regenerate the contract snapshot (mapi_spec) and the Guided catalog fixture of the server tests
+snapshots: ## Regenerate the contract snapshot (mapi_spec), the server's Guided catalog fixture and the web mock fixtures
 	MAPI_UPDATE_SNAPSHOTS=1 $(UV) run pytest -q packages/spec/tests/test_contract_snapshot.py \
 		packages/spec/tests/test_m3_whatif_golden.py \
 		conformance/tests/test_guided_catalog.py
+	$(UV) run python apps/web/scripts/gen_guided_fixtures.py
+	$(UV) run python apps/web/scripts/gen_integration_fixtures.py
 
 .PHONY: web-check
 web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*
 	$(UV) run python apps/web/scripts/gen_openapi.py --check
 	$(UV) run python apps/web/scripts/gen_guided_fixtures.py --check
+	$(UV) run python apps/web/scripts/gen_integration_fixtures.py --check
 	$(PNPM) -r lint
 	$(PNPM) -r typecheck
 	$(PNPM) -r test

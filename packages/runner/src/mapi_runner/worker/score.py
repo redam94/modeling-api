@@ -30,7 +30,6 @@ from mapi_spec.capabilities import REPRESENTATION_RULES
 from mapi_spec.endpoints import INPUT_INLINE_DATA, INPUT_INLINE_SCENARIO
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.run import INPUT_DATASET, RunnerPhase
-from mapi_spec.schema import DataSchema
 from mapi_spec.spec import ScoreRequest
 from mapi_spec.views import COUNTERFACTUAL_VIEW, FORECAST_VIEW
 
@@ -60,13 +59,12 @@ def _optional_dataset(ctx: WorkerContext, name: str) -> xr.Dataset | None:
     return load_dataset(ctx, name) if ctx.has_input(name) else None
 
 
-def _payload(
-    ctx: WorkerContext, name: str, inline: str, schema: DataSchema | None
-) -> xr.Dataset | None:
-    """A score input: the stored dataset ``name``, else an endpoint call's inline XrJSON."""
+def _payload(ctx: WorkerContext, name: str, inline: str, bundle: Bundle) -> xr.Dataset | None:
+    """A score input: the stored dataset ``name``, else an endpoint call's inline XrJSON
+    (named like the endpoint's canonical input contract; renamed to the dataset's names)."""
     data = _optional_dataset(ctx, name)
     if data is None and ctx.has_input(inline):
-        data = load_inline(ctx, inline, schema)
+        data = load_inline(ctx, inline, bundle.raw_schema, bundle.binding)
     return data
 
 
@@ -149,8 +147,8 @@ def _write_tree(
 def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
     ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the bundle and the payload")
     bundle = load_bundle(ctx)
-    data = _payload(ctx, INPUT_DATASET, INPUT_INLINE_DATA, bundle.raw_schema)
-    scenario = _payload(ctx, INPUT_SCENARIO, INPUT_INLINE_SCENARIO, bundle.raw_schema)
+    data = _payload(ctx, INPUT_DATASET, INPUT_INLINE_DATA, bundle)
+    scenario = _payload(ctx, INPUT_SCENARIO, INPUT_INLINE_SCENARIO, bundle)
     history = _optional_dataset(ctx, INPUT_HISTORY)
     tables = load_side_tables(ctx)
     ctx.state(RunnerPhase.SCORE, f"scoring ({job.request.mode})")

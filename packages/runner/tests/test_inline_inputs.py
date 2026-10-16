@@ -113,6 +113,31 @@ def test_inline_payload_scores_like_the_same_rows_uploaded(
     assert list(b["week"].values) == list(rows["week"].values)
 
 
+def test_inline_payload_named_like_the_endpoint_contract_scores_the_same(
+    gcs: ShimGcs, fitted: dict[str, Any]
+) -> None:
+    """An endpoint's input contract names dims and variables canonically (``time``, not the
+    dataset's ``week``); such a payload is typed and scored like the uploaded rows."""
+    rows = fitted["data"]
+    canonical = rows.rename(
+        {"week": "time", "store_id": "store", "units_sold": "y", "promo_flag": "promo"}
+    )
+    q = gcs.buckets.quarantine
+    gcs.put(q, "t/default/inline/dataset-names.json", _inline(rows))
+    gcs.put(q, "t/default/inline/canonical.json", _inline(canonical))
+    results = []
+    for key in ("dataset-names", "canonical"):
+        inputs = {**fitted["bundle"], INPUT_INLINE_DATA: (q, f"t/default/inline/{key}.json")}
+        results.append(run_supervisor(make_run(gcs, RunKind.SCORE, REQUEST, inputs=inputs)))
+    for result in results:
+        _ok(result)
+    a, b = (_prediction(r) for r in results)
+    assert set(a.data_vars) == set(b.data_vars) and a.data_vars
+    for name in a.data_vars:
+        np.testing.assert_allclose(a[name].values, b[name].values, rtol=1e-9)
+    assert b["week"].dtype.kind == "M"  # typed as the time dim, named as in the dataset
+
+
 def test_unreadable_inline_payloads_are_schema_errors(gcs: ShimGcs, fitted: dict[str, Any]) -> None:
     q = gcs.buckets.quarantine
     rows = fitted["data"].isel(week=slice(-2, None), store_id=slice(0, 1))

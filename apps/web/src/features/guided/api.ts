@@ -6,6 +6,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, newIdempotencyKey, unwrap, unwrapWithStatus } from "@/api/client";
+import { ik } from "@/api/integrations";
 import { modelArtifactLink, qk, useProjectScope } from "@/api/queries";
 import type { ArtifactLink, DatasetVersion, ModelVersion, Run, SpecDoc } from "@/api/types";
 import { fetchArtifactJson } from "@/lib/artifacts";
@@ -30,7 +31,6 @@ export const gk = {
   draft: (p: string, digest: string) => ["p", p, "guided", "draft", digest] as const,
   translation: (p: string, runId: string) => ["p", p, "guided", "translations", runId] as const,
   grid: (p: string, modelId: string, version: number) => ["p", p, "guided", "grid", modelId, version] as const,
-  endpoints: (p: string) => ["p", p, "guided", "endpoints"] as const,
 };
 
 // ----------------------------------------------------------------------------- templates
@@ -237,13 +237,11 @@ export async function fetchScoreView(outputs: ArtifactLink[], kind: ScoreViewKin
 
 // ----------------------------------------------------------------------------- endpoints & sharing
 
-export function useEndpoints() {
-  const s = useProjectScope();
-  return useQuery({
-    queryKey: gk.endpoints(s.key),
-    queryFn: ({ signal }) => unwrap(api.GET("/v1/endpoints", { params: { query: { limit: 200 } }, headers: s.headers, signal })),
-  });
-}
+/**
+ * The project's endpoints: the Integrations hub's query (`ik.endpoints`), so a promotion here
+ * shows in the hub at once and the other way round.
+ */
+export { useEndpoints } from "@/api/integrations";
 
 export function usePromoteEndpoint() {
   const s = useProjectScope();
@@ -251,19 +249,23 @@ export function usePromoteEndpoint() {
   return useMutation({
     mutationFn: ({ alias, body }: { alias: string; body: EndpointPromote }) =>
       unwrap(api.PUT("/v1/endpoints/{alias}", { params: { path: { alias } }, body, headers: s.headers })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: gk.endpoints(s.key) }),
+    // The list, the endpoint, its history, schema and snippets (all under ik.endpoints).
+    onSuccess: () => qc.invalidateQueries({ queryKey: ik.endpoints(s.key) }),
   });
 }
 
 /** Save a model version's plot and create a tokenised embed link for it (shown once). */
 export function useCreateEmbed() {
   const s = useProjectScope();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ plot, embed }: { plot: SavedPlotCreate; embed: PlotEmbedCreate }) => {
       const saved = await unwrap(api.POST("/v1/plots", { body: plot, headers: s.headers }));
       const created = await unwrap(api.POST("/v1/plots/{plot_id}/embeds", { params: { path: { plot_id: saved.id } }, body: embed, headers: s.headers }));
       return { saved, created };
     },
+    // The hub's "Plots and links" tab lists the saved plot and its link.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ik.savedPlots(s.key) }),
   });
 }
 
