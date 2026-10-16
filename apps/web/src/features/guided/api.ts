@@ -35,11 +35,12 @@ export const gk = {
 
 // ----------------------------------------------------------------------------- templates
 
-export function useGuidedTemplates() {
+export function useGuidedTemplates(opts: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: gk.templates,
     queryFn: ({ signal }) => unwrap(api.GET("/v1/guided/templates", { params: { query: { limit: 50 } }, signal })),
     staleTime: 10 * 60_000,
+    enabled: opts.enabled ?? true,
   });
 }
 

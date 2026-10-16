@@ -4,31 +4,83 @@
  * (`GET /v1/catalog/recommendations`), ranked with the reasons and cautions, each one click
  * from a Guided analysis, a spec or a workflow.
  */
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, Info, RotateCcw, Sparkles } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
 import { ErrorNotice, LoadingRows, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Badge, Progress } from "@/components/ui/primitives";
-import { useEffectivePersona } from "@/features/guided/persona";
+import { useGuidedTemplates } from "@/features/guided/api";
+import { useEffectivePersona, useGuidedLock, useSetPersona } from "@/features/guided/persona";
 import { cn } from "@/lib/utils";
 
 import { AboutDialog, DifficultyBadge, RuntimeBadge } from "./about-card";
 import { normaliseAnswers, useChooser, useRecommendations } from "./api";
 import { KIND_META } from "./labels";
-import { startTarget, type StartTarget } from "./start";
+import { guidedTemplateForModel, startTarget, type StartTarget } from "./start";
 import type { ChooserAnswers, ChooserKind, ChooserQuestion, Recommendation } from "./types";
 
 // ------------------------------------------------------------------------------ start button
 
-export function useStartTarget(kind: Recommendation["kind"], id: string): StartTarget {
-  return startTarget(kind, id, useEffectivePersona());
+/**
+ * Where "Start with this" leads for this user, or `null` while that is still being worked out
+ * (a model in Guided mode waits for the Guided templates, to find the one built on it).
+ */
+export function useStartTarget(kind: Recommendation["kind"], id: string): StartTarget | null {
+  const persona = useEffectivePersona();
+  const lock = useGuidedLock();
+  const needsTemplates = persona === "guided" && kind === "model";
+  const templates = useGuidedTemplates({ enabled: needsTemplates });
+  if (!needsTemplates) return startTarget(kind, id, persona);
+  if (templates.isPending) return null;
+  // Without the templates (the request failed) a Guided user is offered Expert mode, never
+  // sent there unannounced.
+  const templateForModel = templates.data ? guidedTemplateForModel(templates.data.items, id) : null;
+  return startTarget(kind, id, persona, { templateForModel, locked: lock.locked });
+}
+
+/** A model with no Guided path, shown to a Guided user: say so, and switch only on a click. */
+function ExpertStart({ target, size }: { target: Extract<StartTarget, { kind: "expert" }>; size: "sm" | "default" }) {
+  const setPersona = useSetPersona();
+  const navigate = useNavigate();
+  const hintId = useId();
+  return (
+    <span className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+      <span id={hintId} className="max-w-[30ch] text-right text-[11px] leading-snug text-muted-foreground">
+        {target.hint}
+      </span>
+      {target.locked ? (
+        <Badge variant="secondary">{target.label}</Badge>
+      ) : (
+        <Button
+          size={size}
+          variant="outline"
+          aria-describedby={hintId}
+          onClick={() => {
+            setPersona("expert");
+            void navigate({ to: target.to, search: target.search });
+          }}
+        >
+          {target.label} <ArrowRight />
+        </Button>
+      )}
+    </span>
+  );
 }
 
 /** The primary action of a recommendation or a browsed card. */
 export function StartButton({ kind, id, size = "sm", variant = "default", children }: { kind: Recommendation["kind"]; id: string; size?: "sm" | "default"; variant?: "default" | "outline"; children?: ReactNode }) {
   const target = useStartTarget(kind, id);
+  if (!target) {
+    return (
+      <Button size={size} variant={variant} disabled>
+        {children ?? "Start"} <Spinner className="size-3" />
+      </Button>
+    );
+  }
+  // The caller's wording ("Start with this") would hide that this is a switch to Expert mode.
+  if (target.kind === "expert") return <ExpertStart target={target} size={size} />;
   const label = (
     <>
       {children ?? target.label} <ArrowRight />

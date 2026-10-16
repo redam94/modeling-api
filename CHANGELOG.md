@@ -337,6 +337,12 @@ milestone releases are tagged on `main`.
 
 ### Fixed
 
+- **web** (M3.5 review): *Start with this* on a model in *Help me choose* or the catalog
+  dropped a Guided user into the Expert YAML spec editor, with placeholder data and an
+  error badge. In Guided mode a model now starts the guided template built on it
+  (`tabular.regressor` → store demand, `mmm.bayesian` → geo marketing mix, ...); a model with
+  none says it needs Expert mode and switches only on a click (never in a project locked to
+  Guided mode).
 - **spec, server** (found by the M3.5 live-stack verification): a governance policy with
   `applies_to: {families: [ts]}` - the example of every governance page - covered none of
   the statsmodels models, which declare the family `forecast`, `ts_multivariate` or

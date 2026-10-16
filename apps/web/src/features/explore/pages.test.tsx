@@ -10,7 +10,7 @@ import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { AboutCard } from "@/features/about/about-card";
-import { startTarget } from "@/features/about/start";
+import { guidedTemplateForModel, startTarget } from "@/features/about/start";
 import { specStarterFor } from "@/features/about/spec-starter";
 import { createHandlers } from "@/mocks/handlers";
 import { DS_ID, MODEL_ID } from "@/mocks/fixtures";
@@ -55,6 +55,18 @@ describe("About cards", () => {
     expect(startTarget("step", "core.resample")).toMatchObject({ search: { about: "step:core.resample" } });
   });
 
+  it("starts a model in Guided mode through the Guided template that uses it, or explains Expert mode", () => {
+    const templates = [{ id: "store_demand", plugin: "tabular.regressor@^1" }, { id: "geo_mmm", plugin: "mmm.bayesian@^1" }];
+    expect(guidedTemplateForModel(templates, "tabular.regressor")).toBe("store_demand");
+    expect(guidedTemplateForModel(templates, "mmm.bayesian")).toBe("geo_mmm");
+    expect(guidedTemplateForModel(templates, "ts.ets")).toBeNull();
+    expect(startTarget("model", "tabular.regressor", "guided", { templateForModel: "store_demand" })).toMatchObject({ kind: "guided", to: "/guided/new/$templateId", params: { templateId: "store_demand" } });
+    expect(startTarget("model", "ts.ets", "guided", { templateForModel: null })).toMatchObject({ kind: "expert", to: "/build/new", search: { model: "ts.ets" }, locked: false });
+    expect(startTarget("model", "ts.ets", "guided", { templateForModel: null, locked: true })).toMatchObject({ kind: "expert", locked: true });
+    // Expert mode is unchanged.
+    expect(startTarget("model", "tabular.regressor", "expert", { templateForModel: "store_demand" })).toMatchObject({ kind: "spec", to: "/build/new" });
+  });
+
   it("starts a spec for a model with its About as comments, safely", () => {
     const yaml = specStarterFor("ts.sarimax", { version: "1.2.0", about: { ...FIXTURE.abouts.find((a) => a.id === "ts.sarimax")!.about, title: "Evil\nkind: Workflow" } });
     expect(yaml).toContain("  use: ts.sarimax@^1");
@@ -72,6 +84,30 @@ describe("Help me choose", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "One number over time" }));
     await waitFor(() => expect(within(screen.getByRole("list", { name: "Recommendations" })).getAllByText("Suits: one number over time").length).toBeGreaterThan(0));
     expect(within(list).getAllByRole("link", { name: "Start with this" }).length).toBeGreaterThan(0);
+  });
+
+  it("never drops a Guided user into the Expert spec editor without saying so", async () => {
+    useUi.setState({ persona: "guided", personas: {} });
+    const { router } = renderApp("/choose?goal=forecast&data_shape=panel&kind=model");
+    const list = await screen.findByRole("list", { name: "Recommendations" }, T);
+    // A model with a Guided template starts that template.
+    const demand = await waitFor(() => {
+      const card = list.querySelector<HTMLElement>('[data-recommendation="tabular.regressor"]');
+      expect(card).not.toBeNull();
+      return card!;
+    }, T);
+    expect(within(demand).getByRole("link", { name: "Start with this" })).toHaveAttribute("href", "/guided/new/store_demand");
+    // No card links straight to the Expert editor.
+    for (const link of within(list).queryAllByRole("link")) expect(link.getAttribute("href") ?? "").not.toMatch(/^\/build\/new/);
+    // A model without one says it needs Expert mode, and switching is one deliberate click.
+    const expertOnly = within(list).getAllByRole("button", { name: "Set up in Expert mode" });
+    expect(expertOnly.length).toBeGreaterThan(0);
+    const card = expertOnly[0]!.closest<HTMLElement>("[data-recommendation]")!;
+    expect(within(card).getByText(/Expert mode shows every setting/)).toBeInTheDocument();
+    await userEvent.click(expertOnly[0]!);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/build/new"));
+    expect(router.state.location.search).toMatchObject({ model: card.dataset.recommendation });
+    expect(useUi.getState().persona).toBe("expert");
   });
 });
 

@@ -281,7 +281,9 @@ The screens lead into each other:
   already bound: the *Run this recipe* page in Guided mode, the template wizard in Expert mode.
 - **Start with this** on an About card or a Help me choose result opens a workflow template
   as a recipe (Guided) or in the template wizard (Expert), and a governance check in the
-  check catalog.
+  check catalog. In Guided mode a model opens the guided template built on it; one without
+  a guided template offers **Set up in Expert mode** (a deliberate switch) instead of opening
+  the spec editor.
 
 ## Catalog
 
