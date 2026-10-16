@@ -56,9 +56,14 @@ EXPECTED: dict[str, dict[str, str]] = {
     "model": {"read": "V/P", "run": "R/P", "delete": "A/P"},
     "endpoint": {
         "read": "V/P", "run": "R/P", "create": "A/P", "update": "A/P", "promote": "A/P",
-        "delete": "A/P",
+        "delete": "A/P", "manage": "A/P",
     },
-    "plot": {"read": "V/P", "create": "E/P", "run": "R/P"},
+    "plot": {"read": "V/P", "create": "E/P", "run": "R/P", "delete": "E/P"},
+    # M3
+    "embed": {"read": "V/P", "create": "E/P", "delete": "E/P"},
+    "webhook": {"read": "A/P", "create": "A/P", "update": "A/P", "delete": "A/P"},
+    "tenant_deletion": {"read": "A/T", "create": "A/T", "cancel": "A/T", "manage": "op"},
+    "tenant_export": {"read": "A/T", "create": "A/T"},
     "plugin": {"read": "V/P", "create": "A/P", "delete": "A/P"},
     "usage": {"read": "V/P"},
     "billing": {"read": "A/T"},
@@ -391,3 +396,48 @@ def test_resolution_errors(kw: dict[str, Any], code: ErrorCode) -> None:
     with pytest.raises(MapiError) as exc:
         resolve_project_scope(**kw)
     assert exc.value.code is code
+
+
+# ------------------------------------------------------------------------------------- M3
+
+
+def test_m3_suspended_tenants_can_still_export_and_manage_their_deletion() -> None:
+    from mapi_spec.tenancy import SUSPENDED_ALLOWED
+
+    suspended = _ctx(tenant_role=A, tenant_status=TenantStatus.SUSPENDED)
+    for res, act in SUSPENDED_ALLOWED:
+        assert suspended.allows(act, res), (res, act)
+    assert suspended.allows("read", "tenant_deletion")
+    assert not suspended.allows("create", "webhook")
+    assert not suspended.allows("create", "embed")
+    deleting = _ctx(tenant_role=A, tenant_status=TenantStatus.DELETING)
+    assert not any(deleting.allows(a, r) for r, a in SUSPENDED_ALLOWED)
+    # only a tenant-wide admin may delete or export the tenant
+    assert not _ctx(role=A, tenant_role=None).allows("create", "tenant_deletion")
+    assert not _ctx(role=A, tenant_role=None).allows("create", "tenant_export")
+
+
+def test_m3_operators_see_deletion_progress_but_not_exports_or_webhooks() -> None:
+    op = _ctx(operator=True, role=None)
+    assert op.allows("read", "tenant_deletion")
+    assert op.allows("manage", "tenant_deletion")
+    for res in ("tenant_export", "webhook", "embed"):
+        assert not op.allows("read", res), res
+    assert not _ctx(tenant_role=A).allows("manage", "tenant_deletion")
+
+
+def test_m3_overriding_a_promotion_gate_is_for_admins_and_never_for_tokens() -> None:
+    assert _ctx(role=A).allows("manage", "endpoint")
+    assert not _ctx(role=R).allows("manage", "endpoint")
+    token_admin = _ctx(principal=_token("admin"), role=A, scopes=frozenset({"admin"}))
+    assert token_admin.allows("promote", "endpoint")
+    assert not token_admin.allows("manage", "endpoint")
+
+
+def test_m3_project_guided_lock_defaults_off() -> None:
+    from mapi_spec.tenancy import Project
+
+    p = Project.model_validate(Project.model_json_schema()["examples"][0])
+    assert p.guided_locked is False
+    locked = Project.model_validate(Project.model_json_schema()["examples"][1])
+    assert locked.guided_locked is True

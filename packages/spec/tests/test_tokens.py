@@ -14,6 +14,7 @@ from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.tenancy import Action, ResourceKind
 from mapi_spec.tokens import (
     TOKEN_ALPHABET,
+    TOKEN_NEVER,
     TOKEN_RE,
     ApiToken,
     ParsedToken,
@@ -195,6 +196,20 @@ SCOPE_EXPECTED: dict[str, set[tuple[str, str]]] = {
     "datasets:write": {("dataset", "read"), ("dataset", "create"), ("dataset", "update")},
     "plugins:publish": {("plugin", "read"), ("plugin", "create"), ("plugin", "delete")},
 }
+SCOPE_EXPECTED["endpoints:promote"] = {
+    ("endpoint", "read"),
+    ("endpoint", "create"),
+    ("endpoint", "update"),
+    ("endpoint", "promote"),
+    ("endpoint", "delete"),
+    ("model", "read"),
+}
+SCOPE_EXPECTED["webhooks:manage"] = {
+    ("webhook", "read"),
+    ("webhook", "create"),
+    ("webhook", "update"),
+    ("webhook", "delete"),
+}
 SCOPE_EXPECTED["runs:create"] = SCOPE_EXPECTED["models:read"] | {
     ("run", "create"),
     ("run", "cancel"),
@@ -235,6 +250,14 @@ def test_no_scope_lets_a_token_mint_tokens() -> None:
     for scope in [*SCOPE_EXPECTED, "admin", "score:*"]:
         assert not scope_allows([scope], "create", "token"), scope
     assert scope_allows(["admin"], "delete", "token")  # revoking stays possible
+
+
+def test_no_scope_lets_a_token_override_a_promotion_gate() -> None:
+    """M3: overriding a failing scorecard is a human decision (audited with a reason)."""
+    for scope in [*SCOPE_EXPECTED, "admin", "score:*"]:
+        assert not scope_allows([scope], "manage", "endpoint"), scope
+    assert scope_allows(["endpoints:promote"], "promote", "endpoint")
+    assert ("endpoint", "manage") in TOKEN_NEVER and ("token", "create") in TOKEN_NEVER
 
 
 # -------------------------------------------------------------------------------------- DTOs

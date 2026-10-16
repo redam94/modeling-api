@@ -216,6 +216,10 @@ class ScopeName(StrEnum):
     SCORE = "score"
     PLUGINS_PUBLISH = "plugins:publish"
     DATASETS_WRITE = "datasets:write"
+    ENDPOINTS_PROMOTE = "endpoints:promote"
+    """M3: promote, roll back and delete endpoints (CI pipelines); never overrides a gate."""
+    WEBHOOKS_MANAGE = "webhooks:manage"
+    """M3: manage the project's webhooks and replay deliveries."""
     ADMIN = "admin"
 
 
@@ -251,7 +255,7 @@ TokenScope = Annotated[
     AfterValidator(check_scope),
 ]
 """``models:read`` | ``runs:create`` | ``score:{endpoint}`` | ``plugins:publish`` |
-``datasets:write`` | ``admin``."""
+``datasets:write`` | ``endpoints:promote`` | ``webhooks:manage`` | ``admin``."""
 
 
 def scope_allows(
@@ -269,23 +273,26 @@ def scope_allows(
     model id) for ``score:<target>``. Scopes only *narrow*: the owner's role is checked
     separately.
 
-    ===================  =========================================================
-    scope                covers
-    ===================  =========================================================
-    ``admin``            everything the owner's role allows
-    ``models:read``      ``read`` on catalog, dataset, spec, run, model, endpoint,
-                         plot, usage, project
-    ``runs:create``      ``models:read`` + ``create``/``cancel`` run, ``run`` model,
-                         endpoint, plot
-    ``score:<target>``   ``read`` + ``run`` on that endpoint and ``run`` (score) on
-                         the model with that id (``*``: every endpoint and model)
-    ``datasets:write``   ``read``/``create``/``update`` dataset
-    ``plugins:publish``  ``read``/``create``/``delete`` plugin
-    ===================  =========================================================
+    =====================  =======================================================
+    scope                  covers
+    =====================  =======================================================
+    ``admin``              everything the owner's role allows
+    ``models:read``        ``read`` on catalog, dataset, spec, run, model, endpoint,
+                           plot, usage, project
+    ``runs:create``        ``models:read`` + ``create``/``cancel`` run, ``run``
+                           model, endpoint, plot
+    ``score:<target>``     ``read`` + ``run`` on that endpoint and ``run`` (score)
+                           on the model with that id (``*``: every endpoint and model)
+    ``datasets:write``     ``read``/``create``/``update`` dataset
+    ``plugins:publish``    ``read``/``create``/``delete`` plugin
+    ``endpoints:promote``  ``read``/``create``/``update``/``promote``/``delete``
+                           endpoint, ``read`` model
+    ``webhooks:manage``    ``read``/``create``/``update``/``delete`` webhook
+    =====================  =======================================================
 
-    No scope covers :data:`TOKEN_NEVER` (minting tokens): a child token would escape its
-    parent's expiry, budget, rate limit and revocation, so minting needs a signed-in
-    session.
+    No scope covers :data:`TOKEN_NEVER`: minting tokens (a child token would escape its
+    parent's expiry, budget, rate limit and revocation) and overriding a promotion gate (a
+    human decision that is audited with its reason) need a signed-in session.
     """
     if (resource, action) in TOKEN_NEVER:
         return False
@@ -310,8 +317,11 @@ def scope_allows(
 _SCORE_GRANTS = frozenset({("endpoint", "read"), ("endpoint", "run"), ("model", "run")})
 """What ``score:<target>`` covers on the endpoint or model named ``<target>``."""
 
-TOKEN_NEVER: Final[frozenset[tuple[str, str]]] = frozenset({("token", "create")})
-"""``(resource, action)`` pairs no token may do, whatever its scopes (even ``admin``)."""
+TOKEN_NEVER: Final[frozenset[tuple[str, str]]] = frozenset(
+    {("token", "create"), ("endpoint", "manage")}
+)
+"""``(resource, action)`` pairs no token may do, whatever its scopes (even ``admin``):
+minting tokens and overriding an endpoint's promotion gate."""
 
 _READABLE = ("catalog", "dataset", "spec", "run", "model", "endpoint", "plot", "usage", "project")
 _READ = frozenset((r, "read") for r in _READABLE)
@@ -330,6 +340,19 @@ _SCOPE_GRANTS: dict[ScopeName, frozenset[tuple[str, str]]] = {
     ),
     ScopeName.PLUGINS_PUBLISH: frozenset(
         {("plugin", "read"), ("plugin", "create"), ("plugin", "delete")}
+    ),
+    ScopeName.ENDPOINTS_PROMOTE: frozenset(
+        {
+            ("endpoint", "read"),
+            ("endpoint", "create"),
+            ("endpoint", "update"),
+            ("endpoint", "promote"),
+            ("endpoint", "delete"),
+            ("model", "read"),
+        }
+    ),
+    ScopeName.WEBHOOKS_MANAGE: frozenset(
+        {("webhook", "read"), ("webhook", "create"), ("webhook", "update"), ("webhook", "delete")}
     ),
     ScopeName.ADMIN: frozenset(),
     ScopeName.SCORE: frozenset(),

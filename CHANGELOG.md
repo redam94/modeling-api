@@ -5,6 +5,37 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Added
+- **spec**: the M3 contracts for Guided mode and integrations, shared by the server, runner,
+  web app and client components (contract v0.1, additive only).
+  - `mapi_spec.guided`: four guided templates (`geo_mmm`, `weekly_forecast`,
+    `store_demand`, `customer_choice` - the last needs a built-in choice model that is not
+    shipped yet), plain-language questions, role detection from column profiles, drafts
+    (ingest mapping + `ModelSpec` + YAML) and the BayesInsight `model_def.json` import.
+  - `mapi_spec.ingest`: ingest presets (`mff`, `meridian`, `bayesinsight`), wide variables
+    and the `mff` format; `IngestMapping` moves here (still exported by `mapi_spec.api`).
+  - `mapi_spec.calibration`: business priors (ROI or share ranges with a credibility), lift
+    tests, the `ModelSpec.calibration` block and the sandboxed `translate_priors` run kind.
+  - `mapi_spec.scorecard`: the check catalog, items with check ids, categories and docs
+    anchors, and the promotion gate (pass → allowed, warn → admin override with a reason,
+    fail → blocked); `Scorecard` moves here (still exported by `mapi_spec.api`).
+  - `mapi_spec.whatif` and `ResponseGridView`: per-draw response grids, the slider
+    interpolation contract, "Run exact" and forecast/counterfactual presets;
+    `ScoreRequest.future_covariates`.
+  - `mapi_spec.endpoints`, `mapi_spec.xrjson`, `mapi_spec.snippets`: endpoints and aliases,
+    score calls with inline XrJSON, input-schema compatibility, example payloads and pure
+    snippet generators (Python, TypeScript, curl, R, Apps Script, Atlas).
+  - `mapi_spec.webhooks`: events, envelope, `Mapi-Signature` signing and verification,
+    retries and the SSRF policy; `mapi_spec.sharing`: saved plots, renders (PNG, SVG, PDF)
+    and embed links for platform recipes; `mapi_spec.trust`: sign-up, e-mail and identity
+    verification, tenant deletion and GDPR export.
+  - `mapi_spec.api.M3_ENDPOINTS` (45 operations) with their access rules; new permissions
+    (`webhook`, `embed`, `tenant_deletion`, `tenant_export`, plot delete, endpoint
+    `manage` for gate overrides), scopes (`endpoints:promote`, `webhooks:manage`), audit
+    actions, problem codes and `Project.guided_locked`.
+- **docs**: Guided mode and Integrations concept pages; the v0.4 section of the HTTP API
+  reference.
+
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
 The platform is now multi-tenant and ready for Google Cloud. Many teams can share one

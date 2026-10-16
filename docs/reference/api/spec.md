@@ -176,6 +176,88 @@ See [Quotas and cost](../../concepts/quotas-and-cost.md).
       members: [EXECUTOR_CONFORMANCE, ConformanceCase, ConformanceCaseId, Fault, Requirement, Expectation, ConformanceTarget, applicable_cases, ObservedRun, check_expectation, ConformanceReport, ConformanceResult, CaseOutcome]
       heading_level: 3
 
+## Guided mode <span class="mapi-badge">v0.4</span>
+
+See [Guided mode](../../concepts/guided-mode.md).
+
+::: mapi_spec.guided
+    options:
+      members: [GuidedTemplate, GuidedQuestion, TemplateLookup, GUIDED_TEMPLATES, get_template, template_placeholders, render_template, ColumnProfile, DetectRolesRequest, RoleCandidate, QuestionSuggestion, RoleSuggestions, suggest_roles, GuidedAnswers, GuidedDraft, build_draft, safe_name, channel_label, BayesInsightImport, draft_from_bayesinsight]
+      heading_level: 3
+
+## Ingest presets <span class="mapi-badge">v0.4</span>
+
+::: mapi_spec.ingest
+    options:
+      members: [IngestMapping, DimMapping, VarMapping, WideVarMapping, IngestPreset, MFF_COLUMNS, MFF_KEY_COLUMNS, MffOptions, MeridianColumns, BayesInsightMetadata, BayesInsightVariable, BayesInsightModelDef, BayesInsightVarRef, bayesinsight_var_ref]
+      heading_level: 3
+
+## Business priors and calibration <span class="mapi-badge">v0.4</span>
+
+::: mapi_spec.calibration
+    options:
+      members: [BusinessPriors, ChannelBelief, ShareBelief, check_business_priors, lognormal_from_range, logitnormal_from_range, LiftTest, Calibration, PriorTranslationJob, PriorTranslationResult, PriorPreview, DistributionSummary, FanChart, apply_prior_translation]
+      heading_level: 3
+
+## Scorecard and promotion gate <span class="mapi-badge">v0.4</span>
+
+::: mapi_spec.scorecard
+    options:
+      members: [Scorecard, ScorecardItem, ScorecardCheck, CheckDirection, CheckThresholds, SCORECARD_CHECKS, evaluate_check, rollup, GateOutcome, GateReason, PromotionGateDecision, promotion_gate, authorize_promotion]
+      heading_level: 3
+
+## What-if scenarios <span class="mapi-badge">v0.4</span>
+
+::: mapi_spec.views
+    options:
+      members: [ResponseGridView]
+      heading_level: 3
+
+::: mapi_spec.whatif
+    options:
+      members: [WhatIfScenario, WhatIfResult, ChannelOutcome, SummaryStats, evaluate_scenario, scenario_score_request, ChannelOff, BudgetScale, preset_interventions, counterfactual_request, forecast_request, GuidedCompile, compile_guided_request]
+      heading_level: 3
+
+## Endpoints and snippets <span class="mapi-badge">v0.4</span>
+
+See [Integrations](../../concepts/integrations.md).
+
+::: mapi_spec.endpoints
+    options:
+      members: [Endpoint, EvaluationPolicy, EndpointSchemaSnapshot, EndpointPromote, EndpointRevision, EndpointRollback, EndpointScoreCall, EndpointSchema, EndpointValidation, schema_breaks, example_score_call]
+      heading_level: 3
+
+::: mapi_spec.xrjson
+    options:
+      members: [XrJsonDataset, XrJsonVariable, check_xrjson_size]
+      heading_level: 3
+
+::: mapi_spec.snippets
+    options:
+      members: [SnippetLanguage, Snippet, SnippetSet, SnippetContext, render_snippet, render_snippets]
+      heading_level: 3
+
+## Webhooks <span class="mapi-badge">v0.4</span>
+
+::: mapi_spec.webhooks
+    options:
+      members: [WebhookEventType, WebhookCreate, WebhookUpdate, Webhook, WebhookCreated, WebhookEnvelope, WebhookDelivery, DeliveryStatus, sign_payload, signature_header, parse_signature_header, check_signature, verify_signature, next_retry_delay, SsrfPolicy, SSRF_POLICY, ip_is_blocked, check_webhook_url, check_resolved_addresses]
+      heading_level: 3
+
+## Plot sharing <span class="mapi-badge">v0.4</span>
+
+::: mapi_spec.sharing
+    options:
+      members: [SavedPlotCreate, SavedPlot, ModelPlotRef, PlotRenderRequest, PlotEmbedCreate, PlotEmbed, PlotEmbedCreated, EmbedView, embeddable, is_platform_recipe]
+      heading_level: 3
+
+## Trust lifecycle <span class="mapi-badge">v0.4</span>
+
+::: mapi_spec.trust
+    options:
+      members: [SignupRequest, SignupAccepted, check_signup, DisposableEmailPolicy, BlocklistEmailPolicy, email_domain, EmailVerify, VerificationResult, VerificationStatus, VerificationMethod, VerificationUpdate, uploaded_code_allowed, DeletionState, next_deletion_state, TenantDeletionRequest, TenantDeletion, StoreProgress, GdprExportRequest, GdprExport]
+      heading_level: 3
+
 ## Local development
 
 ::: mapi_spec.localdev

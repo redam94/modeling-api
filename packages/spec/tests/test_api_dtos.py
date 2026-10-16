@@ -334,11 +334,11 @@ def test_m2_endpoint_table_is_consistent() -> None:
 
 
 def test_every_operation_has_route_access_and_a_real_permission() -> None:
-    from mapi_spec.api import ENDPOINTS, ROUTE_ACCESS, RouteScope, route_access
+    from mapi_spec.api import ALL_ENDPOINTS, ROUTE_ACCESS, RouteScope, route_access
     from mapi_spec.tenancy import OPERATOR_PERMISSIONS, PERMISSIONS, Level
 
-    assert set(ROUTE_ACCESS) == {e.operation_id for e in ENDPOINTS}
-    for e in ENDPOINTS:
+    assert set(ROUTE_ACCESS) == {e.operation_id for e in ALL_ENDPOINTS}
+    for e in ALL_ENDPOINTS:
         acc = route_access(e.operation_id)
         pairs = [(acc.resource, acc.action)] if acc.resource is not None else []
         pairs += list(acc.also)
@@ -357,7 +357,7 @@ def test_every_operation_has_route_access_and_a_real_permission() -> None:
             assert e.path.startswith("/v1/tenants/{tenant_id}"), e.path
         if acc.scope is RouteScope.PUBLIC:
             assert e.path in ("/healthz", "/readyz", "/v1/schemas/{name}") or e.path.startswith(
-                "/auth/"
+                ("/auth/", "/v1/embeds/")
             ), e.path
         if acc.scope is RouteScope.PROJECT and acc.resource is not None:
             rule = PERMISSIONS[(acc.resource, acc.action)]  # type: ignore[index]

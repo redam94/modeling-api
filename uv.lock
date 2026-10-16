@@ -2419,7 +2419,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "jsonschema", specifier = ">=4.23" },
-    { name = "pydantic", specifier = ">=2.9" },
+    { name = "pydantic", specifier = ">=2.11" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
 

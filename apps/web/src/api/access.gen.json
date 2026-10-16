@@ -30,11 +30,27 @@
       "level": "project",
       "min_role": "editor"
     },
+    "embed:create": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "embed:delete": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "embed:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
     "endpoint:create": {
       "level": "project",
       "min_role": "admin"
     },
     "endpoint:delete": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "endpoint:manage": {
       "level": "project",
       "min_role": "admin"
     },
@@ -103,6 +119,10 @@
       "min_role": "runner"
     },
     "plot:create": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "plot:delete": {
       "level": "project",
       "min_role": "editor"
     },
@@ -202,6 +222,30 @@
       "level": "tenant",
       "min_role": "admin"
     },
+    "tenant_deletion:cancel": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "tenant_deletion:create": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "tenant_deletion:manage": {
+      "level": "platform",
+      "min_role": null
+    },
+    "tenant_deletion:read": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "tenant_export:create": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "tenant_export:read": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
     "tenant_member:create": {
       "level": "tenant",
       "min_role": "admin"
@@ -237,6 +281,22 @@
     "usage:read": {
       "level": "project",
       "min_role": "viewer"
+    },
+    "webhook:create": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "webhook:delete": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "webhook:read": {
+      "level": "project",
+      "min_role": "admin"
+    },
+    "webhook:update": {
+      "level": "project",
+      "min_role": "admin"
     }
   },
   "roles": [
@@ -251,6 +311,8 @@
     "score",
     "plugins:publish",
     "datasets:write",
+    "endpoints:promote",
+    "webhooks:manage",
     "admin"
   ]
 }

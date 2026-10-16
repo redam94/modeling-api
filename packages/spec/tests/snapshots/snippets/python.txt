@@ -1,0 +1,26 @@
+import os
+
+from mapi_client import Client
+
+api = Client(
+    'https://api.mapi.example',
+    token=os.environ['MAPI_TOKEN'],
+    project='acme/growth',
+)
+result = api.endpoints.score(
+    'geo-mmm-prod',
+    {
+        'future_covariates': 'carry_last',
+        'horizon': {
+            'dim': 'time',
+            'periods': 8,
+        },
+        'mode': 'forecast',
+        'output': {
+            'kind': 'expected',
+            'summary': ['mean', 'hdi_90'],
+        },
+    },
+    wait=60,
+)
+print(result.run.state, [link.name for link in result.outputs])
