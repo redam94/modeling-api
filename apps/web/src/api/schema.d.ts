@@ -7744,7 +7744,7 @@ export interface components {
          *         "views": 12
          *       },
          *       "token": "mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz",
-         *       "url": "https://plots.mapi.example/e/mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz"
+         *       "url": "https://plots.mapi.example/embed/mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz"
          *     }
          */
         PlotEmbedCreated: {

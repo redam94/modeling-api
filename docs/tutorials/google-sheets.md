@@ -49,10 +49,21 @@ value the token from step 1. Back in the editor, choose the function and press *
 The first run asks you to authorise the script to connect to an external service and to edit
 your spreadsheets.
 
-`A1` now says `done`: the platform ran the endpoint's example call (here an 8-week forecast)
-in a sandbox and returned links to its results. The payload is the endpoint's own example,
-generated from its input contract, so it is valid as it stands. The result itself is a
-labelled array file that a spreadsheet cannot read; the next step reads the part that it can.
+A sheet called **Result** now holds the answer: the platform ran the endpoint's example call
+(here an 8-week forecast) in a sandbox and returned the requested summary inline, one table
+per output variable. Each table has a header row (`variable`, the coordinate columns such as
+`geo` and `time`, then `mean`, `hdi_90_lower` and `hdi_90_upper`) and one row per
+coordinate. The payload is the endpoint's own example, generated from its input contract, so
+it is valid as it stands. If the run takes longer than the minute the script waits, **Result**
+says *Still running*; run the function again to collect it.
+
+To send your own data instead of the example's, add a sheet called **Input** in long format:
+a header row naming the endpoint's dims and input variables, then one row per coordinate.
+The script reads it into the call when the example sends inline data; an endpoint whose
+example call sends none (a plain forecast) refuses an **Input** sheet.
+
+The summary is per coordinate, per market and week here. The next step writes a different
+table: the history the model was fitted on next to the forecast's range, summed over markets.
 
 ## 3. Write the forecast into a table
 

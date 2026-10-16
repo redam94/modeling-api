@@ -22,7 +22,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from mapi_spec.api import ArtifactLink, EndpointSchema, EndpointScoreCall, Run, ScoreCallResult
+from mapi_spec.api import (
+    ArtifactLink,
+    EndpointSchema,
+    EndpointScoreCall,
+    Run,
+    ScoreCallResult,
+    ScoreSummary,
+)
 from mapi_spec.snippets import SnippetContext, render_snippet
 from mapi_spec.views import FORECAST_VIEW, ForecastView
 
@@ -50,6 +57,7 @@ function sheet(name) {
     setValue: (value) => writes.push({ sheet: name, row, col, values: [[value]] }),
   });
   return {
+    clear: () => writes.push({ sheet: name, cleared: true }),
     clearContents: () => writes.push({ sheet: name, cleared: true }),
     getRange: (a, b) => (typeof a === "string" ? range(1, 1) : range(a, b)),
   };
@@ -61,6 +69,7 @@ const services = {
     }),
   },
   Utilities: { formatDate: () => "2026-10-16" },
+  Session: { getScriptTimeZone: () => "Europe/Berlin" },
   UrlFetchApp: {
     fetch(url, options) {
       fetched.push({ url, options: options || null });
@@ -129,8 +138,14 @@ def _score_result(*, done: bool = True, state: str = "succeeded") -> dict[str, A
         link | {"name": FORECAST_VIEW, "url": VIEW_URL, "content_type": "application/json"},
     ]
     run = _example(Run) | {"kind": "score", "state": state, "progress": None}
+    succeeded = done and state == "succeeded"
     result = ScoreCallResult.model_validate(
-        {"done": done, "run": run, "outputs": outputs if state == "succeeded" else []}
+        {
+            "done": done,
+            "run": run,
+            "outputs": outputs if succeeded else [],
+            "summary": _example(ScoreSummary) if succeeded else None,
+        }
     )
     return result.model_dump(mode="json")
 
@@ -169,7 +184,29 @@ def test_the_endpoint_apps_script_runs(tmp_path: Path) -> None:
     (call,) = did["fetched"]
     assert call["options"]["headers"]["Authorization"] == "Bearer mapi_from_properties"
     assert json.loads(call["options"]["payload"]) == _endpoint_call()
-    assert did["writes"] == [{"sheet": "Sheet1", "row": 1, "col": 1, "values": [["done"]]}]
+    (table,) = _example(ScoreSummary)["tables"]
+    assert did["writes"] == [
+        {"sheet": "Result", "cleared": True},
+        {
+            "sheet": "Result",
+            "row": 1,
+            "col": 1,
+            "values": [
+                ["variable", *table["columns"]],
+                *([table["variable"], *row] for row in table["rows"]),
+            ],
+        },
+    ]
+
+
+@needs_node
+def test_the_endpoint_apps_script_says_when_the_run_is_still_going(tmp_path: Path) -> None:
+    result = _score_result(done=False, state="running")
+    did = _run(tmp_path, "sheets_endpoint.gs", "scoreGeoMmmProd",
+               {SCORE_URL: {"status": 202, "body": result}})  # fmt: skip
+    (cell,) = [w for w in did["writes"] if not w.get("cleared")]
+    assert cell["sheet"] == "Result"
+    assert cell["values"][0][0].startswith("Still running (" + result["run"]["id"])
 
 
 @needs_node

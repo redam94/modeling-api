@@ -270,7 +270,7 @@ class PlotEmbedCreated(ResponseModel):
     model_config = dto_examples(
         {
             "embed": PlotEmbed.model_json_schema()["examples"][0],
-            "url": "https://plots.mapi.example/e/mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz",
+            "url": "https://plots.mapi.example/embed/mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz",
             "token": "mpe_7k2m9q4x0123456789abcdefghjkmnpqrstvwxyz",
         }
     )

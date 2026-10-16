@@ -35,7 +35,7 @@ laptop (8 cores, 16 GB, macOS), against a live `make dev` stack:
 
 | Exit criterion | Verified locally | Result | Still needs |
 |---|---|---|---|
-| 5 non-technical testers: upload → report → scenario unaided in < 30 min | The browser script `apps/web/e2e/m3-guided.e2e.spec.ts` clicks the whole Guided flow on a realistic spreadsheet, timing each step; every screen was reviewed for plain language, next steps and dead ends | **137 s** of automated wall time, nearly all of it the system working (the beliefs preview, the fit, the exact runs). Six usability defects found and fixed, among them two dead ends | Five real testers ([protocol](#protocol-for-the-five-non-technical-testers)) |
+| 5 non-technical testers: upload → report → scenario unaided in < 30 min | The browser script `apps/web/e2e/m3-guided.e2e.spec.ts` clicks the whole Guided flow on a realistic spreadsheet, timing each step; every screen was reviewed for plain language, next steps and dead ends | **135 s** of automated wall time, nearly all of it the system working (the beliefs preview, the fit, the exact runs). Six usability defects found and fixed, among them two dead ends | Five real testers ([protocol](#protocol-for-the-five-non-technical-testers)) |
 | Atlas optimises against an endpoint | `mapi_client.atlas.RemoteModel` against the live endpoint, with Atlas installed (`atlas.core.interfaces`), an optimiser written against Atlas's `OptimizerProtocol` | The chosen allocation beats the current one under the model: **+0.22 %** revenue for next quarter at the same budget, from 25 candidate allocations (22 score requests) in 220 s | The in-sandbox `optimize` job (M4) |
 | Cut line A | A self-service sign-up creates a `public` workspace: e-mail verified, uploaded code refused (`uploaded_code_allowed: false`); built-ins and declarative specs run (here on an operator-promoted `internal` workspace, because the local executor admits only trusted tiers) | Pass | Public workspaces running on `docker-gvisor` or Cloud Run Jobs, the only executors shared tiers may use |
 
@@ -100,18 +100,21 @@ the script then does what the five testers will be asked to do, with no hesitati
 default tenant's admin. Screenshots land in `apps/web/e2e/screenshots/m3-*.png`
 (git-ignored); timings in `m3-timings.json`.
 
+The timings below are from the release check of v0.4.0 on the integrated `develop` branch
+(2026-10-16, same laptop and settings); the first run on `feat/m3-e2e` took 137 s.
+
 | Step | What the script does | Wall time (s) |
 |---|---|---|
-| 1. Template | "What do you want to learn?" → Geo marketing mix (this run opened `/guided` directly; the script now starts where sign-in lands, `/`, and finds **Guided** in the sidebar) | 0.7 |
+| 1. Template | Starts where sign-in lands (`/`), finds **Guided**; "What do you want to learn?" → Geo marketing mix | 0.7 |
 | 2. Your data | Names the analysis, chooses the CSV; checks that every question is pre-filled correctly; Upload and continue (upload, sandboxed check) | 4.7 |
-| 3. What you believe | Ticks tv, states an ROI of 1.5 to 4, previews what it means (a sandboxed run) and continues | 22.2 |
-| 4. Fit the model | Fit the model; plain-language phases and progress; See the results | 79.6 |
+| 3. What you believe | Ticks tv, states an ROI of 1.5 to 4, previews what it means (a sandboxed run) and continues | 20.7 |
+| 4. Fit the model | Fit the model; plain-language phases and progress; See the results | 78.5 |
 | 5. Results | Headline numbers, ROI and share per channel, two charts, the sanity scorecard | 0.4 |
-| 6. What if… | Search spend +20 % on the slider (instant), Run exact, Turn off tv, a 13-week forecast | 29.5 |
-| **Upload → report → scenario** | | **137.1** |
+| 6. What if… | Search spend +20 % on the slider (instant), Run exact, Turn off tv, a 13-week forecast | 29.6 |
+| **Upload → report → scenario** | | **134.6** |
 | 7. Share | The gate explained; an admin's reason; Approve and go live; an embed link | 0.4 |
 
-Nearly all of the 137 s is the system working: the beliefs preview, the fit (80 s), the exact
+Nearly all of the 135 s is the system working: the beliefs preview, the fit (79 s), the exact
 run, the channel-off run and the forecast; clicks, typing and page loads take a few seconds. A person reads, hesitates and
 explores, so the 30-minute budget is about how long the testers take to *understand* each
 screen: the script shows that the system's share is about two and a half minutes on this

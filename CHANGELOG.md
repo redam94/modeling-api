@@ -637,6 +637,16 @@ milestone releases are tagged on `main`.
   "e.g. -120,000", and a summary beside the actions says what each unfinished experiment
   still needs.
 
+### Fixed (integration)
+- **docs**: the Google Sheets tutorial showed the Apps Script from before score answers
+  carried their summary (it wrote `done` into `A1`). Its snippet is the server's current
+  script again (the summary tables in a **Result** sheet, an optional **Input** sheet), the
+  tutorial says what the sheet shows, and the Node test checks the **Result** sheet.
+- **spec**: the example of `PlotEmbedCreated` (in the OpenAPI document) used an `/e/<token>`
+  link; the server answers with `/embed/<token>`.
+- **docs**: M3 verification and the landing page give the unaided-tester timing measured on
+  the integrated branch, with the script starting at `/` (135 s, was 137 s from `/guided`).
+
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
 The platform is now multi-tenant and ready for Google Cloud. Many teams can share one
