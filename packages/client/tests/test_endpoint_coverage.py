@@ -17,7 +17,6 @@ from mapi_spec.api import (
     IDEMPOTENCY_KEY_HEADER,
     PREFER_HEADER,
     ROUTE_ACCESS,
-    BayesInsightImport,
     DatasetCreate,
     DatasetVersionCreate,
     DetectRolesRequest,
@@ -207,7 +206,6 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "get_guided_template": lambda: m3.get_guided_template("geo_mmm"),
     "detect_roles": lambda: m3.detect_roles(_ex(DetectRolesRequest)),
     "create_guided_draft": lambda: m3.create_guided_draft(_ex(GuidedAnswers)),
-    "import_bayesinsight": lambda: m3.import_bayesinsight(_ex(BayesInsightImport)),
     "compile_guided_request": lambda: m3.compile_guided_request(_ex(GuidedCompile)),
     "create_prior_translation": lambda: m3.create_prior_translation(
         _ex(PriorTranslationRequest), None

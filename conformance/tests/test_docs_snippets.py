@@ -22,7 +22,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 DOCS = ROOT / "docs"
 SNIPPETS = DOCS / "snippets"
-SLOW = {"plugin_pymc.py", "pymc_fast.py", "bayesinsight_import.py"}  # tiny MCMC fits
+SLOW = {"plugin_pymc.py", "pymc_fast.py"}  # tiny MCMC fits
 
 NEEDS_STACK = {"client_tour.py"}  # run against `make dev` by test_docs_platform.py (e2e)
 

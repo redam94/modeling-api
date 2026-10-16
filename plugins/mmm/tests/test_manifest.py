@@ -190,5 +190,5 @@ def test_plan_spec_validates_against_the_real_catalog(
 def test_entry_points_register_both_plugins() -> None:
     reg = default_registry(reload=True)
     refs = {f"{m.id}@{m.version}" for m in (e.manifest for e in reg.catalog().models)}
-    want = {"mmm.hierarchical_geo@1.3.0", "mmm.pymc_marketing@1.1.0", "mmm.bayesinsight@1.0.0"}
+    want = {"mmm.hierarchical_geo@1.3.0", "mmm.pymc_marketing@1.1.0"}
     assert want <= refs

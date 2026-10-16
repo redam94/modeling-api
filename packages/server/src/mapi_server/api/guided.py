@@ -1,5 +1,6 @@
-"""Guided mode, data path (plan §11 tasks 1-2; M3): templates, role detection, drafts and
-the BayesInsight import, plus the compiler behind "Run exact" (task 6).
+"""Guided mode, data path (plan §11 tasks 1-2; M3): templates, role detection and drafts,
+plus the compiler behind "Run exact" (task 6). (The BayesInsight import was removed in v0.5:
+mmm-framework is the only MMM engine.)
 
 Everything here is JSON in, JSON out: the control plane never sees an upload's bytes.
 Role detection reads column *profiles* - sent by the browser (which profiles the file
@@ -15,12 +16,10 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Path
 from mapi_spec.api import Page
-from mapi_spec.bayesinsight import import_bayesinsight
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity, ValidationFailed
 from mapi_spec.guided import (
     GUIDED_TEMPLATES,
-    BayesInsightImport,
     ColumnProfile,
     DetectRolesRequest,
     GuidedAnswers,
@@ -202,28 +201,6 @@ async def create_guided_draft(ctx: Ctx, session: Session, body: GuidedAnswers) -
     template = _template(body.template_id)
     draft = build_draft(template, body, project=ctx.scope.project_id)
     return await validate_draft(session, ctx, draft, body.columns)
-
-
-@router.post(
-    "/import/bayesinsight",
-    response_model=GuidedDraft,
-    operation_id="import_bayesinsight",
-    summary="BayesInsight model_def.json + metadata.json -> a draft for a built-in MMM",
-    responses=problem_responses(_E.SCHEMA_INVALID, _E.IMPORT_UNSUPPORTED, *AUTH_PROBLEMS),
-)
-async def import_bayesinsight_model(
-    ctx: Ctx, session: Session, body: BayesInsightImport
-) -> GuidedDraft:
-    """Import a BayesInsight project (Q8). With the default ``target:
-    mmm.hierarchical_geo`` the draft maps media transforms, priors, controls, seasonality
-    and pooling to the built-in geo MMM and lists every feature without an equivalent as
-    an ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` drafts the dedicated
-    plugin, which runs ``model_def`` as BayesInsight defines it (what it cannot run falls
-    back to BayesInsight's defaults with a warning). Either draft is validated statically
-    against the catalog. ``422 IMPORT_UNSUPPORTED`` when the model cannot run at all (no
-    single KPI, no media, split series)."""
-    draft = import_bayesinsight(body, project=ctx.scope.project_id)
-    return await validate_draft(session, ctx, draft, None)
 
 
 @router.post(

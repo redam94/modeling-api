@@ -1,6 +1,6 @@
-"""M3 sandboxed ingest: wide variables, the Meridian, MFF-with-mapping and BayesInsight
-presets, column profiles (``columns.json``) and the caps on rows, columns, cells and
-decompression - each refusal a plain message with a suggested action."""
+"""M3 sandboxed ingest: wide variables, the Meridian and MFF-with-mapping presets, column
+profiles (``columns.json``) and the caps on rows, columns, cells and decompression - each
+refusal a plain message with a suggested action."""
 
 from __future__ import annotations
 
@@ -25,11 +25,9 @@ from mapi_runner.worker.ingest import (
 from mapi_runner.worker.tabular import IngestLimits, column_profiles, read_table, write_profiles
 from mapi_sdk.schema import validate_dataset
 from mapi_sdk.wire import write_zarr_zip
-from mapi_spec.bayesinsight import import_bayesinsight
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.guided import (
     GUIDED_TEMPLATES,
-    BayesInsightImport,
     ColumnProfile,
     GuidedAnswers,
     build_draft,
@@ -37,8 +35,6 @@ from mapi_spec.guided import (
     suggest_roles,
 )
 from mapi_spec.ingest import (
-    BayesInsightMetadata,
-    BayesInsightModelDef,
     IngestMapping,
     MffOptions,
 )
@@ -204,7 +200,7 @@ def test_meridian_preset(tmp_path: Path) -> None:
     assert not _errors(ds, schema) and cols is not None
 
 
-# ====================================================================== MFF and BayesInsight
+# ===================================================================================== MFF
 
 
 def test_mff_with_a_mapping_gathers_variables_into_a_wide_spend(tmp_path: Path) -> None:
@@ -238,64 +234,6 @@ def test_mff_with_a_mapping_gathers_variables_into_a_wide_spend(tmp_path: Path) 
     assert profiles is not None
     origins = {p.name: p.origin for p in profiles}
     assert origins["Sales"] == "mff_variable" and origins["Period"] == "column"
-
-
-def _bi_import(**meta: Any) -> BayesInsightImport:
-    md = {
-        "variable_details": [
-            {"variable_name": "Stock_Total_Total_Total", "variable_type": "exog",
-             "likelihood": {"type": "Normal"}},
-            {"variable_name": "Promotion_Total_Total_Total", "variable_type": "control",
-             "normalization": "Global Standardize"},
-            {"variable_name": "media_var_0_Total_Total_Total", "variable_type": "media",
-             "adstock": "delayed", "media_transform": "hill"},
-            {"variable_name": "media_var_1_Total_Total_Total", "variable_type": "media",
-             "adstock": "delayed", "media_transform": "hill"},
-            {"variable_name": "annual_seasonality", "variable_type": "season"},
-        ]
-    }  # fmt: skip
-    metadata = {"allowed_geos": ["US", "DE"], "allowed_products": ["Watches", "Phones"],
-                "allowed_outlets": ["Total"], "allowed_campaigns": ["Total"],
-                "allowed_creatives": ["Total"], "periodicity": "Weekly",
-                "row_ids": ["Geography", "Product", "Period"], **meta}  # fmt: skip
-    return BayesInsightImport(
-        name="bi",
-        dataset="bi",
-        model_def=BayesInsightModelDef.model_validate(md),
-        metadata=BayesInsightMetadata.model_validate({"metadata": metadata}),
-    )
-
-
-def test_bayesinsight_preset_ingests_the_imported_mapping() -> None:
-    draft = import_bayesinsight(_bi_import(), project="growth")
-    ds, schema, _ = build_dataset(BI_MFF, IngestJob(mapping=draft.mapping))
-    assert dict(ds.sizes) == {"date": 40, "geo": 4, "channel": 2}
-    assert set(ds.data_vars) == {"stock", "promotion", "spend"}
-    assert schema.dims["date"].freq == "W-MON"  # the data's anchor, not metadata's bare 'W'
-    assert schema.dims["geo"].policy.value == "new_levels"
-    assert not _errors(ds, schema)
-    promised = draft_schema(draft.mapping)
-    assert {n: v.dims for n, v in promised.vars.items()} == {
-        n: v.dims for n, v in schema.vars.items()
-    }
-
-
-def test_bayesinsight_metadata_restricts_rows() -> None:
-    draft = import_bayesinsight(
-        _bi_import(allowed_geos=["US"], start_period="2020-06-01", end_period="2020-09-30"),
-        project="growth",
-    )
-    ds, _, _ = build_dataset(BI_MFF, IngestJob(mapping=draft.mapping))
-    assert sorted(ds["geo"].values) == ["US|Phones", "US|Watches"]
-    assert str(ds["date"].values.min())[:10] >= "2020-06-01"
-    assert str(ds["date"].values.max())[:10] <= "2020-09-30"
-    none = import_bayesinsight(_bi_import(allowed_geos=["FR"]), project="growth")
-    with pytest.raises(MapiError) as exc:
-        build_dataset(BI_MFF, IngestJob(mapping=none.mapping))
-    assert "no MFF rows match" in _refused(exc, ErrorCode.SCHEMA_INVALID)
-    need = import_bayesinsight(_bi_import(necessary_variables=["Sales", "Radio"]), project="g")
-    with pytest.raises(MapiError, match="necessary"):
-        build_dataset(BI_MFF, IngestJob(mapping=need.mapping))
 
 
 def test_mff_refusals_are_plain() -> None:
