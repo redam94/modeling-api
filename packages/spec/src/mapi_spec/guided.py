@@ -525,7 +525,7 @@ STORE_DEMAND = GuidedTemplate(
 
 CUSTOMER_CHOICE = GuidedTemplate(
     id="customer_choice",
-    version="1.1.0",
+    version="1.2.0",
     title="Customer choice",
     description_plain="Understand which product customers pick on each shopping trip, and how "
     "price and promotions shift the choice.",
@@ -584,8 +584,11 @@ CUSTOMER_CHOICE = GuidedTemplate(
             "fit": {"mode": "evaluate_then_refit", "draws": 100, "seed": 20261015},
         },
         "outputs": {"plots": ["core.data_overview", "core.posterior_forest"]},
+        "evaluate": {"metrics": ["accuracy", "accuracy_naive", "accuracy_lift", "log_score",
+                                 "brier"]},
         "execution": {"resource_class": "S", "timeout": "20m"},
     },
+    scorecard_checks=["holdout.hit_rate"],
     tasks=["counterfactual"],
     ui_levels={"/model/settings": "advanced", "/model/fit": "advanced",
                "/execution": "advanced"},

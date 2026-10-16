@@ -68,7 +68,7 @@ def test_the_four_built_in_templates() -> None:
     assert plugins["store_demand"] == ("tabular.regressor@^1", True)
     choice = GUIDED_TEMPLATES["customer_choice"]
     assert (choice.plugin, choice.plugin_available) == ("choice.multinomial_logit@^1", True)
-    assert choice.plugin_note is None and choice.version == "1.1.0"
+    assert choice.plugin_note is None and choice.version == "1.2.0"
 
 
 @pytest.mark.parametrize("template", GUIDED_TEMPLATES.values(), ids=lambda t: t.id)

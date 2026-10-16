@@ -219,6 +219,15 @@ The catalog is `mapi_spec.scorecard.SCORECARD_CHECKS`:
 |---|---|---|---|
 | <a id="check-holdout-mape"></a>`holdout.mape` (Holdout error) | `mape` | warn above 10%, fail above 25% | Check the last periods of data for gaps or one-off events, and add holidays or controls that explain them. |
 | <a id="check-holdout-coverage-90"></a>`holdout.coverage_90` (Uncertainty is honest) | `coverage_90` | warn when more than 10% away from 90%, fail when more than 25% away | Look for trends or shifts the model does not capture. |
+| <a id="check-holdout-hit-rate"></a>`holdout.hit_rate` (Beats a naive guess) | `accuracy_lift` | warn below +2 points, fail below -10 points | Add what drives the choice for every product (price, promotions, displays), or collect more trips per customer. |
+
+`holdout.hit_rate` is the check of the `customer_choice` template: on each household's
+held-out trip, the model's most likely product is compared with the product bought
+(`accuracy`, the hit rate) and with always guessing the most popular product of the held-out
+trips (`accuracy_naive` - a strict baseline, since it knows the holdout's own shares).
+`accuracy_lift` is the difference in percentage points. The template also reports the
+`log_score` (mean log probability of the bought product; higher is better) and the
+multi-class `brier` score (0 is perfect) in the model's metrics.
 
 #### Plausibility
 

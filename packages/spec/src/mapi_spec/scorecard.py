@@ -7,7 +7,9 @@ categories, each ``pass``, ``warn`` or ``fail``:
 category        checks (:data:`SCORECARD_CHECKS`)
 ==============  =========================================================================
 convergence     chains agree (R-hat), enough effective draws, no divergences
-holdout         holdout error (MAPE) and interval coverage on the evaluation split
+holdout         holdout error (MAPE) and interval coverage on the evaluation split; for
+                choice models, the holdout hit rate against always guessing the most
+                popular product
 plausibility    negative or absurd ROI, a channel taking most of the KPI, the baseline share,
                 parameters the data did not inform (prior-posterior overlap)
 data            missing values, history length, spend that never varies
@@ -288,6 +290,18 @@ SCORECARD_CHECKS: Final[dict[str, ScorecardCheck]] = {
                "is misleading.",
                "Look for trends or shifts the model does not capture.",
            ), "pct", target=0.90),
+        _c("holdout.hit_rate", "holdout", "HOLDOUT_HIT_RATE", "Beats a naive guess",
+           "accuracy_lift", _MIN, 0.02, -0.10, (
+               "On held-out trips the model's top pick beat always guessing the most popular "
+               "product by {value}.",
+               "On held-out trips the model's top pick was about as good as always guessing "
+               "the most popular product ({value} difference).",
+               "On held-out trips the model's top pick did worse than always guessing the "
+               "most popular product ({value} difference): its predicted choices are not "
+               "reliable.",
+               "Add what drives the choice for every product (price, promotions, displays), "
+               "or collect more trips per customer.",
+           ), "pct"),
         _c("plausibility.negative_roi", "plausibility", "NEGATIVE_ROI", "No channel loses money",
            "negative_roi_share", _MAX, 0.10, 0.50, (
                "No channel is likely to have a negative return.",
