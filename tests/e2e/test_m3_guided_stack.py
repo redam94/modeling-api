@@ -343,6 +343,12 @@ def test_sign_up_verify_and_sign_in(journey: Journey) -> None:
             json={"email": j.email, "name": "M3 Analyst", "organisation": org,
                   "accepted_terms": True, "terms_version": TERMS_VERSION},
         )  # fmt: skip
+        if r.status_code == 429:
+            pytest.fail(
+                "the stack's sign-up limits are used up (5 per address and hour, 25 per domain "
+                "and day by default): restart it with higher MAPI_SIGNUP_PER_IP_PER_HOUR and "
+                f"MAPI_SIGNUP_PER_DOMAIN_PER_DAY to run the e2e suites repeatedly ({r.text})"
+            )
         assert r.status_code == 202 and r.json()["status"] == "check_email", r.text
         mail = raw.get("/dev/outbox", params={"to": j.email, "limit": 1}).json()["items"][0]
         token = mail["tags"]["token"]

@@ -28,7 +28,8 @@ laptop (8 cores, 16 GB, macOS), against a live `make dev` stack:
 - the GCS shim instead of Cloud Storage and the embedded `pgserver` Postgres;
 - every run on the `local-process` executor (no Docker daemon, no cloud project);
 - `MAPI_TENANT_DELETION_GRACE_S=0` and `MAPI_BUNDLE_RETENTION_DAYS=0`, so a deletion can be
-  watched to the end.
+  watched to the end; higher `MAPI_SIGNUP_PER_IP_PER_HOUR` and
+  `MAPI_SIGNUP_PER_DOMAIN_PER_DAY`, since every run signs up new workspaces from one address.
 
 ## Summary
 
