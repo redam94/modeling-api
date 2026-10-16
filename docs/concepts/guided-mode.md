@@ -189,6 +189,7 @@ The catalog is `mapi_spec.scorecard.SCORECARD_CHECKS`:
 | <a id="check-plausibility-roi-absurd"></a>`plausibility.roi_absurd` (Returns are believable) | `roi_max` | warn above 20, fail above 100 | Check spend units and gaps, or state an ROI range in business priors. |
 | <a id="check-plausibility-share-outlier"></a>`plausibility.share_outlier` (No channel dominates) | `max_channel_share` | warn above 60%, fail above 90% | Check for a missing control (price, promotions, seasonality). |
 | <a id="check-plausibility-baseline-share"></a>`plausibility.baseline_share` (Baseline is plausible) | `baseline_share` | warn when more than 40% away from 50%, fail when more than 48% away | State a baseline share in business priors, or review the controls. |
+| <a id="check-plausibility-prior-overlap"></a>`plausibility.prior_overlap` (The data informed the model) | `prior_overlap_max` | warn above 90%, fail above 99% | Add data that varies the driver (or a lift test), or state a business prior you trust for it. |
 
 #### Data
 
