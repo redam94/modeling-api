@@ -108,8 +108,10 @@ A webhook's page has:
 - **Delivery log**: every try, newest first - the event, its status (*Delivered*, *Retrying*,
   *Failed*, *Blocked*, *Pending*), the attempt number, your receiver's response code and the
   time it took. **Details** shows the error, the next retry and the first KiB of your
-  receiver's answer (as untrusted text). **Replay** sends a delivery again; **Send test**
-  replays the newest one, so you can check a receiver you just fixed.
+  receiver's answer (as untrusted text). **Replay** sends a delivery again; **Resend
+  newest** replays the newest one, so you can check a receiver you just fixed. There is no
+  synthetic test event: a new webhook gets its first delivery from the next subscribed event
+  in the project (a fit or score finishing, a version ready, a promotion).
 - A webhook that kept failing (20 consecutive failed events, or a `410 Gone`) is **disabled
   automatically**: the page says why. Fix the receiver, then switch it back on; that resets
   the failure count.
@@ -146,15 +148,18 @@ workspace** (`/signup`), a page that works without a session:
 ![The sign-up page refusing a disposable e-mail address](../assets/screenshots/signup.png){ .mapi-shot }
 
 1. Enter a work e-mail, your name, optionally the organisation (it names the workspace) and
-   accept the terms. Disposable e-mail addresses are refused at the e-mail field; a server
-   with sign-up closed says so.
+   accept the terms: the **terms of service** and the **acceptable-use policy** open in a new
+   tab (`/terms` and `/acceptable-use`, or the installation's own documents set with
+   `VITE_TERMS_URL` and `VITE_ACCEPTABLE_USE_URL`). Disposable e-mail addresses are refused
+   at the e-mail field; a server with sign-up closed says so.
 2. **Check your inbox**: the answer is the same whether or not the address already has an
    account. The link works once, for 24 hours; **Send the link again** replaces it. On a
    development server the page links straight to the mail in the outbox (`make outbox`).
 3. The link opens `/verify-email`, which removes the token from the address bar and asks you
    to **Confirm and create my workspace**. That creates a `public`-tier workspace with a
    `default` project and makes you its admin; **Sign in** then goes through the usual
-   identity-provider flow. An expired or reused link explains how to get a new one.
+   identity-provider flow and opens the new workspace in Guided mode. An expired or reused
+   link explains how to get a new one.
 
 ## Settings > Data
 
@@ -189,5 +194,8 @@ Platform operators get two more things in **Admin**:
   is allowed, **Mark identity verified** (with the method and a reason) or withdraw it, and its
   deletion's status per store, with **Retry the purge** after a failure.
 
-The **Promotions** tab explains that there is no promotion queue: the gate decides each
-promotion at once, and overrides are in the audit log.
+- **Promotions**: the endpoint promotions that needed attention, across tenants and newest
+  first - admin overrides of the scorecard gate (with the reason and the failing checks) and
+  refused promotions (blocked, or needing an override). Nothing waits in a queue: the gate
+  decides each promotion at once. The rows come from the audit log
+  (`endpoint.promote_override`, and `endpoint.promote` with the outcome `denied`).

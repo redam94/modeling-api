@@ -21,7 +21,7 @@ import { PlotFrame } from "@/features/plots/plot-frame";
 
 import { usePriorTranslation, useStartPriorTranslation } from "../api";
 import { StepActions } from "../frame";
-import { band, ratio, share } from "../plain";
+import { band, listWords, ratio, share } from "../plain";
 import { distributionPlot, fanPlot } from "../plots";
 import {
   beliefProblems,
@@ -29,7 +29,10 @@ import {
   coverageSentence,
   CREDIBILITY_CHOICES,
   formFromCalibration,
+  LIFT_PLACEHOLDERS,
+  liftSummary,
   newLiftRow,
+  previewGroups,
   ROI_LIMITS,
   SHARE_LIMITS,
   toBusinessPriors,
@@ -164,7 +167,7 @@ function LiftRow({
   geos,
   onChange,
   onRemove,
-  errors,
+  errors: allErrors,
 }: {
   row: LiftTestRow;
   n: number;
@@ -175,8 +178,12 @@ function LiftRow({
   errors: Record<string, string>;
 }) {
   const id = useId();
+  // A field's message waits until the field was left: a new row is not a wall of errors (the
+  // summary beside the actions says what is still missing).
+  const [touched, setTouched] = useState<ReadonlySet<string>>(() => new Set());
+  const errors = Object.fromEntries(Object.entries(allErrors).filter(([k]) => touched.has(k)));
   const field = (key: keyof LiftTestRow, label: string, input: ReactNode) => (
-    <div className="grid gap-1">
+    <div className="grid gap-1" onBlur={() => setTouched((t) => (t.has(key) ? t : new Set([...t, key])))}>
       <Label htmlFor={`${id}-${key}`} className="text-xs font-normal text-muted-foreground">
         {label}
       </Label>
@@ -226,9 +233,9 @@ function LiftRow({
         )}
         {field("start", "First day", <Input id={`${id}-start`} type="date" value={row.start} onChange={(e) => onChange({ ...row, start: e.target.value })} className="h-8" aria-invalid={errors.start ? true : undefined} />)}
         {field("end", "Last day", <Input id={`${id}-end`} type="date" value={row.end} onChange={(e) => onChange({ ...row, end: e.target.value })} className="h-8" aria-invalid={errors.end ? true : undefined} />)}
-        {field("spendDelta", "Spend change", text("spendDelta", "-120000"))}
-        {field("kpiDelta", "Measured change in results", text("kpiDelta", "-260000"))}
-        {field("se", "± uncertainty (standard error)", text("se", "70000"))}
+        {field("spendDelta", "Spend change", text("spendDelta", LIFT_PLACEHOLDERS.spendDelta))}
+        {field("kpiDelta", "Measured change in results", text("kpiDelta", LIFT_PLACEHOLDERS.kpiDelta))}
+        {field("se", "± uncertainty (standard error)", text("se", LIFT_PLACEHOLDERS.se))}
       </div>
     </li>
   );
@@ -236,9 +243,8 @@ function LiftRow({
 
 function PreviewPanel({ result, form }: { result: PriorTranslationResult; form: PriorsForm }) {
   const preview = result.preview ?? {};
-  const stated = new Map(form.channels.filter((c) => c.enabled).map((c) => [c.channel, [c.low, c.high] as [number, number]]));
-  const roiItems = Object.entries(preview.roi ?? {}).map(([label, summary]) => ({ label, summary, stated: form.mode === "roi" ? (stated.get(label) ?? null) : null }));
-  const shareItems = Object.entries(preview.contribution_share ?? {}).map(([label, summary]) => ({ label, summary, stated: form.mode === "share" ? (stated.get(label) ?? null) : null }));
+  // Only the channels with a stated belief: the others sit at the model's wide default.
+  const { roi: roiItems, share: shareItems, unstated } = previewGroups(preview, form);
   const roiPlot = useMemo(() => (roiItems.length ? distributionPlot(roiItems, { axisTitle: "Return per 1 spent", format: ".2~f" }) : null), [result]); // eslint-disable-line react-hooks/exhaustive-deps
   const sharePlot = useMemo(() => (shareItems.length ? distributionPlot(shareItems, { axisTitle: "Share of results", format: ".0%" }) : null), [result]); // eslint-disable-line react-hooks/exhaustive-deps
   const fan = useMemo(() => (preview.kpi_fan ? fanPlot(preview.kpi_fan, { title: "Results the model expects" }) : null), [result]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -248,7 +254,10 @@ function PreviewPanel({ result, form }: { result: PriorTranslationResult; form: 
         <h2 id="preview-h" className="text-[15px] font-semibold tracking-tight">
           What your beliefs mean, before seeing the data
         </h2>
-        <p className="text-[13px] text-muted-foreground">The shaded bar is the range you gave; the line is where 90% of what the model now believes falls, the thick part the middle half.</p>
+        <p className="text-[13px] text-muted-foreground">
+          The charts show the channels you have a view on. The shaded bar is the range you gave; the line is where 90% of what the model now believes falls, the thick part the
+          middle half.
+        </p>
       </div>
       <ul className="grid gap-1 text-[13px]">
         {form.channels
@@ -272,6 +281,12 @@ function PreviewPanel({ result, form }: { result: PriorTranslationResult; form: 
           </figure>
         ) : null}
       </div>
+      {unstated.length ? (
+        <p className="text-[13px] text-muted-foreground" data-testid="unstated-channels">
+          No view on {listWords(unstated)}: the model starts from a deliberately wide default for {unstated.length === 1 ? "it" : "them"} and learns{" "}
+          {unstated.length === 1 ? "it" : "them"} from the data, so {unstated.length === 1 ? "it is" : "they are"} left out of these charts.
+        </p>
+      ) : null}
       {preview.baseline_share ? (
         <p className="text-[13px] text-muted-foreground">
           Results without any media: {baselineSentence(band(preview.baseline_share.quantiles), preview.baseline_share.mean)}
@@ -317,6 +332,8 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
   const key = beliefsKey(bp, lift.tests);
   const translationFits = translation.data?.done && translation.data.result && (previewKey === key || (previewKey === null && runId === savedRun));
   const blocking = problems.length > 0 || lift.problems.length > 0;
+  // Why Preview and Save are disabled, beside them.
+  const blockedBy = [...(problems.length ? ["Fix the beliefs marked in red above."] : []), ...liftSummary(lift.problems, form.liftTests)];
   const canSave = can(grants, "update", "spec");
   const canPreview = can(grants, "create", "run");
 
@@ -504,6 +521,13 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
         </Button>
         <div className="flex flex-wrap items-center gap-3">
           {!canSave ? <span className="text-xs text-muted-foreground">Your role cannot change this analysis.</span> : null}
+          {blockedBy.length ? (
+            <div role="status" data-testid="beliefs-blocking" className="grid max-w-[52ch] gap-0.5 text-xs text-muted-foreground">
+              {blockedBy.map((s) => (
+                <span key={s}>{s}</span>
+              ))}
+            </div>
+          ) : null}
           <Button onClick={() => void save()} disabled={blocking || saving || !canSave}>
             {saving ? <Spinner /> : <ArrowRight />} {bp || lift.tests.length ? "Save and continue" : "Continue without beliefs"}
           </Button>

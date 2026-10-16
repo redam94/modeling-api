@@ -102,7 +102,7 @@ default tenant's admin. Screenshots land in `apps/web/e2e/screenshots/m3-*.png`
 
 | Step | What the script does | Wall time (s) |
 |---|---|---|
-| 1. Template | "What do you want to learn?" → Geo marketing mix | 0.7 |
+| 1. Template | "What do you want to learn?" → Geo marketing mix (this run opened `/guided` directly; the script now starts where sign-in lands, `/`, and finds **Guided** in the sidebar) | 0.7 |
 | 2. Your data | Names the analysis, chooses the CSV; checks that every question is pre-filled correctly; Upload and continue (upload, sandboxed check) | 4.7 |
 | 3. What you believe | Ticks tv, states an ROI of 1.5 to 4, previews what it means (a sandboxed run) and continues | 22.2 |
 | 4. Fit the model | Fit the model; plain-language phases and progress; See the results | 79.6 |
@@ -144,11 +144,15 @@ draft's mapping.
 
 Seen and left for later (not blocking the flow, noted for the testers' sessions):
 
-- the forecast chart's y axis starts at zero, which flattens the fan (the fit chart's
-  panels, titled with the dim name `geo`, now take the dataset's own name: fixed after this
-  session);
-- the endpoint page shows who promoted a version as a user id, not a name;
-- going to the Integrations hub switches the header to Expert mode;
+- the fit chart facets markets under the dim name `geo`, and the forecast chart's y axis
+  starts at zero, which flattens the fan (both fixed in the M3 review: panels take the
+  dataset's own name and the axis fits the band);
+- the endpoint page showed who promoted a version as a user id, not a name (fixed in the M3
+  review: names come from the project's members);
+- the header showed Expert mode on the Integrations hub: that test runs in a new browser
+  context, and the default tenant (not a self-service one) started in Expert mode there.
+  The choice is remembered per browser; since then a self-service workspace starts in
+  Guided mode, and Expert navigation and Home link to Guided;
 - the fit takes about 80 s with the sturdier settings (30 s before), still well within the
   budget.
 
@@ -169,9 +173,11 @@ sheet.
 
 ### Setup (before each session)
 
-1. A fresh workspace for the tester: sign up at `/signup` with their work address (or an
-   operator-created `internal` tenant on a stack without a sandboxed executor), so the
-   session starts from an empty Guided page.
+1. A fresh workspace for the tester: sign up at `/signup` with their work address, in a
+   fresh browser profile. Signing in after the e-mail link opens an empty Guided page, and a
+   self-service workspace starts in Guided mode on any browser. With an operator-created
+   `internal` tenant instead (a stack without a sandboxed executor), the session starts on
+   Expert Home: finding **Guided** in the sidebar is then part of T1.
 2. The spreadsheet on their desktop: `uv run python tests/e2e/m3_browser_seed.py seed --run
    <id>` writes `weekly_media_by_region.csv` (two years, five regions, three channels), or
    the tester's own anonymised data in the same shape.

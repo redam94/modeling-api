@@ -1,6 +1,6 @@
 /**
  * Webhooks: the list, creation with an event picker (the signing secret shown once), and a
- * webhook's page - enable/disable, events, secret rotation, a test send, the delivery log with
+ * webhook's page - enable/disable, events, secret rotation, resending the newest event, the delivery log with
  * status, attempts and response codes, and replays.
  */
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -460,10 +460,16 @@ export function DeliveryLog({ webhook }: { webhook: Webhook }) {
             size="sm"
             variant="outline"
             disabled={!canReplay || !newest || pending !== null}
-            title={!webhook.active ? "Enable the webhook first" : !newest ? "Nothing was delivered yet: the first matching event will be" : "Send the newest event again"}
-            onClick={() => newest && doReplay(newest, "Test delivery sent")}
+            title={
+              !webhook.active
+                ? "Enable the webhook first"
+                : !newest
+                  ? "Nothing was delivered yet: deliveries start with the next subscribed event in the project"
+                  : `Send the newest event (${newest.event_type}) again, to check your receiver`
+            }
+            onClick={() => newest && doReplay(newest, "Newest event resent")}
           >
-            <Send /> Send test
+            <Send /> Resend newest
           </Button>
         </div>
       </CardHeader>
@@ -495,7 +501,8 @@ export function DeliveryLog({ webhook }: { webhook: Webhook }) {
               </Table>
             ) : (
               <EmptyState icon={<Send />} title={status ? "No deliveries with this status" : "Nothing delivered yet"}>
-                Deliveries appear here as soon as a subscribed event happens in the project.
+                Deliveries appear here as soon as a subscribed event happens in the project. There is no synthetic test event: to check your receiver, cause
+                one (finish a fit or a score, or promote an endpoint), then use Resend newest whenever you change the receiver.
               </EmptyState>
             )
           }

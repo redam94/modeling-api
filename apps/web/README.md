@@ -22,6 +22,8 @@ pnpm --filter @mapi/web e2e               # @e2e specs against a running local s
 | `VITE_PLOTS_ORIGIN` | `http://127.0.0.1:5174` | Origin of `apps/plot-sandbox`; must differ from the app origin. |
 | `VITE_STORAGE_ORIGINS` | `http://127.0.0.1:4443` | Origins of signed storage URLs (CSP `connect-src`), comma separated. |
 | `VITE_AUTH_BASE` | `VITE_API_BASE` | Where the backend-for-frontend `/auth/*` routes live, when not on the API base. |
+| `VITE_TERMS_URL` | `/terms` | The terms of service sign-up links to (`http(s)` URL or same-origin path). |
+| `VITE_ACCEPTABLE_USE_URL` | `/acceptable-use` | The acceptable-use policy sign-up links to. |
 
 The Playwright smoke suite serves on 5173/5174. If those ports are taken (a running `make dev`),
 use others: `MAPI_SMOKE_WEB_PORT=5293 MAPI_SMOKE_PLOTS_PORT=5294 pnpm --filter @mapi/web test:smoke`.

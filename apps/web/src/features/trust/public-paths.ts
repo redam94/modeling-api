@@ -1,8 +1,9 @@
 /**
- * Pages that work without a session (`/signup`, `/verify-email`): the app renders them
- * outside the workspace gate, from their own lazily loaded chunk.
+ * Pages that work without a session (`/signup`, `/verify-email` and the default terms the
+ * sign-up links to): the app renders them outside the workspace gate, from their own lazily
+ * loaded chunk.
  */
-export const PUBLIC_PATHS = ["/signup", "/verify-email"] as const;
+export const PUBLIC_PATHS = ["/signup", "/verify-email", "/terms", "/acceptable-use"] as const;
 export type PublicPath = (typeof PUBLIC_PATHS)[number];
 
 export function publicPathOf(pathname: string): PublicPath | null {

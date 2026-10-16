@@ -21,7 +21,7 @@ import { StepActions } from "../frame";
 import { amount, band, multiplierText, ratio, share, signedAmount, signedShare } from "../plain";
 import { fanPlot } from "../plots";
 import { useScoreJob } from "../score-job";
-import { GUIDED_LABEL, hasTask, timeDimOf, wideVarOf } from "../session";
+import { forecastLimit, GUIDED_LABEL, hasTask, periodUnit, periodWords, timeDimOf, wideVarOf } from "../session";
 import { ChangeBand, ValueSlider } from "../ui";
 import type { GuidedSession } from "../use-session";
 import type { CounterfactualView } from "../views";
@@ -281,13 +281,18 @@ function Presets({ mv, session, channels }: { mv: ModelVersion; session: GuidedS
 function Forecast({ mv, session }: { mv: ModelVersion; session: GuidedSession }) {
   const job = useScoreJob(mv, "forecast");
   const grants = useGrants();
-  const horizonQ = session.template.questions.find((q) => q.id === "horizon");
-  const maxH = typeof horizonQ?.maximum === "number" ? horizonQ.maximum : 104;
-  const [periods, setPeriods] = useState(13);
+  // The model forecasts as far as it was fitted for (the answered horizon); further needs a refit.
+  const { max: maxH, fitted } = forecastLimit(session.document, session.template);
+  const dv = session.datasetVersion;
+  // the stored schema's time dim, else what ingest measured
+  const unit = periodUnit(session.document, [...Object.values(dv?.data_schema?.dims ?? {}), ...Object.values(dv?.summary?.coords ?? {})]);
+  const [periods, setPeriods] = useState(() => Math.min(13, maxH));
+  const [asked, setAsked] = useState(periods);
   const view = job.job.status === "done" ? job.job.forecast : null;
   const plot = useMemo(() => (view ? fanPlot(view.fan, { title: "Results", splitAt: view.split_at }) : null), [view]);
   const total = view?.total ? band(view.total.quantiles) : null;
   const valid = Number.isInteger(periods) && periods >= 1 && periods <= maxH;
+  const limitText = `Choose between 1 and ${periodWords(unit, maxH)}.${fitted ? " The model was fitted to forecast that far; a longer horizon needs a new fit with a longer horizon." : ""}`;
   return (
     <Card>
       <CardHeader>
@@ -297,18 +302,26 @@ function Forecast({ mv, session }: { mv: ModelVersion; session: GuidedSession })
               <LineChart aria-hidden className="size-4 text-muted-foreground" /> Forecast
             </span>
           </CardTitle>
-          <CardDescription>How results may develop if you carry on as in the latest weeks.</CardDescription>
+          <CardDescription>How results may develop if you carry on as in the latest {unit === "period" ? "periods" : `${unit}s`}.</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
         <div className="flex flex-wrap items-end gap-3">
-          <Field label="How many weeks ahead?" htmlFor="horizon" error={valid ? undefined : `Choose between 1 and ${maxH} weeks.`}>
+          <Field
+            label={`How many ${unit}s ahead?`}
+            htmlFor="horizon"
+            error={valid ? undefined : limitText}
+            hint={valid && fitted ? `Up to ${periodWords(unit, maxH)}, the horizon the model was fitted for.` : undefined}
+          >
             <Input id="horizon" type="number" min={1} max={maxH} value={periods} onChange={(e) => setPeriods(Number(e.target.value))} className="w-28" />
           </Field>
           <Button
             variant="outline"
             disabled={!valid || job.job.status === "running" || !can(grants, "run", "model")}
-            onClick={() => void job.run({ kind: "forecast", model: mv.ref, periods, dim: timeDimOf(session.template), future_covariates: "carry_last" }, { [GUIDED_LABEL]: "forecast" })}
+            onClick={() => {
+              setAsked(periods);
+              void job.run({ kind: "forecast", model: mv.ref, periods, dim: timeDimOf(session.template), future_covariates: "carry_last" }, { [GUIDED_LABEL]: "forecast" });
+            }}
           >
             {job.job.status === "running" ? <Spinner /> : <LineChart />} Make a forecast
           </Button>
@@ -319,7 +332,7 @@ function Forecast({ mv, session }: { mv: ModelVersion; session: GuidedSession })
           <div className="grid gap-2" data-testid="forecast-result">
             {view.total ? (
               <p className="text-[13px]">
-                Over the next {periods} weeks: <span className="font-semibold tabular">{amount(view.total.mean, view.units)}</span>
+                Over the next {periodWords(unit, asked)}: <span className="font-semibold tabular">{amount(view.total.mean, view.units)}</span>
                 {total ? <span className="text-muted-foreground"> (90% likely between {amount(total[0], view.units)} and {amount(total[1], view.units)})</span> : null}
               </p>
             ) : null}

@@ -367,6 +367,8 @@ production build.
 | `VITE_STORAGE_ORIGINS` | `http://127.0.0.1:4443` | Origins of signed storage URLs, allowed by the app's CSP `connect-src` |
 | `VITE_APP_ORIGINS` (sandbox) | `http://127.0.0.1:5173,http://localhost:5173` | Origins allowed to frame the sandbox and talk to it |
 | `VITE_AUTH_BASE` | `VITE_API_BASE` | Where the sign-in routes (`/auth/*`) live, when they are not on the API base |
+| `VITE_TERMS_URL` | `/terms` | The terms of service sign-up links to (an `http(s)` URL or a path on the app's origin); the default is the plain-language summary the app ships |
+| `VITE_ACCEPTABLE_USE_URL` | `/acceptable-use` | The acceptable-use policy sign-up links to, likewise. A public installation should publish its own versions of both |
 
 The web app's Playwright smoke suite serves the app on 5173 and the sandbox on 5174. When those
 ports are taken, set `MAPI_SMOKE_WEB_PORT` and `MAPI_SMOKE_PLOTS_PORT`; the suite then builds the

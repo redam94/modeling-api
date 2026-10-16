@@ -7,7 +7,9 @@
  * checks of `check_business_priors` and the `LiftTest` validators), and writes the result into
  * the spec document (`apply_prior_translation`).
  */
-import type { BusinessPriors, LiftTest, PriorTranslationResult, SpecDocument } from "./types";
+import { listWords } from "./plain";
+import type { DistributionItem } from "./plots";
+import type { BusinessPriors, LiftTest, PriorPreview, PriorTranslationResult, SpecDocument } from "./types";
 
 export type BeliefMode = "roi" | "share";
 
@@ -166,14 +168,17 @@ export function beliefProblems(form: PriorsForm): FormProblem[] {
   return out;
 }
 
-/** `BusinessPriors` for the form (`null` when no belief is stated). */
+/**
+ * `BusinessPriors` for the form (`null` when no belief is stated). A baseline belief stands on
+ * its own: the channels may then be empty.
+ */
 export function toBusinessPriors(form: PriorsForm, units: { kpi?: string | null; spend?: string | null } = {}): BusinessPriors | null {
-  const channels: BusinessPriors["channels"] = {};
+  const channels: NonNullable<BusinessPriors["channels"]> = {};
   for (const c of form.channels) {
     if (!c.enabled) continue;
     channels[c.channel] = form.mode === "roi" ? { roi: [c.low, c.high], credibility: c.credibility } : { contribution_share: [c.low, c.high], credibility: c.credibility };
   }
-  if (!Object.keys(channels).length) return null;
+  if (!Object.keys(channels).length && !form.baseline.enabled) return null;
   const out: BusinessPriors = { channels };
   if (form.baseline.enabled) out.baseline_share = { share: [form.baseline.low, form.baseline.high], credibility: form.baseline.credibility };
   if (units.kpi) out.kpi_units = units.kpi;
@@ -223,6 +228,34 @@ export function toLiftTests(rows: readonly LiftTestRow[], channels: readonly str
   return { tests, problems };
 }
 
+/** Example values for an experiment's number fields: worded so they cannot pass for data. */
+export const LIFT_PLACEHOLDERS = { spendDelta: "e.g. -120,000", kpiDelta: "e.g. -260,000", se: "e.g. 70,000" } as const;
+
+const LIFT_FIELD_WORDS: Record<string, string> = {
+  channel: "the channel tested",
+  start: "the first day",
+  end: "the last day",
+  spendDelta: "the spend change",
+  kpiDelta: "the measured change",
+  se: "its uncertainty",
+};
+
+/**
+ * One sentence per unfinished experiment ("Experiment 1 still needs the first day, …"), for the
+ * summary beside the disabled actions; each field shows its own message once it was left.
+ */
+export function liftSummary(problems: readonly FormProblem[], rows: readonly LiftTestRow[]): string[] {
+  const out: string[] = [];
+  rows.forEach((r, i) => {
+    const fields = problems.filter((p) => p.where.startsWith(`lift/${r.key}/`)).map((p) => {
+      const field = p.where.split("/")[2] ?? "";
+      return field === "end" && p.message.includes("before it starts") ? "a last day after the first" : (LIFT_FIELD_WORDS[field] ?? field);
+    });
+    if (fields.length) out.push(`Experiment ${i + 1} still needs ${listWords(fields)}. Fill them in, or remove the experiment.`);
+  });
+  return out;
+}
+
 /** A stable key for "the same beliefs" (a preview can be reused when nothing changed). */
 export function beliefsKey(bp: BusinessPriors | null, tests: readonly LiftTest[]): string {
   return JSON.stringify([bp, tests]);
@@ -260,6 +293,31 @@ export function withCalibration(
   if (Object.keys(cal).length) doc.calibration = cal;
   else delete doc.calibration;
   return doc;
+}
+
+export interface PreviewGroups {
+  /** ROI per channel with a stated belief (`stated` set in ROI mode). */
+  roi: DistributionItem[];
+  /** Share of results per channel with a stated belief (`stated` set in share mode). */
+  share: DistributionItem[];
+  /** Channels previewed without a stated belief: the model's default prior, not the user's view. */
+  unstated: string[];
+}
+
+/**
+ * Split the prior preview (`PriorPreview`, which covers every channel of the model) into what the
+ * charts show - the channels the user ticked - and the channels left at the model's default.
+ * A default is wide on purpose; charting it beside the stated beliefs reads as a belief the
+ * user never held and stretches the axis far past the ranges they gave.
+ */
+export function previewGroups(preview: Pick<PriorPreview, "roi" | "contribution_share">, form: PriorsForm): PreviewGroups {
+  const stated = new Map(form.channels.filter((c) => c.enabled).map((c) => [c.channel, [c.low, c.high] as [number, number]]));
+  const items = (dists: PriorPreview["roi"], mode: BeliefMode): DistributionItem[] =>
+    Object.entries(dists ?? {})
+      .filter(([label]) => stated.has(label))
+      .map(([label, summary]) => ({ label, summary, stated: form.mode === mode ? (stated.get(label) ?? null) : null }));
+  const previewed = [...new Set([...Object.keys(preview.roi ?? {}), ...Object.keys(preview.contribution_share ?? {})])];
+  return { roi: items(preview.roi, "roi"), share: items(preview.contribution_share, "share"), unstated: previewed.filter((c) => !stated.has(c)) };
 }
 
 /** "82% of the model's prior lies in your range, close to the 80% you stated." */

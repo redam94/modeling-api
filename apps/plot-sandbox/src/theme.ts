@@ -39,6 +39,12 @@ export function vegaConfig(theme: Theme): Record<string, unknown> {
       heatmap: theme === "dark" ? { scheme: "magma" } : { scheme: "purples" },
     },
     mark: { color: SERIES[theme][0] },
+    // Vega-Lite colours these black by default, whatever `mark.color` says: on the dark card
+    // that hid interval lines, split lines and their labels. A tick (a median, a strip) is
+    // drawn in ink so it stands apart from the series-coloured bar it often sits on.
+    rule: { color: ink.muted },
+    text: { color: ink.text },
+    tick: { color: ink.text },
     style: { "guide-label": { fill: ink.muted }, "guide-title": { fill: ink.text } },
   };
 }

@@ -438,13 +438,14 @@ function plotSpecFor(id: string): PlotSpec | null {
 // ----------------------------------------------------------------------------- prior translation
 
 function translationResult(state: GuidedMockState, req: PriorTranslationRequest) {
-  const channels = Object.keys(req.business_priors.channels);
+  const beliefs = req.business_priors.channels ?? {};
+  const channels = Object.keys(beliefs);
   const roi: Record<string, ReturnType<typeof dist>> = {};
   const share: Record<string, ReturnType<typeof dist>> = {};
   const coverage: Record<string, number> = {};
   const mus: number[] = [];
   const sigmas: number[] = [];
-  for (const [ch, b] of Object.entries(req.business_priors.channels)) {
+  for (const [ch, b] of Object.entries(beliefs)) {
     const cred = b.credibility ?? 0.8;
     const z = invNorm(0.5 + cred / 2);
     const range = (b.roi ?? b.contribution_share) as [number, number];
@@ -466,6 +467,11 @@ function translationResult(state: GuidedMockState, req: PriorTranslationRequest)
   if (rec && bytes) {
     const kpiVar = Object.entries(rec.mapping.vars ?? {}).find(([, v]) => v.role === "target")?.[0] ?? null;
     const inp = fitInputs(ingest(bytes, rec.mapping).table, rec.mapping, kpiVar, {}, null);
+    // Like the server, preview every channel: the unticked ones at the model's wide default.
+    for (const [i, ch] of inp.channels.filter((c) => !(c in beliefs)).entries()) {
+      roi[ch] = dist(Array.from({ length: 400 }, (_, k) => Math.exp(Math.log(4 + 3 * i) + 1.1 * invNorm((k + 0.5) / 400))));
+      share[ch] = dist(Array.from({ length: 400 }, (_, k) => 1 / (1 + Math.exp(-(-0.2 + 1.3 * invNorm((k + 0.5) / 400))))));
+    }
     const coords = inp.kpiSeries.map((p) => p.t);
     const level = inp.kpiTotal / Math.max(1, coords.length);
     kpi_fan = {
@@ -663,8 +669,8 @@ export function createGuidedHandlers(shared: SharedMockState, state: GuidedMockS
     // ------------------------------------------------------------------ prior translations
     http.post(`${API}/v1/guided/prior-translations`, async ({ request }) => {
       const body = (await request.json()) as PriorTranslationRequest;
-      if (!body.business_priors?.channels || !Object.keys(body.business_priors.channels).length) {
-        return problem(422, "BUSINESS_PRIORS_INVALID", "Invalid business priors", "state at least one channel");
+      if (!body.business_priors || (!Object.keys(body.business_priors.channels ?? {}).length && !body.business_priors.baseline_share)) {
+        return problem(422, "SCHEMA_INVALID", "Invalid request", "state at least one belief: a channel's or the baseline's");
       }
       const scope = scopeOf(request);
       const run = baseRun(state, scope, { kind: "translate_priors", spec_id: body.spec_id ?? null, spec_revision: body.revision ?? null, resource_class: "S", labels: { guided: "priors" } });

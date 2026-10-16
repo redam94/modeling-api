@@ -98,6 +98,7 @@ export type MembershipCreate = S["MembershipCreate"];
 export type MembershipUpdate = S["MembershipUpdate"];
 export type ProjectCreate = S["ProjectCreate"];
 export type ProjectRole = S["ProjectRole"];
+export type ProjectUpdate = S["ProjectUpdate"];
 export type QuotaLimitStatus = S["QuotaLimitStatus"];
 export type QuotaLimits = S["QuotaLimits"];
 export type QuotaPolicy = S["QuotaPolicy"];

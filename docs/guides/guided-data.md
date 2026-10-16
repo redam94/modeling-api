@@ -233,7 +233,8 @@ The draft is validated against the catalog like the geo MMM's.
 
 ## Locking a project to Guided mode
 
-A project admin locks a project with `PATCH /v1/tenants/{tenant}/projects/{project}
+A project admin locks a project in the web app (**Settings > Mode > Lock … to Guided
+mode**) or with `PATCH /v1/tenants/{tenant}/projects/{project}
 {"guided_locked": true}` (audited as `project.guided_lock`). Members below admin then see
 the Guided screens only, and their spec writes (`POST /v1/specs` and new revisions) must stay
 Guided specs:

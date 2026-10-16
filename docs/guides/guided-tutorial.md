@@ -19,8 +19,9 @@ mode (`pnpm --filter @mapi/web dev:mock`), so the numbers are illustrative.
 
 ## 1. Choose what you want to learn
 
-Switch the header to **Guided** (the choice is remembered for your account) or open
-**Guided** in the sidebar. Each card is a template: the question it answers, the data it
+A workspace you signed up for opens here. Elsewhere, switch the header to **Guided** (the
+choice is remembered for your account) or open **Guided** in the sidebar or from **Start a
+guided analysis** on Home. Each card is a template: the question it answers, the data it
 needs and what you can do with the result.
 
 ![Templates: geo marketing mix, weekly forecast, demand by store, customer choice](../assets/screenshots/guided-templates.png){ .mapi-shot }
@@ -78,9 +79,11 @@ benchmarks or experiments - say so here. Everything on this step is optional.
   model treats each as extra evidence.
 
 **Preview what this means** runs a quick simulation in the sandbox and shows what your
-beliefs imply before any fitting: the range the model now believes for each channel (the
-shaded bar is the range you gave) and the results it would expect week by week. A sentence
-per channel says how much of the model's belief falls inside your range. If the expected
+beliefs imply before any fitting: the range the model now believes for each channel you
+ticked (the shaded bar is the range you gave) and the results it would expect week by week.
+A sentence per channel says how much of the model's belief falls inside your range. Channels
+you left unticked are named below the charts but not drawn: the model starts them from a
+deliberately wide default, which is not a belief. If the expected
 results are far from your usual numbers, a belief is probably off.
 
 **Save and continue** stores the beliefs in the analysis. If you previewed exactly these
@@ -132,8 +135,10 @@ their thresholds are listed in [Guided mode](../concepts/guided-mode.md#scorecar
   under the instant one; they should be close.
 - **Quick scenarios**: what if a channel were turned off, or every budget changed by a
   percentage.
-- **Forecast**: how results may develop over the next weeks if you carry on as in the latest
-  ones, with the split between history and forecast marked.
+- **Forecast**: how results may develop over the next weeks (or days, for daily data) if you
+  carry on as in the latest ones, with the split between history and forecast marked. A
+  weekly forecast reaches as far as the horizon you answered when you set it up; further
+  needs a new fit with a longer horizon.
 
 The sliders cover the range the fit precomputed (from nothing to three times what you
 spent).

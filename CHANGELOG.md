@@ -12,7 +12,8 @@ milestone releases are tagged on `main`.
   server's reasons on `409` and the audited admin override), history and rollback, the frozen
   input contract with **Try it** (validate or score the example call), snippets for Python,
   TypeScript, curl, R, Apps Script and Atlas plus an Open-in-notebook cell; webhooks with an
-  event picker, the secret shown once, rotation, a test send, the delivery log (status,
+  event picker, the secret shown once, rotation, **Resend newest** (a replay of the newest
+  delivered event; there is no synthetic test event), the delivery log (status,
   attempts, response code) with replays and the auto-disabled notice; saved plots with
   PNG/SVG/PDF downloads (Plotly disabled with the server's reason on `MODE_NOT_SUPPORTED`) and
   expiring embed links with allowed sites and revocation; a **Share** button in the plot
@@ -560,6 +561,60 @@ milestone releases are tagged on `main`.
   (bodies carry ids and states only, so no chart or signed link reaches a third-party
   receiver); the webhooks guide says so and shows how a receiver renders a chart with
   `POST /v1/plots:render` when `model.version.ready` arrives.
+
+### Fixed (M3 review: web)
+- **web**: a new self-service sign-up landed in Expert mode, with no way into Guided mode but
+  the header's Mode switch. Until a user chooses, a `public` tier workspace now starts in
+  Guided mode (other workspaces and platform operators in Expert; the browser's stored v2
+  default is forgotten, per-user choices are kept), "Sign in" after the e-mail link opens
+  `/guided`, `/` opens the Guided start page in Guided mode, and Expert navigation (`g g`)
+  and Home (**Start a guided analysis**) lead to Guided.
+- **web**: the admin console's **Promotions** tab was a placeholder. It lists the endpoint
+  promotions that needed attention across tenants (gate overrides with their reason and
+  failing checks, blocked promotions and those refused for want of an override), from the
+  audit log. There is still no queue: the gate decides each promotion at once.
+- **web**: a project could be locked to Guided mode only through the API. Project admins now
+  have **Lock … to Guided mode** under Settings > Mode (`PATCH …/projects/{project_id}`,
+  audited as before).
+- **web**: a webhook's **Send test** button only replayed the newest delivery (and was
+  disabled until one existed). It is now **Resend newest**, and the empty delivery log says
+  how a new webhook gets its first delivery.
+- **web**: the beliefs preview charted every channel, the unticked ones at the model's wide
+  default prior, so they looked like the analyst's beliefs (ROI near 100, media shares adding
+  up past 100 %) and squashed the ranges actually stated. The charts show the ticked channels
+  only and name the others ("No view on …: … learns them from the data"). The mock engine
+  previews every channel, as the server does.
+- **spec**, **web**: a "Results without any media" belief stated without any channel belief
+  was silently dropped (`BusinessPriors.channels` needed at least one entry, and the page then
+  saved "no business priors"). `BusinessPriors` now needs at least one belief of either kind
+  (`channels` defaults to `{}`; a baseline-only block validates, and the "largest shares"
+  warning no longer fires without channel shares), both MMM plugins translate a baseline
+  alone, and the Guided page previews and saves it.
+- **plot-sandbox**: in dark mode, rule and text marks without a colour of their own were
+  drawn black on the dark card (Vega-Lite's default): the beliefs preview's 90% line, the
+  forecast's split line and its "Forecast starts" label. The theme colours rules in muted ink
+  and text and ticks in body ink, so a median tick also stands apart from its bar.
+- **web**: the Guided forecast panel always said "weeks" (daily data too) and accepted
+  horizons up to the template's limit (520), past the horizon a weekly forecast was fitted
+  for, which then failed. It names the data's period (days, weeks, months) and stops at the
+  fitted horizon (`max_extension`), saying a longer one needs a new fit.
+- **web**: Guided fan charts (forecast, prior predictive) started their y axis at zero, which
+  squeezed the bands into slivers; the axis now fits the data (`zero: false`).
+- **web**: the endpoint page said "Promoted by usr_01…" and its history listed user ids, and
+  saved plots said "of mdl_01…". People are named from the project's members (the id stays in
+  the tooltip, and an unknown id is shown as is), and saved plots name their model.
+- **web**: sign-up asked people to accept the terms of service and the acceptable-use policy
+  without a way to read them. Both are links (new tab) to `VITE_TERMS_URL` and
+  `VITE_ACCEPTABLE_USE_URL`, by default the plain-language summaries the app now publishes at
+  `/terms` and `/acceptable-use`.
+- **web**: the Guided upload box described weekly marketing data by market (and the MFF and
+  Meridian presets) for every template, Customer choice and Demand by store included. It
+  describes the rows each template needs and names the presets for the marketing mix only.
+- **web**: adding an experiment showed a red error under every field at once, its example
+  values ("-120000") read as prefilled data, and nothing said why Preview and Save were
+  disabled. A field's message now waits until the field is left, the examples read
+  "e.g. -120,000", and a summary beside the actions says what each unfinished experiment
+  still needs.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

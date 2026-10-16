@@ -109,10 +109,14 @@ test.describe("@e2e M3: an unaided tester in Guided mode, then the Integrations 
     const errors = watch(page);
     await page.setViewportSize({ width: 1366, height: 900 });
 
-    // 1. "What do you want to learn?"
+    // 1. "What do you want to learn?", found from where sign-in lands: a self-service
+    //    workspace opens Guided mode, any other one Expert Home, whose navigation offers Guided.
     await step("guided.1_template", async () => {
-      await page.goto("/guided");
+      await page.goto("/");
       await openProject(page);
+      // (already there in a self-service workspace; the link is in both modes' navigation)
+      await page.getByRole("navigation", { name: "Primary", exact: true }).getByRole("link", { name: "Guided" }).click();
+      await expect(page).toHaveURL(/\/guided$/);
       await expect(page.getByRole("heading", { name: "What do you want to learn?" })).toBeVisible();
       await shot(page, "m3-01-templates");
       await page.getByRole("link", { name: /^Geo marketing mix/ }).click();

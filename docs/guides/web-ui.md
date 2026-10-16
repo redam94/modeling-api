@@ -23,12 +23,12 @@ This page walks through every page in navigation order. The screenshots come fro
 | Element | What it does |
 |---|---|
 | Project switcher | The tenant and project everything on the page acts in, with your role there; switch, create a project (tenant admins) or open its members. See [Authentication](authentication.md#browser-sign-in). |
-| Sidebar | Home, Datasets, Build, Runs, Models, Score, Integrations and Catalog; under **Project**, Usage, Members and Tokens; under **Platform**, Admin (operators only); Settings at the bottom. **Collapse** (++cmd+b++) narrows it to icons. |
+| Sidebar | Home, Guided, Datasets, Build, Runs, Models, Score, Integrations and Catalog (in Guided mode, Guided replaces Home); under **Project**, Usage, Members and Tokens; under **Platform**, Admin (operators only); Settings at the bottom. **Collapse** (++cmd+b++) narrows it to icons. |
 | **Jump to…** (++cmd+k++ or ++slash++) | A command palette: go to any page, start a new spec, switch the theme, or paste an id (`run_…`, `mdl_…`, `ds_…`, `spc_…`) to open it. |
 | **API connected** | Polls `GET /readyz`: green when PostgreSQL, the object store and the catalog are ready, amber (*API degraded*) or red (*API unreachable*) otherwise. It links to **Settings**, which shows each check. |
-| **Guided / Expert** | The persona switch, remembered per user on this browser. Hidden for members below admin of a project locked to Guided mode. |
+| **Guided / Expert** | The persona switch, remembered per user on this browser. Until you choose, a self-service (`public` tier) workspace starts in Guided mode and any other one (or a platform operator) in Expert; in Guided mode `/` opens the Guided start page. Hidden for members below admin of a project locked to Guided mode. |
 | Display icon | Light, dark or system theme. |
-| ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++m++ Models, ++s++ Score, ++i++ Integrations, ++c++ Catalog, ++comma++ Settings. |
+| ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++g++ Guided, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++m++ Models, ++s++ Score, ++i++ Integrations, ++c++ Catalog, ++comma++ Settings. |
 
 Text that came from a run or a plugin (log lines, tracebacks, warning messages, plot
 captions) is always rendered as plain text, with ANSI escapes and control and bidi
@@ -274,7 +274,10 @@ the [generated catalogs](../reference/generated/models-catalog.md).
 
 ![Settings: appearance, mode and connection](../assets/screenshots/settings.png){ .mapi-shot }
 
-**Appearance** and **Mode** are stored in this browser. **Connection** shows the API and plot
+**Appearance** and **Mode** are stored in this browser. Project admins also find **Lock
+… to Guided mode** under Mode <span class="mapi-badge">v0.4</span>: the project's persona lock
+(stored on the server and audited; see [Guided mode](../concepts/guided-mode.md#the-persona-lock)).
+**Connection** shows the API and plot
 sandbox the app was built for (`VITE_API_BASE`, `VITE_PLOTS_ORIGIN`), the server and contract
 versions, and the latency of each readiness check.
 

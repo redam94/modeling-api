@@ -22,9 +22,11 @@ and the client share. The endpoints are listed in the
 
 ## The persona lock
 
-Every user picks Guided or Expert in the header, and the choice is remembered. A project admin
-can **lock a project to Guided mode** (`Project.guided_locked`, set with
-`PATCH /v1/tenants/{tenant_id}/projects/{project_id}`, audited as `project.guided_lock`):
+Every user picks Guided or Expert in the header, and the choice is remembered (until then, a
+self-service workspace starts in Guided mode and any other in Expert). A project admin
+can **lock a project to Guided mode** (`Project.guided_locked`: **Settings > Mode > Lock
+… to Guided mode** in the web app, or
+`PATCH /v1/tenants/{tenant_id}/projects/{project_id}`; audited as `project.guided_lock`):
 members below admin then only see Guided screens.
 
 The API holds those members to the same line when they **write specs**
@@ -195,6 +197,9 @@ calibration:
   central *c* interval is exactly that range (`lognormal_from_range`).
 - Shares must fit inside the KPI: the smallest shares (channels plus baseline) cannot add up
   to more than 100% (`BUSINESS_PRIORS_INVALID`).
+- At least one belief is stated, but any one will do: `baseline_share` alone (no
+  `channels`) narrows only the baseline, and channels without a belief keep the model's
+  default priors.
 - **Lift tests** are experiment results used as calibration data: extra (or removed) spend on
   one channel, optionally in one geo, over a window, and the incremental KPI it caused with a
   standard error or confidence interval. The model treats each as an extra observation of the

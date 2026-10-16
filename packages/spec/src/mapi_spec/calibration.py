@@ -135,9 +135,11 @@ class ShareBelief(StrictModel):
 
 
 class BusinessPriors(StrictModel):
-    """Beliefs in business units, per channel (keys are channel *labels* as in the data)."""
+    """Beliefs in business units, per channel (keys are channel *labels* as in the data),
+    and/or about the baseline. At least one belief is stated: a baseline belief alone is
+    fine (channels without a belief keep the model's default priors)."""
 
-    channels: dict[str, ChannelBelief] = Field(..., min_length=1, max_length=MAX_CHANNELS)
+    channels: dict[str, ChannelBelief] = Field(default_factory=dict, max_length=MAX_CHANNELS)
     baseline_share: ShareBelief | None = None
     kpi_units: str | None = Field(None, max_length=64, examples=["EUR"])
     spend_units: str | None = Field(None, max_length=64, examples=["EUR"])
@@ -163,6 +165,12 @@ class BusinessPriors(StrictModel):
                 raise ValueError("channel labels are 1-128 printable characters")
         return v
 
+    @model_validator(mode="after")
+    def _some_belief(self) -> Self:
+        if not self.channels and self.baseline_share is None:
+            raise ValueError("state at least one belief: a channel's or the baseline's")
+        return self
+
 
 def check_business_priors(priors: BusinessPriors, pointer: str = "") -> list[Issue]:
     """Cross-field consistency of business priors (``BUSINESS_PRIORS_INVALID`` issues).
@@ -187,7 +195,12 @@ def check_business_priors(priors: BusinessPriors, pointer: str = "") -> list[Iss
                 suggested_action="Lower some share ranges or the baseline share.",
             )
         )
-    elif priors.baseline_share is not None and len(shares) == len(priors.channels) and high < 1:
+    elif (
+        priors.baseline_share is not None
+        and priors.channels
+        and len(shares) == len(priors.channels)
+        and high < 1
+    ):
         issues.append(
             Issue(
                 code=ErrorCode.BUSINESS_PRIORS_INVALID,

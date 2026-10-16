@@ -109,18 +109,20 @@ export function fanPlot(fan: FanChart, opts: { title: string; splitAt?: string |
   const xEnc: JsonObject = { field: "x", type: temporal ? "temporal" : typeof fan.coords[0] === "number" ? "quantitative" : "ordinal", title: null };
   const yTitle = fan.units ? `${opts.title} (${fan.units})` : opts.title;
   const fmt = opts.format ?? "~s";
+  // Results rarely come near zero: an axis from zero would squeeze the band into a sliver.
+  const yScale: JsonObject = { zero: false, nice: true };
   const layers: JsonObject[] = [
     {
       transform: [{ filter: "datum.lo != null && datum.hi != null" }],
       mark: { type: "area", opacity: 0.16 },
-      encoding: { x: xEnc, y: { field: "lo", type: "quantitative", title: yTitle, axis: { format: fmt } }, y2: { field: "hi" } },
+      encoding: { x: xEnc, y: { field: "lo", type: "quantitative", title: yTitle, axis: { format: fmt }, scale: yScale }, y2: { field: "hi" } },
     },
   ];
   if (in25 >= 0 && in75 >= 0) {
     layers.push({
       transform: [{ filter: "datum.q25 != null && datum.q75 != null" }],
       mark: { type: "area", opacity: 0.22 },
-      encoding: { x: xEnc, y: { field: "q25", type: "quantitative" }, y2: { field: "q75" } },
+      encoding: { x: xEnc, y: { field: "q25", type: "quantitative", scale: yScale }, y2: { field: "q75" } },
     });
   }
   layers.push({
@@ -128,7 +130,7 @@ export function fanPlot(fan: FanChart, opts: { title: string; splitAt?: string |
     mark: { type: "line", strokeWidth: 2 },
     encoding: {
       x: xEnc,
-      y: { field: "mid", type: "quantitative" },
+      y: { field: "mid", type: "quantitative", scale: yScale },
       tooltip: [
         { field: "x", title: "Period", ...(temporal ? { type: "temporal" } : {}) },
         { field: "mid", title: "Most likely", format: ",.0f" },
@@ -141,7 +143,7 @@ export function fanPlot(fan: FanChart, opts: { title: string; splitAt?: string |
     layers.push({
       transform: [{ filter: "datum.observed != null" }],
       mark: { type: "point", filled: true, size: 18, opacity: 0.85, color: "#737373" },
-      encoding: { x: xEnc, y: { field: "observed", type: "quantitative" }, tooltip: [{ field: "x", title: "Period", ...(temporal ? { type: "temporal" } : {}) }, { field: "observed", title: "Actual", format: ",.0f" }] },
+      encoding: { x: xEnc, y: { field: "observed", type: "quantitative", scale: yScale }, tooltip: [{ field: "x", title: "Period", ...(temporal ? { type: "temporal" } : {}) }, { field: "observed", title: "Actual", format: ",.0f" }] },
     });
   }
   const split = opts.splitAt;

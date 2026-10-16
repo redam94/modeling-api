@@ -85,6 +85,14 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   await page.locator('[data-channel="search"]').getByRole("checkbox").click(); // the default range for search; no view on social
   await page.getByRole("button", { name: "Add an experiment" }).click();
   const exp = page.getByRole("listitem", { name: "Experiment 1" });
+  // a new experiment is not a wall of errors: one summary beside the disabled actions, and a
+  // field's own message only once it was left empty
+  await expect(exp.getByRole("alert")).toHaveCount(0);
+  await expect(exp.getByLabel("Spend change")).toHaveAttribute("placeholder", /^e\.g\. /);
+  await expect(page.getByTestId("beliefs-blocking")).toContainText("Experiment 1 still needs the first day");
+  await exp.getByLabel("First day").focus();
+  await exp.getByLabel("Last day").focus();
+  await expect(exp.getByRole("alert")).toHaveText(["Enter the first day of the test."]);
   await exp.getByLabel("Channel tested").selectOption("tv");
   await exp.getByLabel("Market").selectOption("de");
   await exp.getByLabel("First day").fill("2025-06-01");
@@ -92,11 +100,14 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   await exp.getByLabel("Spend change").fill("-40000");
   await exp.getByLabel("Measured change in results").fill("-90000");
   await exp.getByLabel("± uncertainty (standard error)").fill("25000");
+  await expect(page.getByTestId("beliefs-blocking")).toHaveCount(0);
   await page.getByRole("button", { name: "Preview what this means" }).click();
   await expect(page.getByRole("heading", { name: "What your beliefs mean, before seeing the data" })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(/of what the model believes falls inside your range/).first()).toBeVisible();
   await expect(page.locator('iframe[title="Prior return on spend per channel"]')).toBeVisible();
   await expect(page.locator('iframe[title="Results the model expects before fitting"]')).toBeVisible();
+  // social has no stated belief: it is named, not charted beside the beliefs
+  await expect(page.getByTestId("unstated-channels")).toContainText("No view on social");
 
   // View as YAML shows the real spec with the calibration block, read-only
   await page.getByRole("button", { name: "View as YAML" }).click();

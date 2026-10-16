@@ -1,7 +1,8 @@
 /**
  * UI-only state (theme, persona, layout). Server data never lives here: it belongs to
  * TanStack Query. Persisted per browser; the Guided/Expert choice is remembered per signed-in
- * user (`personas`, keyed by user id), with `persona` as the choice before anyone signed in.
+ * user (`personas`, keyed by user id), with `persona` as this browser's last choice. Until
+ * either is set, the workspace decides (`defaultPersona` in features/guided/persona).
  */
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -11,8 +12,8 @@ export type Persona = "expert" | "guided";
 
 export interface UiState {
   theme: ThemePreference;
-  /** The last choice made on this browser (the default for users without their own). */
-  persona: Persona;
+  /** The last choice made on this browser (the default for users without their own); `null` until one is made. */
+  persona: Persona | null;
   /** Guided or Expert, per user id. */
   personas: Record<string, Persona>;
   sidebarCollapsed: boolean;
@@ -32,7 +33,7 @@ export const useUi = create<UiState>()(
   persist(
     (set) => ({
       theme: "system",
-      persona: "expert",
+      persona: null,
       personas: {},
       sidebarCollapsed: false,
       paletteOpen: false,
@@ -50,20 +51,29 @@ export const useUi = create<UiState>()(
     }),
     {
       name: "mapi.ui",
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ theme: s.theme, persona: s.persona, personas: s.personas, sidebarCollapsed: s.sidebarCollapsed }),
-      migrate: (persisted) => {
+      migrate: (persisted, version) => {
         const v = (persisted ?? {}) as Partial<UiState>;
-        return { ...v, personas: v.personas ?? {} };
+        // Before v3 `persona` started as "expert", so a stored "expert" may never have been
+        // chosen; the per-user choices (`personas`) always were.
+        return { ...v, persona: version < 3 ? null : (v.persona ?? null), personas: v.personas ?? {} };
       },
     },
   ),
 );
 
-/** The persona of `userId` (the browser's last choice for users without their own). */
-export function personaOf(state: Pick<UiState, "persona" | "personas">, userId: string | null | undefined): Persona {
-  return (userId ? state.personas[userId] : undefined) ?? state.persona;
+/**
+ * The persona of `userId`: their own choice, else this browser's last choice, else `fallback`
+ * (the workspace's default).
+ */
+export function personaOf(
+  state: Pick<UiState, "persona" | "personas">,
+  userId: string | null | undefined,
+  fallback: Persona = "expert",
+): Persona {
+  return (userId ? state.personas[userId] : undefined) ?? state.persona ?? fallback;
 }
 
 /** Resolve the effective theme for a preference and the OS setting. */

@@ -2904,7 +2904,9 @@ export interface components {
         };
         /**
          * BusinessPriors
-         * @description Beliefs in business units, per channel (keys are channel *labels* as in the data).
+         * @description Beliefs in business units, per channel (keys are channel *labels* as in the data),
+         *     and/or about the baseline. At least one belief is stated: a baseline belief alone is
+         *     fine (channels without a belief keep the model's default priors).
          * @example {
          *       "baseline_share": {
          *         "credibility": 0.8,
@@ -2942,7 +2944,7 @@ export interface components {
         BusinessPriors: {
             baseline_share?: components["schemas"]["ShareBelief"] | null;
             /** Channels */
-            channels: {
+            channels?: {
                 [key: string]: components["schemas"]["ChannelBelief"];
             };
             /**

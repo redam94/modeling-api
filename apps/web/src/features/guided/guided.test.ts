@@ -117,6 +117,15 @@ describe("business priors", () => {
     expect(lt.tests).toEqual(cal.lift_tests);
   });
 
+  it("keeps a baseline belief stated without any channel belief (M3 review)", () => {
+    const form = formFromCalibration(undefined, ["tv", "search"]);
+    const baselineOnly = { ...form, baseline: { enabled: true, low: 0.4, high: 0.8, credibility: 0.8 } };
+    const bp = toBusinessPriors(baselineOnly);
+    expect(bp).toEqual({ channels: {}, baseline_share: { share: [0.4, 0.8], credibility: 0.8 } });
+    // and it survives a save and reload
+    expect(formFromCalibration({ business_priors: bp }, ["tv", "search"]).baseline).toEqual(baselineOnly.baseline);
+  });
+
   it("without a calibration block no channel carries a belief until it is ticked", () => {
     // a channel the analyst never touched must not become an ROI belief (M3 usability run)
     const form = formFromCalibration(undefined, ["tv"]);
@@ -312,5 +321,104 @@ describe("Guided usability fixes (M3 tester run)", () => {
     const { shareOrder } = await import("./steps/share-step");
     const ids = shareOrder([{ id: "core.convergence" }, { id: "core.ppc_fan" }, { id: "mmm.decomposition" }, { id: "mmm.response_curves" }]).map((p) => p.id);
     expect(ids).toEqual(["mmm.response_curves", "mmm.decomposition", "core.ppc_fan", "core.convergence"]);
+  });
+});
+
+describe("an unfinished experiment (M3 review)", () => {
+  it("is summed up in one sentence per experiment beside the disabled actions", async () => {
+    const { liftSummary } = await import("./priors");
+    const rows = [newLiftRow("tv"), { ...newLiftRow("search"), start: "2025-06-01", end: "2025-05-01", spendDelta: "-40,000", kpiDelta: "-90000", se: "25000" }];
+    const { problems } = toLiftTests(rows, ["tv", "search"]);
+    expect(liftSummary(problems, rows)).toEqual([
+      "Experiment 1 still needs the first day, the last day, the spend change, the measured change and its uncertainty. Fill them in, or remove the experiment.",
+      "Experiment 2 still needs a last day after the first. Fill them in, or remove the experiment.",
+    ]);
+    expect(liftSummary([], rows)).toEqual([]);
+  });
+
+  it("uses placeholders that cannot pass for data", async () => {
+    const { LIFT_PLACEHOLDERS } = await import("./priors");
+    for (const p of Object.values(LIFT_PLACEHOLDERS)) expect(p).toMatch(/^e\.g\. /);
+  });
+});
+
+describe("the upload hint (M3 review)", () => {
+  it("describes the data each template needs, and the MMM presets only for the marketing mix", async () => {
+    const { dataShapePlain } = await import("./session");
+    const mmm = dataShapePlain(tpl("geo_mmm"));
+    expect(mmm).toMatch(/one row per week \(or day\) and market/);
+    expect(mmm).toMatch(/MFF/);
+    expect(mmm).toMatch(/Meridian/);
+    const choice = dataShapePlain(tpl("customer_choice"));
+    expect(choice).toMatch(/one row per shopping trip/);
+    expect(choice).not.toMatch(/MFF|Meridian|market/);
+    expect(dataShapePlain(tpl("store_demand"))).toMatch(/one row per store and week/);
+    expect(dataShapePlain(tpl("weekly_forecast"))).not.toMatch(/MFF|market/);
+    expect(dataShapePlain({ family: "other" as GuidedTemplate["family"], description_plain: "Anything." })).toMatch(/^A CSV or Parquet file/);
+  });
+});
+
+describe("the fan chart's y axis (M3 review)", () => {
+  it("fits the band instead of starting at zero", () => {
+    const fan = { dim: "time", coords: ["2025-01-05", "2025-01-12"], quantiles: [0.05, 0.25, 0.5, 0.75, 0.95], values: [[350, 360], [370, 375], [380, 385], [390, 395], [400, 410]], observed: [382, null] };
+    const layers = (fanPlot(fan, { title: "Results", splitAt: "2025-01-12" }).spec.layer ?? []) as { encoding?: { y?: { field?: string; scale?: unknown } } }[];
+    const ys = layers.map((l) => l.encoding?.y).filter((y) => y?.field);
+    expect(ys.length).toBeGreaterThanOrEqual(4);
+    for (const y of ys) expect(y?.scale).toEqual({ zero: false, nice: true });
+  });
+});
+
+describe("the forecast panel's horizon (M3 review)", () => {
+  it("names the data's period", async () => {
+    const { periodUnit, periodWords } = await import("./session");
+    const dims = (freq: string | null) => [{ kind: "categorical" }, { kind: "time", freq }];
+    expect(periodUnit({}, dims("W-SUN"))).toBe("week");
+    expect(periodUnit({}, dims("D"))).toBe("day");
+    expect(periodUnit({}, dims("MS"))).toBe("month");
+    expect(periodUnit({}, dims(null))).toBe("period");
+    expect(periodUnit({}, [])).toBe("period");
+    // a schema without the frequency, then the summary that measured it
+    expect(periodUnit({}, [...dims(null), ...dims("W-SUN")])).toBe("week");
+    // weekly_forecast records the answered frequency as the season length
+    expect(periodUnit({ model: { settings: { season_period: 365.25 } } }, [])).toBe("day");
+    expect(periodUnit({ model: { settings: { season_period: 52.18 } } }, dims("D"))).toBe("week");
+    expect(periodWords("day", 1)).toBe("1 day");
+    expect(periodWords("week", 13)).toBe("13 weeks");
+  });
+
+  it("stops at the horizon the model was fitted for", async () => {
+    const { forecastLimit } = await import("./session");
+    const forecastTpl = tpl("weekly_forecast");
+    expect(forecastLimit({ model: { settings: { max_extension: 26 } } }, forecastTpl)).toEqual({ max: 26, fitted: true });
+    expect(forecastLimit({ model: { settings: {} } }, forecastTpl)).toEqual({ max: 520, fitted: false });
+    expect(forecastLimit({}, tpl("geo_mmm"))).toEqual({ max: 104, fitted: false });
+  });
+});
+
+describe("the beliefs preview (M3 review)", () => {
+  const d = (mid: number) => ({ mean: mid, sd: 1, quantiles: { "0.05": mid / 2, "0.25": mid * 0.8, "0.5": mid, "0.75": mid * 1.2, "0.95": mid * 2 } });
+
+  it("charts the channels with a stated belief and names the others apart", async () => {
+    const { previewGroups } = await import("./priors");
+    const form = formFromCalibration(undefined, ["tv", "search", "social"]);
+    form.channels[0] = { ...form.channels[0]!, enabled: true, low: 1.5, high: 4 };
+    // the server previews every channel: the unticked ones at the model's default prior
+    const preview = { roi: { tv: d(2.4), search: d(6.5), social: d(17.2) }, contribution_share: { tv: d(0.15), search: d(0.49), social: d(0.49) } };
+    const g = previewGroups(preview, form);
+    expect(g.roi.map((i) => i.label)).toEqual(["tv"]);
+    expect(g.roi[0]?.stated).toEqual([1.5, 4]);
+    expect(g.share.map((i) => i.label)).toEqual(["tv"]);
+    expect(g.share[0]?.stated).toBeNull();
+    expect(g.unstated).toEqual(["search", "social"]);
+  });
+
+  it("shows the stated range on the share chart in share mode", async () => {
+    const { previewGroups } = await import("./priors");
+    const form = withMode(formFromCalibration(undefined, ["tv", "search"]), "share");
+    form.channels[1] = { ...form.channels[1]!, enabled: true, low: 0.05, high: 0.2 };
+    const g = previewGroups({ roi: { tv: d(3), search: d(2) }, contribution_share: { tv: d(0.3), search: d(0.1) } }, form);
+    expect(g.share).toEqual([{ label: "search", summary: d(0.1), stated: [0.05, 0.2] }]);
+    expect(g.roi[0]?.stated).toBeNull();
+    expect(g.unstated).toEqual(["tv"]);
   });
 });
