@@ -1,6 +1,7 @@
 /**
  * UI-only state (theme, persona, layout). Server data never lives here: it belongs to
- * TanStack Query. Persisted per browser; M2 moves persona to the user profile.
+ * TanStack Query. Persisted per browser; the Guided/Expert choice is remembered per signed-in
+ * user (`personas`, keyed by user id), with `persona` as the choice before anyone signed in.
  */
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -10,39 +11,60 @@ export type Persona = "expert" | "guided";
 
 export interface UiState {
   theme: ThemePreference;
+  /** The last choice made on this browser (the default for users without their own). */
   persona: Persona;
+  /** Guided or Expert, per user id. */
+  personas: Record<string, Persona>;
   sidebarCollapsed: boolean;
   paletteOpen: boolean;
   shortcutsOpen: boolean;
   setTheme: (theme: ThemePreference) => void;
-  setPersona: (persona: Persona) => void;
+  /** Remember `persona` (for `userId` when given). */
+  setPersona: (persona: Persona, userId?: string | null) => void;
   toggleSidebar: () => void;
   setPaletteOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
 }
+
+const MAX_REMEMBERED_USERS = 50;
 
 export const useUi = create<UiState>()(
   persist(
     (set) => ({
       theme: "system",
       persona: "expert",
+      personas: {},
       sidebarCollapsed: false,
       paletteOpen: false,
       shortcutsOpen: false,
       setTheme: (theme) => set({ theme }),
-      setPersona: (persona) => set({ persona }),
+      setPersona: (persona, userId) =>
+        set((s) => {
+          if (!userId) return { persona };
+          const rest = Object.entries(s.personas).filter(([k]) => k !== userId).slice(-(MAX_REMEMBERED_USERS - 1));
+          return { persona, personas: { ...Object.fromEntries(rest), [userId]: persona } };
+        }),
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
       setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
     }),
     {
       name: "mapi.ui",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ theme: s.theme, persona: s.persona, sidebarCollapsed: s.sidebarCollapsed }),
+      partialize: (s) => ({ theme: s.theme, persona: s.persona, personas: s.personas, sidebarCollapsed: s.sidebarCollapsed }),
+      migrate: (persisted) => {
+        const v = (persisted ?? {}) as Partial<UiState>;
+        return { ...v, personas: v.personas ?? {} };
+      },
     },
   ),
 );
+
+/** The persona of `userId` (the browser's last choice for users without their own). */
+export function personaOf(state: Pick<UiState, "persona" | "personas">, userId: string | null | undefined): Persona {
+  return (userId ? state.personas[userId] : undefined) ?? state.persona;
+}
 
 /** Resolve the effective theme for a preference and the OS setting. */
 export function resolveTheme(pref: ThemePreference, prefersDark: boolean): "light" | "dark" {

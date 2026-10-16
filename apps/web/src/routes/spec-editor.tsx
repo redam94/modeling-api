@@ -30,6 +30,7 @@ import { PipelineCards } from "@/features/editor/pipeline-cards";
 import { saveParent, shouldLoadRevision } from "@/features/editor/revision-sync";
 import { STARTER_SPEC } from "@/features/editor/starter";
 import { YamlEditor, type YamlEditorHandle } from "@/features/editor/yaml-editor";
+import { GuidedReturnLink } from "@/features/guided/return-link";
 import { env } from "@/env";
 import { useDebounced } from "@/hooks/use-debounced";
 import { relativeTime, shortId } from "@/lib/format";
@@ -255,6 +256,7 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
               <span className="inline-flex items-center gap-1 text-destructive"><XCircle className="size-3.5" /> {validation.problem.code ?? "invalid"}</span>
             ) : null}
             {schema.isError ? <span className="text-warning">Schema hints unavailable</span> : null}
+            <GuidedReturnLink specId={specId} document={document} />
           </>
         }
         actions={

@@ -122,7 +122,7 @@ export function parseResponseGrid(raw: unknown): ResponseGrid {
   if (!Number.isInteger(draws) || (draws as number) < 1 || (draws as number) > MAX_GRID_DRAWS) invalid(`draws must be 1-${MAX_GRID_DRAWS}`);
   const nd = draws as number;
   if (!Array.isArray(g.multipliers) || g.multipliers.length < 2 || !g.multipliers.every(isNum)) invalid("multipliers must be numbers");
-  const mult = g.multipliers as number[];
+  const mult = g.multipliers;
   if (mult.some((m, i) => m < 0 || (i > 0 && m <= (mult[i - 1] as number)))) invalid("multipliers must be unique, ascending and non-negative");
   if (!mult.some((m) => Math.abs(m - 1) < 1e-9)) invalid("multipliers must include 1 (the actual spend)");
   const nc = channels.length;
