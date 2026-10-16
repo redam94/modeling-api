@@ -41,6 +41,15 @@ export const ADMIN_NAV: NavItem = {
   description: "Tenants, quotas, kill switches, executors and audit",
 };
 
+/** The Integrations hub: in Expert navigation, and beside Guided in a Guided-locked project. */
+export const INTEGRATIONS_NAV: NavItem = {
+  to: "/integrations",
+  label: "Integrations",
+  icon: Plug,
+  chord: "i",
+  description: "Endpoints, snippets, webhooks and share links",
+};
+
 export const EXPERT_NAV: NavItem[] = [
   { to: "/", label: "Home", icon: Home, chord: "h", description: "Activity and health at a glance" },
   { to: "/datasets", label: "Datasets", icon: Database, chord: "d", description: "Upload, map and inspect data" },
@@ -48,7 +57,7 @@ export const EXPERT_NAV: NavItem[] = [
   { to: "/runs", label: "Runs", icon: Activity, chord: "r", description: "Fits, dry-runs, ingests and scores" },
   { to: "/models", label: "Models", icon: Boxes, chord: "m", description: "Inspect fitted model versions" },
   { to: "/score", label: "Score", icon: Gauge, chord: "s", description: "Forecasts, scenarios and counterfactuals" },
-  { to: "/integrations", label: "Integrations", icon: Plug, chord: "i", description: "Endpoints, snippets, webhooks and share links" },
+  INTEGRATIONS_NAV,
   { to: "/catalog", label: "Catalog", icon: Library, chord: "c", description: "Models, steps and plot recipes" },
 ];
 

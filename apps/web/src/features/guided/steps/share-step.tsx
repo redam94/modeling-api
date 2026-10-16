@@ -4,7 +4,7 @@
  * Integrations hub (spreadsheets, BI tools, webhooks).
  */
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, CheckCircle2, Link2, Rocket, ShieldAlert, Sheet as SheetIcon } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Code2, KeyRound, Link2, Rocket, ShieldAlert, Sheet as SheetIcon } from "lucide-react";
 import { useId, useState } from "react";
 
 import { can } from "@/api/access";
@@ -102,8 +102,20 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
               <CheckCircle2 aria-hidden className="size-4 text-success" /> Live at <Mono>{live.ref}</Mono>
             </p>
             <p className="text-[13px] text-muted-foreground">
-              Serving {live.model_ref} (revision {live.revision}){live.overridden ? ", approved by an admin despite the checks to look at" : ""}. The Integrations hub has ready-made code for spreadsheets and scripts.
+              Serving {live.model_ref} (revision {live.revision}){live.overridden ? ", approved by an admin despite the checks to look at" : ""}. The Integrations hub has ready-made code for spreadsheets, notebooks and scripts.
             </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button asChild size="sm" variant="outline">
+                <Link to="/integrations/endpoints/$alias" params={{ alias: live.alias }} search={{ tab: "snippets" }}>
+                  <Code2 /> Code for this endpoint
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="ghost">
+                <Link to="/tokens" search={{ preset: `score:${live.alias}` }}>
+                  <KeyRound /> Create a token for it
+                </Link>
+              </Button>
+            </div>
           </div>
         ) : (
           <>
@@ -183,7 +195,13 @@ function Embed({ mv }: { mv: ModelVersion }) {
               <Mono className="min-w-0 flex-1 truncate rounded border bg-card px-2 py-1.5">{made.url}</Mono>
               <CopyButton value={made.url} label="Copy the link" />
             </div>
-            <p className="text-xs text-muted-foreground">Expires {new Date(made.embed.expires_at).toLocaleDateString("en", { dateStyle: "medium" })}. You can revoke it in the Integrations hub.</p>
+            <p className="text-xs text-muted-foreground">
+              Expires {new Date(made.embed.expires_at).toLocaleDateString("en", { dateStyle: "medium" })}. You can revoke it under{" "}
+              <Link to="/integrations" search={{ tab: "sharing" }} className="underline underline-offset-2">
+                Plots and links
+              </Link>{" "}
+              in the Integrations hub.
+            </p>
           </div>
         ) : embeddable.length ? (
           <div className="flex flex-wrap items-end gap-3">
@@ -251,11 +269,10 @@ export function ShareStep({ session }: { session: GuidedSession }) {
           <Badge variant="secondary">Integrations</Badge>
         </CardHeader>
         <CardContent>
-          {/* The Integrations hub is its own section of the app. */}
           <Button asChild variant="outline">
-            <a href="/integrations">
+            <Link to="/integrations" search={{ tab: "overview" }}>
               Open the Integrations hub <ArrowUpRight />
-            </a>
+            </Link>
           </Button>
         </CardContent>
       </Card>

@@ -25,7 +25,8 @@ describe("previewGate", () => {
   it("needs an override for a warning, naming the check", () => {
     const d = previewGate(modelVersion);
     expect(d.outcome).toBe("needs_override");
-    expect(d.reasons?.[0]).toMatchObject({ code: "SCORECARD_WARN", outcome: "needs_override", check: "HOLDOUT_MAPE" });
+    expect(d.reasons?.[0]).toMatchObject({ code: "SCORECARD_WARN", outcome: "needs_override" });
+    expect(d.failing_checks).toEqual(["HOLDOUT_MAPE"]);
   });
 
   it("blocks a failing scorecard and an interrupted fit, and asks for an override without a scorecard", () => {
@@ -36,6 +37,10 @@ describe("previewGate", () => {
 
   it("explains a non-passing verdict even without items", () => {
     expect(previewGate(card("warn")).reasons?.[0]?.code).toBe("SCORECARD_WARN");
+  });
+
+  it("blocks a train-only fit, like the server", () => {
+    expect(previewGate(card("pass"), { fitMode: "train_only" }).reasons?.[0]?.code).toBe("TRAIN_ONLY");
   });
 
   it("orders outcomes", () => {

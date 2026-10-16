@@ -1,9 +1,10 @@
 /**
  * The endpoint promotion gate in words (`mapi_spec.scorecard.promotion_gate`). The server
- * decides; the app previews the decision from a version's scorecard and reads the server's
- * reasons back out of a `409 OVERRIDE_REQUIRED` / `PROMOTION_BLOCKED` problem.
+ * decides; the app previews the decision from a version's scorecard (the Integrations hub and
+ * Guided mode's Share step use the same preview) and reads the server's reasons back out of a
+ * `409 OVERRIDE_REQUIRED` / `PROMOTION_BLOCKED` problem.
  */
-import type { GateOutcome, GateReason, ModelVersion, Problem, PromotionGateDecision } from "@/api/types";
+import type { GateOutcome, GateReason, ModelVersion, Problem, PromotionGateDecision, Scorecard } from "@/api/types";
 
 export const GATE_META: Record<GateOutcome, { label: string; variant: "success" | "warning" | "danger"; description: string }> = {
   allowed: {
@@ -40,43 +41,41 @@ export function worstOutcome(a: GateOutcome, b: GateOutcome): GateOutcome {
 }
 
 /**
- * What the gate will most likely say about `mv`, from what the app can see (the scorecard
- * and the partial flag). The server also checks the fit mode and input-schema breaks, so a
- * preview of `allowed` can still come back `blocked`.
+ * A port of the scorecard part of `mapi_spec.scorecard.promotion_gate` (same reasons, same
+ * words): an interrupted (`partial`) fit or a `train_only` fit is blocked; no scorecard needs an
+ * override; a `fail` item blocks, a `warn` item needs a project admin's override with a reason.
+ * Input-schema breaks are known only to the server for an existing alias and arrive in the
+ * `409` problem, so a preview of `allowed` can still come back refused.
  */
-export function previewGate(mv: Pick<ModelVersion, "scorecard" | "status">): PromotionGateDecision {
+export function previewScorecardGate(
+  scorecard: Scorecard | null | undefined,
+  opts: { partial?: boolean; fitMode?: string | null } = {},
+): PromotionGateDecision {
   const reasons: GateReason[] = [];
-  if (mv.status === "partial") {
-    reasons.push({ code: "PARTIAL_MODEL", outcome: "blocked", message_plain: "The fit was interrupted before it finished." });
-  }
-  const card = mv.scorecard ?? null;
-  if (!card) {
-    reasons.push({ code: "NO_SCORECARD", outcome: "needs_override", message_plain: "This version has no sanity scorecard, so nothing vouches for it." });
+  const add = (code: GateReason["code"], outcome: GateOutcome, message_plain: string, check: string | null = null) =>
+    reasons.push({ code, outcome, message_plain: message_plain.slice(0, 500), check });
+  if (opts.partial) add("PARTIAL_MODEL", "blocked", "The fit was interrupted before it finished.");
+  if (opts.fitMode === "train_only") add("TRAIN_ONLY", "blocked", "The model was fitted without its holdout data; endpoints need a refit on all data.");
+  const failing: string[] = [];
+  if (!scorecard) {
+    add("NO_SCORECARD", "needs_override", "The model has no sanity scorecard.");
   } else {
-    for (const item of card.items ?? []) {
+    for (const item of scorecard.items ?? []) {
       if (item.status === "pass") continue;
-      reasons.push({
-        code: item.status === "fail" ? "SCORECARD_FAIL" : "SCORECARD_WARN",
-        outcome: item.status === "fail" ? "blocked" : "needs_override",
-        message_plain: item.message_plain,
-        check: item.check ?? item.code,
-      });
+      failing.push(item.check ?? item.code);
+      add(item.status === "fail" ? "SCORECARD_FAIL" : "SCORECARD_WARN", item.status === "fail" ? "blocked" : "needs_override", `${item.title}: ${item.message_plain}`, item.check ?? null);
     }
-    if (card.overall !== "pass" && !reasons.some((r) => r.code === "SCORECARD_WARN" || r.code === "SCORECARD_FAIL")) {
-      reasons.push({
-        code: card.overall === "fail" ? "SCORECARD_FAIL" : "SCORECARD_WARN",
-        outcome: card.overall === "fail" ? "blocked" : "needs_override",
-        message_plain: `The scorecard's overall verdict is ${card.overall}.`,
-      });
+    if (scorecard.overall !== "pass" && !failing.length) {
+      add(scorecard.overall === "fail" ? "SCORECARD_FAIL" : "SCORECARD_WARN", scorecard.overall === "fail" ? "blocked" : "needs_override", "The scorecard did not pass.");
     }
   }
   const outcome = reasons.reduce<GateOutcome>((o, r) => worstOutcome(o, r.outcome), "allowed");
-  return {
-    outcome,
-    reasons,
-    scorecard_overall: card?.overall ?? null,
-    failing_checks: reasons.map((r) => r.check).filter((c): c is string => typeof c === "string"),
-  };
+  return { outcome, scorecard_overall: scorecard?.overall ?? null, reasons, failing_checks: failing };
+}
+
+/** {@link previewScorecardGate} for a model version (its scorecard and partial flag). */
+export function previewGate(mv: Pick<ModelVersion, "scorecard" | "status">, opts: { fitMode?: string | null } = {}): PromotionGateDecision {
+  return previewScorecardGate(mv.scorecard, { partial: mv.status === "partial", fitMode: opts.fitMode ?? null });
 }
 
 const REASON_CODES = new Set<string>(Object.keys(GATE_REASON_LABEL));

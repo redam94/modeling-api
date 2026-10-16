@@ -156,7 +156,17 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   await expect(page.getByTestId("endpoint-live")).toContainText("endpoint://growth/eu-media-mix");
   await page.getByRole("button", { name: "Create link" }).click();
   await expect(page.getByTestId("embed-link")).toContainText(/\/embed\/mpe_[0-9a-z]+/);
-  await expect(page.getByRole("link", { name: /Open the Integrations hub/ })).toHaveAttribute("href", "/integrations");
+  await expect(page.getByRole("link", { name: /Open the Integrations hub/ })).toHaveAttribute("href", "/integrations?tab=overview");
+  await expect(page.getByRole("link", { name: "Plots and links" })).toHaveAttribute("href", "/integrations?tab=sharing");
+  // the hub serves the endpoint this session promoted, with the server's snippets for it
+  await page.getByRole("link", { name: "Code for this endpoint" }).click();
+  await expect(page).toHaveURL(/\/integrations\/endpoints\/eu-media-mix\?tab=snippets$/);
+  await expect(page.getByLabel("Python (mapi-client) snippet", { exact: true })).toContainText("'eu-media-mix'");
+  await page.getByRole("tab", { name: "Notebook" }).click();
+  await expect(page.getByLabel("Notebook (mapi-client, xarray) snippet", { exact: true })).toContainText("endpoint = api.endpoint('eu-media-mix')");
+  await page.goBack();
+  await expect(page).toHaveURL(/\/share$/);
+  await expect(page.getByTestId("endpoint-live")).toContainText("endpoint://growth/eu-media-mix");
 
   // resuming: the analysis is listed and opens where it stands
   await page.getByRole("link", { name: "Back to all analyses" }).click();
@@ -202,6 +212,8 @@ test("a Guided-locked project shows members below admin Guided mode only", async
   const nav = page.getByRole("navigation", { name: "Primary", exact: true });
   await expect(nav.getByRole("link", { name: "Guided" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Build" })).toHaveCount(0);
+  // the Share step's destination stays reachable
+  await expect(nav.getByRole("link", { name: "Integrations" })).toBeVisible();
 });
 
 test("the Guided/Expert choice is remembered per user", async ({ page }) => {
