@@ -79,7 +79,6 @@ from mapi_spec.endpoints import (
 from mapi_spec.errors import ErrorCode, Issue, Problem
 from mapi_spec.executor import RunEventType, RunKind
 from mapi_spec.guided import (
-    BayesInsightImport,
     ColumnProfile,
     DetectRolesRequest,
     GuidedAnswers,
@@ -185,7 +184,6 @@ __all__ = [
     "ApiToken",
     "ArtifactLink",
     "AuditEvent",
-    "BayesInsightImport",
     "CatalogResponse",
     "ColumnProfile",
     "CostTotals",
@@ -360,7 +358,7 @@ _SCHEMA_EXAMPLE: dict[str, Any] = {
 _E33_YAML_SHORT = (
     "apiVersion: mapi/v1\nkind: ModelSpec\nmetadata: {name: eu-geo-mmm, project: default}\n"
     "data:\n  dataset: dataset://default/eu_media_daily@latest\n"
-    "model:\n  use: mmm.hierarchical_geo@^1.3\n"
+    "model:\n  use: mmm.bayesian@^1.3\n"
 )
 
 T = TypeVar("T")
@@ -436,7 +434,7 @@ class Health(_Response):
         {
             "status": "ok",
             "version": "0.2.0",
-            "contract_version": "0.1",
+            "contract_version": "0.2",
             "api_version": "v1",
             "checks": {
                 "postgres": {"status": "ok", "latency_ms": 1.2},
@@ -1081,7 +1079,7 @@ class Lineage(_Response):
     spec_hash: Sha256
     dataset_sha: Sha256 | None = None
     side_tables: dict[str, Sha256] = Field(default_factory=dict)
-    plugin: str | None = Field(None, examples=["mmm.hierarchical_geo@1.3.2"])
+    plugin: str | None = Field(None, examples=["mmm.bayesian@1.3.2"])
     base_image: str | None = None
     overlay_hash: Sha256 | None = None
     catalog_digest: Sha256 | None = None
@@ -1100,7 +1098,7 @@ class Lineage(_Response):
             "attempt": 1,
             "spec_hash": _SHA,
             "dataset_sha": "sha256:" + "ef" * 32,
-            "plugin": "mmm.hierarchical_geo@1.3.2",
+            "plugin": "mmm.bayesian@1.3.2",
             "base_image": "base-bayes@2026.10",
             "seed": 20261014,
             "engine": "nutpie",
@@ -2309,12 +2307,6 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         errors=(*_BODY, *_NF, _E.GUIDED_ANSWERS_INVALID), headers=_PH,
     ),
     EndpointDecl(
-        "POST", "/v1/guided/import/bayesinsight", "import_bayesinsight",
-        "BayesInsight model_def.json + metadata.json -> draft for the geo MMM",
-        "GuidedDraft", 200, request="BayesInsightImport",
-        errors=(*_BODY, _E.IMPORT_UNSUPPORTED), headers=_PH,
-    ),
-    EndpointDecl(
         "POST", "/v1/guided/requests:compile", "compile_guided_request",
         "What-if scenario, forecast or preset -> the ScoreRequest it stands for ('Run exact')",
         "ScoreRequest", 200, request="GuidedCompile",
@@ -2381,7 +2373,7 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     ),
     EndpointDecl(
         "GET", _ALIAS + "/snippets", "list_endpoint_snippets",
-        "Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint",
+        "Python, TypeScript, curl, R, Apps Script and notebook code for the endpoint",
         "SnippetSet", 200, errors=_NF, query=("language", "base_url"), headers=_PH,
     ),
     # webhooks
@@ -2670,7 +2662,6 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "get_guided_template": _AUTH,
     "detect_roles": _p(_RK.DATASET, _AC.READ),
     "create_guided_draft": _p(_RK.SPEC, _AC.READ),
-    "import_bayesinsight": _p(_RK.SPEC, _AC.READ),
     "compile_guided_request": _p(_RK.MODEL, _AC.READ),
     "create_prior_translation": _p(_RK.RUN, _AC.CREATE, (_RK.SPEC, _AC.READ)),
     "get_prior_translation": _p(_RK.RUN, _AC.READ),

@@ -84,11 +84,9 @@ from mapi_spec.guided import (
     GuidedDraft,
     GuidedTemplate,
     build_draft,
-    draft_from_bayesinsight,
     suggest_roles,
 )
 from mapi_spec.ingest import (
-    BayesInsightModelDef,
     IngestMapping,
     IngestPreset,
     MeridianColumns,
@@ -235,7 +233,6 @@ __all__ = [
     "AuditOutcome",
     "AuthContext",
     "Backtest",
-    "BayesInsightModelDef",
     "Binding",
     "BusinessPriors",
     "Calibration",
@@ -363,7 +360,6 @@ __all__ = [
     "canonical_json",
     "check_webhook_url",
     "default_summary",
-    "draft_from_bayesinsight",
     "dump_yaml",
     "embeddable",
     "estimate_cost",

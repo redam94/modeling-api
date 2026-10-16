@@ -52,7 +52,6 @@ class SnippetLanguage(StrEnum):
     CURL = "curl"
     R = "r"
     APPS_SCRIPT = "apps_script"
-    ATLAS = "atlas"
     NOTEBOOK = "notebook"
 
 
@@ -405,28 +404,6 @@ function mapiSheetToXr_(values, example) {{
     )
 
 
-def _atlas(ctx: SnippetContext) -> Snippet:
-    code = f"""import os
-
-from mapi_client import Client
-from mapi_client.atlas import RemoteModel
-
-api = Client(
-    {py_literal(ctx.base_url)},
-    token=os.environ[{py_literal(ctx.token_env)}],
-    project={py_literal(ctx.project)},
-)
-# An Atlas model backed by the endpoint: Atlas's optimiser scores budgets against it.
-model = RemoteModel(api, endpoint={py_literal(ctx.alias)})
-"""
-    return Snippet(
-        language=SnippetLanguage.ATLAS,
-        title="Atlas (RemoteModel)",
-        code=code,
-        requires="pip install 'mapi-client[atlas]'",
-    )
-
-
 #: Keyword arguments of ``RemoteEndpoint.score`` itself; a payload field with one of these names
 #: cannot be passed as a keyword, so such a payload goes through ``api.endpoints.score``.
 _REMOTE_SCORE_KWARGS: Final = frozenset({"data", "group", "wait", "timeout", "conform"})
@@ -477,7 +454,6 @@ _RENDER = {
     SnippetLanguage.CURL: _curl,
     SnippetLanguage.R: _r,
     SnippetLanguage.APPS_SCRIPT: _apps_script,
-    SnippetLanguage.ATLAS: _atlas,
     SnippetLanguage.NOTEBOOK: _notebook,
 }
 

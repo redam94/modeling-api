@@ -1,7 +1,7 @@
 """Endpoints: stable aliases for promoted model versions (plan §2, §8.2, §11; Q13; M3).
 
 An endpoint ``endpoint://<project>/<alias>`` points at one model version at a time.
-Integrations (the Python and TypeScript clients, Google Sheets, Atlas, BI exports) call the
+Integrations (the Python and TypeScript clients, Google Sheets, BI exports) call the
 alias, so a new model version can be promoted - or rolled back - without touching them.
 
 * **Promotion** (``PUT /v1/endpoints/{alias}``) passes the promotion gate

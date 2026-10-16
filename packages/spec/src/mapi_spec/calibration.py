@@ -67,7 +67,8 @@ PRIOR_TRANSLATION_FORMAT: Final = "mapi.prior-translation/v1"
 PRIOR_TRANSLATION_OUTPUT: Final = "priors.json"
 """The output object of a ``translate_priors`` run."""
 PRIORS_POINTER: Final = "/model/settings/priors"
-"""Where translated priors go in a ``ModelSpec`` (pymc-marketing ``Prior`` dict form)."""
+"""Where translated priors go in a ``ModelSpec``: engine-neutral ``{distribution, <params>,
+dims}`` dicts, which the mmm-framework plugin maps onto its prior config."""
 
 Credibility = Annotated[
     float,
@@ -455,8 +456,9 @@ class PriorPreview(ResponseModel):
 class PriorTranslationResult(ResponseModel):
     """``priors.json`` of a ``translate_priors`` run.
 
-    ``priors`` are model-space priors in the plugin's ``settings.priors`` form (pymc-marketing
-    ``Prior`` dicts; per-channel parameters are lists in ``channels`` order), to be written
+    ``priors`` are model-space priors in the plugin's ``settings.priors`` form (engine-neutral
+    ``{distribution, <params>, dims}`` dicts; per-channel parameters are lists in ``channels``
+    order), to be written
     at :data:`PRIORS_POINTER`. ``coverage`` is the prior mass inside each stated range
     (close to the stated credibility when the translation is faithful).
     """

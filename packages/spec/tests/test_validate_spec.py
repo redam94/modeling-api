@@ -54,7 +54,7 @@ def test_e33_validates(catalog: Catalog) -> None:
     rs = res.raise_for_errors()
     assert rs.split_stage == "weekly"
     assert rs.model_stage == "hols"
-    assert rs.model.resolved == "mmm.hierarchical_geo@1.3.2"  # 1.4.0 is yanked
+    assert rs.model.resolved == "mmm.bayesian@1.3.2"  # 1.4.0 is yanked
     assert [s.resolved for s in rs.steps][:2] == ["core.fx_convert@1.0.0", "core.resample@1.2.0"]
     assert rs.model.effective_policies["geo"] is DimPolicy.FIXED  # tightened by the spec
     assert rs.model.effective_policies["time"] is DimPolicy.EXTEND
@@ -94,8 +94,8 @@ def test_semver_resolution_picks_highest_matching(catalog: Catalog) -> None:
     d["pipeline"][1]["use"] = "core.resample@^2"
     rs = _run(catalog, d).raise_for_errors()
     assert rs.steps[1].resolved == "core.resample@2.0.0"
-    d["model"]["use"] = "mmm.hierarchical_geo@~1.2"
-    assert _run(catalog, d).raise_for_errors().model.resolved == "mmm.hierarchical_geo@1.2.0"
+    d["model"]["use"] = "mmm.bayesian@~1.2"
+    assert _run(catalog, d).raise_for_errors().model.resolved == "mmm.bayesian@1.2.0"
 
 
 # ------------------------------------------------------------------------------ references
@@ -462,7 +462,7 @@ def test_recursion_ok_when_lag_covers_holdout(catalog: Catalog) -> None:
 def test_recursion_ok_when_model_owns_it(catalog: Catalog) -> None:
     data = catalog.model_dump(mode="json")
     for m in data["models"]:
-        if m["manifest"]["id"] == "mmm.hierarchical_geo":
+        if m["manifest"]["id"] == "mmm.bayesian":
             m["manifest"]["capabilities"]["owns"] = ["recursion"]
     owning = Catalog.model_validate(data)
     assert _run(owning, _target_lag_spec(8, [1])).ok
@@ -471,7 +471,7 @@ def test_recursion_ok_when_model_owns_it(catalog: Catalog) -> None:
 def _owning(catalog: Catalog, owns: list[str]) -> Catalog:
     data = catalog.model_dump(mode="json")
     for m in data["models"]:
-        if m["manifest"]["id"] == "mmm.hierarchical_geo":
+        if m["manifest"]["id"] == "mmm.bayesian":
             m["manifest"]["capabilities"]["owns"] = owns
     return Catalog.model_validate(data)
 

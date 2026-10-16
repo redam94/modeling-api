@@ -181,8 +181,8 @@ class IngestSource(StrictModel):
 class IngestJob(StrictModel):
     """An ingest run: an explicit column mapping, or the MFF preset.
 
-    From M3 the mapping itself may name a preset (``mapping.preset``: ``mff``,
-    ``meridian`` or ``bayesinsight``, with its options in the mapping); the top-level
+    From M3 the mapping itself may name a preset (``mapping.preset``: ``mff`` or
+    ``meridian``, with its options in the mapping); the top-level
     ``preset``/``mff`` pair stays for v0.2 callers.
     """
 

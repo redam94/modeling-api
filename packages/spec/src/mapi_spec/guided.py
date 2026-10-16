@@ -16,7 +16,8 @@ Built-in templates (:data:`GUIDED_TEMPLATES`):
 =================  ==========================  =============================================
 id                 plugin                      for
 =================  ==========================  =============================================
-``geo_mmm``        ``mmm.hierarchical_geo``    marketing mix by market (what-if, priors)
+``geo_mmm``        ``mmm.bayesian``            marketing mix by market (what-if, priors;
+                                               mmm-framework's BayesianMMM)
 ``weekly_forecast````ts.hsgp_trend``           one weekly series, forecast ahead
 ``store_demand``   ``tabular.regressor``       demand per store and week (quantiles)
 ``customer_choice````choice.multinomial_logit``which product customers choose on each
@@ -40,8 +41,6 @@ from mapi_spec.calibration import BusinessPriors, LiftTest
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity, parse_pointer
 from mapi_spec.ingest import (
-    BayesInsightMetadata,
-    BayesInsightModelDef,
     DimMapping,
     IngestMapping,
     IngestPreset,
@@ -59,7 +58,6 @@ __all__ = [
     "BUILDER_VALUES",
     "GUIDED_LABEL",
     "GUIDED_TEMPLATES",
-    "BayesInsightImport",
     "ColumnKind",
     "ColumnProfile",
     "DetectRolesRequest",
@@ -75,7 +73,6 @@ __all__ = [
     "UiLevel",
     "build_draft",
     "channel_label",
-    "draft_from_bayesinsight",
     "draft_schema",
     "freq_plain",
     "get_template",
@@ -319,17 +316,32 @@ _FIT = {"mode": "evaluate_then_refit", "tune": 500, "draws": 500, "chains": 4, "
 _MMM_FIT = {"mode": "evaluate_then_refit", "tune": 1000, "draws": 1000, "chains": 4,
             "target_accept": 0.95, "seed": 20261015}  # fmt: skip
 """The geo MMM's fit: hierarchical adstock-saturation models sample slowly, and on two years
-of weekly data the shorter fit left the scorecard's convergence checks failing (a Guided user
-cannot change the fit settings), so it samples longer and more carefully (about a minute)."""
+of weekly data a shorter fit leaves the scorecard's convergence checks failing (a Guided user
+cannot change the fit settings), so it samples longer and more carefully."""
+
+MMM_MODEL_ID: Final = "mmm.bayesian"
+"""The MMM built-in (v0.5): mmm-framework's ``BayesianMMM`` (national, or hierarchical over
+geos and products). mmm-framework is the only MMM engine."""
+MMM_TEMPLATE_SETTINGS: Final[dict[str, JsonValue]] = {
+    "adstock": {"kind": "geometric", "l_max": 8},
+    "saturation": {"kind": "hill"},
+    "trend": {"kind": "linear"},
+    "seasonality": {"yearly_order": 3},
+    "hierarchy": {"pool_over": ["geo"]},
+}
+"""The ``geo_mmm`` template's settings for :data:`MMM_MODEL_ID` (the plugin's settings schema
+must accept them): geometric adstock, Hill saturation, a linear trend, three yearly Fourier
+pairs and coefficients partially pooled over geos. The model owns scaling and carry-over, so
+the template's pipeline only aggregates to weeks."""
 
 GEO_MMM = GuidedTemplate(
     id="geo_mmm",
-    version="1.1.0",
+    version="2.0.0",
     title="Geo marketing mix",
     description_plain="Find out how much each marketing channel adds to your results in each "
     "market, and what happens if you move budget between channels.",
     family="mmm",
-    plugin="mmm.hierarchical_geo@^1",
+    plugin=f"{MMM_MODEL_ID}@^1",
     questions=[
         GuidedQuestion(
             id="kpi", prompt_plain="Which column is the result you want to explain?",
@@ -377,20 +389,10 @@ GEO_MMM = GuidedTemplate(
         "pipeline": [
             {"id": "weekly", "use": "core.resample@^1",
              "with": {"dim": "time", "freq": "W-SUN", "how": "sum", "full_periods_only": True}},
-            {"id": "scale_spend", "use": "core.mean_scale@^1",
-             "with": {"vars": ["spend"], "over": ["time"], "unseen_levels": "pooled"}},
-            {"id": "scale_y", "use": "core.mean_scale@^1",
-             "with": {"vars": ["y"], "over": ["time"], "unseen_levels": "pooled"}},
-            {"id": "lags", "use": "core.lag_tensor@^1",
-             "with": {"vars": ["spend"], "along": "time", "within": ["geo"], "l_max": 6,
-                      "pad": "first"}},
-            {"id": "season", "use": "core.fourier@^1",
-             "with": {"along": "time", "period": 52.18, "order": 3, "out": "fourier"}},
         ],
         "model": {
-            "use": "mmm.hierarchical_geo@^1",
-            "settings": {"pooling": "partial", "adstock": {"kind": "geometric", "l_max": 6},
-                         "saturation": {"kind": "logistic"}},
+            "use": f"{MMM_MODEL_ID}@^1",
+            "settings": MMM_TEMPLATE_SETTINGS,
             "fit": _MMM_FIT,
         },
         "outputs": {"derived": ["contributions", "response_curves", "marginal_cost"],
@@ -407,8 +409,9 @@ GEO_MMM = GuidedTemplate(
                       "plausibility.baseline_share", "data.missing", "data.history",
                       "data.spend_variation"],
     tasks=["whatif", "forecast", "counterfactual", "business_priors", "lift_tests"],
-    ui_levels={"/model/settings/pooling": "basic", "/model/settings/adstock": "advanced",
-               "/model/settings/saturation": "advanced", "/model/fit": "advanced",
+    ui_levels={"/model/settings/hierarchy": "basic", "/model/settings/adstock": "advanced",
+               "/model/settings/saturation": "advanced", "/model/settings/trend": "advanced",
+               "/model/settings/seasonality": "advanced", "/model/fit": "advanced",
                "/pipeline": "hidden", "/execution": "advanced"},
 )  # fmt: skip
 
@@ -1379,63 +1382,3 @@ def guided_lock_issues(
                 )
             )
     return issues
-
-
-# ============================================================================== BayesInsight
-
-
-class BayesInsightImport(RequestModel):
-    """``POST /v1/guided/import/bayesinsight``: a BayesInsight project as a draft (Q8: an
-    ingest adapter plus the ``mmm.bayesinsight`` plugin, not a separate spec kind)."""
-
-    name: Slug
-    dataset: Slug = Field(..., description="Name of the dataset the MFF upload becomes")
-    format: Literal["csv", "parquet", "mff"] = "mff"
-    model_def: BayesInsightModelDef
-    metadata: BayesInsightMetadata
-    holdout_periods: int = Field(8, ge=1, le=104)
-    target: Literal["mmm.hierarchical_geo", "mmm.bayesinsight"] = Field(
-        "mmm.hierarchical_geo",
-        description="M3: the plugin to import for. mmm.hierarchical_geo (default) maps every "
-        "feature with an equivalent and warns about the rest "
-        "(mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight runs model_def as "
-        "BayesInsight defines it (likelihoods, priors in KPI units, curves, carry-over, signs, "
-        "random effects, seasons, local trends) and warns about what it cannot run",
-    )
-
-    model_config = dto_examples(
-        {
-            "name": "bi-import",
-            "dataset": "bi_mff",
-            "format": "mff",
-            "model_def": {
-                "variable_details": [
-                    {"variable_name": "Sales_Total_Total_Total", "variable_type": "exog",
-                     "likelihood": {"type": "Normal"}},
-                    {"variable_name": "TV_Total_Total_Total", "variable_type": "media",
-                     "adstock": "delayed", "media_transform": "hill"},
-                    {"variable_name": "annual_seasonality", "variable_type": "season"},
-                ]
-            },
-            "metadata": {"periodicity": "Weekly", "row_ids": ["Geography", "Product", "Period"],
-                         "allowed_geos": ["US", "DE"], "allowed_products": ["Total"],
-                         "allowed_outlets": ["Total"], "allowed_campaigns": ["Total"],
-                         "allowed_creatives": ["Total"]},
-        }
-    )  # fmt: skip
-
-
-def draft_from_bayesinsight(req: BayesInsightImport, *, project: str) -> GuidedDraft:
-    """The draft of an imported BayesInsight model for the dedicated ``mmm.bayesinsight``
-    plugin: an MFF ingest with the BayesInsight preset (every row id a panel dim) and a
-    spec whose settings carry ``model_def`` as the plugin runs it, plus where each analytic
-    variable lives in the dataset (:func:`mapi_spec.bayesinsight.import_bayesinsight` with
-    ``target: mmm.bayesinsight``).
-
-    ``IMPORT_UNSUPPORTED`` errors: no single ``exog`` (KPI) variable, no media or control,
-    a variable name that does not match the metadata's row ids, or a series split by key
-    columns outside the row ids; features the plugin cannot run come back as warnings.
-    """
-    from mapi_spec.bayesinsight import dedicated_draft
-
-    return dedicated_draft(req, project=project)

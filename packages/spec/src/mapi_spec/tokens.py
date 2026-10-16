@@ -402,7 +402,7 @@ class TokenCreate(RequestModel):
 
     model_config = dto_examples(
         {
-            "name": "atlas-optimiser",
+            "name": "budget-planner",
             "scopes": ["score:geo-mmm-prod", "models:read"],
             "expires_in_days": 30,
             "rate_limit_per_minute": 120,
@@ -438,7 +438,7 @@ class ApiToken(ResponseModel):
             "tenant_id": "acme",
             "project_id": "growth",
             "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
-            "name": "atlas-optimiser",
+            "name": "budget-planner",
             "prefix": "7k2m9q4x",
             "display": "mapi_7k2m9q4x_…",
             "scopes": ["score:geo-mmm-prod", "models:read"],
