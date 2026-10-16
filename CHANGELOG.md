@@ -462,6 +462,11 @@ milestone releases are tagged on `main`.
   all of its spend into the periods left and compared them with the whole test's KPI change,
   biasing the evaluation fit and the holdout scorecard. Such a test is now skipped and logged,
   in `mmm.hierarchical_geo`, `mmm.bayesinsight` and `mmm.pymc_marketing`.
+- **runner**: dates with a UTC offset (`2024-01-07T00:00:00+01:00`, common in BI exports) or a
+  tz-aware Parquet timestamp became time zone-aware labels that the ingest then refused as
+  "not dates" (and offsets that change with daylight saving time failed outright). They are
+  now read as the local date and time they name, with an `info` issue saying the offsets
+  were dropped.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

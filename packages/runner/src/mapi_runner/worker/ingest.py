@@ -44,7 +44,7 @@ import xarray as xr
 from mapi_sdk.errors import PayloadLimitError, WireFormatError
 from mapi_sdk.schema import data_summary, infer_freq, infer_schema, validate_dataset
 from mapi_sdk.wire import WireLimits, read_zarr_zip, write_zarr_zip
-from mapi_spec.errors import ErrorCode, MapiError, Severity
+from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
 from mapi_spec.guided import ColumnProfile, safe_name
 from mapi_spec.ingest import (
     COMBINE_SEPARATOR,
@@ -84,6 +84,7 @@ from mapi_runner.worker.tabular import (
 
 __all__ = [
     "INGEST_COLUMNS",
+    "INGEST_NOTES_ATTR",
     "dataset_from_meridian",
     "dataset_from_mff",
     "dataset_from_table",
@@ -92,6 +93,12 @@ __all__ = [
 ]
 
 INGEST_COLUMNS = "columns.json"
+INGEST_NOTES_ATTR = "mapi.ingest_notes"
+"""``Dataset.attrs`` key of the notes a build leaves for the ingest run (``[{pointer,
+message}]``): reported as ``info`` issues, never stored with the data."""
+_OFFSET = r"(\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)\s*(?:Z|UTC|[+-]\d{2}:?\d{2})$"
+"""A time of day followed by a UTC offset (``...T00:00:00+01:00``, ``...Z``)."""
+Notes = list[dict[str, str]]
 _UNLIMITED = IngestLimits()
 
 
@@ -141,14 +148,51 @@ def _empty_labels(series: pd.Series, n: int, pointer: str) -> MapiError:
     )
 
 
-def _coerce_dim(series: pd.Series, spec: DimSpec, pointer: str) -> pd.Series:
+def _local_times(series: pd.Series) -> tuple[pd.Series, bool]:
+    """Dates and times, with any UTC offset dropped (``True`` when one was): the local
+    date-time each value names, so midnight labels stay on their day and a series whose offset
+    changes with daylight saving time stays regular."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        warnings.simplefilter("ignore", FutureWarning)
+        try:
+            out = pd.to_datetime(series, errors="raise")
+        except (ValueError, TypeError):
+            if not pd.api.types.is_string_dtype(series) and series.dtype != object:
+                raise
+            text = series.astype("string").str.strip()
+            stripped = text.str.replace(_OFFSET, r"\1", regex=True)
+            if stripped.equals(text):
+                raise
+            return pd.to_datetime(stripped, errors="raise"), True
+    if isinstance(out.dtype, pd.DatetimeTZDtype):
+        return out.dt.tz_localize(None), True
+    if out.dtype == object:  # mixed offsets parsed to Timestamp objects
+        return pd.Series(
+            [None if pd.isna(v) else pd.Timestamp(v).tz_localize(None) for v in out],
+            index=out.index,
+            dtype="datetime64[ns]",
+        ), True
+    return out, False
+
+
+def _coerce_dim(
+    series: pd.Series, spec: DimSpec, pointer: str, notes: Notes | None = None
+) -> pd.Series:
     try:
         if spec.kind == "time":
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", UserWarning)
-                out = pd.to_datetime(series, errors="raise")
+            out, dropped = _local_times(series)
             if out.isna().any():
                 raise _empty_labels(series, int(out.isna().sum()), pointer)
+            if dropped and notes is not None:
+                notes.append(
+                    {
+                        "pointer": pointer,
+                        "message": f"the dates in column {str(series.name)[:64]!r} carry UTC "
+                        "offsets or a time zone; they were read as local dates and times "
+                        "(the offsets were dropped)",
+                    }
+                )
             return out
         if spec.kind in ("integer", "index", "float"):
             num = pd.to_numeric(series, errors="raise")
@@ -324,8 +368,9 @@ def dataset_from_table(
         )  # fmt: skip
     wide_labels = _wide_labels(mapping)
     frame = pd.DataFrame(index=df.index)
+    notes: Notes = []
     for name, dm in mapping.dims.items():
-        frame[name] = _coerce_dim(df[dm.column], dm.spec, f"/mapping/dims/{name}")
+        frame[name] = _coerce_dim(df[dm.column], dm.spec, f"/mapping/dims/{name}", notes)
     for name, vm in mapping.vars.items():
         frame[name] = _coerce_var(df[vm.column])
     tmp: dict[str, list[str]] = {}
@@ -363,6 +408,8 @@ def dataset_from_table(
         )
     _check_cube(frame, dims, limits, "/mapping/dims")
     ds = _text_vars(frame.set_index(dims).sort_index().to_xarray())
+    if notes:
+        ds.attrs[INGEST_NOTES_ATTR] = notes
     for name, cols in tmp.items():
         w = mapping.wide[name]
         stacked = xr.concat(
@@ -424,6 +471,7 @@ def mff_table(
     limits: IngestLimits = _UNLIMITED,
     *,
     bayesinsight: BayesInsightMetadata | None = None,
+    notes: Notes | None = None,
 ) -> tuple[pd.DataFrame, dict[str, str], list[str]]:
     """Pivot an MFF long table to one column per variable.
 
@@ -461,7 +509,10 @@ def mff_table(
             ),
         )
     period = _coerce_dim(
-        df[opts.period_column], DimSpec(kind="time"), f"/mapping/mff/{opts.period_column}"
+        df[opts.period_column],
+        DimSpec(kind="time"),
+        f"/mapping/mff/{opts.period_column}",
+        notes,
     )
     table = pd.DataFrame({opts.period_column: period, "__var__": names, "__value__": values})
     combined: set[str] = set()
@@ -559,7 +610,8 @@ def dataset_from_mff(
 ) -> tuple[xr.Dataset, DataSchema]:
     """The MFF preset: long ``(period, keys..., variable) -> value`` rows, every variable
     kept under its own name."""
-    table, index, variables = mff_table(df, opts, limits, bayesinsight=bayesinsight)
+    notes: Notes = []
+    table, index, variables = mff_table(df, opts, limits, bayesinsight=bayesinsight, notes=notes)
     frame = table.rename(columns=index)
     _check_cube(frame, list(index.values()), limits, "/mapping/mff")
     ds = frame.set_index(list(index.values())).sort_index().to_xarray()
@@ -582,6 +634,8 @@ def dataset_from_mff(
     vars_ = {
         name: spec.model_copy(update={"missing": opts.missing}) for name, spec in draft.vars.items()
     }
+    if notes:
+        ds.attrs[INGEST_NOTES_ATTR] = notes
     return ds, DataSchema(layout="dense", dims=dims, vars=vars_)
 
 
@@ -955,7 +1009,8 @@ def build_dataset(
         opts = mapping.effective_mff
         assert opts is not None
         meta = mapping.bayesinsight if preset is IngestPreset.BAYESINSIGHT else None
-        table, index, variables = mff_table(df, opts, limits, bayesinsight=meta)
+        notes: Notes = []
+        table, index, variables = mff_table(df, opts, limits, bayesinsight=meta, notes=notes)
         profiles = column_profiles(table, variables=variables)
         if mapping.vars or mapping.wide:
             ds, schema = dataset_from_table(
@@ -963,6 +1018,8 @@ def build_dataset(
             )
         else:
             ds, schema = dataset_from_mff(df, opts, limits=limits, bayesinsight=meta)
+        if notes:
+            ds.attrs[INGEST_NOTES_ATTR] = notes
         return ds, schema, profiles
     profiles = column_profiles(df)
     if preset is IngestPreset.MERIDIAN:
@@ -980,8 +1037,19 @@ def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
     ctx.state(RunnerPhase.VALIDATE, "parsing and validating the upload")
     ds, schema, columns = build_dataset(path, job)
     ctx.cancel.check()
+    notes = ds.attrs.pop(INGEST_NOTES_ATTR, None) or []
     found = validate_dataset(schema, ds)
     issues = [i.to_issue() for i in found]
+    for note in notes:
+        issues.append(
+            Issue(
+                code=ErrorCode.SCHEMA_INVALID,
+                severity=Severity.INFO,
+                pointer=str(note["pointer"]),
+                message=str(note["message"])[:2000],
+            )
+        )
+        ctx.log(str(note["message"]))
     errors = [i for i in issues if i.severity is Severity.ERROR]
     if errors:
         raise MapiError(

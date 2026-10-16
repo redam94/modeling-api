@@ -142,6 +142,10 @@ after parsing (`IngestJob` sets the limits; the server's defaults are below).
 | uncompressed size | the ingest run's scratch budget: 3 GiB (class S), 6 GiB (M), 12 GiB (L) | the same, as an absolute size; the class is the smallest whose dataset cap holds the upload |
 | dataset size | 250 million values, and 8 bytes per value within the scratch budget | the dense dataset a table pivots to (every combination of the dim labels, times the variables), checked before it is built (`PAYLOAD_TOO_LARGE`) |
 
+Dates with a UTC offset or a time zone (`2024-01-07T00:00:00+01:00`, a tz-aware Parquet
+timestamp) are read as the local date and time they name, the offset dropped, so midnight
+labels stay on their day; the ingest reports it as an `info` issue.
+
 bzip2, xz and zstd compressed uploads are refused. Every refusal is one plain-language
 message and a suggested action, for example:
 
