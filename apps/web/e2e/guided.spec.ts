@@ -170,9 +170,28 @@ test("Edit in Expert switches mode and the edit shows up as advanced settings", 
   await startGeoMmm(page);
   await page.getByRole("button", { name: "View as YAML" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Edit in Expert" }).click();
-  await expect(page).toHaveURL(/\/build\/spc_[0-9a-z]+$/);
+  await expect(page).toHaveURL(/\/build\/spc_[0-9a-z]+/);
   await expect(page.getByRole("radio", { name: "Expert" })).toHaveAttribute("data-state", "on");
   await expect(page.getByRole("link", { name: "Back to Guided mode" })).toBeVisible();
+  // an Expert edit of an advanced setting (more draws), saved as a new revision
+  const specId = /\/build\/(spc_[0-9a-z]+)/.exec(page.url())![1]!;
+  const saved = await page.evaluate(async (id) => {
+    const api = "http://127.0.0.1:8000";
+    const headers = { "content-type": "application/json", "X-Mapi-Project": "acme/growth", "X-CSRF-Token": "csrf-usr_01jaf3a9b8c7d6e5f4g3h2j1k0" };
+    const rev = (await (await fetch(`${api}/v1/specs/${id}/revisions/1`, { headers, credentials: "include" })).json()) as { yaml: string };
+    const res = await fetch(`${api}/v1/specs/${id}/revisions`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({ yaml: rev.yaml.replace(/draws: 500/, "draws: 2000"), parent_revision: 1, message: "more draws" }),
+    });
+    return res.status;
+  }, specId);
+  expect(saved).toBe(201);
+  await page.getByRole("link", { name: "Back to Guided mode" }).click();
+  await expect(page).toHaveURL(new RegExp(`/guided/${specId}/(priors|run)$`));
+  await expect(page.getByTestId("advanced-settings")).toHaveText("Advanced settings applied");
+  await expect(page.getByRole("radiogroup", { name: "Mode" }).getByRole("radio", { name: "Guided" })).toHaveAttribute("data-state", "on");
 });
 
 test("a Guided-locked project shows members below admin Guided mode only", async ({ page }) => {
@@ -209,5 +228,18 @@ test("Guided mode fits a 375 px phone without sideways scrolling", async ({ page
   await page.getByRole("button", { name: "Upload and continue" }).click();
   await expect(page).toHaveURL(/\/priors$/);
   await expect(page.locator('[data-channel="tv"]')).toBeVisible();
+  await noSideScroll(page);
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByRole("button", { name: "Fit the model" }).click();
+  await expect(page.getByRole("progressbar", { name: "Fit progress" })).toBeVisible();
+  await noSideScroll(page);
+  await page.getByRole("button", { name: "See the results" }).click({ timeout: 20_000 });
+  await expect(page.getByRole("heading", { name: "Sanity scorecard" })).toBeVisible();
+  await noSideScroll(page);
+  await page.getByRole("button", { name: "What if…" }).click();
+  await expect(page.getByTestId("whatif-delta")).toBeVisible();
+  await noSideScroll(page);
+  await page.getByRole("button", { name: /^Share/ }).click();
+  await expect(page.getByTestId("gate-sentence")).toBeVisible();
   await noSideScroll(page);
 });

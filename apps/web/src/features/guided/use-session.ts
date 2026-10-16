@@ -3,9 +3,10 @@
  * the spec and its revisions, the template, the dataset and its newest version, the fit runs and
  * the model version the latest successful fit produced.
  */
-import { useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
 
-import { useSpec, useSpecRevision, useSpecRevisions } from "@/api/queries";
+import { qk, useProjectScope, useSpec, useSpecRevision, useSpecRevisions } from "@/api/queries";
 import type { DatasetVersion, Dataset, ModelVersion, Run, SpecDoc, SpecRevision } from "@/api/types";
 
 import { useDatasetByName, useFitRuns, useGuidedTemplate, useLatestDatasetVersion, useModelVersionForRun } from "./api";
@@ -38,6 +39,13 @@ export interface SessionState {
 }
 
 export function useGuidedSession(specId: string): SessionState {
+  // The spec may have changed elsewhere (Expert mode, another tab): look again on arrival.
+  const qc = useQueryClient();
+  const scope = useProjectScope();
+  useEffect(() => {
+    void qc.invalidateQueries({ queryKey: qk.spec(scope.key, specId), exact: true });
+    void qc.invalidateQueries({ queryKey: qk.specRevisions(scope.key, specId), exact: true });
+  }, [qc, scope.key, specId]);
   const spec = useSpec(specId);
   const latestRev = spec.data?.latest_revision;
   const revision = useSpecRevision(specId, latestRev);
