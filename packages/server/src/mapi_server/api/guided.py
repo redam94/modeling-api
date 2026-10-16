@@ -49,6 +49,7 @@ from mapi_server.services.specs import (
     resolve_dataset,
     resolve_model_version,
 )
+from mapi_server.services.submit import fit_dataset_ref
 
 __all__ = ["dataset_profiles", "router", "validate_draft"]
 
@@ -234,6 +235,7 @@ async def import_bayesinsight_model(
     responses=problem_responses(
         _E.SCHEMA_INVALID,
         _E.NOT_FOUND,
+        _E.REF_UNRESOLVED,
         _E.SCENARIO_OUT_OF_RANGE,
         _E.MISSING_FUTURE_COVARIATE,
         *AUTH_PROBLEMS,
@@ -246,11 +248,25 @@ async def compile_guided(ctx: Ctx, session: Session, body: GuidedCompile) -> Sco
     is checked statically against the model version's score metadata: an unknown model is
     ``404``, and a request the version cannot score (unknown coordinates, missing future
     covariates under ``future_covariates: supplied``) is ``422`` with JSON pointers.
+    A what-if or preset over the fit window (no horizon) scores the data the version was
+    fitted on, so the compiled request names that dataset version in ``data``.
     Nothing is stored and no run starts."""
     request = compile_guided_request(body.root)
     mv, _ = await resolve_model_version(session, ctx.scope, request.model)
     if mv is None:
         raise NotFoundError("model", request.model)
+    if (
+        request.mode == "counterfactual"
+        and request.horizon is None
+        and request.data is None
+        and request.scenario is None
+    ):
+        request = ScoreRequest.model_validate(
+            {
+                **request.model_dump(mode="json", by_alias=True, exclude_none=True),
+                "data": await fit_dataset_ref(session, mv),
+            }
+        )
     issues: list[Issue] = []
     await check_score_request(session, ctx.scope, request, mv, issues)
     if any(i.severity == Severity.ERROR for i in issues):

@@ -25,7 +25,7 @@ from mapi_spec.guided import GuidedDraft, GuidedTemplate, RoleSuggestions
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.spec import ScoreRequest
-from sqlalchemy import update
+from sqlalchemy import select, update
 
 GUIDED_CATALOG = Path(__file__).parent / "fixtures" / "catalog_guided.json"
 
@@ -400,3 +400,68 @@ async def test_guided_requests_compile_to_checked_score_requests(
     )  # fmt: skip
     assert r.status_code == 422, r.text
     assert r.json()["errors"][0]["pointer"]
+
+
+async def test_run_exact_over_the_fit_window_scores_the_fit_dataset(
+    client: httpx.AsyncClient, ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A what-if (or a preset without a horizon) compiles to a counterfactual over the data
+    the version was fitted on: the request names that dataset version in ``data``, so the
+    score run has a payload (the sandbox refuses a request without one)."""
+    import mapi_server.api.guided as guided_api
+
+    mv = await fitted_version(ctx)
+    seen: list[ScoreRequest] = []
+
+    async def accept(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        seen.append(args[2])
+        return {}
+
+    # the trend model has no channels; only the compiled request is of interest here
+    monkeypatch.setattr(guided_api, "check_score_request", accept)
+    async with ctx.db.session() as s:
+        fit = await s.get(m.Run, mv.run_id)
+        assert fit is not None and fit.dataset_version is not None
+        ds = await s.get(m.Dataset, fit.dataset_id)
+        assert ds is not None
+    want = f"dataset://{ds.project_id}/{ds.name}@v{fit.dataset_version}"
+    model = "model://default/trend@v1"
+    bodies: list[dict[str, Any]] = [
+        {"kind": "whatif", "model": model, "scenario": {"multipliers": {"tv": 0.5}}},
+        {"kind": "counterfactual", "model": model, "preset": {"kind": "channel_off", "channel": "tv"}},
+    ]  # fmt: skip
+    for body in bodies:
+        r = await client.post("/v1/guided/requests:compile", json=body)
+        assert r.status_code == 200, r.text
+        req = ScoreRequest.model_validate(r.json())
+        assert req.mode == "counterfactual" and str(req.data) == want
+        assert str(seen[-1].data) == want  # what was checked is what is returned
+    # forecasts (with or without a preset) are scored over their horizon: no data named
+    for body in (
+        {"kind": "forecast", "model": model, "periods": 4, "dim": "t"},
+        {"kind": "forecast", "model": model, "periods": 4, "dim": "t",
+         "preset": {"kind": "budget_scale", "k": 1.1}},
+    ):  # fmt: skip
+        r = await client.post("/v1/guided/requests:compile", json=body)
+        assert r.status_code == 200, r.text
+        assert ScoreRequest.model_validate(r.json()).data is None
+
+
+async def test_a_score_request_without_data_is_refused_before_a_run_starts(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    mv = await fitted_version(ctx)
+    request = {
+        "apiVersion": "mapi/v1",
+        "kind": "ScoreRequest",
+        "model": "model://default/trend@v1",
+        "mode": "predict",
+    }
+    r = await client.post(f"/v1/models/{mv.model_id}/versions/1:score", json={"request": request})
+    assert r.status_code == 422, r.text
+    errors = r.json()["errors"]
+    assert {(e["code"], e["pointer"]) for e in errors} >= {("SCHEMA_INVALID", "/data")}
+    assert "no data" in next(e["message"] for e in errors if e["pointer"] == "/data")
+    async with ctx.db.session() as s:
+        runs = (await s.execute(select(m.Run).where(m.Run.kind == "score"))).scalars().all()
+    assert runs == []

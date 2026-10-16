@@ -341,6 +341,16 @@ async def check_score_request(
     if payload is not None and payload.summary is not None:
         summary = DataSummary.model_validate(payload.summary)
     issues.extend(validate_score_request(req, meta, summary))
+    if req.data is None and req.scenario is None and req.horizon is None and inline is None:
+        # the sandbox would fail the run with the same message; say it before a run starts
+        issues.append(
+            _issue(
+                ErrorCode.SCHEMA_INVALID,
+                "/data",
+                "the score request has no data; give data or a scenario dataset, or a "
+                "forecast horizon",
+            )
+        )
     return datasets
 
 
