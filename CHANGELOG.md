@@ -459,6 +459,11 @@ milestone releases are tagged on `main`.
   tenant's queued and running exports (`revoked.exports` in the audit event), the `queue`
   store waits for a cancelled build to end (or its lease to pass), and a build that lost its
   lease never uploads and deletes an archive it uploaded after losing it.
+- **server**: a purge went on after `MAPI_DELETION_RUN_STOP_TIMEOUT_S` while cancelled runs
+  that never stopped still held signed upload policies under `t/{tenant}/`, so they could
+  write objects after the object store was purged. The `queue` store now also waits until
+  those runs' signed links have expired (attempt start + run timeout + 30 minutes) and says
+  until when.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

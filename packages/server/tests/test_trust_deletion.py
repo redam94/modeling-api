@@ -341,7 +341,17 @@ async def test_runs_that_never_stop_do_not_block_the_purge(
                                     json={"confirm": "alpha"})).json()["id"]  # fmt: skip
     purger = TenantPurger(ctx)
     assert (await purger.run(deletion_id)).value == "deleting"
-    assert (await purger.run(deletion_id, at=now() + timedelta(minutes=5))).value == "purged"
+    # past the stop timeout, but the run's signed upload links (its 60 s timeout plus the
+    # 30 min margin) still work: an execution that ignored the cancel could still write
+    # under t/alpha/ after the objects were purged, so the purge waits for them to expire
+    assert (await purger.run(deletion_id, at=now() + timedelta(minutes=5))).value == "deleting"
+    async with ctx.db.session() as s:
+        row = await s.get(m.TenantDeletion, deletion_id)
+    assert row is not None and "upload links" in str(row.stores[0]["detail"])
+    assert row.next_attempt_at is not None
+    assert row.next_attempt_at > now() + timedelta(minutes=30)
+    assert (await _counts(ctx, "alpha"))["runs"] == 1  # nothing purged yet
+    assert (await purger.run(deletion_id, at=now() + timedelta(minutes=45))).value == "purged"
     async with ctx.db.session() as s:
         row = await s.get(m.TenantDeletion, deletion_id)
     assert row is not None and "had not stopped" in str(row.stores[0]["detail"])

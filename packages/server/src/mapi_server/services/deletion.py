@@ -75,6 +75,7 @@ from mapi_server.services.gdpr_export import CANCELLED as EXPORT_CANCELLED
 from mapi_server.services.gdpr_export import export_lease
 from mapi_server.services.runs import apply_transition
 from mapi_server.services.runs import now as utcnow
+from mapi_server.services.runspec import signed_links_ttl
 from mapi_server.services.trust import trust_services
 
 __all__ = [
@@ -112,6 +113,8 @@ PURGE_BUCKETS: Final = (
 """Buckets with ``t/{tenant}/`` prefixes (the bootstrap bucket is keyed by nonce)."""
 BATCH: Final = 5000
 RUN_WAIT: Final = timedelta(seconds=30)
+LINK_SLACK: Final = timedelta(minutes=5)
+"""Added to an attempt's link lifetime: its RunSpec is signed shortly after the attempt row."""
 RETRY_BASE: Final = timedelta(minutes=5)
 RETRY_CAP: Final = timedelta(hours=6)
 MAX_RETAINED_LISTED: Final = 1000
@@ -591,6 +594,18 @@ class TenantPurger:
                 next_attempt_at=at + RUN_WAIT,
             )  # fmt: skip
             return False
+        if unfinished:
+            # A run that ignored its cancel may still be executing, and its attempts' signed
+            # upload policies write under t/{tenant}/: purge nothing until they expired.
+            links_expire = await self._upload_links_expire(tenant_id)
+            if links_expire is not None and at < links_expire:
+                await self._update(
+                    deletion_id, "queue", "running", at,
+                    detail=f"{unfinished} run(s) have not stopped; the purge resumes when "
+                    f"their upload links expire ({links_expire.isoformat(timespec='minutes')})",
+                    next_attempt_at=links_expire,
+                )  # fmt: skip
+                return False
         async with self.ctx.db.session() as s:
             run_ids = list(
                 (await s.execute(select(m.Run.id).where(m.Run.tenant_id == tenant_id))).scalars()
@@ -627,6 +642,25 @@ class TenantPurger:
             detail=detail,
         )  # fmt: skip
         return True
+
+    async def _upload_links_expire(self, tenant_id: str) -> datetime | None:
+        """When the last signed link of the tenant's unfinished runs' attempts expires (their
+        RunSpec is built when the attempt is dispatched; plus :data:`LINK_SLACK`)."""
+        async with self.ctx.db.session() as s:
+            rows = (
+                await s.execute(
+                    select(m.RunAttempt.created_at, m.Run.timeout_s)
+                    .join(m.Run, m.Run.id == m.RunAttempt.run_id)
+                    .where(
+                        m.Run.tenant_id == tenant_id,
+                        m.Run.state.not_in([st.value for st in RunState if st.terminal]),
+                    )
+                )
+            ).all()
+        ends = [
+            created + signed_links_ttl(int(timeout_s)) + LINK_SLACK for created, timeout_s in rows
+        ]
+        return max(ends) if ends else None
 
     async def _tables(self, s: AsyncSession) -> list[str]:
         """Tables with a ``tenant_id`` column, children before parents (foreign keys)."""

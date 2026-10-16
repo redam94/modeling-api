@@ -73,7 +73,10 @@ The deletion becomes `deleting`. This cannot be undone:
 2. Its API tokens are revoked, and the browser sessions of people who belong to no other
    workspace are ended. Components that hand out links (webhooks, embed links) revoke theirs.
 3. Unfinished runs are cancelled again, and the purge waits for them to stop (at most
-   `MAPI_DELETION_RUN_STOP_TIMEOUT_S`, one hour).
+   `MAPI_DELETION_RUN_STOP_TIMEOUT_S`, one hour). A run that still has not stopped after
+   that could keep uploading results under the workspace's prefix while its signed upload
+   links are valid (its timeout plus 30 minutes), so the purge then waits for those links to
+   expire before it deletes anything; the `queue` store's detail says until when.
 4. Exports that are queued or still being built are cancelled (state `failed`). The purge
    waits for a build in progress to end (at most its `MAPI_EXPORT_BUILD_TIMEOUT_S` lease); a
    cancelled build never uploads its archive, and deletes one that landed after the purge
