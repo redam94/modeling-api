@@ -1018,6 +1018,8 @@ export interface paths {
          *     is checked statically against the model version's score metadata: an unknown model is
          *     ``404``, and a request the version cannot score (unknown coordinates, missing future
          *     covariates under ``future_covariates: supplied``) is ``422`` with JSON pointers.
+         *     A what-if or preset over the fit window (no horizon) scores the data the version was
+         *     fitted on, so the compiled request names that dataset version in ``data``.
          *     Nothing is stored and no run starts.
          */
         post: operations["compile_guided_request"];
@@ -14117,7 +14119,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: SCHEMA_INVALID, SCENARIO_OUT_OF_RANGE, MISSING_FUTURE_COVARIATE */
+            /** @description Problem: SCHEMA_INVALID, REF_UNRESOLVED, SCENARIO_OUT_OF_RANGE, MISSING_FUTURE_COVARIATE */
             422: {
                 headers: {
                     [name: string]: unknown;

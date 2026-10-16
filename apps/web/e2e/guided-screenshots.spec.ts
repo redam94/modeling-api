@@ -48,9 +48,10 @@ test("guided tutorial screenshots", async ({ page }) => {
 
   const tv = page.locator('[data-channel="tv"]');
   await expect(tv).toBeVisible();
+  await tv.getByRole("checkbox").click(); // channels start without a belief
   await tv.getByLabel("From").fill("1.5");
   await tv.getByLabel("To").fill("4");
-  await page.locator('[data-channel="social"]').getByRole("checkbox").click();
+  await page.locator('[data-channel="search"]').getByRole("checkbox").click();
   await page.getByRole("button", { name: "Add an experiment" }).click();
   const exp = page.getByRole("listitem", { name: "Experiment 1" });
   await exp.getByLabel("Channel tested").selectOption("tv");

@@ -70,7 +70,8 @@ benchmarks or experiments - say so here. Everything on this step is optional.
 - **Return on spend** or **Share of results**: describe each channel either way. A range of
   1.5 to 4 means "every euro spent brings back between 1.5 and 4 euros". **How sure?** sets
   how firmly the model should hold to the range.
-- Untick a channel when you have no view on it: the data decides it alone.
+- Channels start unticked: without a view, the data decides alone. Tick a channel to give
+  it a range (it starts from a wide, sensible one).
 - **Results without any media** (optional) is the share of results that would happen anyway.
 - **Experiments you have run** take lift tests or geo holdouts: the channel and market, the
   dates, how much spend changed and the measured change in results with its uncertainty. The

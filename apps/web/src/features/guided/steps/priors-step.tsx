@@ -62,6 +62,17 @@ function fmt(mode: BeliefMode) {
   return mode === "roi" ? (v: number) => ratio(v) : (v: number) => share(v);
 }
 
+/**
+ * The prior's baseline share in words. Without a stated baseline the prior allows shares
+ * below 0% or above 100% (results the media would have to take away, or more than all of
+ * them): say that the model has no view yet instead of printing "between -164% and 271%".
+ */
+export function baselineSentence(b: readonly [number, number] | null, mean: number): string {
+  if (!b) return `about ${share(mean)}.`;
+  if (b[0] < 0 || b[1] > 1) return "anything from none to all of your results - the model has no view yet. If you have one, give it under \u201cResults without any media\u201d.";
+  return `between ${share(b[0])} and ${share(b[1])}.`;
+}
+
 function ChannelRow({ row, mode, onChange, error }: { row: ChannelBeliefForm; mode: BeliefMode; onChange: (r: ChannelBeliefForm) => void; error: string | null }) {
   const id = useId();
   const limits = mode === "roi" ? ROI_LIMITS : SHARE_LIMITS;
@@ -135,7 +146,7 @@ function ChannelRow({ row, mode, onChange, error }: { row: ChannelBeliefForm; mo
           </div>
         </>
       ) : (
-        <p className="text-[13px] text-muted-foreground md:col-span-2">No view on this channel: the model learns it from the data alone.</p>
+        <p className="text-[13px] text-muted-foreground md:col-span-2">No view on this channel: the model learns it from the data alone. Tick it to give a range you are fairly sure of.</p>
       )}
       {error ? (
         <p role="alert" className="text-xs font-medium text-destructive md:col-span-3">
@@ -263,11 +274,7 @@ function PreviewPanel({ result, form }: { result: PriorTranslationResult; form: 
       </div>
       {preview.baseline_share ? (
         <p className="text-[13px] text-muted-foreground">
-          Results without any media: {(() => {
-            const b = band(preview.baseline_share.quantiles);
-            return b ? `between ${share(b[0])} and ${share(b[1])}` : share(preview.baseline_share.mean);
-          })()}
-          .
+          Results without any media: {baselineSentence(band(preview.baseline_share.quantiles), preview.baseline_share.mean)}
         </p>
       ) : null}
     </section>

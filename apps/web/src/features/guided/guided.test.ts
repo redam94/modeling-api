@@ -8,7 +8,7 @@ import { buildDraft, suggestRoles } from "@/mocks/guided-engine";
 import { personaOf, useUi } from "@/stores/ui";
 
 import { gateSentence, previewGate } from "./gate";
-import { amount, band, etaText, multiplierText, phaseSlot, signedAmount, stateText } from "./plain";
+import { amount, band, etaText, holdoutFraction, multiplierText, phaseSlot, signedAmount, stateText } from "./plain";
 import { fanPlot, distributionPlot } from "./plots";
 import { beliefProblems, beliefsKey, coverageSentence, formFromCalibration, newLiftRow, toBusinessPriors, toLiftTests, withCalibration, withMode } from "./priors";
 import { columnKind, detectFrequency, detectMeridian, detectMff, profileTable, profilesFromNames, seriesFor, tableFromText, tableProblems } from "./profile";
@@ -117,21 +117,24 @@ describe("business priors", () => {
     expect(lt.tests).toEqual(cal.lift_tests);
   });
 
-  it("without a calibration block every channel starts with a sensible range", () => {
+  it("without a calibration block no channel carries a belief until it is ticked", () => {
+    // a channel the analyst never touched must not become an ROI belief (M3 usability run)
     const form = formFromCalibration(undefined, ["tv"]);
-    expect(form.channels[0]).toMatchObject({ enabled: true, low: 0.5, high: 4 });
+    expect(form.channels[0]).toMatchObject({ enabled: false, low: 0.5, high: 4 });
+    expect(toBusinessPriors(form)).toBeNull();
+    expect(toBusinessPriors({ ...form, channels: [{ ...form.channels[0]!, enabled: true }] })).toEqual({ channels: { tv: { roi: [0.5, 4], credibility: 0.8 } } });
     expect(withMode(form, "share").channels[0]).toMatchObject({ low: 0.02, high: 0.15 });
     expect(toBusinessPriors({ ...form, channels: [{ ...form.channels[0]!, enabled: false }] })).toBeNull();
   });
 
   it("explains impossible beliefs in plain words (check_business_priors)", () => {
     const form = withMode(formFromCalibration(undefined, ["tv", "search"]), "share");
-    const tooMuch = { ...form, channels: form.channels.map((c) => ({ ...c, low: 0.4, high: 0.6 })), baseline: { enabled: true, low: 0.3, high: 0.5, credibility: 0.8 } };
+    const tooMuch = { ...form, channels: form.channels.map((c) => ({ ...c, enabled: true, low: 0.4, high: 0.6 })), baseline: { enabled: true, low: 0.3, high: 0.5, credibility: 0.8 } };
     expect(beliefProblems(tooMuch)[0]?.message).toContain("already add up to 110%");
-    const reversed = { ...form, channels: [{ ...form.channels[0]!, low: 0.3, high: 0.2 }] };
+    const reversed = { ...form, channels: [{ ...form.channels[0]!, enabled: true, low: 0.3, high: 0.2 }] };
     expect(beliefProblems(reversed)[0]?.message).toContain("low end must be below the high end");
     const zeroRoi = formFromCalibration(undefined, ["tv"]);
-    expect(beliefProblems({ ...zeroRoi, channels: [{ ...zeroRoi.channels[0]!, low: 0 }] })[0]?.message).toContain("above zero");
+    expect(beliefProblems({ ...zeroRoi, channels: [{ ...zeroRoi.channels[0]!, enabled: true, low: 0 }] })[0]?.message).toContain("above zero");
   });
 
   it("checks experiment rows and ignores empty ones", () => {
@@ -254,5 +257,49 @@ describe("persona", () => {
     expect(personaOf(s, "usr_a")).toBe("guided");
     expect(personaOf(s, "usr_b")).toBe("expert");
     expect(personaOf(s, "usr_new")).toBe("expert");
+  });
+});
+
+describe("holdoutFraction", () => {
+  const item = { code: "HOLDOUT_MAPE", status: "pass", title: "Holdout error", message_plain: "", metric: "mape", value: 0.0082, threshold: 0.1, check: "holdout.mape" } as const;
+  it("reads MAPE as the scorecard measured it (a fraction), not the SDK's percent", () => {
+    // a real fit: metrics.mape 0.82 is 0.82%, which the report once showed as "82%"
+    expect(holdoutFraction({ metrics: { mape: 0.82, coverage_90: 0.85 }, scorecard: { overall: "pass", items: [item] } }, "mape")).toBe(0.0082);
+  });
+  it("converts percent metrics without a scorecard and keeps fractions as they are", () => {
+    expect(holdoutFraction({ metrics: { mape: 12, coverage_90: 0.86 }, scorecard: null }, "mape")).toBeCloseTo(0.12);
+    expect(holdoutFraction({ metrics: { mape: 12, coverage_90: 0.86 }, scorecard: null }, "coverage_90")).toBe(0.86);
+    expect(holdoutFraction({ metrics: {}, scorecard: null }, "mape")).toBeNull();
+  });
+});
+
+describe("baselineSentence", () => {
+  it("does not print impossible shares when the prior has no view on the baseline", async () => {
+    const { baselineSentence } = await import("./steps/priors-step");
+    expect(baselineSentence([-1.64, 2.71], 0.5)).toContain("the model has no view yet");
+    expect(baselineSentence([-1.64, 2.71], 0.5)).not.toContain("-164%");
+    expect(baselineSentence([0.55, 0.8], 0.7)).toBe("between 55% and 80%.");
+    expect(baselineSentence(null, 0.7)).toBe("about 70%.");
+  });
+});
+
+describe("Guided usability fixes (M3 tester run)", () => {
+  it("fits again more carefully, up to a ceiling", async () => {
+    const { canFitMoreCarefully, carefulFit, withCarefulFit } = await import("./refit");
+    const fit = { mode: "evaluate_then_refit", tune: 500, draws: 500, chains: 4, seed: 7 };
+    expect(carefulFit(fit)).toEqual({ ...fit, tune: 1000, draws: 1000, target_accept: 0.95 });
+    expect(carefulFit({ tune: 1000, draws: 1000, target_accept: 0.95 })).toMatchObject({ tune: 2000, draws: 2000, target_accept: 0.98 });
+    const max = { tune: 4000, draws: 4000, target_accept: 0.99 };
+    expect(canFitMoreCarefully(max)).toBe(false);
+    expect(canFitMoreCarefully(fit)).toBe(true);
+    const doc = { model: { use: "mmm.hierarchical_geo@^1", fit }, data: { dataset: "x" } };
+    expect(withCarefulFit(doc).model.fit).toMatchObject({ draws: 1000 });
+    expect(doc.model.fit.draws).toBe(500); // the original is untouched
+  });
+
+  it("offers result charts for sharing before the sampler's diagnostics", async () => {
+    const { shareOrder } = await import("./steps/share-step");
+    const ids = shareOrder([{ id: "core.convergence" }, { id: "core.ppc_fan" }, { id: "mmm.decomposition" }, { id: "mmm.response_curves" }]).map((p) => p.id);
+    expect(ids).toEqual(["mmm.response_curves", "mmm.decomposition", "core.ppc_fan", "core.convergence"]);
   });
 });
