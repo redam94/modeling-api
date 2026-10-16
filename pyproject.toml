@@ -8,6 +8,7 @@ dependencies = [
   "mapi-spec", "mapi-sdk", "mapi-pymc", "mapi-sklearn", "mapi-steps", "mapi-plots[recipes]",
   "mapi-runner", "mapi-server[docker,otlp]", "mapi-gcs-shim", "mapi-cli", "mapi-client",
   "mapi-plugin-mmm", "mapi-plugin-ts", "mapi-plugin-tabular", "mapi-conformance",
+  "mapi-workflows[runtime]",
 ]
 
 [dependency-groups]
@@ -42,6 +43,7 @@ mapi-plugin-mmm = { workspace = true }
 mapi-plugin-ts = { workspace = true }
 mapi-plugin-tabular = { workspace = true }
 mapi-conformance = { workspace = true }
+mapi-workflows = { workspace = true }
 
 [tool.ruff]
 line-length = 100
