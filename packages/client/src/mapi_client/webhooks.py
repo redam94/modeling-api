@@ -7,7 +7,7 @@ signature in constant time over the **raw** body, refuses timestamps more than 3
 from the receiver's clock (which bounds replays), and returns the parsed envelope:
 
 >>> from mapi_client.webhooks import verify                    # doctest: +SKIP
->>> event = verify(request.headers, request.body, os.environ["MAPI_WEBHOOK_SECRET"])
+>>> event = verify(request.headers, request.body, signing_secret)
 >>> if event.type == "endpoint.promoted": ...
 
 Deliveries are at least once (retries, replays): use ``event.id`` to ignore duplicates.

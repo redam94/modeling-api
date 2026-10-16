@@ -216,6 +216,87 @@ starts a new run from a failed one.
 takes longer, prints the outputs with their sizes and CRC32C, and with `-o` downloads the
 result tree, checking it against that CRC32C.
 
+### Endpoints, webhooks and sharing <span class="mapi-badge">v0.4</span> { #endpoints-webhooks-and-sharing }
+
+```bash
+mapi endpoints promote geo-mmm-prod model://growth/eu-geo-mmm@v3   # asks first; --yes skips
+mapi endpoints ls
+mapi endpoints schema geo-mmm-prod --example > call.json           # a valid score call
+mapi endpoints score geo-mmm-prod call.json -o result.zarr.zip
+mapi endpoints score geo-mmm-prod --mode forecast --periods 8 --draws 100
+mapi endpoints score geo-mmm-prod --data plan.nc                   # inline XrJSON (≤ 5 MB)
+mapi endpoints snippets geo-mmm-prod -l python > score.py
+mapi endpoints rollback geo-mmm-prod --reason "v3 over-forecasts"
+```
+
+`promote` goes through the [promotion gate](../concepts/integrations.md#promotion-gate): a
+warning scorecard needs `--override --reason TEXT` from a signed-in project admin, a failing
+one is blocked. Promotions and rollbacks change what every integration calling the alias
+receives, so both show the current version and ask before acting. `score` sends a JSON
+`EndpointScoreCall` (a file, `-` for stdin, or `--example`), with flags for the mode, the
+horizon, `--data`/`--scenario` (a `dataset://` reference, an XrJSON `.json`, a `.zarr.zip`
+or a netCDF file, sent inline) and `--draws`; it waits like `mapi score --remote` and `-o`
+downloads the result tree. With one `--language`, `snippets` prints only the code.
+
+```bash
+mapi webhooks create https://hooks.example.com/mapi -e endpoint.promoted -e run.failed > hook.secret
+mapi webhooks ls
+mapi webhooks deliveries WEBHOOK_ID --status failed
+mapi webhooks replay WEBHOOK_ID DELIVERY_ID
+mapi webhooks rotate WEBHOOK_ID > hook.secret      # asks first; the old secret signs for 24 h
+mapi webhooks rm WEBHOOK_ID                        # asks first
+```
+
+Like tokens, a webhook's signing secret is printed once, alone on stdout, by `create` and
+`rotate`; listings show `whsec_…<last 4>`. Delivery responses are the receiver's text and
+are printed with control sequences removed. Verifying deliveries is described in
+[Receiving webhooks](webhook-receivers.md).
+
+```bash
+mapi plots render --model MODEL_ID --version 3 --plot mmm.response_curves -f pdf -o curves.pdf
+mapi plots render --saved PLOT_ID --width 1200
+mapi plots embed PLOT_ID --expires-in-days 30 --allow-origin https://bi.example.com
+mapi plots embeds PLOT_ID
+mapi plots revoke PLOT_ID EMBED_ID                 # asks first
+```
+
+`render` draws the plot in the sandbox (vl-convert) and downloads the file; `embed` prints the
+link - which carries its token - once ([Sharing plots](sharing-plots.md)).
+
+### Guided mode and business priors <span class="mapi-badge">v0.4</span> { #guided-mode-and-business-priors }
+
+```bash
+mapi guided templates [geo_mmm]
+mapi guided detect geo_mmm --csv media.csv          # or --dataset dataset://growth/media@v2
+mapi guided draft geo_mmm --name eu-geo-mmm --dataset eu_media --csv media.csv --detect \
+    -a spend=tv_spend,search_spend -a holdout_periods=8 --yaml-out spec.yaml
+mapi priors preview --beliefs beliefs.yaml --spec SPEC_ID --revision 2 -o priors.json
+```
+
+`detect` and `draft --csv` profile the file **locally** - types, counts, ranges and a few
+sample values per column - and send only those summaries, as the web app does. `--detect`
+pre-fills every answer detection is sure of; `-a QUESTION=VALUE` answers (or overrides) one,
+with `a,b,c` for lists and JSON for numbers. A draft stores nothing: review `spec.yaml`, then
+upload the data with the mapping (`--mapping-out`) and fit. `priors preview` turns ROI or
+contribution-share ranges into model priors in a sandboxed run and shows what the model then
+believes, per channel ([Guided modelling](guided-modelling.md)).
+
+### Sign-up and your workspace <span class="mapi-badge">v0.4</span> { #sign-up-and-your-workspace }
+
+```bash
+mapi --url https://api.mapi.example signup --email ana@acme.example --name "Ana Analyst" --accept-terms
+mapi --url https://api.mapi.example verify-email mev_…   # the token from the e-mail link
+mapi tenant status                                       # verification, any scheduled deletion
+mapi tenant export -o acme-export.zip                    # GDPR export, waited for and downloaded
+mapi tenant delete                                       # type the tenant id to confirm
+mapi tenant delete --cancel                              # within the grace period
+```
+
+`signup` and `verify-email` send no credentials. `tenant delete` explains what is purged and
+kept, and asks you to type the tenant id; scripts pass `--confirm TENANT`. The tenant is
+`--tenant`, else the selected project's, else your only one
+([Deleting and exporting data](data-deletion.md)).
+
 ### Scripting with `--json`
 
 `--json` (a global option) prints one JSON document on stdout instead of tables; `runs watch

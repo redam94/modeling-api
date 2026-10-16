@@ -212,6 +212,32 @@ milestone releases are tagged on `main`.
   verification links; `make dev` sets `MAPI_OUTBOX_DIR` and the plot sandbox's `VITE_API_URL`;
   compose keeps the outbox on a volume. `make api-types` and `make snapshots` regenerate the
   web API types and the snapshots.
+- **client**: the v0.4 Python client. Every operation of `ENDPOINTS` has a request builder
+  (the coverage test now checks the whole v0.4 table), sync and async.
+  - `api.guided` (templates, role detection, drafts, the BayesInsight import, "Run exact"
+    compilation, `preview_priors`), `api.endpoints` (promote, history, rollback, schema,
+    validate, keyed `Prefer: wait` scoring, snippets), `api.webhooks` (secrets returned once;
+    deliveries, replay, rotation), saved plots, renders (waited for, CRC32C-checked download)
+    and embeds on `api.plots`, `api.signup`/`api.verify_email` (sent without credentials),
+    verification, deletion and the GDPR export (size-checked atomic download) on
+    `api.tenants`, and the sign-up review queue on `api.admin`.
+  - `Client().endpoint(alias)` (`RemoteEndpoint`): `schema()`, `validate(ds)` and
+    `score(ds) -> xr.Dataset` with inline XrJSON (`mapi_client.xrjson`, the SDK wire format);
+    the generated Python snippet runs as-is.
+  - `mapi_client.webhooks.verify(headers, body, secret)` for receivers.
+  - `mapi_client.atlas.RemoteModel`: Atlas's model interface, structurally (Atlas is never
+    imported at import time): KPI at the mean or as draws, batching along an independent dim
+    into one score request, an LRU cache, backoff on `RATE_LIMITED`; `register_with_atlas()`;
+    the `atlas` extra; `make test-atlas` runs the tests with Atlas installed in a throwaway
+    overlay.
+- **cli**: `mapi endpoints ls|get|history|promote|rollback|schema|score|snippets`,
+  `mapi webhooks ls|get|create|rotate|deliveries|replay|rm`,
+  `mapi plots render|embed|embeds|revoke`, `mapi guided templates|detect|draft` (CSV files are
+  profiled locally), `mapi priors preview`, `mapi tenant status|export|delete`, `mapi signup`
+  and `mapi verify-email`. Promotions, rollbacks, rotations, deletions and revocations ask
+  first; webhook secrets and embed links are printed once, alone on stdout.
+- **docs**: the v0.4 sections of the Python client and command-line guides, "Optimise a budget
+  with Atlas" and "Receiving webhooks" (FastAPI and Flask), with offline, tested snippets.
 
 ### Changed
 - **spec**: `mapi_spec.api.ENDPOINTS` is the v0.4 surface (M1 + M2 + M3, every row served);

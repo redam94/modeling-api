@@ -50,4 +50,15 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / MAPI_PROJECT / ~/.config/mapi/c
 - `mapi login`, `mapi use` and `mapi config set` write `config.toml` and `credentials.json`
   atomically with mode `0600`.
 
+**Guided mode and integrations (v0.4).**
+
+- `api.guided`, `api.endpoints`, `api.webhooks`, saved plots, renders and embeds on
+  `api.plots`, sign-up and the trust lifecycle (`api.signup`, `api.tenants.export`, ...).
+- `Client().endpoint("geo-mmm-prod").score(ds)` sends an `xr.Dataset` inline (XrJSON) and
+  returns the scored `xr.Dataset` (`xarray` extra).
+- `mapi_client.webhooks.verify(headers, body, secret)` checks a delivery's `Mapi-Signature`.
+- `mapi_client.atlas.RemoteModel` is an [Atlas](https://github.com/redam94/optimizer-framework)
+  model backed by an endpoint (`pip install 'mapi-client[atlas]'`; Atlas itself is installed
+  separately and never imported by the client).
+
 License: Apache License 2.0.
