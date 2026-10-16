@@ -561,13 +561,13 @@ override the gate.
 |---|---|---|---|---|---|
 | `GET /v1/endpoints` | Endpoints of the project | — | `Page[Endpoint]` | 200 | — |
 | `GET /v1/endpoints/{alias}` | An endpoint and the version it serves | — | `Endpoint` | 200 | `NOT_FOUND` |
-| `PUT /v1/endpoints/{alias}` | Create or promote (gated on the scorecard; override = admin + reason, audited) | `EndpointPromote` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `PROMOTION_BLOCKED`, `OVERRIDE_REQUIRED` |
+| `PUT /v1/endpoints/{alias}` | Create or promote (gated on the scorecard; override = admin + reason, audited) | `EndpointPromote` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `PROMOTION_BLOCKED`, `OVERRIDE_REQUIRED`, `NOT_VALIDATED` |
 | `DELETE /v1/endpoints/{alias}` | Delete the alias (model versions stay) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
 | `GET /v1/endpoints/{alias}/history` | Promotions and rollbacks, newest first | — | `Page[EndpointRevision]` | 200 | `NOT_FOUND` |
 | `POST /v1/endpoints/{alias}/score` | Score the current version (Prefer: wait=N → 200 if done, else 202 with the run) | `EndpointScoreCall` | `ScoreCallResult` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `MODE_NOT_SUPPORTED`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `NON_CONTIGUOUS_EXTENSION`, `CAPABILITY_UNSUPPORTED`, `RECURSIVE_UNSUPPORTED`, `QUOTA_EXCEEDED`, `PAYLOAD_TOO_LARGE` |
 | `GET /v1/endpoints/{alias}/schema` | Input schema of the current version and an example payload | — | `EndpointSchema` | 200 | `NOT_FOUND` |
 | `POST /v1/endpoints/{alias}/validate` | Static checks of a score call without running it | `EndpointScoreCall` | `EndpointValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE` |
-| `POST /v1/endpoints/{alias}/rollback` | Point the alias back at an earlier revision's version (audited) | `EndpointRollback` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `POST /v1/endpoints/{alias}/rollback` | Point the alias back at an earlier revision's version (audited) | `EndpointRollback` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `NOT_VALIDATED` |
 | `GET /v1/endpoints/{alias}/snippets` | Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint | — | `SnippetSet` | 200 | `NOT_FOUND` |
 
 ### Webhooks
@@ -703,6 +703,7 @@ validation status is not `validated` with `409 NOT_VALIDATED` (no override can p
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
 | `POST /v1/models/{model_id}/versions/{version}/explore` | Compute Model Explorer sections (an explore run) | `ModelExploreRequest` | `Exploration` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `EXPLORE_INVALID`, `CAPABILITY_UNSUPPORTED`, `QUOTA_EXCEEDED` |
+| `POST /v1/models:compare` | Compare several model versions side by side (an explore run: metrics, ranking, Diebold-Mariano tests) | `ModelCompareRequest` | `Exploration` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `EXPLORE_INVALID`, `QUOTA_EXCEEDED` |
 | `POST /v1/models/{model_id}/versions/{version}:optimize` | Optimise a budget across channels (Prefer: wait=N -> 200 if done, else 202) | `OptimizeRequest` | `Optimization` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `OPTIMIZE_INFEASIBLE`, `CAPABILITY_UNSUPPORTED`, `QUOTA_EXCEEDED` |
 | `GET /v1/optimizations/{run_id}` | An optimize run and, once done, its plan | — | `Optimization` | 200 | `NOT_FOUND` |
 
@@ -796,4 +797,4 @@ OpenAPI document and in `export_schemas()` as `api-<Name>.json`.
 | About cards (v0.5) | `About`, `CatalogAbout`, `ChooserQuestionnaire`, `ChooserResult`, `DatasetAbout`, `DatasetAboutUpdate` (`mapi_spec.about`) |
 | Workflows (v0.5) | `Workflow`, `WorkflowCreate`, `WorkflowUpdate`, `WorkflowRevision`, `WorkflowRevisionCreate`, `WorkflowValidateRequest`, `WorkflowValidation`, `WorkflowRun`, `WorkflowRunCreate`, `NodeRun`, `ScheduleCreate`, `ScheduleUpdate`, `WorkflowSchedule`, `TriggerCreate`, `WorkflowTrigger` (`mapi_spec.workflow`), `NodeImplementation` (`mapi_spec.workflow_nodes`), `WorkflowTemplate` (`mapi_spec.workflow_templates`) |
 | Governance (v0.5) | `GovernanceCheckDef`, `GovernancePolicy`, `GovernancePolicyCreate`, `GovernancePolicyUpdate`, `ValidationRequest`, `ValidationNote`, `ModelValidation`, `CheckResult`, `ApprovalCreate`, `EvidencePackRequest`, `EvidencePack` (`mapi_spec.governance`) |
-| Explorers and optimisation (v0.5) | `DataExploreRequest`, `ModelExploreRequest` (`mapi_spec.explore`), `Exploration`, `ExplorerIndex` (`mapi_spec.views`), `OptimizeRequest`, `OptimizeResult` (`mapi_spec.optimize`), `Optimization` |
+| Explorers and optimisation (v0.5) | `DataExploreRequest`, `ModelExploreRequest`, `ModelCompareRequest` (`mapi_spec.explore`), `Exploration`, `ExplorerIndex` (`mapi_spec.views`), `OptimizeRequest`, `OptimizeResult` (`mapi_spec.optimize`), `Optimization` |

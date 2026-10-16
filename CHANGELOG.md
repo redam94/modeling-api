@@ -113,6 +113,37 @@ milestone releases are tagged on `main`.
   audit; the dispatcher and reconciler skip parent runs.
 - **docs**: the workflows guide (`docs/guides/workflows.md`) with the canonical document and a
   cookbook whose fragments are validated by a test.
+- **Governance (server, runner)**: policies, validations and approvals end to end.
+  - Every check of the catalog runs in a sandboxed `governance` run (new run kind,
+    `GovernanceJob` → `governance.json`), model-family aware (Bayesian, frequentist, machine
+    learning) under a refit budget: block-permutation null test, placebo noise drivers (new
+    channels or variables, measured by ablation through the score path), time-shift
+    placebos, naive and seasonal-naive benchmarks out of sample, Ljung-Box whiteness,
+    rolling-window stability, effect signs, prior sensitivity, parametric-bootstrap recovery,
+    convergence, holdout accuracy and data quality, each with `message_plain`, a
+    `suggested_action` (new on `CheckResult`) and evidence.
+  - Migration `0012_governance`: versioned `governance_policies`, `model_validations` and
+    `validation_approvals` (forced row-level security) and `memberships.capabilities`.
+  - Policy CRUD for projects and tenants with versions and retirement; the platform's
+    default policies per model family (`DEFAULT_POLICIES`, seeded on a tenant's first use;
+    they never gate promotion by themselves); validation requests, resubmission, cancel and
+    deprecation; second-person approval with the `reviewer` capability (never the submitter,
+    never an API token); the promotion gate refuses unvalidated versions with
+    `NOT_VALIDATED` when a policy requires it (audited as `endpoint.promote_not_validated`);
+    evidence packs as JSON and self-contained HTML; audit rows and webhook events for every
+    step.
+- **Explorers (runner, plots-core, server)**: the 13 Data Explorer sections (overview,
+  distributions, time series, missingness, outliers, correlation, cross-correlation, ACF/PACF,
+  stationarity, STL, VIF, group comparisons, quality warnings) and the 11 Model Explorer
+  sections (parameters, diagnostics, fit vs actual, residual tests, decomposition, response
+  curves, IRF, FEVD, forecasts, backtests, comparisons) computed in the sandbox: the quick
+  data sections at every ingest, the model sections at every fit, the rest in `explore`
+  runs (`POST …/explore`, cached per request). `POST /v1/models:compare` compares several
+  versions with Diebold-Mariano tests. Vega-Lite recipes for every view in
+  `mapi_plots.explorer` (JSON-only). Dataset About (`GET`/`PATCH …/about`). Statistical
+  helpers are validated against statsmodels/scipy reference values.
+- **docs**: guides "Validate models with governance policies", "Explore a dataset" and
+  "Explore a model".
 
 ### Removed
 - **spec**: BayesInsight (`mapi_spec.bayesinsight`, `mapi_spec.bayesinsight_model`, the

@@ -103,7 +103,7 @@ forbidden_modules = ["numpy", "xarray", "pandas"]
 [[tool.importlinter.contracts]]
 name = "Plot sanitizer and templates are JSON-only (control-plane safe)"
 type = "forbidden"
-source_modules = ["mapi_plots.sanitize", "mapi_plots.templates", "mapi_plots._testing"]
+source_modules = ["mapi_plots.sanitize", "mapi_plots.templates", "mapi_plots._testing", "mapi_plots.explorer"]
 forbidden_modules = ["numpy", "xarray", "pandas", "altair", "plotly", "pyarrow", "mapi_sdk"]
 
 [[tool.importlinter.contracts]]

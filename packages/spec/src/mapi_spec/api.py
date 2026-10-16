@@ -88,7 +88,7 @@ from mapi_spec.endpoints import (
 )
 from mapi_spec.errors import ErrorCode, Issue, Problem
 from mapi_spec.executor import RunEventType, RunKind
-from mapi_spec.explore import DataExploreRequest, ModelExploreRequest
+from mapi_spec.explore import DataExploreRequest, ModelCompareRequest, ModelExploreRequest
 from mapi_spec.governance import (
     ApprovalCreate,
     CheckResult,
@@ -296,6 +296,7 @@ __all__ = [
     "MembershipCreate",
     "MembershipUpdate",
     "Model",
+    "ModelCompareRequest",
     "ModelExploreRequest",
     "ModelValidation",
     "ModelVersion",
@@ -2444,7 +2445,8 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "PUT", _ALIAS, "promote_endpoint",
         "Create or promote (gated on the scorecard; override = admin + reason, audited)",
         "Endpoint", 200, request="EndpointPromote",
-        errors=(*_BODY, *_NF, *_FB, _E.CONFLICT, _E.PROMOTION_BLOCKED, _E.OVERRIDE_REQUIRED),
+        errors=(*_BODY, *_NF, *_FB, _E.CONFLICT, _E.PROMOTION_BLOCKED, _E.OVERRIDE_REQUIRED,
+                _E.NOT_VALIDATED),
         headers=_PH,
     ),
     EndpointDecl(
@@ -2475,7 +2477,8 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     EndpointDecl(
         "POST", _ALIAS + "/rollback", "rollback_endpoint",
         "Point the alias back at an earlier revision's version (audited)", "Endpoint", 200,
-        request="EndpointRollback", errors=(*_BODY, *_NF, *_FB, _E.CONFLICT), headers=_PH,
+        request="EndpointRollback", errors=(*_BODY, *_NF, *_FB, _E.CONFLICT, _E.NOT_VALIDATED),
+        headers=_PH,
     ),
     EndpointDecl(
         "GET", _ALIAS + "/snippets", "list_endpoint_snippets",
@@ -2778,6 +2781,12 @@ M35_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         request="ModelExploreRequest",
         errors=(*_BODY, *_NF, _E.EXPLORE_INVALID, _E.CAPABILITY_UNSUPPORTED, _E.QUOTA_EXCEEDED),
         headers=_RUNH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/models:compare", "compare_model_versions",
+        "Compare several model versions side by side (an explore run: metrics, ranking, "
+        "Diebold-Mariano tests)", "Exploration", 202, request="ModelCompareRequest",
+        errors=(*_BODY, *_NF, _E.EXPLORE_INVALID, _E.QUOTA_EXCEEDED), headers=_RUNH,
     ),
     EndpointDecl(
         "POST", _MV + ":optimize", "optimize_model_version",
@@ -3087,6 +3096,7 @@ _M35_ACCESS: Final[dict[str, RouteAccess]] = {
     "get_exploration": _p(_RK.RUN, _AC.READ),
     # models: the Model Explorer and optimisation
     "explore_model_version": _p(_RK.RUN, _AC.CREATE, (_RK.MODEL, _AC.READ)),
+    "compare_model_versions": _p(_RK.RUN, _AC.CREATE, (_RK.MODEL, _AC.READ)),
     "optimize_model_version": RouteAccess(
         RouteScope.PROJECT, _RK.MODEL, _AC.RUN, ((_RK.RUN, _AC.CREATE),), "model_id"
     ),

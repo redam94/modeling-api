@@ -17,7 +17,7 @@ from typing import Final
 
 from mapi_spec.api import new_id
 from mapi_spec.auth import SESSION_ABSOLUTE_TTL, SESSION_IDLE_TTL, LoginTransaction
-from mapi_spec.tenancy import Membership, PrincipalKind, ProjectRole, UserPrincipal
+from mapi_spec.tenancy import Capability, Membership, PrincipalKind, ProjectRole, UserPrincipal
 from mapi_spec.tokens import BudgetPeriod, TokenRecord
 from sqlalchemy import ColumnElement, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -372,6 +372,9 @@ def membership_dto(row: m.Membership) -> Membership:
         principal_id=row.principal_id,
         principal_kind=PrincipalKind(row.principal_kind),
         role=ProjectRole(row.role),
+        capabilities=[
+            Capability(c) for c in (row.capabilities or []) if c in Capability._value2member_map_
+        ],
         email=row.email,
         display_name=row.display_name,
         created_at=row.created_at,

@@ -1020,5 +1020,11 @@ def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
     ctx.write_json("preview.json", preview(ds, job.preview_rows))
     if columns is not None:
         ctx.write_output(INGEST_COLUMNS, write_profiles(columns))
+    # M3.5: the cheap Data Explorer sections (ui/explore/); never fails the ingest
+    from mapi_runner.worker.explore import write_data_explorer
+
+    ctx.progress(0.95, "computing the Data Explorer overview")
+    ds.attrs.pop(SCHEMA_ATTR, None)
+    write_data_explorer(ctx, ds, schema, ref=job.dataset or "dataset://runner/upload@latest")
     ctx.progress(1.0, "dataset ready", force=True)
     return schema

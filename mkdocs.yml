@@ -162,6 +162,9 @@ nav:
           - "From a spreadsheet to a Guided draft": guides/guided-data.md
           - Endpoints and webhooks: guides/endpoints-and-webhooks.md
           - The Integrations hub: guides/integrations-hub.md
+          - Explore a dataset: guides/data-explorer.md
+          - Explore a model: guides/model-explorer.md
+          - Validate models with governance policies: guides/governance.md
       - Running it for teams:
           - Authentication: guides/authentication.md
           - Administration: guides/administration.md

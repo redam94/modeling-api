@@ -62,7 +62,7 @@ def test_migrations_round_trip_and_match_the_models(scratch_db: str) -> None:
 
 
 M3_CHAIN = ("0007_guided", "0008_endpoints_webhooks", "0009_plots_embeds", "0010_trust_lifecycle")
-M35_CHAIN = ("0011_workflows",)
+M35_CHAIN = ("0011_workflows", "0012_governance")
 CHAIN = (*M3_CHAIN, *M35_CHAIN)
 
 
@@ -93,6 +93,22 @@ def test_m3_migrations_are_linear_and_step_down_and_up(scratch_db: str) -> None:
     for rev in CHAIN:
         upgrade(scratch_db, rev)
     assert new_tables <= _tables(scratch_db)
+    command.check(alembic_config(scratch_db))
+
+
+def test_governance_migration_steps_down_and_up(scratch_db: str) -> None:
+    """0012_governance adds three RLS tables and the memberships' capabilities, and steps
+    down to (and up from) the revision before it cleanly."""
+    script = ScriptDirectory.from_config(alembic_config(scratch_db))
+    before = script.get_revision("0012_governance").down_revision
+    assert isinstance(before, str)
+    upgrade(scratch_db)
+    gov = {"governance_policies", "model_validations", "validation_approvals"}
+    assert gov <= _tables(scratch_db)
+    downgrade(scratch_db, before)
+    assert not gov & _tables(scratch_db)
+    upgrade(scratch_db)
+    assert gov <= _tables(scratch_db)
     command.check(alembic_config(scratch_db))
 
 

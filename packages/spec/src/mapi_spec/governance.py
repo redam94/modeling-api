@@ -53,8 +53,12 @@ from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.scorecard import CheckDirection, CheckThresholds
 
 __all__ = [
+    "DEFAULT_POLICIES",
     "EVIDENCE_PACK_FORMAT",
     "GOVERNANCE_CHECKS",
+    "GOVERNANCE_OUTPUT",
+    "GOVERNANCE_REPORT_FORMAT",
+    "SYSTEM_ACTOR",
     "TRANSITIONS",
     "Approval",
     "ApprovalCreate",
@@ -66,22 +70,28 @@ __all__ = [
     "EvidencePack",
     "EvidencePackRequest",
     "GovernanceCheckDef",
+    "GovernanceJob",
     "GovernancePolicy",
     "GovernancePolicyCreate",
     "GovernancePolicyUpdate",
+    "GovernanceReport",
+    "ModelKind",
     "ModelValidation",
     "PolicyCheck",
     "PolicyMatch",
     "PolicyScope",
+    "RefitBudget",
     "ValidationEvent",
     "ValidationNote",
     "ValidationRequest",
     "ValidationStatus",
     "ValidationTransitionRecord",
     "after_checks",
+    "check_applies",
     "check_approver",
     "check_status",
     "effective_checks",
+    "model_kind",
     "policies_for",
     "requires_validation",
     "rollup_results",
@@ -89,6 +99,12 @@ __all__ = [
 ]
 
 EVIDENCE_PACK_FORMAT: Final = "mapi.evidence-pack/v1"
+GOVERNANCE_REPORT_FORMAT: Final = "mapi.governance-report/v1"
+GOVERNANCE_OUTPUT: Final = "governance.json"
+"""What a ``governance`` run writes: a :class:`GovernanceReport` (read by the control plane
+as size-capped JSON and stored on the validation)."""
+SYSTEM_ACTOR: Final = "system"
+"""``created_by`` of the platform's default policies (:data:`DEFAULT_POLICIES`)."""
 
 
 class CheckSeverity(StrEnum):
@@ -199,7 +215,10 @@ _CHECKS: list[GovernanceCheckDef] = [
         requires=["holdout"],
         params_schema=_obj({
             "n_permutations": {"type": "integer", "minimum": 5, "maximum": 200, "default": 20},
-            "metric": {"type": "string", "default": "rmse"},
+            "metric": {"type": "string", "default": "rmse",
+                       "enum": ["rmse", "mae", "mape", "smape", "crps"]},
+            "block": {"type": "integer", "minimum": 1, "maximum": 520,
+                      "description": "Periods shuffled together (default: about one season)"},
         }),
         about=_a(
             "Beats a shuffled result",
@@ -712,6 +731,9 @@ class CheckResult(ResponseModel):
     threshold: float | None = None
     message_plain: str = Field(..., max_length=2000)
     message_expert: str | None = Field(None, max_length=2000)
+    suggested_action: str | None = Field(
+        None, max_length=1000, description="What to do about a warning or failure (plain words)"
+    )
     params: dict[str, JsonValue] = Field(default_factory=dict)
     evidence: list[EvidenceItem] = Field(default_factory=list, max_length=50)
     run_id: Id | None = Field(None, description="The run that computed it")
@@ -1018,3 +1040,206 @@ class EvidencePack(ResponseModel):
             "generated_at": EXAMPLE_TS,
         }
     )  # fmt: skip
+
+
+# ========================================================================== governance runs
+
+ModelKind = Literal["bayesian", "frequentist", "ml"]
+"""How a model is estimated, which decides how checks refit it and read its uncertainty:
+``bayesian`` (posterior draws: credible intervals, R-hat, prior sensitivity),
+``frequentist`` (point estimates with standard errors: confidence intervals, p-values,
+optimiser convergence) or ``ml`` (machine-learning estimators: predictions only)."""
+
+_BAYESIAN_INFERENCE: Final = frozenset({"mcmc", "vi", "smc"})
+_ML_NAMESPACES: Final = frozenset({"tabular", "sklearn", "xgboost", "ml"})
+
+
+def model_kind(
+    inference: str, *, representation: str | None = None, model_id: str = ""
+) -> ModelKind:
+    """The :data:`ModelKind` of a model from its capabilities (pure; the runner and the
+    control plane agree on it). ``mcmc``/``vi``/``smc`` inference is Bayesian; bootstrap
+    ensembles, quantile or conformal-interval models and the ``tabular``/``sklearn``
+    namespaces are machine learning; everything else (``map``, ``kalman``, ``point``,
+    ``custom``) is frequentist."""
+    if inference in _BAYESIAN_INFERENCE:
+        return "bayesian"
+    if (
+        inference == "bootstrap"
+        or representation in ("quantiles", "interval")
+        or model_id.split(".", 1)[0] in _ML_NAMESPACES
+    ):
+        return "ml"
+    return "frequentist"
+
+
+_REQUIREMENT_PLAIN: Final[dict[str, str]] = {
+    "bayesian": "only Bayesian models have priors to vary",
+    "holdout": "the model has no test period (add a data split and refit)",
+    "time_series": "the model's data has no time dimension",
+    "channels": "the model has no marketing channels",
+    "residuals": "the model has no residuals",
+}
+
+
+def check_applies(
+    check: GovernanceCheckDef | str,
+    *,
+    kind: ModelKind,
+    family: str,
+    has: Iterable[str] = (),
+) -> str | None:
+    """``None`` when ``check`` applies to a model, else the plain-language reason it is
+    skipped. ``has`` lists the model's requirements that hold (``holdout``,
+    ``time_series``, ``channels``, ``residuals``); ``bayesian`` comes from ``kind``."""
+    c = GOVERNANCE_CHECKS[check] if isinstance(check, str) else check
+    if c.families is not None and family not in c.families:
+        return f"this check is for {', '.join(c.families)} models, not {family}"
+    held = set(has) | ({"bayesian"} if kind == "bayesian" else set())
+    for req in c.requires:
+        if req not in held:
+            return _REQUIREMENT_PLAIN[req]
+    return None
+
+
+class RefitBudget(StrictModel):
+    """How much refitting a governance run may do. Null tests, stability, sensitivity and
+    recovery refit the model many times: Bayesian refits use at most ``draws``/``tune`` per
+    chain on ``chains`` chains (and ``engine``, e.g. ``advi``, when set); frequentist and
+    machine-learning models refit as they are. ``max_refits`` caps the whole run; a check
+    that would exceed it stops early and says so in its evidence."""
+
+    max_refits: int = Field(120, ge=1, le=1000)
+    draws: int = Field(200, ge=10, le=5000)
+    tune: int = Field(200, ge=0, le=5000)
+    chains: int = Field(2, ge=1, le=8)
+    engine: str | None = Field(None, pattern=r"^[a-z][a-z0-9_]{0,31}$")
+
+
+class GovernanceJob(StrictModel):
+    """``RunSpec.spec`` of a ``governance`` run: measure ``checks`` on one model version.
+
+    Inputs: ``bundle`` (+ ``bundle.manifest``), ``dataset`` (the data it was fitted on) and,
+    when the fit kept one, ``evaluation`` (+ ``evaluation.manifest``): the train-only
+    evaluation bundle benchmarks are scored with. Output: :data:`GOVERNANCE_OUTPUT`.
+    """
+
+    validation_id: str | None = Field(None, max_length=64)
+    model_ref: str = Field(..., max_length=512, description="model://project/name@vN")
+    checks: list[PolicyCheck] = Field(..., min_length=1, max_length=32)
+    budget: RefitBudget = Field(default_factory=RefitBudget)
+    seed: int = Field(0, ge=0, lt=2**32)
+
+    model_config = dto_examples(
+        {
+            "validation_id": "val_01jaf3k1m2n3p4q5r6s7t8v9w0",
+            "model_ref": "model://growth/geo-mmm@v7",
+            "checks": [{"check": "null.permutation_target", "params": {"n_permutations": 20}},
+                       {"check": "convergence"}],
+            "budget": {"max_refits": 60, "draws": 200, "tune": 200},
+        }
+    )  # fmt: skip
+
+    @model_validator(mode="after")
+    def _unique(self) -> GovernanceJob:
+        ids = [c.check for c in self.checks]
+        if len(set(ids)) != len(ids):
+            raise ValueError("a governance job lists each check once")
+        return self
+
+
+class GovernanceReport(ResponseModel):
+    """:data:`GOVERNANCE_OUTPUT`: every requested check's :class:`CheckResult` (in request
+    order; a check that does not apply is ``skipped`` with the reason)."""
+
+    format: Literal["mapi.governance-report/v1"] = GOVERNANCE_REPORT_FORMAT
+    model_ref: str = Field(..., max_length=512)
+    model_id: str = Field(..., max_length=128, description="The model plugin id")
+    family: str = Field(..., max_length=64)
+    model_kind: ModelKind
+    results: list[CheckResult] = Field(default_factory=list, max_length=32)
+    refits: int = Field(0, ge=0)
+    warnings_plain: list[str] = Field(default_factory=list, max_length=50)
+
+    model_config = dto_examples(
+        {
+            "model_ref": "model://growth/geo-mmm@v7",
+            "model_id": "mmm.bayesian",
+            "family": "mmm",
+            "model_kind": "bayesian",
+            "results": [CheckResult.model_json_schema()["examples"][0]],
+            "refits": 21,
+        }
+    )
+
+
+# ========================================================================= default policies
+
+
+def _pc(
+    check: str, severity: CheckSeverity = CheckSeverity.BLOCKING, **params: JsonValue
+) -> PolicyCheck:
+    return PolicyCheck(check=check, severity=severity, params=dict(params))
+
+
+_W, _INFO = CheckSeverity.WARNING, CheckSeverity.INFO
+
+DEFAULT_POLICIES: Final[tuple[GovernancePolicyCreate, ...]] = (
+    GovernancePolicyCreate(
+        name="Marketing mix models (platform default)",
+        description="Marketing mix models split results between channels, so they must "
+        "beat shuffled results, give fake channels no credit and point effects the right "
+        "way. Seeded for every tenant; edit it or add stricter project policies.",
+        applies_to=PolicyMatch(families=["mmm"]),
+        checks=[
+            _pc("data.quality"),
+            _pc("convergence"),
+            _pc("holdout.accuracy", metric="mape"),
+            _pc("null.permutation_target", n_permutations=20),
+            _pc("null.noise_regressors", n_noise=3),
+            _pc("plausibility.signs"),
+            _pc("baseline.beats_naive", _W),
+            _pc("null.placebo_time_shift", _W),
+            _pc("sensitivity.prior", _W),
+            _pc("residuals.whiteness", _INFO),
+        ],
+        require_approval=False,
+        require_validated_for_promotion=False,
+    ),
+    GovernancePolicyCreate(
+        name="Forecasting models (platform default)",
+        description="Forecasts must beat simple benchmarks out of sample, stay accurate on "
+        "unseen periods and leave no pattern in their errors. Seeded for every tenant.",
+        applies_to=PolicyMatch(families=["ts", "forecast", "ts_multivariate", "regime"]),
+        checks=[
+            _pc("data.quality"),
+            _pc("convergence"),
+            _pc("baseline.beats_naive"),
+            _pc("holdout.accuracy", metric="mape"),
+            _pc("residuals.whiteness", _W),
+            _pc("null.permutation_target", _W, n_permutations=20),
+            _pc("stability.rolling_params", _INFO),
+        ],
+        require_approval=False,
+        require_validated_for_promotion=False,
+    ),
+    GovernancePolicyCreate(
+        name="Regression and machine-learning models (platform default)",
+        description="Tabular and choice models must beat shuffled results and stay accurate "
+        "on unseen data; fake drivers should get no credit. Seeded for every tenant.",
+        applies_to=PolicyMatch(families=["tabular", "choice", "sklearn"]),
+        checks=[
+            _pc("data.quality"),
+            _pc("holdout.accuracy", metric="mape"),
+            _pc("null.permutation_target", n_permutations=20),
+            _pc("null.noise_regressors", _W, n_noise=3),
+            _pc("convergence", _INFO),
+        ],
+        require_approval=False,
+        require_validated_for_promotion=False,
+    ),
+)
+"""The policies seeded (as tenant policies, version 1, ``created_by`` :data:`SYSTEM_ACTOR`)
+the first time a tenant uses governance. They define what validation runs per family but
+do **not** gate promotion (``require_validated_for_promotion`` is off) or require approval;
+an admin turns those on. Thresholds are the catalog defaults (:data:`GOVERNANCE_CHECKS`)."""

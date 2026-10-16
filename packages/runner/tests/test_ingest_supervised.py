@@ -58,7 +58,10 @@ def test_mff_ingest_writes_the_dataset_and_column_profiles(gcs: ShimGcs) -> None
     )
     assert result.code == RunnerExit.OK, [e.payload for e in result.of("error")]
     assert_signed_stream(result)
-    assert set(result.manifest().objects) == set(DATASET_OUTPUTS)
+    objects = set(result.manifest().objects)
+    # M3.5: the cheap Data Explorer sections ride along under ui/explore/
+    assert {o for o in objects if not o.startswith("ui/explore/")} == set(DATASET_OUTPUTS)
+    assert "ui/explore/index.json" in objects and "ui/explore/overview.json" in objects
     ds = read_zarr_zip(result.output("data.zarr.zip"))
     assert dict(ds.sizes) == {"period": 40, "geography": 4, "channel": 2}
     schema = DataSchema.model_validate_json(result.output("schema.json"))

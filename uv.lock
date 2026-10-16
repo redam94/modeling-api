@@ -2437,6 +2437,8 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "pyarrow" },
+    { name = "scipy" },
+    { name = "statsmodels" },
     { name = "xarray" },
 ]
 
@@ -2456,6 +2458,8 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.0" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "pyarrow", specifier = ">=17" },
+    { name = "scipy", specifier = ">=1.13" },
+    { name = "statsmodels", specifier = ">=0.14.4" },
     { name = "xarray", specifier = ">=2025.1" },
 ]
 

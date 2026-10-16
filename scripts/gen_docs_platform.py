@@ -80,6 +80,10 @@ RESOURCE_LABELS: dict[str, str] = {
     "embed": "Read-only embed links of saved plots",
     "tenant_deletion": "Deleting the whole tenant",
     "tenant_export": "GDPR exports of the tenant's data",
+    # M3.5
+    "workflow": "Workflows, their runs, schedules and triggers",
+    "policy": "A project's governance policies",
+    "tenant_policy": "Tenant-wide governance policies (every project's floor)",
 }
 
 ACTION_NOTES: dict[tuple[str, str], str] = {
@@ -94,6 +98,9 @@ ACTION_NOTES: dict[tuple[str, str], str] = {
     ("webhook", "update"): "includes rotating the secret and replaying deliveries",
     ("tenant_deletion", "cancel"): "within the grace period",
     ("tenant_deletion", "manage"): "purge, retry",
+    ("model", "validate"): "submit, resubmit or cancel a governance validation",
+    ("model", "approve"): "needs the reviewer capability; never the submitter, never a token",
+    ("model", "update"): "deprecate a validated version",
 }
 
 

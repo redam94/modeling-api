@@ -14,7 +14,7 @@ from collections.abc import Sequence
 
 from mapi_spec.api import MembershipCreate, new_id
 from mapi_spec.errors import ErrorCode, MapiError
-from mapi_spec.tenancy import DEFAULT_RESIDENCY, PrincipalKind, ProjectRole
+from mapi_spec.tenancy import DEFAULT_RESIDENCY, Capability, PrincipalKind, ProjectRole
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -184,6 +184,7 @@ async def add_member(
         principal_id=principal_id,
         principal_kind=kind,
         role=body.role.value,
+        capabilities=sorted({c.value for c in body.capabilities}),
         email=email,
         display_name=name,
         created_at=now(),
@@ -235,11 +236,18 @@ async def change_role(
     tenant_id: str,
     project_id: str | None,
     principal_id: str,
-    role: ProjectRole,
+    role: ProjectRole | None,
+    capabilities: list[Capability] | None = None,
 ) -> m.Membership:
+    """Change a member's role and/or (M3.5) capabilities (``reviewer``)."""
     row = await _find(session, tenant_id, project_id, principal_id)
     if row is None:
         raise NotFoundError("member", principal_id)
+    if capabilities is not None:
+        row.capabilities = sorted({c.value for c in capabilities})
+    if role is None:
+        await session.flush()
+        return row
     if (
         row.role == ProjectRole.ADMIN.value
         and role is not ProjectRole.ADMIN
