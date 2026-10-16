@@ -53,6 +53,7 @@ from mapi_workflows.runtime.data import (
     with_schema,
 )
 from mapi_workflows.runtime.values import DatasetValue, ModelValue, NodeContext, NodeOutcome
+from mapi_workflows.specs import MODEL_LABEL, model_spec_document
 from pydantic import JsonValue
 
 __all__ = [
@@ -119,46 +120,30 @@ def build_spec(
     registry: Registry | None = None,
 ) -> tuple[ModelSpec, DatasetValue, list[str]]:
     """The ``ModelSpec`` a model node fits, the dataset to fit it on and warnings."""
-    model = params.get("model")
-    if not isinstance(model, str) or not model:
-        raise MapiError("the node needs a catalog model ('model')", code=ErrorCode.WORKFLOW_INVALID)
     base, carried, warns = _root(data)
-    raw_pipeline = params.get("pipeline") or []
-    pipeline = [*carried, *(raw_pipeline if isinstance(raw_pipeline, list) else [])]
-    raw_fit = params.get("fit")
-    fit: dict[str, Any] = dict(raw_fit) if isinstance(raw_fit, dict) else {}
-    if mode is not None:
-        fit["mode"] = mode
     ref = (
         base.ref
         if base.ref and base.ref.startswith("dataset://")
-        else (f"dataset://{project}/{_slug(name)}-data@latest")
+        else f"dataset://{project}/{_slug(name)}-data@latest"
     )
-    doc: dict[str, Any] = {
-        "apiVersion": "mapi/v1",
-        "kind": "ModelSpec",
-        "metadata": {
-            "name": _slug(name),
-            "project": project,
-            "labels": {"mapi.dev/workflow-node": _slug(name)},
-        },
-        "data": {"dataset": ref, "bind": params.get("bind") or {}},
-        "pipeline": pipeline,
-        "model": {
-            "use": model if "@" in model else f"{model}@*",
-            "settings": _settings(settings, params),
-            "fit": fit,
-        },
-    }
+    try:
+        doc = model_spec_document(
+            params,
+            name=_slug(name),
+            project=project,
+            dataset=ref,
+            pipeline=carried,
+            split=split,
+            settings=settings,
+            mode=mode,
+            labels={MODEL_LABEL: _slug(name)},
+        )
+    except ValueError as exc:
+        raise MapiError(str(exc), code=ErrorCode.WORKFLOW_INVALID) from None
     if registry is not None:
         doc["data"]["bind"] = _auto_bind(
             registry, doc["model"]["use"], doc["model"]["settings"], base, doc["data"]["bind"]
         )
-    if split:
-        doc["data"]["split"] = dict(split)
-    ev = params.get("evaluate")
-    if isinstance(ev, dict):
-        doc["evaluate"] = ev
     try:
         spec = ModelSpec.model_validate(doc)
     except ValueError as exc:
@@ -186,15 +171,6 @@ def _auto_bind(
     if schema is None:
         return dict(given)
     return dict(auto_bind(schema, schema_of(base), given))
-
-
-def _settings(
-    settings: Mapping[str, JsonValue] | None, params: Mapping[str, JsonValue]
-) -> dict[str, Any]:
-    if settings is not None:
-        return dict(settings)
-    raw = params.get("settings")
-    return dict(raw) if isinstance(raw, dict) else {}
 
 
 def _metrics_of(bundle: Bundle) -> dict[str, float | None]:

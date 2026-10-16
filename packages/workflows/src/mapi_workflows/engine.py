@@ -351,11 +351,13 @@ class WorkflowEngine:
         *,
         error: NodeError | None = None,
         cancel_requested: bool = False,
+        started: bool = True,
         **kwargs: Any,
     ) -> WorkflowEngine:
-        """An engine in the state the persisted records describe."""
+        """An engine in the state the persisted records describe (``started=False`` for a
+        run that was created but never stepped)."""
         eng = cls(spec, **kwargs)
-        eng.started = True
+        eng.started = started
         for nr in node_runs:
             st = eng.states.get(nr.node_id)
             if st is None:
@@ -729,6 +731,14 @@ class WorkflowEngine:
         if run_id is not None:
             st.run_id = run_id
         self._emit(WorkflowEventType.NODE_STARTED, node_id, attempt=st.attempt, run_id=run_id)
+
+    def attach_run(self, node_id: str, run_id: str) -> None:
+        """A queued node was handed to run ``run_id`` (it is ``running`` once the driver
+        calls :meth:`started_node`)."""
+        st = self.states[node_id]
+        st.run_id = run_id
+        if run_id not in st.child_runs:
+            st.child_runs.append(run_id)
 
     def add_child(self, node_id: str, run_id: str) -> None:
         st = self.states[node_id]

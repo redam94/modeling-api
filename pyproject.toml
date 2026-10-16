@@ -125,7 +125,7 @@ name = "The workflow engine core is JSON-only (control-plane safe)"
 type = "forbidden"
 source_modules = [
   "mapi_workflows.engine", "mapi_workflows.orchestrator", "mapi_workflows.payloads",
-  "mapi_workflows.binding", "mapi_workflows.reference",
+  "mapi_workflows.binding", "mapi_workflows.reference", "mapi_workflows.specs",
 ]
 forbidden_modules = [
   "mapi_workflows.runtime", "mapi_workflows.testing", "mapi_sdk", "mapi_steps",
