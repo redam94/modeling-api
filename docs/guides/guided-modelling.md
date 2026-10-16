@@ -287,7 +287,7 @@ to the score run as its `history` input):
 |---|---|
 | `supplied` (default for API callers) | from the request's data or scenario; missing ones are `MISSING_FUTURE_COVARIATE` |
 | `carry_last` (default in Guided mode) | the last observed value of each series |
-| `seasonal_naive` | the last observed year repeated (52 weeks, 12 months, 365 days...); a shorter history falls back to `carry_last` with a warning |
+| `seasonal_naive` | the value one year earlier by date (52 weeks, 12 months, 365 days...), so the last observed year repeats even after a gap; a missing value steps back another year, and one missing in every year (or a history shorter than a year) falls back to `carry_last` with a warning |
 | `zero` | zero - "no spend planned" |
 
 Values the payload does supply are never replaced, and interventions apply after the fill, so

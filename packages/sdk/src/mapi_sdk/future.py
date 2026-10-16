@@ -5,9 +5,11 @@ default) expects them in the request's payload; the other policies extend each s
 the horizon from its history, per cell of the other dims, inside the sandbox:
 
 * ``carry_last`` - the last observed (finite) value;
-* ``seasonal_naive`` - the value one season earlier, the season being the time dim's yearly
-  period (52 weeks, 12 months, 365 days, ...), so the last observed year repeats; a history
-  shorter than a season falls back to ``carry_last`` with a warning;
+* ``seasonal_naive`` - the value one season earlier *by date*, the season being the time
+  dim's yearly period (52 weeks, 12 months, 365 days, ...), so the last observed year repeats
+  even when the horizon starts after a gap; a missing value steps back whole seasons, and a
+  value missing in every season (or a history shorter than a season) falls back to
+  ``carry_last`` with a warning;
 * ``zero`` - zero (for example "no spend planned"), which needs no history.
 
 :func:`fill_future_covariates` fills only the variables the payload lacks: every non-target
@@ -18,10 +20,12 @@ the rest.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from typing import Final
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from mapi_spec.coords import parse_freq
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
@@ -66,6 +70,42 @@ def _last_finite(values: np.ndarray) -> np.ndarray:
     pos = (n - 1) - np.argmax(finite[::-1], axis=0)
     out = np.take_along_axis(values, pos[None, ...], axis=0)[0]
     return np.where(finite.any(axis=0), out, np.nan)
+
+
+def _seasonal_by_date(
+    values: np.ndarray, history: np.ndarray, horizon: np.ndarray, season: int, freq: str
+) -> np.ndarray | None:
+    """``(steps, *cells)``: for each horizon date, the history value whole seasons before it
+    (the nearest season back with a finite value; NaN where none has one). ``None`` when the
+    labels are not dates."""
+    if np.asarray(history).dtype.kind != "M" or np.asarray(horizon).dtype.kind != "M":
+        return None
+    try:
+        offset = pd.tseries.frequencies.to_offset(freq)
+    except ValueError:
+        return None
+    hist = pd.DatetimeIndex(history)
+    steps = pd.DatetimeIndex(horizon)
+    out = np.full((len(steps), *values.shape[1:]), np.nan)
+    first = hist.min()
+    k = 1
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # non-vectorised offsets
+        while True:
+            back = steps - (season * k) * offset
+            if not (back >= first).any():
+                break
+            pos = hist.get_indexer(back)
+            hit = pos >= 0
+            if hit.any():
+                got = np.full_like(out, np.nan)
+                got[hit] = values[pos[hit]]
+                take = np.isnan(out) & np.isfinite(got)
+                out[take] = got[take]
+                if np.isfinite(out).all():
+                    break
+            k += 1
+    return out
 
 
 def _to_fill(
@@ -139,8 +179,29 @@ def fill_future_covariates(
         if policy is FutureCovariates.ZERO:
             out = np.zeros((steps, *values.shape[1:]))
         elif policy is FutureCovariates.SEASONAL_NAIVE and season and values.shape[0] >= season:
-            last_season = values[-season:]
-            out = last_season[np.arange(steps) % season]
+            assert freq is not None
+            dated = (
+                _seasonal_by_date(values, hist[dim].values, horizon.values, season, freq)
+                if dim in hist.coords
+                else None
+            )
+            if dated is None:  # labels are not dates: the last season, by position
+                dated = values[-season:][np.arange(steps) % season]
+            gaps = ~np.isfinite(dated)
+            if gaps.any():
+                last = np.broadcast_to(_last_finite(values)[None, ...], dated.shape)
+                dated = np.where(gaps, last, dated)
+                issues.append(
+                    Issue(
+                        code=ErrorCode.MISSING_FUTURE_COVARIATE,
+                        severity=Severity.WARNING,
+                        pointer="/future_covariates",
+                        message=f"{name!r} has no value a whole number of seasons before "
+                        f"{int(gaps.any(axis=tuple(range(1, gaps.ndim))).sum())} horizon "
+                        "period(s); its last value was carried forward there",
+                    )
+                )
+            out = dated
         else:
             if policy is FutureCovariates.SEASONAL_NAIVE:
                 issues.append(

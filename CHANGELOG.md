@@ -467,6 +467,11 @@ milestone releases are tagged on `main`.
   "not dates" (and offsets that change with daylight saving time failed outright). They are
   now read as the local date and time they name, with an `info` issue saying the offsets
   were dropped.
+- **sdk**: `future_covariates: seasonal_naive` aligned the last season by position, so a
+  horizon that started after a gap (or a payload of later periods only) shifted the seasonal
+  pattern, and a missing value in the last season was copied forward as NaN. It now takes
+  the value whole seasons before each horizon date, stepping back past missing values, and
+  carries the last value forward (with a warning) only where no season has one.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
