@@ -70,10 +70,11 @@ def test_mff_ingest_writes_the_dataset_and_column_profiles(gcs: ShimGcs) -> None
     assert {p.name for p in profiles if p.origin == "mff_variable"} >= {"Sales", "media_var_0"}
 
 
-def test_identical_data_writes_identical_outputs(gcs: ShimGcs) -> None:
-    """Ingest outputs are stored content-addressed with the data, so the same file uploaded
-    again - as v2, or into another dataset or project - must write the same objects (the
-    Data Explorer index used to name the dataset version)."""
+def test_identical_data_writes_identical_content_outputs(gcs: ShimGcs) -> None:
+    """The data and its sidecars are stored content-addressed (``t/<tenant>/datasets/<sha>/``),
+    so the same file ingested again - as v2, or into another dataset or project - must write
+    them byte for byte the same. The Data Explorer views name the version and carry
+    timestamps; the finalizer keeps them under each ingest's run."""
     gcs.put(gcs.buckets.quarantine, UPLOAD, MFF.read_bytes(), "text/csv")
     outputs = []
     for ref in ("dataset://default/mff@v1", "dataset://other/sales@v7"):
@@ -87,15 +88,12 @@ def test_identical_data_writes_identical_outputs(gcs: ShimGcs) -> None:
             )
         )
         assert result.code == RunnerExit.OK, [e.payload for e in result.of("error")]
-        objects = sorted(result.manifest().objects)
-        outputs.append({name: result.output(name) for name in objects})
+        outputs.append({n: result.output(n) for n in sorted(result.manifest().objects)})
     first, second = outputs
-    assert set(first) == set(second) and "ui/explore/index.json" in first
-    # only the plot specs differ (their provenance carries a timestamp; the finalizer keeps
-    # the stored ones): the data, its sidecars, the views and the index are identical
-    diff = [n for n in first if first[n] != second[n]]
-    assert all(n.startswith("ui/explore/plots/") for n in diff), diff
-    assert json.loads(first["ui/explore/index.json"])["ref"] == "dataset://upload/content@latest"
+    content = sorted(n for n in first if not n.startswith("ui/explore/"))
+    assert content == sorted(DATASET_OUTPUTS)
+    assert [n for n in content if first[n] != second[n]] == []
+    assert json.loads(second["ui/explore/index.json"])["ref"] == "dataset://other/sales@v7"
 
 
 def test_a_refused_upload_explains_itself(gcs: ShimGcs) -> None:

@@ -329,16 +329,16 @@ async def _ingest_version(
     return dict(created.json())
 
 
-async def test_identical_data_uploaded_again_keeps_the_stored_explorer_views(
+async def test_identical_data_uploaded_again_gets_its_own_explorer_views(
     ctx: ServerContext, client: httpx.AsyncClient
 ) -> None:
-    """The ingest's objects live under the data's content hash. Uploading the same data as
-    the next version must succeed although its explorer views (timestamped plots, an index)
-    differ byte for byte: the stored views are kept. A sidecar that differs is still an
-    integrity failure."""
+    """The ingest's data and sidecars live under the data's content hash. Uploading the same
+    data as the next version must succeed although its explorer views (timestamped plots,
+    an index) differ byte for byte: each ingest keeps its own views under its run. A sidecar
+    that differs from the stored one is still an integrity failure."""
     ds = (await client.post("/v1/datasets", json={"name": "co2"})).json()
     data = {"data.zarr.zip": b"the same data" * 300}
-    gens = []
+    stored = []
     for i in (1, 2):
         dv = await _ingest_version(client, ctx, ds["id"])
         run, att = await _finalizing(ctx, dv["ingest_run_id"])
@@ -350,8 +350,17 @@ async def test_identical_data_uploaded_again_keeps_the_stored_explorer_views(
         async with ctx.db.session() as s:
             row = await s.get(m.DatasetVersion, (ds["id"], i))
             assert row is not None and row.status == "ready"
-            gens.append(row.objects["ui/explore/index.json"]["generation"])
-    assert gens[0] == gens[1]  # the first upload's views are reused
+            stored.append(row.objects)
+            obj = row.objects["ui/explore/index.json"]
+            assert obj["name"].endswith(f"/runs/{run.id}/ui/explore/index.json")
+            body = await ctx.store.get(obj["bucket"], obj["name"], generation=obj["generation"])
+            assert json.loads(body)["run"] == i  # this ingest's own view
+        r = await client.get(
+            f"/v1/datasets/{ds['id']}/versions/{i}/artifacts/ui/explore/index.json"
+        )
+        assert r.status_code == 200 and r.json()["name"] == "ui/explore/index.json"
+    first, second = stored
+    assert first["data.zarr.zip"] == second["data.zarr.zip"]  # the data is stored once
     dv = await _ingest_version(client, ctx, ds["id"])
     run, att = await _finalizing(ctx, dv["ingest_run_id"])
     await simulate_outputs(ctx, run, att, replace={**data, "summary.json": b'{"vars": ["z"]}'})

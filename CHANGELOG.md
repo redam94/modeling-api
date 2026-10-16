@@ -332,27 +332,13 @@ milestone releases are tagged on `main`.
   the statsmodels models, which declare the family `forecast`, `ts_multivariate` or
   `regime`; its checks, approval and promotion gate silently never applied. A family now
   matches a model's declared family or the namespace of its id (`ts` for `ts.sarimax`).
-- **runner, server** (found by the M3.5 live-stack verification): uploading data that was
-  uploaded before - the same file as the next version, or into another dataset or project -
-  failed its ingest with `INTEGRITY_FAILURE` ("ui/explore/index.json already holds different
+- **server** (found by the M3.5 live-stack verification): uploading data that was uploaded
+  before - the same file as the next version, or into another dataset or project - failed
+  its ingest with `INTEGRITY_FAILURE` ("ui/explore/index.json already holds different
   content"). Ingest outputs are stored under the data's content hash, and the v0.5 Data
-  Explorer views written at ingest named the dataset version and carry plot timestamps. The
-  ingest's index now names no dataset, and the finalizer keeps the explorer views already
-  stored for that data (the data and its sidecars must still match exactly).
-- **client, cli** (found by the M3.5 live-stack verification): `explorations.view` (and `mapi
-  explore --show`) returned a section's plot list instead of its view for every section
-  whose name sorts after `plots` (`residuals`, `response_curves`, `stationarity`, `stl`,
-  ...): `ui/explore/plots/<section>.json` matched first, and the call failed with "the view
-  is not a JSON object". The exact view is now looked up first; plots never match.
-- **spec** (found by the M3.5 live-stack verification): *Help me choose* ranked `ts.sarimax`
-  sixth for "forecast weekly sales with drivers" although it is the only model that fits
-  all four answers: items silent on a question scored the same 1.0 and ties broke on
-  difficulty. Ties now break on the number of answers an item fits explicitly first.
-- **web** (found by the M3.5 live-stack verification): on the dev server (`make dev`), the
-  first page to open a workflow graph crashed with "Invalid hook call" in
-  `ReactFlowProvider`: Vite discovered the lazily loaded React Flow late, optimised it in a
-  second pass and mixed two copies of React. It is now pre-bundled at start-up
-  (`apps/web/dev-prebundle.ts`); production builds were not affected.
+  Explorer views written at ingest name the dataset version and carry plot timestamps. Each
+  ingest's views are now stored under its run (`t/<tenant>/datasets/<sha>/runs/<run>/ui/explore/`);
+  the data and its sidecars keep the strict same-content check.
 - **runner** (found by the M3.5 live-stack verification): the Data Explorer's overview read
   "2 variables over 156 time" for the most common upload, a time dimension called `time`;
   the time dimension is now named by its frequency ("156 weeks", "36 months").

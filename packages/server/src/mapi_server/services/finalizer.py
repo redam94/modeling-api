@@ -405,11 +405,9 @@ class Finalizer:
     async def _outputs_only(self, v: _Verified) -> RunState | None:
         return await self._commit(v)
 
-    async def _copy(
-        self, src: ObjectMeta, dst_bucket: str, dst_name: str, *, keep_existing: bool = False
-    ) -> ObjectMeta:
-        """Copy once (``if_generation_match=0``). An existing destination must hold the same
-        content - or, with ``keep_existing``, is reused as it is."""
+    async def _copy(self, src: ObjectMeta, dst_bucket: str, dst_name: str) -> ObjectMeta:
+        """Copy once (``if_generation_match=0``); an existing destination must hold the same
+        content."""
         store = self.ctx.store
         try:
             return await store.copy(
@@ -422,7 +420,7 @@ class Finalizer:
             )
         except PreconditionFailed:
             existing = await store.stat(dst_bucket, dst_name)
-            if not keep_existing and not existing.same_content(src):
+            if not existing.same_content(src):
                 raise IntegrityError(
                     f"destination {dst_name!r} already holds different content"
                 ) from None
@@ -798,12 +796,11 @@ class Finalizer:
         stored: dict[str, Any] = {}
         for name, meta in sorted(v.objects.items()):
             # The prefix is the data's content hash: identical data uploaded again (the next
-            # version, another dataset or project) lands on the objects already there. The
-            # data and its sidecars must match them exactly; the Data Explorer views are
-            # derived from that same data but carry timestamps, so the stored ones are kept.
-            copied = await self._copy(
-                meta, data_bucket, prefix + name, keep_existing=name.startswith(EXPLORE_PREFIX)
-            )
+            # version, another dataset or project) lands on the objects already there, which
+            # it must match exactly. The Data Explorer views are this ingest's own (computed
+            # by its runner, with timestamps): they live under the run, beside the data.
+            dst = prefix + (f"runs/{run.id}/{name}" if name.startswith(EXPLORE_PREFIX) else name)
+            copied = await self._copy(meta, data_bucket, dst)
             stored[name] = {
                 "bucket": data_bucket,
                 "name": copied.name,
