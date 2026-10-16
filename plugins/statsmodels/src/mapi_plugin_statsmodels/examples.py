@@ -1,6 +1,6 @@
 """A small worked example (spec, data, raw schema) for every statsmodels plugin.
 
-Used by the tests, the conformance corpus and the docs: :func:`examples` returns one
+Used by the tests and the docs: :func:`examples` returns one
 :class:`Example` per plugin id, sized to fit in a second or two. Univariate models run on
 a two-geo panel where that shows the per-series loop.
 """
@@ -48,6 +48,8 @@ def example_spec(
     mode: str = "evaluate_then_refit",
     metrics: str = "[rmse, mae, coverage_90]",
 ) -> str:
+    """A ModelSpec (YAML) for ``model`` with inline ``settings`` and ``bind`` mappings and a
+    ``last``-period time holdout."""
     return f"""
 apiVersion: mapi/v1
 kind: ModelSpec
