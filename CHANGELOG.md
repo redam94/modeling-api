@@ -460,6 +460,10 @@ milestone releases are tagged on `main`.
 - **web**: the endpoint page said "Promoted by usr_01…" and its history listed user ids, and
   saved plots said "of mdl_01…". People are named from the project's members (the id stays in
   the tooltip, and an unknown id is shown as is), and saved plots name their model.
+- **web**: sign-up asked people to accept the terms of service and the acceptable-use policy
+  without a way to read them. Both are links (new tab) to `VITE_TERMS_URL` and
+  `VITE_ACCEPTABLE_USE_URL`, by default the plain-language summaries the app now publishes at
+  `/terms` and `/acceptable-use`.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

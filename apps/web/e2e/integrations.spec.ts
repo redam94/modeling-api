@@ -147,6 +147,18 @@ test("an embed link is created for a saved plot and renders download", async ({ 
   await expect(plotly.getByRole("button", { name: "Download PDF" })).toBeDisabled();
 });
 
+test("sign-up links the terms it asks to accept, which open without a session", async ({ page, context }) => {
+  await as(page, "signed-out");
+  await page.goto("/signup");
+  const opened = context.waitForEvent("page");
+  await page.getByRole("link", { name: "acceptable-use policy" }).click();
+  const aup = await opened;
+  await expect(aup.getByRole("heading", { level: 1, name: "Acceptable-use policy" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create your workspace" })).toBeVisible(); // still here
+  await page.goto("/terms");
+  await expect(page.getByRole("heading", { level: 1, name: "Terms of service" })).toBeVisible();
+});
+
 test("signing up goes to the inbox and the e-mail link creates the workspace", async ({ page }) => {
   await as(page, "signed-out");
   await page.goto("/");

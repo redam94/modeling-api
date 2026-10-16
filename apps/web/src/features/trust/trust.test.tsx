@@ -91,6 +91,32 @@ describe("sign-up", () => {
     expect(screen.getByRole("link", { name: "Get a new link" })).toHaveAttribute("href", "/signup");
   });
 
+  it("links the terms and the acceptable-use policy it asks to accept (M3 review)", async () => {
+    render(<PublicApp path="/signup" />);
+    const label = screen.getByText(/I accept the/).closest("label")!;
+    const terms = within(label).getByRole("link", { name: "terms of service" });
+    const aup = within(label).getByRole("link", { name: "acceptable-use policy" });
+    expect(terms).toHaveAttribute("href", "/terms");
+    expect(aup).toHaveAttribute("href", "/acceptable-use");
+    for (const a of [terms, aup]) {
+      expect(a).toHaveAttribute("target", "_blank");
+      expect(a).toHaveAttribute("rel", "noopener noreferrer");
+    }
+    const { publicPathOf } = await import("./public-paths");
+    expect(publicPathOf("/terms")).toBe("/terms");
+    expect(publicPathOf("/acceptable-use/")).toBe("/acceptable-use");
+  });
+
+  it("publishes default terms and acceptable-use pages", () => {
+    const { unmount } = render(<PublicApp path="/terms" />);
+    expect(screen.getByRole("heading", { level: 1, name: /Terms of service/ })).toBeInTheDocument();
+    expect(screen.getByText(/2026-10/)).toBeInTheDocument();
+    unmount();
+    render(<PublicApp path="/acceptable-use" />);
+    expect(screen.getByRole("heading", { level: 1, name: /Acceptable-use policy/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Back to sign-up/ })).toHaveAttribute("href", "/signup");
+  });
+
   it("says when a link is incomplete", () => {
     window.history.replaceState(null, "", "/verify-email?token=nope");
     render(<PublicApp path="/verify-email" />);

@@ -148,15 +148,18 @@ workspace** (`/signup`), a page that works without a session:
 ![The sign-up page refusing a disposable e-mail address](../assets/screenshots/signup.png){ .mapi-shot }
 
 1. Enter a work e-mail, your name, optionally the organisation (it names the workspace) and
-   accept the terms. Disposable e-mail addresses are refused at the e-mail field; a server
-   with sign-up closed says so.
+   accept the terms: the **terms of service** and the **acceptable-use policy** open in a new
+   tab (`/terms` and `/acceptable-use`, or the installation's own documents set with
+   `VITE_TERMS_URL` and `VITE_ACCEPTABLE_USE_URL`). Disposable e-mail addresses are refused
+   at the e-mail field; a server with sign-up closed says so.
 2. **Check your inbox**: the answer is the same whether or not the address already has an
    account. The link works once, for 24 hours; **Send the link again** replaces it. On a
    development server the page links straight to the mail in the outbox (`make outbox`).
 3. The link opens `/verify-email`, which removes the token from the address bar and asks you
    to **Confirm and create my workspace**. That creates a `public`-tier workspace with a
    `default` project and makes you its admin; **Sign in** then goes through the usual
-   identity-provider flow. An expired or reused link explains how to get a new one.
+   identity-provider flow and opens the new workspace in Guided mode. An expired or reused
+   link explains how to get a new one.
 
 ## Settings > Data
 
