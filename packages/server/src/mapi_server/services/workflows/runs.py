@@ -270,15 +270,38 @@ async def start_workflow_run(
         )
     await session.flush()
     await notify_run(session, run_id, "run")
+    details: dict[str, JsonValue] = {
+        "run_id": run_id,
+        "revision": rev.revision,
+        "trigger": trigger.value,
+        "trigger_id": trigger_id,
+    }
     if ctx.request is not None:
         ev = ctx.request.audit(
             ctx,
             AuditAction.WORKFLOW_RUN,
             ResourceKind.WORKFLOW,
             resource_id=wf.id,
-            details={"run_id": run_id, "revision": rev.revision, "trigger": trigger.value},
+            details=details,
         )
-        await write_audit(ctx.db, [ev], session=session)
+    else:  # started by a schedule, a trigger or a parent workflow: the platform acts
+        from mapi_spec.audit import AuditOutcome, make_audit_event
+        from mapi_spec.tenancy import PrincipalKind
+
+        ev = make_audit_event(
+            action=AuditAction.WORKFLOW_RUN,
+            resource_kind=ResourceKind.WORKFLOW,
+            outcome=AuditOutcome.SUCCESS,
+            ts=now(),
+            fingerprint_key=b"",
+            tenant_id=scope.tenant_id,
+            project_id=scope.project_id,
+            actor_kind=PrincipalKind.SERVICE,
+            actor_id="svc_workflows",
+            resource_id=wf.id,
+            details={**details, "created_by": created_by},
+        )
+    await write_audit(ctx.db, [ev], session=session)
     return wr
 
 
