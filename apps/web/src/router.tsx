@@ -28,6 +28,9 @@ const page = {
   specEditor: () => import("@/routes/spec-editor"),
   tokens: () => import("@/routes/tokens"),
   usage: () => import("@/routes/usage"),
+  // M3.5: workflows (the canvas loads with the editor) and governance.
+  workflows: () => import("@/routes/workflows"),
+  governance: () => import("@/routes/governance"),
 };
 
 export interface RouterContext {
@@ -226,6 +229,96 @@ const adminRoute = createRoute({
   validateSearch: (s: Record<string, unknown>): { tab?: AdminTab | undefined } => ({ tab: oneOf(s.tab, ADMIN_TABS) }),
 });
 
+// ----------------------------------------------------------------------------- M3.5
+
+export const WORKFLOW_TABS = ["editor", "runs", "automation", "revisions"] as const;
+export type WorkflowTab = (typeof WORKFLOW_TABS)[number];
+
+function templateParam(v: unknown): string | undefined {
+  return typeof v === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(v) ? v : undefined;
+}
+
+const workflowsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workflows",
+  component: lazyRouteComponent(page.workflows, "WorkflowsPage"),
+  validateSearch: (s: Record<string, unknown>): { tab?: "workflows" | "templates" | undefined } => ({ tab: oneOf(s.tab, ["workflows", "templates"] as const) }),
+});
+
+const newWorkflowRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workflows/new",
+  component: lazyRouteComponent(page.workflows, "NewWorkflowPage"),
+  validateSearch: (s: Record<string, unknown>): { template?: string | undefined } => ({ template: templateParam(s.template) }),
+});
+
+const recipeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workflows/recipe",
+  component: lazyRouteComponent(page.workflows, "RecipePage"),
+  validateSearch: (s: Record<string, unknown>): { template?: string | undefined } => ({ template: templateParam(s.template) }),
+});
+
+const workflowRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workflows/$workflowId",
+  component: lazyRouteComponent(page.workflows, "WorkflowPage"),
+  validateSearch: (s: Record<string, unknown>): { tab?: WorkflowTab | undefined; rev?: number | undefined } => ({
+    tab: oneOf(s.tab, WORKFLOW_TABS),
+    rev: positiveInt(s.rev),
+  }),
+});
+
+const workflowRunRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workflow-runs/$runId",
+  component: lazyRouteComponent(page.workflows, "WorkflowRunPage"),
+});
+
+export const GOVERNANCE_TABS = ["policies", "tenant", "checks"] as const;
+export type GovernanceTab = (typeof GOVERNANCE_TABS)[number];
+export const VALIDATION_STATUSES = ["draft", "checks_running", "checks_passed", "checks_failed", "awaiting_approval", "validated", "rejected", "deprecated"] as const;
+
+const governanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/governance",
+  component: lazyRouteComponent(page.governance, "GovernancePage"),
+  validateSearch: (s: Record<string, unknown>): { tab?: GovernanceTab | undefined } => ({ tab: oneOf(s.tab, GOVERNANCE_TABS) }),
+});
+
+const newPolicyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/governance/policies/new",
+  component: lazyRouteComponent(page.governance, "NewPolicyPage"),
+  validateSearch: (s: Record<string, unknown>): { scope?: "tenant" | undefined } => ({ scope: oneOf(s.scope, ["tenant"] as const) }),
+});
+
+const policyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/governance/policies/$policyId",
+  component: lazyRouteComponent(page.governance, "PolicyPage"),
+  validateSearch: (s: Record<string, unknown>): { scope?: "tenant" | undefined } => ({ scope: oneOf(s.scope, ["tenant"] as const) }),
+});
+
+const validationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/validations",
+  component: lazyRouteComponent(page.governance, "ValidationsPage"),
+  validateSearch: (s: Record<string, unknown>): { status?: (typeof VALIDATION_STATUSES)[number] | undefined } => ({ status: oneOf(s.status, VALIDATION_STATUSES) }),
+});
+
+const validationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/validations/$validationId",
+  component: lazyRouteComponent(page.governance, "ValidationPage"),
+});
+
+const modelValidationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/models/$modelId/versions/$version/validations",
+  component: lazyRouteComponent(page.governance, "ModelValidationsPage"),
+});
+
 export const routeTree = rootRoute.addChildren([
   homeRoute,
   datasetsRoute,
@@ -252,6 +345,17 @@ export const routeTree = rootRoute.addChildren([
   membersRoute,
   usageRoute,
   adminRoute,
+  workflowsRoute,
+  newWorkflowRoute,
+  recipeRoute,
+  workflowRoute,
+  workflowRunRoute,
+  governanceRoute,
+  newPolicyRoute,
+  policyRoute,
+  validationsRoute,
+  validationRoute,
+  modelValidationsRoute,
 ]);
 
 export function createAppRouter(queryClient: QueryClient) {

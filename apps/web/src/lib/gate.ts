@@ -112,13 +112,19 @@ export function previewGate(
 const REASON_CODES = new Set<string>(Object.keys(GATE_REASON_LABEL));
 
 /**
- * The gate decision a refused promotion carries: `409 OVERRIDE_REQUIRED` (needs an override)
- * or `PROMOTION_BLOCKED`, one issue per reason with `context.gate_code` and `context.check`.
+ * The gate decision a refused promotion carries: `409 OVERRIDE_REQUIRED` (needs an override),
+ * `PROMOTION_BLOCKED` or `NOT_VALIDATED`, one issue per reason with `context.gate_code` and
+ * `context.check`.
  * `null` for any other problem.
  */
 export function gateFromProblem(problem: Problem | null | undefined): PromotionGateDecision | null {
-  if (!problem || (problem.code !== "OVERRIDE_REQUIRED" && problem.code !== "PROMOTION_BLOCKED")) return null;
-  const blocked = problem.code === "PROMOTION_BLOCKED";
+  if (!problem || (problem.code !== "OVERRIDE_REQUIRED" && problem.code !== "PROMOTION_BLOCKED" && problem.code !== "NOT_VALIDATED")) return null;
+  // M3.5: `NOT_VALIDATED` (a governance policy requires a validated version) blocks like
+  // `PROMOTION_BLOCKED`: no override passes it.
+  if (problem.code === "NOT_VALIDATED" && !(problem.errors ?? []).length) {
+    return { outcome: "blocked", reasons: [{ code: "NOT_VALIDATED", outcome: "blocked", message_plain: problem.detail ?? problem.title, check: null }], failing_checks: [] };
+  }
+  const blocked = problem.code !== "OVERRIDE_REQUIRED";
   const reasons: GateReason[] = (problem.errors ?? []).map((issue) => {
     const ctx = issue.context ?? {};
     const raw = typeof ctx.gate_code === "string" ? ctx.gate_code : "";

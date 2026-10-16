@@ -1,6 +1,6 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Boxes, Gauge } from "lucide-react";
+import { Boxes, Gauge, ShieldCheck } from "lucide-react";
 
 import { useModel, useModels, useModelVersion, useModelVersions } from "@/api/queries";
 import type { Model, ModelVersion } from "@/api/types";
@@ -136,11 +136,19 @@ export function ModelVersionPage() {
           </>
         }
         actions={
-          <Button asChild>
-            <Link to="/score" search={{ model: modelId, version: v }}>
-              <Gauge /> Score
-            </Link>
-          </Button>
+          <>
+            {/* M3.5: governance validation of this version (policies, checks, approval). */}
+            <Button variant="outline" asChild>
+              <Link to="/models/$modelId/versions/$version/validations" params={{ modelId, version: String(v) }}>
+                <ShieldCheck /> Validation
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link to="/score" search={{ model: modelId, version: v }}>
+                <Gauge /> Score
+              </Link>
+            </Button>
+          </>
         }
       />
       <Tabs value={tab ?? "overview"} onValueChange={(t) => void navigate({ search: { tab: t === "overview" ? undefined : (t as typeof tab) } })}>

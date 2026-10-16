@@ -13,6 +13,8 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
+  Workflow,
+  BadgeCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -67,6 +69,9 @@ export const EXPERT_NAV: NavItem[] = [
   { to: "/runs", label: "Runs", icon: Activity, chord: "r", description: "Fits, dry-runs, ingests and scores" },
   { to: "/models", label: "Models", icon: Boxes, chord: "m", description: "Inspect fitted model versions" },
   { to: "/score", label: "Score", icon: Gauge, chord: "s", description: "Forecasts, scenarios and counterfactuals" },
+  // M3.5: automated analyses and the governance that validates models.
+  { to: "/workflows", label: "Workflows", icon: Workflow, chord: "w", description: "Tests, models and checks in one automated graph" },
+  { to: "/governance", label: "Governance", icon: BadgeCheck, chord: "v", description: "Policies, validations and approvals" },
   INTEGRATIONS_NAV,
   { to: "/catalog", label: "Catalog", icon: Library, chord: "c", description: "Models, steps and plot recipes" },
 ];
