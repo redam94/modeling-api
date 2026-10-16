@@ -53,20 +53,44 @@ until `done` (the client and the CLI do this for you, resending with the same
 
 ## 2. Read the plan
 
+The `result` of a real plan - the demo's two-channel model from the
+[Python client guide](../guides/python-client.md), `objective: "mean"`, five frontier points,
+rounded and shortened - computed in 9 seconds of sandbox time on a laptop:
+
 ```json
 {
+  "format": "mapi.optimize/v1",
+  "objective_label": "expected KPI (posterior mean)",
+  "kpi": "revenue_local", "kpi_units": "EUR", "spend_units": "EUR",
+  "total_budget": 639176, "current_total": 639176,
   "allocation": [
-    {"channel": "tv", "current_spend": 600000, "optimal_spend": 450000,
-     "change_pct": -25, "marginal_roi": 1.4, "stability": 0.82},
-    {"channel": "search", "current_spend": 400000, "optimal_spend": 550000,
-     "change_pct": 37.5, "marginal_roi": 1.4, "stability": 0.9}
+    {"channel": "tv", "current_spend": 370845, "optimal_spend": 417971,
+     "change_pct": 12.7, "marginal_roi": 3.48, "stability": 0.705, "extrapolated": false,
+     "expected_contribution": {"mean": 1782506, "sd": 191376, "quantiles": {"0.05": 1479072, "0.95": 2104367}}},
+    {"channel": "search", "current_spend": 268331, "optimal_spend": 221205,
+     "change_pct": -17.6, "marginal_roi": 3.48, "stability": 0.705, "extrapolated": false,
+     "expected_contribution": {"mean": 963528, "sd": 222208, "quantiles": {"0.05": 645055, "0.95": 1335924}}}
   ],
-  "uplift": {"mean": 120000, "sd": 60000, "quantiles": {"0.05": 25000, "0.95": 220000}},
-  "prob_positive_uplift": 0.97,
-  "expected_regret": 8000,
-  "frontier": [{"total_budget": 400000, "expected_kpi": 3100000}, "..."]
+  "expected_kpi": {"mean": 16588448, "sd": 62359},
+  "current_kpi": {"mean": 16578641, "sd": 43247},
+  "uplift": {"mean": 9807, "sd": 42867, "quantiles": {"0.05": -60803, "0.5": 12370, "0.95": 70045}},
+  "prob_positive_uplift": 0.625,
+  "expected_regret": 45817,
+  "shadow_price": 3.48,
+  "frontier": [
+    {"total_budget": 255670, "expected_kpi": 15069639, "kpi_p5": 14864907, "kpi_p95": 15285515,
+     "marginal_roi": 4.12, "allocation": {"tv": 185422, "search": 70248}},
+    "…"
+  ],
+  "n_draws": 200,
+  "notes_plain": ["Frontier optimizes the expected KPI (posterior mean) at each budget; …"]
 }
 ```
+
+On this model the honest answer is "move a little from search to TV, but do not expect
+much": the plan adds about 10,000 EUR on average, but the uplift's 90% range runs from -61,000
+to +70,000 and only 62.5% of the posterior draws prefer it. At the plan both channels return
+the same 3.48 per extra euro, which is what an optimum looks like.
 
 - **`uplift`** is the plan's KPI minus today's plan's, per posterior draw;
   **`prob_positive_uplift`** the chance the change helps at all.
@@ -76,6 +100,8 @@ until `done` (the client and the CLI do this for you, resending with the same
   the same way - low values mean the data cannot tell.
 - **`expected_regret`** is the KPI left on the table by committing to one plan under
   uncertainty.
+- **`shadow_price`** is what the next unit of money would add to the KPI at this plan;
+  **`extrapolated`** marks a channel pushed beyond the spend range seen in the data.
 - **`frontier`** shows the best plan at other totals: invest while its marginal ROI stays
   above what a euro is worth to you.
 - **`notes_plain`** says, for example, when a channel is pushed beyond the spend the model
