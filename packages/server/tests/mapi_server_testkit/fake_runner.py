@@ -155,7 +155,15 @@ def outputs_for(rs: RunSpec, mode: str) -> dict[str, tuple[bytes, str]]:
             "schema.json": js(schema),
             "summary.json": js({"vars": ["y"], "coords": {"t": {"kind": "time", "size": 48}}}),
             "preview.json": js({"rows": [[1.0]]}),
-        }
+            "columns.json": js(
+                [
+                    {"name": "date", "dtype": "date", "n_rows": 48, "n_distinct": 48,
+                     "detected_freq": "MS", "monotonic": True, "origin": "column"},
+                    {"name": "co2", "dtype": "number", "n_rows": 48, "min": 300.0,
+                     "max": 420.0, "origin": "column"},
+                ]
+            ),
+        }  # fmt: skip
     if kind == "describe":
         path = os.environ["FAKE_RUNNER_CATALOG"]
         return {"catalog.json": (Path(path).read_bytes(), "application/json")}

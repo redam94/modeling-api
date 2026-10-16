@@ -83,7 +83,7 @@ def tenant_dto(t: m.Tenant) -> Tenant:
 def project_dto(p: m.Project) -> ProjectDTO:
     return ProjectDTO(
         id=p.id, tenant_id=p.tenant_id, name=p.name, description=p.description,
-        created_at=p.created_at,
+        created_at=p.created_at, guided_locked=bool(p.guided_locked),
     )  # fmt: skip
 
 
@@ -278,6 +278,7 @@ async def create_project(
         project_id=body.id,
         name=body.name,
         description=body.description,
+        guided_locked=bool(body.guided_locked),
         created_at=now(),
     )
     session.add(row)
@@ -285,7 +286,8 @@ async def create_project(
     await write_audit(
         ctx.db,
         [auth.audit(ctx, AuditAction.PROJECT_CREATE, ResourceKind.PROJECT, resource_id=body.id,
-                    project_id=body.id)],
+                    project_id=body.id,
+                    details={"guided_locked": True} if body.guided_locked else None)],
         session=session,
     )  # fmt: skip
     return project_dto(row)
@@ -317,12 +319,18 @@ async def update_project(
         row.name = body.name
     if "description" in body.model_fields_set:
         row.description = body.description
-    await write_audit(
-        ctx.db,
-        [auth.audit(ctx, AuditAction.PROJECT_UPDATE, ResourceKind.PROJECT, resource_id=project_id,
-                    details={"fields": ", ".join(sorted(body.model_fields_set))})],
-        session=session,
-    )  # fmt: skip
+    events = [
+        auth.audit(ctx, AuditAction.PROJECT_UPDATE, ResourceKind.PROJECT, resource_id=project_id,
+                   details={"fields": ", ".join(sorted(body.model_fields_set))})
+    ]  # fmt: skip
+    if body.guided_locked is not None and body.guided_locked != row.guided_locked:
+        # the persona lock (M3): members below admin then write Guided specs only
+        row.guided_locked = body.guided_locked
+        events.append(
+            auth.audit(ctx, AuditAction.PROJECT_GUIDED_LOCK, ResourceKind.PROJECT,
+                       resource_id=project_id, details={"locked": body.guided_locked})
+        )  # fmt: skip
+    await write_audit(ctx.db, events, session=session)
     return project_dto(row)
 
 
