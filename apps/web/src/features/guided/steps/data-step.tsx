@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 import { useDetectRoles, useGuidedDraft } from "../api";
 import { StepActions } from "../frame";
 import { detectMeridian, detectMff, formatFromName, profilesFromNames, profileTable, readLocalTable, seriesFor, tableProblems, type LocalTable, type PresetMatch, type UploadFormat } from "../profile";
-import { clearLocalDraft, defaultSessionName, GUIDED_LABEL, GUIDED_MESSAGE, hasTask, loadLocalDraft, saveLocalDraft, slugify } from "../session";
+import { clearLocalDraft, dataShapePlain, defaultSessionName, GUIDED_LABEL, GUIDED_MESSAGE, hasTask, loadLocalDraft, saveLocalDraft, slugify } from "../session";
 import type { ColumnProfile, GuidedAnswers, GuidedDraft, GuidedQuestion, GuidedTemplate, QuestionSuggestion } from "../types";
 import { Sparkline } from "../ui";
 
@@ -531,7 +531,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
               <div className="grid gap-1">
                 <p className="font-medium">Drop your spreadsheet here</p>
                 <p className="max-w-[52ch] text-[13px] text-muted-foreground">
-                  A CSV file with one row per week (and market), or a Parquet file. MFF long tables and Google Meridian tables are recognised automatically. Your file is previewed here first; nothing is uploaded until you say so.
+                  {dataShapePlain(template)} Your file is previewed here first; nothing is uploaded until you say so.
                 </p>
               </div>
               <Button variant="outline" onClick={() => inputRef.current?.click()}>

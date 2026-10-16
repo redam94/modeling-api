@@ -125,6 +125,18 @@ export function advancedChanges(template: Pick<GuidedTemplate, "ui_levels">, doc
     .sort();
 }
 
+const DATA_SHAPES: Partial<Record<GuidedTemplate["family"], string>> = {
+  mmm: "A CSV file with one row per week (or day) and market, holding the results and a spend column per channel, or a Parquet file. MFF long tables and Google Meridian tables are recognised automatically.",
+  forecast: "A CSV file with one row per week (or day), holding the series to forecast, or a Parquet file.",
+  tabular: "A CSV file with one row per store and week, holding the sales and what drives them (prices, promotions, the calendar), or a Parquet file.",
+  choice: "A CSV file with one row per shopping trip, holding the customer, the product chosen and a price (and promotion) column per product, or a Parquet file.",
+};
+
+/** What the upload should look like for this template, in plain words. */
+export function dataShapePlain(template: Pick<GuidedTemplate, "family" | "description_plain">): string {
+  return DATA_SHAPES[template.family] ?? `A CSV or Parquet file with the data for this analysis: ${template.description_plain}`;
+}
+
 export type PeriodUnit = "day" | "week" | "month" | "period";
 
 /**

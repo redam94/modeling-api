@@ -313,6 +313,22 @@ describe("Guided usability fixes (M3 tester run)", () => {
   });
 });
 
+describe("the upload hint (M3 review)", () => {
+  it("describes the data each template needs, and the MMM presets only for the marketing mix", async () => {
+    const { dataShapePlain } = await import("./session");
+    const mmm = dataShapePlain(tpl("geo_mmm"));
+    expect(mmm).toMatch(/one row per week \(or day\) and market/);
+    expect(mmm).toMatch(/MFF/);
+    expect(mmm).toMatch(/Meridian/);
+    const choice = dataShapePlain(tpl("customer_choice"));
+    expect(choice).toMatch(/one row per shopping trip/);
+    expect(choice).not.toMatch(/MFF|Meridian|market/);
+    expect(dataShapePlain(tpl("store_demand"))).toMatch(/one row per store and week/);
+    expect(dataShapePlain(tpl("weekly_forecast"))).not.toMatch(/MFF|market/);
+    expect(dataShapePlain({ family: "other" as GuidedTemplate["family"], description_plain: "Anything." })).toMatch(/^A CSV or Parquet file/);
+  });
+});
+
 describe("the fan chart's y axis (M3 review)", () => {
   it("fits the band instead of starting at zero", () => {
     const fan = { dim: "time", coords: ["2025-01-05", "2025-01-12"], quantiles: [0.05, 0.25, 0.5, 0.75, 0.95], values: [[350, 360], [370, 375], [380, 385], [390, 395], [400, 410]], observed: [382, null] };

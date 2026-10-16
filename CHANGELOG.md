@@ -464,6 +464,9 @@ milestone releases are tagged on `main`.
   without a way to read them. Both are links (new tab) to `VITE_TERMS_URL` and
   `VITE_ACCEPTABLE_USE_URL`, by default the plain-language summaries the app now publishes at
   `/terms` and `/acceptable-use`.
+- **web**: the Guided upload box described weekly marketing data by market (and the MFF and
+  Meridian presets) for every template, Customer choice and Demand by store included. It
+  describes the rows each template needs and names the presets for the marketing mix only.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
