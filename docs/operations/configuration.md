@@ -132,7 +132,7 @@ See [Sharing plots](../guides/sharing-plots.md).
 | `MAPI_RENDER_PLOTLY_ENABLED` | `false` | Accept Plotly plots for static rendering. This needs kaleido and a Chrome or Chromium in the runner image, which the base images do not ship. While it is off, Plotly renders are refused with `MODE_NOT_SUPPORTED` |
 | `MAPI_EMBED_RATE_PER_MINUTE` | `300` | Public views per minute of one embed link (`429 RATE_LIMITED` beyond) |
 | `MAPI_EMBED_IP_RATE_PER_MINUTE` | `120` | Public embed requests per minute from one client address, valid or not (slows down token guessing) |
-| `MAPI_EMBED_CACHE_S` | `60` | How long an API instance reuses an embed's resolved plot. It is also the response's `max-age`. Expiry and revocation are still checked on every request |
+| `MAPI_EMBED_CACHE_S` | `60` | How long an API instance reuses an embed's resolved plot. Expiry and revocation are still checked on every request, and responses are `Cache-Control: private, no-cache`, so a revoked link stops rendering on the next load |
 | `MAPI_EMBED_IMAGE_URL_TTL_S` | `900` | Lifetime of the signed URL of an embed's PNG fallback |
 
 **Object storage**

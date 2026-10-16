@@ -150,7 +150,8 @@ async def test_embed_token_lifecycle(
     assert public.status_code == 200, public.text
     assert public.headers["access-control-allow-origin"] == PLOTS_ORIGIN
     assert "access-control-allow-credentials" not in public.headers
-    assert public.headers["cache-control"].startswith("public, max-age=")
+    # never cached by a browser or a CDN: revocation takes effect on the next load
+    assert public.headers["cache-control"] == "private, no-cache"
     assert public.headers["x-robots-tag"].startswith("noindex")
     view = EmbedView.model_validate(public.json())
     assert view.title == "core.ppc_fan" and view.allowed_origins == ["https://acme.notion.site"]
