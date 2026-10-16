@@ -284,12 +284,18 @@ def write_receiver_tls(out: Path, hosts: Sequence[str], *, days: int = 90) -> No
         .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
         .add_extension(
             x509.KeyUsage(
-                digital_signature=False, content_commitment=False, key_encipherment=False,
-                data_encipherment=False, key_agreement=False, key_cert_sign=True,
-                crl_sign=True, encipher_only=False, decipher_only=False,
+                digital_signature=False,
+                content_commitment=False,
+                key_encipherment=False,
+                data_encipherment=False,
+                key_agreement=False,
+                key_cert_sign=True,
+                crl_sign=True,
+                encipher_only=False,
+                decipher_only=False,
             ),
             critical=True,
-        )  # fmt: skip
+        )
         .add_extension(
             x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), critical=False
         )

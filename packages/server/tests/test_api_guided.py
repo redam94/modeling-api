@@ -426,10 +426,11 @@ async def test_run_exact_over_the_fit_window_scores_the_fit_dataset(
         assert ds is not None
     want = f"dataset://{ds.project_id}/{ds.name}@v{fit.dataset_version}"
     model = "model://default/trend@v1"
+    off = {"kind": "channel_off", "channel": "tv"}
     bodies: list[dict[str, Any]] = [
         {"kind": "whatif", "model": model, "scenario": {"multipliers": {"tv": 0.5}}},
-        {"kind": "counterfactual", "model": model, "preset": {"kind": "channel_off", "channel": "tv"}},
-    ]  # fmt: skip
+        {"kind": "counterfactual", "model": model, "preset": off},
+    ]
     for body in bodies:
         r = await client.post("/v1/guided/requests:compile", json=body)
         assert r.status_code == 200, r.text
