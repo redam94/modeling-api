@@ -160,7 +160,9 @@ every variable must be one the endpoint takes, with its dims; coordinates must b
 input; a `predict` call must send every input - and then runs the usual
 [coordinate checks](../concepts/coord-plans.md) (modes, horizon, unseen levels, future
 covariates). It reads only the payload's coordinates for that: the values are decoded inside
-the sandboxed score run, never by the API. `POST …/validate` runs the same checks and answers
+the sandboxed score run, never by the API. The score run gives each coordinate the type of the
+model's dim (dates arrive as ISO strings), so an inline payload scores exactly like the same
+rows uploaded as a dataset. `POST …/validate` runs the same checks and answers
 `200` with the issues, without running anything.
 
 Bodies above 10.25 MB are refused with `413 PAYLOAD_TOO_LARGE`; upload larger data as a
