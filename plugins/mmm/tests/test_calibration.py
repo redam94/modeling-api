@@ -217,6 +217,75 @@ def test_unknown_channels_zero_spend_and_ranges_from_zero() -> None:
     assert set(out.ranges) == {"tv"}
 
 
+def test_a_share_belief_on_a_channel_without_spend_is_refused() -> None:
+    """A new channel with no spend yet has a share of 0 whatever its coefficient: solving
+    for it gave LogNormal(mu~692), which predicts ~1e300 for any new spend."""
+    ds = model_stage(zero_channel=1)
+    scales = model_scales(ds, SETTINGS, None)
+    priors = BusinessPriors.model_validate(
+        {"channels": {"search": {"contribution_share": [0.05, 0.1]}, "tv": {"roi": [1, 3]}}}
+    )
+    out = translate_business_priors(priors, scales, SETTINGS, ds, draws=400, seed=0)
+    errors = {i.pointer: i for i in out.issues if i.severity is Severity.ERROR}
+    assert "/business_priors/channels/search/contribution_share" in errors
+    assert "no spend" in errors["/business_priors/channels/search/contribution_share"].message
+    assert set(out.ranges) == {"tv"}
+    beta = out.priors["beta_channel"]
+    assert all(np.isfinite(beta["mu"])) and max(abs(v) for v in beta["mu"]) < 50
+
+
+def test_the_pymc_marketing_translator_refuses_a_share_without_spend() -> None:
+    import pandas as pd
+    from mapi_plugin_mmm.pymc_marketing_calibration import (
+        PmmPriorDraws,
+        translate_pmm_business_priors,
+    )
+    from mapi_plugin_mmm.settings import PyMCMarketingSettings
+
+    rng = np.random.default_rng(0)
+    n, cells = 400, 2
+    media = rng.gamma(4.0, 1.0, size=(n, cells, 2))
+    media[..., 1] = 0.0  # search never spent: its media effect is 0
+    draws = PmmPriorDraws(
+        media=media,
+        beta=rng.lognormal(size=(n, cells, 2)),
+        intercept=rng.normal(size=(n, cells)),
+        other=np.zeros((n, 10)),
+        kpi=None,
+        target_scale=1.0,
+        n_time=10,
+    )
+    frame = pd.DataFrame({"tv": rng.gamma(2.0, 1.0, 20), "search": np.zeros(20), "y": 5.0})
+    s = PyMCMarketingSettings.model_validate({"dims": ["geo"], "adstock": {"l_max": 2}})
+    priors = BusinessPriors.model_validate(
+        {"channels": {"search": {"contribution_share": [0.05, 0.1]}, "tv": {"roi": [1, 3]}}}
+    )
+    out = translate_pmm_business_priors(priors, draws, frame, ["tv", "search"], s, seed=0)
+    errors = {i.pointer for i in out.issues if i.severity is Severity.ERROR}
+    assert errors == {"/business_priors/channels/search/contribution_share"}
+    beta = out.priors["saturation_beta"]
+    assert all(np.isfinite(beta["mu"])) and max(abs(v) for v in beta["mu"]) < 50
+    assert set(out.ranges) == {"tv"}
+
+
+def test_a_degenerate_solve_is_refused_and_the_default_prior_kept() -> None:
+    """Spend that exists but is negligible next to the KPI asks for an absurd coefficient:
+    the translator refuses it instead of emitting LogNormal(mu~hundreds)."""
+    ds = model_stage()
+    ds["spend"] = ds["spend"] * xr.DataArray([1.0, 1e-200], dims=["channel"])
+    scales = model_scales(ds, SETTINGS, None)
+    priors = BusinessPriors.model_validate(
+        {"channels": {"search": {"contribution_share": [0.05, 0.1]}, "tv": {"roi": [1, 3]}}}
+    )
+    out = translate_business_priors(priors, scales, SETTINGS, ds, draws=400, seed=0)
+    pointer = "/business_priors/channels/search/contribution_share"
+    errors = {i.pointer: i for i in out.issues if i.severity is Severity.ERROR}
+    assert pointer in errors and "degenerate" in errors[pointer].message
+    beta = out.priors["beta_channel"]
+    assert all(np.isfinite(beta["mu"])) and max(abs(v) for v in beta["mu"]) < 50
+    assert set(out.ranges) == {"tv"}
+
+
 def test_a_range_tighter_than_the_other_priors_is_reported() -> None:
     outcome, _, _ = _translate({"channels": {"tv": {"roi": [2.0, 2.02], "credibility": 0.95}}})
     assert any("narrower" in i.message for i in outcome.issues)

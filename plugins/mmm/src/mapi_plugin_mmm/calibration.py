@@ -153,6 +153,9 @@ SIGMA_MIN: Final = 0.02
 """Floor of a translated log-normal's sigma (a stated range narrower than the other priors
 allow is met as closely as this permits)."""
 SIGMA_MAX: Final = 4.0
+MU_MAX: Final = 50.0
+"""Largest ``|mu|`` of a translated log-normal: beyond it (a coefficient of e^50 in model
+units) the stated range cannot be met by the model's media effect, and the solve is refused."""
 _ZERO_LOW_RATIO: Final = 20.0
 _BISECT_ITERS: Final = 60
 _CHUNK_CELLS: Final = 2_000_000
@@ -534,6 +537,53 @@ def _range(
     return hi / _ZERO_LOW_RATIO, hi
 
 
+def _share_without_spend(label: str, spend: float, pointer: str) -> Issue | None:
+    """The ``error`` for a contribution share stated for a channel without spend (its share
+    is 0 whatever its coefficient, so no prior can match the range)."""
+    if spend > 0:
+        return None
+    return _issue(
+        f"channel {label!r} has no spend in the fit window, so its share of the KPI is 0 "
+        "whatever the model believes",
+        pointer=pointer,
+        severity=Severity.ERROR,
+        action="Leave the channel out of business priors until it has spend in the data.",
+    )
+
+
+def _refuse_degenerate(
+    mu: np.ndarray,
+    sigma: np.ndarray,
+    default: tuple[np.ndarray, np.ndarray],
+    idx: np.ndarray,
+    labels: Sequence[str],
+    quantity: np.ndarray,
+    ranges: dict[str, tuple[str, float, float, float]],
+    issues: list[Issue],
+    pointer: str,
+) -> None:
+    """Put back the default prior of every stated channel whose solved log-normal is not
+    finite or has ``|mu| > MU_MAX``, with an ``error`` issue (never emit an absurd prior)."""
+    for ci in idx.tolist():
+        m, sd = float(mu[ci]), float(sigma[ci])
+        if math.isfinite(m) and math.isfinite(sd) and abs(m) <= MU_MAX:
+            continue
+        label = labels[ci]
+        what = "roi" if quantity[ci] == 1 else "contribution_share"
+        issues.append(
+            _issue(
+                f"the {what.replace('_', ' ')} range for {label!r} cannot be met by the "
+                f"model's media effect (the prior it needs is degenerate: log-scale centre "
+                f"{m:.3g}); the channel keeps its default prior",
+                pointer=pointer + _pointer("channels", label, what),
+                severity=Severity.ERROR,
+                action="Check the channel's spend and the KPI units, or state another range.",
+            )
+        )
+        mu[ci], sigma[ci] = default[0][ci], default[1][ci]
+        ranges.pop(label, None)
+
+
 def translate_business_priors(
     priors: BusinessPriors,
     scales: ModelScales,
@@ -568,6 +618,7 @@ def translate_business_priors(
     spend_total = scales.spend_total
 
     mu, sigma = _lognormal_like(resolved["beta_channel"], n_ch, seed + 17)
+    default = (mu.copy(), sigma.copy())
     quantity = np.zeros(n_ch, dtype=int)  # 0 none, 1 roi, 2 share
     lo_t = np.ones(n_ch)
     hi_t = np.ones(n_ch)
@@ -611,6 +662,12 @@ def translate_business_priors(
                     )
                 )
                 continue
+            no_spend = _share_without_spend(
+                label, float(spend_total[c]), here + "/contribution_share"
+            )
+            if no_spend is not None:
+                issues.append(no_spend)
+                continue
             lo, hi = _range(label, belief.contribution_share, issues, here + "/contribution_share")
             quantity[c] = 2
             ranges[label] = (
@@ -652,8 +709,11 @@ def translate_business_priors(
         centre = _quantile_spread(log_r(sigma)[:, idx], q[idx])[1]
         denom = np.where(quantity[idx] == 1, spend_total[idx], kpi_total or 1.0)
         mu[idx] = (np.log(lo_t[idx]) + np.log(hi_t[idx])) / 2 + np.log(denom) - centre
+        _refuse_degenerate(mu, sigma, default, idx, labels, quantity, ranges, issues, pointer)
         for j, ci in enumerate(idx.tolist()):
             label = labels[ci]
+            if label not in ranges:
+                continue
             what = "ROI" if quantity[ci] == 1 else "contribution share"
             if narrow[j]:
                 issues.append(

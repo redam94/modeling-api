@@ -424,6 +424,11 @@ milestone releases are tagged on `main`.
   its scorecard can still pass). Such a version now needs an administrator override with the
   new gate reason `NOT_EVALUATED`, as does a guided version whose template's scorecard checks
   did not all run (Q13). The web app's gate preview follows.
+- **mmm**: a contribution-share belief for a channel with no spend in the fit window
+  translated to an absurd prior (`LogNormal(mu≈692)`, so any new spend on the channel
+  predicted ~1e300) with no issue. Both translators (`mmm.hierarchical_geo`,
+  `mmm.pymc_marketing`) now refuse it with an error, as they do for an ROI belief, and refuse
+  any solved prior that is not finite or has `|mu| > 50`, keeping the channel's default.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
