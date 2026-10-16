@@ -396,3 +396,37 @@ async def test_the_routes_are_in_the_openapi_document_with_their_problems() -> N
     post = ops[("POST", URL, "create_prior_translation")]
     assert "BUSINESS_PRIORS_INVALID" in post["responses"]["422"]["description"]
     assert "429" in post["responses"]
+
+
+async def test_the_promotion_gate_reads_the_stored_scorecard(ctx: ServerContext) -> None:
+    from mapi_server.services.scorecards import promotion_decision
+    from mapi_server_testkit.builders import queued_fit
+    from mapi_spec.endpoints import EvaluationPolicy
+    from mapi_spec.scorecard import GateOutcome
+
+    run_id = await queued_fit(ctx)
+    run, att = await _finalizing(ctx, run_id)
+    card = rollup([evaluate_check("holdout.mape", 0.14), evaluate_check("data.history", 30)])
+    await simulate_outputs(
+        ctx, run, att, add={"scorecard.json": (card.model_dump_json().encode(), "application/json")}
+    )
+    assert await Finalizer(ctx).finalize(run.id, att.attempt) is RunState.SUCCEEDED
+    async with ctx.db.session() as s:
+        done = await load_run(s, None, run_id)
+        mv = await s.get(m.ModelVersion, done.output_model_version_id)
+        assert mv is not None
+        decision = await promotion_decision(s, mv)
+        assert decision.outcome is GateOutcome.BLOCKED  # data.history fails (30 < 52)
+        assert set(decision.failing_checks) == {"holdout.mape", "data.history"}
+        mv.scorecard = rollup([evaluate_check("holdout.mape", 0.14)]).model_dump(mode="json")
+        assert (await promotion_decision(s, mv)).outcome is GateOutcome.NEEDS_OVERRIDE
+        mv.scorecard = None
+        reasons = (await promotion_decision(s, mv)).reasons
+        assert [r.code for r in reasons] == ["NO_SCORECARD"]
+        run_row = await s.get(m.Run, mv.run_id)
+        assert run_row is not None
+        run_row.payload = {**run_row.payload, "model": {"fit": {"mode": "train_only"}}}
+        mv.scorecard = rollup([evaluate_check("holdout.mape", 0.05)]).model_dump(mode="json")
+        assert (await promotion_decision(s, mv)).outcome is GateOutcome.BLOCKED
+        lenient = EvaluationPolicy(fit_mode="train_only")
+        assert (await promotion_decision(s, mv, policy=lenient)).outcome is GateOutcome.ALLOWED
