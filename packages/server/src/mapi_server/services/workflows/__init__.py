@@ -13,6 +13,8 @@ from mapi_server.services.workflows.automation import (
     fire_due_triggers,
 )
 from mapi_server.services.workflows.hooks import (
+    DEFAULT_RESOLVER,
+    DEFAULT_SUBMITTER,
     governance_hooks,
     set_policy_resolver,
     set_validation_submitter,
@@ -21,6 +23,8 @@ from mapi_server.services.workflows.orchestrate import WorkflowOrchestrator
 from mapi_server.services.workflows.runs import start_workflow_run, workflow_run_dto
 
 __all__ = [
+    "DEFAULT_RESOLVER",
+    "DEFAULT_SUBMITTER",
     "WorkflowLoop",
     "WorkflowOrchestrator",
     "dataset_version_ready",
