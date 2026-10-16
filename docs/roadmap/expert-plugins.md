@@ -46,8 +46,7 @@ instructions into an agent. Tokens and scopes work as for any other client.
 
 - **`optimize` runs** (delivered in v0.5). Budgets are optimised *next to the model* in the
   sandbox with mmm-framework's planning module, from the posterior's response curves
-  ([Optimise a budget](../tutorials/optimise-a-budget.md)); the v0.4 Atlas adapter was
-  removed.
+  ([Optimise a budget](../tutorials/optimise-a-budget.md)).
 - **`Sweep`, `Backtest` and `SBC`** as one parent run that fans out and aggregates: a
   sensitivity sweep over a prior, an as-of backtest across forecast origins, simulation-based
   calibration of a new plugin.

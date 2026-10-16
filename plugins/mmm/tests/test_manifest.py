@@ -20,8 +20,6 @@ from pydantic import ValidationError
 def test_the_package_registers_the_mmm_framework_models() -> None:
     assert [p.id for p in PLUGINS] == ["mmm.bayesian", "mmm.frequentist"]
     assert {p.id for p in PLUGINS} <= PLANNED_MODEL_IDS
-    ids = {p.id for p in PLUGINS}
-    assert not {"mmm.hierarchical_geo", "mmm.pymc_marketing", "mmm.bayesinsight"} & ids
 
 
 @pytest.mark.parametrize("plugin", PLUGINS, ids=lambda p: p.id)

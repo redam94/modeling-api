@@ -19,7 +19,6 @@ pytestmark = [pytest.mark.conformance]
 
 def test_fixtures_are_registered() -> None:
     assert {"e33", "mmm_frequentist", "guided_mmm"} <= set(FIXTURES)
-    assert "pymc_marketing" not in FIXTURES
 
 
 def test_e33_requests_cover_horizon_new_market_plan_and_counterfactual() -> None:

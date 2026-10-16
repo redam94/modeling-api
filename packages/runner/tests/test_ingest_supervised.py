@@ -21,7 +21,7 @@ from shimgcs import ShimGcs
 
 pytestmark = pytest.mark.integration
 
-MFF = Path(__file__).parent / "fixtures" / "bayesinsight_mff.csv"
+MFF = Path(__file__).parent / "fixtures" / "mff_long.csv"
 UPLOAD = "t/default/uploads/upl_bi"
 
 

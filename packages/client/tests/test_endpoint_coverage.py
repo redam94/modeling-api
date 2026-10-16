@@ -422,8 +422,8 @@ def test_m3_waits_are_capped() -> None:
 def test_m3_snippet_languages_are_repeated_and_checked() -> None:
     call = m3.list_endpoint_snippets("a", ["python", "notebook"])
     assert call.params == {"language": ["python", "notebook"]}
-    with pytest.raises(ValueError):  # the atlas snippet language was removed in v0.5
-        m3.list_endpoint_snippets("a", ["atlas"])
+    with pytest.raises(ValueError):  # only the documented snippet languages
+        m3.list_endpoint_snippets("a", ["cobol"])
     assert m3.list_endpoint_snippets("a").params == {}
     with pytest.raises(ValueError):
         m3.list_endpoint_snippets("a", ["cobol"])

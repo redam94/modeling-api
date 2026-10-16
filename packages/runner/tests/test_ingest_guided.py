@@ -43,7 +43,7 @@ from mapi_spec.schema import Role
 pytestmark = pytest.mark.unit
 
 FIXTURES = Path(__file__).parent / "fixtures"
-BI_MFF = FIXTURES / "bayesinsight_mff.csv"
+BI_MFF = FIXTURES / "mff_long.csv"
 
 
 def _errors(ds: xr.Dataset, schema: Any) -> list[str]:

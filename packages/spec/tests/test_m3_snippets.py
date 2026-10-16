@@ -95,9 +95,9 @@ def test_python_carries_the_exact_payload() -> None:
     assert ast.literal_eval(client.args[0]) == "https://api.mapi.example"
 
 
-def test_the_atlas_snippet_language_was_removed() -> None:
+def test_an_unknown_snippet_language_is_refused() -> None:
     with pytest.raises(ValueError):
-        render_snippet("atlas", HOSTILE_CTX)
+        render_snippet("cobol", HOSTILE_CTX)
 
 
 def test_notebook_carries_the_exact_payload() -> None:

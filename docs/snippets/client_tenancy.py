@@ -66,7 +66,7 @@ assert SEEN[-1].headers.get("X-Mapi-Project") is None  # /v1/me is not project-s
 
 # --8<-- [start:tokens]
 created = api.tokens.create(
-    "atlas-optimiser",
+    "budget-planner",
     ["score:geo-mmm-prod", "models:read"],
     expires_in_days=30,
     rate_limit_per_minute=120,

@@ -106,12 +106,11 @@ describe("StateBadge and ChainLanes", () => {
 
 describe("PipelineCards", () => {
   it("shows step cards, the split marker, context and issues", async () => {
-    const yaml = STARTER_SPEC.replace("after_step: weekly", "after_step: scale_y");
+    const yaml = STARTER_SPEC.replace("after_step: weekly", "after_step: fill");
     const model = buildPipeline(parse(yaml), validateResponseFor(yaml));
     const clicked: string[] = [];
     render(<PipelineCards model={model} onIssue={(i) => clicked.push(i.code)} />);
     expect(screen.getByRole("separator", { name: "Train/holdout split" })).toBeInTheDocument();
-    expect(screen.getByText(/6-step tail along time/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /LEAKAGE_RISK/ }));
     expect(clicked).toEqual(["LEAKAGE_RISK"]);
     await userEvent.click(screen.getAllByRole("button", { name: "Schema after this step" })[0]!);

@@ -157,18 +157,18 @@ const schemaRaw = datasetVersion.data_schema!;
 
 export function validateResponseFor(yaml: string): ValidateResponse {
   // A split placed after a stateful step is the mock's example of a static error.
-  const leak = /after_step:\s*scale_y/.test(yaml);
+  const leak = /after_step:\s*fill/.test(yaml);
   const issues: ValidateResponse["issues"] = leak
     ? [
         {
           code: "LEAKAGE_RISK",
           severity: "error",
-          pointer: "/pipeline/2",
-          message: "stateful step 'scale_y' runs before the split",
+          pointer: "/pipeline/1",
+          message: "stateful step 'fill' runs before the split",
           suggested_action: "move the split to after 'weekly'",
         },
       ]
-    : /use: mmm\.hierarchical_geo/.test(yaml)
+    : /use: mmm\.bayesian/.test(yaml)
       ? []
       : [{ code: "REF_UNRESOLVED", severity: "error", pointer: "/model/use", message: "model plugin not found in the catalog" }];
   const weekly = { ...schemaRaw, dims: { ...schemaRaw.dims, date: { kind: "time" as const, policy: "extend" as const, freq: "W-SUN" } } };
@@ -180,18 +180,16 @@ export function validateResponseFor(yaml: string): ValidateResponse {
     stages: [
       { name: "raw", data_schema: schemaRaw, split: false },
       { name: "weekly", data_schema: weekly, split: true },
-      { name: "scale_spend", data_schema: weekly, split: false },
-      { name: "scale_y", data_schema: weekly, split: false },
+      { name: "fill", data_schema: weekly, split: false },
       {
-        name: "lags",
+        name: "cal",
         data_schema: {
           ...weekly,
-          dims: { ...weekly.dims, lag: { kind: "integer", policy: "fixed" } },
-          vars: { ...weekly.vars, spend_lags: { dims: ["market", "channel", "date", "lag"], dtype: "float64", role: "media" } },
+          dims: { ...weekly.dims, calendar_feature: { kind: "categorical", policy: "fixed" } },
+          vars: { ...weekly.vars, calendar: { dims: ["date", "calendar_feature"], dtype: "float64", role: "control" } },
         },
         split: false,
       },
-      { name: "season", data_schema: null, split: false },
     ],
     resolved: {
       spec_hash: SHA,
@@ -200,14 +198,12 @@ export function validateResponseFor(yaml: string): ValidateResponse {
       stages: {},
       steps: [
         { id: "weekly", use: "core.resample@^1", resolved: "core.resample@1.0.0", kind: "reshape", stateful: false, invertible: false, depends_on_target: false, context: null, input_stage: "raw" },
-        { id: "scale_spend", use: "core.mean_scale@^1", resolved: "core.mean_scale@1.0.0", kind: "value", stateful: true, invertible: true, depends_on_target: false, context: null, input_stage: "weekly" },
-        { id: "scale_y", use: "core.mean_scale@^1", resolved: "core.mean_scale@1.0.0", kind: "value", stateful: true, invertible: true, depends_on_target: false, context: null, input_stage: "scale_spend" },
-        { id: "lags", use: "core.lag_tensor@^1", resolved: "core.lag_tensor@1.0.0", kind: "feature", stateful: false, invertible: false, depends_on_target: false, context: { along: "time", n: 6, within: ["geo"] }, input_stage: "scale_y" },
-        { id: "season", use: "core.fourier@^1", resolved: "core.fourier@1.0.0", kind: "feature", stateful: true, invertible: false, depends_on_target: false, context: null, input_stage: "lags" },
+        { id: "fill", use: "core.impute@^1", resolved: "core.impute@1.0.0", kind: "value", stateful: true, invertible: false, depends_on_target: false, context: null, input_stage: "weekly" },
+        { id: "cal", use: "core.calendar@^1", resolved: "core.calendar@1.0.0", kind: "feature", stateful: false, invertible: false, depends_on_target: false, context: null, input_stage: "fill" },
       ],
       model: {
-        use: "mmm.hierarchical_geo@^1",
-        resolved: "mmm.hierarchical_geo@1.3.2",
+        use: "mmm.bayesian@^1",
+        resolved: "mmm.bayesian@1.0.0",
         capabilities: {
           inference: "mcmc",
           representation: "draws",
@@ -380,7 +376,7 @@ export const modelVersion: ModelVersion = {
     attempt: 1,
     spec_hash: SHA,
     dataset_sha: SHA,
-    plugin: "mmm.hierarchical_geo@1.3.2",
+    plugin: "mmm.bayesian@1.0.0",
     base_image: "base-bayes@2026.10",
     seed: 20261014,
     engine: "nutpie",

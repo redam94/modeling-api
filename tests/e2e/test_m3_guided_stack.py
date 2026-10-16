@@ -22,8 +22,7 @@ One analyst's whole journey, from outside the processes, against a ``dev``-profi
    deliveries, verified with :func:`mapi_client.webhooks.verify`; a replay arrives again.
 8. **Embed.** A saved platform-recipe plot as a read-only embed link, then revoked.
 9. **Budget optimisation.** ``POST …:optimize`` on the promoted version: mmm-framework
-   planning reallocates the budget within bounds and reports the uplift and the frontier
-   (v0.5 removed the Atlas adapter).
+   planning reallocates the budget within bounds and reports the uplift and the frontier.
 10. **GDPR export and deletion.** The export downloads (no secrets inside); with
     ``MAPI_TENANT_DELETION_GRACE_S=0`` the purge removes every tenant row in Postgres and
     every object under ``t/<tenant>/`` in the GCS shim, and the webhook hears
@@ -432,7 +431,7 @@ def test_template_roles_draft_and_upload(
 
 
 def test_the_same_data_as_an_mff_long_table(journey: Journey) -> None:
-    """MFF (BayesInsight's model feature format) ingests to the same variables."""
+    """MFF (the model feature format long table) ingests to the same variables."""
     j = journey
     api, csv = j.api, _need(j.csv, "the CSV")
     long = pd.read_csv(csv).melt(
@@ -813,7 +812,7 @@ def test_an_embed_link_renders_read_only_and_is_revoked(journey: Journey) -> Non
 
 
 def test_the_platform_optimises_the_budget(journey: Journey) -> None:
-    """``POST …:optimize`` (v0.5, replacing the Atlas adapter): mmm-framework planning over
+    """``POST …:optimize`` (v0.5): mmm-framework planning over
     the promoted version's posterior reallocates the budget with tv held within +-50%; the
     plan spends the budget, does not lose KPI on average and reports its frontier."""
     j = journey
