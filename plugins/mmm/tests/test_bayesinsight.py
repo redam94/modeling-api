@@ -107,6 +107,29 @@ def test_media_curves() -> None:
     np.testing.assert_allclose(idx, [3.0, 1.0])  # no spend at all: index 1
 
 
+def test_the_manifest() -> None:
+    m = BayesInsightMMM.manifest()
+    caps = m.capabilities
+    assert m.id == "mmm.bayesinsight" and m.version == "1.0.0"
+    assert set(caps.calibration) == {"lift_tests"}  # its priors are already in KPI units
+    assert caps.contribution_scale == "additive" and not caps.decision
+    assert set(caps.score_modes) >= {"predict", "forecast", "counterfactual", "evaluate"}
+    assert set(m.outputs) == {"y_hat", "contributions"} and not m.derived
+    props = m.settings_schema["properties"]
+    assert {p.get("x-ui-level") for p in props.values()} == {"advanced"}
+    # the schema template follows the settings: panel dims, media lag tensors, controls
+    from mapi_spec.schema import DataSchemaTemplate
+
+    tmpl = DataSchemaTemplate.model_validate(m.schema_template)
+    schema = tmpl.resolve(
+        {"panel": ["geo"], "media": ["tv"], "controls": ["price"], "lag_dim": "lag"}
+    )
+    assert tuple(schema.vars["tv"].dims) == ("geo", "time", "lag")
+    assert schema.vars["y"].role.value == "target"
+    assert tuple(schema.vars["price"].dims) == ("geo", "time")
+    assert schema.dims["geo"].new_level_strategy == "pooled"
+
+
 # ==================================================================================== graph
 
 
