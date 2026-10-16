@@ -67,7 +67,7 @@ By default `init` creates the five buckets from the plan's storage layout:
 | `mapi-{env}-quarantine` | Lifecycle: objects are deleted after 7 days. |
 | `mapi-{env}-bootstrap` | Lifecycle: objects are deleted after 1 day. |
 | `mapi-{env}-runs` | No policy. |
-| `mapi-{env}-bundles` | Locked retention of about 100 years. Objects cannot be overwritten or deleted, even by an admin. |
+| `mapi-{env}-bundles` | Locked retention of about 100 years. Objects cannot be overwritten or deleted, even by an admin. `--bundle-retention-days N` (default `$MAPI_BUNDLE_RETENTION_DAYS`) locks it for `N` days instead, like the deployed bucket (30); `0` sets no retention, so a test stack's tenant deletions finish at once. The choice applies when the root is created; an existing root keeps its policy. |
 | `mapi-{env}-data` | No policy. |
 
 It also creates two principals:

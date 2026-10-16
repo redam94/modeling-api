@@ -338,7 +338,38 @@ milestone releases are tagged on `main`.
   with `Client().endpoint(alias).score(...)` and shows an `xarray.Dataset`; the client's tests
   run it as generated.
 
+- **e2e**: the M3 exit criteria through the running stack. `tests/e2e/test_m3_guided_stack.py`
+  (in `make e2e`) follows one analyst from sign-up and e-mail verification through the
+  `geo_mmm` Guided flow (CSV and MFF), business priors and a lift test, the scorecard and its
+  gate, what-if vs "Run exact", forecast and channel-off, an endpoint scored with a
+  `score:<alias>` token, signed webhooks to a local HTTPS receiver with a replay, an embed
+  link and its revocation, Atlas optimising a budget through `RemoteModel` against the live
+  endpoint, the GDPR export and a tenant purge checked in Postgres and the GCS shim.
+  `apps/web/e2e/m3-guided.e2e.spec.ts` is the timed "unaided tester" script (upload → report
+  → scenario) and the Integrations hub flow. `make e2e` overlays Atlas from `ATLAS_DIR` when
+  it is there.
+- **dev**: the `dev` profile trusts a local webhook receiver: a throwaway CA and certificate
+  for `127.0.0.1`/`localhost` in `$MAPI_DATA_DIR/dev/webhook-tls/`, with
+  `MAPI_WEBHOOK_CA_FILE` and `MAPI_WEBHOOK_DEV_ALLOWLIST` set unless given.
+- **gcs-shim**: `--bundle-retention-days` (default `$MAPI_BUNDLE_RETENTION_DAYS`) chooses the
+  bundles bucket's locked retention when a root is created (`0`: none), so a test stack's
+  tenant deletions can finish.
+- **web**: "Fit again, more carefully" on the Guided report when a convergence check warns or
+  fails (twice the tuning and draws and a higher `target_accept`, up to a ceiling); a blocked
+  Share step links to it.
+- **spec**: `mapi_spec.guided.freq_plain`: role detection explains a detected date frequency
+  in words ("weekly, on Sundays").
+- **docs**: M3 verification: what was verified of the M3 exit criteria, the timings, the
+  defects found, and the protocol and observation sheet for the five non-technical testers.
+
 ### Changed
+- **spec**: the `geo_mmm` template (1.1.0) fits with 1000 tuning steps and draws and
+  `target_accept` 0.95: the 500-draw fit failed the scorecard's convergence checks on two
+  years of weekly data, which Guided users cannot act on, so the analysis could never go live.
+- **web**: in What you believe, channels start without a belief (unticked); ticking one starts
+  from the sensible range. Untouched channels no longer become ROI beliefs.
+- **server**: `GET /v1/embeds/{token}` answers `Cache-Control: private, no-cache` (was
+  `public, max-age=60`), so a revoked link stops rendering on the next load.
 - **spec**: `mapi_spec.api.ENDPOINTS` is the v0.4 surface (M1 + M2 + M3, every row served);
   `V03_ENDPOINTS` keeps the v0.3 table and `ALL_ENDPOINTS` is an alias of `ENDPOINTS`.
 - **server**: the M3 migrations run in one chain after `0006_executor_disable`:
@@ -357,6 +388,18 @@ milestone releases are tagged on `main`.
   rebuilt the holdout (a `last_per_group` split is scored in sample).
 
 ### Fixed
+- **server**: "Run exact" failed on every live stack: `POST /v1/guided/requests:compile` left
+  what-ifs and presets over the fit window without data. The compiled request now names the
+  fit dataset version, and a score request without data, scenario or horizon is refused with
+  `422 SCHEMA_INVALID` before a run starts.
+- **web**: the Guided report showed MAPE in percent as a fraction ("83 %" for 0.83 %); it
+  reads the scorecard's measured value. The beliefs preview no longer prints impossible
+  baseline shares ("between -164 % and 271 %"); Share a chart offers result charts before
+  the sampler's diagnostics.
+- **plots**: prediction plots name the predicted quantity as the dataset does (`revenue`, not
+  `y_hat`).
+- **client**: `datasets.upload` accepts an `mff` mapping for a `.csv` MFF table.
+- **server**: an unresolvable webhook host is explained in plain words (no `gaierror`).
 - **web**: the New token dialog's budget period showed "pe" instead of "per day"/"per month":
   native selects no longer shrink below their width in a flex row (filters, the cap window,
   the intervention editor and the upload mapper had the same risk).

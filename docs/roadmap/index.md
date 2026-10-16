@@ -66,7 +66,10 @@ signed **webhooks**, static plot rendering and embed links. The platform adds Cl
 sign-up verification and tenant deletion. The exit criterion: five non-technical testers go
 from upload to report to scenario unaided in under 30 minutes. It is the first public launch:
 declarative specs and built-in models (untrusted data, trusted code).
-[More](guided-ui.md).
+[More](guided-ui.md). The journey and the integrations pass end to end on a local stack, and
+the protocol for the five testers is written
+([M3 verification](../operations/m3-verification.md)); the testers themselves are still to
+come.
 
 ## After v0.4
 
