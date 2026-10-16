@@ -442,3 +442,4 @@ The variables Terraform sets on the Cloud Run services (the deployment contract 
 |---|---|
 | `MAPI_DOCS_SPEC` | The spec `scripts/docs_screenshots.mjs` (`make docs-screenshots`) opens and fits, default `eu-geo-mmm`. The script also reads `MAPI_WEB_ORIGIN` |
 | `MAPI_DOCS_PROJECT` | The project `scripts/docs_screenshots_admin.mjs` (`make docs-screenshots-admin`) selects after capturing the project switcher, default `Default project`. The script also reads `MAPI_WEB_ORIGIN`, `MAPI_API_URL` and `MAPI_DEV_ACCOUNT` |
+| `MAPI_GUIDED_SCREENSHOTS` | Set to `1` to run `apps/web/e2e/guided-screenshots.spec.ts`, which captures the Guided tutorial's screenshots from the mock-mode app (`make docs-screenshots-guided` sets it, with `MAPI_SMOKE_WEB_PORT`/`MAPI_SMOKE_PLOTS_PORT` defaulting to 15173/15174); the smoke suite skips it otherwise |
