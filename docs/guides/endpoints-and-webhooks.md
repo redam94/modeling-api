@@ -270,6 +270,15 @@ if and only if it happened. Delivery is *at least once*: deduplicate on `Mapi-Ev
 Envelopes carry ids and states, never data, signed URLs or secrets; fetch results with the
 API.
 
+**No plot attachments.** Webhooks do not attach rendered plots (the platform plan had them as
+an option). A receiver is a third party reached over the internet, often a chat or automation
+service that logs or forwards what it gets, so a chart - or a signed link to one - in the body
+would publish model results beyond the project. A receiver that wants a chart renders it with
+its own token when the event arrives: on `model.version.ready`, call
+`POST /v1/plots:render` with `{"source": {"model_id": ..., "version": ..., "plot_id":
+"core.ppc_fan"}, "format": "png"}` and `Prefer: wait=60`, then download the PNG from the
+answer's link (render runs need a token with `runs:create`).
+
 ### Verify it
 
 Recompute the HMAC over the **raw** body before parsing it, compare in constant time, and

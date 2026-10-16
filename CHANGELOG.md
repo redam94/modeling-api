@@ -496,6 +496,10 @@ milestone releases are tagged on `main`.
   The page now carries static Open Graph tags (a "Shared chart" card, never the plot's name or
   the token), and the UI and guides recommend posting the rendered PNG to Slack instead of
   promising a live chart there.
+- **docs**: webhooks do not attach rendered plots, a deliberate deviation from the plan
+  (bodies carry ids and states only, so no chart or signed link reaches a third-party
+  receiver); the webhooks guide says so and shows how a receiver renders a chart with
+  `POST /v1/plots:render` when `model.version.ready` arrives.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
