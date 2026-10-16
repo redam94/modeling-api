@@ -268,7 +268,7 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
                 check={c}
                 def={checks.map.get(c.check)}
                 readOnly={readOnly}
-                error={(submitted ? thresholdErrors[i] : null) ?? serverPointer.find((x) => x.pointer?.startsWith(`/checks/${i}`))?.message}
+                error={serverPointer.find((x) => x.pointer?.startsWith(`/checks/${i}`))?.message}
                 onChange={(next) => setForm({ ...form, checks: form.checks.map((x, j) => (j === i ? next : x)) })}
                 onRemove={() => setForm({ ...form, checks: form.checks.filter((_, j) => j !== i) })}
               />

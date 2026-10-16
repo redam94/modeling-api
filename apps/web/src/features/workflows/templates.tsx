@@ -116,7 +116,7 @@ export function TemplateWizard({ templateId }: { templateId: string }) {
   const workflows = useWorkflows();
   const create = useCreateWorkflow();
   const [step, setStep] = useState(0);
-  const [name, setName] = useState("");
+  const [name, setName] = useState<string | null>(null);
   const [params, setParams] = useState<JsonObject>({});
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [runNow, setRunNow] = useState(true);
@@ -124,7 +124,7 @@ export function TemplateWizard({ templateId }: { templateId: string }) {
   const t = tpl.data;
   const doc = t ? (t.document as unknown as WorkflowDoc) : null;
   const defaultName = doc?.metadata.name ?? "";
-  const effectiveName = name || defaultName;
+  const effectiveName = name ?? defaultName;
   const taken = workflows.data?.items.some((w) => w.name === effectiveName) ?? false;
   const nameError = !NAME_RE.test(effectiveName) ? "Lowercase letters, digits and -, starting and ending with a letter or digit." : taken ? "The project already has a workflow with this name." : null;
   const missing = doc ? missingParams(doc.params ?? {}, params) : [];
