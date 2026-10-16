@@ -6,6 +6,25 @@ milestone releases are tagged on `main`.
 ## [Unreleased]
 
 ### Added
+- **web**: the Integrations hub (`/integrations`). Guided cards for Google Sheets (the
+  endpoint's Apps Script and a `score:<alias>` token), a BI embed link and a webhook; endpoints
+  and aliases with the promotion dialog (the version's scorecard, the expected gate, the
+  server's reasons on `409` and the audited admin override), history and rollback, the frozen
+  input contract with **Try it** (validate or score the example call), snippets for Python,
+  TypeScript, curl, R, Apps Script and Atlas plus an Open-in-notebook cell; webhooks with an
+  event picker, the secret shown once, rotation, a test send, the delivery log (status,
+  attempts, response code) with replays and the auto-disabled notice; saved plots with
+  PNG/SVG/PDF downloads (Plotly disabled with the server's reason on `MODE_NOT_SUPPORTED`) and
+  expiring embed links with allowed sites and revocation; a **Share** button in the plot
+  gallery; `/tokens?preset=score:<alias>`.
+- **web**: the trust pages. Public `/signup` (disposable-address and terms errors at their
+  fields, the "check your inbox" state, the development outbox link) and `/verify-email`;
+  Settings > Data for organisation admins (GDPR export and download, tenant deletion with the
+  typed confirmation, grace period, cancel and per-store progress); a banner for scheduled
+  deletions; in the admin console, the sign-up review queue and per-tenant identity
+  verification and deletion status with a retry.
+- **docs**: The Integrations hub guide (with screenshots) and the Integrations section of the
+  web app guide; `make docs-screenshots-integrations`.
 - **spec**: the M3 contracts for Guided mode and integrations, shared by the server, runner,
   web app and client components (contract v0.1, additive only).
   - `mapi_spec.guided`: four guided templates (`geo_mmm`, `weekly_forecast`,
@@ -224,6 +243,9 @@ milestone releases are tagged on `main`.
   dataset name.
 
 ### Fixed
+- **web**: the New token dialog's budget period showed "pe" instead of "per day"/"per month":
+  native selects no longer shrink below their width in a flex row (filters, the cap window,
+  the intervention editor and the upload mapper had the same risk).
 - **spec**: `index` dims extend contiguously (their coordinates have ordinals), so scoring an
   `index` dim with an `extend` policy no longer fails with `NON_CONTIGUOUS_EXTENSION`.
 - **sdk**: cell-level splits treat an empty text target as missing and hold text targets out
