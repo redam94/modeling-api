@@ -335,6 +335,17 @@ def _plural(n: int, word: str) -> str:
     return f"{n} {word}" + ("" if n == 1 else "s")
 
 
+_MIDNIGHT = re.compile(r"^(\d{4}-\d{2}-\d{2})[T ]00:00(?::00(?:\.0+)?)?(?:Z|[+-]00:?00)?$")
+
+
+def _plain_time(value: object) -> str:
+    """A coordinate label in plain words: ``2023-01-01T00:00:00`` (how ingest summarises
+    dates) reads as ``2023-01-01``; other values are unchanged."""
+    text = str(value)
+    m = _MIDNIGHT.match(text)
+    return m.group(1) if m else text
+
+
 def describe_dataset(
     schema: DataSchema | None,
     summary: DataSummary | None,
@@ -357,7 +368,7 @@ def describe_dataset(
             unit = _FREQ_UNITS.get(base)
         adj = _FREQ_ADJ.get(unit or "", "Time-stamped")
         span = (
-            f" from {time_cs.start} to {time_cs.end}"
+            f" from {_plain_time(time_cs.start)} to {_plain_time(time_cs.end)}"
             if time_cs.start is not None and time_cs.end is not None
             else ""
         )

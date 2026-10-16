@@ -183,6 +183,25 @@ def test_dataset_summaries_come_from_metadata() -> None:
     assert bare.summary_generated == "Data, with 1 measure: x."
 
 
+def test_dataset_summaries_show_dates_without_midnight_times() -> None:
+    """Ingest summarises datetime coordinates as ISO timestamps; the plain summary shows the
+    date alone when the time is midnight (and keeps other times)."""
+    summary = DataSummary(
+        vars=["y"],
+        coords={"t": CoordSummary(kind="time", size=156, start="2023-01-01T00:00:00",
+                                  end="2025-12-21T00:00:00", freq="W-SUN")},
+    )  # fmt: skip
+    text = describe_dataset(None, summary).summary_generated
+    assert text.startswith("Weekly data from 2023-01-01 to 2025-12-21 (156 weeks)")
+    hourly = DataSummary(
+        vars=["y"],
+        coords={"t": CoordSummary(kind="time", size=24, start="2023-01-01T00:00:00Z",
+                                  end="2023-01-01T23:00:00", freq="h")},
+    )  # fmt: skip
+    hourly_text = describe_dataset(None, hourly).summary_generated
+    assert "from 2023-01-01 to 2023-01-01T23:00:00" in hourly_text
+
+
 def test_the_questions_are_well_formed() -> None:
     ids = [q.id for q in CHOOSER_QUESTIONS]
     assert ids == ["goal", "data_shape", "frequency", "history", "drivers", "uncertainty",
