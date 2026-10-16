@@ -238,6 +238,46 @@ server secret makes every webhook secret unusable (rotate them afterwards).
 | `MAPI_PUBSUB_PUSH_SUBSCRIPTIONS` | any | Accepted subscription names (comma-separated) |
 | `MAPI_GOOGLE_JWKS_URL` | `https://www.googleapis.com/oauth2/v3/certs` | Google's OIDC signing keys |
 
+**Sign-up, e-mail and abuse controls (v0.4)** (see [Sign-up and abuse controls](signup-and-abuse.md))
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_SIGNUP_ENABLED` | on in `dev` and `multi-tenant` when a mailer works, off `single-tenant` | Self-service sign-up at `POST /auth/signup`. Setting it on without a usable mailer refuses to start |
+| `MAPI_MAILER` | `outbox` in `dev`, `smtp` in `multi-tenant`, `console` otherwise | `console` (log the message), `outbox` (JSON files, read at `GET /dev/outbox` in `dev`), `smtp` or `none`. `multi-tenant` refuses `console` and `outbox` while sign-up is on: whoever reads the logs or the disk could verify any address |
+| `MAPI_MAIL_FROM` | `modeling-api <no-reply@mapi.localhost>` | The `From:` header |
+| `MAPI_OUTBOX_DIR` | `$MAPI_DATA_DIR/outbox` | Where the outbox mailer writes (mode `0600`, newest 200 kept) |
+| `MAPI_SMTP_HOST`, `MAPI_SMTP_PORT` | unset, `587` | The SMTP server. Without a host the `smtp` mailer is off (and so is sign-up) |
+| `MAPI_SMTP_TLS` | `starttls` | `starttls` (required, not opportunistic: a server without it is refused) or `ssl` (implicit TLS, port 465). The certificate is verified against the system trust store |
+| `MAPI_SMTP_USERNAME`, `MAPI_SMTP_PASSWORD` | unset | SMTP authentication (keep the password in a secret store) |
+| `MAPI_SMTP_TIMEOUT_S` | `10` | Connection and command timeout |
+| `MAPI_SIGNUP_VERIFY_URL` | `$MAPI_WEB_ORIGIN/verify-email?token={token}` | The link e-mailed to a sign-up; `{token}` is replaced |
+| `MAPI_SIGNUP_BLOCKED_DOMAINS` | none | E-mail domains refused besides the built-in disposable list (comma-separated; subdomains included) |
+| `MAPI_SIGNUP_BLOCKLIST_PATH` | unset | A file of disposable domains, one per line (`#` comments), for example a maintained public list |
+| `MAPI_SIGNUP_PER_IP_PER_HOUR` | `5` | Sign-ups accepted per client address and hour |
+| `MAPI_SIGNUP_PER_DOMAIN_PER_DAY` | `25` | Sign-ups accepted per e-mail domain and day |
+| `MAPI_SIGNUP_GLOBAL_PER_HOUR` | `500` | Sign-ups accepted per hour on the whole platform |
+| `MAPI_VERIFY_PER_IP_PER_MINUTE` | `20` | E-mail verification attempts per client address and minute |
+| `MAPI_SIGNUP_SYBIL_WINDOW_DAYS` | `30` | Look-back of the Sybil heuristics |
+| `MAPI_SIGNUP_SYBIL_THRESHOLD` | `3` | Workspaces from one client address, browser or e-mail within the window before the next one is flagged for review (a domain is flagged at twice as many within an hour) |
+| `MAPI_SIGNUP_FLAGGED_SUSPEND` | `false` | Suspend a flagged sign-up's workspace until an operator approves it (default: it works and waits in the review queue) |
+| `MAPI_SIGNUP_RETENTION_DAYS` | `30` | Unverified sign-ups, with their e-mail, are deleted after this |
+| `MAPI_PUBLIC_CODE_UPLOAD_ENABLED` | `false` | Cut line B (M5): let identity-verified `public` tenants run uploaded code. Off: public tenants run built-in models and declarative specs only |
+
+**Tenant deletion and GDPR export (v0.4)** (see [Deleting data](../guides/data-deletion.md))
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_TENANT_DELETION_GRACE_S` | `604800` (7 days) | Grace period of a deletion: the tenant is suspended and may cancel |
+| `MAPI_DELETION_REAUTH_MAX_AGE_S` | unset | Also require a sign-in at most this many seconds old to request a deletion; unset: the confirmation phrase alone |
+| `MAPI_DELETION_RUN_STOP_TIMEOUT_S` | `3600` | How long a purge waits for the tenant's cancelled runs to stop before it goes ahead |
+| `MAPI_DELETION_MAX_ATTEMPTS` | `8` | Automatic retries (with back-off from 5 minutes to 6 hours) of a failed purge; then an operator retries |
+| `MAPI_BUNDLE_RETENTION_DAYS` | `30` | The bundles bucket's retention period (Terraform `bundle_retention_days`): when a purge retries the objects a retention lock kept |
+| `MAPI_LIFECYCLE_INTERVAL_S` | `15` | Cadence of the orchestrator's deletion and export scheduler |
+| `MAPI_EXPORT_MAX_INLINE_BYTES` | 256 MiB | Dataset bytes an export archive includes; the rest is listed in its manifest |
+| `MAPI_EXPORT_RETENTION_S` | `604800` (7 days) | How long an export archive is kept |
+| `MAPI_EXPORT_LINK_TTL_S` | `900` | Lifetime of an export's signed download link (a fresh one on every `GET`) |
+| `MAPI_EXPORTS_PER_DAY` | `3` | Exports a tenant may request per day (one at a time) |
+
 ## The runner (per run)
 
 Executors start `mapi-runner` with exactly these variables, and nothing secret in its

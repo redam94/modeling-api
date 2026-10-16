@@ -89,3 +89,9 @@ variable "metrics_collector_image" {
   type        = string
   default     = null
 }
+
+variable "cloud_armor_waf_mode" {
+  description = "OWASP CRS rules of the Cloud Armor policy: preview logs matches only, enforce blocks them (switch after reviewing the preview logs)."
+  type        = string
+  default     = "preview"
+}

@@ -70,6 +70,7 @@ from mapi_server.services.specs import (
     resolve_dataset,
     validate_document,
 )
+from mapi_server.services.verification import require_uploaded_code_allowed
 
 __all__ = [
     "DEFAULT_TIMEOUT_S",
@@ -129,6 +130,18 @@ async def admit(
     estimate = run_estimate(ctx.price_table, rc, wall, max(1, run.task_count or 1))
     run.estimate = estimate.model_dump(mode="json") if estimate is not None else None
     auth = ctx.request
+    if untrusted:  # cut line A: uploaded code needs a trusted tier or identity verification
+        try:
+            await require_uploaded_code_allowed(session, ctx, run.tenant_id)
+        except MapiError as exc:
+            if auth is not None:
+                await write_audit(
+                    ctx.db,
+                    [auth.audit(ctx, AuditAction.RUN_CREATE, ResourceKind.RUN,
+                                AuditOutcome.DENIED, code=exc.code,
+                                details={"kind": kind.value, "untrusted_code": True})],
+                )  # fmt: skip
+            raise
     if auth is None:
         return
     run.token_id = auth.token.id if auth.token is not None else None

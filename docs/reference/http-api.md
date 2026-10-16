@@ -639,6 +639,9 @@ stored.
 | `DELETE /v1/tenants/{tenant_id}/deletion` | Cancel a scheduled deletion (within the grace period) | — | `TenantDeletion` | 200 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
 | `POST /v1/tenants/{tenant_id}/exports` | GDPR export of everything the tenant stored | `GdprExportRequest` | `GdprExport` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `QUOTA_EXCEEDED` |
 | `GET /v1/tenants/{tenant_id}/exports/{export_id}` | An export and, once ready, its download link | — | `GdprExport` | 200 | `NOT_FOUND`, `FORBIDDEN` |
+| `GET /v1/admin/signups` | Sign-ups, newest first; filter by `review` state (the Sybil review queue) or `tenant_id` | — | `Page[SignupReview]` | 200 | `FORBIDDEN` |
+| `POST /v1/admin/signups/{signup_id}/review` | Approve or reject a sign-up (a rejection suspends its tenant; audited) | `SignupReviewDecision` | `SignupReview` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
+| `POST /v1/admin/tenants/{tenant_id}/deletion/retry` | Restart a failed tenant purge (operators; audited) | — | `TenantDeletion` | 202 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
 
 ## DTO index
 
@@ -664,4 +667,4 @@ OpenAPI document and in `export_schemas()` as `api-<Name>.json`.
 | Endpoints (v0.4) | `Endpoint`, `EndpointPromote`, `EndpointRevision`, `EndpointRollback`, `EndpointScoreCall`, `EndpointSchema`, `EndpointValidation`, `EvaluationPolicy` (`mapi_spec.endpoints`), `PromotionGateDecision` (`mapi_spec.scorecard`), `Snippet`, `SnippetSet` (`mapi_spec.snippets`), `XrJsonDataset` (`mapi_spec.xrjson`) |
 | Webhooks (v0.4) | `Webhook`, `WebhookCreate`, `WebhookCreated`, `WebhookUpdate`, `WebhookDelivery`, `WebhookEnvelope` (`mapi_spec.webhooks`) |
 | Plots (v0.4) | `SavedPlot`, `SavedPlotCreate`, `PlotRenderRequest`, `PlotRender`, `PlotEmbed`, `PlotEmbedCreate`, `PlotEmbedCreated`, `EmbedView` (`mapi_spec.sharing`) |
-| Trust lifecycle (v0.4) | `SignupRequest`, `SignupAccepted`, `EmailVerify`, `VerificationResult`, `VerificationStatus`, `VerificationUpdate`, `TenantDeletionRequest`, `TenantDeletion`, `GdprExportRequest`, `GdprExport` (`mapi_spec.trust`) |
+| Trust lifecycle (v0.4) | `SignupRequest`, `SignupAccepted`, `EmailVerify`, `VerificationResult`, `VerificationStatus`, `VerificationUpdate`, `SignupReview`, `SignupReviewDecision`, `TenantDeletionRequest`, `TenantDeletion`, `GdprExportRequest`, `GdprExport` (`mapi_spec.trust`) |

@@ -38,6 +38,7 @@ __all__ = [
     "DEFAULT_DOCKER_IMAGES",
     "DEFAULT_ESTIMATE_WALL_S",
     "ExecutorName",
+    "MailerKind",
     "ObjectStoreKind",
     "Profile",
     "Settings",
@@ -110,6 +111,15 @@ class SignerKind(StrEnum):
 
     LOCAL = "local"
     KMS = "kms"
+
+
+class MailerKind(StrEnum):
+    """How the server sends e-mail (sign-up verification links)."""
+
+    CONSOLE = "console"  # log the message (single-tenant installs; never multi-tenant)
+    OUTBOX = "outbox"  # write JSON files under MAPI_OUTBOX_DIR (dev; read at /dev/outbox)
+    SMTP = "smtp"  # smtplib with STARTTLS or implicit TLS (production)
+    NONE = "none"  # no e-mail: self-service sign-up is off
 
 
 class ObjectStoreKind(StrEnum):
@@ -584,6 +594,124 @@ class Settings(BaseSettings):
         30, ge=1, le=3650, description="Days webhook events and their delivery logs are kept"
     )
 
+    # ------------------------------------------------------------- trust lifecycle (M3)
+    signup_enabled: bool | None = Field(
+        None,
+        description="Self-service sign-up at POST /auth/signup (default: on in the dev and "
+        "multi-tenant profiles when a mailer is configured, off single-tenant)",
+    )
+    mailer: MailerKind | None = Field(
+        None,
+        description="How e-mail is sent: console, outbox, smtp or none (default: outbox in "
+        "dev, console single-tenant, smtp multi-tenant)",
+    )
+    mail_from: str = Field(
+        "modeling-api <no-reply@mapi.localhost>",
+        max_length=320,
+        description="From: header of the e-mails the server sends",
+    )
+    outbox_dir: Path | None = Field(
+        None, description="Where the outbox mailer writes messages (default: data_dir/outbox)"
+    )
+    smtp_host: str | None = Field(None, description="SMTP server (MAPI_MAILER=smtp)")
+    smtp_port: int = Field(587, ge=1, le=65535)
+    smtp_tls: Literal["starttls", "ssl"] = Field(
+        "starttls", description="starttls (port 587) or ssl (implicit TLS, port 465)"
+    )
+    smtp_username: str | None = None
+    smtp_password: str | None = Field(None, repr=False)
+    smtp_timeout_s: float = Field(10.0, gt=0)
+    signup_verify_url: str | None = Field(
+        None,
+        description="Verification link template with {token} (default: "
+        "<web_origin>/verify-email?token={token})",
+    )
+    signup_blocked_domains: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="E-mail domains refused at sign-up besides the built-in disposable list "
+        "(comma-separated; subdomains included)",
+    )
+    signup_blocklist_path: Path | None = Field(
+        None,
+        description="A file of disposable e-mail domains (one per line, # comments), e.g. a "
+        "maintained public list, added to the built-in one",
+    )
+    signup_per_ip_per_hour: int = Field(
+        5, ge=1, description="Sign-ups accepted per client address and hour"
+    )
+    signup_per_domain_per_day: int = Field(
+        25, ge=1, description="Sign-ups accepted per e-mail domain and day"
+    )
+    signup_global_per_hour: int = Field(
+        500, ge=1, description="Sign-ups accepted per hour on the whole platform"
+    )
+    verify_per_ip_per_minute: int = Field(
+        20, ge=1, description="E-mail verification attempts per client address and minute"
+    )
+    signup_sybil_window_days: int = Field(
+        30, ge=1, description="Look-back of the Sybil heuristics (same address, browser, e-mail)"
+    )
+    signup_sybil_threshold: int = Field(
+        3,
+        ge=1,
+        description="Workspaces created from one address, browser or e-mail within the window "
+        "before a new one is flagged for review",
+    )
+    signup_flagged_suspend: bool = Field(
+        False,
+        description="Suspend a flagged sign-up's tenant until an operator approves it "
+        "(default: it works and waits in the review queue)",
+    )
+    signup_retention_days: int = Field(
+        30, ge=1, description="Unverified sign-ups (with their e-mail) are deleted after this"
+    )
+    public_code_upload_enabled: bool = Field(
+        False,
+        description="Cut line B: let identity-verified public tenants run uploaded code "
+        "(off through M4: public tenants run built-ins and declarative specs only)",
+    )
+    tenant_deletion_grace_s: float = Field(
+        7 * 86400.0,
+        ge=0,
+        description="Grace period of a tenant deletion: the tenant is suspended and may cancel",
+    )
+    deletion_reauth_max_age_s: float | None = Field(
+        None,
+        gt=0,
+        description="Also require a sign-in at most this old to request a deletion (re-auth); "
+        "unset: the confirmation phrase alone",
+    )
+    deletion_run_stop_timeout_s: float = Field(
+        3600.0,
+        gt=0,
+        description="How long a purge waits for the tenant's cancelled runs to stop",
+    )
+    deletion_max_attempts: int = Field(
+        8, ge=1, description="Automatic retries of a failed purge before operators must retry"
+    )
+    bundle_retention_days: int = Field(
+        30,
+        ge=0,
+        description="The bundles bucket's retention period (Terraform bundle_retention_days): "
+        "when a purge may retry objects a retention lock refused",
+    )
+    lifecycle_interval_s: float = Field(
+        15.0, gt=0, description="Cadence of the deletion and export scheduler (orchestrator)"
+    )
+    export_max_inline_bytes: int = Field(
+        256 * 1024 * 1024,
+        ge=0,
+        description="Dataset bytes a GDPR export archive includes; larger exports list the "
+        "remaining objects (with sizes and hashes) instead",
+    )
+    export_retention_s: float = Field(
+        7 * 86400.0, gt=0, description="How long a GDPR export archive is kept"
+    )
+    export_link_ttl_s: float = Field(
+        900.0, gt=0, le=7 * 86400, description="Lifetime of an export's signed download link"
+    )
+    exports_per_day: int = Field(3, ge=1, description="GDPR exports a tenant may request per day")
+
     def obs_settings(self) -> Any:
         """The :class:`~mapi_server.observability.ObsSettings` for this process."""
         from mapi_server.observability import ObsSettings
@@ -619,6 +747,7 @@ class Settings(BaseSettings):
         "signing_trusted_key_paths",
         "dispatch_tiers",
         "webhook_dev_allowlist",
+        "signup_blocked_domains",
         mode="before",
     )
     @classmethod
@@ -665,12 +794,61 @@ class Settings(BaseSettings):
                 "MAPI_WEBHOOK_ALLOW_HTTP and MAPI_WEBHOOK_DEV_ALLOWLIST are for development; "
                 "the multi-tenant profile always applies the full SSRF policy"
             )
+        if (
+            self.profile is Profile.MULTI_TENANT
+            and self.signup_open
+            and self.effective_mailer in (MailerKind.CONSOLE, MailerKind.OUTBOX)
+        ):
+            raise ValueError(
+                "multi-tenant sign-up needs MAPI_MAILER=smtp: console and outbox mailers would "
+                "expose verification links to whoever reads the logs or the disk"
+            )
+        if self.signup_enabled and not self._mailer_usable:
+            raise ValueError(
+                "MAPI_SIGNUP_ENABLED needs a mailer: MAPI_MAILER=smtp with MAPI_SMTP_HOST "
+                "(or console/outbox outside the multi-tenant profile)"
+            )
         weak = [a for a in self.oidc_algorithms if a.upper().startswith("HS") or a == "none"]
         if weak:
             raise ValueError("oidc_algorithms must be asymmetric (RS*, ES*, PS* or EdDSA)")
         return self
 
     # ------------------------------------------------------------------------- derived
+    @property
+    def effective_mailer(self) -> MailerKind:
+        """``MAPI_MAILER``, else the profile's default (dev: outbox, multi-tenant: smtp)."""
+        if self.mailer is not None:
+            return self.mailer
+        return {
+            Profile.DEV: MailerKind.OUTBOX,
+            Profile.MULTI_TENANT: MailerKind.SMTP,
+        }.get(self.profile, MailerKind.CONSOLE)
+
+    @property
+    def signup_open(self) -> bool:
+        """Is self-service sign-up on (and can it send its e-mail)?"""
+        enabled = (
+            self.signup_enabled
+            if self.signup_enabled is not None
+            else self.profile is not Profile.SINGLE_TENANT
+        )
+        return enabled and self._mailer_usable
+
+    @property
+    def _mailer_usable(self) -> bool:
+        kind = self.effective_mailer
+        return kind is not MailerKind.NONE and (kind is not MailerKind.SMTP or bool(self.smtp_host))
+
+    def resolved_outbox_dir(self) -> Path:
+        return self.outbox_dir or (self.data_dir / "outbox")
+
+    def verify_link(self, token: str) -> str:
+        """The verification link e-mailed to a sign-up."""
+        template = self.signup_verify_url or (
+            self.web_origin.rstrip("/") + "/verify-email?token={token}"
+        )
+        return template.replace("{token}", token)
+
     @property
     def buckets(self) -> Buckets:
         return Buckets(self.env)

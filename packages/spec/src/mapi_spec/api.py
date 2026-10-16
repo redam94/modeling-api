@@ -132,6 +132,8 @@ from mapi_spec.trust import (
     GdprExportRequest,
     SignupAccepted,
     SignupRequest,
+    SignupReview,
+    SignupReviewDecision,
     TenantDeletion,
     TenantDeletionRequest,
     VerificationResult,
@@ -265,6 +267,8 @@ __all__ = [
     "SessionInfo",
     "SignupAccepted",
     "SignupRequest",
+    "SignupReview",
+    "SignupReviewDecision",
     "Snippet",
     "SnippetSet",
     "SpecCreate",
@@ -2455,6 +2459,23 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "An export and, once ready, its download link", "GdprExport", 200,
         errors=(*_NF, *_FB),
     ),
+    EndpointDecl(
+        "GET", "/v1/admin/signups", "admin_list_signups",
+        "Sign-ups, newest first; filter by review state (the Sybil review queue)",
+        "Page[SignupReview]", 200, errors=_FB, paginated=True,
+        query=(*_PAGE, "review", "tenant_id"),
+    ),
+    EndpointDecl(
+        "POST", "/v1/admin/signups/{signup_id}/review", "admin_review_signup",
+        "Approve or reject a sign-up (a rejection suspends its tenant; audited)",
+        "SignupReview", 200, request="SignupReviewDecision",
+        errors=(*_BODY, *_NF, *_FB, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "POST", "/v1/admin/tenants/{tenant_id}/deletion/retry", "admin_retry_tenant_deletion",
+        "Restart a failed tenant purge (operators; audited)", "TenantDeletion", 202,
+        errors=(*_NF, *_FB, _E.CONFLICT),
+    ),
 )  # fmt: skip
 """The M3 endpoint table (guided mode and integrations; additive to :data:`ENDPOINTS`).
 
@@ -2631,6 +2652,9 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "cancel_tenant_deletion": _t(_RK.TENANT_DELETION, _AC.CANCEL),
     "create_tenant_export": _t(_RK.TENANT_EXPORT, _AC.CREATE),
     "get_tenant_export": _t(_RK.TENANT_EXPORT, _AC.READ),
+    "admin_list_signups": _op(_RK.TENANT, _AC.READ),
+    "admin_review_signup": _op(_RK.TENANT, _AC.MANAGE),
+    "admin_retry_tenant_deletion": _op(_RK.TENANT_DELETION, _AC.MANAGE),
 }
 """Tenant/project scoping and the permission checked for every operation in
 :data:`ALL_ENDPOINTS` (keyed by ``operation_id``).

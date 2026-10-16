@@ -80,6 +80,11 @@ class ProcrastinateQueue:
 
         self._deliver_task: Any = deliver_webhook
         self._opened = False
+        self.queues: list[str] = [FINALIZE_QUEUE] + (
+            [WEBHOOK_QUEUE] if deliverer is not None else []
+        )
+        """Queues the worker serves (finalize, webhooks with a deliverer; other components add
+        theirs, e.g. ``lifecycle``)."""
 
     async def open(self) -> None:
         if not self._opened:
@@ -142,12 +147,10 @@ class ProcrastinateQueue:
             )
 
     async def run_worker(self, *, wait: bool = True) -> None:
-        """Run the procrastinate worker on the finalize (and webhooks) queues
-        (``wait=False`` drains once)."""
+        """Run the procrastinate worker on :attr:`queues` (``wait=False`` drains once)."""
         await self.open()
-        queues = [FINALIZE_QUEUE] + ([WEBHOOK_QUEUE] if self._deliverer is not None else [])
         await self.app.run_worker_async(
-            queues=queues,
+            queues=list(self.queues),
             wait=wait,
             concurrency=4,
             install_signal_handlers=False,

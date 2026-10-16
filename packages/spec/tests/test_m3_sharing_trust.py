@@ -211,7 +211,7 @@ def test_terminal_deletion_states() -> None:
 def test_deletion_progress() -> None:
     d = TenantDeletion.model_validate(TenantDeletion.model_json_schema()["examples"][0])
     assert d.fraction_done == pytest.approx(2 / 5)
-    assert set(d.retained) == {"audit", "cost_ledger"}
+    assert set(d.retained) == {"audit", "cost_ledger", "deletion_record", "platform_logs"}
     data: dict[str, Any] = d.model_dump(mode="json")
     with pytest.raises(ValidationError):
         TenantDeletion.model_validate({**data, "purge_after": "2026-01-01T00:00:00Z"})
@@ -224,3 +224,16 @@ def test_run_kind_values_fit_the_database_column() -> None:
     assert all(len(k.value) <= 16 for k in RunKind)  # runs.kind is VARCHAR(16)
     assert RunKind.TRANSLATE_PRIORS.value == "translate_priors"
     assert not RunKind.TRANSLATE_PRIORS.is_parent
+
+
+def test_signup_review_dtos() -> None:
+    from mapi_spec.trust import SYBIL_FLAGS, SignupReview, SignupReviewDecision
+
+    ex = SignupReview.model_validate(SignupReview.model_json_schema()["examples"][0])
+    assert set(ex.flags) <= set(SYBIL_FLAGS)
+    assert ex.reasons_plain == [SYBIL_FLAGS[f] for f in ex.flags]
+    SignupReviewDecision.model_validate({"decision": "approve", "reason": "known customer"})
+    with pytest.raises(ValidationError):
+        SignupReviewDecision.model_validate({"decision": "ban", "reason": "x"})
+    with pytest.raises(ValidationError):
+        SignupReviewDecision.model_validate({"decision": "reject", "reason": ""})
