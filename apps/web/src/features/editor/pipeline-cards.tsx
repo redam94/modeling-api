@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { DataSchema, Issue, StageSchema } from "@/api/types";
 import { Mono } from "@/components/common";
 import { Badge } from "@/components/ui/primitives";
+import { AboutButton, AboutInline } from "@/features/about/about-card";
 import { cn } from "@/lib/utils";
 
 import type { PipelineModel, StepCard } from "./pipeline";
@@ -111,6 +112,7 @@ function StepCardView({ card, onIssue }: { card: StepCard; onIssue?: ((i: Issue)
             {r?.stateful ? <Badge variant="outline">learns state</Badge> : null}
             {r?.invertible ? <Badge variant="outline">invertible</Badge> : null}
             {r?.depends_on_target ? <Badge variant="warning">uses target</Badge> : null}
+            <AboutButton kind="step" id={card.use} className="-my-1 size-6" />
           </span>
         </div>
         {r?.context ? (
@@ -181,6 +183,7 @@ export function PipelineCards({ model, onIssue }: { model: PipelineModel; onIssu
         <div className="rounded-lg border bg-accent/50 p-3">
           <p className="font-medium">Model</p>
           <Mono className="text-xs text-muted-foreground">{model.modelUse ?? "not set"}</Mono>
+          <AboutInline kind="model" id={model.modelUse} className="mt-1" />
           <IssueChips issues={model.modelIssues} onIssue={onIssue} />
         </div>
       </li>

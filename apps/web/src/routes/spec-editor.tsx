@@ -8,6 +8,7 @@ import { ApiError, errorMessage, newIdempotencyKey } from "@/api/client";
 import {
   useCreateRevision,
   useCreateRun,
+  useCatalog,
   useCreateSpec,
   useDryRun,
   useJsonSchema,
@@ -23,6 +24,9 @@ import { ErrorNotice, IssueList, LoadingRows, Mono, PageHeader, Spinner } from "
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Input, NativeSelect } from "@/components/ui/primitives";
+import { useAbout } from "@/features/about/api";
+import { SpecAboutPanel } from "@/features/about/spec-about";
+import { specStarterFor } from "@/features/about/spec-starter";
 import { DiffView } from "@/features/editor/diff-view";
 import { setSpecSchema } from "@/features/editor/monaco-setup";
 import { buildPipeline } from "@/features/editor/pipeline";
@@ -38,6 +42,7 @@ import { locateIssues, YamlLocator } from "@/lib/yaml-diagnostics";
 import { toast } from "@/stores/toast";
 
 const existingRoute = getRouteApi("/build/$specId");
+const newRoute = getRouteApi("/build/new");
 
 interface ValidationState {
   response: ValidateResponse | null;
@@ -83,7 +88,14 @@ function useSchemaBinding() {
 }
 
 export function NewSpecPage() {
-  return <SpecWorkbench specId={null} revision={undefined} />;
+  const { model } = newRoute.useSearch();
+  const catalog = useCatalog();
+  const { about, isPending } = useAbout("model", model ?? null);
+  if (!model) return <SpecWorkbench specId={null} revision={undefined} />;
+  // "Start with this model" (Help me choose, the catalog): a starter for that model.
+  if (isPending || catalog.isPending) return <LoadingRows rows={8} />;
+  const version = catalog.data?.models?.filter((m) => m.manifest.id === model).map((m) => m.manifest.version).sort().at(-1);
+  return <SpecWorkbench key={model} specId={null} revision={undefined} starter={specStarterFor(model, { version: version ?? null, about: about ?? null })} />;
 }
 
 export function SpecEditorPage() {
@@ -92,7 +104,7 @@ export function SpecEditorPage() {
   return <SpecWorkbench key={specId} specId={specId} revision={rev} />;
 }
 
-function SpecWorkbench({ specId, revision }: { specId: string | null; revision: number | undefined }) {
+function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: string | null; revision: number | undefined; starter?: string }) {
   const navigate = useNavigate();
   const spec = useSpec(specId ?? undefined);
   const revisions = useSpecRevisions(specId ?? undefined);
@@ -100,7 +112,7 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
   const loaded = useSpecRevision(specId ?? undefined, selectedRev);
   const schema = useSchemaBinding();
 
-  const [text, setText] = useState(specId ? "" : STARTER_SPEC);
+  const [text, setText] = useState(specId ? "" : starter);
   const [base, setBase] = useState(specId ? "" : "");
   /** The revision `base` (and so the editor text) came from; null until one is loaded. */
   const [baseRev, setBaseRev] = useState<number | null>(null);
@@ -365,6 +377,7 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
               <TabsTrigger value="revisions" disabled={!specId}>
                 Revisions
               </TabsTrigger>
+              <TabsTrigger value="about">About</TabsTrigger>
             </TabsList>
             <TabsContent value="pipeline" className="max-h-[calc(100svh-17rem)] overflow-y-auto pr-1">
               <PipelineCards model={pipeline} onIssue={reveal} />
@@ -375,6 +388,9 @@ function SpecWorkbench({ specId, revision }: { specId: string | null; revision: 
               ) : (
                 <p className="text-muted-foreground">{validation.response ? "No issues. The spec passes static validation." : "Waiting for validation."}</p>
               )}
+            </TabsContent>
+            <TabsContent value="about" className="max-h-[calc(100svh-17rem)] overflow-y-auto pr-1">
+              <SpecAboutPanel modelUse={pipeline.modelUse} steps={pipeline.steps.map((s) => ({ id: s.id, use: s.use }))} />
             </TabsContent>
             <TabsContent value="revisions">
               {specId ? (

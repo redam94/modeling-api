@@ -1,10 +1,13 @@
 /** Step 1, "What do you want to learn?": the templates as friendly cards, plus the analyses in progress. */
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, BarChart3, Clock, LineChart, Megaphone, ShoppingBasket, Store } from "lucide-react";
+import { ArrowRight, BarChart3, Clock, Info, LineChart, Megaphone, ShoppingBasket, Store } from "lucide-react";
+import { useState } from "react";
 
 import { useSpecs } from "@/api/queries";
 import { EmptyState, ErrorNotice, LoadingRows } from "@/components/common";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/primitives";
+import { AboutDialog } from "@/features/about/about-card";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -91,6 +94,34 @@ export function TemplateCard({ template }: { template: GuidedTemplate }) {
   );
 }
 
+function TemplateAbout({ template }: { template: GuidedTemplate }) {
+  const [open, setOpen] = useState(false);
+  if (!template.about) return null;
+  return (
+    <>
+      <Button variant="ghost" size="sm" className="absolute right-3 bottom-3" onClick={() => setOpen(true)} aria-label={`About ${template.title}`}>
+        <Info /> About
+      </Button>
+      <AboutDialog
+        about={template.about}
+        kind="template"
+        id={template.id}
+        open={open}
+        onOpenChange={setOpen}
+        actions={
+          template.plugin_available !== false ? (
+            <Button asChild>
+              <Link to="/guided/new/$templateId" params={{ templateId: template.id }}>
+                Start this analysis <ArrowRight />
+              </Link>
+            </Button>
+          ) : null
+        }
+      />
+    </>
+  );
+}
+
 export function TemplatePicker() {
   const templates = useGuidedTemplates();
   if (templates.isPending) return <LoadingRows rows={3} />;
@@ -98,8 +129,10 @@ export function TemplatePicker() {
   return (
     <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Templates">
       {sortTemplates(templates.data.items).map((t) => (
-        <li key={t.id}>
+        <li key={t.id} className="relative">
           <TemplateCard template={t} />
+          {/* M3.5: the template's About card, beside (never inside) the card's link. */}
+          <TemplateAbout template={t} />
         </li>
       ))}
     </ul>
