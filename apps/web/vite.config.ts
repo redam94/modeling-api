@@ -6,6 +6,7 @@ import { defineConfig, loadEnv, type Plugin } from "vite";
 import { bundleBudget } from "./bundle-budget";
 import { canonicalHost } from "./canonical-host";
 import { buildAppCsp, type AppCspOptions } from "./csp";
+import { DEV_PREBUNDLE } from "./dev-prebundle";
 
 const HOST = "127.0.0.1";
 const PORT = 5173;
@@ -50,6 +51,7 @@ export default defineConfig(({ mode }) => {
     // production builds never contain it.
     publicDir: mode === "mock" ? "mock-public" : "public",
     server: { host: HOST, port: PORT, strictPort: true },
+    optimizeDeps: { include: [...DEV_PREBUNDLE] },
     preview: { host: HOST, port: PORT, strictPort: true, headers },
     build: {
       target: "es2022",

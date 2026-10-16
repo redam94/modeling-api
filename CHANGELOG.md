@@ -348,6 +348,11 @@ milestone releases are tagged on `main`.
   sixth for "forecast weekly sales with drivers" although it is the only model that fits
   all four answers: items silent on a question scored the same 1.0 and ties broke on
   difficulty. Ties now break on the number of answers an item fits explicitly first.
+- **web** (found by the M3.5 live-stack verification): on the dev server (`make dev`), the
+  first page to open a workflow graph crashed with "Invalid hook call" in
+  `ReactFlowProvider`: Vite discovered the lazily loaded React Flow late, optimised it in a
+  second pass and mixed two copies of React. It is now pre-bundled at start-up
+  (`apps/web/dev-prebundle.ts`); production builds were not affected.
 - **client**: members could not be given the `reviewer` capability (needed to approve
   validations) without raw HTTP: `tenants.add_member(..., capabilities=[...])` and
   `tenants.set_capabilities(...)`.
