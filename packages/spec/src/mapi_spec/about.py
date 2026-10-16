@@ -631,15 +631,16 @@ def recommend(
     when an answer matches (a reason) or subtracts it when none does (a caution);
     undeclared questions are neutral. ``experience`` below the item's difficulty and
     ``speed`` below its typical runtime cost one point per level. Scores are normalised to
-    ``[0, 1]``; ties break by difficulty, then id. Items whose ``goal`` does not match are
-    dropped when at least one item matches it.
+    ``[0, 1]``; ties break by the number of answers an item matches explicitly (an item made
+    for every answer before one that is silent on some), then difficulty, then id. Items
+    whose ``goal`` does not match are dropped when at least one item matches it.
     """
     given = {a.question_id: set(a.values) for a in answers}
     exp_rank = (
         min(Difficulty(v).rank for v in given["experience"]) if "experience" in given else None
     )
     speed_cap = min(_SPEED_MAX[v].rank for v in given["speed"]) if "speed" in given else None
-    scored: list[tuple[float, int, str, Recommendation, bool]] = []
+    scored: list[tuple[float, int, int, str, Recommendation, bool]] = []
     for kind, cid, about in candidates:
         points, total = 0.0, 0.0
         reasons: list[str] = []
@@ -691,12 +692,12 @@ def recommend(
             typical_runtime=about.typical_runtime,
             about=about if include_about else None,
         )
-        scored.append((-score, about.difficulty.rank, cid, rec, goal_match))
-    if "goal" in given and any(s[4] for s in scored):
-        scored = [s for s in scored if s[4]]
-    scored.sort(key=lambda s: (s[0], s[1], s[2]))
+        scored.append((-score, -len(reasons), about.difficulty.rank, cid, rec, goal_match))
+    if "goal" in given and any(s[5] for s in scored):
+        scored = [s for s in scored if s[5]]
+    scored.sort(key=lambda s: (s[0], s[1], s[2], s[3]))
     return ChooserResult(
-        items=[s[3] for s in scored[: max(0, limit)]],
+        items=[s[4] for s in scored[: max(0, limit)]],
         answered=[q.id for q in CHOOSER_QUESTIONS if q.id in given],
         unanswered=[q.id for q in CHOOSER_QUESTIONS if q.id not in given],
     )

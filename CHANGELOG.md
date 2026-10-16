@@ -344,6 +344,10 @@ milestone releases are tagged on `main`.
   whose name sorts after `plots` (`residuals`, `response_curves`, `stationarity`, `stl`,
   ...): `ui/explore/plots/<section>.json` matched first, and the call failed with "the view
   is not a JSON object". The exact view is now looked up first; plots never match.
+- **spec** (found by the M3.5 live-stack verification): *Help me choose* ranked `ts.sarimax`
+  sixth for "forecast weekly sales with drivers" although it is the only model that fits
+  all four answers: items silent on a question scored the same 1.0 and ties broke on
+  difficulty. Ties now break on the number of answers an item fits explicitly first.
 - **client**: members could not be given the `reviewer` capability (needed to approve
   validations) without raw HTTP: `tenants.add_member(..., capabilities=[...])` and
   `tenants.set_capabilities(...)`.
