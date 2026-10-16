@@ -10,7 +10,7 @@ import type { DataSchema, DataSummary, IngestMapping, Issue, Scorecard } from "@
 import { parseCsv } from "@/lib/csv";
 import { pivotMff } from "@/features/guided/profile";
 import type { ColumnProfile, GuidedAnswers, GuidedDraft, GuidedQuestion, GuidedTemplate, QuestionSuggestion, RoleSuggestions } from "@/features/guided/types";
-import type { ResponseGrid } from "@/features/guided/whatif";
+import { baselineShare, channelHeadlines, type ResponseGrid } from "@/features/guided/whatif";
 
 // ----------------------------------------------------------------------------- role detection
 
@@ -346,8 +346,43 @@ export function synthGrid(inp: FitInputs, draws = 120): ResponseGrid {
   };
 }
 
-/** The scorecard of the mock fit: everything passes except a borderline holdout error. */
-export function synthScorecard(template: GuidedTemplate, history: number): Scorecard {
+type ScorecardItem = NonNullable<Scorecard["items"]>[number];
+
+/** Pass/warn/fail as `mapi_spec.scorecard` grades a check (`max`, or a band around `target`). */
+function grade(value: number, pass: number, warn: number, target?: number): ScorecardItem["status"] {
+  const off = target == null ? value : Math.abs(value - target);
+  return off <= pass ? "pass" : off <= warn ? "warn" : "fail";
+}
+
+/**
+ * The media plausibility checks, read from the response grid that the report's headline and
+ * channel table summarise, so the screens (and the tutorial screenshots) agree. None without
+ * media channels.
+ */
+function mediaChecks(grid: ResponseGrid | null): Record<string, ScorecardItem> {
+  const base = grid?.channels.length ? baselineShare(grid) : null;
+  if (!grid || !base) return {};
+  const heads = channelHeadlines(grid);
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
+  const b = base.mean;
+  const top = Math.max(...heads.map((h) => h.share?.mean ?? 0));
+  const roiMax = Math.max(...heads.map((h) => h.roi?.mean ?? 0));
+  const bStatus = grade(b, 0.4, 0.48, 0.5);
+  const topStatus = grade(top, 0.6, 0.9);
+  const roiStatus = grade(roiMax, 20, 100);
+  return {
+    "plausibility.roi_absurd": { code: "ROI_ABSURD", check: "plausibility.roi_absurd", category: "plausibility", status: roiStatus, title: "Returns are believable", message_plain: roiStatus === "pass" ? `The best channel returns ${roiMax.toFixed(1)} per unit spent, which is believable.` : `A channel returns ${roiMax.toFixed(1)} per unit spent, which is unusually high.`, metric: "roi_max", value: roiMax, threshold: 20, docs_anchor: "check-plausibility-roi-absurd" },
+    "plausibility.share_outlier": { code: "SHARE_OUTLIER", check: "plausibility.share_outlier", category: "plausibility", status: topStatus, title: "No channel dominates", message_plain: topStatus === "pass" ? `No single channel explains most of your results (the largest explains ${pct(top)}).` : `One channel explains ${pct(top)} of your results, more than usual.`, metric: "max_channel_share", value: top, threshold: 0.6, docs_anchor: "check-plausibility-share-outlier" },
+    "plausibility.baseline_share": { code: "BASELINE_SHARE", check: "plausibility.baseline_share", category: "plausibility", status: bStatus, title: "Baseline is plausible", message_plain: `About ${pct(b)} of results would happen without any media, which is ${bStatus === "pass" ? "plausible" : "unusual"}.`, suggested_action: bStatus === "pass" ? null : "State a baseline share in business priors, or review the controls.", metric: "baseline_share", value: b, threshold: 0.4, docs_anchor: "check-plausibility-baseline-share" },
+  };
+}
+
+/**
+ * The scorecard of the mock fit: everything passes except a borderline holdout error. The media
+ * checks come from `grid`, the fit's response grid; without media channels they are skipped,
+ * as the runner skips them.
+ */
+export function synthScorecard(template: GuidedTemplate, history: number, grid: ResponseGrid | null = null): Scorecard {
   const all: Record<string, NonNullable<Scorecard["items"]>[number]> = {
     "convergence.rhat": { code: "RHAT_OK", check: "convergence.rhat", category: "convergence", status: "pass", title: "Chains agree", message_plain: "All four sampling chains arrived at the same answer.", metric: "r_hat_max", value: 1.004, threshold: 1.01, docs_anchor: "check-convergence-rhat" },
     "convergence.ess": { code: "ESS_OK", check: "convergence.ess", category: "convergence", status: "pass", title: "Enough independent draws", message_plain: "There are enough independent draws for stable numbers.", metric: "ess_bulk_min", value: 812, threshold: 400, docs_anchor: "check-convergence-ess" },
@@ -355,16 +390,17 @@ export function synthScorecard(template: GuidedTemplate, history: number): Score
     "holdout.mape": { code: "HOLDOUT_MAPE", check: "holdout.mape", category: "holdout", status: "warn", title: "Holdout error", message_plain: "On the 8 weeks held back, forecasts were off by 12% on average.", suggested_action: "Check the last periods of data for gaps or one-off events, and add holidays or controls that explain them.", metric: "mape", value: 0.12, threshold: 0.1, docs_anchor: "check-holdout-mape" },
     "holdout.coverage_90": { code: "HOLDOUT_COVERAGE", check: "holdout.coverage_90", category: "holdout", status: "pass", title: "Uncertainty is honest", message_plain: "86% of held-back weeks fell inside the 90% range - close to what it promises.", metric: "coverage_90", value: 0.86, threshold: 0.1, docs_anchor: "check-holdout-coverage-90" },
     "plausibility.negative_roi": { code: "NEGATIVE_ROI_OK", check: "plausibility.negative_roi", category: "plausibility", status: "pass", title: "No channel loses money", message_plain: "No channel is likely to return less than it costs.", metric: "negative_roi_share", value: 0.01, threshold: 0.1, docs_anchor: "check-plausibility-negative-roi" },
-    "plausibility.roi_absurd": { code: "ROI_ABSURD_OK", check: "plausibility.roi_absurd", category: "plausibility", status: "pass", title: "Returns are believable", message_plain: "No channel claims an unrealistic return.", metric: "roi_max", value: 3.4, threshold: 20, docs_anchor: "check-plausibility-roi-absurd" },
-    "plausibility.share_outlier": { code: "SHARE_OK", check: "plausibility.share_outlier", category: "plausibility", status: "pass", title: "No channel dominates", message_plain: "No single channel explains most of your results.", metric: "max_channel_share", value: 0.09, threshold: 0.6, docs_anchor: "check-plausibility-share-outlier" },
-    "plausibility.baseline_share": { code: "BASELINE_OK", check: "plausibility.baseline_share", category: "plausibility", status: "pass", title: "Baseline is plausible", message_plain: "About 80% of results would happen without any media, which is plausible.", metric: "baseline_share", value: 0.8, threshold: 0.4, docs_anchor: "check-plausibility-baseline-share" },
+    ...mediaChecks(grid),
     "data.missing": { code: "MISSING_OK", check: "data.missing", category: "data", status: "pass", title: "Few missing values", message_plain: "No values are missing.", metric: "missing_fraction", value: 0, threshold: 0.05, docs_anchor: "check-data-missing" },
     "data.history": { code: "HISTORY_SHORT", check: "data.history", category: "data", status: history >= 104 ? "pass" : "warn", title: "Enough history", message_plain: `The data covers ${history} periods. Two years (104 weeks) or more give steadier answers.`, suggested_action: history >= 104 ? null : "Add more history if you have it.", metric: "history_periods", value: history, threshold: 104, docs_anchor: "check-data-history" },
     "data.spend_variation": { code: "SPEND_VARIATION_OK", check: "data.spend_variation", category: "data", status: "pass", title: "Spend varies enough", message_plain: "Every channel's spend moves enough to learn from.", metric: "spend_cv_min", value: 0.24, threshold: 0.1, docs_anchor: "check-data-spend-variation" },
   };
-  const items = (template.scorecard_checks ?? []).map((c) => all[c]).filter((x): x is NonNullable<typeof x> => Boolean(x));
+  const checks = template.scorecard_checks ?? [];
+  const items = checks.map((c) => all[c]).filter((x): x is NonNullable<typeof x> => Boolean(x));
+  const skipped: Record<string, string> = {};
+  for (const c of checks) if (!all[c] && c.startsWith("plausibility.")) skipped[c] = "the model has no media channels";
   const overall = items.some((i) => i.status === "fail") ? "fail" : items.some((i) => i.status === "warn") ? "warn" : "pass";
-  return { overall, items, skipped: {} };
+  return { overall, items, skipped };
 }
 
 /** The totals of the uploaded table that a fit needs. */

@@ -392,6 +392,10 @@ milestone releases are tagged on `main`.
   [--description TEXT]`. A webhook created with `--inactive`, or disabled automatically after
   repeated failures, could only be switched back on in the browser; `--enable` does it from
   the command line and resets the failure count.
+- **docs**: the Guided tutorial's report and scorecard screenshots contradicted each other
+  (media drove 23% of results, yet "about 80%" would happen without media). The mock-mode
+  scorecard now reads its baseline, largest-channel and best-return checks from the same
+  response grid as the report, and the screenshots were recaptured.
 - **server**: "Run exact" failed on every live stack: `POST /v1/guided/requests:compile` left
   what-ifs and presets over the fit window without data. The compiled request now names the
   fit dataset version, and a score request without data, scenario or horizon is refused with

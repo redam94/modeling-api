@@ -297,6 +297,35 @@ describe("Guided usability fixes (M3 tester run)", () => {
     expect(doc.model.fit.draws).toBe(500); // the original is untouched
   });
 
+  it("gives the mock scorecard the same media shares as the mock report", async () => {
+    // The tutorial screenshots come from the mock engine: its scorecard used to say 80% of
+    // results happen without media while the report headline said media drove 23%.
+    const { synthGrid, synthScorecard } = await import("@/mocks/guided-engine");
+    const { baselineShare, channelHeadlines } = await import("./whatif");
+    const grid = synthGrid({
+      channels: ["tv", "search", "social"],
+      geos: null,
+      spend: [120_000, 60_000, 90_000],
+      kpiTotal: 4_000_000,
+      kpiSeries: [{ t: "2024-01-01", y: 4_000_000 }],
+      statedRoi: {},
+      kpiUnits: null,
+    });
+    const media = 1 - baselineShare(grid)!.mean; // the report's "Results driven by media"
+    const shares = channelHeadlines(grid).map((h) => h.share!.mean);
+    const card = synthScorecard(tpl("geo_mmm"), 104, grid);
+    const item = (check: string) => card.items!.find((i) => i.check === check)!;
+    expect((item("plausibility.baseline_share").value as number) + media).toBeCloseTo(1, 9);
+    expect(item("plausibility.baseline_share").message_plain).toContain(`${Math.round((1 - media) * 100)}%`);
+    expect(item("plausibility.share_outlier").value).toBeCloseTo(Math.max(...shares), 9);
+    const rois = channelHeadlines(grid).map((h) => h.roi!.mean);
+    expect(item("plausibility.roi_absurd").value).toBeCloseTo(Math.max(...rois), 9);
+    // a fit without media channels has no media checks to show
+    const none = synthScorecard(tpl("geo_mmm"), 104, null);
+    expect(none.items!.some((i) => i.check === "plausibility.baseline_share")).toBe(false);
+    expect(Object.keys(none.skipped ?? {})).toContain("plausibility.baseline_share");
+  });
+
   it("offers result charts for sharing before the sampler's diagnostics", async () => {
     const { shareOrder } = await import("./steps/share-step");
     const ids = shareOrder([{ id: "core.convergence" }, { id: "core.ppc_fan" }, { id: "mmm.decomposition" }, { id: "mmm.response_curves" }]).map((p) => p.id);
