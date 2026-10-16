@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from mapi_spec.calibration import PriorTranslationJob
 from mapi_spec.executor import RunKind
+from mapi_spec.explore import ExploreJob
+from mapi_spec.governance import GovernanceJob
 from mapi_spec.spec import ModelSpec
 
 from mapi_runner.jobs import (
@@ -69,5 +71,15 @@ def run_kind(ctx: WorkerContext) -> None:
 
         assert isinstance(job, PriorTranslationJob)
         run_translate_priors(ctx, job)
+    elif kind is RunKind.EXPLORE:
+        from mapi_runner.worker.explore import run_explore
+
+        assert isinstance(job, ExploreJob)
+        run_explore(ctx, job)
+    elif kind is RunKind.GOVERNANCE:
+        from mapi_runner.worker.governance import run_governance
+
+        assert isinstance(job, GovernanceJob)
+        run_governance(ctx, job)
     else:  # pragma: no cover - parse_job raises first
         raise NotImplementedError(f"the runner does not execute {kind.value!r} runs")

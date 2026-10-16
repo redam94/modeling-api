@@ -7,6 +7,8 @@ Outputs (relative to the attempt prefix)::
     evaluation/{bundle.zarr.zip, manifest.json, diagnostics.json, plots.json, metrics.json}
     ui/{thin.zarr.zip, summaries.json, tree_index.json, preprocess.json, grids/*.arrow,
         grids/response_curves.json (M3: the what-if grid view), plotdata/*.arrow}
+    ui/explore/{index.json, <section>.json, plots/<section>.json} (M3.5: the Model
+        Explorer's fit-time sections, mapi_runner.worker.explore_model.FIT_SECTIONS)
 
 The SDK names the bundle's own manifest ``manifest.json``; at the top level that name is the
 runner's output manifest, so it is uploaded as ``bundle.manifest.json``.
@@ -37,6 +39,7 @@ from mapi_runner.worker.data import (
     load_side_tables,
     supplied_side_tables,
 )
+from mapi_runner.worker.explore import write_model_explorer
 from mapi_runner.worker.guided import check_lift_tests, response_grid_view
 from mapi_runner.worker.plots import render_for
 from mapi_runner.worker.scorecard import fit_scorecard
@@ -80,6 +83,13 @@ def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
     write_fit_coords(ctx, bundle)
     write_ui_views(ctx, bundle)
     write_guided_views(ctx, bundle, data)
+    write_model_explorer(
+        ctx,
+        bundle,
+        data,
+        ref=f"model://{spec.metadata.project}/{spec.metadata.name}@latest",
+        side_tables=tables,
+    )
     for diagnostic in bundle.diagnostics[:200]:
         ctx.diagnostic(diagnostic)
     for name, value in sorted(bundle.metrics.values.items()):
