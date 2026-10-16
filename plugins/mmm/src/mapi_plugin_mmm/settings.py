@@ -321,6 +321,13 @@ class _Common(ModelSettings):
         "from the time labels",
         json_schema_extra=ADVANCED,
     )
+    new_levels: Literal["pooled", "hyperprior", "zero", "error"] = Field(
+        "pooled",
+        description="How a geo or product unseen at fit is scored: pooled (the overall "
+        "level and average channel effects), hyperprior (a level drawn from the fitted "
+        "spread, so its range is wider), zero (no channel effects) or error (refuse)",
+        json_schema_extra=ADVANCED,
+    )
     grid: GridSettings = Field(GridSettings(), json_schema_extra=ADVANCED)
 
     @field_validator("controls")

@@ -1,8 +1,8 @@
-# pymc-marketing MMM adapter: the model owns scaling, carry-over and the inverse to
+# mmm-framework's frequentist MMM: the model owns scaling, carry-over and the inverse to
 # original units, so the pipeline only converts currencies, resamples and adds holidays.
 apiVersion: mapi/v1
 kind: ModelSpec
-metadata: {name: pmm-geo, project: growth, labels: {family: mmm, fixture: pymc_marketing}}
+metadata: {name: freq-geo, project: growth, labels: {family: mmm, fixture: mmm_frequentist}}
 
 data:
   dataset: dataset://growth/eu_media_daily@latest
@@ -22,16 +22,20 @@ pipeline:
   - {id: hols,   use: core.holidays@^1, with: {table: holidays, table_along: date, along: time}}
 
 model:
-  use: mmm.pymc_marketing@^1
+  use: mmm.frequentist@^1
   settings:
-    dims: [geo]
-    adstock: {l_max: 4}
+    hierarchy: {pool_over: [geo]}
+    new_levels: error
+    adstock: {kind: geometric, l_max: 4}
     saturation: {kind: logistic}
     controls: [holiday]
-    yearly_seasonality: 1
-  fit: {mode: evaluate_then_refit, engine: pymc, seed: 7, tune: 100, draws: 60, chains: 2}
+    trend: {kind: none}
+    seasonality: {yearly_order: 1}
+    bootstrap: 60
+    search_budget: 40
+  fit: {mode: evaluate_then_refit, seed: 7}
 
 outputs:
-  plots: [core.ppc_fan, core.convergence]
+  plots: [core.ppc_fan]
 evaluate: {metrics: [mape, coverage_90]}
-execution: {resource_class: M, timeout: 45m}
+execution: {resource_class: S, timeout: 15m}

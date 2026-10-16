@@ -167,7 +167,7 @@ class GuidedTruth:
 def truth(seed: int = 0, size: Size = "tiny") -> GuidedTruth:
     """ROI and contribution share per channel, the baseline share and the lift the lift
     test measures - the extra spend spread over the window in proportion to the actual
-    spend, carried over within the window, as ``mmm.hierarchical_geo`` defines it."""
+    spend, carried over within the window (the simulation's own definition)."""
     weeks = SIZES[size]["weeks"]
     ds, sim = _simulate(seed, size, weeks)
     d = sim["design"]

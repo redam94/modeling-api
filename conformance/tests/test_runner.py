@@ -164,7 +164,7 @@ PLAN_CORPUS = {
     "E84-lite": "e84_lite",
     "E82-slim": None,
     "E45": None,
-    "pymc-marketing": "pymc_marketing",
+    "pymc-marketing": "mmm_frequentist",  # v0.5: the owns fixture is mmm-framework's
     "sklearn": "sklearn_store_demand",
     "xgboost": "xgb_store_demand",
 }

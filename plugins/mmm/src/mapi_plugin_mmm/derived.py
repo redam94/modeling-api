@@ -24,11 +24,12 @@ and spend units of the model stage (the model owns scaling, so these are busines
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
 import xarray as xr
+from mapi_spec.errors import ErrorCode, MapiError
 
 from mapi_plugin_mmm.forward import Components, Replay, history_arrays
 from mapi_plugin_mmm.framework import CHANNEL, GEO, PRODUCT, TIME, PanelData
@@ -46,13 +47,22 @@ SAMPLE = "sample"
 ToOriginal = Callable[[xr.DataArray, str], xr.DataArray]
 
 
-def _convert(to_original: ToOriginal | None, da: xr.DataArray, src: str) -> xr.DataArray:
+def _convert(
+    to_original: ToOriginal | None, da: xr.DataArray, src: str, win: FitWindow
+) -> xr.DataArray:
+    """``da`` (model-stage units of input ``src``) in the output space, labelled.
+
+    The model owns scaling, so the pipeline after its last reshape step must leave ``y``
+    and ``spend`` unscaled (or scaled by one constant): the conversion is read once from a
+    probe array with ``src``'s own dims and applied as a factor, which also labels the
+    units (``to_original`` cannot label a total that has no time dim by itself)."""
     if to_original is None:
         out = da.copy()
         out.attrs = {**da.attrs, "output_space": "model", "units_of": src}
         return out
-    out = to_original(da, src)
-    out.attrs = {**out.attrs, "units_of": src}
+    factor, attrs = win.unit_map(to_original, src)
+    out = da * factor if factor != 1.0 else da.copy()
+    out.attrs = {**da.attrs, **attrs, "units_of": src}
     return out
 
 
@@ -62,6 +72,36 @@ class FitWindow:
 
     replay: Replay
     fit: PanelData
+    _units: dict[str, tuple[float, dict[str, Any]]] = field(default_factory=dict)
+
+    def unit_map(self, to_original: ToOriginal, src: str) -> tuple[float, dict[str, Any]]:
+        """``(factor, attrs)`` of ``to_original`` for input ``src`` (``y`` or ``spend``)."""
+        if src in self._units:
+            return self._units[src]
+        fit = self.fit
+        dims: list[str] = [d for d in (GEO, PRODUCT) if d in fit.panel]
+        coords: dict[str, Any] = {TIME: fit.times, **self.panel_coords()}
+        if src == "spend":
+            dims = [*dims, CHANNEL, TIME]
+            coords[CHANNEL] = np.asarray(fit.channels)
+        else:
+            dims = [*dims, TIME]
+        shape = [len(coords[d]) for d in dims]
+        probe = xr.DataArray(np.ones(shape), dims=dims, coords={d: coords[d] for d in dims})
+        out = to_original(probe, src)
+        vals = np.asarray(out.values, dtype=float)
+        finite = vals[np.isfinite(vals)]
+        factor = float(finite.flat[0]) if finite.size else 1.0
+        if finite.size and not np.allclose(finite, factor, rtol=1e-9, atol=1e-12):
+            raise MapiError(
+                f"the pipeline rescales {src!r} after its last reshape step; the mmm-framework "
+                "model owns scaling, so drop that step",
+                code=ErrorCode.SCHEMA_INVALID,
+                pointer="/pipeline",
+            )
+        attrs = {k: v for k, v in out.attrs.items() if k in ("units", "output_space")}
+        self._units[src] = (factor, attrs)
+        return factor, attrs
 
     @property
     def cells(self) -> list[Any]:
@@ -114,16 +154,20 @@ def contributions_dataset(win: FitWindow, to_original: ToOriginal | None) -> xr.
     sample = {SAMPLE: np.arange(n)}
     out: dict[str, xr.DataArray] = {}
     ch = win.cube(comps.channel, [SAMPLE, CHANNEL], {**sample, CHANNEL: win.fit.channels})
-    out["channel_contribution"] = _convert(to_original, ch, "y")
-    out["baseline"] = _convert(to_original, win.cube(comps.baseline, [SAMPLE], sample), "y")
+    out["channel_contribution"] = _convert(to_original, ch, "y", win)
+    out["baseline"] = _convert(to_original, win.cube(comps.baseline, [SAMPLE], sample), "y", win)
     n_cell = comps.baseline.shape[1]
     trend = np.broadcast_to(comps.trend[:, None, :], (n, n_cell, comps.trend.shape[1]))
     season = np.broadcast_to(comps.seasonality[:, None, :], (n, n_cell, comps.seasonality.shape[1]))
-    out["trend"] = _convert(to_original, win.cube(np.asarray(trend), [SAMPLE], sample), "y")
-    out["seasonality"] = _convert(to_original, win.cube(np.asarray(season), [SAMPLE], sample), "y")
+    out["trend"] = _convert(to_original, win.cube(np.asarray(trend), [SAMPLE], sample), "y", win)
+    out["seasonality"] = _convert(
+        to_original, win.cube(np.asarray(season), [SAMPLE], sample), "y", win
+    )
     for k, name in enumerate(win.fit.controls.variables):
         label = name if name not in out else f"{name}_contribution"
-        out[label] = _convert(to_original, win.cube(comps.controls[:, k], [SAMPLE], sample), "y")
+        out[label] = _convert(
+            to_original, win.cube(comps.controls[:, k], [SAMPLE], sample), "y", win
+        )
     ds = xr.Dataset(out)
     ds.attrs = {"description": "Additive contributions over the fit window"}
     return ds
@@ -167,7 +211,7 @@ def response_curves_dataset(
         contrib = np.stack(resp, axis=2)  # (S, C, M)
         dims = [SAMPLE, CHANNEL, "multiplier"]
         coords = {SAMPLE: np.arange(n), CHANNEL: channels, "multiplier": mults}
-    contribution = _convert(to_original, xr.DataArray(contrib, dims=dims, coords=coords), "y")
+    contribution = _convert(to_original, xr.DataArray(contrib, dims=dims, coords=coords), "y", win)
     contribution.attrs["description"] = "total contribution over the fit window"
     by_geo_spend = _by_geo(base_cells, fit)  # (C, G)
     spend_by_geo = xr.DataArray(
@@ -175,7 +219,7 @@ def response_curves_dataset(
         dims=[GEO, CHANNEL, "multiplier"],
         coords={GEO: np.asarray(fit.geos or ["__all__"]), CHANNEL: channels, "multiplier": mults},
     )
-    spend_by_geo = _convert(to_original, spend_by_geo, "spend")
+    spend_by_geo = _convert(to_original, spend_by_geo, "spend", win)
     spend_by_geo.attrs["description"] = "total spend over the fit window"
     total = spend_by_geo.sum(GEO)
     total.attrs = dict(spend_by_geo.attrs)
@@ -184,7 +228,7 @@ def response_curves_dataset(
     peak = xr.DataArray(
         spend.max(axis=(0, 1)), dims=[CHANNEL], coords={CHANNEL: channels}
     )  # largest single-cell, single-period spend
-    peak = _convert(to_original, peak, "spend")
+    peak = _convert(to_original, peak, "spend", win)
     peak.attrs["description"] = "largest spend of one cell in one period"
     comps = win.evaluate(1.0)
     base_cell = (
@@ -210,6 +254,7 @@ def response_curves_dataset(
                 coords={SAMPLE: np.arange(n), GEO: np.asarray(fit.geos)},
             ),
             "y",
+            win,
         )
         bg.attrs["description"] = "KPI over the fit window that no channel explains"
         variables["baseline_by_geo"] = bg
@@ -217,6 +262,7 @@ def response_curves_dataset(
         to_original,
         xr.DataArray(base_geo.sum(axis=1), dims=[SAMPLE], coords={SAMPLE: np.arange(n)}),
         "y",
+        win,
     )
     base.attrs["description"] = "KPI over the fit window that no channel explains"
     variables["baseline"] = base
@@ -259,8 +305,8 @@ def marginal_cost_dataset(
         dims = [SAMPLE, CHANNEL]
         coords = {SAMPLE: np.arange(n), CHANNEL: channels}
         din = xr.DataArray(d_in, dims=[CHANNEL], coords={CHANNEL: channels})
-    dout = _convert(to_original, xr.DataArray(d_out, dims=dims, coords=coords), "y")
-    din = _convert(to_original, din, "spend")
+    dout = _convert(to_original, xr.DataArray(d_out, dims=dims, coords=coords), "y", win)
+    din = _convert(to_original, din, "spend", win)
     with np.errstate(divide="ignore", invalid="ignore"):
         cost = xr.where(dout > 0, din / dout, np.nan)
         roi = xr.where(din > 0, dout / din, np.nan)

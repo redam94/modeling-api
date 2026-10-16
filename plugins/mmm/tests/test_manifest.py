@@ -122,3 +122,21 @@ def test_grid_multipliers_always_hold_today() -> None:
     assert grid == [0.0, 1.0, 2.0, 3.0]
     odd = GridSettings(max_multiplier=2.0, points=4).multipliers()
     assert 1.0 in odd and len(odd) == 5
+
+
+@pytest.mark.parametrize(
+    ("strategy", "policy"),
+    [
+        ("pooled", "new_levels"),
+        ("hyperprior", "new_levels"),
+        ("zero", "new_levels"),
+        ("error", "fixed"),
+    ],
+)
+def test_new_levels_set_the_panel_dims_policy(strategy: str, policy: str) -> None:
+    schema = MMMBayesian.manifest().schema_template.resolve(
+        {"hierarchy": {"pool_over": ["geo", "product"]}, "new_levels": strategy}
+    )
+    for d in ("geo", "product"):
+        assert schema.dims[d].policy.value == policy
+        assert schema.dims[d].new_level_strategy == strategy

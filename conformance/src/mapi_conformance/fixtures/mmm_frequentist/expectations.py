@@ -1,4 +1,4 @@
-"""pymc-marketing adapter expectations: owned units and carry-over, additive
+"""mmm.frequentist expectations: owned units and carry-over, bootstrap draws, additive
 contributions, counterfactual locality and plots."""
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import xarray as xr
 from mapi_plots.recipes import render_plots
 from mapi_sdk.bundle import Bundle
 
-from mapi_conformance.fixtures.pymc_marketing.data import HORIZON_WEEKS
+from mapi_conformance.fixtures.mmm_frequentist.data import HORIZON_WEEKS
 from mapi_conformance.runner import FixtureContext
 
 __all__ = ["check_fit", "check_score"]
@@ -23,13 +23,17 @@ def _group(tree: xr.DataTree, name: str) -> xr.Dataset:
 
 
 def check_fit(bundle: Bundle, data: xr.Dataset, *, ctx: FixtureContext) -> None:
-    """Owned preprocessing: no platform inverse, pymc-marketing's fit data in the bundle."""
+    """Owned preprocessing: no platform inverse, mmm-framework's fit data in the bundle,
+    bootstrap replicates as draws and no convergence diagnostics."""
     caps = bundle.model.manifest.capabilities
     assert set(caps.owns) == {"scaling", "carryover", "inverse_units"}
+    assert caps.inference == "bootstrap"
     assert bundle.metrics.output_space == "model-owned"
     assert "fit_data" in bundle.model.groups
-    report = render_plots(bundle.to_tree(), ["core.convergence"], registry=ctx.registry)
-    assert [p.id for p in report.plots] == ["core.convergence"], report.issues
+    post = bundle.model.posterior
+    assert post.sizes["chain"] == 1 and post.sizes["draw"] == 60
+    assert {d.code for d in bundle.diagnostics} == {"FREQUENTIST_FIT"}
+    assert bundle.model.learned["fit_diagnostics"]["estimator"] == "ridge"
 
 
 def check_score(

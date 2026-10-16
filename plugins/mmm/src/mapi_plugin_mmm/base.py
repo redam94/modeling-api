@@ -68,7 +68,15 @@ from mapi_plugin_mmm.settings import BayesianSettings, FrequentistSettings
 __all__ = ["SCHEMA_TEMPLATE", "FrameworkMMM", "draw_samples", "positions_of"]
 
 SCHEMA_TEMPLATE: Final[dict[str, Any]] = {
-    "params": {"panel": {"type": "string_list", "path": "hierarchy.pool_over", "default": []}},
+    "params": {
+        "panel": {"type": "string_list", "path": "hierarchy.pool_over", "default": []},
+        "strategy": {
+            "type": "string",
+            "path": "new_levels",
+            "default": "pooled",
+            "enum": ["pooled", "hyperprior", "zero", "error"],
+        },
+    },
     "template": {
         "dims": {
             TIME: {"kind": "time", "policy": "extend"},
@@ -76,7 +84,7 @@ SCHEMA_TEMPLATE: Final[dict[str, Any]] = {
             "{*panel as d}": {
                 "kind": "categorical",
                 "policy": "new_levels",
-                "new_level_strategy": "pooled",
+                "new_level_strategy": "{strategy}",
             },
         },
         "vars": {
@@ -89,9 +97,16 @@ SCHEMA_TEMPLATE: Final[dict[str, Any]] = {
             },
         },
     },
+    "cases": [
+        {
+            "when": {"strategy": "error"},
+            "merge": {"dims": {"{*panel as d}": {"policy": "fixed"}}},
+        }
+    ],
 }
 """Canonical names: ``y(*panel, time)``, ``spend(*panel, channel, time)``; the panel dims
-are ``hierarchy.pool_over``. New geos/products are scored from the pooled level."""
+are ``hierarchy.pool_over``. New geos/products are scored per ``new_levels`` (default:
+from the pooled level); ``new_levels: error`` makes the panel dims fixed."""
 
 OUTPUTS: Final[dict[str, Any]] = {
     "y_hat": {

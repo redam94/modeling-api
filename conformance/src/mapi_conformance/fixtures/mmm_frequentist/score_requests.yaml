@@ -1,5 +1,5 @@
-# pymc-marketing adapter score requests. `payload` names a payload_<name>() builder in
-# pymc_marketing/data.py (or `fit_data`).
+# mmm.frequentist score requests. `payload` names a payload_<name>() builder in
+# mmm_frequentist/data.py (or `fit_data`).
 - name: forecast_4w
   payload: future             # daily local-currency spend for 4 weeks after the fit
   request:

@@ -1,6 +1,6 @@
 # ruff: noqa: E501
 """Guided prior translations (M3): ``/v1/guided/prior-translations`` end to end against the
-real ``mmm.hierarchical_geo`` catalog entry - static checks, the pinned ``translate_priors``
+real ``mmm.bayesian`` (mmm-framework) catalog entry - static checks, the pinned ``translate_priors``
 run, finalization of its ``priors.json`` and tenant isolation - plus the runner scorecard
 on a model version and the static lift-test checks of spec validation."""
 
@@ -75,12 +75,9 @@ data:
   split: {kind: time_holdout, dim: time, last: 4, after_step: weekly}
 pipeline:
   - {id: weekly, use: core.resample@^1, with: {dim: time, freq: W-SUN, how: sum, full_periods_only: true}}
-  - {id: scale_spend, use: core.mean_scale@^1, with: {vars: [spend], over: [time], unseen_levels: pooled}}
-  - {id: scale_y, use: core.mean_scale@^1, with: {vars: [y], over: [time], unseen_levels: pooled}}
-  - {id: lags, use: core.lag_tensor@^1, with: {vars: [spend], along: time, within: [geo], l_max: 4, pad: first}}
 model:
-  use: mmm.hierarchical_geo@^1
-  settings: {adstock: {kind: geometric, l_max: 4}}
+  use: mmm.bayesian@^1
+  settings: {hierarchy: {pool_over: [geo]}, adstock: {kind: geometric, l_max: 4}}
   fit: {engine: pymc, tune: 50, draws: 50, chains: 2, seed: 3}
 outputs: {derived: [response_curves]}
 """
@@ -95,15 +92,15 @@ BELIEFS: dict[str, Any] = {
 
 @pytest.fixture(scope="module")
 def mmm_catalog(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """The real catalog of the steps, the plot recipes and ``mmm.hierarchical_geo``."""
+    """The real catalog of the steps, the plot recipes and ``mmm.bayesian``."""
     import mapi_steps
     from mapi_plots.recipes import all_recipes
-    from mapi_plugin_mmm.hierarchical_geo import HierarchicalGeoMMM
+    from mapi_plugin_mmm.bayesian import MMMBayesian
     from mapi_plugin_ts import HSGPTrendModel
 
     reg = mapi_steps.registry()
     reg.register(all_recipes())
-    reg.register_model(HierarchicalGeoMMM)
+    reg.register_model(MMMBayesian)
     reg.register_model(HSGPTrendModel)
     path = tmp_path_factory.mktemp("catalog") / "catalog.json"
     path.write_text(reg.catalog().model_dump_json())
@@ -188,7 +185,7 @@ async def test_a_translation_is_validated_pinned_and_queued(
     assert run.state == RunState.QUEUED.value and run.priority == "interactive"
     job = PriorTranslationJob.model_validate(run.payload)
     assert job.draws == 300 and job.seed == 7
-    assert job.spec["model"]["use"] == "mmm.hierarchical_geo@1.3.0"  # resolved and pinned
+    assert job.spec["model"]["use"] == "mmm.bayesian@1.0.0"  # resolved and pinned
     assert "@sha256:" in str(job.spec["data"]["dataset"])  # pinned to the version's content
     assert set(run.inputs) == {"dataset"} and run.dataset_version == 1
     got = PriorTranslation.model_validate((await client.get(f"{URL}/{view.run.id}")).json())
@@ -290,7 +287,7 @@ async def test_the_finalized_result_is_served_and_bad_results_are_refused(
     assert await Finalizer(ctx).finalize(run.id, att.attempt) is RunState.SUCCEEDED
     view = PriorTranslation.model_validate((await client.get(f"{URL}/{run_id}")).json())
     assert view.done and view.result == result
-    assert view.result.priors["beta_channel"]["distribution"] == "LogNormal"
+    assert view.result.priors["roi"]["tv"]["sigma"] > 0
     # another run whose priors.json is not a translation fails as an integrity problem
     bad_id = (await _post(client, body)).json()["run"]["id"]
     bad, bad_att = await _finalizing(ctx, bad_id)
