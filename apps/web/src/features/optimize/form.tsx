@@ -74,7 +74,7 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
   ];
   const limitsTable = (
     <div className="grid gap-3">
-      <div className="overflow-x-auto rounded-lg border [contain:inline-size]">
+      <div className="relative overflow-x-auto rounded-lg border [contain:inline-size]">
         <table className="w-full text-[13px]" aria-label="Limits per channel">
           <thead>
             <tr className="border-b text-xs text-muted-foreground">

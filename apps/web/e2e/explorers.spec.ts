@@ -181,6 +181,17 @@ test("impulse responses of a VECM and a side-by-side comparison with Diebold-Mar
   await expect(page.getByTestId("plain-summary").first()).toContainText("sales-arimax@v2 has the lowest");
 });
 
+test("the explorers and the chooser fit a phone without sideways scrolling", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const url of [`/datasets/${DATASET}/versions/1/explore`, `/models/${MMM}/versions/1/explore?section=params`, `/models/${MMM}/versions/1/optimize`, "/choose?goal=forecast"]) {
+    await page.goto(url);
+    await expect(page.locator("main h1").first()).toBeVisible();
+    await page.waitForTimeout(300);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow, url).toBeLessThanOrEqual(0);
+  }
+});
+
 test("budget optimisation: bounds explained before the run, then the plan and its frontier", async ({ page }) => {
   await page.goto(`/models/${MMM}/versions/1/optimize`);
   await expect(page.getByRole("heading", { name: "Optimise a budget" })).toBeVisible();

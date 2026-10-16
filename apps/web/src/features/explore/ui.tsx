@@ -144,7 +144,7 @@ export interface Column<T> {
 export function StatTable<T>({ rows, columns, label, rowKey, maxHeight = "28rem", empty = "Nothing to show." }: { rows: readonly T[]; columns: readonly Column<T>[]; label: string; rowKey: (row: T, i: number) => string; maxHeight?: string; empty?: string }) {
   if (!rows.length) return <p className="text-[13px] text-muted-foreground">{empty}</p>;
   return (
-    <div className="overflow-auto rounded-lg border [contain:inline-size]" style={{ maxHeight }}>
+    <div className="relative overflow-auto rounded-lg border [contain:inline-size]" style={{ maxHeight }}>
       <table className="w-full text-[13px]" aria-label={label}>
         <thead className="sticky top-0 z-[1] bg-card">
           <tr className="border-b">
