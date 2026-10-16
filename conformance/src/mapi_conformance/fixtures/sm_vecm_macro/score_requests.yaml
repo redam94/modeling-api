@@ -1,0 +1,20 @@
+# VECM on log levels: joint forecasts after the fit, in-sample one-step predictions, the
+# fixed variable dim, quantiles never summed across series and contiguity errors.
+- name: forecast_8
+  request: {mode: forecast, horizon: {dim: t, periods: 8}, output: {summary: [median, q5, q95]}}
+  expect: {groups: [summary], vars: [y_hat], sizes: {quarter: 8, series: 3, stat: 3}}
+- name: predict_last_two_years
+  request: {mode: predict, output: {summary: [median, q2_5, q97_5]}}
+  payload: "tail:8"
+  expect: {sizes: {quarter: 8, series: 3}}
+- name: unseen_series
+  request: {mode: predict}
+  payload: new_series
+  expect_error: UNSEEN_LEVELS
+- name: gap_after_fit
+  request: {mode: predict}
+  payload: gapped
+  expect_error: NON_CONTIGUOUS_EXTENSION
+- name: quantiles_are_not_summed
+  request: {mode: forecast, horizon: {dim: t, periods: 4}, output: {aggregate: {over: [series]}}}
+  expect_error: CAPABILITY_UNSUPPORTED

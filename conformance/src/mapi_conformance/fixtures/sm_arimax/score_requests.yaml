@@ -1,0 +1,34 @@
+# ARIMAX per geo: forecasts need the planned drivers, panels are scored per series, the
+# quantile representation is never aggregated, and the CoordPlan errors are typed.
+- name: forecast_8
+  request: {mode: forecast, horizon: {dim: t, periods: 8}, output: {summary: [median, q5, q95]}}
+  payload: future
+  expect: {groups: [summary], vars: [y_hat], sizes: {date: 8, geo: 3, stat: 3}}
+- name: promo_every_week
+  request: {mode: forecast, horizon: {dim: t, periods: 8}, output: {summary: [median]}}
+  payload: scenario_promo
+  expect: {vars: [y_hat], sizes: {date: 8}}
+- name: predict_last_quarter
+  request: {mode: predict, output: {summary: [median, q5, q95]}}
+  payload: "tail:12"
+  expect: {sizes: {date: 12, geo: 3}}
+- name: missing_future_price
+  request: {mode: forecast, horizon: {dim: t, periods: 8}}
+  payload: future_without_price
+  expect_error: MISSING_FUTURE_COVARIATE
+- name: gap_after_fit
+  request: {mode: predict}
+  payload: gapped
+  expect_error: NON_CONTIGUOUS_EXTENSION
+- name: unseen_geo
+  request: {mode: predict}
+  payload: new_geo
+  expect_error: UNSEEN_LEVELS
+- name: quantiles_are_not_summed
+  request: {mode: forecast, horizon: {dim: t, periods: 8}, output: {aggregate: {over: [geo]}}}
+  payload: future
+  expect_error: CAPABILITY_UNSUPPORTED
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: price, multiply: 1.1}]}
+  payload: "tail:4"
+  expect_error: MODE_NOT_SUPPORTED
