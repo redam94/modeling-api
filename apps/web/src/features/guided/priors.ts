@@ -7,7 +7,8 @@
  * checks of `check_business_priors` and the `LiftTest` validators), and writes the result into
  * the spec document (`apply_prior_translation`).
  */
-import type { BusinessPriors, LiftTest, PriorTranslationResult, SpecDocument } from "./types";
+import type { DistributionItem } from "./plots";
+import type { BusinessPriors, LiftTest, PriorPreview, PriorTranslationResult, SpecDocument } from "./types";
 
 export type BeliefMode = "roi" | "share";
 
@@ -260,6 +261,31 @@ export function withCalibration(
   if (Object.keys(cal).length) doc.calibration = cal;
   else delete doc.calibration;
   return doc;
+}
+
+export interface PreviewGroups {
+  /** ROI per channel with a stated belief (`stated` set in ROI mode). */
+  roi: DistributionItem[];
+  /** Share of results per channel with a stated belief (`stated` set in share mode). */
+  share: DistributionItem[];
+  /** Channels previewed without a stated belief: the model's default prior, not the user's view. */
+  unstated: string[];
+}
+
+/**
+ * Split the prior preview (`PriorPreview`, which covers every channel of the model) into what the
+ * charts show - the channels the user ticked - and the channels left at the model's default.
+ * A default is wide on purpose; charting it beside the stated beliefs reads as a belief the
+ * user never held and stretches the axis far past the ranges they gave.
+ */
+export function previewGroups(preview: Pick<PriorPreview, "roi" | "contribution_share">, form: PriorsForm): PreviewGroups {
+  const stated = new Map(form.channels.filter((c) => c.enabled).map((c) => [c.channel, [c.low, c.high] as [number, number]]));
+  const items = (dists: PriorPreview["roi"], mode: BeliefMode): DistributionItem[] =>
+    Object.entries(dists ?? {})
+      .filter(([label]) => stated.has(label))
+      .map(([label, summary]) => ({ label, summary, stated: form.mode === mode ? (stated.get(label) ?? null) : null }));
+  const previewed = [...new Set([...Object.keys(preview.roi ?? {}), ...Object.keys(preview.contribution_share ?? {})])];
+  return { roi: items(preview.roi, "roi"), share: items(preview.contribution_share, "share"), unstated: previewed.filter((c) => !stated.has(c)) };
 }
 
 /** "82% of the model's prior lies in your range, close to the 80% you stated." */

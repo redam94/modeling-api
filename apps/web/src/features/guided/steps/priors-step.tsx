@@ -21,7 +21,7 @@ import { PlotFrame } from "@/features/plots/plot-frame";
 
 import { usePriorTranslation, useStartPriorTranslation } from "../api";
 import { StepActions } from "../frame";
-import { band, ratio, share } from "../plain";
+import { band, listWords, ratio, share } from "../plain";
 import { distributionPlot, fanPlot } from "../plots";
 import {
   beliefProblems,
@@ -30,6 +30,7 @@ import {
   CREDIBILITY_CHOICES,
   formFromCalibration,
   newLiftRow,
+  previewGroups,
   ROI_LIMITS,
   SHARE_LIMITS,
   toBusinessPriors,
@@ -236,9 +237,8 @@ function LiftRow({
 
 function PreviewPanel({ result, form }: { result: PriorTranslationResult; form: PriorsForm }) {
   const preview = result.preview ?? {};
-  const stated = new Map(form.channels.filter((c) => c.enabled).map((c) => [c.channel, [c.low, c.high] as [number, number]]));
-  const roiItems = Object.entries(preview.roi ?? {}).map(([label, summary]) => ({ label, summary, stated: form.mode === "roi" ? (stated.get(label) ?? null) : null }));
-  const shareItems = Object.entries(preview.contribution_share ?? {}).map(([label, summary]) => ({ label, summary, stated: form.mode === "share" ? (stated.get(label) ?? null) : null }));
+  // Only the channels with a stated belief: the others sit at the model's wide default.
+  const { roi: roiItems, share: shareItems, unstated } = previewGroups(preview, form);
   const roiPlot = useMemo(() => (roiItems.length ? distributionPlot(roiItems, { axisTitle: "Return per 1 spent", format: ".2~f" }) : null), [result]); // eslint-disable-line react-hooks/exhaustive-deps
   const sharePlot = useMemo(() => (shareItems.length ? distributionPlot(shareItems, { axisTitle: "Share of results", format: ".0%" }) : null), [result]); // eslint-disable-line react-hooks/exhaustive-deps
   const fan = useMemo(() => (preview.kpi_fan ? fanPlot(preview.kpi_fan, { title: "Results the model expects" }) : null), [result]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -248,7 +248,10 @@ function PreviewPanel({ result, form }: { result: PriorTranslationResult; form: 
         <h2 id="preview-h" className="text-[15px] font-semibold tracking-tight">
           What your beliefs mean, before seeing the data
         </h2>
-        <p className="text-[13px] text-muted-foreground">The shaded bar is the range you gave; the line is where 90% of what the model now believes falls, the thick part the middle half.</p>
+        <p className="text-[13px] text-muted-foreground">
+          The charts show the channels you have a view on. The shaded bar is the range you gave; the line is where 90% of what the model now believes falls, the thick part the
+          middle half.
+        </p>
       </div>
       <ul className="grid gap-1 text-[13px]">
         {form.channels
@@ -272,6 +275,12 @@ function PreviewPanel({ result, form }: { result: PriorTranslationResult; form: 
           </figure>
         ) : null}
       </div>
+      {unstated.length ? (
+        <p className="text-[13px] text-muted-foreground" data-testid="unstated-channels">
+          No view on {listWords(unstated)}: the model starts from a deliberately wide default for {unstated.length === 1 ? "it" : "them"} and learns{" "}
+          {unstated.length === 1 ? "it" : "them"} from the data, so {unstated.length === 1 ? "it is" : "they are"} left out of these charts.
+        </p>
+      ) : null}
       {preview.baseline_share ? (
         <p className="text-[13px] text-muted-foreground">
           Results without any media: {baselineSentence(band(preview.baseline_share.quantiles), preview.baseline_share.mean)}

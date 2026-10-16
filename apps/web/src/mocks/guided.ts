@@ -466,6 +466,11 @@ function translationResult(state: GuidedMockState, req: PriorTranslationRequest)
   if (rec && bytes) {
     const kpiVar = Object.entries(rec.mapping.vars ?? {}).find(([, v]) => v.role === "target")?.[0] ?? null;
     const inp = fitInputs(ingest(bytes, rec.mapping).table, rec.mapping, kpiVar, {}, null);
+    // Like the server, preview every channel: the unticked ones at the model's wide default.
+    for (const [i, ch] of inp.channels.filter((c) => !(c in req.business_priors.channels)).entries()) {
+      roi[ch] = dist(Array.from({ length: 400 }, (_, k) => Math.exp(Math.log(4 + 3 * i) + 1.1 * invNorm((k + 0.5) / 400))));
+      share[ch] = dist(Array.from({ length: 400 }, (_, k) => 1 / (1 + Math.exp(-(-0.2 + 1.3 * invNorm((k + 0.5) / 400))))));
+    }
     const coords = inp.kpiSeries.map((p) => p.t);
     const level = inp.kpiTotal / Math.max(1, coords.length);
     kpi_fan = {

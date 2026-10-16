@@ -110,6 +110,12 @@ export function ratio(v: number | null | undefined): string {
   return plain2.format(v);
 }
 
+/** "tv", "tv and search", "tv, search and social". */
+export function listWords(items: readonly string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
 /** "between 1.8 and 3.2" from the 5% and 95% quantiles of a summary. */
 export function between(lo: number | undefined, hi: number | undefined, fmt: (v: number) => string): string {
   if (lo === undefined || hi === undefined) return "";

@@ -79,9 +79,11 @@ benchmarks or experiments - say so here. Everything on this step is optional.
   model treats each as extra evidence.
 
 **Preview what this means** runs a quick simulation in the sandbox and shows what your
-beliefs imply before any fitting: the range the model now believes for each channel (the
-shaded bar is the range you gave) and the results it would expect week by week. A sentence
-per channel says how much of the model's belief falls inside your range. If the expected
+beliefs imply before any fitting: the range the model now believes for each channel you
+ticked (the shaded bar is the range you gave) and the results it would expect week by week.
+A sentence per channel says how much of the model's belief falls inside your range. Channels
+you left unticked are named below the charts but not drawn: the model starts them from a
+deliberately wide default, which is not a belief. If the expected
 results are far from your usual numbers, a belief is probably off.
 
 **Save and continue** stores the beliefs in the analysis. If you previewed exactly these

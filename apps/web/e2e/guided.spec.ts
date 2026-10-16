@@ -97,6 +97,8 @@ test("a geo marketing mix from template to shared endpoint", async ({ page }) =>
   await expect(page.getByText(/of what the model believes falls inside your range/).first()).toBeVisible();
   await expect(page.locator('iframe[title="Prior return on spend per channel"]')).toBeVisible();
   await expect(page.locator('iframe[title="Results the model expects before fitting"]')).toBeVisible();
+  // social has no stated belief: it is named, not charted beside the beliefs
+  await expect(page.getByTestId("unstated-channels")).toContainText("No view on social");
 
   // View as YAML shows the real spec with the calibration block, read-only
   await page.getByRole("button", { name: "View as YAML" }).click();

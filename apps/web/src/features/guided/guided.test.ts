@@ -303,3 +303,31 @@ describe("Guided usability fixes (M3 tester run)", () => {
     expect(ids).toEqual(["mmm.response_curves", "mmm.decomposition", "core.ppc_fan", "core.convergence"]);
   });
 });
+
+describe("the beliefs preview (M3 review)", () => {
+  const d = (mid: number) => ({ mean: mid, sd: 1, quantiles: { "0.05": mid / 2, "0.25": mid * 0.8, "0.5": mid, "0.75": mid * 1.2, "0.95": mid * 2 } });
+
+  it("charts the channels with a stated belief and names the others apart", async () => {
+    const { previewGroups } = await import("./priors");
+    const form = formFromCalibration(undefined, ["tv", "search", "social"]);
+    form.channels[0] = { ...form.channels[0]!, enabled: true, low: 1.5, high: 4 };
+    // the server previews every channel: the unticked ones at the model's default prior
+    const preview = { roi: { tv: d(2.4), search: d(6.5), social: d(17.2) }, contribution_share: { tv: d(0.15), search: d(0.49), social: d(0.49) } };
+    const g = previewGroups(preview, form);
+    expect(g.roi.map((i) => i.label)).toEqual(["tv"]);
+    expect(g.roi[0]?.stated).toEqual([1.5, 4]);
+    expect(g.share.map((i) => i.label)).toEqual(["tv"]);
+    expect(g.share[0]?.stated).toBeNull();
+    expect(g.unstated).toEqual(["search", "social"]);
+  });
+
+  it("shows the stated range on the share chart in share mode", async () => {
+    const { previewGroups } = await import("./priors");
+    const form = withMode(formFromCalibration(undefined, ["tv", "search"]), "share");
+    form.channels[1] = { ...form.channels[1]!, enabled: true, low: 0.05, high: 0.2 };
+    const g = previewGroups({ roi: { tv: d(3), search: d(2) }, contribution_share: { tv: d(0.3), search: d(0.1) } }, form);
+    expect(g.share).toEqual([{ label: "search", summary: d(0.1), stated: [0.05, 0.2] }]);
+    expect(g.roi[0]?.stated).toBeNull();
+    expect(g.unstated).toEqual(["tv"]);
+  });
+});

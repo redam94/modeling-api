@@ -436,6 +436,11 @@ milestone releases are tagged on `main`.
 - **web**: a webhook's **Send test** button only replayed the newest delivery (and was
   disabled until one existed). It is now **Resend newest**, and the empty delivery log says
   how a new webhook gets its first delivery.
+- **web**: the beliefs preview charted every channel, the unticked ones at the model's wide
+  default prior, so they looked like the analyst's beliefs (ROI near 100, media shares adding
+  up past 100 %) and squashed the ranges actually stated. The charts show the ticked channels
+  only and name the others ("No view on …: … learns them from the data"). The mock engine
+  previews every channel, as the server does.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
