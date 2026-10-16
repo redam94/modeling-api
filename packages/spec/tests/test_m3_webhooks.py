@@ -144,6 +144,17 @@ def test_event_types_are_the_documented_set() -> None:
         "endpoint.promoted",
         "score.completed",
         "tenant.deletion.completed",
+        # M3.5
+        "workflow.run.succeeded",
+        "workflow.run.failed",
+        "model.validation.checks_passed",
+        "model.validation.checks_failed",
+        "model.validation.awaiting_approval",
+        "model.validated",
+        "model.rejected",
+        "model.deprecated",
+        "dataset.version.created",
+        "optimize.completed",
     }
 
 

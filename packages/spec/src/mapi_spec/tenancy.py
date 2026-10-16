@@ -41,6 +41,7 @@ __all__ = [
     "TIER_PLACEMENT",
     "Action",
     "AuthContext",
+    "Capability",
     "InternalService",
     "Level",
     "Membership",
@@ -299,6 +300,10 @@ class Action(StrEnum):
     PROMOTE = "promote"
     MANAGE = "manage"
     """Act on other principals' resources, or change a tenant's tier/status (operators)."""
+    VALIDATE = "validate"
+    """M3.5: submit a model version for governance validation (starts the checks)."""
+    APPROVE = "approve"
+    """M3.5: approve or reject a validated model version (needs the reviewer capability)."""
 
 
 class ResourceKind(StrEnum):
@@ -333,6 +338,19 @@ class ResourceKind(StrEnum):
     """Deleting the whole tenant and every byte it stored (M3)."""
     TENANT_EXPORT = "tenant_export"
     """GDPR exports of everything a tenant stored (M3)."""
+    WORKFLOW = "workflow"
+    """Workflows, their revisions, runs, schedules and triggers (M3.5)."""
+    POLICY = "policy"
+    """A project's governance policies (M3.5)."""
+    TENANT_POLICY = "tenant_policy"
+    """Tenant-wide governance policies, the floor every project inherits (M3.5)."""
+
+
+class Capability(StrEnum):
+    """Grants on top of a role (M3.5). Project admins hold every capability implicitly."""
+
+    REVIEWER = "reviewer"
+    """May approve or reject model validations (never their own submissions)."""
 
 
 class Level(StrEnum):
@@ -352,6 +370,8 @@ class Level(StrEnum):
 class Rule:
     min_role: ProjectRole | None
     level: Level
+    capability: Capability | None = None
+    """M3.5: also needs this capability (project admins hold every capability)."""
 
 
 _V, _E, _R, _A = ProjectRole.VIEWER, ProjectRole.EDITOR, ProjectRole.RUNNER, ProjectRole.ADMIN
@@ -434,6 +454,24 @@ PERMISSIONS: Final[dict[tuple[ResourceKind, Action], Rule]] = {
     (_RK.TENANT_DELETION, _AC.MANAGE): _OP,
     (_RK.TENANT_EXPORT, _AC.READ): Rule(_A, _T),
     (_RK.TENANT_EXPORT, _AC.CREATE): Rule(_A, _T),
+    # M3.5: workflows, governance, explorers, optimisation
+    (_RK.WORKFLOW, _AC.READ): Rule(_V, _P),
+    (_RK.WORKFLOW, _AC.CREATE): Rule(_E, _P),
+    (_RK.WORKFLOW, _AC.UPDATE): Rule(_E, _P),
+    (_RK.WORKFLOW, _AC.DELETE): Rule(_A, _P),
+    (_RK.WORKFLOW, _AC.RUN): Rule(_R, _P),
+    (_RK.WORKFLOW, _AC.CANCEL): Rule(_R, _P),
+    (_RK.POLICY, _AC.READ): Rule(_V, _P),
+    (_RK.POLICY, _AC.CREATE): Rule(_A, _P),
+    (_RK.POLICY, _AC.UPDATE): Rule(_A, _P),
+    (_RK.POLICY, _AC.DELETE): Rule(_A, _P),
+    (_RK.TENANT_POLICY, _AC.READ): Rule(_V, _T),
+    (_RK.TENANT_POLICY, _AC.CREATE): Rule(_A, _T),
+    (_RK.TENANT_POLICY, _AC.UPDATE): Rule(_A, _T),
+    (_RK.TENANT_POLICY, _AC.DELETE): Rule(_A, _T),
+    (_RK.MODEL, _AC.VALIDATE): Rule(_R, _P),
+    (_RK.MODEL, _AC.APPROVE): Rule(_E, _P, Capability.REVIEWER),
+    (_RK.MODEL, _AC.UPDATE): Rule(_A, _P),  # deprecate a validated version
 }
 """The complete matrix. A pair that is not listed is denied to everyone."""
 
@@ -480,20 +518,32 @@ def required_rule(action: Action | str, resource: ResourceKind | str) -> Rule | 
         return None
 
 
-def can(role: ProjectRole | str | None, action: Action | str, resource: ResourceKind | str) -> bool:
-    """Does ``role`` permit ``action`` on ``resource``?
+def can(
+    role: ProjectRole | str | None,
+    action: Action | str,
+    resource: ResourceKind | str,
+    capabilities: Collection[Capability | str] = (),
+) -> bool:
+    """Does ``role`` (with ``capabilities``) permit ``action`` on ``resource``?
 
     ``role`` must be the role at the rule's :class:`Level` (see :func:`effective_role`):
     the tenant-wide role for tenant-level rules, the effective project role otherwise.
-    Platform and internal rules are never granted by a role.
+    Platform and internal rules are never granted by a role. A rule with a
+    :class:`Capability` also needs it, which project admins always hold.
     """
     rule = required_rule(action, resource)
     if rule is None or rule.min_role is None or role is None:
         return False
     try:
-        return ProjectRole(role) >= rule.min_role
+        r = ProjectRole(role)
     except ValueError:
         return False
+    if r < rule.min_role:
+        return False
+    if rule.capability is None or r is ProjectRole.ADMIN:
+        return True
+    held = {c.value if isinstance(c, Capability) else c for c in capabilities}
+    return rule.capability.value in held
 
 
 # ================================================================================= memberships
@@ -516,6 +566,9 @@ class Membership(ResponseModel):
     principal_id: Id
     principal_kind: Literal[PrincipalKind.USER, PrincipalKind.SERVICE_ACCOUNT] = PrincipalKind.USER
     role: ProjectRole
+    capabilities: list[Capability] = Field(
+        default_factory=list, description="M3.5: e.g. reviewer (approves model validations)"
+    )
     email: str | None = Field(None, max_length=320)
     display_name: str | None = Field(None, max_length=200)
     created_at: AwareDatetime
@@ -633,6 +686,8 @@ class AuthContext(StrictModel):
     role: ProjectRole | None = None
     tenant_role: ProjectRole | None = None
     scopes: frozenset[str] | None = None
+    capabilities: frozenset[Capability] = frozenset()
+    """M3.5: capabilities held in the project (from the memberships)."""
     operator: bool = False
     tenant_status: TenantStatus = TenantStatus.ACTIVE
     trust_tier: TrustTier | None = None
@@ -685,7 +740,7 @@ class AuthContext(StrictModel):
             if rule.level is Level.TENANT
             else _max_role(self.role, self.tenant_role)
         )
-        if not can(role, act, res):
+        if not can(role, act, res, self.capabilities):
             return False
         if self.scopes is not None:
             return scope_allows(self.scopes, act.value, res.value, resource_name=resource_name)

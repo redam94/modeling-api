@@ -91,6 +91,18 @@ class WebhookEventType(StrEnum):
     SCORE_COMPLETED = "score.completed"
     TENANT_DELETION_COMPLETED = "tenant.deletion.completed"
     """Sent to the tenant's webhooks just before they are purged with everything else."""
+    # --- M3.5 (additive) --------------------------------------------------------------------
+    WORKFLOW_RUN_SUCCEEDED = "workflow.run.succeeded"
+    WORKFLOW_RUN_FAILED = "workflow.run.failed"
+    MODEL_VALIDATION_CHECKS_PASSED = "model.validation.checks_passed"
+    MODEL_VALIDATION_CHECKS_FAILED = "model.validation.checks_failed"
+    MODEL_VALIDATION_AWAITING_APPROVAL = "model.validation.awaiting_approval"
+    MODEL_VALIDATED = "model.validated"
+    MODEL_REJECTED = "model.rejected"
+    MODEL_DEPRECATED = "model.deprecated"
+    DATASET_VERSION_CREATED = "dataset.version.created"
+    """A dataset version finished ingesting (also what workflow triggers listen to)."""
+    OPTIMIZE_COMPLETED = "optimize.completed"
 
 
 # ========================================================================================= DTOs

@@ -220,6 +220,14 @@ class ScopeName(StrEnum):
     """M3: promote, roll back and delete endpoints (CI pipelines); never overrides a gate."""
     WEBHOOKS_MANAGE = "webhooks:manage"
     """M3: manage the project's webhooks and replay deliveries."""
+    WORKFLOWS_WRITE = "workflows:write"
+    """M3.5: create workflows and push revisions (workflow-as-code from CI)."""
+    WORKFLOWS_RUN = "workflows:run"
+    """M3.5: start and cancel workflow runs, manage schedules and triggers."""
+    MODELS_VALIDATE = "models:validate"
+    """M3.5: submit model versions for governance validation; never approves."""
+    POLICIES_MANAGE = "policies:manage"
+    """M3.5: manage the project's governance policies (policy-as-code)."""
     ADMIN = "admin"
 
 
@@ -255,7 +263,8 @@ TokenScope = Annotated[
     AfterValidator(check_scope),
 ]
 """``models:read`` | ``runs:create`` | ``score:{endpoint}`` | ``plugins:publish`` |
-``datasets:write`` | ``endpoints:promote`` | ``webhooks:manage`` | ``admin``."""
+``datasets:write`` | ``endpoints:promote`` | ``webhooks:manage`` | ``workflows:write`` |
+``workflows:run`` | ``models:validate`` | ``policies:manage`` | ``admin``."""
 
 
 def scope_allows(
@@ -288,11 +297,18 @@ def scope_allows(
     ``endpoints:promote``  ``read``/``create``/``update``/``promote``/``delete``
                            endpoint, ``read`` model
     ``webhooks:manage``    ``read``/``create``/``update``/``delete`` webhook
+    ``workflows:write``    ``read``/``create``/``update`` workflow, ``read`` catalog
+    ``workflows:run``      ``read``/``run``/``cancel``/``update`` workflow (schedules,
+                           triggers), ``read``/``create``/``cancel`` run, ``run``
+                           model, ``read`` dataset
+    ``models:validate``    ``read``/``validate`` model, ``read`` policy
+    ``policies:manage``    ``read``/``create``/``update``/``delete`` policy
     =====================  =======================================================
 
     No scope covers :data:`TOKEN_NEVER`: minting tokens (a child token would escape its
-    parent's expiry, budget, rate limit and revocation) and overriding a promotion gate (a
-    human decision that is audited with its reason) need a signed-in session.
+    parent's expiry, budget, rate limit and revocation), overriding a promotion gate and
+    approving a model validation (human decisions that are audited) need a signed-in
+    session.
     """
     if (resource, action) in TOKEN_NEVER:
         return False
@@ -318,12 +334,16 @@ _SCORE_GRANTS = frozenset({("endpoint", "read"), ("endpoint", "run"), ("model", 
 """What ``score:<target>`` covers on the endpoint or model named ``<target>``."""
 
 TOKEN_NEVER: Final[frozenset[tuple[str, str]]] = frozenset(
-    {("token", "create"), ("endpoint", "manage")}
+    {("token", "create"), ("endpoint", "manage"), ("model", "approve")}
 )
 """``(resource, action)`` pairs no token may do, whatever its scopes (even ``admin``):
-minting tokens and overriding an endpoint's promotion gate."""
+minting tokens, overriding an endpoint's promotion gate and approving a model validation
+(M3.5: a reviewer's decision)."""
 
-_READABLE = ("catalog", "dataset", "spec", "run", "model", "endpoint", "plot", "usage", "project")
+_READABLE = (
+    "catalog", "dataset", "spec", "run", "model", "endpoint", "plot", "usage", "project",
+    "workflow", "policy",
+)  # fmt: skip
 _READ = frozenset((r, "read") for r in _READABLE)
 _SCOPE_GRANTS: dict[ScopeName, frozenset[tuple[str, str]]] = {
     ScopeName.MODELS_READ: _READ,
@@ -353,6 +373,28 @@ _SCOPE_GRANTS: dict[ScopeName, frozenset[tuple[str, str]]] = {
     ),
     ScopeName.WEBHOOKS_MANAGE: frozenset(
         {("webhook", "read"), ("webhook", "create"), ("webhook", "update"), ("webhook", "delete")}
+    ),
+    ScopeName.WORKFLOWS_WRITE: frozenset(
+        {("workflow", "read"), ("workflow", "create"), ("workflow", "update"), ("catalog", "read")}
+    ),
+    ScopeName.WORKFLOWS_RUN: frozenset(
+        {
+            ("workflow", "read"),
+            ("workflow", "run"),
+            ("workflow", "cancel"),
+            ("workflow", "update"),
+            ("run", "read"),
+            ("run", "create"),
+            ("run", "cancel"),
+            ("model", "run"),
+            ("dataset", "read"),
+        }
+    ),
+    ScopeName.MODELS_VALIDATE: frozenset(
+        {("model", "read"), ("model", "validate"), ("policy", "read")}
+    ),
+    ScopeName.POLICIES_MANAGE: frozenset(
+        {("policy", "read"), ("policy", "create"), ("policy", "update"), ("policy", "delete")}
     ),
     ScopeName.ADMIN: frozenset(),
     ScopeName.SCORE: frozenset(),
