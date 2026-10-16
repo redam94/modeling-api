@@ -77,6 +77,7 @@ from mapi_workflows.orchestrator import BoundValue, OrchestratorContext, run_orc
 __all__ = [
     "MAX_STEP_PASSES",
     "RETRYABLE_CODES",
+    "UNKNOWN",
     "Action",
     "CacheHit",
     "CacheLookup",
@@ -135,7 +136,21 @@ class CacheHit:
     workflow_run_id: str | None = None
 
 
-CacheLookup = Callable[[str], CacheHit | None]
+class _Unknown:
+    """The driver has not looked the key up yet (see :data:`UNKNOWN`)."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "UNKNOWN"
+
+
+UNKNOWN: Final = _Unknown()
+"""What a :data:`CacheLookup` returns for a key it has not looked up yet. The node then
+waits, the key is listed by :meth:`WorkflowEngine.take_lookups`, and the driver looks the
+keys up (in one database query, say) before the next :meth:`WorkflowEngine.step`."""
+
+CacheLookup = Callable[[str], "CacheHit | _Unknown | None"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -318,6 +333,7 @@ class WorkflowEngine:
         self.cancel_requested = False
         self.to_cancel: set[str] = set()
         self.started = False
+        self._lookups: set[str] = set()
         missing = sorted(i for i, s in self.states.items() if s.impl is None)
         if missing:
             raise MapiError(
@@ -402,6 +418,11 @@ class WorkflowEngine:
             st = self.states.get(node_id)
             if st is not None and st.status.produced and port in st.outputs:
                 out[name] = st.outputs[port]
+        return out
+
+    def take_lookups(self) -> set[str]:
+        """Cache keys the lookup answered :data:`UNKNOWN` for since the last call."""
+        out, self._lookups = self._lookups, set()
         return out
 
     def drain_events(self) -> list[EngineEvent]:
@@ -502,6 +523,9 @@ class WorkflowEngine:
             return True
         if key is not None and node.cache and self.use_cache and self.cache is not None:
             hit = self.cache(key)
+            if isinstance(hit, _Unknown):
+                self._lookups.add(key)
+                return False
             if hit is not None:
                 st.attempt += 1
                 st.status = NodeRunStatus.CACHED

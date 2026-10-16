@@ -148,7 +148,7 @@ def execute_job(
         log=log,
         progress=progress,
         input_refs={},
-        services={"governance": gov},
+        services={"governance": gov, "sandbox": True},
     )
     return fn(ctx)
 
@@ -182,15 +182,14 @@ def output_files(
     assert impl is not None
     files: list[OutputFile] = []
     outputs: dict[str, NodeOutputRef] = {}
+    deferred: list[str] = []
     for port, value in outcome.outputs.items():
         want = impl.outputs.get(port)
         if want is None:
             continue
         if isinstance(value, ModelValue):
-            raise MapiError(
-                f"{impl.id} produced a model version in a workflow_node run; fits run as fit runs",
-                code=ErrorCode.INTERNAL_ERROR,
-            )
+            deferred.append(port)  # the control plane fits it as a fit run
+            continue
         if isinstance(value, DatasetValue):
             files.extend(_dataset_files(port, value))
             outputs[port] = NodeOutputRef(
@@ -206,10 +205,16 @@ def output_files(
             name = f"{OUTPUT_PREFIX}{port}.json"
             files.append(OutputFile(name, body))
             outputs[port] = NodeOutputRef(type=want, object=name)
+    result = dict(outcome.result)
+    for port, ptype in impl.outputs.items():
+        if ptype is PortType.MODEL_VERSION and port not in outputs and port not in deferred:
+            deferred.append(port)
+    if deferred:
+        result["deferred_outputs"] = list(deferred)
     sidecar = NodeResultSidecar(
         node_id=job.node_id,
         use=job.use,
-        result=outcome.result,
+        result=result,
         outputs=outputs,
         warnings_plain=[w[:500] for w in outcome.warnings_plain[:50]],
     )

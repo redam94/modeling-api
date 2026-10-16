@@ -461,3 +461,27 @@ def test_outputs_must_match_declared_ports() -> None:
     run = eng.node_run("adf")
     assert run.status is NodeRunStatus.FAILED
     assert run.error is not None and run.error.code is ErrorCode.INTEGRITY_FAILURE
+
+
+def test_unknown_cache_keys_wait_for_the_driver() -> None:
+    from mapi_workflows.engine import UNKNOWN
+
+    spec = _spec(
+        [
+            {"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}},
+            {"id": "kpss", "use": "test.kpss", "inputs": {"data": "inputs.data"}},
+        ]
+    )
+    known: dict[str, Any] = {}
+    eng = WorkflowEngine(spec, inputs={"data": DATA}, cache=lambda k: known.get(k, UNKNOWN))
+    assert eng.step() == []
+    keys = eng.take_lookups()
+    assert len(keys) == 2 and eng.take_lookups() == set()
+    adf_key = eng.node_run("adf").cache_key
+    assert adf_key is not None
+    for k in keys:
+        known[k] = None
+    known[adf_key] = CacheHit(result={"reject": True}, outputs={}, workflow_run_id="run_x")
+    actions = eng.step()
+    assert [a.node_id for a in actions] == ["kpss"]
+    assert eng.node_run("adf").status is NodeRunStatus.CACHED

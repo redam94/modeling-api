@@ -930,6 +930,22 @@ def grid_node(ctx: NodeContext) -> NodeOutcome:
         raise data_error(f"no grid point could be scored on {metric!r}")
     best_settings = best[1]
     best_score = best[0] if direction == "min" else -best[0]
+    table = TablePayload(
+        title="Grid search",
+        kind="grid",
+        columns=["point", *grid.keys(), *METRIC_NAMES],
+        rows=rows,
+        meta={"metric": metric, "direction": direction},
+    )
+    result: dict[str, JsonValue] = {
+        "best_settings": best_settings,
+        "best_score": best_score,
+        "n_points": len(points),
+        "n_failed": failed,
+    }
+    if ctx.services.get("sandbox"):
+        # model versions come out of fit runs: the control plane refits the winner
+        return NodeOutcome(result=result, outputs={"table": table.model_dump(mode="json")})
     spec, base_dv, _ = build_spec(
         ctx.params, dv, name=ctx.node_id, settings=best_settings, registry=_registry(ctx)
     )
@@ -942,22 +958,7 @@ def grid_node(ctx: NodeContext) -> NodeOutcome:
         model=str(spec.model.use),
         settings=dict(best_settings),
     )
-    table = TablePayload(
-        title="Grid search",
-        kind="grid",
-        columns=["point", *grid.keys(), *METRIC_NAMES],
-        rows=rows,
-        meta={"metric": metric, "direction": direction},
-    )
-    return NodeOutcome(
-        result={
-            "best_settings": best_settings,
-            "best_score": best_score,
-            "n_points": len(points),
-            "n_failed": failed,
-        },
-        outputs={"table": table.model_dump(mode="json"), "best": mv},
-    )
+    return NodeOutcome(result=result, outputs={"table": table.model_dump(mode="json"), "best": mv})
 
 
 def _js(v: Any) -> JsonValue:
