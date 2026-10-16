@@ -1,0 +1,23 @@
+# E84-lite: a ragged choice panel, household effects for new households, price scenarios.
+- name: predict_in_sample
+  request: {mode: predict}
+  payload: fit_data
+  expect: {vars: [y_hat]}
+- name: new_household_from_spread
+  request: {mode: predict, output: {kind: expected, draws: 20}}
+  payload: new_household
+  expect: {groups: [summary, draws], issues: [UNSEEN_LEVELS]}
+- name: price_rise_counterfactual
+  request:
+    mode: counterfactual
+    interventions: [{var: price, sel: {product: cola}, multiply: 1.5}]
+  payload: fit_data
+  expect: {groups: [summary, baseline/summary, delta/summary]}
+- name: next_trips
+  request: {mode: forecast, horizon: {dim: trip, periods: 2}}
+  payload: next_trips
+  expect: {vars: [y_hat], sizes: {trip: 2}}
+- name: simulate_unsupported
+  request: {mode: simulate}
+  payload: fit_data
+  expect_error: MODE_NOT_SUPPORTED
