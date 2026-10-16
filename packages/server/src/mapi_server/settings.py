@@ -76,6 +76,7 @@ DEFAULT_ESTIMATE_WALL_S: dict[str, float] = {
     RunKind.DERIVE.value: 60.0,
     RunKind.RENDER.value: 30.0,
     RunKind.OPTIMIZE.value: 300.0,
+    RunKind.TRANSLATE_PRIORS.value: 60.0,
 }
 """Wall-time estimate per run kind (seconds, capped at the run's timeout): what a run is
 charged against vCPU-second quotas until its attempts are metered into the cost ledger."""
