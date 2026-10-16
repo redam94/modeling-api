@@ -277,7 +277,15 @@ function startRun(state: WorkflowsState, wf: Workflow, rev: WorkflowRevision, bo
   const sameShape = doc.nodes.length === canonicalIds.size && doc.nodes.every((n) => canonicalIds.has(n.id));
   const made = sameShape
     ? {
-        final: { ...clone(CANONICAL.run), ...base, status: "succeeded" as const, finished_at: null },
+        final: {
+          ...base,
+          status: "succeeded" as const,
+          nodes: clone(CANONICAL.run.nodes ?? []),
+          decisions: clone(CANONICAL.run.decisions ?? []),
+          outputs: clone(CANONICAL.run.outputs ?? {}),
+          cost: clone(CANONICAL.run.cost ?? null),
+          finished_at: null,
+        },
         script: CANONICAL.events.map((e) => ({ ...e, run_id: runId })),
       }
     : synthesise(runId, doc, base);

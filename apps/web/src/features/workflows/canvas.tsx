@@ -27,7 +27,7 @@ import {
   type OnConnectEnd,
 } from "@xyflow/react";
 import { AlertTriangle, GitBranch, Lock } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 
 import type { Issue } from "@/api/types";
 import { useResolvedTheme } from "@/hooks/use-theme";
@@ -208,6 +208,8 @@ function CanvasInner({ doc, catalog, subs, positions, issues, statuses, selected
     [doc, catalog, subs, issues, statuses, readOnly],
   );
   const [nodes, setNodes] = useState<FlowNode[]>([]);
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
   useEffect(() => {
     setNodes((prev) => {
       const byId = new Map(prev.map((n) => [n.id, n]));
@@ -219,18 +221,48 @@ function CanvasInner({ doc, catalog, subs, positions, issues, statuses, selected
           type: "workflow" as const,
           data: m,
           position: positions[m.nodeId] ?? old?.position ?? { x: 0, y: 0 },
-          selected: m.nodeId === selected,
+          // Selection belongs to React Flow once a node exists (clicks, keyboard); the prop
+          // only seeds new nodes and is pushed in by the effect below when it changes.
+          selected: old ? Boolean(old.selected) : m.nodeId === selectedRef.current,
           deletable: !readOnly && m.role === "node",
           connectable: !readOnly,
           ariaLabel: m.role === "inputs" ? "Workflow inputs" : `${m.label ?? m.title} (${m.nodeId})${m.status ? `, ${NODE_STATUS_META[m.status].label}` : ""}${m.issues.length ? `, ${m.issues.length} problem(s)` : ""}`,
         };
       });
     });
-  }, [models, positions, selected, readOnly]);
+  }, [models, positions, readOnly]);
+  useEffect(() => {
+    setNodes((nds) => (nds.some((n) => Boolean(n.selected) !== (n.id === selected)) ? nds.map((n) => ({ ...n, selected: n.id === selected })) : nds));
+  }, [selected]);
 
   const edges = useMemo(() => buildCanvasEdges(doc, catalog, subs).map(toEdge), [doc, catalog, subs]);
 
+  // Keep a newly added node in view.
+  const count = models.length;
+  const seen = useRef(count);
+  useEffect(() => {
+    if (count <= seen.current) {
+      seen.current = count;
+      return undefined;
+    }
+    seen.current = count;
+    const t = setTimeout(() => void flow.fitView({ padding: 0.15, maxZoom: 1, duration: 200 }), 50);
+    return () => clearTimeout(t);
+  }, [count, flow]);
+
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+  /**
+   * User selection (click, keyboard, box select) arrives as `select` changes; the editor's own
+   * selection is pushed in through the nodes. Listening to `onSelectionChange` instead would
+   * ping-pong with that push, one render behind.
+   */
   const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
+    const select = changes.filter((c) => c.type === "select");
+    if (select.length) {
+      const on = select.find((c) => c.selected);
+      onSelectRef.current(on && on.id !== INPUTS_NODE ? on.id : null);
+    }
     setNodes((nds) => applyNodeChanges(changes.filter((c) => c.type !== "remove"), nds));
   }, []);
 
@@ -272,6 +304,27 @@ function CanvasInner({ doc, catalog, subs, positions, issues, statuses, selected
     [flow, onEdit, readOnly],
   );
 
+  // React Flow re-subscribes when these change: keep them stable, reading the latest props
+  // through refs.
+  const latest = useRef({ onEdit, onMove, readOnly });
+  latest.current = { onEdit, onMove, readOnly };
+  const isValidConnection = useCallback((c: Connection | Edge) => check(c).ok, [check]);
+  const onNodesDelete = useCallback((ns: FlowNode[]) => latest.current.onEdit?.({ type: "remove-nodes", ids: ns.map((n) => n.id).filter((id) => id !== INPUTS_NODE) }), []);
+  const onEdgesDelete = useCallback((es: Edge[]) => {
+    for (const e of es) {
+      const m = (e.data as { model?: CanvasEdgeModel } | undefined)?.model;
+      if (!m) continue;
+      if (m.kind === "data" && m.binding && m.port) latest.current.onEdit?.({ type: "disconnect", target: m.target, port: m.port, binding: m.binding });
+      if (m.kind === "control") latest.current.onEdit?.({ type: "gate", target: m.target, when: null });
+    }
+  }, []);
+  const onNodeDragStop = useCallback((_e: unknown, n: FlowNode) => latest.current.onMove?.(n.id, n.position), []);
+  const onDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    if (latest.current.readOnly) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+
   return (
     <div className="relative overflow-hidden rounded-lg border bg-background" style={{ height }} data-testid="workflow-canvas">
       <ReactFlow<FlowNode, Edge>
@@ -281,33 +334,18 @@ function CanvasInner({ doc, catalog, subs, positions, issues, statuses, selected
         onNodesChange={onNodesChange}
         onConnect={onConnect}
         onConnectEnd={onConnectEnd}
-        isValidConnection={(c) => check(c).ok}
-        onNodesDelete={(ns) => onEdit?.({ type: "remove-nodes", ids: ns.map((n) => n.id).filter((id) => id !== INPUTS_NODE) })}
-        onEdgesDelete={(es) => {
-          for (const e of es) {
-            const m = (e.data as { model?: CanvasEdgeModel } | undefined)?.model;
-            if (!m) continue;
-            if (m.kind === "data" && m.binding && m.port) onEdit?.({ type: "disconnect", target: m.target, port: m.port, binding: m.binding });
-            if (m.kind === "control") onEdit?.({ type: "gate", target: m.target, when: null });
-          }
-        }}
-        onSelectionChange={({ nodes: sel }) => {
-          const id = sel[0]?.id ?? null;
-          if (id !== selected && (id !== null || sel.length === 0)) onSelect(id === INPUTS_NODE ? null : id);
-        }}
-        onNodeDragStop={(_e, n) => onMove?.(n.id, n.position)}
-        onDragOver={(e) => {
-          if (readOnly) return;
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "copy";
-        }}
+        isValidConnection={isValidConnection}
+        onNodesDelete={onNodesDelete}
+        onEdgesDelete={onEdgesDelete}
+        onNodeDragStop={onNodeDragStop}
+        onDragOver={onDragOver}
         onDrop={onDrop}
         nodesConnectable={!readOnly}
         elementsSelectable
         deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
         colorMode={theme}
         fitView
-        fitViewOptions={{ padding: 0.15 }}
+        fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
         minZoom={0.2}
         proOptions={{ hideAttribution: true }}
         aria-label={label}
@@ -318,7 +356,7 @@ function CanvasInner({ doc, catalog, subs, positions, issues, statuses, selected
       >
         <Background gap={20} size={1} />
         <Controls showInteractive={false} />
-        <MiniMap pannable zoomable ariaLabel="Overview of the workflow" className="!hidden md:!block" />
+        <MiniMap pannable zoomable ariaLabel="Overview of the workflow" className="!hidden xl:!block" />
       </ReactFlow>
     </div>
   );

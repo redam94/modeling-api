@@ -26,7 +26,8 @@ export function NodePalette({ catalog, onAdd, disabled }: { catalog: Catalog; on
   const groups = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const match = (n: NodeImplementation) =>
-      !needle || n.id.includes(needle) || n.about.title.toLowerCase().includes(needle) || n.about.summary_plain.toLowerCase().includes(needle);
+      !needle ||
+      [n.id, n.about.title, n.about.summary_plain, n.about.expert_notes ?? "", ...(n.about.use_when ?? []), ...(n.about.references ?? []).map((r) => r.title)].some((t) => t.toLowerCase().includes(needle));
     return NODE_KINDS.map((k) => [k, [...catalog.values()].filter((n) => n.kind === k && match(n))] as [NodeKind, NodeImplementation[]]).filter(([, list]) => list.length);
   }, [catalog, q]);
   const current = picked ? catalog.get(picked) : undefined;

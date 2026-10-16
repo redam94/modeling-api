@@ -285,7 +285,7 @@ export function WorkflowPage() {
           <>
             {mayRun ? (
               <Button onClick={() => setRunning(true)} disabled={!latestRev.data}>
-                <Play /> Run
+                <Play /> Run workflow
               </Button>
             ) : null}
             {mayEdit ? (

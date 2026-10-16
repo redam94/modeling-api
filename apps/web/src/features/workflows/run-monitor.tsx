@@ -27,6 +27,7 @@ import { OutputView, PayloadView } from "./outputs";
 import { useWorkflowRunEvents } from "./run-events";
 import { KIND_LABEL, NODE_STATUS_META, RUN_STATUS_META, TONE_BADGE, TRIGGER_LABEL } from "./status";
 import { useCanvasPositions } from "./use-editor";
+import type { Catalog } from "./ports";
 import type { NodeRun, NodeRunStatus, WorkflowDoc, WorkflowRun } from "./types";
 
 const DONE: ReadonlySet<NodeRunStatus> = new Set(["succeeded", "cached", "skipped", "failed", "cancelled"]);
@@ -67,7 +68,7 @@ function StreamBadge({ status, terminal }: { status: string; terminal: boolean }
   );
 }
 
-function StepsTable({ run, doc, onOpen }: { run: WorkflowRun; doc: WorkflowDoc | null; onOpen: (id: string) => void }) {
+function StepsTable({ run, doc, catalog, onOpen }: { run: WorkflowRun; doc: WorkflowDoc | null; catalog: Catalog; onOpen: (id: string) => void }) {
   return (
     <Table aria-label="Steps">
       <THead>
@@ -81,14 +82,14 @@ function StepsTable({ run, doc, onOpen }: { run: WorkflowRun; doc: WorkflowDoc |
       <TBody>
         {(run.nodes ?? []).map((n) => {
           const meta = NODE_STATUS_META[n.status];
-          const label = doc?.nodes.find((x) => x.id === n.node_id)?.label;
+          const label = doc?.nodes.find((x) => x.id === n.node_id)?.label ?? catalog.get(implId(n.use))?.about.title;
           return (
             <TR key={n.node_id} data-node={n.node_id} data-status={n.status}>
               <TD>
                 <button type="button" className="text-left hover:underline" onClick={() => onOpen(n.node_id)}>
                   <span className="block font-medium">{label ?? n.node_id}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {KIND_LABEL[n.kind]} · <Mono>{implId(n.use)}</Mono>
+                    {KIND_LABEL[n.kind]} · <Mono>{n.node_id}</Mono>
                   </span>
                 </button>
               </TD>
@@ -282,7 +283,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
           <p className="mt-2 text-xs text-muted-foreground">Select a step to see its result, outputs, runs and logs.</p>
         </TabsContent>
         <TabsContent value="steps">
-          <StepsTable run={run} doc={doc} onOpen={setOpenNode} />
+          <StepsTable run={run} doc={doc} catalog={catalog.map} onOpen={setOpenNode} />
         </TabsContent>
         <TabsContent value="decisions">
           {(run.decisions ?? []).length ? (

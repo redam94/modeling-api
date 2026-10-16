@@ -9,6 +9,7 @@ import { Ban, CheckCircle2, Download, FileCheck2, RotateCcw, ShieldOff, ThumbsDo
 import { useState } from "react";
 
 import { can } from "@/api/access";
+import { useModel } from "@/api/queries";
 import { ErrorNotice, KeyValues, LoadingRows, Mono, PageHeader, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/overlays";
@@ -21,7 +22,7 @@ import { absoluteTime, relativeTime, shortId } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
 
-import { useGovernanceChecks, useReviewer, useValidation, useValidationActions } from "./api";
+import { useGovernanceChecks, usePolicies, useReviewer, useValidation, useValidationActions } from "./api";
 import { CheckResultList } from "./evidence";
 import { EVENT_LABEL, MAIN_PATH, TONE_BADGE, VALIDATION_META } from "./status";
 import type { ModelValidation, ValidationStatus } from "./types";
@@ -201,7 +202,7 @@ function ExportPack({ validation }: { validation: ModelValidation }) {
     <div className="grid gap-2">
       <div className="flex flex-wrap items-end gap-2">
         <Field label="Format" htmlFor="pack-format">
-          <NativeSelect id="pack-format" className="w-48" value={format} onChange={(e) => setFormat(e.target.value as "html" | "json")}>
+          <NativeSelect id="pack-format" className="w-60" value={format} onChange={(e) => setFormat(e.target.value as "html" | "json")}>
             <option value="html">Readable page (HTML)</option>
             <option value="json">Data (JSON)</option>
           </NativeSelect>
@@ -253,6 +254,8 @@ function NoteDialog({ title, description, label, required, action, onSubmit, onC
 export function ValidationView({ validationId }: { validationId: string }) {
   const ws = useWorkspace();
   const q = useValidation(validationId);
+  const model = useModel(q.data?.model_id);
+  const policies = usePolicies("all");
   const checks = useGovernanceChecks();
   const actions = useValidationActions(validationId);
   const [dialog, setDialog] = useState<"cancel" | "resubmit" | "deprecate" | null>(null);
@@ -273,7 +276,7 @@ export function ValidationView({ validationId }: { validationId: string }) {
           <span className="flex flex-wrap items-center gap-3">
             Validation of{" "}
             <Link to="/models/$modelId/versions/$version" params={{ modelId: v.model_id, version: String(v.version) }} className="hover:underline">
-              v{v.version}
+              {model.data?.name ?? "model"} v{v.version}
             </Link>
             <ValidationBadge status={v.status} />
           </span>
@@ -363,7 +366,26 @@ export function ValidationView({ validationId }: { validationId: string }) {
             <CardContent>
               <KeyValues
                 items={[
-                  ["Policies", (v.policies ?? []).map((p) => <Mono key={p}>{p}</Mono>)],
+                  [
+                    "Policies",
+                    <ul key="policies" className="grid gap-0.5">
+                      {(v.policies ?? []).map((ref) => {
+                        const [id = "", version = ""] = ref.split("@");
+                        const p = policies.data?.items.find((x) => x.id === id);
+                        return (
+                          <li key={ref}>
+                            {p ? (
+                              <Link to="/governance/policies/$policyId" params={{ policyId: id }} search={p.scope === "tenant" ? { scope: "tenant" } : {}} className="text-primary hover:underline">
+                                {p.name} v{version}
+                              </Link>
+                            ) : (
+                              <Mono>{ref}</Mono>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>,
+                  ],
                   ["Checks", `${(v.required_checks ?? []).length} required`],
                   ["Updated", absoluteTime(v.updated_at)],
                 ]}

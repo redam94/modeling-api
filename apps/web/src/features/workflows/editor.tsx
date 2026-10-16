@@ -17,7 +17,6 @@ import { YamlEditor, type YamlEditorHandle } from "@/features/editor/yaml-editor
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { locateIssues } from "@/lib/yaml-diagnostics";
 import { cn } from "@/lib/utils";
-import { toast } from "@/stores/toast";
 
 import type { CanvasEdit } from "./canvas";
 import { addNode, connect, disconnect, implId, nodeOfPointer, parseDocText, removeNode, setWhen, toJson, toYaml } from "./doc";
@@ -70,6 +69,7 @@ export function WorkflowEditor({
   readOnly?: boolean;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
+
   const history = useDocHistory(initial);
   const { doc } = history;
   const [baseJson, setBaseJson] = useState(() => JSON.stringify(initial));
@@ -134,13 +134,11 @@ export function WorkflowEditor({
     [change, doc, move],
   );
 
+  /** The keyboard path: the new node takes its place in the automatic layout and is selected. */
   const addFromPalette = (impl: string) => {
     const added = addNode(doc, impl);
-    const last = Object.values(positions).reduce((m, p) => Math.max(m, p.x), 0);
-    move(added.id, { x: last + 270, y: 40 });
     change(added.doc);
     setSelected(added.id);
-    toast.info(`Added ${added.id}`, "Connect its inputs in the node editor, or drag from an output on the canvas.");
   };
 
   // ------------------------------------------------------------------ text view
@@ -263,12 +261,14 @@ export function WorkflowEditor({
         </p>
       ) : null}
 
-      <div className="grid gap-3 xl:grid-cols-[260px_minmax(0,1fr)_380px] lg:grid-cols-[minmax(0,1fr)_360px]">
-        <aside className="order-2 rounded-lg border bg-card p-3 lg:order-none lg:col-span-2 xl:col-span-1" aria-label="Add nodes">
+      {/* Wide screens: palette | canvas | inspector. Otherwise the canvas gets the full width
+          and the palette and inspector sit side by side below it. */}
+      <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-[250px_minmax(0,1fr)_380px]">
+        <aside className="order-2 rounded-lg border bg-card p-3 2xl:order-none" aria-label="Add nodes">
           <h2 className="mb-2 text-sm font-semibold">Nodes</h2>
           <NodePalette catalog={catalog} onAdd={addFromPalette} disabled={readOnly} />
         </aside>
-        <div className="min-w-0">
+        <div className="order-1 min-w-0 lg:col-span-2 2xl:order-none 2xl:col-span-1">
           {view === "canvas" ? (
             <Suspense fallback={<CanvasFallback />}>
               <WorkflowCanvas
@@ -316,7 +316,7 @@ export function WorkflowEditor({
           ) : null}
           {live.problem && !live.problem.problem?.errors?.length ? <ErrorNotice error={live.problem} title="The document could not be checked" /> : null}
         </div>
-        <aside className={cn("rounded-lg border bg-card p-4", "max-h-[calc(70vh+8rem)] overflow-y-auto")} aria-label={node ? `Edit node ${node.id}` : "Workflow settings"}>
+        <aside className={cn("order-3 rounded-lg border bg-card p-4 2xl:order-none", "max-h-[calc(70vh+8rem)] overflow-y-auto")} aria-label={node ? `Edit node ${node.id}` : "Workflow settings"}>
           {node ? (
             <NodeInspector
               key={node.id}

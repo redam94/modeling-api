@@ -220,7 +220,7 @@ export function NodeInspector({
           <h3 id={`${idBase}-when`} className="text-sm font-semibold">
             Runs
           </h3>
-          <NativeSelect aria-labelledby={`${idBase}-when`} value={node.when ?? ""} onChange={(e) => onChange(setWhen(doc, node.id, e.target.value || null))}>
+          <NativeSelect aria-label="When it runs" value={node.when ?? ""} onChange={(e) => onChange(setWhen(doc, node.id, e.target.value || null))}>
             <option value="">Always</option>
             {gates.flatMap((b) => [
               <option key={`${b}.then`} value={`${b}.then`}>

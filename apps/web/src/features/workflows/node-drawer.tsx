@@ -91,6 +91,8 @@ export function NodeDrawer({
   const cost = runCostView(node?.cost);
   const logsRun = node?.run_id ?? node?.child_runs?.at(-1) ?? null;
   const live = node?.status === "running" || node?.status === "queued";
+  // A test's result is shown as its verdict above, not again as an output.
+  const outputs = Object.entries(node?.outputs ?? {}).filter(([, o]) => !(isTest && o.type === "test_result"));
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogPrimitive.Portal>
@@ -166,14 +168,12 @@ export function NodeDrawer({
                 </section>
               ) : null}
 
-              {Object.keys(node.outputs ?? {}).length ? (
+              {outputs.length ? (
                 <section className="grid gap-2" aria-label="Outputs">
                   <h3 className="text-sm font-semibold">Outputs</h3>
-                  {Object.entries(node.outputs ?? {})
-                    .filter(([, o]) => !(isTest && o.type === "test_result"))
-                    .map(([port, out]) => (
-                      <OutputView key={port} runId={run.run_id} nodeId={node.node_id} port={port} out={out} />
-                    ))}
+                  {outputs.map(([port, out]) => (
+                    <OutputView key={port} runId={run.run_id} nodeId={node.node_id} port={port} out={out} />
+                  ))}
                 </section>
               ) : null}
 

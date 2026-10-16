@@ -409,7 +409,7 @@ export function PolicyVersions({ scope, policyId }: { scope: PolicyScope; policy
   };
   if (!items.length) return null;
   return (
-    <Card>
+    <Card data-testid="policy-versions">
       <CardHeader>
         <CardTitle>Versions</CardTitle>
       </CardHeader>
