@@ -323,13 +323,17 @@ def test_complex_bayesinsight_model_imports_for_the_geo_mmm() -> None:
     priors = settings["priors"]
     assert isinstance(priors, dict)
     # Beta(mu=0.05, nu=1.2) and Exponential(lag_max) exactly as BayesInsight samples them
-    assert priors["alpha"] == {"distribution": "Beta", "alpha": 0.06, "beta": 1.14}
-    assert priors["theta"] == {"distribution": "Exponential", "lam": 3.0}
+    # one independent parameter per channel, as BayesInsight builds one per media variable
+    assert priors["alpha"] == {
+        "distribution": "Beta", "dims": ["channel"], "alpha": 0.06, "beta": 1.14,
+    }  # fmt: skip
+    assert priors["theta"] == {"distribution": "Exponential", "dims": ["channel"], "lam": 3.0}
     half = priors["half"]
     assert isinstance(half, dict) and half["distribution"] == "LogNormal"
     assert half["mu"] == pytest.approx(math.log(0.85))
     assert half["sigma"] == pytest.approx(math.log(0.6 / 0.85 + 1))
-    assert priors["slope"] == {"distribution": "Gamma", "mu": 1.5, "sigma": 0.5}
+    assert priors["slope"] == {"distribution": "Gamma", "dims": ["channel"], "mu": 1.5,
+                               "sigma": 0.5}  # fmt: skip
     by_ptr = {(i.pointer, i.severity) for i in draft.issues}
     assert ("/model_def/variable_details/3/likelihood", Severity.WARNING) in by_ptr  # Poisson
     assert ("/metadata/row_ids", Severity.INFO) in by_ptr  # Geography x Product joined
@@ -355,6 +359,8 @@ def test_per_channel_priors_follow_the_channel_labels() -> None:
                                "alpha": [0.06, 2.0], "beta": [1.14, 2.0]}  # fmt: skip
     assert priors["theta"] == {"distribution": "Exponential", "dims": ["channel"],
                                "lam": [3.0, 2.0]}  # fmt: skip
+    assert priors["half"]["dims"] == ["channel"]  # type: ignore[index]
+    assert not isinstance(priors["half"]["mu"], list)  # type: ignore[index]  # shared value
     assert spec.model.settings["pooling"] == "partial"
 
 

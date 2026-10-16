@@ -16,8 +16,8 @@ BayesInsight                            ``mmm.hierarchical_geo`` spec
 ``exog`` variable (the KPI)             target ``y``, mean-scaled over time per geo
 ``media`` variables                     ``spend(geo, channel, time)``, mean-scaled, 12-lag tensor
 ``adstock: delayed`` / ``geometric``    ``adstock.kind`` (one kind for every channel)
-``adstock_prior`` (Delayed)             ``alpha ~ Beta(mu, nu)`` and ``theta ~ Exponential(lam)``
-                                        per channel - exactly BayesInsight's distributions
+``adstock_prior`` (Delayed)             ``alpha ~ Beta(mu, nu)`` and ``theta ~ Exponential(lam)``,
+                                        one per channel - exactly BayesInsight's distributions
 ``media_transform: hill`` / ``linear``  ``saturation.kind: hill`` / ``none``
 ``media_transform_prior`` (Hill)        ``half ~ LogNormal`` exactly; ``slope ~ Gamma`` matching
                                         the mean and sd of BayesInsight's ``1 + Exponential``
@@ -524,8 +524,11 @@ def _num(value: Any, default: float) -> float:
 
 
 def _channel_prior(dist: str, channels: list[str], **params: list[float]) -> dict[str, Any]:
-    """A per-channel prior; one shared value when every channel has the same parameters."""
-    shared = all(len(set(values)) == 1 for values in params.values())
-    if shared or len(channels) == 1:
-        return {"distribution": dist, **{k: v[0] for k, v in params.items()}}
-    return {"distribution": dist, "dims": ["channel"], **params}
+    """A prior with one independent parameter per channel, as BayesInsight builds one per
+    media variable; a parameter the channels share is written once (``dims: [channel]``
+    with a scalar draws i.i.d. per channel - without ``dims`` the geo MMM would fit a single
+    value for all channels)."""
+    values: dict[str, float | list[float]] = {
+        k: v[0] if len(set(v)) == 1 else list(v) for k, v in params.items()
+    }
+    return {"distribution": dist, "dims": ["channel"], **values}
