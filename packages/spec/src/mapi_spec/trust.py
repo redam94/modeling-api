@@ -36,6 +36,7 @@ __all__ = [
     "DELETION_TRANSITIONS",
     "EMAIL_VERIFICATION_TTL",
     "RETAINED_RECORDS",
+    "SYBIL_FLAGS",
     "TENANT_DELETION_GRACE",
     "TERMS_VERSION",
     "BlocklistEmailPolicy",
@@ -47,6 +48,10 @@ __all__ = [
     "GdprExportRequest",
     "SignupAccepted",
     "SignupRequest",
+    "SignupReview",
+    "SignupReviewDecision",
+    "SignupReviewState",
+    "SignupState",
     "StoreProgress",
     "TenantDeletion",
     "TenantDeletionRequest",
@@ -213,6 +218,95 @@ class VerificationResult(ResponseModel):
     )
 
 
+# ============================================================================ sign-up review
+
+
+class SignupState(StrEnum):
+    """Where one sign-up is: waiting for its e-mail link, done, or never completed."""
+
+    PENDING = "pending"
+    VERIFIED = "verified"
+    EXPIRED = "expired"
+
+
+class SignupReviewState(StrEnum):
+    """The operators' review of a sign-up (Sybil heuristics flag, operators decide)."""
+
+    NONE = "none"
+    FLAGGED = "flagged"
+    """A heuristic matched: the tenant works, and waits in the review queue."""
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    """An operator rejected it: the tenant is suspended (audited, reason kept)."""
+
+
+SYBIL_FLAGS: Final[dict[str, str]] = {
+    "same_ip": "Several workspaces were created from the same network address",
+    "same_device": "Several workspaces were created from the same browser",
+    "same_email": "This address already created several workspaces",
+    "domain_burst": "Many sign-ups from this e-mail domain in a short time",
+}
+"""The Sybil heuristics a sign-up can trip, with the plain-language reason shown to
+operators. A flag never blocks the sign-up: it queues it for review."""
+
+
+class SignupReview(ResponseModel):
+    """``GET /v1/admin/signups`` (operators): one sign-up and why it was flagged.
+
+    Client addresses and browsers appear only as keyed digests (``ip_hash``,
+    ``device_hash``), never raw; e-mail addresses are shown to operators for the review."""
+
+    id: Id = Field(..., pattern=r"^sgn_[0-9a-z]{26}$")
+    email: str = Field(..., max_length=320)
+    email_domain: str = Field(..., max_length=255)
+    name: str = Field(..., max_length=200)
+    organisation: str | None = Field(None, max_length=200)
+    state: SignupState
+    review: SignupReviewState = SignupReviewState.NONE
+    flags: list[str] = Field(default_factory=list, max_length=len(SYBIL_FLAGS))
+    reasons_plain: list[str] = Field(default_factory=list, max_length=len(SYBIL_FLAGS))
+    tenant_id: TenantId | None = Field(None, description="The tenant the verification created")
+    ip_hash: str | None = Field(None, max_length=64)
+    device_hash: str | None = Field(None, max_length=64)
+    created_at: AwareDatetime
+    expires_at: AwareDatetime
+    verified_at: AwareDatetime | None = None
+    reviewed_by: str | None = Field(None, max_length=128)
+    reviewed_at: AwareDatetime | None = None
+    review_reason: str | None = Field(None, max_length=500)
+
+    model_config = dto_examples(
+        {
+            "id": "sgn_01jaf3s1t2v3w4x5y6z7a8b9c0",
+            "email": "ana@acme.example",
+            "email_domain": "acme.example",
+            "name": "Ana Analyst",
+            "organisation": "Acme Retail",
+            "state": "verified",
+            "review": "flagged",
+            "flags": ["same_ip"],
+            "reasons_plain": [SYBIL_FLAGS["same_ip"]],
+            "tenant_id": "acme-retail",
+            "ip_hash": "3f7a0c9e1b2d4f6a8c0e2b4d6f8a0c2e",
+            "created_at": "2026-10-15T09:00:00Z",
+            "expires_at": "2026-10-16T09:00:00Z",
+            "verified_at": EXAMPLE_TS,
+        }
+    )
+
+
+class SignupReviewDecision(RequestModel):
+    """``POST /v1/admin/signups/{signup_id}/review`` (operators; audited).
+
+    ``reject`` suspends the tenant the sign-up created; ``approve`` clears the flag (and
+    reactivates a tenant an earlier rejection suspended)."""
+
+    decision: Literal["approve", "reject"]
+    reason: str = Field(..., min_length=1, max_length=500)
+
+    model_config = dto_examples({"decision": "reject", "reason": "one of 14 tenants from one IP"})
+
+
 # ================================================================================ verification
 
 
@@ -325,6 +419,9 @@ DeletionStore = Literal["database", "object_store", "queue", "logs", "webhooks"]
 RETAINED_RECORDS: Final[dict[str, str]] = {
     "audit": "kept 1 year after deletion, pseudonymised (actor ids only, no content)",
     "cost_ledger": "kept 7 years for tax law (amounts and run ids, no content)",
+    "deletion_record": "this deletion's own record and progress (ids and counts, no content)",
+    "platform_logs": "request and run logs are not purged: they hold ids, not content, and "
+    "expire with the log buckets' retention (30 days by default)",
 }
 """What deletion keeps, and why (shown to the tenant before it confirms)."""
 
