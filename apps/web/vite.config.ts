@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 
 import { bundleBudget } from "./bundle-budget";
+import { canonicalHost } from "./canonical-host";
 import { buildAppCsp, type AppCspOptions } from "./csp";
 
 const HOST = "127.0.0.1";
@@ -42,7 +43,7 @@ export default defineConfig(({ mode }) => {
     "Referrer-Policy": "strict-origin-when-cross-origin",
   };
   return {
-    plugins: [react(), tailwindcss(), cspMeta(csp), bundleBudget(ENTRY_BUDGET)],
+    plugins: [react(), tailwindcss(), canonicalHost(HOST), cspMeta(csp), bundleBudget(ENTRY_BUDGET)],
     resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
     // `--mode mock` serves the MSW service worker (mock-public/) and enables the mocks;
     // production builds never contain it.

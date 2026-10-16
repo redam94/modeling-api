@@ -5,6 +5,12 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Fixed
+
+- Web dev server: opening the app as `http://localhost:5173` now redirects to `http://127.0.0.1:5173`.
+  Before, the API's CORS allow-list and `SameSite=strict` session cookie only matched `127.0.0.1`, so
+  every call failed and the home page said the API was not reachable.
+
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 
 Analysts who do not write code can now build a model from a spreadsheet, read it and try
