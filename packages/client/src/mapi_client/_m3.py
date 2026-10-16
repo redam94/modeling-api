@@ -777,6 +777,10 @@ class TenantTrustMixin(_Resource):
     def export_status(self, tenant_id: str, export_id: str) -> GdprExport:
         return self._c.send(m3.get_tenant_export(tenant_id, export_id))
 
+    def exports(self, tenant_id: str, *, limit: int | None = None) -> Paginator[GdprExport]:
+        """The tenant's exports, newest first (``export_status`` gives a download link)."""
+        return self._c.page_iter(lambda cur: m3.list_tenant_exports(tenant_id, limit, cur))
+
     def wait_export(
         self,
         tenant_id: str,

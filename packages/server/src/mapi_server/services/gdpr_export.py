@@ -82,6 +82,7 @@ __all__ = [
     "export_dto",
     "export_object_name",
     "get_export",
+    "list_exports",
 ]
 
 log = logging.getLogger(__name__)
@@ -211,6 +212,20 @@ async def create_export(
         session=session,
     )
     return row
+
+
+async def list_exports(
+    session: AsyncSession, tenant_id: str, *, limit: int, after: str | None
+) -> tuple[list[GdprExport], bool]:
+    """A page of the tenant's exports, newest first (ids sort by creation time), without
+    download links (``GET`` one for a fresh link), and whether more exist."""
+    stmt = select(m.TenantExport).where(m.TenantExport.tenant_id == tenant_id)
+    if after is not None:
+        stmt = stmt.where(m.TenantExport.id < after)
+    rows = list(
+        (await session.execute(stmt.order_by(m.TenantExport.id.desc()).limit(limit + 1))).scalars()
+    )
+    return [export_dto(r) for r in rows[:limit]], len(rows) > limit
 
 
 async def get_export(

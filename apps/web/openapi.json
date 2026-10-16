@@ -9729,6 +9729,39 @@
         "title": "Page[ExecutorHealth]",
         "type": "object"
       },
+      "Page_GdprExport_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GdprExport"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[GdprExport]",
+        "type": "object"
+      },
       "Page_GuidedTemplate_": {
         "examples": [
           {
@@ -27583,6 +27616,96 @@
       }
     },
     "/v1/tenants/{tenant_id}/exports": {
+      "get": {
+        "description": "The tenant's exports, newest first: what is being built and what can be downloaded\n(``GET`` one export for its download link).",
+        "operationId": "list_tenant_exports",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_GdprExport_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem document (`application/problem+json`); code `FORBIDDEN`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem document (`application/problem+json`); code `NOT_FOUND`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tenant Exports",
+        "tags": [
+          "tenants"
+        ]
+      },
       "post": {
         "description": "Queue a GDPR export of everything the tenant stored; poll it for the link.",
         "operationId": "create_tenant_export",

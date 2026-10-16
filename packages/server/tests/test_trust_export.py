@@ -233,3 +233,38 @@ async def test_metadata_is_capped_and_the_overflow_listed(
     capped = [x for x in manifest["skipped"] if x["reason"] == "export size limit"]
     assert capped and all(x["path"].startswith("metadata/") for x in capped)
     assert all("rows_written" in x for x in capped)
+
+
+async def test_exports_are_listed_newest_first(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """Any admin, from any browser, finds the running or finished exports (no local state)."""
+    alpha = await seed_tenant(ctx, "alpha")
+    await seed_tenant(ctx, "beta")
+    owner = await session_caller(ctx, client, alpha.user)
+    assert (await owner.get("/v1/tenants/alpha/exports")).json() == {
+        "items": [], "next_cursor": None,
+    }  # fmt: skip
+    ids = []
+    for _ in range(2):
+        exp_id = (await owner.post("/v1/tenants/alpha/exports", json={})).json()["id"]
+        assert await ExportBuilder(ctx).run(exp_id) == "ready"
+        ids.append(exp_id)
+    third = (await owner.post("/v1/tenants/alpha/exports", json={"include": ["audit"]})).json()
+    r = await owner.get("/v1/tenants/alpha/exports")
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
+    page = r.json()
+    assert [e["id"] for e in page["items"]] == [third["id"], *reversed(ids)]
+    assert [e["state"] for e in page["items"]] == ["queued", "ready", "ready"]
+    assert all(e["download_url"] is None for e in page["items"])  # GET one for a link
+    one = (await owner.get("/v1/tenants/alpha/exports", params={"limit": 1})).json()
+    assert [e["id"] for e in one["items"]] == [third["id"]] and one["next_cursor"]
+    rest = (await owner.get("/v1/tenants/alpha/exports",
+                            params={"cursor": one["next_cursor"]})).json()  # fmt: skip
+    assert [e["id"] for e in rest["items"]] == list(reversed(ids))
+    # another tenant's admin sees none of them, and tokens cannot list
+    beta = await seed_tenant(ctx, "gamma")
+    other = await session_caller(ctx, client, beta.user)
+    assert (await other.get("/v1/tenants/alpha/exports")).status_code == 404
+    r = await token_caller(client, alpha.token).get("/v1/tenants/alpha/exports")
+    assert r.status_code == 403

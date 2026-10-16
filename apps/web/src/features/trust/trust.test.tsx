@@ -113,7 +113,24 @@ describe("Settings > Data", () => {
     const status = await screen.findByTestId("export-status");
     const download = await within(status).findByRole("link", { name: /Download archive/ }, { timeout: 5000 });
     expect(download.getAttribute("href")).toMatch(/^http:\/\/127\.0\.0\.1:4443\/mock-artifacts\/exports%2Fexp_/);
-    expect(seen.find((r) => r.path === "/v1/tenants/acme/exports")?.body).toEqual({ include: ["metadata", "datasets", "models", "usage"] });
+    expect(seen.find((r) => r.method === "POST" && r.path === "/v1/tenants/acme/exports")?.body).toEqual({ include: ["metadata", "datasets", "models", "usage"] });
+  });
+
+  it("finds the latest export from another browser (the server lists them)", async () => {
+    const user = userEvent.setup();
+    const first = renderApp("/settings");
+    await user.click(await screen.findByRole("button", { name: "Request export" }));
+    const status = await screen.findByTestId("export-status");
+    await within(status).findByRole("link", { name: /Download archive/ }, { timeout: 5000 });
+    const id = within(status).getByText(/^exp_/).textContent;
+    first.unmount();
+    // another browser: nothing remembered locally
+    for (const key of Object.keys(localStorage)) if (key.startsWith("mapi.export.")) localStorage.removeItem(key);
+    renderApp("/settings");
+    const again = await screen.findByTestId("export-status");
+    expect(within(again).getByText(/^exp_/).textContent).toBe(id);
+    expect(await within(again).findByRole("link", { name: /Download archive/ })).toBeInTheDocument();
+    expect(seen.some((r) => r.method === "GET" && r.path === "/v1/tenants/acme/exports")).toBe(true);
   });
 
   it("schedules the deletion with a typed confirmation, then cancels it", async () => {

@@ -464,6 +464,12 @@ milestone releases are tagged on `main`.
   write objects after the object store was purged. The `queue` store now also waits until
   those runs' signed links have expired (attempt start + run timeout + 30 minutes) and says
   until when.
+- **server, web, client**: GDPR exports could not be listed, and Settings > Data found the last
+  export only through the browser's `localStorage`, so another admin or browser could neither
+  see nor download an export that was running or finished (and could not start another one
+  while it ran). New `GET /v1/tenants/{tenant_id}/exports` (newest first, paged, tenant
+  admins); Settings > Data shows the newest export from it, and the Python client has
+  `tenants.exports(tenant_id)`.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

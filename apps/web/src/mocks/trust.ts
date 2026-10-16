@@ -301,6 +301,17 @@ export function createTrustHandlers(state: TrustState, deps: TrustDeps): HttpHan
       const { readyAt: _r, ...dto } = exp;
       return HttpResponse.json(dto, { status: 202 });
     }),
+    http.get(`${API}/v1/tenants/:tenant/exports`, ({ params, request }) => {
+      const t = String(params.tenant);
+      if (!isTenantAdmin(t)) return problem(403, "FORBIDDEN", "Not allowed", "only organisation admins can see the organisation's exports");
+      const limit = Number(new URL(request.url).searchParams.get("limit") ?? "50");
+      const items = [...state.exports.values()]
+        .filter((e) => e.tenant_id === t)
+        .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))
+        .slice(0, limit)
+        .map(({ readyAt: _r, download_url: _u, ...dto }) => ({ ...dto, download_url: null }));
+      return page(items);
+    }),
     http.get(`${API}/v1/tenants/:tenant/exports/:id`, ({ params }) => {
       const exp = state.exports.get(String(params.id));
       if (!exp || exp.tenant_id !== params.tenant) return problem(404, "NOT_FOUND", "Not found", "no such export");

@@ -261,6 +261,7 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "get_tenant_deletion": lambda: m3.get_tenant_deletion("acme"),
     "cancel_tenant_deletion": lambda: m3.cancel_tenant_deletion("acme"),
     "create_tenant_export": lambda: m3.create_tenant_export("acme", GdprExportRequest()),
+    "list_tenant_exports": lambda: m3.list_tenant_exports("acme", None, None),
     "get_tenant_export": lambda: m3.get_tenant_export("acme", "exp_1"),
     "admin_list_signups": lambda: m3.admin_list_signups(None, None, review="flagged"),
     "admin_review_signup": lambda: m3.admin_review_signup("sgn_1", _ex(SignupReviewDecision)),

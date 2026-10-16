@@ -1893,7 +1893,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Tenant Exports
+         * @description The tenant's exports, newest first: what is being built and what can be downloaded
+         *     (``GET`` one export for its download link).
+         */
+        get: operations["list_tenant_exports"];
         put?: never;
         /**
          * Create Tenant Export
@@ -7259,6 +7264,19 @@ export interface components {
         Page_ExecutorHealth_: {
             /** Items */
             items: components["schemas"]["ExecutorHealth"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[GdprExport]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_GdprExport_: {
+            /** Items */
+            items: components["schemas"]["GdprExport"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -16307,6 +16325,58 @@ export interface operations {
             };
             /** @description Problem document (`application/problem+json`); code `CONFLICT` */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tenant_exports: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GdprExport_"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem document (`application/problem+json`); code `NOT_FOUND` */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

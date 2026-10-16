@@ -30,6 +30,7 @@ export const DELETION_GRACE_DAYS = 7;
 export const tk = {
   verification: (t: string) => ["tenants", t, "verification"] as const,
   deletion: (t: string) => ["tenants", t, "deletion"] as const,
+  exports: (t: string) => ["tenants", t, "exports"] as const,
   export: (t: string, id: string) => ["tenants", t, "exports", id] as const,
   adminSignups: (review: SignupReviewState | null) => ["admin", "signups", review] as const,
 };
@@ -107,7 +108,25 @@ export function useCreateTenantExport(tenantId: string) {
   return useMutation({
     mutationFn: (body: GdprExportRequest) =>
       unwrap(api.POST("/v1/tenants/{tenant_id}/exports", { params: { path: { tenant_id: tenantId } }, body })),
-    onSuccess: (exp) => qc.setQueryData(tk.export(tenantId, exp.id), exp),
+    onSuccess: (exp) => {
+      qc.setQueryData(tk.export(tenantId, exp.id), exp);
+      void qc.invalidateQueries({ queryKey: tk.exports(tenantId), exact: true });
+    },
+  });
+}
+
+/**
+ * The tenant's newest export (`GET /v1/tenants/{id}/exports`, newest first), so every admin
+ * in every browser finds the export that is being built or can be downloaded.
+ */
+export function useLatestTenantExport(tenantId: string) {
+  return useQuery({
+    queryKey: tk.exports(tenantId),
+    queryFn: async ({ signal }) => {
+      const page = await unwrap(api.GET("/v1/tenants/{tenant_id}/exports", { params: { path: { tenant_id: tenantId }, query: { limit: 1 } }, signal }));
+      return page.items[0] ?? null;
+    },
+    enabled: Boolean(tenantId),
   });
 }
 

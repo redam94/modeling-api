@@ -251,6 +251,31 @@ async def create_tenant_export(
 
 
 @router.get(
+    "/v1/tenants/{tenant_id}/exports",
+    response_model=Page[GdprExport],
+    operation_id="list_tenant_exports",
+    responses=problem_responses("list_tenant_exports"),
+)
+async def list_tenant_exports(
+    session: Session,
+    tenant_id: Slug,
+    response: Response,
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: str | None = None,
+) -> Page[GdprExport]:
+    """The tenant's exports, newest first: what is being built and what can be downloaded
+    (``GET`` one export for its download link)."""
+    response.headers["Cache-Control"] = "no-store"
+    after = decode_cursor(cursor)
+    items, more = await gdpr_export.list_exports(
+        session, tenant_id, limit=limit, after=str(after) if after is not None else None
+    )
+    return Page[GdprExport](
+        items=items, next_cursor=encode_cursor(items[-1].id) if more and items else None
+    )
+
+
+@router.get(
     "/v1/tenants/{tenant_id}/exports/{export_id}",
     response_model=GdprExport,
     operation_id="get_tenant_export",

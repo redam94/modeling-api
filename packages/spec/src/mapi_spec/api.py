@@ -2456,6 +2456,11 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         request="GdprExportRequest", errors=(*_BODY, *_NF, *_FB, _E.QUOTA_EXCEEDED),
     ),
     EndpointDecl(
+        "GET", _TEN + "/exports", "list_tenant_exports",
+        "The tenant's GDPR exports, newest first (GET one for its download link)",
+        "Page[GdprExport]", 200, errors=(*_NF, *_FB), paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
         "GET", _TEN + "/exports/{export_id}", "get_tenant_export",
         "An export and, once ready, its download link", "GdprExport", 200,
         errors=(*_NF, *_FB),
@@ -2652,6 +2657,7 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     "get_tenant_deletion": _t(_RK.TENANT_DELETION, _AC.READ),
     "cancel_tenant_deletion": _t(_RK.TENANT_DELETION, _AC.CANCEL),
     "create_tenant_export": _t(_RK.TENANT_EXPORT, _AC.CREATE),
+    "list_tenant_exports": _t(_RK.TENANT_EXPORT, _AC.READ),
     "get_tenant_export": _t(_RK.TENANT_EXPORT, _AC.READ),
     "admin_list_signups": _op(_RK.TENANT, _AC.READ),
     "admin_review_signup": _op(_RK.TENANT, _AC.MANAGE),

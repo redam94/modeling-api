@@ -18,7 +18,13 @@ curl -s -b cookies -H "X-CSRF-Token: $CSRF" -X POST "$API/v1/tenants/acme/export
   -H 'Content-Type: application/json' -d '{}'
 # poll it; once "ready", download_url is a signed link valid for 15 minutes
 curl -s -b cookies "$API/v1/tenants/acme/exports/exp_01jaf3r1s2t3v4w5x6y7z8a9b0"
+# every export of the workspace, newest first (any admin, any browser)
+curl -s -b cookies "$API/v1/tenants/acme/exports"
 ```
+
+Settings > Data shows the newest export from that list, so another admin (or another
+browser) sees an export that is still being built and can download a finished one; the
+Python client has `client.tenants.exports("acme")`.
 
 The orchestrator builds the archive in the background (usually within a minute). It is a zip:
 

@@ -529,6 +529,11 @@ def test_tenant_deletion_and_export(
     with pytest.raises(IntegrityFailure):
         scoped.tenants.download_export("acme", started.id, tmp_path / "again.zip")
     assert not (tmp_path / "again.zip").exists()
+    # the tenant's exports, newest first (any admin finds the one being built)
+    listed = api.get(f"{V1}/tenants/acme/exports").respond(200, json=page([queued, ready]))
+    assert [e.state for e in scoped.tenants.exports("acme", limit=2)] == ["queued", "ready"]
+    assert listed.calls.last.request.url.params["limit"] == "2"
+    assert HEADER not in listed.calls.last.request.headers
 
 
 def test_admin_trust(scoped: Client, api: respx.MockRouter, example: Ex) -> None:
