@@ -69,14 +69,17 @@ There are four project roles. Each includes everything the one before it can do:
 | Role | Can |
 |---|---|
 | `viewer` | Read everything in the project: datasets, specs, runs, logs, models, plots, usage. Validate specs. Mint tokens for themselves. |
-| `editor` | Also create and change datasets, specs and saved plots. |
-| `runner` | Also **spend compute**: submit, cancel, resume and retry runs; score models and endpoints; render plots. |
-| `admin` | Also manage members, endpoints and their promotion, plugins, other people's tokens, and delete things. |
+| `editor` | Also create and change datasets, specs, workflows and saved plots. |
+| `runner` | Also **spend compute**: submit, cancel, resume and retry runs; run and cancel workflows; score models and endpoints; render plots; submit models for governance validation. |
+| `admin` | Also manage members, endpoints and their promotion, plugins, webhooks, governance policies, other people's tokens; deprecate validated versions; delete things. |
 
 Running sits above editing on purpose: compute costs money, so a teammate can be trusted to
 edit a spec without being able to start a 200-task sweep.
 
-A **membership** grants one role, either on one project or tenant-wide. A tenant-wide grant
+A **membership** grants one role, either on one project or tenant-wide, and optionally
+**capabilities** on top of it (v0.5): `reviewer` lets an editor or runner approve or reject
+model validations that wait for a second person - never their own submissions, never through
+a token. Project admins hold every capability implicitly. A tenant-wide grant
 applies to the tenant itself (renaming it, its member list, its audit log and bill) and to
 every project in it. In a project, a member's effective role is the higher of their tenant-wide
 and project grants.
@@ -98,6 +101,11 @@ action and resource combination against an independently written table. In summa
 | endpoint | viewer | admin | admin | admin | `run`: runner; `promote`: admin |
 | plot | viewer | editor | — | — | `run` (render): runner |
 | plugin | viewer | admin | — | admin | — |
+| embed link | viewer | editor | — | editor | — |
+| webhook | admin | admin | admin | admin | — |
+| workflow (v0.5) | viewer | editor | editor | admin | `run`, `cancel`: runner |
+| governance policy (v0.5) | viewer | admin | admin | admin | tenant-wide policies: admin (tenant-wide) |
+| model validation (v0.5) | viewer | — | admin (deprecate) | — | `validate`: runner; `approve`: editor or runner with `reviewer`, or admin |
 | usage (project) | viewer | — | — | — | — |
 | billing, audit (tenant) | admin (tenant-wide) | — | — | — | — |
 | quotas, kill switches, executors | operator | — | operator | operator | — |
@@ -188,11 +196,21 @@ token with `models:read` can only read.
 | `runs:create` | `models:read`, plus submit and cancel runs, score models and endpoints, render plots |
 | `score:{target}` | Score one model by its id, for example `score:mdl_01jaf3r1s2t3v4w5x6y7z8a9b0` (`POST /v1/models/{id}/versions/{v}:score`); `score:*` covers every model in the project. Once endpoints exist, an endpoint alias works the same way, for example `score:geo-mmm-prod` |
 | `datasets:write` | Create datasets and add versions |
-| `plugins:publish` | Publish and yank plugins (from v0.5) |
-| `admin` | Everything the owner's role allows, except minting tokens |
+| `plugins:publish` | Publish and yank plugins (plugin upload arrives in v0.6) |
+| `endpoints:promote` | Create, promote, roll back and delete endpoints, read models (CI pipelines); never overrides a gate |
+| `webhooks:manage` | Manage the project's webhooks and replay deliveries |
+| `workflows:write` (v0.5) | Create workflows and save revisions (workflow-as-code from CI) |
+| `workflows:run` (v0.5) | Run and cancel workflows, manage their schedules and triggers |
+| `models:validate` (v0.5) | Submit model versions for governance validation, read policies; never approves |
+| `policies:manage` (v0.5) | Create, edit and retire the project's governance policies (policy-as-code) |
+| `admin` | Everything the owner's role allows, except minting tokens, overriding a promotion gate and approving a validation |
 
 No scope lets a token mint tokens: a child token would escape its parent's expiry, budget,
 rate limit and revocation. Mint tokens from a signed-in session (`mapi login` or the browser).
+Overriding a promotion gate and approving a model validation also need a signed-in person:
+they are human decisions, and the audit log names who made them. The generated
+[permissions reference](../reference/generated/permissions.md) has every scope against every
+action.
 
 Each token also has an expiry (default 90 days, at most 365), and may have its own
 requests-per-minute limit and a vCPU-second budget per day or month. These apply in addition
