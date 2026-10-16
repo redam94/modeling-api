@@ -8,6 +8,7 @@ import {
   Home,
   KeyRound,
   Library,
+  Plug,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -47,6 +48,7 @@ export const EXPERT_NAV: NavItem[] = [
   { to: "/runs", label: "Runs", icon: Activity, chord: "r", description: "Fits, dry-runs, ingests and scores" },
   { to: "/models", label: "Models", icon: Boxes, chord: "m", description: "Inspect fitted model versions" },
   { to: "/score", label: "Score", icon: Gauge, chord: "s", description: "Forecasts, scenarios and counterfactuals" },
+  { to: "/integrations", label: "Integrations", icon: Plug, chord: "i", description: "Endpoints, snippets, webhooks and share links" },
   { to: "/catalog", label: "Catalog", icon: Library, chord: "c", description: "Models, steps and plot recipes" },
 ];
 

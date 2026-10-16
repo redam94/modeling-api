@@ -272,6 +272,13 @@ docs-screenshots-admin: ## Recapture the multi-tenant screenshots (sign-in, memb
 	node scripts/docs_screenshots_admin.mjs .local/screenshots-admin
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-admin docs/assets/screenshots --only $(DOCS_ADMIN_SHOTS)
 
+DOCS_INTEGRATIONS_SHOTS := integrations-overview,integrations-promote-gate,integrations-endpoint,integrations-try-it,integrations-snippets,integrations-webhook,integrations-sharing,integrations-embed-link,settings-data,admin-signups,signup
+
+.PHONY: docs-screenshots-integrations
+docs-screenshots-integrations: ## Recapture the Integrations hub and trust-page screenshots from the mock-mode web app (see the script)
+	node scripts/docs_screenshots_integrations.mjs .local/screenshots-integrations
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-integrations docs/assets/screenshots --max-kb 150 --only $(DOCS_INTEGRATIONS_SHOTS)
+
 ## ---------------------------------------------------------------- release
 .PHONY: release-check
 release-check: ## One version everywhere, a dated CHANGELOG entry, no plan files tracked, pinned images

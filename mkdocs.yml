@@ -149,6 +149,7 @@ nav:
           - "Your first analysis in Guided mode": guides/guided-tutorial.md
           - "From a spreadsheet to a Guided draft": guides/guided-data.md
           - Endpoints and webhooks: guides/endpoints-and-webhooks.md
+          - The Integrations hub: guides/integrations-hub.md
       - Running it for teams:
           - Authentication: guides/authentication.md
           - Administration: guides/administration.md

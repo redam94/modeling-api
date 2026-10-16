@@ -66,7 +66,7 @@ export function TokensPage() {
   const canCreate = can(ws.grants, "create", "token");
   const filters = useMemo(() => ({ ...(search.all && canManage ? { all: true } : {}), ...(search.status ? { status: search.status } : {}) }), [search.all, search.status, canManage]);
   const tokens = useTokens(filters);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(Boolean(search.preset));
   const [created, setCreated] = useState<TokenCreated | null>(null);
   const [revoking, setRevoking] = useState<ApiToken | null>(null);
   const project = ws.current;
@@ -220,10 +220,15 @@ export function TokensPage() {
       {creating ? (
         <CreateTokenDialog
           role={project?.role ?? null}
-          onClose={() => setCreating(false)}
+          preset={search.preset}
+          onClose={() => {
+            setCreating(false);
+            if (search.preset) void navigate({ search: (s) => ({ ...s, preset: undefined }), replace: true });
+          }}
           onCreated={(t) => {
             setCreating(false);
             setCreated(t);
+            if (search.preset) void navigate({ search: (s) => ({ ...s, preset: undefined }), replace: true });
           }}
         />
       ) : null}
@@ -281,9 +286,24 @@ export function validateTokenForm(f: TokenForm): { body: TokenCreate | null; err
   };
 }
 
-function CreateTokenDialog({ role, onClose, onCreated }: { role: ProjectRole | null; onClose: () => void; onCreated: (t: TokenCreated) => void }) {
+/** The New token form, empty or for one endpoint (`preset` = `score:<alias>`, from Integrations). */
+export function initialTokenForm(preset?: string): TokenForm {
+  const alias = preset?.startsWith("score:") ? preset.slice("score:".length) : "";
+  return {
+    name: alias ? `${alias}-integration`.slice(0, 100) : "",
+    // A score:<alias> token reads and scores that endpoint only: no broader scope.
+    scopes: alias ? [] : ["models:read"],
+    aliases: alias,
+    expires: DEFAULT_TOKEN_TTL_DAYS,
+    rate: alias ? "120" : "",
+    budget: "",
+    period: "month",
+  };
+}
+
+function CreateTokenDialog({ role, preset, onClose, onCreated }: { role: ProjectRole | null; preset?: string | undefined; onClose: () => void; onCreated: (t: TokenCreated) => void }) {
   const create = useCreateToken();
-  const [form, setForm] = useState<TokenForm>({ name: "", scopes: ["models:read"], aliases: "", expires: DEFAULT_TOKEN_TTL_DAYS, rate: "", budget: "", period: "month" });
+  const [form, setForm] = useState<TokenForm>(() => initialTokenForm(preset));
   const [submitted, setSubmitted] = useState(false);
   const { body, errors } = validateTokenForm(form);
   const shown = submitted ? errors : {};
@@ -303,6 +323,7 @@ function CreateTokenDialog({ role, onClose, onCreated }: { role: ProjectRole | n
         <DialogTitle>New API token</DialogTitle>
         <DialogDescription>
           The token can never do more than your role{role ? ` (${role})` : ""} allows; scopes narrow it further.
+          {preset ? ` This one may only read and score the endpoint ${preset.slice("score:".length)}.` : ""}
         </DialogDescription>
         <form className="grid gap-5" onSubmit={submit} noValidate>
           <Field label="Name" htmlFor="tok-name" error={shown.name} hint="For example the program that will use it: atlas-optimiser, nightly-refit.">
@@ -348,11 +369,11 @@ function CreateTokenDialog({ role, onClose, onCreated }: { role: ProjectRole | n
             label="Score models (optional)"
             htmlFor="tok-aliases"
             error={shown.aliases}
-            hint="Model ids (mdl_…) this token may score, separated by spaces or commas; * means every model of the project. Endpoint aliases work the same way once endpoints exist."
+            hint="Endpoint aliases or model ids (mdl_…) this token may score, separated by spaces or commas; * means every endpoint and model of the project."
           >
             <Input id="tok-aliases" className="font-mono" placeholder="mdl_01jaf3r1s2t3v4w5x6y7z8a9b0" value={form.aliases} onChange={(e) => set("aliases", e.target.value)} />
           </Field>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.5fr)]">
             <Field label="Expires after" htmlFor="tok-exp" error={shown.expires}>
               <NativeSelect id="tok-exp" value={form.expires} onChange={(e) => set("expires", Number(e.target.value))}>
                 {EXPIRY_CHOICES.map((d) => (
@@ -368,8 +389,8 @@ function CreateTokenDialog({ role, onClose, onCreated }: { role: ProjectRole | n
             <div className="grid gap-1.5">
               <Field label="Compute budget (optional)" htmlFor="tok-budget" error={shown.budget} hint="vCPU-seconds; runs stop starting once spent.">
                 <div className="flex gap-2">
-                  <Input id="tok-budget" inputMode="decimal" placeholder="36000" value={form.budget} onChange={(e) => set("budget", e.target.value)} />
-                  <NativeSelect aria-label="Budget period" className="w-28" value={form.period} onChange={(e) => set("period", e.target.value as BudgetPeriod)}>
+                  <Input id="tok-budget" className="flex-1" inputMode="decimal" placeholder="36000" value={form.budget} onChange={(e) => set("budget", e.target.value)} />
+                  <NativeSelect aria-label="Budget period" className="w-32" value={form.period} onChange={(e) => set("period", e.target.value as BudgetPeriod)}>
                     <option value="day">per day</option>
                     <option value="month">per month</option>
                   </NativeSelect>

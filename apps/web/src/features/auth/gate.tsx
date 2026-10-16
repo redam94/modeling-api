@@ -143,6 +143,12 @@ export function SignInScreen({ info }: { info: SessionInfo | null }) {
           >
             {busy ? <Spinner /> : <LogIn />} Continue to sign in
           </Button>
+          <p className="text-[13px] text-muted-foreground">
+            New here?{" "}
+            <a href="/signup" className="font-medium text-primary hover:underline">
+              Create a workspace
+            </a>
+          </p>
           <p className="text-xs text-muted-foreground">
             The app never sees your password or an OAuth token: the API keeps the session in a secure,
             HTTP-only cookie.

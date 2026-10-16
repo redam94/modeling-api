@@ -22,6 +22,7 @@ import { crc32cBase64 } from "@/lib/crc32c";
 import * as fx from "./fixtures";
 import { buildDraft, DraftError, fitInputs, ingest, suggestRoles, synthGrid, synthScorecard, type FitInputs } from "./guided-engine";
 import templatesPage from "./guided-templates.gen.json";
+import type { IntegrationsState } from "./integrations";
 import { mockPersonaId, PERSONAS } from "./tenancy";
 
 const API = env.apiBase;
@@ -101,6 +102,12 @@ export function createGuidedState(): GuidedMockState {
 /** The parts of the generic mock state the Guided handlers read (lists merge both). */
 export interface SharedMockState {
   revisions: SpecRevision[];
+  /**
+   * The Integrations hub's mock state (`mocks/integrations.ts`). When given, the endpoints,
+   * saved plots and embed links a Guided session creates are written there too, so the hub
+   * lists them, and the endpoint list is answered from that one map.
+   */
+  integrations?: IntegrationsState;
 }
 
 // ----------------------------------------------------------------------------- helpers
@@ -591,6 +598,8 @@ function scoreViews(f: Fitted, request: Record<string, unknown>): { name: string
 export function createGuidedHandlers(shared: SharedMockState, state: GuidedMockState = createGuidedState()): HttpHandler[] {
   const genericSpecItem = (): SpecDoc => ({ ...fx.specDoc, latest_revision: shared.revisions.length, latest: shared.revisions.at(-1) ?? null });
   const specOfRun = (body: { spec_id?: string | null }) => (body.spec_id ? state.specs.get(body.spec_id) : undefined);
+  // One endpoint map for Guided sessions and the Integrations hub (when both are mocked).
+  const endpoints = shared.integrations?.endpoints ?? state.endpoints;
 
   return [
     // ------------------------------------------------------------------ templates, detection, drafts
@@ -952,9 +961,9 @@ export function createGuidedHandlers(shared: SharedMockState, state: GuidedMockS
     }),
 
     // ------------------------------------------------------------------ endpoints
-    http.get(`${API}/v1/endpoints`, () => page([...state.endpoints.values()])),
+    http.get(`${API}/v1/endpoints`, () => page([...endpoints.values()].sort((a, b) => a.alias.localeCompare(b.alias)))),
     http.get(`${API}/v1/endpoints/:alias`, ({ params }) => {
-      const e = state.endpoints.get(String(params.alias));
+      const e = endpoints.get(String(params.alias));
       return e ? HttpResponse.json(e) : problem(404, "NOT_FOUND", "Not found", "no such endpoint");
     }),
     http.put(`${API}/v1/endpoints/:alias`, async ({ params, request }) => {
@@ -963,7 +972,7 @@ export function createGuidedHandlers(shared: SharedMockState, state: GuidedMockS
       const mv = rec?.versions.find((v) => v.id === body.model_version_id);
       if (!rec || !mv) return undefined;
       const alias = String(params.alias);
-      const prev = state.endpoints.get(alias);
+      const prev = endpoints.get(alias);
       if (body.expected_revision !== undefined && body.expected_revision !== (prev?.revision ?? 0)) return problem(409, "CONFLICT", "Conflict", "the endpoint changed since you loaded it");
       const reasons = (mv.scorecard?.items ?? [])
         .filter((i) => i.status !== "pass")
@@ -997,7 +1006,13 @@ export function createGuidedHandlers(shared: SharedMockState, state: GuidedMockS
         created_at: prev?.created_at ?? now(),
         updated_at: now(),
       };
-      state.endpoints.set(alias, ep);
+      endpoints.set(alias, ep);
+      const history = shared.integrations?.history;
+      if (history) {
+        const rows = history.get(alias) ?? [];
+        rows.unshift({ alias, revision: ep.revision, action: "promote", model_version_id: mv.id, model_ref: mv.ref, previous_model_version_id: prev?.model_version_id ?? null, gate: ep.gate, overridden: ep.overridden, reason: body.reason?.trim() || null, actor_id: ep.promoted_by ?? null, created_at: ep.promoted_at });
+        history.set(alias, rows);
+      }
       return HttpResponse.json(ep, { status: prev ? 200 : 201 });
     }),
 
@@ -1010,6 +1025,7 @@ export function createGuidedHandlers(shared: SharedMockState, state: GuidedMockS
       const scope = scopeOf(request);
       const p: SavedPlot = { id: nid(state, "plt"), tenant_id: scope.tenant, project_id: scope.project, title: body.title, kind: "vega-lite", source_kind: "model_plot", source: body.source, recipe: spec.provenance.recipe ?? null, provenance: "recipe", embeddable: true, created_by: PERSONAS[mockPersonaId() ?? ""]?.id ?? null, created_at: now(), updated_at: now() };
       state.plots.set(p.id, p);
+      shared.integrations?.plots.push(p);
       return HttpResponse.json(p, { status: 201 });
     }),
     http.post(`${API}/v1/plots/:id/embeds`, async ({ params, request }) => {
@@ -1023,6 +1039,8 @@ export function createGuidedHandlers(shared: SharedMockState, state: GuidedMockS
         token,
       };
       state.embeds.set(created.embed.id, created);
+      const hub = shared.integrations?.embeds;
+      if (hub) hub.set(p.id, [created.embed, ...(hub.get(p.id) ?? [])]);
       return HttpResponse.json(created, { status: 201 });
     }),
 

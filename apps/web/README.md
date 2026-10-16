@@ -1,8 +1,9 @@
 # @mapi/web
 
 The modeling-api web app: Expert mode (v0.2), the multi-tenant workspace (v0.3: sign-in, tenant
-and project switcher, API tokens, members, usage and cost, operator console) and Guided mode (v0.4:
-the task flow for analysts). React 19, TypeScript (strict), Vite, TanStack Router/Query/Table, Zustand for UI-only
+and project switcher, API tokens, members, usage and cost, operator console), and in v0.4 Guided mode
+(the task flow for analysts), the Integrations hub and the trust pages (endpoints, snippets, webhooks,
+share links, sign-up, Settings > Data). React 19, TypeScript (strict), Vite, TanStack Router/Query/Table, Zustand for UI-only
 state, Tailwind v4 with shadcn/ui (new-york, neutral) components, Monaco + monaco-yaml, Apache
 Arrow JS and lucide icons.
 

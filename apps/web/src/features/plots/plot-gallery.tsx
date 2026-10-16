@@ -1,9 +1,11 @@
-import { BarChart3 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { BarChart3, Share2 } from "lucide-react";
 import { useState } from "react";
 
 import { usePlot, usePlots } from "@/api/queries";
 import type { PlotListItem } from "@/api/types";
 import { EmptyState, ErrorNotice, LoadingRows, QueryView } from "@/components/common";
+import { Button } from "@/components/ui/button";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
 
@@ -20,9 +22,17 @@ function PlotPanel({ modelId, version, item }: { modelId: string; version: numbe
           <CardTitle>{item.title}</CardTitle>
           {item.caption_plain ? <CardDescription>{item.caption_plain}</CardDescription> : null}
         </div>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
           <Badge variant="outline">{item.kind}</Badge>
           {item.recipe ? <Badge variant="secondary">{item.recipe}</Badge> : null}
+          {item.recipe ? (
+            // Platform recipes can be saved, downloaded as PNG/SVG/PDF and shared by link (Integrations).
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/integrations" search={{ tab: "sharing", model: modelId, version, plot: item.id }}>
+                <Share2 /> Share
+              </Link>
+            </Button>
+          ) : null}
         </div>
       </CardHeader>
       <CardContent>
