@@ -1,9 +1,19 @@
 # Getting started
 
-There are two ways to use modeling-api, and they share everything: the spec format, the
-steps, the models and the bundles.
+There are three ways in, and they share everything: the spec format, the steps, the models
+and the bundles.
 
 <div class="grid cards" markdown>
+
+-   :material-compass-outline: **Guided mode, no code** <span class="mapi-badge">v0.4</span>
+
+    ---
+
+    For analysts: pick a template, upload a spreadsheet, answer a few questions and get a
+    report, a sanity scorecard and what-if sliders. Needs a running platform: your team's,
+    or `make dev` below.
+
+    [:octicons-arrow-right-24: Your first MMM in Guided mode](../guides/guided-tutorial.md)
 
 -   :material-rocket-launch-outline: **Run the platform** <span class="mapi-badge">v0.2</span>
 
@@ -123,5 +133,9 @@ xgb_store_demand  tabular.regressor@1.0.0  ok        ok   ok 6/6  ok        ok 1
 -   :material-puzzle-outline: **[Port a model](../guides/port-a-model.md)**
 
     Bring your own PyMC, scikit-learn or hand-written model.
+
+-   :material-connection: **[Tutorials](../tutorials/index.md)**
+
+    Google Sheets, embedded charts, webhook receivers, Atlas budgets, BayesInsight imports.
 
 </div>

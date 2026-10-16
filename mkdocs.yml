@@ -119,12 +119,23 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
-  - Home: index.md
+  - Home:
+      - index.md
+      - "Why modeling-api?": why.md
+      - Use cases: use-cases.md
   - Getting started:
       - getting-started/index.md
       - "Quickstart: zero to first model": getting-started/quickstart.md
       - Your first model in Python: getting-started/first-model.md
       - Runs and executors: getting-started/executor.md
+  - Tutorials:
+      - tutorials/index.md
+      - "Your first MMM in Guided mode": guides/guided-tutorial.md
+      - Connect Google Sheets: tutorials/google-sheets.md
+      - "Embed a chart in Notion, Slack or BI": tutorials/embed-a-chart.md
+      - Receive webhooks: guides/webhook-receivers.md
+      - Optimise a budget with Atlas: guides/atlas.md
+      - Import a BayesInsight model: tutorials/bayesinsight-import.md
   - Concepts:
       - concepts/index.md
       - Architecture overview: concepts/architecture.md
@@ -146,12 +157,9 @@ nav:
           - The command line: guides/cli.md
           - The Python client: guides/python-client.md
           - The HTTP API: guides/http-api.md
-          - "Your first analysis in Guided mode": guides/guided-tutorial.md
           - "From a spreadsheet to a Guided draft": guides/guided-data.md
           - Endpoints and webhooks: guides/endpoints-and-webhooks.md
           - The Integrations hub: guides/integrations-hub.md
-          - Receiving webhooks: guides/webhook-receivers.md
-          - Optimise a budget with Atlas: guides/atlas.md
       - Running it for teams:
           - Authentication: guides/authentication.md
           - Administration: guides/administration.md
@@ -219,6 +227,7 @@ nav:
       - The local platform (v0.2): roadmap/platform-api.md
       - Cloud and multi-tenant (v0.3): roadmap/cloud.md
       - Guided mode and integrations (v0.4): roadmap/guided-ui.md
+      - "Next: expert plugins, MCP and optimisation (v0.5)": roadmap/expert-plugins.md
   - Project:
       - Licensing: project/licensing.md
       - Contributing: project/contributing.md
