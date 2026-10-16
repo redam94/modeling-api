@@ -40,6 +40,9 @@ __all__ = [
     "CostLedgerEntry",
     "Dataset",
     "DatasetVersion",
+    "Endpoint",
+    "EndpointRevision",
+    "EndpointRun",
     "ExecutorReport",
     "IdempotencyKey",
     "LoginTransactionRow",
@@ -62,6 +65,9 @@ __all__ = [
     "Upload",
     "User",
     "WebSession",
+    "Webhook",
+    "WebhookDelivery",
+    "WebhookEvent",
 ]
 
 TENANT_TABLES: tuple[str, ...] = (
@@ -84,6 +90,12 @@ TENANT_TABLES: tuple[str, ...] = (
     "idempotency_keys",
     "audit_events",
     "cost_ledger",
+    "endpoints",
+    "endpoint_revisions",
+    "endpoint_runs",
+    "webhooks",
+    "webhook_events",
+    "webhook_deliveries",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -791,3 +803,167 @@ class ExecutorReport(Base):
     message: Mapped[str | None] = mapped_column(String(500))
     disabled_reason: Mapped[str | None] = mapped_column(String(500))
     """Why an operator disabled it (``enabled`` is the operator's, never the report's)."""
+
+
+# ======================================================================= endpoints (M3)
+
+
+class Endpoint(_Scoped, Base):
+    """A stable alias (``endpoint://project/alias``) for the model version it serves now.
+
+    ``revision`` increases with every promotion and rollback (:class:`EndpointRevision`);
+    ``schema_snapshot`` is the promoted version's input contract (what callers send) and
+    ``gate`` the promotion gate's decision for it (:mod:`mapi_spec.endpoints`)."""
+
+    __tablename__ = "endpoints"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    alias: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str | None] = mapped_column(Text)
+    model_id: Mapped[str] = mapped_column(String(64))
+    model_version_id: Mapped[str] = mapped_column(ForeignKey("model_versions.id"))
+    revision: Mapped[int] = mapped_column(Integer)
+    evaluation_policy: Mapped[dict[str, Any]] = mapped_column()
+    schema_snapshot: Mapped[dict[str, Any]] = mapped_column()
+    gate: Mapped[dict[str, Any]] = mapped_column()
+    overridden: Mapped[bool] = mapped_column(Boolean, default=False)
+    promoted_by: Mapped[str | None] = mapped_column(String(128))
+    promoted_at: Mapped[datetime] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("tenant_id", "project_id", "alias"),
+        CheckConstraint("revision >= 1", name="revision"),
+    )
+
+
+class EndpointRevision(_Scoped, Base):
+    """One promotion or rollback of an endpoint (append-only for the request-path role)."""
+
+    __tablename__ = "endpoint_revisions"
+
+    endpoint_id: Mapped[str] = mapped_column(
+        ForeignKey("endpoints.id", ondelete="CASCADE"), primary_key=True
+    )
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    alias: Mapped[str] = mapped_column(String(128))
+    action: Mapped[str] = mapped_column(String(16))
+    model_version_id: Mapped[str] = mapped_column(String(64))
+    model_ref: Mapped[str] = mapped_column(String(300))
+    previous_model_version_id: Mapped[str | None] = mapped_column(String(64))
+    gate: Mapped[dict[str, Any]] = mapped_column()
+    overridden: Mapped[bool] = mapped_column(Boolean, default=False)
+    reason: Mapped[str | None] = mapped_column(String(1000))
+    actor_id: Mapped[str | None] = mapped_column(String(128))
+    token_id: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (CheckConstraint("action in ('promote','rollback')", name="action"),)
+
+
+class EndpointRun(_Scoped, Base):
+    """Which endpoint (and revision) a score run was submitted through (webhooks, usage)."""
+
+    __tablename__ = "endpoint_runs"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), primary_key=True)
+    endpoint_id: Mapped[str] = mapped_column(String(64))
+    alias: Mapped[str] = mapped_column(String(128))
+    revision: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (Index("ix_endpoint_runs_endpoint", "endpoint_id", "created_at"),)
+
+
+# ======================================================================== webhooks (M3)
+
+
+class Webhook(_Scoped, Base):
+    """An outgoing webhook. The signing secret is stored sealed (AES-GCM under a key derived
+    from the server secret, bound to the webhook id) and never returned after creation."""
+
+    __tablename__ = "webhooks"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    url: Mapped[str] = mapped_column(String(2048))
+    events: Mapped[list[Any]] = mapped_column()
+    description: Mapped[str | None] = mapped_column(String(500))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    secret_sealed: Mapped[str] = mapped_column(Text)
+    secret_hint: Mapped[str] = mapped_column(String(16))
+    previous_secret_sealed: Mapped[str | None] = mapped_column(Text)
+    previous_secret_expires_at: Mapped[datetime | None] = mapped_column()
+    failure_count: Mapped[int] = mapped_column(Integer, default=0)
+    disabled_reason: Mapped[str | None] = mapped_column(String(500))
+    last_delivery_at: Mapped[datetime | None] = mapped_column()
+    last_success_at: Mapped[datetime | None] = mapped_column()
+    created_by: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        Index("ix_webhooks_scope", "tenant_id", "project_id", "active"),
+        CheckConstraint("failure_count >= 0", name="failure_count"),
+    )
+
+
+class WebhookEvent(Base):
+    """The transactional outbox: one event, written in the transaction that caused it.
+    ``envelope`` is the :class:`mapi_spec.webhooks.WebhookEnvelope` JSON every delivery of it
+    sends. ``project_id`` is NULL for tenant-wide events."""
+
+    __tablename__ = "webhook_events"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"))
+    project_id: Mapped[str | None] = mapped_column(String(64))
+    type: Mapped[str] = mapped_column(String(64))
+    envelope: Mapped[dict[str, Any]] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (Index("ix_webhook_events_tenant_time", "tenant_id", "created_at"),)
+
+
+class WebhookDelivery(_Scoped, Base):
+    """One event's delivery chain to one webhook (``attempt`` is the latest or next try).
+
+    ``pending``/``retrying`` rows are due at ``next_attempt_at``; ``lease_until`` marks a try
+    in flight (the relay skips it until the lease runs out)."""
+
+    __tablename__ = "webhook_deliveries"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    webhook_id: Mapped[str] = mapped_column(ForeignKey("webhooks.id", ondelete="CASCADE"))
+    event_id: Mapped[str] = mapped_column(ForeignKey("webhook_events.id", ondelete="CASCADE"))
+    event_type: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(16))
+    attempt: Mapped[int] = mapped_column(Integer, default=1)
+    response_code: Mapped[int | None] = mapped_column(Integer)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    error: Mapped[str | None] = mapped_column(String(500))
+    response_excerpt: Mapped[str | None] = mapped_column(String(1024))
+    next_attempt_at: Mapped[datetime | None] = mapped_column()
+    lease_until: Mapped[datetime | None] = mapped_column()
+    replay_of: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column()
+    updated_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('pending','succeeded','retrying','failed','blocked')", name="status"
+        ),
+        CheckConstraint("attempt >= 1", name="attempt"),
+        Index("ix_webhook_deliveries_due", "status", "next_attempt_at"),
+        Index("ix_webhook_deliveries_webhook", "webhook_id", "created_at"),
+    )
