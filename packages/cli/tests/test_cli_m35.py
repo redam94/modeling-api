@@ -536,3 +536,44 @@ def test_v05_errors_come_with_a_hint(mapi: Invoke, api: respx.MockRouter, exampl
     )
     res = mapi(*CONN, "approve", VAL, "-y")
     assert "reviewer capability" in res.stderr
+
+
+def test_the_live_board_redraws_on_a_terminal(example: Ex) -> None:
+    """On a terminal the node board is redrawn in place (rich Live on stderr); the summary
+    is printed afterwards."""
+    import io
+
+    from mapi_cli.output import Output
+    from mapi_cli.workflow_view import print_run, watch_run
+    from mapi_client import WorkflowEnd, WorkflowEventFrame, WorkflowSnapshot
+    from mapi_spec.api import WorkflowRun as WR
+    from mapi_spec.workflow import WorkflowEvent as WE
+    from mapi_spec.workflow import WorkflowRunStatus
+    from rich.console import Console
+
+    run = WR.model_validate(example(WorkflowRun, status="succeeded"))
+    started = WE.model_validate(
+        example(WorkflowEvent, seq=1, type="workflow.node.started", node_id="adf", run_id=RUN)
+    )
+
+    class Fake:
+        class workflows:
+            @staticmethod
+            def stream_events(run_id: str, last_event_id: int | None = None) -> Any:
+                yield WorkflowSnapshot(run)
+                yield WorkflowEventFrame(started)
+                yield WorkflowEnd(RUN, WorkflowRunStatus.SUCCEEDED)
+
+            @staticmethod
+            def get_run(run_id: str) -> WR:
+                return run
+
+    err, out = io.StringIO(), io.StringIO()
+    output = Output(
+        out=Console(file=out, width=120, force_terminal=True),
+        err=Console(file=err, width=120, force_terminal=True),
+    )
+    final = watch_run(Fake(), output, RUN)  # type: ignore[arg-type]
+    print_run(output, final)
+    assert final.status.value == "succeeded"
+    assert "adf" in out.getvalue() and "Decisions" in out.getvalue()
