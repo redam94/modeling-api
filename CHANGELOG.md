@@ -5,6 +5,49 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
+
+Analysts who do not write code can now build a model from a spreadsheet, read it and try
+scenarios on it, and teams can wire a model they trust into the tools they already use.
+Everything was verified on a laptop against a live local stack (the GCS shim, embedded
+Postgres, the `local-process` executor). The real Google Cloud, Docker and the five
+non-technical testers are still to come (see Known gaps). In summary:
+
+- **Guided mode**: a task flow for non-technical analysts. Pick a template (geo marketing
+  mix, weekly forecast, demand by store, customer choice), upload a CSV, Parquet, MFF or
+  Meridian table, confirm the detected column roles, state business beliefs (ROI or
+  contribution-share ranges, a baseline) and lift tests, fit, and read a plain-language report
+  with a scorecard. What-if sliders answer at once from a per-draw response grid (a
+  TypeScript port of the model's own maths), and "Run exact" checks a scenario, a forecast or
+  a counterfactual with a real score run.
+- **modelling**: business priors translated into model priors (`translate_priors` runs and a
+  preview chart) and lift tests as calibration in `mmm.hierarchical_geo` and
+  `mmm.pymc_marketing`; the `mmm.bayesinsight` built-in and a BayesInsight importer; a
+  scorecard per version and a promotion gate that needs an audited admin override for a
+  failing or unevaluated version.
+- **endpoints and integrations**: endpoints with aliases, promotion, history and rollback;
+  generated snippets (Python, TypeScript, curl, R, Apps Script, notebook, Atlas); score
+  answers with the summary inline; webhooks signed with HMAC, behind an SSRF guard, with an
+  outbox, a delivery log and replays; saved plots, static PNG/SVG/PDF rendering with
+  vl-convert and expiring embed links served by the plot sandbox; the Integrations hub in the
+  web app.
+- **trust and data lifecycle**: self-service sign-up with e-mail verification, identity
+  verification and Sybil flags with a review queue, trusted-proxy client addresses, per-tier
+  draw and egress caps, GDPR export and tenant deletion with a grace period, and a Cloud
+  Armor policy in Terraform.
+- **client and CLI**: the v0.4 Python client (endpoints, webhooks, plots, Guided, tenants)
+  and Atlas `RemoteModel`, which lets Atlas optimise a budget against an endpoint; `mapi
+  endpoints`, `webhooks`, `plots`, `guided`, `priors`, `signup` and `tenant`.
+- **docs**: a new landing page, Why modeling-api, use cases, a Tutorials section (Google
+  Sheets, embeds, BayesInsight, webhook receivers, a first Guided analysis, Atlas), Guided
+  and Integrations guides, the security model for v0.4, and the M3 verification report.
+
+Every workspace package and both web apps are versioned 0.4.0. Contract v0.1 gains only
+additive changes. Upgrading from 0.3 runs migrations 0007 to 0010 (Guided drafts,
+endpoints and webhooks, saved plots and embeds, the trust lifecycle). Multi-tenant
+deployments must now set `MAPI_TRUSTED_PROXIES` (`none` when clients connect directly), or
+the server refuses to start.
+
 ### Added
 - **web**: the Integrations hub (`/integrations`). Guided cards for Google Sheets (the
   endpoint's Apps Script and a `score:<alias>` token), a BI embed link and a webhook; endpoints
@@ -646,6 +689,46 @@ milestone releases are tagged on `main`.
   link; the server answers with `/embed/<token>`.
 - **docs**: M3 verification and the landing page give the unaided-tester timing measured on
   the integrated branch, with the script starting at `/` (135 s, was 137 s from `/guided`).
+
+### Known gaps
+- **The M3 exit criterion is not met yet.** Five non-technical testers must go from upload to
+  report to scenario unaided in under 30 minutes. The protocol and observation sheet are
+  written (the M3 verification page in the operations docs), and a script clicks through
+  the same flow in 135 s of system time, but no tester session has run.
+- Nothing has run against real Google Cloud or a Docker daemon. The Cloud Armor policy, the
+  trusted-proxy ranges Terraform sets for Cloud Run behind the load balancer, the Cloud Run
+  executor, the docker and docker-gvisor executors and the compose stack are checked with
+  fakes, mocked providers and `terraform validate` only. After the first deploy, check that
+  sign-ups from two networks get different fingerprints.
+- Static rendering covers Vega-Lite only out of the box. Plotly needs kaleido and a system
+  Chrome, so `POST /v1/plots:render` refuses it with `MODE_NOT_SUPPORTED` unless
+  `MAPI_RENDER_PLOTLY_ENABLED`, and that path has not run in an image. Webhook bodies never
+  carry charts (a deliberate deviation), and Slack shows one generic card for every embed
+  link.
+- Webhooks have no synthetic test event: **Resend newest** replays the newest delivery, and a
+  new webhook gets its first delivery from a real event.
+- The Google Sheets Apps Scripts and the embed page inside Notion, Looker Studio and Power BI
+  are tested only against stand-ins, never in the real tools.
+- Egress is estimated from object size when a link is minted, not measured as bytes served; a
+  caller that polls a score result is charged again on each poll. The GDPR export archive is
+  still built in memory (bounded by two settings) because the object store has no streaming
+  upload.
+- There is no combined cap across all free-tier tenants beyond the global quota scope; the
+  Python client's Atlas `RemoteModel` caps draws at 300 on every tier (the server allows 500 on
+  paid tiers).
+- The Guided/Expert choice is stored per browser, not per user on the server; there is no
+  `mapi` command to lock a project to Guided mode (the web switch and the API do it).
+- In the `geo_mmm` template, the default priors of channels without a stated belief can still
+  imply media shares above 100% in total; the beliefs preview no longer presents them as the
+  analyst's beliefs.
+- The `/terms` and `/acceptable-use` pages are plain-language drafts, not reviewed legal text.
+  A public installation should publish its own and set `VITE_TERMS_URL` and
+  `VITE_ACCEPTABLE_USE_URL`.
+- Some screenshots predate the M3 review's wording (the Guided beliefs page, the Integrations
+  hub pages including the Sheets card, Settings).
+- A few tests are timing-sensitive under a fully loaded laptop (the 100-fit Cloud Run load
+  test, the Postgres-restart chaos test, Terraform's provider plugin start-up); each passes
+  when run again.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
