@@ -40,6 +40,7 @@ from mapi_spec.capabilities import (
 )
 from mapi_spec.catalog import ModelCatalogEntry
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.schema import DataSchema, DataSchemaTemplate, DimPolicy
 from mapi_spec.spec import FitConfig, Horizon, ScoreRequest
 from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
@@ -305,8 +306,9 @@ class CustomModel[SettingsT: BaseModel]:
     """Base class for hand-written plugins: declare metadata, implement ``fit``/``score``.
 
     Optional hooks: :meth:`diagnostics`, :meth:`postprocess`, :meth:`derive`,
-    :meth:`objective`, :meth:`recommend`. Set ``pad_extend = False`` if the model does not
-    index time positionally (scoring then skips padding ``extend`` dims to the fit range).
+    :meth:`objective`, :meth:`recommend`, :meth:`translate_priors`, :meth:`optimize`. Set
+    ``pad_extend = False`` if the model does not index time positionally (scoring then skips
+    padding ``extend`` dims to the fit range).
     """
 
     id: ClassVar[str]
@@ -393,6 +395,15 @@ class CustomModel[SettingsT: BaseModel]:
         self, fitted: Fitted, candidates: xr.Dataset, q: int, ctx: ScoreContext
     ) -> xr.Dataset:
         raise NotImplementedError(f"model {self.id!r} does not recommend")
+
+    def optimize(
+        self, fitted: Fitted, request: OptimizeRequest, ctx: ScoreContext
+    ) -> OptimizeResult:
+        """Budget optimisation (M3.5, ``POST …:optimize``; plugins that declare
+        ``capabilities.decision``): split ``request``'s budget across channels from the
+        fitted model's posterior and return the plan with its uncertainty. The runner
+        fills in the KPI name and units."""
+        raise NotImplementedError(f"model {self.id!r} does not optimise budgets")
 
     def translate_priors(
         self, ds: xr.Dataset, s: SettingsT, job: PriorTranslationJob, ctx: FitContext

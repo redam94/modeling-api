@@ -1,194 +1,124 @@
-"""Manifests, settings/fit JSON Schemas, schema templates and static spec validation."""
+"""Manifests, About cards, settings and schema templates of the mmm-framework plugins."""
 
 from __future__ import annotations
 
-import typing
-from collections.abc import Callable
 from typing import Any
 
 import pytest
-from mapi_plugin_mmm.hierarchical_geo import HierarchicalGeoMMM
-from mapi_plugin_mmm.priors import PRIOR_SLOTS
-from mapi_plugin_mmm.pymc_marketing import PyMCMarketingMMM
-from mapi_plugin_mmm.settings import HierarchicalGeoSettings, Priors, PyMCMarketingSettings
-from mapi_sdk.registry import Registry, default_registry
-from mapi_spec import DataSchema, load_model_spec, validate_spec
-from mapi_spec.errors import ErrorCode
-from mapi_spec.schema import DimPolicy
-from mapi_spec.validate import validate_settings
+from mapi_plugin_mmm.bayesian import MMMBayesian
+from mapi_plugin_mmm.frequentist import MMMFrequentist
+from mapi_plugin_mmm.plugins import PLUGINS
+from mapi_plugin_mmm.settings import BayesianSettings, FrequentistSettings, GridSettings
+from mapi_sdk.testing import check_about
+from mapi_spec.abouts import PLANNED_MODEL_IDS
+from mapi_spec.catalog import Catalog, catalog_about_issues
+from mapi_spec.errors import MapiError
+from mapi_spec.guided import GUIDED_TEMPLATES, MMM_MODEL_ID, MMM_TEMPLATE_SETTINGS
 from pydantic import ValidationError
 
-pytestmark = pytest.mark.unit
+
+def test_the_package_registers_the_mmm_framework_models() -> None:
+    assert [p.id for p in PLUGINS] == ["mmm.bayesian", "mmm.frequentist"]
+    assert {p.id for p in PLUGINS} <= PLANNED_MODEL_IDS
+    ids = {p.id for p in PLUGINS}
+    assert not {"mmm.hierarchical_geo", "mmm.pymc_marketing", "mmm.bayesinsight"} & ids
 
 
-def _ui_levels(schema: dict[str, Any]) -> dict[str, str | None]:
-    """``x-ui-level`` of every settings property (top level and nested models)."""
-    out: dict[str, str | None] = {}
-    for name, prop in schema.get("properties", {}).items():
-        out[name] = prop.get("x-ui-level")
-    for model, sub in schema.get("$defs", {}).items():
-        if model == "Priors" or model.endswith("Prior"):
-            continue  # the prior dict form; the whole `priors` field is advanced
-        for name, prop in sub.get("properties", {}).items():
-            out[f"{model}.{name}"] = prop.get("x-ui-level")
-    return out
-
-
-@pytest.mark.parametrize("plugin", [HierarchicalGeoMMM, PyMCMarketingMMM])
-def test_every_setting_has_a_ui_level(plugin: type[Any]) -> None:
+@pytest.mark.parametrize("plugin", PLUGINS, ids=lambda p: p.id)
+def test_every_model_has_a_complete_about_card(plugin: Any) -> None:
     m = plugin.manifest()
-    levels = _ui_levels(m.settings_schema)
-    assert levels and set(levels.values()) <= {"basic", "advanced"}, levels
-    assert "basic" in levels.values()
-    fit_levels = {k: v.get("x-ui-level") for k, v in m.fit_schema["properties"].items()}
-    assert set(fit_levels.values()) <= {"basic", "advanced"}
-    assert fit_levels["draws"] == "basic" and fit_levels["engine"] == "advanced"
+    assert m.about is not None, plugin.id
+    report = check_about(plugin, raise_on_failure=False)
+    assert report.ok, report.summary()
+    assert m.family == "mmm"
 
 
-def test_hierarchical_geo_manifest() -> None:
-    m = HierarchicalGeoMMM.manifest()
-    caps = m.capabilities
-    assert m.id == "mmm.hierarchical_geo" and m.version == "1.3.0"
-    assert caps.decision and caps.fast_score and caps.contribution_scale == "additive"
-    assert set(caps.calibration) == {"business_priors", "lift_tests"}
-    assert set(caps.score_modes) >= {"predict", "forecast", "counterfactual", "evaluate"}
-    assert m.derived_names() == {"contributions", "response_curves", "marginal_cost"}
-    assert all(d.cache == "fit" for d in m.derived)
-    assert set(m.outputs) == {"y_hat", "contributions"}
-    assert "mmm.response_curves" in m.plots
-    # settings defaults are visible to the control plane (Guided-mode forms)
-    props = m.settings_schema["properties"]
-    assert props["pooling"]["default"] == "partial"
-    assert props["adstock"]["default"]["kind"] == "geometric"
-    schema = m.schema_template.resolve({})
-    assert schema.dims["geo"].policy is DimPolicy.NEW_LEVELS
-    assert schema.dims["geo"].new_level_strategy == "hyperprior"
-    assert schema.vars["spend"].dims == ("geo", "channel", "time", "lag")
-    none = m.schema_template.resolve({"pooling": "none", "lag_dim": "l"})
-    assert none.dims["geo"].policy is DimPolicy.FIXED
-    assert none.vars["spend"].dims == ("geo", "channel", "time", "l")
+def test_the_catalog_rule_finds_no_about_problems() -> None:
+    catalog = Catalog(models=[p.catalog_entry() for p in PLUGINS])
+    errors = [i for i in catalog_about_issues(catalog) if i.severity == "error"]
+    assert errors == []
 
 
-def test_pymc_marketing_manifest_owns_preprocessing() -> None:
-    m = PyMCMarketingMMM.manifest()
-    assert set(m.capabilities.owns) == {"scaling", "carryover", "inverse_units"}
-    schema = m.schema_template.resolve({"dims": ["geo"]})
-    assert schema.vars["y"].dims == ("geo", "time")
-    assert schema.vars["spend"].dims == ("geo", "channel", "time")
-    assert schema.dims["geo"].policy is DimPolicy.FIXED
+def test_capabilities_and_ownership() -> None:
+    caps = MMMBayesian.manifest().capabilities
+    assert caps.owns == {"scaling", "carryover", "inverse_units"}
+    assert caps.calibration == {"business_priors", "lift_tests"}
+    assert caps.decision and caps.contribution_scale == "additive"
+    assert {"predict", "forecast", "counterfactual", "evaluate"} <= caps.score_modes
+    freq = MMMFrequentist.manifest().capabilities
+    assert freq.inference == "bootstrap" and not freq.calibration
+    assert freq.deterministic_given_seed
 
 
-def test_settings_validation() -> None:
-    with pytest.raises(ValidationError, match="unique"):
-        HierarchicalGeoSettings.model_validate({"controls": ["a", "a"]})
-    with pytest.raises(ValidationError, match="cannot be controls"):
-        HierarchicalGeoSettings.model_validate({"controls": ["y"]})
-    with pytest.raises(ValidationError, match="HalfNormal"):
-        HierarchicalGeoSettings.model_validate(
-            {"priors": {"beta_channel": {"distribution": "Normal", "sigma": 1}}}
-        )
-    with pytest.raises(ValidationError, match="positive support"):
-        HierarchicalGeoSettings.model_validate(
-            {"priors": {"beta_channel": {"distribution": "Uniform", "lower": -1, "upper": 2}}}
-        )
-    ok = HierarchicalGeoSettings.model_validate(
-        {"priors": {"lam": {"distribution": "Gamma", "alpha": 3, "beta": 1, "dims": ["channel"]}}}
-    )
-    assert ok.resolved_priors()["lam"].params == {"alpha": 3.0, "beta": 1.0}
-    assert ok.resolved_priors()["sigma"].distribution == "HalfNormal"  # default kept
-    with pytest.raises(ValidationError):
-        HierarchicalGeoSettings.model_validate({"pooling": "some"})
-    with pytest.raises(ValidationError, match="reserved"):
-        PyMCMarketingSettings.model_validate({"dims": ["channel"]})
-    with pytest.raises(ValidationError, match="geometric"):
-        PyMCMarketingSettings.model_validate({"adstock": {"kind": "delayed", "l_max": 3}})
-    grid = HierarchicalGeoSettings().grid
-    assert grid.multipliers()[0] == 0.0 and grid.multipliers()[-1] == 2.0
-    assert len(grid.multipliers()) == grid.points
+def test_fit_schema_lists_the_mmm_framework_engines() -> None:
+    engines = MMMBayesian.manifest().fit_schema["properties"]["engine"]["enum"]
+    assert {"nutpie", "pymc", "numpyro", "map", "advi", "pathfinder"} <= set(engines)
+    assert MMMBayesian.manifest().fit_schema["properties"]["engine"]["default"] == "nutpie"
 
 
 @pytest.mark.parametrize(
-    ("max_multiplier", "points"), [(2.0, 21), (3.0, 21), (2.0, 20), (1.5, 11), (1.0, 3), (20, 201)]
+    ("pool", "dims"),
+    [
+        ([], {"time", "channel"}),
+        (["geo"], {"time", "channel", "geo"}),
+        (["product", "geo"], {"time", "channel", "geo", "product"}),
+    ],
 )
-def test_the_response_grid_always_holds_today_s_spend(max_multiplier: float, points: int) -> None:
-    """The what-if grid and the scorecard read the curves at multiplier 1 (the actual spend);
-    a grid whose step skips it lost its sliders and scored ROI at the wrong spend."""
-    from mapi_plugin_mmm.settings import GridSettings
-    from mapi_spec.views import MAX_GRID_POINTS
+def test_schema_template_follows_the_panel_dims(pool: list[str], dims: set[str]) -> None:
+    schema = MMMBayesian.manifest().schema_template.resolve({"hierarchy": {"pool_over": pool}})
+    assert set(schema.dims) == dims
+    # the template keeps the settings' order (dim order is not significant in xarray)
+    assert list(schema.vars["y"].dims) == [*pool, "time"]
+    assert list(schema.vars["spend"].dims) == [*pool, "channel", "time"]
+    assert schema.vars["spend"].future_required
+    for d in pool:
+        assert schema.dims[d].policy.value == "new_levels"
+        assert schema.dims[d].new_level_strategy == "pooled"
 
-    m = GridSettings(max_multiplier=max_multiplier, points=points).multipliers()
-    assert 1.0 in m and m == sorted(set(m)) and m[0] == 0.0 and m[-1] == max_multiplier
-    assert len(m) in (points, points + 1) and len(m) <= MAX_GRID_POINTS
+
+def test_the_guided_geo_template_settings_are_accepted() -> None:
+    s = MMMBayesian().parse_settings(MMM_TEMPLATE_SETTINGS)
+    assert isinstance(s, BayesianSettings)
+    assert s.panel_dims == ["geo"]
+    assert s.saturation.kind == "hill" and s.adstock.l_max == 8
+    tpl = GUIDED_TEMPLATES["geo_mmm"]
+    assert tpl.plugin.startswith(MMM_MODEL_ID)
 
 
-def test_a_grid_that_stops_below_today_s_spend_is_refused() -> None:
-    from mapi_plugin_mmm.settings import GridSettings
-
+def test_settings_reject_inconsistent_values() -> None:
     with pytest.raises(ValidationError):
-        GridSettings(max_multiplier=0.5)
-    issues = validate_settings(
-        HierarchicalGeoMMM.manifest().settings_schema,
-        {"grid": {"max_multiplier": 0.5}},
-        "/model/settings",
+        BayesianSettings.model_validate({"hierarchy": {"media_by_geo": True}})
+    with pytest.raises(ValidationError):
+        BayesianSettings.model_validate({"hierarchy": {"pool_over": ["geo", "geo"]}})
+    with pytest.raises(ValidationError):
+        BayesianSettings.model_validate({"controls": ["y"]})
+    with pytest.raises(ValidationError):
+        BayesianSettings.model_validate({"adstock": {"kind": "exotic"}})
+    with pytest.raises(ValidationError):
+        BayesianSettings.model_validate({"priors": {"roi": {"tv": {"mu": 0, "sigma": 0}}}})
+    with pytest.raises(ValidationError):
+        FrequentistSettings.model_validate({"trend": {"kind": "gp"}})
+    with pytest.raises(MapiError):
+        MMMBayesian().parse_settings({"unknown": 1})
+
+
+def test_hierarchy_order_is_canonical() -> None:
+    s = BayesianSettings.model_validate({"hierarchy": {"pool_over": ["product", "geo"]}})
+    assert s.panel_dims == ["geo", "product"]
+
+
+def test_per_channel_overrides() -> None:
+    s = BayesianSettings.model_validate(
+        {"adstock": {"l_max": 6}, "channels": {"tv": {"adstock": {"kind": "weibull", "l_max": 12}}}}
     )
-    assert issues and all(i.code is ErrorCode.SETTINGS_INVALID for i in issues)
+    assert s.adstock_for("tv").kind == "weibull" and s.adstock_for("tv").l_max == 12
+    assert s.adstock_for("search").l_max == 6
+    assert s.saturation_for("tv").kind == "logistic"
 
 
-def test_settings_schema_rejects_bad_priors_statically() -> None:
-    schema = HierarchicalGeoMMM.manifest().settings_schema
-    issues = validate_settings(
-        schema, {"priors": {"lam": {"distribution": "Exec", "x": "y"}}}, "/model/settings"
-    )
-    assert issues and all(i.code is ErrorCode.SETTINGS_INVALID for i in issues)
-    assert any(i.pointer.startswith("/model/settings/priors/lam") for i in issues)
-    assert validate_settings(schema, {"priors": {"nope": {"distribution": "Normal"}}}, "/s")
-    # support and dims are part of the static schema: no fit needed to catch them
-    for bad in (
-        {"beta_channel": {"distribution": "Normal", "sigma": 1}},
-        {"alpha": {"distribution": "Gamma", "alpha": 2, "beta": 1}},
-        {"sigma": {"distribution": "HalfNormal", "sigma": 1, "dims": ["geo"]}},
-        {"lam": {"distribution": "Gamma", "alpha": 2, "beta": 1, "dims": ["geo"]}},
-    ):
-        assert validate_settings(schema, {"priors": bad}, "/s"), bad
-    plan = {
-        "beta_channel": {"distribution": "HalfNormal", "sigma": 1.0, "dims": ["channel"]},
-        "lam": {"distribution": "Gamma", "alpha": 3, "beta": 1, "dims": ["channel"]},
-    }
-    assert validate_settings(schema, {"priors": plan}, "/s") == []
-
-
-def test_every_prior_slot_is_a_typed_setting() -> None:
-    fields = Priors.model_fields
-    assert set(fields) == set(PRIOR_SLOTS)
-    for name, slot in PRIOR_SLOTS.items():
-        assert slot.model in typing.get_args(fields[name].annotation), name
-        slot.model.model_validate(slot.default.model_dump())  # defaults satisfy their slot
-
-
-def test_plan_spec_validates_against_the_real_catalog(
-    registry: Registry, raw_schema: DataSchema, spec_text: Callable[..., str]
-) -> None:
-    spec = load_model_spec(spec_text())
-    res = validate_spec(spec, registry.catalog(), raw_schema)
-    assert res.ok, [(i.pointer, i.message) for i in res.errors]
-    rs = res.raise_for_errors()
-    assert rs.model.resolved == "mmm.hierarchical_geo@1.3.0"
-    assert rs.split_stage == "weekly" and rs.model_stage == "hols"
-    assert rs.model.effective_policies["geo"] is DimPolicy.NEW_LEVELS
-    # the plan's dim_policies tightening (geo: fixed) is accepted and takes effect
-    tight = load_model_spec(
-        spec_text(**{"pooling: partial": "pooling: partial\n    dim_policies: {geo: fixed}"})
-    )
-    rs2 = validate_spec(tight, registry.catalog(), raw_schema).raise_for_errors()
-    assert rs2.model.effective_policies["geo"] is DimPolicy.FIXED
-    # bad fit settings are caught by the plugin's fit schema
-    bad = load_model_spec(spec_text(**{"engine: pymc": "engine: smc"}))
-    res3 = validate_spec(bad, registry.catalog(), raw_schema)
-    assert any(i.pointer == "/model/fit/engine" for i in res3.errors)
-
-
-def test_entry_points_register_both_plugins() -> None:
-    reg = default_registry(reload=True)
-    refs = {f"{m.id}@{m.version}" for m in (e.manifest for e in reg.catalog().models)}
-    want = {"mmm.hierarchical_geo@1.3.0", "mmm.pymc_marketing@1.1.0"}
-    assert want <= refs
+def test_grid_multipliers_always_hold_today() -> None:
+    assert 1.0 in GridSettings(max_multiplier=2.5, points=26).multipliers()
+    grid = GridSettings(max_multiplier=3.0, points=4).multipliers()
+    assert grid == [0.0, 1.0, 2.0, 3.0]
+    odd = GridSettings(max_multiplier=2.0, points=4).multipliers()
+    assert 1.0 in odd and len(odd) == 5

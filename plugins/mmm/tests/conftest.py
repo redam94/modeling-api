@@ -1,59 +1,110 @@
-"""Shared fixtures: the real step registry plus the MMM plugins, small E33 data and one
-tiny-draw fit of ``mmm.hierarchical_geo`` (``pymc`` engine, session scoped)."""
+"""Shared fixtures of the mmm-framework plugin tests.
+
+Fast tests never run MCMC: :func:`prior_fitted` builds a ``Fitted`` whose "posterior" is a
+draw from mmm-framework's own prior of the model (``BayesianMMM.get_prior``), which
+exercises the bundle layout, the replay, scoring, derived quantities and optimisation
+exactly as a real fit would. Real fits (``slow``) use tiny settings.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 import mapi_steps
+import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
 from mapi_plots.recipes import all_recipes
-from mapi_plugin_mmm.examples import (
-    E33_SPEC_YAML,
-    E33Truth,
-    e33_dataset,
-    e33_raw_schema,
-    e33_side_tables,
-)
+from mapi_plugin_mmm.base import FrameworkMMM
+from mapi_plugin_mmm.bayesian import MMMBayesian
+from mapi_plugin_mmm.framework import PanelData, detect_controls, infer_frequency, make_model, quiet
 from mapi_plugin_mmm.plugins import PLUGINS
-from mapi_sdk.bundle import Bundle
-from mapi_sdk.harness import fit_spec
+from mapi_sdk.models import Fitted
 from mapi_sdk.registry import Registry
-from mapi_spec import DataSchema, ModelSpec, ScoreRequest, load_model_spec, load_score_request
+from mapi_spec.spec import FitConfig
 
-MARKETS = ("NL", "DE", "UK")
+GEOS = ("north", "south", "west")
 CHANNELS = ("tv", "search")
-WEEKS = 30
-REQ = (
-    "apiVersion: mapi/v1\nkind: ScoreRequest\nmodel: endpoint://growth/eu-geo-mmm\n"
-    "side_tables: {fx: dataset://growth/fx_daily@latest}\n"
-)
+WEEKS = 52
 
 
-def small_spec(**replace: str) -> str:
-    """The example spec with a 4-week holdout and 50 UI draws (plus text replacements)."""
-    text = E33_SPEC_YAML.replace("last: 8", "last: 4").replace("ui_draws: 100", "ui_draws: 50")
-    for old, new in replace.items():
-        assert old in text, old
-        text = text.replace(old, new)
-    return text
+def geo_stage_data(
+    *, weeks: int = WEEKS, geos: tuple[str, ...] = GEOS, seed: int = 3, fourier: bool = True
+) -> xr.Dataset:
+    """Model-stage weekly geo data: ``y(geo, time)``, ``spend(geo, channel, time)``, a
+    ``price(geo, time)`` control and (``fourier``) a national ``season(time, mode)``
+    control with an extra dim."""
+    rng = np.random.default_rng(seed)
+    t = pd.date_range("2024-01-07", periods=weeks, freq="W-SUN").as_unit("ns")
+    n_g, n_c = len(geos), len(CHANNELS)
+    spend = rng.gamma(3.0, 200.0, (n_g, n_c, weeks))
+    price = 10 + rng.normal(0, 0.5, (n_g, weeks))
+    y = (
+        2_000
+        + 0.4 * spend[:, 0]
+        + 0.6 * spend[:, 1]
+        - 30 * (price - 10)
+        + rng.normal(0, 20, (n_g, weeks))
+    )
+    data: dict[str, Any] = {
+        "y": (("geo", "time"), y, {"units": "EUR"}),
+        "spend": (("geo", "channel", "time"), spend, {"units": "EUR"}),
+        "price": (("geo", "time"), price),
+    }
+    if fourier:
+        pos = np.arange(weeks)
+        season = np.stack([np.sin(2 * np.pi * pos / 52), np.cos(2 * np.pi * pos / 52)], axis=1)
+        data["season"] = (("time", "mode"), season)
+    coords = {"geo": list(geos), "channel": list(CHANNELS), "time": t}
+    if fourier:
+        coords["mode"] = ["sin", "cos"]
+    return xr.Dataset(data, coords=coords)
 
 
-@pytest.fixture(scope="session")
-def spec_text() -> Callable[..., str]:
-    """``spec_text(**{old: new})``: the small example spec with text replacements."""
-    return small_spec
+@dataclass(slots=True)
+class PriorFit:
+    """A ``Fitted`` built from prior draws, with its plugin and data."""
+
+    plugin: FrameworkMMM[Any]
+    fitted: Fitted
+    data: PanelData
+    stage: xr.Dataset
+    model: Any
+    prior: xr.Dataset
 
 
-@pytest.fixture(scope="session")
-def request_for() -> Callable[[str], ScoreRequest]:
-    """``request_for("mode: forecast\n...")``: a score request supplying the fx table."""
-
-    def make(body: str) -> ScoreRequest:
-        return load_score_request(REQ + body)
-
-    return make
+def build_prior_fit(
+    stage: xr.Dataset,
+    settings: dict[str, Any],
+    *,
+    plugin: FrameworkMMM[Any] | None = None,
+    draws: int = 40,
+    seed: int = 5,
+) -> PriorFit:
+    plugin = plugin or MMMBayesian()
+    s = plugin.parse_settings(settings)
+    controls = detect_controls(stage, s.controls)
+    data = PanelData.from_dataset(stage, s.panel_dims, controls, with_target=True)
+    freq = infer_frequency(data.times, s.frequency)
+    model = make_model(data, s, frequency=freq)
+    with quiet():
+        tree = model.get_prior(samples=draws, random_seed=seed)
+    prior = tree["prior"].to_dataset(inherit=False)
+    model._trace = xr.DataTree.from_dict({"posterior": prior})
+    cfg = FitConfig(mode="train_only", seed=seed)
+    groups = plugin._groups(model, data, cfg, bayesian=False)
+    learned = plugin._learned(data, freq, model, {"engine": "prior"})
+    fitted = Fitted(
+        manifest=type(plugin).manifest(),
+        settings=s.model_dump(mode="json"),
+        fit_config=cfg,
+        groups=groups,
+        learned=learned,
+    )
+    return PriorFit(plugin, fitted, data, stage, model, prior)
 
 
 @pytest.fixture(scope="session")
@@ -66,31 +117,37 @@ def registry() -> Registry:
 
 
 @pytest.fixture(scope="session")
-def small() -> tuple[xr.Dataset, E33Truth]:
-    return e33_dataset(markets=MARKETS, channels=CHANNELS, weeks=WEEKS, seed=1)
+def geo_stage() -> xr.Dataset:
+    return geo_stage_data()
 
 
 @pytest.fixture(scope="session")
-def tables() -> dict[str, xr.Dataset]:
-    return e33_side_tables()
+def geo_prior_fit(geo_stage: xr.Dataset) -> PriorFit:
+    return build_prior_fit(
+        geo_stage,
+        {
+            "hierarchy": {"pool_over": ["geo"]},
+            "adstock": {"kind": "geometric", "l_max": 4},
+            "saturation": {"kind": "hill"},
+            "trend": {"kind": "linear"},
+        },
+    )
 
 
 @pytest.fixture(scope="session")
-def raw_schema(small: tuple[xr.Dataset, E33Truth]) -> DataSchema:
-    return e33_raw_schema(small[0])
+def national_prior_fit() -> PriorFit:
+    stage = geo_stage_data(geos=("all",)).isel(geo=0, drop=True)
+    return build_prior_fit(
+        stage,
+        {"adstock": {"kind": "delayed", "l_max": 5}, "trend": {"kind": "piecewise"}},
+    )
 
 
 @pytest.fixture(scope="session")
-def spec() -> ModelSpec:
-    return load_model_spec(small_spec())
+def prior_fit_factory() -> Callable[..., PriorFit]:
+    return build_prior_fit
 
 
 @pytest.fixture(scope="session")
-def bundle(
-    spec: ModelSpec,
-    small: tuple[xr.Dataset, E33Truth],
-    tables: dict[str, xr.Dataset],
-    registry: Registry,
-    raw_schema: DataSchema,
-) -> Bundle:
-    return fit_spec(spec, small[0], tables, registry, raw_schema=raw_schema)
+def stage_factory() -> Callable[..., xr.Dataset]:
+    return geo_stage_data
