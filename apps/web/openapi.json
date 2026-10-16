@@ -651,6 +651,116 @@
         "title": "AuditOutcome",
         "type": "string"
       },
+      "BayesInsightImport": {
+        "additionalProperties": false,
+        "description": "``POST /v1/guided/import/bayesinsight``: a BayesInsight project as a draft (Q8: an\ningest adapter plus the ``mmm.bayesinsight`` plugin, not a separate spec kind).",
+        "examples": [
+          {
+            "dataset": "bi_mff",
+            "format": "mff",
+            "metadata": {
+              "allowed_campaigns": [
+                "Total"
+              ],
+              "allowed_creatives": [
+                "Total"
+              ],
+              "allowed_geos": [
+                "US",
+                "DE"
+              ],
+              "allowed_outlets": [
+                "Total"
+              ],
+              "allowed_products": [
+                "Total"
+              ],
+              "periodicity": "Weekly",
+              "row_ids": [
+                "Geography",
+                "Product",
+                "Period"
+              ]
+            },
+            "model_def": {
+              "variable_details": [
+                {
+                  "likelihood": {
+                    "type": "Normal"
+                  },
+                  "variable_name": "Sales_Total_Total_Total",
+                  "variable_type": "exog"
+                },
+                {
+                  "adstock": "delayed",
+                  "media_transform": "hill",
+                  "variable_name": "TV_Total_Total_Total",
+                  "variable_type": "media"
+                },
+                {
+                  "variable_name": "annual_seasonality",
+                  "variable_type": "season"
+                }
+              ]
+            },
+            "name": "bi-import"
+          }
+        ],
+        "properties": {
+          "dataset": {
+            "description": "Name of the dataset the MFF upload becomes",
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "title": "Dataset",
+            "type": "string"
+          },
+          "format": {
+            "default": "mff",
+            "enum": [
+              "csv",
+              "parquet",
+              "mff"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "holdout_periods": {
+            "default": 8,
+            "maximum": 104.0,
+            "minimum": 1.0,
+            "title": "Holdout Periods",
+            "type": "integer"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/BayesInsightMetadata"
+          },
+          "model_def": {
+            "$ref": "#/components/schemas/BayesInsightModelDef"
+          },
+          "name": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "title": "Name",
+            "type": "string"
+          },
+          "target": {
+            "default": "mmm.hierarchical_geo",
+            "description": "M3: the plugin to import for. mmm.hierarchical_geo (default) maps every feature with an equivalent and warns about the rest (mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight keeps model_def verbatim for the planned dedicated plugin",
+            "enum": [
+              "mmm.hierarchical_geo",
+              "mmm.bayesinsight"
+            ],
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "dataset",
+          "model_def",
+          "metadata"
+        ],
+        "title": "BayesInsightImport",
+        "type": "object"
+      },
       "BayesInsightMetadata": {
         "description": "BayesInsight's ``metadata.json`` (``{\"metadata\": {...}}`` is accepted too).\n\n``row_ids`` are the MFF key columns the model is indexed by (``Period`` always last);\nthe key columns *not* in ``row_ids`` are aggregated away and suffix variable names\n(``Promotion_Total_Total_Total``).",
         "properties": {
@@ -789,6 +899,138 @@
           }
         },
         "title": "BayesInsightMetadata",
+        "type": "object"
+      },
+      "BayesInsightModelDef": {
+        "description": "BayesInsight's ``model_def.json``. ``artifact``, ``fitted`` and ``VOF`` describe a\nlocal fit and are ignored by the import.",
+        "properties": {
+          "VOF": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "artifact": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact"
+          },
+          "fitted": {
+            "default": false,
+            "title": "Fitted",
+            "type": "boolean"
+          },
+          "variable_details": {
+            "items": {
+              "$ref": "#/components/schemas/BayesInsightVariable"
+            },
+            "maxItems": 1024,
+            "minItems": 1,
+            "title": "Variable Details",
+            "type": "array"
+          }
+        },
+        "required": [
+          "variable_details"
+        ],
+        "title": "BayesInsightModelDef",
+        "type": "object"
+      },
+      "BayesInsightVariable": {
+        "additionalProperties": true,
+        "description": "One entry of ``model_def.json``'s ``variable_details``.\n\nThe fields the import interprets are typed; everything else (priors, transforms,\nlikelihood parameters) is kept verbatim for the ``mmm.bayesinsight`` plugin, which\nvalidates it in the sandbox.",
+        "properties": {
+          "fixed_ind_coeff_dims": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 6,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fixed Ind Coeff Dims"
+          },
+          "normalization": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalization"
+          },
+          "random_coeff_dims": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 6,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Random Coeff Dims"
+          },
+          "sign": {
+            "anyOf": [
+              {
+                "enum": [
+                  "positive",
+                  "negative"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sign"
+          },
+          "variable_name": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Variable Name",
+            "type": "string"
+          },
+          "variable_type": {
+            "enum": [
+              "control",
+              "media",
+              "exog",
+              "localtrend",
+              "season"
+            ],
+            "title": "Variable Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "variable_name",
+          "variable_type"
+        ],
+        "title": "BayesInsightVariable",
         "type": "object"
       },
       "Binding": {
@@ -1082,6 +1324,101 @@
         "title": "BundleObject",
         "type": "object"
       },
+      "BusinessPriors": {
+        "additionalProperties": false,
+        "description": "Beliefs in business units, per channel (keys are channel *labels* as in the data).",
+        "examples": [
+          {
+            "baseline_share": {
+              "credibility": 0.8,
+              "share": [
+                0.5,
+                0.8
+              ]
+            },
+            "channels": {
+              "search": {
+                "credibility": 0.9,
+                "roi": [
+                  2.0,
+                  6.0
+                ]
+              },
+              "social": {
+                "contribution_share": [
+                  0.02,
+                  0.1
+                ]
+              },
+              "tv": {
+                "credibility": 0.8,
+                "roi": [
+                  1.5,
+                  4.0
+                ]
+              }
+            },
+            "kpi_units": "EUR",
+            "spend_units": "EUR"
+          }
+        ],
+        "properties": {
+          "baseline_share": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShareBelief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "channels": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ChannelBelief"
+            },
+            "maxProperties": 64,
+            "minProperties": 1,
+            "title": "Channels",
+            "type": "object"
+          },
+          "kpi_units": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "EUR"
+            ],
+            "title": "Kpi Units"
+          },
+          "spend_units": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "EUR"
+            ],
+            "title": "Spend Units"
+          }
+        },
+        "required": [
+          "channels"
+        ],
+        "title": "BusinessPriors",
+        "type": "object"
+      },
       "Capabilities": {
         "additionalProperties": false,
         "description": "What a model plugin can do (declared in its manifest).",
@@ -1313,6 +1650,96 @@
         "title": "ChainProgress",
         "type": "object"
       },
+      "ChannelBelief": {
+        "additionalProperties": false,
+        "description": "What the user believes about one channel: exactly one of ``roi`` or\n``contribution_share``, held with ``credibility``.\n\n* ``roi``: KPI units gained per spend unit over the fit window (``[1.5, 4]`` = \"every\n  euro returns between 1.5 and 4 euros of revenue\");\n* ``contribution_share``: the channel's share of the KPI over the fit window.",
+        "properties": {
+          "contribution_share": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              [
+                0.05,
+                0.15
+              ]
+            ],
+            "title": "Contribution Share"
+          },
+          "credibility": {
+            "default": 0.8,
+            "description": "Probability that the true value lies inside the range (0.8 = 'I am 80% sure')",
+            "maximum": 0.99,
+            "minimum": 0.5,
+            "title": "Credibility",
+            "type": "number"
+          },
+          "roi": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              [
+                1.5,
+                4.0
+              ]
+            ],
+            "title": "Roi"
+          }
+        },
+        "title": "ChannelBelief",
+        "type": "object"
+      },
+      "CheckThresholds": {
+        "additionalProperties": false,
+        "description": "Warn and fail thresholds of a check (in the check's direction).",
+        "properties": {
+          "fail": {
+            "title": "Fail",
+            "type": "number"
+          },
+          "warn": {
+            "title": "Warn",
+            "type": "number"
+          }
+        },
+        "required": [
+          "warn",
+          "fail"
+        ],
+        "title": "CheckThresholds",
+        "type": "object"
+      },
       "CheckpointPayload": {
         "additionalProperties": false,
         "description": "``checkpoint``: a checkpoint object was uploaded under the checkpoint prefix.",
@@ -1364,6 +1791,195 @@
           "segment"
         ],
         "title": "CheckpointPayload",
+        "type": "object"
+      },
+      "ColumnProfile": {
+        "additionalProperties": false,
+        "description": "What the browser (DuckDB-WASM/papaparse preview) or an ingest profile knows about a\ncolumn. ``name`` and ``sample`` are user data: render them as text only.",
+        "examples": [
+          {
+            "dtype": "number",
+            "max": 98312.0,
+            "min": 1520.5,
+            "n_distinct": 1012,
+            "n_rows": 1040,
+            "name": "revenue_eur"
+          },
+          {
+            "detected_freq": "W-SUN",
+            "dtype": "date",
+            "max_date": "2025-12-28",
+            "min_date": "2024-01-07",
+            "n_distinct": 104,
+            "n_rows": 1040,
+            "name": "week"
+          }
+        ],
+        "properties": {
+          "detected_freq": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "W-SUN",
+              "D",
+              "MS"
+            ],
+            "title": "Detected Freq"
+          },
+          "dtype": {
+            "enum": [
+              "number",
+              "integer",
+              "string",
+              "date",
+              "boolean"
+            ],
+            "title": "Dtype",
+            "type": "string"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "max_date": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Date"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "min_date": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Date"
+          },
+          "monotonic": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Values never decrease in file order (dates of a single series, trip numbers); repeated panels of dates are not monotonic",
+            "title": "Monotonic"
+          },
+          "n_distinct": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N Distinct"
+          },
+          "n_missing": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "N Missing",
+            "type": "integer"
+          },
+          "n_rows": {
+            "minimum": 0.0,
+            "title": "N Rows",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "enum": [
+                  "column",
+                  "mff_variable",
+                  "dim",
+                  "variable"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the profile comes from: a table column, a VariableName of an MFF table, or a dim/variable of a stored dataset",
+            "title": "Origin"
+          },
+          "sample": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maxItems": 20,
+            "title": "Sample",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "dtype",
+          "n_rows"
+        ],
+        "title": "ColumnProfile",
         "type": "object"
       },
       "CompletePayload": {
@@ -2464,6 +3080,91 @@
           "dims"
         ],
         "title": "DerivedDecl",
+        "type": "object"
+      },
+      "DetectRolesRequest": {
+        "additionalProperties": false,
+        "description": "``POST /v1/guided/detect-roles``: exactly one of ``dataset`` (a stored version:\nits schema and profile are used) or ``columns`` (profiled in the browser).",
+        "examples": [
+          {
+            "columns": [
+              {
+                "dtype": "number",
+                "max": 98312.0,
+                "min": 1520.5,
+                "n_distinct": 1012,
+                "n_rows": 1040,
+                "name": "revenue_eur"
+              },
+              {
+                "detected_freq": "W-SUN",
+                "dtype": "date",
+                "max_date": "2025-12-28",
+                "min_date": "2024-01-07",
+                "n_distinct": 104,
+                "n_rows": 1040,
+                "name": "week"
+              },
+              {
+                "dtype": "string",
+                "n_distinct": 10,
+                "n_rows": 1040,
+                "name": "market"
+              },
+              {
+                "dtype": "number",
+                "max": 90000.0,
+                "min": 0,
+                "n_rows": 1040,
+                "name": "tv_spend"
+              }
+            ],
+            "template_id": "geo_mmm"
+          }
+        ],
+        "properties": {
+          "columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ColumnProfile"
+                },
+                "maxItems": 2048,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Columns"
+          },
+          "dataset": {
+            "anyOf": [
+              {
+                "description": "Dataset reference dataset://project/name@version",
+                "examples": [
+                  "dataset://growth/eu_media_daily@latest"
+                ],
+                "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset"
+          },
+          "template_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "title": "Template Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "template_id"
+        ],
+        "title": "DetectRolesRequest",
         "type": "object"
       },
       "Diagnostic": {
@@ -3586,6 +4287,608 @@
         "title": "GlobalSpend",
         "type": "object"
       },
+      "GuidedAnswers": {
+        "additionalProperties": false,
+        "description": "``POST /v1/guided/drafts``: answers to a template's questions.\n\nColumn answers are *column names* of the upload (a list for ``columns`` questions).\n``dataset`` names the dataset the upload will become (``dataset://<project>/<name>``);\n``columns`` (optional) lets the draft use detected types and frequencies.",
+        "examples": [
+          {
+            "answers": {
+              "controls": [
+                "avg_price"
+              ],
+              "date": "week",
+              "frequency": "weekly",
+              "geo": "market",
+              "holdout_periods": 8,
+              "kpi": "revenue_eur",
+              "spend": [
+                "tv_spend",
+                "search_spend",
+                "social_spend"
+              ]
+            },
+            "dataset": "eu_media_weekly",
+            "format": "csv",
+            "name": "eu-geo-mmm",
+            "template_id": "geo_mmm"
+          }
+        ],
+        "properties": {
+          "answers": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "maxProperties": 32,
+            "title": "Answers",
+            "type": "object"
+          },
+          "business_priors": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BusinessPriors"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ColumnProfile"
+                },
+                "maxItems": 2048,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Columns"
+          },
+          "dataset": {
+            "description": "Name of the dataset the upload becomes",
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "title": "Dataset",
+            "type": "string"
+          },
+          "format": {
+            "default": "csv",
+            "description": "The upload's format; for 'mff' (M3) column answers name VariableName values, Period and the MFF key columns",
+            "enum": [
+              "csv",
+              "parquet",
+              "mff"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "lift_tests": {
+            "items": {
+              "$ref": "#/components/schemas/LiftTest"
+            },
+            "maxItems": 500,
+            "title": "Lift Tests",
+            "type": "array"
+          },
+          "name": {
+            "description": "Name of the spec (and model) to create",
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "title": "Name",
+            "type": "string"
+          },
+          "template_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "title": "Template Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "template_id",
+          "name",
+          "dataset"
+        ],
+        "title": "GuidedAnswers",
+        "type": "object"
+      },
+      "GuidedDraft": {
+        "description": "The draft a template and its answers produce: how to ingest the upload, the spec,\nthe spec as YAML (\"View as YAML\") and anything worth a second look.",
+        "examples": [
+          {
+            "dataset_ref": "dataset://growth/eu_media_weekly@latest",
+            "issues": [],
+            "mapping": {
+              "dims": {
+                "market": {
+                  "column": "market",
+                  "spec": {
+                    "kind": "categorical"
+                  }
+                },
+                "week": {
+                  "column": "week",
+                  "spec": {
+                    "freq": "W-SUN",
+                    "kind": "time",
+                    "policy": "extend"
+                  }
+                }
+              },
+              "format": "csv",
+              "vars": {
+                "revenue": {
+                  "column": "revenue",
+                  "role": "target",
+                  "units": "EUR"
+                }
+              },
+              "wide": {
+                "spend": {
+                  "columns": {
+                    "search": "search_spend",
+                    "social": "social_spend",
+                    "tv": "tv_spend"
+                  },
+                  "dim": "channel",
+                  "role": "spend",
+                  "units": "EUR"
+                }
+              }
+            },
+            "spec": {
+              "apiVersion": "mapi/v1",
+              "kind": "ModelSpec"
+            },
+            "template_id": "geo_mmm",
+            "template_version": "1.0.0",
+            "yaml": "apiVersion: mapi/v1\nkind: ModelSpec\n…"
+          }
+        ],
+        "properties": {
+          "dataset_ref": {
+            "title": "Dataset Ref",
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/IngestMapping"
+          },
+          "spec": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Spec",
+            "type": "object"
+          },
+          "template_id": {
+            "title": "Template Id",
+            "type": "string"
+          },
+          "template_version": {
+            "title": "Template Version",
+            "type": "string"
+          },
+          "yaml": {
+            "title": "Yaml",
+            "type": "string"
+          }
+        },
+        "required": [
+          "template_id",
+          "template_version",
+          "dataset_ref",
+          "mapping",
+          "spec",
+          "yaml"
+        ],
+        "title": "GuidedDraft",
+        "type": "object"
+      },
+      "GuidedQuestion": {
+        "description": "One plain-language question. Column questions name what the column becomes:\n\n* ``dim``: the column labels a dataset dim (``dim_spec`` describes it); the placeholder\n  ``{{<id>}}`` is the dataset dim name;\n* ``role`` (``column``): the column is a data variable with that role; the placeholder is\n  the dataset variable name;\n* ``role`` + ``wide_dim`` (``columns``): the columns become *one* variable ``as_var``\n  along ``wide_dim`` (one label per column, e.g. spend per channel);\n* ``role`` without ``wide_dim`` (``columns``): each column is its own variable.",
+        "properties": {
+          "accepts": {
+            "items": {
+              "enum": [
+                "number",
+                "integer",
+                "string",
+                "date",
+                "boolean"
+              ],
+              "type": "string"
+            },
+            "title": "Accepts",
+            "type": "array"
+          },
+          "as_var": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Var"
+          },
+          "choices": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionChoice"
+            },
+            "maxItems": 32,
+            "title": "Choices",
+            "type": "array"
+          },
+          "default": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "dim": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Canonical dim this column labels",
+            "title": "Dim"
+          },
+          "dim_spec": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DimSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "help_plain": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Help Plain"
+          },
+          "id": {
+            "pattern": "^[a-z][a-z0-9_]{0,31}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "title": "Keywords",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "column",
+              "columns",
+              "choice",
+              "number",
+              "text"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "maximum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum"
+          },
+          "minimum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum"
+          },
+          "missing": {
+            "anyOf": [
+              {
+                "enum": [
+                  "forbid",
+                  "allow",
+                  "mask"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M3: missing-value policy of the variables a column answer becomes (default forbid; 'allow' for ragged panels such as shopping trips per household)",
+            "title": "Missing"
+          },
+          "prompt_plain": {
+            "maxLength": 300,
+            "title": "Prompt Plain",
+            "type": "string"
+          },
+          "required": {
+            "default": true,
+            "title": "Required",
+            "type": "boolean"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ui_level": {
+            "default": "basic",
+            "enum": [
+              "basic",
+              "advanced",
+              "hidden"
+            ],
+            "title": "Ui Level",
+            "type": "string"
+          },
+          "wide_dim": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wide Dim"
+          }
+        },
+        "required": [
+          "id",
+          "prompt_plain",
+          "kind"
+        ],
+        "title": "GuidedQuestion",
+        "type": "object"
+      },
+      "GuidedTemplate": {
+        "description": "A guided task: questions, the spec they fill and what to check afterwards.\n\n``ui_levels`` maps JSON pointers of the spec to ``x-ui-level`` hints (``hidden`` fields\nare kept but not shown; Expert edits round-trip). ``plugin_available`` is false while\nthe template's built-in plugin is not shipped (``plugin_note`` says what is missing).",
+        "examples": [
+          {
+            "description_plain": "Forecast one series a few weeks ahead.",
+            "family": "forecast",
+            "id": "weekly_forecast",
+            "plugin": "ts.hsgp_trend@^1",
+            "questions": [
+              {
+                "accepts": [
+                  "number",
+                  "integer"
+                ],
+                "id": "kpi",
+                "keywords": [
+                  "sales"
+                ],
+                "kind": "column",
+                "prompt_plain": "Which column do you want to forecast?",
+                "role": "target"
+              },
+              {
+                "accepts": [
+                  "date"
+                ],
+                "dim": "time",
+                "dim_spec": {
+                  "kind": "time",
+                  "policy": "extend"
+                },
+                "id": "date",
+                "kind": "column",
+                "prompt_plain": "Which column holds the date or week?"
+              }
+            ],
+            "scorecard_checks": [
+              "convergence.rhat",
+              "holdout.mape"
+            ],
+            "spec_template": {
+              "apiVersion": "mapi/v1",
+              "data": {
+                "bind": {
+                  "dims": {
+                    "t": "{{date}}"
+                  },
+                  "vars": {
+                    "y": "{{kpi}}"
+                  }
+                },
+                "dataset": "{{dataset}}"
+              },
+              "kind": "ModelSpec",
+              "metadata": {
+                "name": "{{name}}",
+                "project": "{{project}}"
+              },
+              "model": {
+                "settings": {
+                  "max_extension": 26
+                },
+                "use": "ts.hsgp_trend@^1"
+              }
+            },
+            "tasks": [
+              "forecast"
+            ],
+            "title": "Weekly forecast",
+            "ui_levels": {
+              "/model/fit": "advanced"
+            },
+            "version": "1.0.0"
+          }
+        ],
+        "properties": {
+          "defaults": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Defaults",
+            "type": "object"
+          },
+          "description_plain": {
+            "maxLength": 1000,
+            "title": "Description Plain",
+            "type": "string"
+          },
+          "family": {
+            "enum": [
+              "mmm",
+              "forecast",
+              "tabular",
+              "choice"
+            ],
+            "title": "Family",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "title": "Id",
+            "type": "string"
+          },
+          "lookups": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TemplateLookup"
+            },
+            "title": "Lookups",
+            "type": "object"
+          },
+          "plugin": {
+            "description": "UseRef of the built-in plugin (id@range)",
+            "title": "Plugin",
+            "type": "string"
+          },
+          "plugin_available": {
+            "default": true,
+            "title": "Plugin Available",
+            "type": "boolean"
+          },
+          "plugin_note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plugin Note"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/GuidedQuestion"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "title": "Questions",
+            "type": "array"
+          },
+          "scorecard_checks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scorecard Checks",
+            "type": "array"
+          },
+          "scorecard_thresholds": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CheckThresholds"
+            },
+            "title": "Scorecard Thresholds",
+            "type": "object"
+          },
+          "spec_template": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Spec Template",
+            "type": "object"
+          },
+          "tasks": {
+            "items": {
+              "enum": [
+                "whatif",
+                "forecast",
+                "counterfactual",
+                "business_priors",
+                "lift_tests"
+              ],
+              "type": "string"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 120,
+            "title": "Title",
+            "type": "string"
+          },
+          "ui_levels": {
+            "additionalProperties": {
+              "enum": [
+                "basic",
+                "advanced",
+                "hidden"
+              ],
+              "type": "string"
+            },
+            "title": "Ui Levels",
+            "type": "object"
+          },
+          "version": {
+            "default": "1.0.0",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description_plain",
+          "family",
+          "plugin",
+          "questions",
+          "spec_template"
+        ],
+        "title": "GuidedTemplate",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3731,7 +5034,7 @@
       },
       "IngestMapping": {
         "additionalProperties": false,
-        "description": "How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).\n\nTabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit\n``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.",
+        "description": "How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).\n\nTabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit\n``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.\n\nWith the ``mff``/``bayesinsight`` presets the long table is first pivoted to one column\nper ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then\npick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may\nrefine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and\n``wide`` every variable is kept under its own name.",
         "examples": [
           {
             "dims": {
@@ -4337,6 +5640,143 @@
           }
         },
         "title": "KillSwitches",
+        "type": "object"
+      },
+      "LiftTest": {
+        "additionalProperties": false,
+        "description": "One experiment: ``spend_delta`` extra spend on ``channel`` (optionally in one ``geo``)\nfrom ``start`` to ``end`` (inclusive) caused ``kpi_delta`` incremental KPI.\n\nGive the measurement's uncertainty as a standard error ``se`` *or* a confidence interval\n``ci`` at ``ci_level``. A holdout (\"turn the channel off\") is a negative ``spend_delta``\nwith (usually) a negative ``kpi_delta``.",
+        "examples": [
+          {
+            "channel": "tv",
+            "ci": [
+              -380000.0,
+              -140000.0
+            ],
+            "ci_level": 0.9,
+            "description": "TV off in Germany for four weeks",
+            "end": "2026-05-03",
+            "geo": "de",
+            "id": "tv-holdout-2026q2",
+            "kpi_delta": -260000.0,
+            "spend_delta": -120000.0,
+            "start": "2026-04-06"
+          }
+        ],
+        "properties": {
+          "channel": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Channel",
+            "type": "string"
+          },
+          "ci": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Confidence interval of kpi_delta",
+            "title": "Ci"
+          },
+          "ci_level": {
+            "default": 0.9,
+            "maximum": 0.999,
+            "minimum": 0.5,
+            "title": "Ci Level",
+            "type": "number"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "geo": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9][a-z0-9_-]{0,62}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "kpi_delta": {
+            "description": "Measured incremental KPI (KPI units)",
+            "title": "Kpi Delta",
+            "type": "number"
+          },
+          "se": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Standard error of kpi_delta",
+            "title": "Se"
+          },
+          "spend_delta": {
+            "description": "Extra spend during the test (spend units)",
+            "title": "Spend Delta",
+            "type": "number"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel",
+          "start",
+          "end",
+          "spend_delta",
+          "kpi_delta"
+        ],
+        "title": "LiftTest",
         "type": "object"
       },
       "LimitName": {
@@ -5293,8 +6733,22 @@
       },
       "MffOptions": {
         "additionalProperties": false,
-        "description": "The MFF (\"model feature format\") long-table preset.\n\nOne row per ``(period, geography, product, campaign, outlet, creative, variable)`` with\nthe value in ``value_column``. ``Period`` becomes the time dim; the other key columns\nbecome dims only when they hold more than one distinct value; ``VariableName`` values\nbecome data variables.",
+        "description": "The MFF (\"model feature format\") long-table preset.\n\nOne row per ``(period, geography, product, campaign, outlet, creative, variable)`` with\nthe value in ``value_column``. ``Period`` becomes the time dim; the other key columns\nbecome dims only when they hold more than one distinct value; ``VariableName`` values\nbecome data variables.\n\n``combine`` joins several key columns into one dim (``{\"geo\": [\"Geography\", \"Product\"]}``\ngives labels such as ``US|Watches``) - a model with one panel dim can then fit a\ngeography x product panel. A combined dim is created even when it has a single label,\nso ``{\"geo\": [\"Geography\"]}`` keeps a national table's geo dim.",
         "properties": {
+          "combine": {
+            "description": "M3: dim -> key columns whose labels are joined ('|') into that one dim",
+            "maxProperties": 4,
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "title": "Combine",
+            "type": "object"
+          },
           "freq": {
             "anyOf": [
               {
@@ -6188,6 +7642,39 @@
           "items"
         ],
         "title": "Page[ExecutorHealth]",
+        "type": "object"
+      },
+      "Page_GuidedTemplate_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GuidedTemplate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[GuidedTemplate]",
         "type": "object"
       },
       "Page_LogLine_": {
@@ -7685,6 +9172,51 @@
         "title": "ProjectUpdate",
         "type": "object"
       },
+      "QuestionChoice": {
+        "properties": {
+          "label": {
+            "maxLength": 200,
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 64,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "QuestionChoice",
+        "type": "object"
+      },
+      "QuestionSuggestion": {
+        "description": "Candidates for one question (best first) and the pre-filled answer.",
+        "properties": {
+          "answer": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/RoleCandidate"
+            },
+            "maxItems": 20,
+            "title": "Candidates",
+            "type": "array"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id"
+        ],
+        "title": "QuestionSuggestion",
+        "type": "object"
+      },
       "QuotaLimitStatus": {
         "description": "One limit of one level as shown in ``/usage`` (``remaining`` is ``None`` if unlimited).",
         "examples": [
@@ -8351,6 +9883,100 @@
         ],
         "title": "Role",
         "type": "string"
+      },
+      "RoleCandidate": {
+        "properties": {
+          "column": {
+            "title": "Column",
+            "type": "string"
+          },
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "reason_plain": {
+            "maxLength": 300,
+            "title": "Reason Plain",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column",
+          "confidence",
+          "reason_plain"
+        ],
+        "title": "RoleCandidate",
+        "type": "object"
+      },
+      "RoleSuggestions": {
+        "examples": [
+          {
+            "questions": [
+              {
+                "answer": "revenue_eur",
+                "candidates": [
+                  {
+                    "column": "revenue_eur",
+                    "confidence": 0.9,
+                    "reason_plain": "named like a revenue column; numbers"
+                  }
+                ],
+                "question_id": "kpi"
+              },
+              {
+                "answer": [
+                  "tv_spend"
+                ],
+                "candidates": [
+                  {
+                    "column": "tv_spend",
+                    "confidence": 0.8,
+                    "reason_plain": "named like spend; never negative"
+                  }
+                ],
+                "question_id": "spend"
+              }
+            ],
+            "template_id": "geo_mmm",
+            "unassigned": []
+          }
+        ],
+        "properties": {
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionSuggestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "template_id": {
+            "title": "Template Id",
+            "type": "string"
+          },
+          "unassigned": {
+            "description": "Columns no answer uses",
+            "items": {
+              "type": "string"
+            },
+            "title": "Unassigned",
+            "type": "array"
+          }
+        },
+        "required": [
+          "template_id",
+          "questions"
+        ],
+        "title": "RoleSuggestions",
+        "type": "object"
       },
       "Run": {
         "description": "A unit of work and its lifecycle (see the state machine in ``mapi_spec.run``).",
@@ -9922,6 +11548,39 @@
         "title": "Severity",
         "type": "string"
       },
+      "ShareBelief": {
+        "additionalProperties": false,
+        "description": "A share range (for example of the baseline: KPI that happens without any media).",
+        "properties": {
+          "credibility": {
+            "default": 0.8,
+            "description": "Probability that the true value lies inside the range (0.8 = 'I am 80% sure')",
+            "maximum": 0.99,
+            "minimum": 0.5,
+            "title": "Credibility",
+            "type": "number"
+          },
+          "share": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Share",
+            "type": "array"
+          }
+        },
+        "required": [
+          "share"
+        ],
+        "title": "ShareBelief",
+        "type": "object"
+      },
       "SignedPut": {
         "additionalProperties": false,
         "description": "A signed PUT URL for exactly one object name.\n\n``headers`` must be sent verbatim (they are part of the signature): typically\n``content-type``, ``x-goog-if-generation-match: 0`` (write-once) and\n``x-goog-content-length-range: 0,<max_bytes>``.",
@@ -10603,6 +12262,28 @@
           "merge"
         ],
         "title": "TemplateCase",
+        "type": "object"
+      },
+      "TemplateLookup": {
+        "description": "A placeholder derived from an answer: ``map[answer]`` (e.g. frequency → season).",
+        "properties": {
+          "map": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Map",
+            "type": "object"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "map"
+        ],
+        "title": "TemplateLookup",
         "type": "object"
       },
       "TemplateParam": {
@@ -13973,7 +15654,7 @@
     },
     "/v1/datasets/{dataset_id}/versions/{version}/artifacts/{name}": {
       "get": {
-        "description": "Signed, generation-pinned URL for ``data.zarr.zip``/``schema.json``/``profile.json``/\n``preview.json`` (15 min, HTTP Range works).",
+        "description": "Signed, generation-pinned URL for ``data.zarr.zip``/``schema.json``/``profile.json``/\n``preview.json``/``summary.json``/``columns.json`` (15 min, HTTP Range works).",
         "operationId": "get_dataset_artifact",
         "parameters": [
           {
@@ -14088,6 +15769,610 @@
         "summary": "Redirect Dataset View",
         "tags": [
           "datasets"
+        ]
+      }
+    },
+    "/v1/guided/detect-roles": {
+      "post": {
+        "description": "Rank the columns for each question of a template and pre-fill the answers.\n\nSend ``columns`` (profiled in the browser) or name a stored ``dataset`` version; the\nprofiles of a stored version come from its ingest run (``columns.json``: the uploaded\ncolumns, for MFF uploads the pivoted variables) or, for older versions, from its dims\nand variables.",
+        "operationId": "detect_roles",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DetectRolesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleSuggestions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Authentication required (UNAUTHENTICATED)"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not allowed (FORBIDDEN)"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not found (NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The document does not match its schema (SCHEMA_INVALID)"
+          }
+        },
+        "summary": "Suggest a column for every question from column profiles",
+        "tags": [
+          "guided"
+        ]
+      }
+    },
+    "/v1/guided/drafts": {
+      "post": {
+        "description": "Turn answers into the ingest mapping for the upload, the ``ModelSpec`` (and its YAML)\nfor the request's project, and the static validator's findings. ``422\nGUIDED_ANSWERS_INVALID`` points at ``/answers/<question>`` for a missing or impossible\nanswer; problems the validator finds come back as ``issues`` (200).",
+        "operationId": "create_guided_draft",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuidedAnswers"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidedDraft"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Authentication required (UNAUTHENTICATED)"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not allowed (FORBIDDEN)"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not found (NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "GUIDED_ANSWERS_INVALID": {
+                    "summary": "The guided answers do not fit the template",
+                    "value": {
+                      "code": "GUIDED_ANSWERS_INVALID",
+                      "detail": "The guided answers do not fit the template",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The guided answers do not fit the template",
+                      "type": "urn:mapi:error:GUIDED_ANSWERS_INVALID"
+                    }
+                  },
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The document does not match its schema (SCHEMA_INVALID); The guided answers do not fit the template (GUIDED_ANSWERS_INVALID)"
+          }
+        },
+        "summary": "Answers -> ingest mapping + ModelSpec draft (+ YAML); stores nothing",
+        "tags": [
+          "guided"
+        ]
+      }
+    },
+    "/v1/guided/import/bayesinsight": {
+      "post": {
+        "description": "Import a BayesInsight project (Q8). With the default ``target:\nmmm.hierarchical_geo`` the draft maps media transforms, priors, controls, seasonality\nand pooling to the built-in geo MMM and lists every feature without an equivalent as\nan ``IMPORT_UNSUPPORTED`` warning; ``target: mmm.bayesinsight`` keeps ``model_def``\nverbatim for the planned dedicated plugin. ``422 IMPORT_UNSUPPORTED`` when the model\ncannot run at all (no single KPI, no media, split series).",
+        "operationId": "import_bayesinsight",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BayesInsightImport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidedDraft"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Authentication required (UNAUTHENTICATED)"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not allowed (FORBIDDEN)"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "IMPORT_UNSUPPORTED": {
+                    "summary": "The imported model uses an unsupported feature",
+                    "value": {
+                      "code": "IMPORT_UNSUPPORTED",
+                      "detail": "The imported model uses an unsupported feature",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The imported model uses an unsupported feature",
+                      "type": "urn:mapi:error:IMPORT_UNSUPPORTED"
+                    }
+                  },
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The document does not match its schema (SCHEMA_INVALID); The imported model uses an unsupported feature (IMPORT_UNSUPPORTED)"
+          }
+        },
+        "summary": "BayesInsight model_def.json + metadata.json -> a draft for the geo MMM",
+        "tags": [
+          "guided"
+        ]
+      }
+    },
+    "/v1/guided/templates": {
+      "get": {
+        "description": "The built-in templates in id order: questions, the spec template, scorecard checks\nand ``x-ui-level`` hints. Templates are data and the same for every tenant.",
+        "operationId": "list_guided_templates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_GuidedTemplate_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Authentication required (UNAUTHENTICATED)"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not allowed (FORBIDDEN)"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The document does not match its schema (SCHEMA_INVALID)"
+          }
+        },
+        "summary": "Guided templates (geo marketing mix, weekly forecast, demand by store, choice)",
+        "tags": [
+          "guided"
+        ]
+      }
+    },
+    "/v1/guided/templates/{template_id}": {
+      "get": {
+        "operationId": "get_guided_template",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidedTemplate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Authentication required (UNAUTHENTICATED)"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not allowed (FORBIDDEN)"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not found (NOT_FOUND)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One template: questions, spec template, scorecard checks, UI levels",
+        "tags": [
+          "guided"
         ]
       }
     },
@@ -15720,7 +18005,7 @@
         ]
       },
       "post": {
-        "description": "Store revision 1 (invalid documents are stored too, with ``valid: false``).",
+        "description": "Store revision 1 (invalid documents are stored too, with ``valid: false``).\n\nIn a Guided-locked project, members below admin may store Guided specs only (``403``\nwith the offending pointers otherwise; see ``Project.guided_locked``).",
         "operationId": "create_spec",
         "requestBody": {
           "content": {
@@ -17662,6 +19947,9 @@
     },
     {
       "name": "specs"
+    },
+    {
+      "name": "guided"
     },
     {
       "name": "runs"
