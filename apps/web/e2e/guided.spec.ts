@@ -194,7 +194,7 @@ test("Edit in Expert switches mode and the edit shows up as advanced settings", 
       method: "POST",
       headers,
       credentials: "include",
-      body: JSON.stringify({ yaml: rev.yaml.replace(/draws: 500/, "draws: 2000"), parent_revision: 1, message: "more draws" }),
+      body: JSON.stringify({ yaml: rev.yaml.replace(/(?<!ui_)draws: \d+/, "draws: 2000"), parent_revision: 1, message: "more draws" }),
     });
     return res.status;
   }, specId);

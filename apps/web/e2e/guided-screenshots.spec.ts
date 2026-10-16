@@ -63,6 +63,8 @@ test("guided tutorial screenshots", async ({ page }) => {
   await exp.getByLabel("± uncertainty (standard error)").fill("25000");
   await page.getByRole("button", { name: "Preview what this means" }).click();
   await expect(page.getByRole("heading", { name: "What your beliefs mean, before seeing the data" })).toBeVisible({ timeout: 10_000 });
+  // plot frames load as they scroll into view: bring the KPI fan in before the full-page shot
+  await page.locator('iframe[title="Results the model expects before fitting"]').scrollIntoViewIfNeeded();
   await frames(page);
   await shot(page, "priors");
 
