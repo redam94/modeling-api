@@ -50,7 +50,7 @@ from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError, ProblemWithHeaders
 from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import artifact_link
-from mapi_server.services.quotas import admit_storage
+from mapi_server.services.quotas import admit_storage, charge_egress
 from mapi_server.services.runs import now
 from mapi_server.services.submit import submit_ingest
 
@@ -372,6 +372,7 @@ async def _artifact(
         key=obj["name"],
         generation=int(obj["generation"]),
     )
+    await charge_egress(ctx, dv.tenant_id, link.size or 0)
     if audit and ctx.request is not None:  # a signed download URL left the API
         await write_audit(
             ctx.db,

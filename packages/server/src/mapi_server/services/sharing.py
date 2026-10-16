@@ -36,7 +36,7 @@ from mapi_spec.errors import ErrorCode, Issue, MapiError
 from mapi_spec.executor import RunKind
 from mapi_spec.jobs import INPUT_PLOTS, RenderJob, plot_data_input, render_output
 from mapi_spec.loader import spec_hash
-from mapi_spec.plots import MAX_INLINE_ARROW_B64, DataRef, PlotSpec
+from mapi_spec.plots import MAX_INLINE_ARROW_B64, DataRef, InlineArrow, PlotSpec
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.sharing import (
@@ -62,7 +62,7 @@ from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError, ProblemWithHeaders
 from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import verified_bundle_object, verified_manifest
-from mapi_server.services.quotas import count_requests
+from mapi_server.services.quotas import charge_egress, count_requests
 from mapi_server.services.runs import apply_transition, create_run, now
 from mapi_server.services.runspec import StoredRef
 from mapi_server.services.submit import admit
@@ -705,7 +705,9 @@ async def embed_view(ctx: ServerContext, token: str, client_ip: str | None) -> E
         if view is None:
             view = await _build_view(ctx, session, row, saved)
             _cache_put(key, view)
-        image_url = await _image_url(ctx, session, row)
+        image_url, image_bytes = await _image_url(ctx, session, row)
+        # a public view is the tenant's download egress: the inline data and the PNG link
+        await charge_egress(ctx, tenant_id, _view_bytes(view) + image_bytes, now=at)
         await session.execute(
             update(m.PlotEmbed)
             .where(m.PlotEmbed.id == row.id)
@@ -757,7 +759,14 @@ async def _build_view(
     )
 
 
-async def _image_url(ctx: ServerContext, session: AsyncSession, row: m.PlotEmbed) -> str | None:
+def _view_bytes(view: EmbedView) -> int:
+    """The inline data an embed view carries (its Arrow datasets, base64)."""
+    return sum(len(ds.data) for ds in view.plot.datasets.values() if isinstance(ds, InlineArrow))
+
+
+async def _image_url(
+    ctx: ServerContext, session: AsyncSession, row: m.PlotEmbed
+) -> tuple[str | None, int]:
     """A signed link to the PNG fallback: copied (server side, write-once) out of the render
     run's scratch into the bundles bucket the first time it is asked for after the run
     succeeded."""
@@ -765,7 +774,7 @@ async def _image_url(ctx: ServerContext, session: AsyncSession, row: m.PlotEmbed
     if row.image is None and row.render_run_id is not None:
         row.image = await _copy_fallback(ctx, session, row)
     if not row.image:
-        return None
+        return None, 0
     try:
         signed = await ctx.store.sign_get(
             str(row.image["bucket"]),
@@ -775,8 +784,8 @@ async def _image_url(ctx: ServerContext, session: AsyncSession, row: m.PlotEmbed
         )
     except NotFound:
         row.image = None
-        return None
-    return signed.url
+        return None, 0
+    return signed.url, int(signed.size or 0)
 
 
 async def _copy_fallback(

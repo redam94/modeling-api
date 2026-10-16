@@ -57,6 +57,7 @@ from mapi_server.services.bundles import (
     verified_bundle_object,
     verified_manifest,
 )
+from mapi_server.services.quotas import charge_egress
 from mapi_server.services.runs import load_run
 from mapi_server.services.submit import submit_model_run
 
@@ -209,6 +210,7 @@ async def _bundle_link(
     link = await artifact_link(
         ctx.store, name=name, bucket=obj.bucket, key=obj.key, generation=obj.generation
     )
+    await charge_egress(ctx, mv.tenant_id, link.size or 0)
     if audit and ctx.request is not None:  # a signed URL to a bundle object left the API
         await write_audit(
             ctx.db,
@@ -272,6 +274,8 @@ async def score_result(ctx: ServerContext, run_id: str) -> ScoreCallResult:
                         generation=int(meta["generation"]),
                     )
                 )
+        tenant_id = run.tenant_id
+    await charge_egress(ctx, tenant_id, sum(o.size or 0 for o in outputs))
     return ScoreCallResult(done=done, run=view, outputs=outputs)
 
 

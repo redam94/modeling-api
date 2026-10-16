@@ -472,6 +472,12 @@ milestone releases are tagged on `main`.
   `tenants.exports(tenant_id)`.
 - **server**: the `storage_bytes` quota left out model bundles although the docs count them;
   a tenant's storage now adds the size of every model version's stored objects.
+- **server**: the per-tier egress cap (`egress_bytes_per_month`, 5 GiB on the free tier) was
+  defined but never measured. Every signed download link the API mints (dataset and model
+  artifacts, `ui/` views, score and render outputs) and every public embed view (its inline
+  data and PNG link) is now charged to the tenant's monthly egress, which `GET /v1/usage`
+  reports; past the cap the link is refused with `429 QUOTA_EXCEEDED` (with `Retry-After`
+  until the month resets). GDPR exports are never charged; a purge deletes the counter.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

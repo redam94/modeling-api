@@ -73,6 +73,7 @@ from mapi_server.errors import Conflict, NotFoundError, unauthenticated
 from mapi_server.services.audit import write_audit
 from mapi_server.services.gdpr_export import CANCELLED as EXPORT_CANCELLED
 from mapi_server.services.gdpr_export import export_lease
+from mapi_server.services.quotas import egress_subject
 from mapi_server.services.runs import apply_transition
 from mapi_server.services.runs import now as utcnow
 from mapi_server.services.runspec import signed_links_ttl
@@ -766,7 +767,11 @@ class TenantPurger:
                     break
             await self._update(deletion_id, "database", "running", at, total=total, done=done)
         async with self.ctx.db.session() as s:
-            subjects = [f"tenant:{tenant_id}", *(f"token:{t}" for t in tokens)]
+            subjects = [
+                f"tenant:{tenant_id}",
+                egress_subject(tenant_id),
+                *(f"token:{t}" for t in tokens),
+            ]
             await s.execute(delete(m.RateCounter).where(m.RateCounter.subject.in_(subjects)))
             await s.execute(
                 delete(m.QuotaPolicy).where(

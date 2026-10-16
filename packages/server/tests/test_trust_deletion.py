@@ -199,6 +199,10 @@ async def test_full_purge_leaves_other_tenants_untouched(
         await grant_role(ctx, shared, t, "main", "viewer")
     beta_before = await _counts(ctx, "beta")
     beta_objects = await _objects(ctx, "beta")
+    from mapi_server.services.quotas import charge_egress, egress_subject
+
+    for t in ("alpha", "beta"):  # download egress metered this month
+        await charge_egress(ctx, t, 5000)
     assert ctx.trust is not None
     revoker, notifier = _Revoker(), _Notifier()
     ctx.trust.add_revoker(revoker)
@@ -243,6 +247,15 @@ async def test_full_purge_leaves_other_tenants_untouched(
     assert await _counts(ctx, "beta") == beta_before
     assert await _objects(ctx, "beta") == beta_objects
     await ctx.store.stat(ctx.buckets.bootstrap, beta.nonce)
+    async with ctx.db.session() as s:
+        counters = set(
+            (
+                await s.execute(
+                    select(m.RateCounter.subject).where(m.RateCounter.subject.like("egress:%"))
+                )
+            ).scalars()
+        )
+    assert counters == {egress_subject("beta")}  # alpha's egress counter went with it
     # credentials are dead, the tenant is invisible to its old members
     assert (await token_caller(client, alpha.token).get("/v1/runs")).status_code == 401
     assert (await token_caller(client, beta.token).get("/v1/runs")).status_code == 200

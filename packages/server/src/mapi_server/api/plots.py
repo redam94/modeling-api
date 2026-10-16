@@ -57,6 +57,7 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
 from mapi_server.services.bundles import artifact_link
+from mapi_server.services.quotas import charge_egress
 from mapi_server.services.runs import load_run, now
 from mapi_server.services.sharing import (
     create_embed,
@@ -199,6 +200,7 @@ async def _render_result(ctx: ServerContext, run_id: str) -> PlotRender:
                         generation=int(meta["generation"]),
                     )
                 )
+    await charge_egress(ctx, run.tenant_id, sum(o.size or 0 for o in outputs))
     fmt = str((run.payload or {}).get("format", "png"))
     return PlotRender(
         done=RunState(run.state).terminal,

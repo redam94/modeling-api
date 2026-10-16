@@ -23,7 +23,7 @@ an unset limit means "no limit at this level".
 | `max_fanout_tasks` | Per submission | Caps one sweep, backtest or SBC (`taskCount`) |
 | `max_resource_class` | Per submission | For example, the free tier runs on class S only |
 | `storage_bytes` | Cumulative | Dataset versions, uploads in progress and model bundles (every model version's stored objects) |
-| `egress_bytes_per_month` | Cumulative, UTC month | Downloads through signed URLs |
+| `egress_bytes_per_month` | Cumulative, UTC month | Downloads: the size of every object the API hands out a signed link to (dataset and model artifacts, `ui/` views, score and render outputs), and of public embed views. Charged when the link is minted; GDPR exports are never charged |
 | `requests_per_minute` | Rate | API calls |
 
 ## Three levels
