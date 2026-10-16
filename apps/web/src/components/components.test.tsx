@@ -109,7 +109,8 @@ describe("PipelineCards", () => {
     const yaml = STARTER_SPEC.replace("after_step: weekly", "after_step: fill");
     const model = buildPipeline(parse(yaml), validateResponseFor(yaml));
     const clicked: string[] = [];
-    render(<PipelineCards model={model} onIssue={(i) => clicked.push(i.code)} />);
+    // M3.5: steps and the model show their About cards (GET /v1/catalog/abouts).
+    withQuery(<PipelineCards model={model} onIssue={(i) => clicked.push(i.code)} />);
     expect(screen.getByRole("separator", { name: "Train/holdout split" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /LEAKAGE_RISK/ }));
     expect(clicked).toEqual(["LEAKAGE_RISK"]);

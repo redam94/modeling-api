@@ -14,6 +14,7 @@ import { ErrorNotice, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, NativeSelect, Skeleton } from "@/components/ui/primitives";
 import { useGrants } from "@/features/auth/workspace";
+import { OptimiseBudgetCard } from "@/features/optimize/guided-entry";
 import { PlotFrame } from "@/features/plots/plot-frame";
 
 import { useResponseGrid } from "../api";
@@ -359,6 +360,8 @@ export function ExploreStep({ session }: { session: GuidedSession }) {
   return (
     <div className="grid gap-6">
       {whatif && grid.data ? <WhatIf grid={grid.data} mv={mv} session={session} /> : null}
+      {/* M3.5: what-if -> optimise my budget (mmm-framework planning). */}
+      {whatif ? <OptimiseBudgetCard mv={mv} specId={session.spec.id} /> : null}
       {whatif && grid.isSuccess && !grid.data ? <p className="text-[13px] text-muted-foreground">This model did not save response curves, so the instant sliders are not available. The scenarios below still work.</p> : null}
       {hasTask(session.template, "counterfactual") && channels.length ? <Presets mv={mv} session={session} channels={channels} /> : null}
       {hasTask(session.template, "forecast") ? <Forecast mv={mv} session={session} /> : null}

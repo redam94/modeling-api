@@ -77,6 +77,32 @@ sliders, forecasts and sharing. The user guide is `docs/guides/guided-tutorial.m
   `uv run python apps/web/scripts/gen_guided_fixtures.py [--check]`). A project can be locked
   in mock mode with `localStorage["mapi.mock.guidedLocked"] = "acme/growth"`.
 
+## Explorers, About cards and budget plans (v0.5)
+
+| Route | Module | What |
+|---|---|---|
+| `/choose` | `routes/choose.tsx`, `features/about/chooser.tsx` | Help me choose (answers in the URL) |
+| `/catalog` (Browse) | `features/about/catalog-browser.tsx` | every About card (`?about=kind:id` opens one) |
+| `/datasets/$id/versions/$v/explore` | `routes/explore-data.tsx`, `features/explore/data-*.tsx` | Data Explorer (`?section=`, `?run=`) |
+| `/models/$id/versions/$v/explore` | `routes/explore-model.tsx`, `features/explore/model-*.tsx` | Model Explorer, governance evidence, lineage |
+| `/models/compare` | `features/explore/compare.tsx` | several versions side by side (`?refs=`) |
+| `/models/$id/versions/$v/optimize` | `routes/optimize.tsx`, `features/optimize/` | budget optimisation (`?run=`, `?back=<guided spec>`) |
+
+- **Views.** Explorer views (`mapi_spec.views`) are fetched through their signed links and
+  typed by `features/explore/views.gen.ts`, generated from the Pydantic schemas; `parseView`
+  checks each view's `format` tag. Strings in views come from user data: text only.
+- **Plain first.** `features/explore/plain.ts` turns views into plain readings (unit
+  tested); Guided mode shows them first and the statistics behind *Show the statistics*.
+- **Plots.** `features/explore/plots.ts` builds first-party Vega-Lite specs for the picked
+  variable or series; Expert mode also offers the platform's recipe plots
+  (`ui/explore/plots/<section>.json`). Both render in the plot sandbox only.
+- **Mocks.** `src/mocks/explore.ts` serves `explorer.gen.json`: views, plots, About cards,
+  rankings, governance results and a budget plan computed by the real runner, plots-core
+  and `mapi_spec` (`uv run python apps/web/scripts/gen_explorer_fixtures.py`, minutes;
+  `--check` validates them against the contracts in seconds).
+- **Workflow templates.** "Start with this" on a workflow template opens
+  `/workflows/new?template=<id>` when the router has that route, else the template's card.
+
 ## API client
 
 `openapi.json` drives `src/api/schema.d.ts` (openapi-typescript) and the typed client

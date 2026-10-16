@@ -16,11 +16,15 @@ const page = {
   admin: () => import("@/routes/admin"),
   build: () => import("@/routes/build"),
   catalog: () => import("@/routes/catalog"),
+  choose: () => import("@/routes/choose"),
   datasets: () => import("@/routes/datasets"),
+  exploreData: () => import("@/routes/explore-data"),
+  exploreModel: () => import("@/routes/explore-model"),
   guided: () => import("@/routes/guided"),
   integrations: () => import("@/routes/integrations"),
   members: () => import("@/routes/members"),
   models: () => import("@/routes/models"),
+  optimize: () => import("@/routes/optimize"),
   runDetail: () => import("@/routes/run-detail"),
   runs: () => import("@/routes/runs"),
   score: () => import("@/routes/score"),
@@ -45,6 +49,11 @@ function oneOf<T extends string>(v: unknown, allowed: readonly T[]): T | undefin
 
 function idParam(v: unknown): string | undefined {
   return typeof v === "string" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(v) ? v : undefined;
+}
+
+/** A catalog id (`ts.sarimax`, `core.resample`). */
+function catalogId(v: unknown): string | undefined {
+  return typeof v === "string" && v.length <= 128 && /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/.test(v) ? v : undefined;
 }
 
 function NotFound() {
@@ -83,7 +92,13 @@ const datasetRoute = createRoute({
 
 const buildRoute = createRoute({ getParentRoute: () => rootRoute, path: "/build", component: lazyRouteComponent(page.build, "BuildPage") });
 
-const newSpecRoute = createRoute({ getParentRoute: () => rootRoute, path: "/build/new", component: lazyRouteComponent(page.specEditor, "NewSpecPage") });
+const newSpecRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/build/new",
+  component: lazyRouteComponent(page.specEditor, "NewSpecPage"),
+  // M3.5: "Start with this model" (Help me choose, the catalog).
+  validateSearch: (s: Record<string, unknown>): { model?: string | undefined } => ({ model: catalogId(s.model) }),
+});
 
 const specRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -129,13 +144,73 @@ const scoreRoute = createRoute({
   }),
 });
 
+export const CATALOG_TABS = ["models", "steps", "plots"] as const;
+
 const catalogRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/catalog",
   component: lazyRouteComponent(page.catalog, "CatalogPage"),
-  validateSearch: (s: Record<string, unknown>): { tab?: "steps" | "plots" | undefined } => ({
-    tab: oneOf(s.tab, ["steps", "plots"] as const),
+  // M3.5: without a tab the page browses About cards; `about=kind:id` opens one card.
+  validateSearch: (s: Record<string, unknown>): { tab?: (typeof CATALOG_TABS)[number] | undefined; about?: string | undefined } => ({
+    tab: oneOf(s.tab, CATALOG_TABS),
+    about: typeof s.about === "string" && /^[a-z_]{1,32}:[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/.test(s.about) ? s.about : undefined,
   }),
+});
+
+// M3.5: the explorers, model comparison, budget optimisation and Help me choose.
+export const DATA_EXPLORER_TABS = ["overview", "distributions", "timeseries", "missingness", "outliers", "correlation", "ccf", "acf_pacf", "stationarity", "stl", "vif", "groups", "quality"] as const;
+export const MODEL_EXPLORER_TABS = ["summary", "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf", "fevd", "forecast", "backtest", "governance", "lineage"] as const;
+
+const exploreDataRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/datasets/$datasetId/versions/$version/explore",
+  component: lazyRouteComponent(page.exploreData, "DataExplorerPage"),
+  validateSearch: (s: Record<string, unknown>): { section?: (typeof DATA_EXPLORER_TABS)[number] | undefined; run?: string | undefined } => ({
+    section: oneOf(s.section, DATA_EXPLORER_TABS),
+    run: idParam(s.run),
+  }),
+});
+
+const exploreModelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/models/$modelId/versions/$version/explore",
+  component: lazyRouteComponent(page.exploreModel, "ModelExplorerPage"),
+  validateSearch: (s: Record<string, unknown>): { section?: (typeof MODEL_EXPLORER_TABS)[number] | undefined; run?: string | undefined } => ({
+    section: oneOf(s.section, MODEL_EXPLORER_TABS),
+    run: idParam(s.run),
+  }),
+});
+
+const compareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/models/compare",
+  component: lazyRouteComponent(page.exploreModel, "ComparePage"),
+  validateSearch: (s: Record<string, unknown>): { refs?: string[] | undefined; run?: string | undefined } => ({
+    refs: Array.isArray(s.refs) ? s.refs.filter((r): r is string => typeof r === "string" && /^model:\/\/\S{1,500}$/.test(r)).slice(0, 11) : undefined,
+    run: idParam(s.run),
+  }),
+});
+
+const optimizeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/models/$modelId/versions/$version/optimize",
+  component: lazyRouteComponent(page.optimize, "OptimizePage"),
+  validateSearch: (s: Record<string, unknown>): { run?: string | undefined; back?: string | undefined } => ({
+    run: idParam(s.run),
+    // The Guided analysis (spec id) the page was opened from.
+    back: idParam(s.back),
+  }),
+});
+
+const chooseRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/choose",
+  component: lazyRouteComponent(page.choose, "ChoosePage"),
+  // Answers as `?goal=forecast,explain_drivers&data_shape=panel` (the server checks them).
+  validateSearch: (s: Record<string, unknown>): Record<string, string> =>
+    Object.fromEntries(
+      Object.entries(s).filter((e): e is [string, string] => /^[a-z][a-z0-9_]{0,31}$/.test(e[0]) && typeof e[1] === "string" && /^[a-z0-9_,]{1,300}$/.test(e[1])),
+    ),
 });
 
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/settings", component: lazyRouteComponent(page.settings, "SettingsPage") });
@@ -240,6 +315,11 @@ export const routeTree = rootRoute.addChildren([
   modelVersionRoute,
   scoreRoute,
   catalogRoute,
+  exploreDataRoute,
+  exploreModelRoute,
+  compareRoute,
+  optimizeRoute,
+  chooseRoute,
   settingsRoute,
   guidedRoute,
   guidedNewRoute,

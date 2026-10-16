@@ -90,3 +90,29 @@ Without `kind` the candidates are the places a user starts from: models, guided 
 and workflow templates; `kind=step`, `kind=node` or `kind=check` ranks one kind of
 building block. A question or answer the chooser does not know is `422
 CHOOSER_ANSWER_INVALID`.
+
+## In the web app
+
+**About cards everywhere.** Every place you pick something shows its card, plain language
+first: the catalog's **Browse** tab lists every item a user can pick (filter by kind -
+Guided analyses, models, workflow templates, preparation steps, splits, governance checks,
+workflow nodes and node kinds - by difficulty or by text), and a card opens with its
+uses, limits, data needs, assumptions, outputs, an example and related items. The maths and
+the references sit under *For experts: how it works*, collapsed. The same cards appear on
+the Guided template cards (**About**), in the spec editor (an **About** tab for the model,
+an About button on every pipeline step) and in the Model Explorer (*About this kind of
+model*). Datasets show their About (owner description and generated summary) on the dataset
+page and in the [Data Explorer](../guides/data-explorer.md).
+
+![An About card: plain language first, the expert notes collapsed](../assets/screenshots/explorer-about-card.png){ .mapi-shot }
+
+**Help me choose** (`/choose`, and the "Not sure where to start?" panel on Home and at the
+top of Guided mode) asks the questions one at a time - each a set of large, keyboard-friendly
+choices, any of which can be skipped - and ranks the matches as you answer, with the reasons
+("Suits: forecast the future") and cautions ("Needs expert-level statistics knowledge").
+**Start with this** opens a new Guided analysis for a guided template, a new spec in the
+editor with that model (and its About as comments), or a workflow from a workflow template.
+The answers live in the address, so a suggestion can be shared; the switch at the top ranks
+models, preparation steps, governance checks or workflow nodes instead of starting points.
+
+![Help me choose: one question at a time, live ranked matches with reasons](../assets/screenshots/explorer-chooser.png){ .mapi-shot }

@@ -39,6 +39,7 @@ jobs:
       - run: uv run python apps/web/scripts/gen_openapi.py --check
       - run: uv run python apps/web/scripts/gen_guided_fixtures.py --check
       - run: uv run python apps/web/scripts/gen_integration_fixtures.py --check
+      - run: uv run python apps/web/scripts/gen_explorer_fixtures.py --check
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @mapi/web openapi:check
       - run: pnpm --filter @mapi/web exec playwright install --with-deps chromium

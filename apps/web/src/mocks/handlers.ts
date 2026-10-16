@@ -9,6 +9,7 @@ import type { DatasetVersion, Problem, Run, RunEventView, SpecRevision, UploadSe
 import { env } from "@/env";
 
 import * as fx from "./fixtures";
+import { createExploreHandlers, createExploreState } from "./explore";
 import { createGuidedHandlers } from "./guided";
 import { createIntegrationHandlers, createIntegrationsState } from "./integrations";
 import { createTenancyHandlers, createTenancyState } from "./tenancy";
@@ -31,6 +32,7 @@ interface MockState {
   tenancy: ReturnType<typeof createTenancyState>;
   integrations: ReturnType<typeof createIntegrationsState>;
   trust: ReturnType<typeof createTrustState>;
+  explore: ReturnType<typeof createExploreState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -44,6 +46,7 @@ export function createState(): MockState {
     tenancy: createTenancyState(),
     integrations: createIntegrationsState(),
     trust: createTrustState(),
+    explore: createExploreState(),
     runs: new Map(fx.runs.map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
@@ -123,11 +126,15 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     const a = state.artifacts.get(name);
     return a ? fx.artifactLink(name, a.bytes, a.type) : null;
   };
+  // M3.5: explorers, About cards, Help me choose, governance evidence, budget optimisation.
+  const explore = createExploreHandlers(state, state.explore);
   return [
     // v0.3: session, tenancy and the per-request checks (first, so they guard every /v1 route).
     ...createTenancyHandlers(state.tenancy),
+    ...explore.early,
     // M3 Guided mode: answers for the resources a Guided session creates, falls through otherwise.
     ...createGuidedHandlers(state),
+    ...explore.late,
     // v0.4: endpoints, webhooks, sharing (mocks/integrations.ts) and the trust lifecycle (mocks/trust.ts).
     ...createIntegrationHandlers(state.integrations, { artifacts: state.artifacts }),
     ...createTrustHandlers(state.trust, { tenancy: state.tenancy, artifacts: state.artifacts }),

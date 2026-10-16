@@ -175,8 +175,35 @@ milestone releases are tagged on `main`.
   - Images assert the workflow runtime, statsmodels and scipy in the runner images (JAX
     with mmm-framework in `base-bayes`) and the JSON-only workflow engine in the server
     image; `packages/sdk` joins the strict mypy list.
+- **web**: About cards, Help me choose, the explorers and budget optimisation.
+  - About cards (plain language first, expert notes and references collapsed) in the
+    catalog's new **Browse** tab (every selectable item, filtered by kind, difficulty and
+    text), the model and step details, the spec editor (an About tab, a button on every
+    pipeline step) and the Guided template cards; dataset About (the owner's description,
+    editable, next to the generated summary) on the dataset page and the Data Explorer.
+  - **Help me choose** (`/choose`, and on Home and at the top of Guided mode): one question
+    at a time, live ranked matches with reasons and cautions, and **Start with this** into
+    a Guided analysis, a new spec with the model, or a workflow template.
+  - The **Data Explorer** of a dataset version: all thirteen sections from the ingest's
+    views and explore runs (polled, cached, kept in the URL), with variable and series
+    pickers, interactive Vega-Lite plots in the plot sandbox, plain readings first in Guided
+    mode and every statistic (and the platform's export-ready plots) in Expert mode.
+  - The **Model Explorer** of a model version: parameters (sortable, with intervals),
+    diagnostics, fit vs actual, residual analysis, contributions, response curves, IRF and
+    FEVD, forecasts and backtests on demand, governance evidence with the validation
+    status, and lineage; **Compare** (`POST /v1/models:compare`) with Diebold-Mariano tests.
+  - **Optimise budget** for marketing-mix models (`POST …:optimize`): budget, caution,
+    per-channel bounds in multiples or money, groups and the frontier, with impossible
+    bounds explained before the run; the plan with its allocation, expected result, chance
+    of beating today's plan and the efficient frontier; Guided *What if…* leads to it.
+  - Mock-mode fixtures computed by the real runner and plots-core
+    (`apps/web/scripts/gen_explorer_fixtures.py`, `--check` in CI) and generated
+    TypeScript types of the explorer views; the guides' screenshots
+    (`make docs-screenshots-explorers`).
 
 ### Changed
+- **spec**: a dataset's generated summary shows dates without a midnight time
+  ("from 2023-01-01", not "from 2023-01-01T00:00:00").
 - **workflows**: the `var_vecm_cointegration` template (and `test.johansen`,
   `search.var_lag_order`, `search.coint_rank`) take the series along the data's series
   dimension; `vars` is optional (labels or variable names) and the template's `series`

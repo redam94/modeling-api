@@ -12,6 +12,7 @@ import { useState, type ReactNode } from "react";
 
 import { EmptyState, ErrorNotice, LoadingRows, PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
+import { ChooserTeaser } from "@/features/about/chooser-teaser";
 import { useGuidedTemplate } from "@/features/guided/api";
 import { GuidedFrame, type StepLink } from "@/features/guided/frame";
 import { useEnterGuided } from "@/features/guided/persona";
@@ -39,6 +40,7 @@ export function GuidedPage() {
         title="What do you want to learn?"
         description="Pick the question closest to yours. We'll ask a few plain questions about your spreadsheet, fit a model in a secure sandbox and explain what it found - no statistics needed."
       />
+      <ChooserTeaser title="Not sure which one fits? Help me choose" />
       <TemplatePicker />
       <section aria-labelledby="sessions-h" className="grid gap-3">
         <h2 id="sessions-h" className="text-[15px] font-semibold tracking-tight">

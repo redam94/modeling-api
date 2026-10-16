@@ -270,6 +270,19 @@ whether it learns state, invertibility, summary) and **Plots** (recipe, title, a
 the bundle groups it needs). Click a row for its full entry. Specs can only use what is listed here. The same data is in
 the [generated catalogs](../reference/generated/models-catalog.md).
 
+Since v0.5 the catalog opens on **Browse**: every item a user can pick by its plain-language
+About card, with **Help me choose** one click away (see [About cards and
+choosing](../concepts/about-and-choosing.md#in-the-web-app)).
+
+## Explorers and budget plans <span class="mapi-badge">v0.5</span>
+
+- **Explore this version** on a dataset version opens the
+  [Data Explorer](data-explorer.md#in-the-web-app).
+- **Explore** on a model version opens the [Model Explorer](model-explorer.md#in-the-web-app)
+  (parameters, diagnostics, fit, residuals, contributions, response curves, IRF/FEVD,
+  forecasts, backtests, governance evidence and lineage); **Compare** puts several versions
+  side by side with Diebold-Mariano tests; **Optimise budget** plans a marketing budget.
+
 ## Settings
 
 ![Settings: appearance, mode and connection](../assets/screenshots/settings.png){ .mapi-shot }

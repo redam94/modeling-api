@@ -1,6 +1,6 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Boxes, Gauge } from "lucide-react";
+import { Boxes, Columns2, Gauge, Telescope, Wallet } from "lucide-react";
 
 import { useModel, useModels, useModelVersion, useModelVersions } from "@/api/queries";
 import type { Model, ModelVersion } from "@/api/types";
@@ -9,6 +9,7 @@ import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/primitives";
+import { ValidationStatusBadge } from "@/features/explore/governance-panel";
 import { DiagnosticsTable, PreprocessViewer, ProvenancePanel, ScorecardView, TreeBrowser } from "@/features/models/inspect";
 import { PlotGallery } from "@/features/plots/plot-gallery";
 import { formatNumber, relativeTime, shortId } from "@/lib/format";
@@ -130,17 +131,38 @@ export function ModelVersionPage() {
           <>
             <Badge variant={d.status === "ready" ? "success" : "warning"}>{d.status}</Badge>
             {d.scorecard ? <Badge variant={OVERALL[d.scorecard.overall]}>scorecard {d.scorecard.overall}</Badge> : null}
+            <ValidationStatusBadge modelId={modelId} version={v} />
             {caps ? <span>{caps.inference} · {caps.representation}</span> : null}
             <Link to="/runs/$runId" params={{ runId: d.run_id }} className="hover:underline">fit run {shortId(d.run_id)}</Link>
             <span>{relativeTime(d.created_at)}</span>
           </>
         }
         actions={
-          <Button asChild>
-            <Link to="/score" search={{ model: modelId, version: v }}>
-              <Gauge /> Score
-            </Link>
-          </Button>
+          <>
+            {/* M3.5: the Model Explorer, comparison and budget optimisation. */}
+            <Button asChild variant="outline">
+              <Link to="/models/$modelId/versions/$version/explore" params={{ modelId, version: String(v) }}>
+                <Telescope /> Explore
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/models/compare" search={{ refs: [d.ref] }}>
+                <Columns2 /> Compare
+              </Link>
+            </Button>
+            {caps?.decision ? (
+              <Button asChild variant="outline">
+                <Link to="/models/$modelId/versions/$version/optimize" params={{ modelId, version: String(v) }}>
+                  <Wallet /> Optimise budget
+                </Link>
+              </Button>
+            ) : null}
+            <Button asChild>
+              <Link to="/score" search={{ model: modelId, version: v }}>
+                <Gauge /> Score
+              </Link>
+            </Button>
+          </>
         }
       />
       <Tabs value={tab ?? "overview"} onValueChange={(t) => void navigate({ search: { tab: t === "overview" ? undefined : (t as typeof tab) } })}>
