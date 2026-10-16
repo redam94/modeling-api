@@ -438,6 +438,10 @@ milestone releases are tagged on `main`.
 - **runner**: a model with more than 256 geos lost its whole what-if grid (the per-geo view
   failed its geo cap and the national grid was dropped with it); it now gets the national
   grid (`mapi_spec.views.MAX_GRID_GEOS`).
+- **server**: `POST /v1/guided/requests:compile` answered `404` for an `endpoint://` model
+  target, and `POST /v1/specs:validate` reported a score request aimed at an endpoint as
+  `REF_UNRESOLVED` ("endpoint aliases arrive in v0.4"). An endpoint ref now resolves to the
+  version the endpoint serves.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

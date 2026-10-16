@@ -402,6 +402,36 @@ async def test_guided_requests_compile_to_checked_score_requests(
     assert r.json()["errors"][0]["pointer"]
 
 
+async def test_requests_compile_and_validate_against_an_endpoint(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """An ``endpoint://`` target resolves to the version the alias serves now."""
+    await fitted_version(ctx)
+    r = await client.put("/v1/endpoints/trend-prod", json={"model": "model://default/trend@v1"})
+    assert r.status_code == 200, r.text
+    body = {"kind": "forecast", "model": "endpoint://default/trend-prod", "periods": 4, "dim": "t"}
+    r = await client.post("/v1/guided/requests:compile", json=body)
+    assert r.status_code == 200, r.text
+    compiled = r.json()
+    assert compiled["model"] == "endpoint://default/trend-prod"
+    # the dim is checked against the served version's metadata
+    r = await client.post("/v1/guided/requests:compile", json={**body, "dim": "week"})
+    assert r.status_code == 422, r.text
+    r = await client.post(
+        "/v1/guided/requests:compile", json={**body, "model": "endpoint://default/nope"}
+    )
+    assert r.status_code == 404, r.text
+    # POST /v1/specs:validate of a score request aimed at the endpoint
+    r = await client.post("/v1/specs:validate", json={"yaml": json.dumps(compiled)})
+    assert r.status_code == 200, r.text
+    assert r.json()["valid"], r.json()["issues"]
+    missing = {**compiled, "model": "endpoint://default/nope"}
+    r = await client.post("/v1/specs:validate", json={"yaml": json.dumps(missing)})
+    [issue] = [i for i in r.json()["issues"] if i["code"] == "REF_UNRESOLVED"]
+    assert issue["pointer"] == "/model" and "endpoint 'nope' does not exist" in issue["message"]
+    assert "v0.4" not in issue["message"]
+
+
 async def test_run_exact_over_the_fit_window_scores_the_fit_dataset(
     client: httpx.AsyncClient, ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
 ) -> None:

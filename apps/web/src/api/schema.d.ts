@@ -1015,7 +1015,8 @@ export interface paths {
          * @description Compile a slider scenario (``whatif``), a forecast over a horizon or an intervention
          *     preset (``counterfactual``: channel off, budget x k) into the exact ``ScoreRequest``
          *     ("Run exact" submits it with ``POST /v1/models/{id}/versions/{v}:score``). The request
-         *     is checked statically against the model version's score metadata: an unknown model is
+         *     is checked statically against the model version's score metadata (for an
+         *     ``endpoint://`` target, the version the endpoint serves now): an unknown model is
          *     ``404``, and a request the version cannot score (unknown coordinates, missing future
          *     covariates under ``future_covariates: supplied``) is ``422`` with JSON pointers.
          *     A what-if or preset over the fit window (no horizon) scores the data the version was
