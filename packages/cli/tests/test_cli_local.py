@@ -197,11 +197,11 @@ def test_local_catalog(mapi: Invoke, as_json: AsJson) -> None:
     doc = as_json(res)
     assert doc["digest"].startswith("sha256:")
     models = {m["manifest"]["id"] for m in doc["models"]}
-    assert {"tabular.regressor", "mmm.hierarchical_geo"} <= models
+    assert {"tabular.regressor", "mmm.bayesian", "mmm.frequentist"} <= models
     steps = mapi("--json", "catalog", "steps")
     assert set(as_json(steps)) == {"digest", "steps"}
     human = mapi("catalog", "models")
-    assert "mmm.hierarchical_geo" in human.stdout
+    assert "mmm.bayesian" in human.stdout
 
 
 # ------------------------------------------------------------------------------- spec

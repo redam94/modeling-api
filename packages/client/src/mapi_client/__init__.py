@@ -19,9 +19,9 @@
 * from v0.4 ``guided``, ``endpoints`` (and ``Client.endpoint(alias)``, a
   :class:`RemoteEndpoint` whose ``score(ds)`` returns an ``xr.Dataset``), ``webhooks``, saved
   plots, renders and embeds on ``plots``, sign-up (:meth:`Client.signup`) and the trust
-  lifecycle on ``tenants``/``admin``; :mod:`mapi_client.webhooks` verifies deliveries,
-  :mod:`mapi_client.atlas` adapts an endpoint to Atlas (``RemoteModel``) and
-  :mod:`mapi_client.xrjson` encodes inline payloads.
+  lifecycle on ``tenants``/``admin``; :mod:`mapi_client.webhooks` verifies deliveries and
+  :mod:`mapi_client.xrjson` encodes inline payloads (v0.5 removed the Atlas adapter:
+  budgets are optimised by the platform, ``POST …:optimize``).
 
 >>> from mapi_client import Client               # doctest: +SKIP
 >>> with Client("http://127.0.0.1:8000") as api:

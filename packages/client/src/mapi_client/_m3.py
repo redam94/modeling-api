@@ -431,7 +431,7 @@ class Endpoints(_Resource):
         *,
         base_url: str | None = None,
     ) -> SnippetSet:
-        """Ready-to-run code (Python, TypeScript, curl, R, Apps Script, Atlas)."""
+        """Ready-to-run code (Python, TypeScript, curl, R, Apps Script, notebook)."""
         return self._c.send(m3.list_endpoint_snippets(alias, languages, base_url))
 
 

@@ -410,7 +410,7 @@ def snippets(
     alias: Annotated[str, typer.Argument(help="Endpoint alias")],
     language: Annotated[
         list[SnippetLanguage] | None,
-        typer.Option("--language", "-l", help="python, typescript, curl, r, apps_script, atlas"),
+        typer.Option("--language", "-l", help="python, typescript, curl, r, apps_script, notebook"),
     ] = None,
     base_url: Annotated[
         str | None, typer.Option("--base-url", help="API URL to embed (default: the server's)")

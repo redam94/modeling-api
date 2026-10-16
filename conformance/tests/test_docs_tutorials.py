@@ -8,8 +8,8 @@
   built from the platform's own DTOs (``ScoreCallResult``, ``ForecastView``), and the test
   checks what they send and what they write into the sheet.
 
-The Python snippets of the tutorials (``embed_chart.py``, ``webhook_receiver.py``,
-``atlas_budget.py``) run in ``test_docs_snippets.py``.
+The Python snippets of the tutorials (``embed_chart.py``, ``webhook_receiver.py``) run in
+``test_docs_snippets.py``.
 """
 
 from __future__ import annotations

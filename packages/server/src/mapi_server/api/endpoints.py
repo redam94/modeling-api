@@ -195,7 +195,7 @@ async def get_endpoint_schema(ctx: Ctx, session: Session, alias: Alias) -> Endpo
     "/{alias}/snippets",
     response_model=SnippetSet,
     operation_id="list_endpoint_snippets",
-    summary="Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint",
+    summary="Python, TypeScript, curl, R, Apps Script and notebook code for the endpoint",
     responses=responses_for("list_endpoint_snippets"),
 )
 async def list_endpoint_snippets(

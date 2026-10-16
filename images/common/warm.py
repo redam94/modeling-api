@@ -52,7 +52,7 @@ _VERSIONED = (
     "arviz",
     "scikit-learn",
     "xgboost",
-    "pymc-marketing",
+    "mmm-framework",
 )
 
 

@@ -2,7 +2,7 @@
 #
 # mapi/base-forecast - the time-series runner image (plan §7 tier T0): the ts.* plugins
 # (ts.hsgp_trend, ts.gaussian_hmm) on PyMC, with the SDK, built-in steps and plot recipes.
-# No marketing-mix stack (pymc-marketing) and no tabular models. Build from the repo root:
+# No marketing-mix stack (mmm-framework) and no tabular models. Build from the repo root:
 #
 #   docker build -f images/base-forecast/Dockerfile -t mapi/base-forecast:0.4.0 .
 #
@@ -20,7 +20,7 @@ ARG MAPI_NO_INSTALL=""
 # PyTensor compiles C at run time, so the Bayesian images need a C++ compiler.
 ARG MAPI_APT_PACKAGES="tini g++"
 ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-pymc mapi-plugin-ts pymc pytensor nutpie vl-convert-python"
-ARG MAPI_ASSERT_ABSENT="pymc-marketing mapi-plugin-mmm mapi-plugin-tabular mapi-sklearn mapi-server mapi-gcs-shim"
+ARG MAPI_ASSERT_ABSENT="mmm-framework mapi-plugin-mmm mapi-plugin-tabular mapi-sklearn mapi-server mapi-gcs-shim"
 
 # ===================================== shared runner build: part 1 (identical in base-* images)
 ARG VERSION=0.0.0-dev
