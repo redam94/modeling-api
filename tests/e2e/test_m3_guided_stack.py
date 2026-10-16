@@ -220,7 +220,9 @@ class Receiver:
         deadline = time.monotonic() + EVENT_TIMEOUT_S
         while time.monotonic() < deadline:
             for d in self.snapshot()[after:]:
-                env = verify(d.headers, d.body, secret)  # raises on a bad signature
+                # verified as the receiver got it (raises on a bad signature): a delivery read
+                # minutes later is not "too old"
+                env = verify(d.headers, d.body, secret, now=int(d.at))
                 if env.type == event and match(env):
                     return env, d
             time.sleep(0.25)
@@ -773,8 +775,8 @@ def test_webhooks_are_signed_and_replayable(journey: Journey) -> None:
     assert again == scored and d.headers.get("Mapi-Delivery-Id") == replay.id
     assert d.headers.get("Mapi-Delivery-Id") != scored_at.headers.get("Mapi-Delivery-Id")
     # a body signed with another secret is refused by the verifier
-    with pytest.raises(MapiError):
-        verify(d.headers, d.body, "whsec_" + "x" * 43)
+    with pytest.raises(MapiError):  # (at its arrival time: refused for the secret alone)
+        verify(d.headers, d.body, "whsec_" + "x" * 43, now=int(d.at))
 
 
 # ======================================================================= 8. embed
@@ -841,7 +843,8 @@ def test_the_platform_optimises_the_budget(journey: Journey) -> None:
     spent = sum(a["optimal_spend"] for a in plan["allocation"])
     assert spent == pytest.approx(plan["total_budget"], rel=0.005)
     assert plan["uplift"]["mean"] >= -1e-6 * abs(plan["expected_kpi"]["mean"])
-    assert len(plan["frontier"]) == 5 and plan["kpi_units"]
+    # the KPI by its dataset name (a Guided draft records no units, so the plan has none)
+    assert len(plan["frontier"]) == 5 and plan["kpi"].lower() == "revenue"
     j.notes["optimize"] = {
         "allocation": {a["channel"]: a["optimal_spend"] for a in plan["allocation"]},
         "uplift": plan["uplift"],

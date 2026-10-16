@@ -182,6 +182,8 @@ class World:
     """name -> dataset id"""
     models: dict[str, str] = field(default_factory=dict)
     """spec name -> model id (version 1)"""
+    runs: dict[str, str] = field(default_factory=dict)
+    """journey -> workflow run id"""
     timings: dict[str, float] = field(default_factory=dict)
 
     def ref(self, dataset: str, version: str = "latest") -> str:

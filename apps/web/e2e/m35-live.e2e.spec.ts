@@ -189,6 +189,36 @@ test.describe("@e2e M3.5: workflows, explorers, mmm-framework, governance and He
     expect(errors).toEqual([]);
   });
 
+  test("Guided: from the Data Explorer to the readiness recipe on that data, run live @e2e", async ({ page }) => {
+    test.setTimeout(WORKFLOW_TIMEOUT + 2 * 60_000);
+    const errors = watch(page);
+    await page.goto("/");
+    await openProject(page);
+    await page.getByRole("radiogroup", { name: "Mode" }).getByRole("radio", { name: "Guided" }).click();
+    await step("recipe", async () => {
+      await page.goto(`/datasets/${seeded.datasets.weekly_sales}/versions/1/explore`);
+      const nav = page.getByRole("navigation").filter({ has: page.getByRole("link", { name: /Recipes/ }) });
+      await expect(nav.getByRole("link", { name: /Help me choose/ })).toBeVisible();
+      await page.getByRole("link", { name: "Check it is ready to forecast" }).click();
+      await expect(page).toHaveURL(/\/workflows\/recipe\?template=ts_readiness_arimax&data=/);
+      const runner = page.getByTestId("recipe-runner");
+      await expect(runner.getByTestId("about-card")).toContainText("Time-series readiness to ARIMAX");
+      await expect(runner.getByLabel("Dataset")).toHaveValue(`dataset://${seeded.project}/weekly_sales`);
+      // the price plan is known ahead: the one setting worth changing, under Fine-tune
+      await runner.getByText("Fine-tune (optional: the defaults suit most data)").click();
+      await runner.getByLabel("Drivers").fill("price");
+      await runner.getByRole("button", { name: "Run this recipe" }).click();
+      await expect(page).toHaveURL(/\/workflow-runs\/run_/);
+      await expect(page.getByTestId("run-monitor")).toHaveAttribute("data-status", "succeeded", { timeout: WORKFLOW_TIMEOUT });
+      await expect(page.getByTestId("run-summary")).toContainText("Difference? -> then");
+      await expect(page.getByTestId("run-summary")).toContainText("beats every benchmark");
+      await shot(page, "guided-recipe-run");
+      await page.getByTestId("run-models").getByRole("link", { name: /in the Model Explorer/ }).first().click();
+      await expect(page.getByRole("heading", { name: "At a glance" })).toBeVisible({ timeout: 60_000 });
+    });
+    expect(errors).toEqual([]);
+  });
+
   test("the Data Explorer finds the unit root @e2e", async ({ page }) => {
     test.setTimeout(COMPUTE_TIMEOUT + 60_000);
     const errors = watch(page);

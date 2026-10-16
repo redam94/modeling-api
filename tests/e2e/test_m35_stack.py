@@ -184,6 +184,91 @@ def test_the_canonical_workflow_on_a_series_with_a_unit_root(op: Client, world: 
     assert nodes["adf"].child_runs and not nodes["select"].child_runs
     assert run.cost is not None and run.cost.attempts_billed >= 10
     world.models["canonical"] = model_ref
+    world.runs["canonical"] = run.run_id
+
+
+# ======================================================================== 5. the CLI
+# (before the governance journey: its project policy would judge this run's model too)
+
+
+def _mapi() -> str:
+    found = shutil.which("mapi") or str(Path(sys.executable).with_name("mapi"))
+    assert Path(found).exists(), "the mapi CLI is not installed (uv sync --all-packages)"
+    return found
+
+
+def test_cli_runs_the_cookbook_workflow_with_watch(
+    op: Client, world: m35.World, tmp_path: Path
+) -> None:
+    p = world.project
+    doc = (DOCS / "cookbook_readiness_arimax.yaml").read_text("utf-8")
+    (tmp_path / "weekly-readiness.yaml").write_text(
+        doc.replace("project: growth", f"project: {p}"), "utf-8"
+    )
+    token = op.config.token
+    assert token is not None
+    env = {
+        **os.environ,
+        "MAPI_URL": m35.api_url(),
+        "MAPI_TOKEN": token,
+        "MAPI_PROJECT": f"{m35.TENANT}/{p}",
+        "MAPI_CONFIG": str(tmp_path / "config.toml"),
+        "NO_COLOR": "1",
+        "COLUMNS": "200",
+    }
+
+    def mapi(*args: str, timeout: float = 120) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [_mapi(), *args], cwd=tmp_path, env=env, capture_output=True, text=True,
+            timeout=timeout, check=False,
+        )  # fmt: skip
+
+    # the commands of docs/snippets/cli_v05.sh (section "workflow"), project renamed
+    checked = mapi("workflows", "validate", "weekly-readiness.yaml")
+    assert checked.returncode == 0, checked.stderr
+    assert "valid (23 nodes)" in checked.stdout
+    applied = mapi("workflows", "apply", "weekly-readiness.yaml", "-m", "first version")
+    assert applied.returncode == 0, applied.stderr
+    assert f"workflow://{p}/weekly-readiness at revision 1" in applied.stdout
+    t0 = time.monotonic()
+    watched = mapi(
+        "workflows", "run", "weekly-readiness",
+        "--input", f"data=dataset://{p}/weekly_sales@latest",
+        "--param", 'drivers=["price"]', "--param", "window=104",
+        "--watch", timeout=m35.RUN_TIMEOUT_S,
+    )  # fmt: skip
+    _timed(world, "cli.run_watch", t0)
+    out = watched.stderr + watched.stdout  # the live board on stderr, the summary on stdout
+    assert watched.returncode == 0, out[-4000:]
+    assert "following workflow run run_" in out and "(23 nodes)" in out
+    # the unit-root tests are the canonical run's, unchanged: reused from it, not recomputed
+    assert "adf cached" in out and "kpss cached" in out
+    for line in (
+        "wanders took the then arm",
+        "seasonal took the else arm",
+        "sdiff skipped: branch 'seasonal' took the else path",
+        "dm succeeded",
+        "governance succeeded",
+        "trusted took the then arm",
+        "run succeeded",
+    ):
+        assert line in out, line
+    assert f"model://{p}/wf-weekly-readiness-fit@v1" in out
+
+    listed = mapi("--json", "workflows", "runs", "weekly-readiness", "-n", "1")
+    assert listed.returncode == 0, listed.stderr
+    runs: list[dict[str, Any]] = json.loads(listed.stdout)
+    assert runs[0]["status"] == "succeeded"
+    node = mapi("workflows", "node", runs[0]["run_id"], "order")
+    assert node.returncode == 0 and "best_p" in node.stdout, node.stdout + node.stderr
+    # the rolling-origin backtest of the cookbook: its window and folds were used
+    nodes = {n.node_id: n for n in op.workflows.get_run(runs[0]["run_id"]).nodes}
+    assert nodes["adf"].status.value == "cached" and not nodes["adf"].child_runs
+    assert nodes["adf"].cached_from == world.runs["canonical"]
+    assert nodes["folds"].use.startswith("split.rolling_origin")
+    assert nodes["folds"].params["window"] == 104
+    dm = dict(nodes["dm"].result or {})
+    assert dm["verdict_plain"] and dm["p_value"] is not None
 
 
 # ===================================================================== 2. governance
@@ -347,83 +432,3 @@ def test_data_explorer_var_impulse_responses_and_help_me_choose(
     assert {i.id for i in ranked.items} >= {"workflow.ts_readiness_arimax"}
     card = op.catalog.about("ts.sarimax", kind="model")
     assert card.summary_plain and card.use_when and card.avoid_when
-
-
-# ======================================================================== 5. the CLI
-
-
-def _mapi() -> str:
-    found = shutil.which("mapi") or str(Path(sys.executable).with_name("mapi"))
-    assert Path(found).exists(), "the mapi CLI is not installed (uv sync --all-packages)"
-    return found
-
-
-def test_cli_runs_the_cookbook_workflow_with_watch(
-    op: Client, world: m35.World, tmp_path: Path
-) -> None:
-    p = world.project
-    doc = (DOCS / "cookbook_readiness_arimax.yaml").read_text("utf-8")
-    (tmp_path / "weekly-readiness.yaml").write_text(
-        doc.replace("project: growth", f"project: {p}"), "utf-8"
-    )
-    token = op.config.token
-    assert token is not None
-    env = {
-        **os.environ,
-        "MAPI_URL": m35.api_url(),
-        "MAPI_TOKEN": token,
-        "MAPI_PROJECT": f"{m35.TENANT}/{p}",
-        "MAPI_CONFIG": str(tmp_path / "config.toml"),
-        "NO_COLOR": "1",
-        "COLUMNS": "200",
-    }
-
-    def mapi(*args: str, timeout: float = 120) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            [_mapi(), *args], cwd=tmp_path, env=env, capture_output=True, text=True,
-            timeout=timeout, check=False,
-        )  # fmt: skip
-
-    # the commands of docs/snippets/cli_v05.sh (section "workflow"), project renamed
-    checked = mapi("workflows", "validate", "weekly-readiness.yaml")
-    assert checked.returncode == 0, checked.stderr
-    assert "valid (23 nodes)" in checked.stdout
-    applied = mapi("workflows", "apply", "weekly-readiness.yaml", "-m", "first version")
-    assert applied.returncode == 0, applied.stderr
-    assert f"workflow://{p}/weekly-readiness at revision 1" in applied.stdout
-    t0 = time.monotonic()
-    watched = mapi(
-        "workflows", "run", "weekly-readiness",
-        "--input", f"data=dataset://{p}/weekly_sales@latest",
-        "--param", 'drivers=["price"]', "--param", "window=104",
-        "--watch", timeout=m35.RUN_TIMEOUT_S,
-    )  # fmt: skip
-    _timed(world, "cli.run_watch", t0)
-    out = watched.stderr + watched.stdout  # the live board on stderr, the summary on stdout
-    assert watched.returncode == 0, out[-4000:]
-    assert "following workflow run run_" in out and "(23 nodes)" in out
-    for line in (
-        "adf succeeded",
-        "wanders took the then arm",
-        "seasonal took the else arm",
-        "sdiff skipped: branch 'seasonal' took the else path",
-        "dm succeeded",
-        "governance succeeded",
-        "trusted took the then arm",
-        "run succeeded",
-    ):
-        assert line in out, line
-    assert f"model://{p}/wf-weekly-readiness-fit@v1" in out
-
-    listed = mapi("--json", "workflows", "runs", "weekly-readiness", "-n", "1")
-    assert listed.returncode == 0, listed.stderr
-    runs: list[dict[str, Any]] = json.loads(listed.stdout)
-    assert runs[0]["status"] == "succeeded"
-    node = mapi("workflows", "node", runs[0]["run_id"], "order")
-    assert node.returncode == 0 and "best_p" in node.stdout, node.stdout + node.stderr
-    # the rolling-origin backtest of the cookbook: its window and folds were used
-    nodes = {n.node_id: n for n in op.workflows.get_run(runs[0]["run_id"]).nodes}
-    assert nodes["folds"].use.startswith("split.rolling_origin")
-    assert nodes["folds"].params["window"] == 104
-    dm = dict(nodes["dm"].result or {})
-    assert dm["verdict_plain"] and dm["p_value"] is not None

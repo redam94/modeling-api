@@ -390,7 +390,9 @@ def test_ui_views_redirect_to_signed_urls(
         index = TreeIndexView.model_validate_json(http.get(location).content)
         groups = set(index.groups)
         assert {"/model/posterior", "/model/observed_data", "/derived/contributions"} <= groups
-        assert {"/preprocess/scale_spend/arrays", "/preprocess/lags/context"} <= groups
+        # v0.5: mmm-framework owns scaling and carry-over; the pipeline converts currencies,
+        # aggregates to weeks and adds the holidays
+        assert {"/preprocess/to_eur", "/preprocess/weekly", "/preprocess/hols"} <= groups
         posterior = index.groups["/model/posterior"]
         assert {"chain", "draw"} <= set(posterior.dims), posterior.dims
         summaries = http.get(
@@ -406,8 +408,8 @@ def test_ui_views_redirect_to_signed_urls(
         )
         assert pre.status_code == 200, pre.text
         steps = {s.id: s for s in PreprocessView.model_validate_json(pre.content).steps}
-        assert steps["scale_spend"].stateful
-        assert any(len(a.dims) == 2 for a in steps["scale_spend"].arrays)
+        assert list(steps) == ["to_eur", "weekly", "hols"]
+        assert not any(s.stateful for s in steps.values())  # nothing is learned before the model
         missing = http.get(
             path.replace("tree_index.json", "nope.json"),
             follow_redirects=False,
