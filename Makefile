@@ -172,6 +172,16 @@ _web-check:
 web-dev: ## Run the web app (5173) and the plot sandbox (5174) against VITE_API_BASE
 	$(PNPM) -r --parallel dev
 
+.PHONY: api-types
+api-types: ## Regenerate apps/web/openapi.json, access.gen.json and src/api/schema.d.ts from the server
+	$(UV) run python apps/web/scripts/gen_openapi.py
+	$(PNPM) --filter @mapi/web openapi:types
+
+.PHONY: snapshots
+snapshots: ## Regenerate the contract snapshot (mapi_spec) and the Guided catalog fixture of the server tests
+	MAPI_UPDATE_SNAPSHOTS=1 $(UV) run pytest -q packages/spec/tests/test_contract_snapshot.py \
+		conformance/tests/test_guided_catalog.py
+
 .PHONY: web-check
 web-check: ## Lint, typecheck, test (Vitest + Playwright smoke) and build apps/*
 	$(UV) run python apps/web/scripts/gen_openapi.py --check

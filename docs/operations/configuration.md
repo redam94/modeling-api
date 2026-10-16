@@ -433,7 +433,7 @@ The variables Terraform sets on the Cloud Run services (the deployment contract 
 | `MAPI_E2E_UI_ACCOUNT` | The tenant admin of the M2 browser flow and the fit burst (default `analyst@dev.local`) |
 | `MAPI_E2E_BURST_RUNS` | Opt-in: how many concurrent real fits `tests/e2e/test_m2_burst_stack.py` submits ([M2 verification](m2-verification.md)) |
 | `MAPI_E2E_SIGNUP_ACCOUNT` | The address the M3 trust-lifecycle suite (`tests/e2e/test_m3_trust_stack.py`) signs up with; it must be a development-IdP account so it can sign in (default `viewer@dev.local`) |
-| `MAPI_UPDATE_SNAPSHOTS` | `1` regenerates the contract snapshot of `mapi_spec` and the Guided catalog fixture of the server tests |
+| `MAPI_UPDATE_SNAPSHOTS` | `1` regenerates the contract snapshot of `mapi_spec` and the Guided catalog fixture of the server tests (`make snapshots`) |
 | `MAPI_HYPOTHESIS_EXAMPLES` | Examples per property in the wire-format round-trip tests (default 60) |
 
 ## Documentation
