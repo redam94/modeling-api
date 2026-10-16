@@ -335,6 +335,36 @@ def test_diebold_mariano_by_hand_and_by_node() -> None:
     assert out.result["test"] == "test.diebold_mariano"
 
 
+def test_diebold_mariano_refuses_horizons_its_folds_cannot_support() -> None:
+    """Three folds cannot test horizon 4 (the long-run variance needs lags up to h - 1): a
+    plain data error, not a NaN p-value that fails the result's validation."""
+    rng = np.random.default_rng(2)
+    e1, e2 = rng.normal(size=3), rng.normal(size=3)
+    with pytest.raises(ValueError, match="more than 4 paired errors"):
+        diebold_mariano(e1, e2, h=4)
+    with pytest.raises(ValueError, match="more than 3 paired errors"):
+        diebold_mariano(e1, e2, h=3)
+    stat, p, n = diebold_mariano(rng.normal(size=40), rng.normal(size=40), h=4)
+    assert math.isfinite(stat) and 0 <= p <= 1 and n == 40
+
+    def payload(errs: np.ndarray) -> dict[str, Any]:
+        return MetricsPayload.model_validate(
+            {
+                "candidates": [
+                    {
+                        "name": "m",
+                        "group": "m",
+                        "metrics": {"mae": float(np.mean(np.abs(errs)))},
+                        "errors": [[0.0, 0.0, 0.0, float(x)] for x in errs],
+                    }
+                ]
+            }
+        ).model_dump(mode="json")
+
+    with pytest.raises(MapiError, match="add folds"):
+        run_node("compare.diebold_mariano", {"horizon": 4}, a=payload(e1), b=payload(e2))
+
+
 # ============================================================================ governance
 
 _POLICY = GovernancePolicy(
