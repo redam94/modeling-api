@@ -12,6 +12,7 @@ import pytest
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.deletion import TenantPurger
+from mapi_server.services.gdpr_export import ExportBuilder, export_object_name
 from mapi_server.services.lifecycle import (
     InlineLifecycleJobs,
     LifecycleScheduler,
@@ -267,7 +268,7 @@ async def test_full_purge_leaves_other_tenants_untouched(
             await s.execute(select(m.AuditEvent).where(m.AuditEvent.action == "tenant.delete"))
         ).scalars()
     assert start.details["revoked"] == {
-        "tokens": 1, "sessions": 1, "runs": 0, "embeds": 1, "webhooks": 1, "probe": 3,
+        "tokens": 1, "sessions": 1, "runs": 0, "exports": 0, "embeds": 1, "webhooks": 1, "probe": 3,
     }  # fmt: skip
     # a second pass is a no-op
     assert (await TenantPurger(ctx).run(deletion_id)).value == "purged"
@@ -435,3 +436,63 @@ async def test_purge_runs_as_a_procrastinate_job(
     async with ctx.db.session() as s:
         row = await s.get(m.TenantDeletion, deletion_id)
     assert row is not None and row.state == "purged"
+
+
+async def test_an_export_built_during_the_purge_leaves_no_archive(
+    ctx: ServerContext, client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An export may be requested in the grace period; one still building when the purge
+    starts is cancelled, the purge waits for its build to end, and an archive that lands
+    after the objects were listed is deleted by the build itself."""
+    alpha = await seed_tenant(ctx, "alpha")
+    owner = await _owner(ctx, client, alpha)
+    first = (await owner.post("/v1/tenants/alpha/exports", json={})).json()["id"]
+    deletion_id = (await owner.post("/v1/tenants/alpha/deletion",
+                                    json={"confirm": "alpha"})).json()["id"]  # fmt: skip
+    builder, purger = ExportBuilder(ctx), TenantPurger(ctx)
+    build = builder._build
+    seen: list[str] = []
+
+    async def purge_meanwhile(*args: Any, **kw: Any) -> Any:
+        out = await build(*args, **kw)
+        # the purge starts while the archive is being built: it cancels the export and
+        # waits for the build to end before it touches any store
+        seen.append((await purger.run(deletion_id)).value)
+        async with ctx.db.session() as s:
+            row = await s.get(m.TenantDeletion, deletion_id)
+            assert row is not None and "export" in str(row.stores[0]["detail"])
+        return out
+
+    monkeypatch.setattr(builder, "_build", purge_meanwhile)
+    assert await builder.run(first) == "discarded"
+    assert seen == ["deleting"]
+    with pytest.raises(NotFound):
+        await ctx.store.stat(ctx.buckets.data, export_object_name("alpha", first))
+    # the build has ended: the purge goes on and leaves nothing behind
+    assert (await purger.run(deletion_id, at=now() + timedelta(minutes=1))).value == "purged"
+    assert await _objects(ctx, "alpha") == []
+
+
+async def test_an_archive_put_after_the_object_purge_is_removed(
+    ctx: ServerContext, client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The worst interleaving: the purge gave up waiting (the build overran its lease), ran
+    to the end, and only then did the build's upload land."""
+    ctx.settings = ctx.settings.model_copy(update={"export_build_timeout_s": 60.0})
+    alpha = await seed_tenant(ctx, "alpha")
+    owner = await _owner(ctx, client, alpha)
+    exp_id = (await owner.post("/v1/tenants/alpha/exports", json={})).json()["id"]
+    deletion_id = (await owner.post("/v1/tenants/alpha/deletion",
+                                    json={"confirm": "alpha"})).json()["id"]  # fmt: skip
+    builder, purger = ExportBuilder(ctx), TenantPurger(ctx)
+    put = ctx.store.put
+
+    async def late_put(*args: Any, **kw: Any) -> Any:
+        later = now() + timedelta(hours=1)
+        assert (await purger.run(deletion_id)).value == "deleting"
+        assert (await purger.run(deletion_id, at=later)).value == "purged"
+        return await put(*args, **kw)
+
+    monkeypatch.setattr(ctx.store, "put", late_put)
+    assert await builder.run(exp_id) == "discarded"
+    assert await _objects(ctx, "alpha") == []

@@ -454,6 +454,11 @@ milestone releases are tagged on `main`.
   more, then failed, and only the build holding the lease may mark it ready. Metadata rows
   are capped at `MAPI_EXPORT_MAX_METADATA_BYTES` (tables cut short are listed under
   `skipped`), so the in-memory archive stays bounded.
+- **server**: an export still building when a tenant purge started wrote the whole archive
+  after the purge, where nothing would ever delete it. The deletion's start cancels the
+  tenant's queued and running exports (`revoked.exports` in the audit event), the `queue`
+  store waits for a cancelled build to end (or its lease to pass), and a build that lost its
+  lease never uploads and deletes an archive it uploaded after losing it.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

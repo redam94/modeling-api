@@ -74,6 +74,10 @@ The deletion becomes `deleting`. This cannot be undone:
    workspace are ended. Components that hand out links (webhooks, embed links) revoke theirs.
 3. Unfinished runs are cancelled again, and the purge waits for them to stop (at most
    `MAPI_DELETION_RUN_STOP_TIMEOUT_S`, one hour).
+4. Exports that are queued or still being built are cancelled (state `failed`). The purge
+   waits for a build in progress to end (at most its `MAPI_EXPORT_BUILD_TIMEOUT_S` lease); a
+   cancelled build never uploads its archive, and deletes one that landed after the purge
+   listed the objects.
 
 Then the purge goes store by store, and `GET /v1/tenants/{id}/deletion` shows each one's
 progress:

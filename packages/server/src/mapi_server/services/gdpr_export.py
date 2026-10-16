@@ -13,6 +13,11 @@ a process that died (an OOM kill, a lost orchestrator): :meth:`ExportBuilder.due
 again once, then fails it (:data:`INTERRUPTED`), so a tenant is never blocked from exporting.
 Only the build that holds the current lease may mark the export ready.
 
+A tenant deletion's start cancels the tenant's queued and running exports
+(:data:`CANCELLED`) and waits for a running build to end (:data:`DISCARDED`) or its lease to
+pass before it purges any store. A build that lost its lease never uploads, and deletes an
+archive it uploaded after losing it, so nothing outlives the purge.
+
 Contents (``include`` selects the parts):
 
 * ``metadata/<table>.jsonl``: every row of every tenant table (projects, members, tokens,
@@ -66,6 +71,8 @@ from mapi_server.services.audit import write_audit
 from mapi_server.services.runs import now as utcnow
 
 __all__ = [
+    "CANCELLED",
+    "DISCARDED",
     "INTERRUPTED",
     "LEASE_SLACK",
     "REDACTED",
@@ -86,6 +93,17 @@ _SPLIT_TABLES: Final = {"audit_events": "audit", "cost_ledger": "usage"}
 INTERRUPTED: Final = "interrupted: built again"
 """``error`` of an export whose first build died: a second death fails it."""
 LEASE_SLACK: Final = timedelta(minutes=5)
+CANCELLED: Final = "cancelled: the workspace is being deleted"
+"""``error`` of an export a tenant deletion cancelled; its build may still be running."""
+DISCARDED: Final = "cancelled: the workspace is being deleted (build ended)"
+"""``error`` once the cancelled export's build has ended without leaving an archive."""
+
+
+def export_lease(settings: Any) -> timedelta:
+    """How long after ``started_at`` a build may still upload its archive."""
+    return timedelta(seconds=settings.export_build_timeout_s) + LEASE_SLACK
+
+
 READ_CHUNK: Final = 8 * 1024 * 1024
 ROW_BATCH: Final = 2000
 _README: Final = """modeling-api data export
@@ -286,7 +304,7 @@ class ExportBuilder:
         self.ctx = ctx
 
     def _lease(self) -> timedelta:
-        return timedelta(seconds=self.ctx.settings.export_build_timeout_s) + LEASE_SLACK
+        return export_lease(self.ctx.settings)
 
     async def recover(self, *, at: datetime | None = None) -> int:
         """Re-queue (once) or fail exports whose build died: ``running`` past the lease."""
@@ -356,6 +374,11 @@ class ExportBuilder:
             data, manifest = await asyncio.wait_for(
                 self._build(tenant_id, export_id, include), timeout
             )
+            if not await self._holds(mine):
+                await self._ended(export_id)
+                log.warning("export %s of tenant %s: cancelled while it was built", export_id,
+                            tenant_id)  # fmt: skip
+                return "discarded"
             await asyncio.wait_for(
                 self.ctx.store.put(bucket, name, data, content_type="application/zip"), timeout
             )
@@ -415,10 +438,24 @@ class ExportBuilder:
             # the lease went to another build, the export was cancelled (a tenant deletion
             # started) or its row is gone (purged): this archive must not stay behind
             await self._discard(bucket, name)
+            await self._ended(export_id)
             log.warning("export %s of tenant %s: lease lost, archive discarded", export_id,
                         tenant_id)  # fmt: skip
             return "discarded"
         return "ready"
+
+    async def _holds(self, mine: Any) -> bool:
+        async with self.ctx.db.session() as s:
+            return (await s.execute(select(m.TenantExport.id).where(mine))).first() is not None
+
+    async def _ended(self, export_id: str) -> None:
+        """Tell a waiting tenant purge that this cancelled build is over."""
+        async with self.ctx.db.session() as s:
+            await s.execute(
+                update(m.TenantExport)
+                .where(m.TenantExport.id == export_id, m.TenantExport.error == CANCELLED)
+                .values(error=DISCARDED)
+            )
 
     async def _discard(self, bucket: str, name: str) -> None:
         try:
