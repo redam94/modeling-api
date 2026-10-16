@@ -121,8 +121,9 @@ def create(
         typer.Option(
             "--scope",
             "-s",
-            help="models:read, runs:create, score:<model id> (score:* for every model), "
-            "datasets:write, plugins:publish, admin (repeatable)",
+            help="models:read, runs:create, score:<endpoint alias> or score:<model id> "
+            "(score:* for every endpoint and model), datasets:write, endpoints:promote, "
+            "webhooks:manage, plugins:publish, admin (repeatable)",
         ),
     ],
     expires_in_days: Annotated[
