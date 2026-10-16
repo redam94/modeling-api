@@ -906,14 +906,14 @@ class AsyncGovernance(_Resource):
     async def update_policy(
         self,
         policy_id: str,
-        policy: GovernancePolicyCreate | Mapping[str, Any] | None = None,
+        policy: GovernancePolicyCreate | GovernancePolicy | Mapping[str, Any] | None = None,
         *,
         tenant_id: str | None = None,
         expected_version: int | None = None,
         **fields: Any,
     ) -> GovernancePolicy:
-        """Save the next version (the whole policy; ``expected_version`` refuses a
-        concurrent edit with ``409 CONFLICT``)."""
+        """Save the next version (the whole policy - a fetched one, edited, may be sent
+        back as it is; ``expected_version`` refuses a concurrent edit with ``409``)."""
         body = policy_update_body(policy, expected_version=expected_version, **fields)
         if tenant_id is not None:
             return await self._c.send(m35.update_tenant_policy(tenant_id, policy_id, body))

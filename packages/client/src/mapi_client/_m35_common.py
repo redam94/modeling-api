@@ -13,6 +13,7 @@ from mapi_spec.api import (
     ArtifactLink,
     DataExploreRequest,
     Exploration,
+    GovernancePolicy,
     GovernancePolicyCreate,
     GovernancePolicyUpdate,
     ModelCompareRequest,
@@ -222,16 +223,27 @@ def _checks(checks: Sequence[PolicyCheck | Mapping[str, Any] | str]) -> list[Pol
     return out
 
 
+_SERVER_POLICY_FIELDS: Final = frozenset(
+    {"id", "tenant_id", "project_id", "scope", "version", "created_at", "created_by"}
+)
+
+
 def policy_body(
-    policy: GovernancePolicyCreate | Mapping[str, Any] | None,
+    policy: GovernancePolicyCreate | GovernancePolicy | Mapping[str, Any] | None,
     *,
     name: str | None = None,
     checks: Sequence[PolicyCheck | Mapping[str, Any] | str] | None = None,
     applies_to: PolicyMatch | Mapping[str, Any] | None = None,
     **fields: Any,
 ) -> GovernancePolicyCreate:
-    """A policy from a :class:`GovernancePolicyCreate` (or mapping) and/or keyword fields.
+    """A policy from a :class:`GovernancePolicyCreate` (or mapping, or a fetched
+    :class:`GovernancePolicy` - its server-owned fields are dropped) and/or keyword fields.
     ``checks`` may be check ids (``"baseline.beats_naive"``) with the catalog defaults."""
+    if isinstance(policy, GovernancePolicy):
+        policy = policy.model_dump(mode="json", by_alias=True)
+    if isinstance(policy, Mapping) and not isinstance(policy, BaseModel):
+        # a fetched policy edited and sent back: the server owns these fields
+        policy = {k: v for k, v in policy.items() if k not in _SERVER_POLICY_FIELDS}
     merged: dict[str, Any] = dict(fields)
     if name is not None:
         merged["name"] = name
@@ -247,7 +259,7 @@ def policy_body(
 
 
 def policy_update_body(
-    policy: GovernancePolicyCreate | Mapping[str, Any] | None,
+    policy: GovernancePolicyCreate | GovernancePolicy | Mapping[str, Any] | None,
     *,
     expected_version: int | None,
     **fields: Any,
