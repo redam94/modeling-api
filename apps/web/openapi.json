@@ -22991,7 +22991,7 @@
             "description": "Problem: RATE_LIMITED"
           }
         },
-        "summary": "Python, TypeScript, curl, R, Apps Script and Atlas code for the endpoint",
+        "summary": "Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint",
         "tags": [
           "endpoints"
         ]

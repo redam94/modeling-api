@@ -847,7 +847,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Python, TypeScript, curl, R, Apps Script and Atlas code for the endpoint
+         * Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint
          * @description Ready-to-run code that scores the endpoint with its example payload. The API token is
          *     read from ``MAPI_TOKEN`` (an Apps Script property): snippets never contain a secret.
          */

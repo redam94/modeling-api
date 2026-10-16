@@ -571,7 +571,7 @@ override the gate.
 | `GET /v1/endpoints/{alias}/schema` | Input schema of the current version and an example payload | — | `EndpointSchema` | 200 | `NOT_FOUND` |
 | `POST /v1/endpoints/{alias}/validate` | Static checks of a score call without running it | `EndpointScoreCall` | `EndpointValidation` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE` |
 | `POST /v1/endpoints/{alias}/rollback` | Point the alias back at an earlier revision's version (audited) | `EndpointRollback` | `Endpoint` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT` |
-| `GET /v1/endpoints/{alias}/snippets` | Python, TypeScript, curl, R, Apps Script and Atlas code for the endpoint | — | `SnippetSet` | 200 | `NOT_FOUND` |
+| `GET /v1/endpoints/{alias}/snippets` | Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint | — | `SnippetSet` | 200 | `NOT_FOUND` |
 
 ### Webhooks
 

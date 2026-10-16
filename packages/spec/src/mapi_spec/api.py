@@ -2324,7 +2324,7 @@ M3_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     ),
     EndpointDecl(
         "GET", _ALIAS + "/snippets", "list_endpoint_snippets",
-        "Python, TypeScript, curl, R, Apps Script and Atlas code for the endpoint",
+        "Python, TypeScript, curl, R, Apps Script, Atlas and notebook code for the endpoint",
         "SnippetSet", 200, errors=_NF, query=("language", "base_url"), headers=_PH,
     ),
     # webhooks

@@ -57,9 +57,11 @@ nothing else.
 
 `GET /v1/endpoints/{alias}/snippets` returns ready-to-run code that scores the endpoint with
 its example payload, in Python (`mapi-client`), TypeScript (`fetch`), curl, R (`httr2`),
-Google Sheets (Apps Script) and Atlas (`RemoteModel`). The generators are pure functions
-(`mapi_spec.snippets.render_snippets`), so the server, the CLI and these docs produce the same
-code. Snippets never contain a secret: they read the token from `MAPI_TOKEN` (a script property
+Google Sheets (Apps Script), Atlas (`RemoteModel`) and a notebook cell
+(`Client().endpoint(alias).score(...)`, which returns an `xarray.Dataset`). The generators are
+pure functions (`mapi_spec.snippets.render_snippets`), so the server, the CLI, the web app and
+these docs produce the same code: the Integrations hub shows and copies the server's snippets
+verbatim. Snippets never contain a secret: they read the token from `MAPI_TOKEN` (a script property
 in Apps Script). Every value is embedded with the language's own literal syntax, and tests
 parse the generated code back to prove a hostile payload cannot escape its string.
 
