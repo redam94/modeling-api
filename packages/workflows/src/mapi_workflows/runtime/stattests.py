@@ -723,7 +723,7 @@ def _granger(ctx: NodeContext) -> NodeOutcome:
         raise data_error(f"test.granger needs more observations for {maxlag} lags")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        out = grangercausalitytests(mat, maxlag=maxlag, verbose=False)
+        out = grangercausalitytests(mat, maxlag=maxlag)
     p_values: dict[str, JsonValue] = {}
     best_lag, best_p, best_f = 1, 1.0, None
     for lag, (tests, _models) in out.items():

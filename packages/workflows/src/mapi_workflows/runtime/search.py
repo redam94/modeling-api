@@ -307,9 +307,15 @@ def _coint_rank(ctx: NodeContext) -> NodeOutcome:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         res = select_coint_rank(mat, det, k_ar, method=method, signif=signif)
+    neqs = len(names)
     rows: list[dict[str, JsonValue]] = [
-        {"r_0": int(r0), "r_1": int(r1), "statistic": float(s), "critical_value": float(c)}
-        for r0, r1, s, c in zip(res.r_0, res.r_1, res.test_stats, res.crit_vals, strict=True)
+        {
+            "r_0": i,
+            "r_1": neqs if method == "trace" else i + 1,
+            "statistic": float(stat),
+            "critical_value": float(crit),
+        }
+        for i, (stat, crit) in enumerate(zip(res.test_stats, res.crit_vals, strict=True))
     ]
     table = TablePayload(
         title="Cointegration rank tests",

@@ -39,7 +39,7 @@ from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.summarise import interp_quantile
 from mapi_spec.capabilities import Representation
 from mapi_spec.errors import ErrorCode, MapiError
-from mapi_spec.schema import Role
+from mapi_spec.schema import DataSchema, Role
 from mapi_spec.spec import ModelSpec, ScoreRequest
 from mapi_workflows.binding import auto_bind, model_input_schema
 from mapi_workflows.payloads import MetricsCandidate, MetricsPayload, TablePayload, clean_number
@@ -50,6 +50,7 @@ from mapi_workflows.runtime.data import (
     season_length,
     target_var,
     time_dim,
+    with_schema,
 )
 from mapi_workflows.runtime.values import DatasetValue, ModelValue, NodeContext, NodeOutcome
 from pydantic import JsonValue
@@ -386,6 +387,16 @@ def _score_window(
     return FoldForecast(actual, pt, lo, hi, mase_scale(cells_of(train[target], tdim), season))
 
 
+def _allow_missing(ds: xr.Dataset, var: str) -> xr.Dataset:
+    """``ds`` whose schema allows missing values in ``var`` (a masked target)."""
+    schema = schema_of(ds)
+    if var not in schema.vars or schema.vars[var].missing != "forbid":
+        return ds
+    doc = schema.model_dump()
+    doc["vars"][var]["missing"] = "allow"
+    return with_schema(ds, DataSchema.model_validate(doc))
+
+
 def _score_masked(
     ctx: NodeContext,
     spec: ModelSpec,
@@ -410,6 +421,7 @@ def _score_masked(
         else (xr.DataArray(mask, dims=[tdim]))
     )
     masked[target] = tgt.where(~m)
+    masked = _allow_missing(masked, target)
     bundle = fit_spec(
         spec, masked, registry=reg, hooks=_hooks(ctx), keep_evaluation_bundle=False, hash_data=False
     )
@@ -464,6 +476,7 @@ def _score_groups(
             train[target] = train[target].where(~held)
         test = data.sel({gdim: [g for g in data[gdim].values if label_of(g) in test_groups]})
         window = slice(int(s0), int(s1) if s1 is not None else None)
+        train = _allow_missing(train, target)
     bundle = fit_spec(
         spec, train, registry=reg, hooks=_hooks(ctx), keep_evaluation_bundle=False, hash_data=False
     )
