@@ -351,6 +351,53 @@ def test_markov_autoregression_forecasts_are_seeded(
     assert bool(np.isfinite(a).all()) and bool((a.diff("quantile") >= 0).all())
 
 
+def test_simulated_ar_regime_forecast_matches_the_exact_one_step_mixture() -> None:
+    """One step ahead, the simulated quantiles of a Markov AR(1) equal the exact mixture
+    over (S_n+1, S_n) built from statsmodels' filtered joint probabilities."""
+    from mapi_plugin_statsmodels._common import Cell
+    from mapi_plugin_statsmodels.markov import (
+        MarkovSwitchingModel,
+        MarkovSwitchingSettings,
+        _simulate_ar,
+    )
+
+    rng = np.random.default_rng(5)
+    n = 160
+    s = np.zeros(n, int)
+    for t in range(1, n):
+        s[t] = s[t - 1] if rng.uniform() < 0.9 else 1 - s[t - 1]
+    mu = np.where(s == 0, 2.0, 6.0)
+    y = mu.copy()
+    for t in range(1, n):
+        y[t] = mu[t] + 0.5 * (y[t - 1] - mu[t - 1]) + rng.normal(0, 0.6)
+    cell = Cell(key={}, y=y, x=None)
+    settings = MarkovSwitchingSettings(order=1, simulations=20_000, switching_ar=False)
+    model = MarkovSwitchingModel().build(cell, settings)
+    res = model.fit(disp=False)
+    paths = _simulate_ar(model, res, cell, settings, None, 1, seed=3)[:, 0]
+
+    p = np.asarray(res.params)
+    trans = np.asarray(res.regime_transition)[:, :, 0]  # [to, from]
+    joint = np.asarray(res.filtered_joint_probabilities)[..., -1]  # [S_n, S_n-1]
+    const = np.array([p[model.parameters[i, "exog"]][0] for i in range(2)])
+    phi = float(p[model.parameters[0, "autoregressive"]][0])
+    sigma = np.array([np.sqrt(p[model.parameters[i, "variance"]][0]) for i in range(2)])
+    w, m, sd = [], [], []
+    for nxt in range(2):
+        for cur in range(2):
+            w.append(trans[nxt, cur] * joint[cur].sum())
+            m.append(const[nxt] + phi * (y[-1] - const[cur]))
+            sd.append(sigma[nxt])
+    exact = mixture_quantiles(
+        np.array(m)[:, None],
+        np.array(w)[:, None],
+        np.array(sd)[:, None],
+        np.array([0.1, 0.5, 0.9]),
+    )[:, 0]
+    got = np.quantile(paths, [0.1, 0.5, 0.9])
+    np.testing.assert_allclose(got, exact, atol=0.05)
+
+
 def test_mixture_quantiles_match_root_finding() -> None:
     mu = np.array([[0.0, 1.0], [3.0, -2.0]])
     w = np.array([[0.3, 0.9], [0.7, 0.1]])
@@ -367,3 +414,49 @@ def test_mixture_quantiles_match_root_finding() -> None:
                 50,
             )
             assert got[i, j] == pytest.approx(ref, abs=1e-8)
+
+
+@pytest.mark.parametrize("order", [0, 2])
+@pytest.mark.parametrize("trend", ["c", "ct", "t"])
+def test_markov_forecast_design_rows_continue_statsmodels_regressors(
+    order: int, trend: str
+) -> None:
+    """The regression rows used for regime means after the fit continue the ones statsmodels
+    builds over the fitted periods (trend numbered over the whole sample, then drivers)."""
+    from mapi_plugin_statsmodels._common import Cell
+    from mapi_plugin_statsmodels.markov import (
+        MarkovSwitchingModel,
+        MarkovSwitchingSettings,
+        _design,
+    )
+
+    rng = np.random.default_rng(order)
+    n = 60
+    x = rng.normal(size=(n, 1))
+    cell = Cell(key={}, y=rng.normal(size=n) + 5, x=x, exog_names=["price"])
+    s = MarkovSwitchingSettings(order=order, trend=trend, exog=["price"])
+    model = MarkovSwitchingModel().build(cell, s)
+    design = _design(model, s, x, np.arange(1, n + 1))
+    np.testing.assert_allclose(design[order:], np.asarray(model.exog), rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("order", [0, 1])
+def test_markov_in_sample_mean_matches_statsmodels_predict(order: int) -> None:
+    from mapi_plugin_statsmodels._common import Cell
+    from mapi_plugin_statsmodels.markov import (
+        MarkovSwitchingModel,
+        MarkovSwitchingSettings,
+        _insample_mixture,
+    )
+
+    rng = np.random.default_rng(order + 10)
+    n = 120
+    s = (np.arange(n) // 30) % 2
+    y = np.where(s == 0, 1.0, 4.0) + rng.normal(0, 0.7, n)
+    cell = Cell(key={}, y=y, x=None)
+    settings = MarkovSwitchingSettings(order=order)
+    model = MarkovSwitchingModel().build(cell, settings)
+    res = model.fit(disp=False)
+    mean, _ = _insample_mixture(model, res, cell, settings)
+    ref = np.asarray(res.predict(probabilities="predicted"))
+    np.testing.assert_allclose(mean[n - ref.size :], ref, rtol=1e-10)
