@@ -224,3 +224,76 @@ def test_pymc_marketing_adapter_passes_the_contract_kit(
     } <= ran
     # a market unseen at fit is rejected: pymc-marketing cannot score new panel levels
     assert "UNSEEN_LEVELS" in report.get("new_level_policies").detail
+
+
+# ------------------------------------------------------------------------- lift tests (M3)
+
+LIFT = """
+calibration:
+  lift_tests:
+    - {id: tv-de, channel: tv, geo: DE, start: 2023-03-06, end: 2023-04-02,
+       spend_delta: -4000, kpi_delta: -6000, se: 1500}
+"""
+
+
+def _lift_inputs() -> tuple[object, object, list[str]]:
+    import pandas as pd
+    from mapi_plugin_mmm.settings import PyMCMarketingSettings
+
+    dates = pd.date_range("2023-03-05", periods=6, freq="W-SUN")
+    frame = pd.DataFrame(
+        {
+            "date": list(dates) * 2,
+            "geo": ["DE"] * 6 + ["NL"] * 6,
+            "tv": [100.0] * 12,
+            "search": [50.0] * 12,
+            "y": [1000.0] * 12,
+        }
+    )
+    s = PyMCMarketingSettings.model_validate({"dims": ["geo"], "adstock": {"l_max": 2}})
+    return frame, s, ["tv", "search"]
+
+
+def test_lift_tests_become_per_period_rows() -> None:
+    from datetime import date
+
+    from mapi_plugin_mmm.pymc_marketing import lift_frame
+    from mapi_spec.calibration import LiftTest
+
+    frame, s, channels = _lift_inputs()
+    base = {"channel": "tv", "geo": "DE", "start": date(2023, 3, 6), "end": date(2023, 4, 2),
+            "spend_delta": -200.0, "kpi_delta": -300.0, "se": 40.0}  # fmt: skip
+    df = lift_frame([LiftTest.model_validate(base)], frame, s, channels)  # type: ignore[arg-type]
+    assert df.to_dict("records") == [
+        {
+            "channel": "tv",
+            "x": 100.0,
+            "delta_x": -50.0,
+            "delta_y": -75.0,
+            "sigma": 10.0,
+            "geo": "DE",
+        }
+    ]
+    later = LiftTest.model_validate({**base, "start": date(2024, 1, 1), "end": date(2024, 2, 1)})
+    assert lift_frame([later], frame, s, channels).empty  # type: ignore[arg-type]
+    for bad, pointer in (
+        ({"geo": None}, "/calibration/lift_tests/0/geo"),
+        ({"geo": "FR"}, "/calibration/lift_tests/0/geo"),
+        ({"channel": "radio"}, "/calibration/lift_tests/0/channel"),
+        ({"spend_delta": -5000.0}, "/calibration/lift_tests/0/spend_delta"),
+    ):
+        with pytest.raises(MapiError) as err:
+            lift_frame([LiftTest.model_validate({**base, **bad})], frame, s, channels)  # type: ignore[arg-type]
+        assert err.value.pointer == pointer
+
+
+@pytest.mark.slow
+def test_a_lift_test_calibrates_the_adapter(
+    data: tuple[xr.Dataset, E33Truth], tables: dict, registry: Registry
+) -> None:
+    spec = load_model_spec(SPEC.replace("mode: evaluate_then_refit", "mode: train_only") + LIFT)
+    assert "lift_tests" in PyMCMarketingMMM.manifest().capabilities.calibration
+    b = fit_spec(spec, data[0], tables, registry, raw_schema=e33_raw_schema(data[0]))
+    assert b.model.learned["calibration"] == {"lift_rows": 1}
+    # pymc-marketing's lift likelihood conditioned the fit
+    assert "lift_measurements" in b.model.groups["observed_data"]
