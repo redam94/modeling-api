@@ -40,16 +40,13 @@ from mapi_spec.calibration import BusinessPriors, LiftTest
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity, parse_pointer
 from mapi_spec.ingest import (
-    BAYESINSIGHT_PLUGIN,
     BayesInsightMetadata,
     BayesInsightModelDef,
     DimMapping,
     IngestMapping,
     IngestPreset,
-    MffOptions,
     VarMapping,
     WideVarMapping,
-    bayesinsight_var_ref,
 )
 from mapi_spec.loader import dump_yaml
 from mapi_spec.refs import DatasetRef
@@ -1375,8 +1372,9 @@ class BayesInsightImport(RequestModel):
         "mmm.hierarchical_geo",
         description="M3: the plugin to import for. mmm.hierarchical_geo (default) maps every "
         "feature with an equivalent and warns about the rest "
-        "(mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight keeps model_def "
-        "verbatim for the planned dedicated plugin",
+        "(mapi_spec.bayesinsight.import_bayesinsight); mmm.bayesinsight runs model_def as "
+        "BayesInsight defines it (likelihoods, priors in KPI units, curves, carry-over, signs, "
+        "random effects, seasons, local trends) and warns about what it cannot run",
     )
 
     model_config = dto_examples(
@@ -1402,82 +1400,16 @@ class BayesInsightImport(RequestModel):
 
 
 def draft_from_bayesinsight(req: BayesInsightImport, *, project: str) -> GuidedDraft:
-    """The draft of an imported BayesInsight model: an MFF ingest with the BayesInsight
-    preset, and a spec for ``mmm.bayesinsight`` that carries ``model_def`` verbatim plus
-    where each analytic variable lives in the dataset.
+    """The draft of an imported BayesInsight model for the dedicated ``mmm.bayesinsight``
+    plugin: an MFF ingest with the BayesInsight preset (every row id a panel dim) and a
+    spec whose settings carry ``model_def`` as the plugin runs it, plus where each analytic
+    variable lives in the dataset (:func:`mapi_spec.bayesinsight.import_bayesinsight` with
+    ``target: mmm.bayesinsight``).
 
-    ``IMPORT_UNSUPPORTED`` errors: no single ``exog`` (KPI) variable, or a variable name
-    that does not match the metadata's row ids.
+    ``IMPORT_UNSUPPORTED`` errors: no single ``exog`` (KPI) variable, no media or control,
+    a variable name that does not match the metadata's row ids, or a series split by key
+    columns outside the row ids; features the plugin cannot run come back as warnings.
     """
-    kpi = req.model_def.kpi
-    if kpi is None:
-        raise MapiError(
-            "model_def.json needs exactly one 'exog' variable (the KPI)",
-            code=ErrorCode.IMPORT_UNSUPPORTED,
-            pointer="/model_def/variable_details",
-        )
-    mff = MffOptions(freq=req.metadata.freq)
-    refs: dict[str, dict[str, Any]] = {}
-    roles: dict[str, str] = {}
-    issues: list[Issue] = []
-    role_of = {"exog": Role.TARGET, "media": Role.SPEND, "control": Role.CONTROL}
-    for i, v in enumerate(req.model_def.variable_details):
-        if v.variable_type in ("season", "localtrend"):
-            if v.variable_type == "localtrend":
-                issues.append(
-                    Issue(
-                        code=ErrorCode.IMPORT_UNSUPPORTED,
-                        severity=Severity.WARNING,
-                        pointer=f"/model_def/variable_details/{i}",
-                        message="local trends are kept in model_def; check that the plugin "
-                        "version supports them",
-                    )
-                )
-            continue
-        try:
-            ref = bayesinsight_var_ref(v.variable_name, req.metadata, mff)
-        except ValueError as exc:
-            raise MapiError(
-                str(exc),
-                code=ErrorCode.IMPORT_UNSUPPORTED,
-                pointer=f"/model_def/variable_details/{i}/variable_name",
-            ) from None
-        refs[v.variable_name] = {"var": ref.variable, "sel": dict(ref.sel)}
-        roles.setdefault(ref.variable, role_of[v.variable_type].value)
-    mff = mff.model_copy(update={"roles": roles})
-    dataset_ref = f"dataset://{project}/{req.dataset}@latest"
-    doc: dict[str, Any] = {
-        "apiVersion": API_VERSION,
-        "kind": "ModelSpec",
-        "metadata": {"name": req.name, "project": project,
-                     "labels": {"family": "mmm", "imported": "bayesinsight"}},
-        "data": {
-            "dataset": dataset_ref,
-            "split": {"kind": "time_holdout", "dim": mff.time_dim, "last": req.holdout_periods},
-        },
-        "model": {
-            "use": BAYESINSIGHT_PLUGIN,
-            "settings": {
-                "model_def": req.model_def.model_dump(mode="json", by_alias=True,
-                                                      exclude={"vof", "artifact", "fitted"}),
-                "variables": refs,
-                "kpi": refs[kpi.variable_name]["var"],
-            },
-            "fit": {"mode": "evaluate_then_refit"},
-        },
-        "evaluate": {"metrics": ["mape", "coverage_90"]},
-        "execution": {"resource_class": "M", "timeout": "45m"},
-    }  # fmt: skip
-    spec = ModelSpec.model_validate(doc)
-    mapping = IngestMapping(
-        format=req.format, preset=IngestPreset.BAYESINSIGHT, mff=mff, bayesinsight=req.metadata
-    )
-    return GuidedDraft(
-        template_id="bayesinsight_import",
-        template_version="1.0.0",
-        dataset_ref=dataset_ref,
-        mapping=mapping,
-        spec=spec.model_dump(mode="json", by_alias=True, exclude_defaults=True),
-        yaml=dump_yaml(spec),
-        issues=issues,
-    )
+    from mapi_spec.bayesinsight import dedicated_draft
+
+    return dedicated_draft(req, project=project)
