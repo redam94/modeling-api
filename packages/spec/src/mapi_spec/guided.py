@@ -718,9 +718,10 @@ def _score(q: GuidedQuestion, col: ColumnProfile) -> tuple[float, list[str]]:
     score, why = 0.1, []
     tokens = _tokens(col.name)
     flat = "".join(tokens)
-    if any(k in tokens for k in q.keywords):
+    exact = next((k for k in q.keywords if k in tokens), None)
+    if exact is not None:
         score += 0.6
-        why.append(f"named like a {q.keywords[0]} column")
+        why.append(f"named like a {exact} column")
     elif any(k in flat for k in q.keywords if len(k) >= 4):
         score += 0.4
         why.append(f"name mentions {next(k for k in q.keywords if len(k) >= 4 and k in flat)}")
