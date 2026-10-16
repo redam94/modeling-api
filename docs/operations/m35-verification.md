@@ -35,8 +35,9 @@ laptop (8 cores, 16 GB, macOS), against a live `make dev` stack:
 `tests/e2e/test_m35_stack.py` (5 tests, the API and the CLI, about 5 minutes) and
 `apps/web/e2e/m35-live.e2e.spec.ts` (7 tests, the browser in Expert and Guided mode, about
 3 minutes including a 90-second seed) both pass. The cookbook run from the CLI reuses the
-canonical run's unchanged unit-root tests from the cache (`cached_from` names that run). The earlier end-to-end suites (M1 to M3) were run against the same
-stack too; see [Full verification set](#full-verification-set).
+canonical run's unchanged unit-root tests from the cache (`cached_from` names that run).
+The earlier end-to-end suites (M1 to M3) were run against the same stack too; see
+[Full verification set](#full-verification-set).
 
 ## What the runs found and fixed
 
@@ -50,15 +51,16 @@ fix has a regression test.
 | Every upload | Uploading data that had been uploaded before - the same file as the next version, or into another dataset or project - failed its ingest with `INTEGRITY_FAILURE` ("ui/explore/index.json already holds different content"). Ingest outputs are stored under the data's content hash, and the Data Explorer views an ingest writes since v0.5 name the dataset version and carry plot timestamps. | Each ingest's explorer views are stored under its run (`t/<tenant>/datasets/<sha>/runs/<run>/ui/explore/`); the data and its sidecars keep the strict same-content check. |
 | mmm-framework | `api.explorations.view(..., "response_curves")` (and `mapi explore --show`) returned the section's list of plots instead of its view, for every section whose name sorts after `plots` (`residuals`, `response_curves`, `stationarity`, `stl`...). | The exact view is looked up first; plot files never match. |
 | Chooser | *Help me choose* ranked `ts.sarimax` sixth for "forecast weekly sales with drivers" although it is the only model that fits all four answers: items silent on a question also scored 1.0 and ties broke on difficulty. | Ties break on the number of answers an item fits explicitly. |
-| Browser | On the dev server, the first page to open a workflow graph crashed with "Invalid hook call" in `ReactFlowProvider`: Vite found the lazily loaded React Flow late, optimised it in a second pass and mixed two copies of React. | React Flow is pre-bundled when the dev server starts (`apps/web/dev-prebundle.ts`). Production builds were not affected. |
+| Browser | On the dev server, the first page to open a workflow graph crashed with "Invalid hook call" in `ReactFlowProvider`, and a route loading while the spec editor's YAML worker first started failed with "Failed to fetch dynamically imported module": Vite found React Flow and the worker's dependency late, optimised them in a second pass and reloaded. | Both are pre-bundled when the dev server starts (`apps/web/dev-prebundle.ts`; a test requires every package a web worker imports to be listed). Production builds were not affected. |
 | Data Explorer | The overview of the most common upload, a time dimension called `time`, read "2 variables over 156 time". | The time dimension is named by its frequency ("156 weeks"). |
 | Guided recipes | A Guided user's first run of a recipe in a project failed with "The recipe did not start: Not Found": the click created the workflow from the template, then posted the run to `/v1/workflows//runs` with the id the page was rendered with. The mock project always had the workflow. | A run can name its workflow; the recipe runs the one it just created. |
 
 ### The earlier journeys, brought up to date
 
-Run against the same stack, three assertions of the M1 and M3 journeys had gone stale with
+Run against the same stack, four assertions of the M1 and M3 journeys had gone stale with
 M3.5 (the product was right): the E33 spec on mmm-framework no longer has scaling or lag
-steps (M1 now checks its currency, weekly and holiday steps); a Guided draft records no
+steps (M1 now checks its currency, weekly and holiday steps), and its scores carry six
+components, not five (the M1 browser flow counts the rows); a Guided draft records no
 units, so the budget plan is checked by its KPI's name; and the M3 webhook receiver verified
 deliveries minutes after they arrived, against the 5-minute signature tolerance (it now
 verifies each delivery at its arrival, as a real receiver does).
