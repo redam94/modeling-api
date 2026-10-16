@@ -125,15 +125,10 @@ def test_inline_payload_named_like_the_endpoint_contract_scores_the_same(
     q = gcs.buckets.quarantine
     gcs.put(q, "t/default/inline/dataset-names.json", _inline(rows))
     gcs.put(q, "t/default/inline/canonical.json", _inline(canonical))
-    results = [
-        run_supervisor(
-            make_run(
-                gcs, RunKind.SCORE, REQUEST,
-                inputs={**fitted["bundle"], INPUT_INLINE_DATA: (q, f"t/default/inline/{key}.json")},
-            )
-        )  # fmt: skip
-        for key in ("dataset-names", "canonical")
-    ]
+    results = []
+    for key in ("dataset-names", "canonical"):
+        inputs = {**fitted["bundle"], INPUT_INLINE_DATA: (q, f"t/default/inline/{key}.json")}
+        results.append(run_supervisor(make_run(gcs, RunKind.SCORE, REQUEST, inputs=inputs)))
     for result in results:
         _ok(result)
     a, b = (_prediction(r) for r in results)
