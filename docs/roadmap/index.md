@@ -11,8 +11,9 @@ timeline
     v0.1 · M0 · contract layer : SDK, specs and schemas : 28 steps, PyMC and sklearn base classes : 11 built-in models, plots, sanitizer : conformance corpus
     v0.2 · M1 · local platform : HTTP API, queue, sandboxed runner : GCS shim, signed bundles : Expert web app, CLI, Python client : make dev and Docker Compose
     v0.3 · M2 · cloud and multi-tenant : tenants, OIDC sign-in, tokens, row-level security : quotas, fair share, cost ledger, kill switches : Cloud Run Jobs executor, Terraform : observability, security suite, chaos
-    v0.4 · M3 · Guided mode and integrations (now) : templates, question flow, business priors : scorecard, what-if, forecasts : endpoints, snippets, webhooks, embeds : sign-up, deletion, GDPR export
-    v0.5 · M4 · expert plugins (next) : plugin upload for allow-listed teams : curated MCP server : in-sandbox optimize jobs : sweeps, backtests, SBC
+    v0.4 · M3 · Guided mode and integrations : templates, question flow, business priors : scorecard, what-if, forecasts : endpoints, snippets, webhooks, embeds : sign-up, deletion, GDPR export
+    v0.5 · M3.5 · workflows and governance (now) : workflows of tests, transforms and models : governance policies and null tests : Data and Model Explorers : mmm-framework and statsmodels : About cards, Help me choose
+    v0.6 · M4 · expert plugins (next) : plugin upload for allow-listed teams : curated MCP server : sweeps and SBC as parent runs
 ```
 
 | Release | Milestone | Theme | Status |
@@ -20,8 +21,9 @@ timeline
 | **v0.1** | M0 | The contract layer: specs, the xarray runtime, steps, models, plots, the conformance corpus, all in your own Python process | <span class="mapi-badge">available</span> |
 | **v0.2** | M1 | [The local platform](platform-api.md): the same work as API calls and sandboxed runs, with the Expert web app, on a laptop or one Docker host | <span class="mapi-badge">available</span> |
 | **v0.3** | M2 | [Cloud and multi-tenant core](cloud.md): tenants, sign-in, tokens, quotas and cost; one fresh sandbox per run on Cloud Run; a private beta | <span class="mapi-badge">available</span> |
-| **v0.4** | M3 | [Guided mode and integrations](guided-ui.md): analysts from spreadsheet to report and scenario; endpoints, webhooks and embeds for other apps; the first public launch | <span class="mapi-badge">this release</span> |
-| **v0.5** | M4 | [Expert plugins, MCP and optimisation jobs](expert-plugins.md): plugin upload for allow-listed teams, a curated MCP server, in-sandbox `optimize`, sweeps and backtests | <span class="mapi-badge mapi-badge--soon">next</span> |
+| **v0.4** | M3 | [Guided mode and integrations](guided-ui.md): analysts from spreadsheet to report and scenario; endpoints, webhooks and embeds for other apps; the first public launch | <span class="mapi-badge">available</span> |
+| **v0.5** | M3.5 | [Workflows, governance, explorers, mmm-framework and statsmodels](../whats-new-0.5.md): automated, versioned analyses; models held to null tests and a second person's approval; About cards and Help me choose | <span class="mapi-badge">this release</span> |
+| **v0.6** | M4 | [Expert plugins, MCP and sweeps](expert-plugins.md): plugin upload for allow-listed teams, a curated MCP server, sweeps and SBC as parent runs | <span class="mapi-badge mapi-badge--soon">next</span> |
 
 ## What v0.4 contains
 
@@ -53,16 +55,33 @@ real Google Cloud project, as for v0.3: the
 cold-start measurements, and public workspaces running on an executor that enforces egress
 and DNS.
 
-## Next: v0.5 · M4, expert plugins, MCP and optimisation jobs
+## What v0.5 contains
+
+- [x] **Workflows**: versioned DAGs of statistical tests, transforms, branches, split plans,
+      order searches, model fits, evaluations, comparisons, governance and reports; live
+      events, caching, schedules and dataset triggers
+      ([cookbook](../guides/workflow-cookbook.md))
+- [x] **Governance**: versioned project and tenant policies, twelve checks including null
+      tests against shuffled targets and placebo regressors, second-person approval,
+      evidence packs, promotion that requires validation
+      ([null tests explained](../guides/null-tests.md))
+- [x] **Data and Model Explorers**, side-by-side comparisons with Diebold-Mariano tests
+- [x] **mmm-framework** as the marketing-mix engine, with in-sandbox **budget optimisation**
+- [x] **Twelve statsmodels** time-series models
+- [x] **About cards** on every selectable item and **Help me choose**
+      ([choosing a model](../guides/choosing-a-model.md))
+- [x] The Python client and the CLI for all of it
+
+## Next: v0.6 · M4, expert plugins, MCP and sweeps
 
 **Allow-listed teams upload their own model plugins**: built into hash-pinned overlays (with
 native wheels from a curated mirror), checked by the contract kit on upload, with fast dev
 overlays and a vetted tier of ported sibling models. A **curated MCP server** gives agents a
-small, injection-safe set of tools. Budget optimisations run as **in-sandbox `optimize`
-jobs** (delivered in v0.5, on mmm-framework), and **`Sweep`, `Backtest` and `SBC`** run as one parent each.
-[More](expert-plugins.md).
+small, injection-safe set of tools. Budget optimisations already run as **in-sandbox
+`optimize` jobs** and backtests as workflow nodes (v0.5); **`Sweep` and `SBC`** run as one
+parent each. [More](expert-plugins.md).
 
-## After v0.5
+## After v0.6
 
 In the order they are planned:
 

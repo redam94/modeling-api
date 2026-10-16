@@ -51,14 +51,14 @@ cloud behaviour not yet confirmed against a real Cloud Run Jobs execution (see
 | Use a leaked token | Tokens are scoped, bound to one project, expire, can carry rate limits and budgets, are revoked at once, and never carry operator powers; failed uses are audited | **Enforced** |
 | Run up a huge bill, or starve everyone else | Quotas in vCPU-seconds per token, tenant and platform; interactive work ahead of batch; a global spend cap; a switch that stops all uploaded code | **Enforced** |
 | Run script in your browser through a plot | A sanitizer, then a sandboxed iframe on another origin with a strict CSP | **Enforced** |
-| Hijack the runner with a malicious package | The supervisor runs in its own environment (`python -I -S`); package uploads are checked for `.pth` and `sitecustomize` | Supervisor isolation **enforced**; uploaded packages arrive with the overlay pipeline (v0.5) |
+| Hijack the runner with a malicious package | The supervisor runs in its own environment (`python -I -S`); package uploads are checked for `.pth` and `sitecustomize` | Supervisor isolation **enforced**; uploaded packages arrive with the overlay pipeline (v0.6) |
 | Slip something into the supply chain | Hash-locked Python, digest-pinned images, a frozen JavaScript lockfile without install scripts, keyless CI identities | **Enforced** in the builds; signed-image enforcement (Binary Authorization) comes with public code upload |
 | Turn a webhook against your network (SSRF) | Static URL checks, one DNS resolution with every address checked, a connection pinned to the checked address, no redirects, time and size caps; private, loopback and link-local addresses and odd ports refused | **Enforced** (to public hosts covered by unit tests; the development allow-list is refused in the `multi-tenant` profile) |
 | Forge or replay a webhook delivery to your receiver | An HMAC-SHA256 signature over a timestamp and the raw body under a per-webhook secret shown once and stored sealed; receivers refuse stale timestamps; envelopes carry ids and states, never data, links or secrets | **Enforced** (`mapi_client.webhooks.verify`) |
 | Use an embed link to see more than one chart | A tokenised link to one saved plot of a platform recipe, stored as a keyed hash; the public view reads no credential, inlines only that plot's data, is rate-limited per link and per address, and stops on revocation or expiry | **Enforced** |
 | Sign up many workspaces to farm free compute | E-mail verification, disposable domains refused, per-address, per-domain and platform-wide sign-up limits, Sybil flags reviewed by operators; `public` workspaces run built-ins and declarative specs only (cut line A), and only on executors that enforce egress and DNS | **Enforced**; vendor identity verification and a public run on such an executor await a deployment |
 | Keep a tenant's data after it leaves | Tenant deletion purges every table and object prefix after a grace period and notifies by signed webhook; a GDPR export with credentials redacted | **Enforced**; only the pseudonymised audit log and the cost ledger are retained |
-| Misuse the MCP server | Curated tools with delimited untrusted text | Not applicable yet: the MCP server comes in v0.5 |
+| Misuse the MCP server | Curated tools with delimited untrusted text | Not applicable yet: the MCP server comes in v0.6 |
 
 The probes that check these rows as hostile code, executor by executor, are the
 [security suite](../operations/security-suite.md).
@@ -208,9 +208,9 @@ escape sequences before printing.
 
 ## What comes next
 
-Plugin upload for allow-listed teams comes in [v0.5](../roadmap/expert-plugins.md), built into
+Plugin upload for allow-listed teams comes in [v0.6](../roadmap/expert-plugins.md), built into
 hash-pinned overlays and checked by the contract kit on upload.
-[Public code upload](../roadmap/index.md#after-v05) (every tenant uploading their own plugins) comes
+[Public code upload](../roadmap/index.md#after-v06) (every tenant uploading their own plugins) comes
 only after a dedicated overlay build pipeline with a curated package mirror, a separate
 execution project for public tenants, Binary Authorization on base images, abuse controls
 (verification before any code runs), a rehearsed kill-switch drill and an external penetration

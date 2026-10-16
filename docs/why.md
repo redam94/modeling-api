@@ -31,7 +31,7 @@ The most common alternative, and a perfectly good one for a single model and a s
 | | Notebook + a small web app | modeling-api |
 |---|---|---|
 | Getting started | Minutes: you already have the notebook | A spec or a `build()` method; Guided templates need no code at all |
-| Freedom | Any library, any code | Any PyMC or scikit-learn model through the plugin contract; built-in models for MMM, forecasting, demand and choice. Your own plugins run today on a deployment you control (installed into its runner); uploading them to a shared deployment comes in v0.5, first for allow-listed teams |
+| Freedom | Any library, any code | Any PyMC or scikit-learn model through the plugin contract; built-in models for MMM, forecasting, demand and choice. Your own plugins run today on a deployment you control (installed into its runner); uploading them to a shared deployment comes in v0.6, first for allow-listed teams |
 | Preprocessing at score time | Copied into the app by hand, or pickled with the model | Declared steps with fitted state, replayed exactly; checked statically for leakage |
 | Forecasts and new groups | Whatever the code does with an unseen row or date | Declared per dim, checked before compute, with typed errors (`UNSEEN_LEVELS`, `HORIZON_EXCEEDS_FIT`, …) |
 | Model versions | File names, a model registry if you set one up | Immutable spec revisions, signed bundles, lineage, endpoints with history and rollback |
@@ -109,7 +109,7 @@ and autoscaling. modeling-api targets a narrower problem and makes different tra
 - **Your model needs the network at run time** (an API, a database): runs have no egress by
   design.
 - **You want hosted public code upload today**: on a shared deployment, uploaded plugins come
-  first to allow-listed teams (v0.5) and to the public only after an external penetration
+  first to allow-listed teams (v0.6) and to the public only after an external penetration
   test. On a deployment you control you can install and run your own plugins now.
 
 ## Where it stands
