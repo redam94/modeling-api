@@ -438,6 +438,12 @@ milestone releases are tagged on `main`.
   every request), and large free-mail domains (`MAPI_SIGNUP_SHARED_EMAIL_DOMAINS`, default
   `mapi_spec.trust.SHARED_EMAIL_DOMAINS`) have no per-domain cap and never trip the
   `domain_burst` Sybil flag.
+- **server**: the plan's draw cap (Q2: 300, 500 on paid tiers) was enforced only by the
+  Python client, so any caller could ask a model or endpoint for 10,000 draws. Score
+  requests asking for more than the tenant tier's `MAX_SCORE_DRAWS` (`public` 300, other
+  tiers 500) are refused with `QUOTA_EXCEEDED` at `/output/draws`, and the score job carries
+  the cap (`ScoreJob.max_draws`: score runs now store a `{request, max_draws}` payload) so the
+  runner enforces it too.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

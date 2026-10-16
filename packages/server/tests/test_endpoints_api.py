@@ -382,8 +382,8 @@ async def test_scoring_through_the_alias(client: httpx.AsyncClient, ctx: ServerC
         run = await s.get(m.Run, run_id)
         via = await s.get(m.EndpointRun, run_id)
         assert run is not None and via is not None
-        assert run.payload["model"] == "model://default/trend@v1"
-        assert run.payload["horizon"] == {"dim": "t", "periods": 6}
+        assert run.payload["request"]["model"] == "model://default/trend@v1"
+        assert run.payload["request"]["horizon"] == {"dim": "t", "periods": 6}
         assert (via.alias, via.revision) == ("trend-prod", 1)
     # inline data is stored (content-addressed) as a run input, decoded only in the sandbox
     inline = {
@@ -400,7 +400,7 @@ async def test_scoring_through_the_alias(client: httpx.AsyncClient, ctx: ServerC
         assert run is not None
         ref = run.inputs["inline.data"]
         assert ref["bucket"] == ctx.buckets.quarantine and "/inline/" in ref["name"]
-        assert "data" not in run.payload
+        assert "data" not in run.payload["request"]
     stored = json.loads(await ctx.store.get(ref["bucket"], ref["name"]))
     assert stored["data_vars"]["y"]["data"] == [1.0, 2.0]
     # invalid calls are refused before anything is created
@@ -409,6 +409,53 @@ async def test_scoring_through_the_alias(client: httpx.AsyncClient, ctx: ServerC
         json={"mode": "forecast", "horizon": {"dim": "nope", "periods": 2}},
     )
     assert r.status_code == 422 and r.json()["code"] == "COORD_NOT_ALLOWED"
+
+
+async def _tier(ctx: ServerContext, tier: str) -> None:
+    async with ctx.db.session() as s:
+        tenant = await s.get(m.Tenant, "default")
+        assert tenant is not None
+        tenant.trust_tier = tier
+
+
+async def test_returned_draws_are_capped_per_tier(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """Q2: draws on request, at most 300 (500 on paid tiers), enforced by the server."""
+    mv = await fitted_version(ctx)
+    await client.put("/v1/endpoints/trend-prod", json={"model": "model://default/trend@v1"})
+
+    def call(draws: int) -> dict[str, Any]:
+        return {
+            "mode": "forecast",
+            "horizon": {"dim": "t", "periods": 2},
+            "output": {"kind": "predictive", "draws": draws},
+        }
+
+    await _tier(ctx, "public")
+    for path in ("/v1/endpoints/trend-prod/score", "/v1/endpoints/trend-prod/validate"):
+        r = await client.post(path, json=call(301))
+        body = r.json()
+        issues = body.get("errors") or body.get("issues") or []
+        assert any(
+            i["code"] == "QUOTA_EXCEEDED" and i["pointer"] == "/output/draws" for i in issues
+        ), (path, body)
+        assert "at most 300 draws" in json.dumps(body)
+    r = await client.post("/v1/endpoints/trend-prod/score", json=call(300))
+    assert r.status_code == 202, r.text
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, r.json()["run"]["id"])
+        assert run is not None and run.payload["max_draws"] == 300  # the runner enforces it too
+    # a model score through POST /v1/models/...:score is capped the same way
+    request = {"apiVersion": "mapi/v1", "kind": "ScoreRequest",
+               "model": "model://default/trend@v1", **call(301)}  # fmt: skip
+    r = await client.post(f"/v1/models/{mv.model_id}/versions/1:score", json={"request": request})
+    assert r.status_code in (409, 422, 429) and "at most 300 draws" in r.text, r.text
+    # paid tiers: 500
+    await _tier(ctx, "verified")
+    assert (await client.post("/v1/endpoints/trend-prod/score", json=call(500))).status_code == 202
+    r = await client.post("/v1/endpoints/trend-prod/score", json=call(501))
+    assert r.status_code >= 400 and "at most 500 draws" in r.text
 
 
 async def test_score_bodies_are_capped_and_depth_checked(

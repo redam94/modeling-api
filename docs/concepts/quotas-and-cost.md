@@ -59,6 +59,12 @@ Default tenant limits by trust tier (operators override them per tenant with
 | `internal` | — | — | 100 | 1,000 | — | 6,000 |
 | `self-hosted-trusted` | — | — | — | — | — | — |
 
+**Returned draws.** A score request returns a summary by default (no draws). Draws on request
+(`output.draws`) are capped per tier: at most 300 on `public`, 500 on every other tier
+(`mapi_spec.quotas.MAX_SCORE_DRAWS`). More is refused with `QUOTA_EXCEEDED` at
+`/output/draws`, whether the call comes through `POST /v1/models/…:score`, an endpoint, or
+its `…/validate`; the score job carries the cap and the runner enforces it again.
+
 ## Interactive and batch work
 
 Each run has a priority class:

@@ -66,4 +66,4 @@ async def test_forecasts_get_the_fit_dataset_when_they_extend_covariates(
             dv = await s.get(m.DatasetVersion, (fit.dataset_id, fit.dataset_version))
             assert dv is not None
             assert run.inputs[INPUT_HISTORY]["name"] == dv.objects["data.zarr.zip"]["name"]
-            assert run.payload["future_covariates"] == policy
+            assert run.payload["request"]["future_covariates"] == policy

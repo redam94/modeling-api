@@ -333,7 +333,7 @@ async def test_score_with_prefer_wait_returns_202_while_running(
         score_run = await s.get(m.Run, result["run"]["id"])
         assert score_run is not None
         assert score_run.inputs["bundle"]["bucket"] == ctx.buckets.bundles
-        assert score_run.payload["model"] == "model://default/trend@v1"
+        assert score_run.payload["request"]["model"] == "model://default/trend@v1"
     # the URL's version must match the request's model ref
     wrong = {**body, "request": {**body["request"], "model": "model://default/trend@v9"}}
     assert (await client.post(url, json=wrong)).status_code == 422
