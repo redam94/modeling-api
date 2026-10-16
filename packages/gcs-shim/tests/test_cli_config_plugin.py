@@ -19,6 +19,7 @@ from mapi_gcs_shim.__main__ import main
 from mapi_gcs_shim.config import (
     PRINCIPAL_CONTROL,
     PRINCIPAL_EXEC,
+    WRITE_ONCE_RETENTION_SECONDS,
     BucketConfig,
     PrincipalConfig,
     ShimConfig,
@@ -27,6 +28,7 @@ from mapi_gcs_shim.config import (
     default_config,
     init_root,
     key_file_path,
+    load_config,
 )
 from mapi_gcs_shim.iam import Binding, Permission
 from pydantic import SecretStr, ValidationError
@@ -248,3 +250,34 @@ def test_background_sweeper_runs(tmp_path: Path) -> None:
         while httpx.get(url, headers=shim.auth_headers()).status_code != 404:
             assert time.monotonic() < deadline, "the lifecycle sweeper never ran"
             time.sleep(0.05)
+
+
+@pytest.mark.parametrize(
+    ("argv", "env", "want"),
+    [
+        ([], None, (WRITE_ONCE_RETENTION_SECONDS, True)),  # write-once, as before
+        (["--bundle-retention-days", "30"], None, (30 * 86400, True)),  # the deployed bucket
+        ([], "0", (None, False)),  # a test stack: no retention at all
+    ],
+)
+def test_the_bundles_retention_is_chosen_when_the_root_is_created(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    argv: list[str],
+    env: str | None,
+    want: tuple[int | None, bool],
+) -> None:
+    if env is None:
+        monkeypatch.delenv("MAPI_BUNDLE_RETENTION_DAYS", raising=False)
+    else:
+        monkeypatch.setenv("MAPI_BUNDLE_RETENTION_DAYS", env)
+    root = tmp_path / "gcs"
+    assert main(["init", "--root", str(root), *argv]) == 0
+    bundles = next(b for b in load_config(config_path(root)).buckets if "bundles" in b.name)
+    assert (bundles.retention_period_seconds, bundles.retention_locked) == want
+    # an existing root keeps its (possibly locked) policy
+    assert main(["init", "--root", str(root), "--bundle-retention-days", "1"]) == 0
+    again = next(b for b in load_config(config_path(root)).buckets if "bundles" in b.name)
+    assert again == bundles
+    with pytest.raises(ValueError, match="0 or more"):
+        main(["init", "--root", str(tmp_path / "other"), "--bundle-retention-days", "-1"])
