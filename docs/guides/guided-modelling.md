@@ -216,6 +216,24 @@ intervention per changed channel. At grid points the two agree **per draw** to f
 precision: the grid is computed from the same fitted curves, and linear preprocessing passes
 the multiplier through unchanged (`packages/runner/tests/test_guided.py` checks it).
 
+## Future covariates
+
+A forecast needs the future values of its covariates - spend, prices. Guided forecasts do not
+ask for an upload: `ScoreRequest.future_covariates` says how the runner extends the ones the
+payload lacks, per series, from the fitted history (the server passes the model's fit dataset
+to the score run as its `history` input):
+
+| Policy | Future values |
+|---|---|
+| `supplied` (default for API callers) | from the request's data or scenario; missing ones are `MISSING_FUTURE_COVARIATE` |
+| `carry_last` (default in Guided mode) | the last observed value of each series |
+| `seasonal_naive` | the last observed year repeated (52 weeks, 12 months, 365 days...); a shorter history falls back to `carry_last` with a warning |
+| `zero` | zero - "no spend planned" |
+
+Values the payload does supply are never replaced, and interventions apply after the fill, so
+**budget × k** over a horizon scales the carried-forward spend. The score result's `issues`
+name what was filled.
+
 ## Forecast and counterfactual views
 
 A `forecast` score run writes `ui/guided/forecast.json` (`mapi.forecast/v1`): the actual KPI

@@ -60,6 +60,11 @@ milestone releases are tagged on `main`.
   `prepare_model_stage` for runs that build but do not fit a model; the optional
   `translate_priors` plugin hook. **sdk-pymc**: `PyMCModel.prior_overlap_vars` keeps cheap
   prior draws for the scorecard's new `plausibility.prior_overlap` check.
+- **sdk/runner/server**: forecasts extend the covariates their payload lacks
+  (`ScoreRequest.future_covariates`: `carry_last`, `seasonal_naive`, `zero`) from the fitted
+  history (`mapi_sdk.future`); the server passes the fit dataset as the score run's `history`
+  input. `mapi_server.services.scorecards.promotion_decision` derives the promotion gate from
+  a stored model version.
 - **plots**: `mmm.prior_beliefs` (each channel's prior ROI or share against the stated range).
 - **docs**: Guided modelling (the translation math, the lift-test likelihood, how each
   scorecard check is measured, the what-if, forecast and counterfactual views).
