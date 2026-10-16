@@ -304,6 +304,14 @@ docs-screenshots-explorers: ## Recapture the v0.5 explorer, About-card, chooser 
 		$(PNPM) --filter @mapi/web exec playwright test e2e/explorer-screenshots.spec.ts
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-explorers docs/assets/screenshots --max-kb 150 --only $(DOCS_EXPLORER_SHOTS)
 
+DOCS_WORKFLOW_SHOTS := workflows-gallery,workflows-editor,workflows-run-monitor,workflows-node-drawer,workflows-decisions,workflows-schedule,workflows-recipe,governance-policies,governance-policy,governance-policy-editor,governance-review-queue,governance-validation,governance-evidence
+
+.PHONY: docs-screenshots-workflows
+docs-screenshots-workflows: ## Recapture the v0.5 workflow and governance screenshots from mock mode (Playwright)
+	MAPI_WORKFLOW_SCREENSHOTS=1 MAPI_SMOKE_WEB_PORT=$${MAPI_SMOKE_WEB_PORT:-15183} MAPI_SMOKE_PLOTS_PORT=$${MAPI_SMOKE_PLOTS_PORT:-15184} \
+		$(PNPM) --filter @mapi/web exec playwright test e2e/workflow-screenshots.spec.ts
+	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-workflows docs/assets/screenshots --max-kb 150 --only $(DOCS_WORKFLOW_SHOTS)
+
 ## ---------------------------------------------------------------- release
 .PHONY: release-check
 release-check: ## One version everywhere, a dated CHANGELOG entry, no plan files tracked, pinned images
