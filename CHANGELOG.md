@@ -323,6 +323,21 @@ milestone releases are tagged on `main`.
 - **docs**: the v0.4 sections of the Python client and command-line guides, "Optimise a budget
   with Atlas" and "Receiving webhooks" (FastAPI and Flask), with offline, tested snippets.
 
+- **integration (web)**: Guided mode and the Integrations hub work as one.
+  - The Share step links into the hub: the promoted endpoint's snippets, a `score:<alias>`
+    token, the chart link under Plots and links, and the hub itself (typed routes). A project
+    locked to Guided mode keeps Integrations in the navigation.
+  - Both use the same endpoint and saved-plot queries and the same promotion-gate preview (the
+    port of `promotion_gate`), so a promotion or link made in one shows in the other at once;
+    in mock mode they share one endpoint, history, plot and embed state.
+  - Every snippet the app shows and copies is the server's (`mapi_spec.snippets`), the notebook
+    cell included; the mock's fixture endpoint, example call and snippets are generated from
+    `mapi_spec` (`apps/web/scripts/gen_integration_fixtures.py`, checked by `make web-check`
+    and CI, rewritten by `make snapshots`), and a test checks each tab against them.
+- **spec**: a `notebook` snippet language: a Jupyter or marimo cell that scores the endpoint
+  with `Client().endpoint(alias).score(...)` and shows an `xarray.Dataset`; the client's tests
+  run it as generated.
+
 ### Changed
 - **spec**: `mapi_spec.api.ENDPOINTS` is the v0.4 surface (M1 + M2 + M3, every row served);
   `V03_ENDPOINTS` keeps the v0.3 table and `ALL_ENDPOINTS` is an alias of `ENDPOINTS`.
@@ -349,6 +364,16 @@ milestone releases are tagged on `main`.
   `index` dim with an `extend` policy no longer fails with `NON_CONTIGUOUS_EXTENSION`.
 - **sdk**: cell-level splits treat an empty text target as missing and hold text targets out
   with `''`, so a choice panel's chosen product can be held out.
+- **runner**: the `holdout.mape` scorecard check read `mapi_sdk`'s MAPE, which is in percent,
+  against thresholds in fractions, so a 1.4% holdout error showed as 140% and blocked the
+  promotion of almost every model; percent metrics are now divided by 100 first.
+- **runner**: inline endpoint payloads named like the endpoint's input contract (canonical
+  names such as `time`) failed to score when the dataset's own name differed (`week`); the
+  score run renames them to the dataset's names before typing coordinates. The snapshot's
+  documentation says which names a payload uses.
+- **spec**: an endpoint's example call (`GET …/schema`, the snippets, `mapi endpoints score
+  --example`) asked quantile models for a `mean` they cannot serve; it now asks for the
+  representation's default summary.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
