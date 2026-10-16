@@ -426,6 +426,12 @@ milestone releases are tagged on `main`.
   hop as the client; any other peer's header is ignored. The multi-tenant profile refuses to
   start without it (`none` when clients connect directly); Terraform sets Cloud Run's and the
   load balancer's hops and `make dev` sets `none` for its multi-tenant stack.
+- **server**: a promoter, an `endpoints:promote` token included, could switch off the
+  schema-change and train-only gates by sending a laxer `evaluation_policy` with the
+  promotion. Relaxing the policy (`schema_change` toward `allow`, `fit_mode` to `train_only`)
+  now needs a signed-in endpoint admin, like an override (`403 FORBIDDEN` otherwise, audited
+  as a denial), and the promotion's audit event records the policy before and after
+  (`mapi_spec.endpoints.policy_relaxations`).
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

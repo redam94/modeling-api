@@ -41,6 +41,7 @@ from mapi_spec.endpoints import (
     EndpointScoreCall,
     EvaluationPolicy,
     endpoint_ref,
+    policy_relaxations,
     schema_breaks,
 )
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
@@ -334,9 +335,32 @@ async def promote(
     if row is None and auth is not None:
         auth.require(Action.CREATE, ResourceKind.ENDPOINT, resource_name=alias)
     mv = await _resolve_version(session, scope, body)
-    policy = body.evaluation_policy or (
-        EvaluationPolicy.model_validate(row.evaluation_policy) if row else EvaluationPolicy()
+    stored = EvaluationPolicy.model_validate(row.evaluation_policy) if row else EvaluationPolicy()
+    policy = body.evaluation_policy or stored
+    can_override = (
+        auth.allows(Action.MANAGE, ResourceKind.ENDPOINT, resource_name=alias)
+        if (auth is not None)
+        else True
     )
+    relaxed = policy_relaxations(stored, policy)
+    if relaxed and not can_override:
+        # a laxer policy disarms the gate like an override does: the same people only
+        obs_metrics.record_endpoint_promotion("forbidden")
+        await _audit(
+            ctx,
+            None,
+            AuditAction.ENDPOINT_PROMOTE,
+            row.id if row else None,
+            outcome=AuditOutcome.DENIED,
+            code=ErrorCode.FORBIDDEN,
+            details={"alias": alias, "model_version_id": mv.id, "relaxes": list(relaxed)},
+        )
+        raise MapiError(
+            "relaxing the endpoint's evaluation policy ("
+            + "; ".join(relaxed)
+            + ") needs a signed-in endpoint admin, like a gate override; API tokens never can",
+            code=ErrorCode.FORBIDDEN,
+        )
     if (
         row is not None
         and row.model_version_id == mv.id
@@ -357,11 +381,6 @@ async def promote(
         current = None  # same version: its contract is the one callers already use
     decision, snapshot = await evaluate_gate(session, mv, policy, current=current)
     model_ref = await model_ref_of(session, mv)
-    can_override = (
-        auth.allows(Action.MANAGE, ResourceKind.ENDPOINT, resource_name=alias)
-        if (auth is not None)
-        else True
-    )
     try:
         overridden = authorize_promotion(
             decision, override=body.override, reason=body.reason, can_override=can_override
@@ -456,6 +475,11 @@ async def promote(
         "previous_model_version_id": previous,
         "gate": decision.outcome.value,
     }
+    if policy != stored:
+        details["evaluation_policy"] = {
+            "from": stored.model_dump(mode="json"),
+            "to": policy.model_dump(mode="json"),
+        }
     if created:
         await _audit(ctx, session, AuditAction.ENDPOINT_CREATE, row.id, details=details)
     await _audit(ctx, session, AuditAction.ENDPOINT_PROMOTE, row.id, details=details)

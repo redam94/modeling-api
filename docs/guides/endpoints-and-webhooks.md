@@ -57,6 +57,12 @@ The **promotion gate** decides whether the version may serve:
 | Its scorecard fails, the fit was interrupted, or it was fitted `train_only` | `409 PROMOTION_BLOCKED` |
 | It expects different input (a dim removed, a new required variable, ...) | Blocked by default; the endpoint's `schema_change` policy can make it `warn` or `allow` |
 
+Relaxing the endpoint's `evaluation_policy` (`schema_change` from `block` to `warn` or
+`allow`, or `fit_mode` to `train_only`) disarms the gate as an override does, so only a
+signed-in project admin may send a laxer policy; an `endpoints:promote` token gets
+`403 FORBIDDEN` (the same or a stricter policy is fine). The promotion's audit event records
+the policy before and after.
+
 Each refusal lists the gate's reasons in the problem's `errors`, with the scorecard check
 that caused it:
 

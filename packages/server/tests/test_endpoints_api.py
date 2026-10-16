@@ -230,6 +230,70 @@ async def test_breaking_input_changes_follow_the_schema_policy_and_rollback(
     assert ("endpoint.delete", "success") in await _audit_actions(ctx)
 
 
+async def test_a_laxer_evaluation_policy_needs_an_admin(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """A promoter (an ``endpoints:promote`` token) cannot switch off the schema or
+    train-only gates by sending a laxer policy with the promotion: that is an admin's
+    decision, like an override, and the policy change is audited."""
+    v1 = await fitted_version(ctx)
+    v2 = await refit_version(ctx, v1)
+    assert (
+        await client.put("/v1/endpoints/p", json={"model_version_id": v1.id})
+    ).status_code == 200
+    meta = json.loads(json.dumps(v2.score_meta))
+    meta["resolved"]["stages"]["raw"]["vars"]["price"] = {
+        "dims": ["t"], "dtype": "float64", "role": "covariate",
+    }  # fmt: skip
+    await _set(ctx, v2.id, score_meta=meta)
+    owner = await make_user(ctx, "owner@default.test")
+    await grant_role(ctx, owner, "default", "default", "admin")
+    promo = token_caller(
+        client, await make_token(ctx, owner, "default", "default", ["endpoints:promote"])
+    )
+    r = await promo.put("/v1/endpoints/p", json={"model_version_id": v2.id})
+    assert r.status_code == 409 and r.json()["code"] == "PROMOTION_BLOCKED"
+    lax = {"schema_change": "allow", "fit_mode": "train_only"}
+    r = await promo.put("/v1/endpoints/p", json={"model_version_id": v2.id,
+                                                 "evaluation_policy": lax})  # fmt: skip
+    assert r.status_code == 403 and r.json()["code"] == "FORBIDDEN", r.text
+    assert "evaluation policy" in r.json()["detail"]
+    ep = (await client.get("/v1/endpoints/p")).json()
+    assert ep["revision"] == 1 and ep["evaluation_policy"]["schema_change"] == "block"
+    # a new endpoint starts from the default policy: a token cannot create a lax one either
+    r = await promo.put("/v1/endpoints/q", json={"model_version_id": v1.id,
+                                                 "evaluation_policy": lax})  # fmt: skip
+    assert r.status_code == 403
+    # the same or a stricter policy is fine for the token
+    strict = {"model_version_id": v1.id, "evaluation_policy": {"schema_change": "block"}}
+    r = await promo.put("/v1/endpoints/q", json=strict)
+    assert r.status_code == 200, r.text
+    # a signed-in admin may relax it; the audit records the change
+    admin = await session_caller(ctx, client, owner)
+    r = await admin.put("/v1/endpoints/p", json={"model_version_id": v2.id,
+                                                 "evaluation_policy": lax})  # fmt: skip
+    assert r.status_code == 200 and r.json()["revision"] == 2, r.text
+    async with ctx.db.session() as s:
+        rows = (
+            (
+                await s.execute(
+                    select(m.AuditEvent).where(
+                        m.AuditEvent.action == "endpoint.promote", m.AuditEvent.outcome == "success"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        changed = [r for r in rows if "evaluation_policy" in (r.details or {})]
+        [ev] = [r for r in changed if r.details["alias"] == "p"]
+        assert ev.details["evaluation_policy"] == {
+            "from": {"fit_mode": "evaluate_then_refit", "schema_change": "block"},
+            "to": lax,
+        }
+    assert ("endpoint.promote", "denied") in await _audit_actions(ctx)
+
+
 async def test_schema_example_validate_and_snippets(
     client: httpx.AsyncClient, ctx: ServerContext
 ) -> None:
