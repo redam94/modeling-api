@@ -216,6 +216,8 @@ class HierarchicalGeoMMM(PyMCModel[HierarchicalGeoSettings]):
     pad_extend = False
     default_engine = "nutpie"
     fast_score_spec = FrozenPredictorSpec(response_exprs={"y_hat": "mu"}, input_vars=[SPEND])
+    prior_overlap_vars = ("beta_channel", "alpha", "theta", "lam", "slope", "half")
+    """Media parameters whose prior/posterior overlap the scorecard reports."""
     _lift: LiftDesign | None = None
     """The lift-test cells of the fit in progress (set by :meth:`fit` around the build)."""
 

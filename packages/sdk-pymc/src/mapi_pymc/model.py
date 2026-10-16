@@ -96,7 +96,11 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
     * ``predictive`` - ``{output: observed RV name}`` (default: the output's own name);
     * ``default_engine`` - engine when the spec names none (default nutpie, else pymc);
     * ``fast_score_spec`` - a :class:`~mapi_pymc.frozen.FrozenPredictorSpec` enabling
-      :meth:`frozen_predictor` (the manifest then declares ``fast_score``).
+      :meth:`frozen_predictor` (the manifest then declares ``fast_score``);
+    * ``prior_overlap_vars`` - free parameters whose prior draws (``prior_overlap_draws``,
+      forward sampling only, so cheap) are kept as the ``prior`` group when the spec keeps
+      no prior itself, so the sanity scorecard can measure how much the data moved them
+      (M3, ``plausibility.prior_overlap``). Empty (the default) keeps nothing.
     """
 
     capabilities: ClassVar[Capabilities] = DEFAULT_CAPABILITIES
@@ -104,6 +108,8 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
     predictive: ClassVar[Mapping[str, str]] = {}
     default_engine: ClassVar[str | None] = None
     fast_score_spec: ClassVar[FrozenPredictorSpec | None] = None
+    prior_overlap_vars: ClassVar[tuple[str, ...]] = ()
+    prior_overlap_draws: ClassVar[int] = 200
 
     # ------------------------------------------------------------------ author API
     def build(self, ds: xr.Dataset, s: SettingsT, ctx: BuildContext) -> pm.Model:
@@ -250,6 +256,10 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
                 groups["prior"] = _clean(_child(prior, "prior"), engine)
                 if cfg.prior_predictive is not None and "prior_predictive" in prior.children:
                     groups["prior_predictive"] = _clean(_child(prior, "prior_predictive"), engine)
+            if "prior" not in groups and result.plan.mcmc:
+                overlap = self._overlap_prior(model, seed)
+                if overlap is not None:
+                    groups["prior"] = _clean(overlap, engine)
             if keep.posterior_predictive and bctx.observed_vars:
                 thin = (
                     keep.posterior_predictive.thin
@@ -262,6 +272,17 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
                 )
                 groups["posterior_predictive"] = _clean(_child(pp, "posterior_predictive"), engine)
         return groups
+
+    def _overlap_prior(self, model: pm.Model, seed: int | None) -> xr.Dataset | None:
+        """Prior draws of :attr:`prior_overlap_vars` (``None`` when none applies)."""
+        free = {rv.name for rv in model.free_RVs}
+        names = [n for n in self.prior_overlap_vars if n in free]
+        if not names or self.prior_overlap_draws <= 0:
+            return None
+        prior = pm.sample_prior_predictive(
+            draws=self.prior_overlap_draws, model=model, var_names=names, random_seed=seed
+        )
+        return _child(prior, "prior")
 
     # ------------------------------------------------------------------ score
     def score(

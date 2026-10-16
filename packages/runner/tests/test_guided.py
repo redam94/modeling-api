@@ -103,7 +103,10 @@ def test_the_scorecard_measures_every_check_it_can(
         "data.history",
         "data.spend_variation",
     }
-    assert "no prior draws" in card.skipped["plausibility.prior_overlap"]
+    assert not card.skipped  # the MMM keeps cheap prior draws of its media parameters
+    overlap = next(i for i in card.items if i.check == "plausibility.prior_overlap")
+    assert overlap.message_expert is not None
+    assert any(p in overlap.message_expert for p in ("beta_channel", "alpha", "lam"))
     for item in card.items:
         assert item.message_plain and item.docs_anchor and item.category and item.metric
         assert item.message_expert  # what was measured, on which parameter/channel

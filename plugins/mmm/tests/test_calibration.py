@@ -218,9 +218,7 @@ def test_unknown_channels_zero_spend_and_ranges_from_zero() -> None:
 
 
 def test_a_range_tighter_than_the_other_priors_is_reported() -> None:
-    outcome, _, _ = _translate(
-        {"channels": {"tv": {"roi": [2.0, 2.02], "credibility": 0.95}}}
-    )
+    outcome, _, _ = _translate({"channels": {"tv": {"roi": [2.0, 2.02], "credibility": 0.95}}})
     assert any("narrower" in i.message for i in outcome.issues)
 
 

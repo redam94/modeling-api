@@ -107,5 +107,5 @@ async def create_prior_translation(
 )
 async def get_prior_translation(ctx: Ctx, session: Session, run_id: RunId) -> PriorTranslation:
     """``done`` once the run is terminal; ``result`` only when it succeeded (a failed run's
-    problem is on ``run.error``)."""
+    problem is on ``run.problem``)."""
     return await _view(ctx, session, run_id)

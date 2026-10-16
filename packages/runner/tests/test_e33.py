@@ -13,9 +13,9 @@ import pytest
 from mapi_conformance.fixtures.e33 import data as e33
 from mapi_sdk.wire import read_arrow_ipc, read_datatree_zip, write_zarr_zip
 from mapi_spec.api import ValidateResponse
+from mapi_spec.calibration import PriorTranslationResult
 from mapi_spec.executor import RunKind
 from mapi_spec.loader import canonical_json, load_model_spec
-from mapi_spec.calibration import PriorTranslationResult
 from mapi_spec.run import ErrorPayload, OutputManifest, RunnerExit, verify_output_objects
 from mapi_spec.scorecard import SCORECARD_OUTPUT, Scorecard
 from mapi_spec.views import (

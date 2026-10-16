@@ -33,8 +33,14 @@ calibration:
 """
 
 
-def _lift_of(bundle: Bundle, spec_text: str, data: xr.Dataset, registry: Registry,
-             tables: dict[str, xr.Dataset], raw_schema: DataSchema) -> tuple[float, float]:
+def _lift_of(
+    bundle: Bundle,
+    spec_text: str,
+    data: xr.Dataset,
+    registry: Registry,
+    tables: dict[str, xr.Dataset],
+    raw_schema: DataSchema,
+) -> tuple[float, float]:
     """Posterior-mean implied lift of the test (and its sd) under ``bundle``."""
     stage = prepare_model_stage(
         load_model_spec(spec_text), data, tables, registry, raw_schema=raw_schema
@@ -98,7 +104,9 @@ def test_unknown_business_prior_channels_fail_the_fit(
     registry: Registry,
     raw_schema: DataSchema,
 ) -> None:
-    text = spec_text() + "calibration:\n  business_priors:\n    channels:\n      radio: {roi: [1, 2]}\n"
+    text = spec_text() + (
+        "calibration:\n  business_priors:\n    channels:\n      radio: {roi: [1, 2]}\n"
+    )
     with pytest.raises(MapiError) as err:
         fit_spec(load_model_spec(text), small[0], tables, registry, raw_schema=raw_schema)
     assert err.value.code is ErrorCode.BUSINESS_PRIORS_INVALID

@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Guided prior translations (M3): ``/v1/guided/prior-translations`` end to end against the
 real ``mmm.hierarchical_geo`` catalog entry - static checks, the pinned ``translate_priors``
 run, finalization of its ``priors.json`` and tenant isolation - plus the runner scorecard
