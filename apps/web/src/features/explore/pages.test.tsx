@@ -49,9 +49,10 @@ describe("About cards", () => {
   it("starts each kind of item in the right place", () => {
     expect(startTarget("template", "geo_mmm")).toMatchObject({ to: "/guided/new/$templateId", params: { templateId: "geo_mmm" } });
     expect(startTarget("model", "ts.ets")).toMatchObject({ to: "/build/new", search: { model: "ts.ets" } });
-    expect(startTarget("workflow_template", "workflow.ts_readiness_arimax", () => true)).toMatchObject({ href: "/workflows/new?template=ts_readiness_arimax" });
-    expect(startTarget("workflow_template", "workflow.ts_readiness_arimax")).toMatchObject({ to: "/catalog", search: { about: "workflow_template:workflow.ts_readiness_arimax" } });
-    expect(startTarget("check", "convergence")).toMatchObject({ search: { about: "check:convergence" } });
+    expect(startTarget("workflow_template", "workflow.ts_readiness_arimax")).toMatchObject({ to: "/workflows/new", search: { template: "ts_readiness_arimax" } });
+    expect(startTarget("workflow_template", "workflow.ts_readiness_arimax", "guided")).toMatchObject({ to: "/workflows/recipe", search: { template: "ts_readiness_arimax" } });
+    expect(startTarget("check", "convergence")).toMatchObject({ to: "/governance", search: { tab: "checks" } });
+    expect(startTarget("step", "core.resample")).toMatchObject({ search: { about: "step:core.resample" } });
   });
 
   it("starts a spec for a model with its About as comments, safely", () => {

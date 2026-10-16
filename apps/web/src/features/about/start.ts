@@ -3,38 +3,41 @@
  *
  * - a guided template opens a new Guided analysis;
  * - a model opens a new spec in the editor with that model;
- * - a workflow template opens the workflow editor from the template (when the app has the
- *   workflows screens), else its About card in the catalog;
- * - building blocks (steps, splits, nodes, checks) open their About card in the catalog.
+ * - a workflow template runs as a recipe on the user's data in Guided mode, or opens the
+ *   "use this template" wizard in Expert mode;
+ * - a governance check opens the governance check catalog;
+ * - other building blocks (steps, splits, nodes) open their About card in the catalog.
  */
+import type { Persona } from "@/stores/ui";
+
 import { aboutKey } from "./labels";
 import type { AboutKind } from "./types";
-
-/** The workflows screens' path for a new workflow from a template (see `cross_package_changes`). */
-export const WORKFLOW_FROM_TEMPLATE_PATH = "/workflows/new";
 
 export type StartTarget =
   | { kind: "guided"; to: "/guided/new/$templateId"; params: { templateId: string }; label: string }
   | { kind: "spec"; to: "/build/new"; search: { model: string }; label: string }
-  | { kind: "href"; href: string; label: string }
+  | { kind: "workflow"; to: "/workflows/recipe" | "/workflows/new"; search: { template: string }; label: string }
+  | { kind: "governance"; to: "/governance"; search: { tab: "checks" }; label: string }
   | { kind: "catalog"; to: "/catalog"; search: { about: string }; label: string };
 
-/**
- * The target for `kind:id`. `hasRoute(path)` says whether the app has a route (the workflow
- * screens are optional), so the catalog is the fallback.
- */
-export function startTarget(kind: AboutKind, id: string, hasRoute: (path: string) => boolean = () => false): StartTarget {
+/** The gallery id of a workflow template (About ids are `workflow.<template id>`). */
+export function workflowTemplateId(aboutId: string): string {
+  return aboutId.replace(/^workflow\./, "");
+}
+
+/** The target for `kind:id`; Guided users run workflow templates as recipes. */
+export function startTarget(kind: AboutKind, id: string, persona: Persona = "expert"): StartTarget {
   switch (kind) {
     case "template":
       return { kind: "guided", to: "/guided/new/$templateId", params: { templateId: id }, label: "Start a guided analysis" };
     case "model":
       return { kind: "spec", to: "/build/new", search: { model: id }, label: "Start a spec with this model" };
     case "workflow_template":
-      if (hasRoute(WORKFLOW_FROM_TEMPLATE_PATH)) {
-        // About ids of workflow templates are `workflow.<template id>`.
-        return { kind: "href", href: `${WORKFLOW_FROM_TEMPLATE_PATH}?template=${encodeURIComponent(id.replace(/^workflow\./, ""))}`, label: "Start a workflow from this template" };
-      }
-      return { kind: "catalog", to: "/catalog", search: { about: aboutKey(kind, id) }, label: "See the workflow template" };
+      return persona === "guided"
+        ? { kind: "workflow", to: "/workflows/recipe", search: { template: workflowTemplateId(id) }, label: "Run this recipe on my data" }
+        : { kind: "workflow", to: "/workflows/new", search: { template: workflowTemplateId(id) }, label: "Start a workflow from this template" };
+    case "check":
+      return { kind: "governance", to: "/governance", search: { tab: "checks" }, label: "See the governance checks" };
     default:
       return { kind: "catalog", to: "/catalog", search: { about: aboutKey(kind, id) }, label: "Open in the catalog" };
   }

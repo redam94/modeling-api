@@ -4,13 +4,14 @@
  * (`GET /v1/catalog/recommendations`), ranked with the reasons and cautions, each one click
  * from a Guided analysis, a spec or a workflow.
  */
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, Info, RotateCcw, Sparkles } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
 import { ErrorNotice, LoadingRows, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Badge, Progress } from "@/components/ui/primitives";
+import { useEffectivePersona } from "@/features/guided/persona";
 import { cn } from "@/lib/utils";
 
 import { AboutDialog, DifficultyBadge, RuntimeBadge } from "./about-card";
@@ -22,47 +23,30 @@ import type { ChooserAnswers, ChooserKind, ChooserQuestion, Recommendation } fro
 // ------------------------------------------------------------------------------ start button
 
 export function useStartTarget(kind: Recommendation["kind"], id: string): StartTarget {
-  const router = useRouter();
-  return startTarget(kind, id, (path) => Boolean((router.routesByPath as Record<string, unknown>)[path]));
+  return startTarget(kind, id, useEffectivePersona());
 }
 
 /** The primary action of a recommendation or a browsed card. */
 export function StartButton({ kind, id, size = "sm", variant = "default", children }: { kind: Recommendation["kind"]; id: string; size?: "sm" | "default"; variant?: "default" | "outline"; children?: ReactNode }) {
   const target = useStartTarget(kind, id);
-  const router = useRouter();
-  const label = children ?? target.label;
-  switch (target.kind) {
-    case "guided":
-      return (
-        <Button asChild size={size} variant={variant}>
-          <Link to={target.to} params={target.params}>
-            {label} <ArrowRight />
-          </Link>
-        </Button>
-      );
-    case "spec":
-      return (
-        <Button asChild size={size} variant={variant}>
-          <Link to={target.to} search={target.search}>
-            {label} <ArrowRight />
-          </Link>
-        </Button>
-      );
-    case "catalog":
-      return (
-        <Button asChild size={size} variant={variant}>
-          <Link to={target.to} search={target.search}>
-            {label} <ArrowRight />
-          </Link>
-        </Button>
-      );
-    case "href":
-      return (
-        <Button size={size} variant={variant} onClick={() => router.history.push(target.href)}>
-          {label} <ArrowRight />
-        </Button>
-      );
-  }
+  const label = (
+    <>
+      {children ?? target.label} <ArrowRight />
+    </>
+  );
+  return (
+    <Button asChild size={size} variant={variant}>
+      {target.kind === "guided" ? (
+        <Link to={target.to} params={target.params}>
+          {label}
+        </Link>
+      ) : (
+        <Link to={target.to} search={target.search}>
+          {label}
+        </Link>
+      )}
+    </Button>
+  );
 }
 
 // ------------------------------------------------------------------------------ one question
