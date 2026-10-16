@@ -313,6 +313,33 @@ describe("Guided usability fixes (M3 tester run)", () => {
   });
 });
 
+describe("the forecast panel's horizon (M3 review)", () => {
+  it("names the data's period", async () => {
+    const { periodUnit, periodWords } = await import("./session");
+    const dims = (freq: string | null) => [{ kind: "categorical" }, { kind: "time", freq }];
+    expect(periodUnit({}, dims("W-SUN"))).toBe("week");
+    expect(periodUnit({}, dims("D"))).toBe("day");
+    expect(periodUnit({}, dims("MS"))).toBe("month");
+    expect(periodUnit({}, dims(null))).toBe("period");
+    expect(periodUnit({}, [])).toBe("period");
+    // a schema without the frequency, then the summary that measured it
+    expect(periodUnit({}, [...dims(null), ...dims("W-SUN")])).toBe("week");
+    // weekly_forecast records the answered frequency as the season length
+    expect(periodUnit({ model: { settings: { season_period: 365.25 } } }, [])).toBe("day");
+    expect(periodUnit({ model: { settings: { season_period: 52.18 } } }, dims("D"))).toBe("week");
+    expect(periodWords("day", 1)).toBe("1 day");
+    expect(periodWords("week", 13)).toBe("13 weeks");
+  });
+
+  it("stops at the horizon the model was fitted for", async () => {
+    const { forecastLimit } = await import("./session");
+    const forecastTpl = tpl("weekly_forecast");
+    expect(forecastLimit({ model: { settings: { max_extension: 26 } } }, forecastTpl)).toEqual({ max: 26, fitted: true });
+    expect(forecastLimit({ model: { settings: {} } }, forecastTpl)).toEqual({ max: 520, fitted: false });
+    expect(forecastLimit({}, tpl("geo_mmm"))).toEqual({ max: 104, fitted: false });
+  });
+});
+
 describe("the beliefs preview (M3 review)", () => {
   const d = (mid: number) => ({ mean: mid, sd: 1, quantiles: { "0.05": mid / 2, "0.25": mid * 0.8, "0.5": mid, "0.75": mid * 1.2, "0.95": mid * 2 } });
 

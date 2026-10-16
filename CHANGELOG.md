@@ -451,6 +451,10 @@ milestone releases are tagged on `main`.
   drawn black on the dark card (Vega-Lite's default): the beliefs preview's 90% line, the
   forecast's split line and its "Forecast starts" label. The theme colours rules in muted ink
   and text and ticks in body ink, so a median tick also stands apart from its bar.
+- **web**: the Guided forecast panel always said "weeks" (daily data too) and accepted
+  horizons up to the template's limit (520), past the horizon a weekly forecast was fitted
+  for, which then failed. It names the data's period (days, weeks, months) and stops at the
+  fitted horizon (`max_extension`), saying a longer one needs a new fit.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

@@ -135,8 +135,10 @@ their thresholds are listed in [Guided mode](../concepts/guided-mode.md#scorecar
   under the instant one; they should be close.
 - **Quick scenarios**: what if a channel were turned off, or every budget changed by a
   percentage.
-- **Forecast**: how results may develop over the next weeks if you carry on as in the latest
-  ones, with the split between history and forecast marked.
+- **Forecast**: how results may develop over the next weeks (or days, for daily data) if you
+  carry on as in the latest ones, with the split between history and forecast marked. A
+  weekly forecast reaches as far as the horizon you answered when you set it up; further
+  needs a new fit with a longer horizon.
 
 The sliders cover the range the fit precomputed (from nothing to three times what you
 spent).

@@ -125,6 +125,40 @@ export function advancedChanges(template: Pick<GuidedTemplate, "ui_levels">, doc
     .sort();
 }
 
+export type PeriodUnit = "day" | "week" | "month" | "period";
+
+/**
+ * What one step of the data's time axis is: the weekly forecast's answered frequency (stored
+ * as its season length), else the first frequency (`W-SUN`, `D`, `MS`) among the dataset's
+ * dims (its schema's or its summary's).
+ */
+export function periodUnit(document: unknown, dims: readonly { kind: string; freq?: string | null }[]): PeriodUnit {
+  const season = valueAt(document, "/model/settings/season_period");
+  if (season === 365.25) return "day";
+  if (season === 52.18) return "week";
+  const freq = (dims.find((d) => d.kind === "time" && d.freq)?.freq ?? "").toUpperCase();
+  if (freq.startsWith("W")) return "week";
+  if (freq.startsWith("D") || freq === "B") return "day";
+  if (freq.startsWith("M")) return "month";
+  return "period";
+}
+
+/** "1 week", "13 weeks". */
+export function periodWords(unit: PeriodUnit, n: number): string {
+  return `${n} ${unit}${n === 1 ? "" : "s"}`;
+}
+
+/**
+ * How far ahead a forecast may reach: the horizon the model was fitted for (`max_extension`,
+ * the answered horizon; further needs a refit), else the template's limit, else 104 periods.
+ */
+export function forecastLimit(document: unknown, template: Pick<GuidedTemplate, "questions">): { max: number; fitted: boolean } {
+  const fitted = valueAt(document, "/model/settings/max_extension");
+  if (typeof fitted === "number" && Number.isInteger(fitted) && fitted >= 1) return { max: fitted, fitted: true };
+  const q = template.questions.find((x) => x.id === "horizon");
+  return { max: typeof q?.maximum === "number" ? q.maximum : 104, fitted: false };
+}
+
 /** The dim the template's date question binds (`time` for most, `t` for the weekly forecast). */
 export function timeDimOf(template: Pick<GuidedTemplate, "spec_template">): string {
   const dims = valueAt(template.spec_template, "/data/bind/dims");
