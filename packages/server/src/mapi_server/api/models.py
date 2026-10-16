@@ -60,7 +60,7 @@ from mapi_server.services.bundles import (
 from mapi_server.services.runs import load_run
 from mapi_server.services.submit import submit_model_run
 
-__all__ = ["EvaluateCall", "plots_router", "router"]
+__all__ = ["EvaluateCall", "plots_router", "router", "score_result"]
 
 router = APIRouter(prefix="/v1/models", tags=["models"])
 plots_router = APIRouter(prefix="/v1/plots", tags=["plots"])
@@ -254,7 +254,7 @@ async def redirect_model_ui(
     return RedirectResponse(link.url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
 
-async def _score_result(ctx: ServerContext, run_id: str) -> ScoreCallResult:
+async def score_result(ctx: ServerContext, run_id: str) -> ScoreCallResult:
     async with ctx.data_session() as session:
         run = await load_run(session, ctx.scope, run_id)
         view = await run_view(session, run)
@@ -332,7 +332,7 @@ async def score_model(
     if wait:
         await wait_terminal(ctx, run_id, float(wait), disconnected=request.is_disconnected)
         headers[PREFERENCE_APPLIED_HEADER] = f"wait={wait}"
-    result = await _score_result(ctx, run_id)
+    result = await score_result(ctx, run_id)
     return JSONResponse(
         result.model_dump(mode="json"),
         status_code=200 if result.done else 202,

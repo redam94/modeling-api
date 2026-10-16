@@ -16,6 +16,7 @@ from mapi_spec._types import Duration
 from mapi_spec.api import RunCreate, RunRetry
 from mapi_spec.audit import AuditAction, AuditOutcome
 from mapi_spec.capabilities import Capabilities
+from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError, ValidationFailed
 from mapi_spec.executor import RunKind
 from mapi_spec.jobs import (
@@ -421,19 +422,26 @@ async def submit_model_run(
     resource_class: ResourceClass | None = None,
     timeout: Duration | None = None,
     labels: dict[str, str] | None = None,
+    extra_inputs: dict[str, Any] | None = None,
+    inline_summary: DataSummary | None = None,
 ) -> m.Run:
-    """``score``/``evaluate``/``derive``/``render`` against a verified model version."""
+    """``score``/``evaluate``/``derive``/``render`` against a verified model version.
+
+    ``extra_inputs`` are further pinned run inputs (an endpoint call's inline payloads,
+    already stored) and ``inline_summary`` summarises the one the score run reads."""
     scope = ctx.scope
     mv = await _ready_model_version(session, scope, model_version_id)
     ref = await _model_ref(session, mv)
-    inputs: dict[str, Any] = {}
+    inputs: dict[str, Any] = dict(extra_inputs or {})
     read: list[m.DatasetVersion] = []
     payload: dict[str, Any]
     if kind is RunKind.SCORE:
         if request is None:
             raise MapiError("score runs need a request", code=ErrorCode.SCHEMA_INVALID)
         issues: list[Issue] = []
-        datasets = await check_score_request(session, scope, request, mv, issues)
+        datasets = await check_score_request(
+            session, scope, request, mv, issues, inline=inline_summary
+        )
         if any(i.severity == "error" for i in issues):
             raise ValidationFailed(issues)
         payload = request.model_dump(mode="json", by_alias=True, exclude_none=True)

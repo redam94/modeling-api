@@ -406,7 +406,7 @@ async def test_score_scoped_tokens_can_score_their_model(
 async def test_wait_returns_200_with_outputs_when_the_run_finishes(
     client: httpx.AsyncClient, ctx: ServerContext
 ) -> None:
-    from mapi_server.api.models import _score_result
+    from mapi_server.api.models import score_result
 
     att = await _provisioned(ctx)
     run_id = att.run_id
@@ -427,6 +427,6 @@ async def test_wait_returns_200_with_outputs_when_the_run_finishes(
         run = await load_run(s, None, run_id, for_update=True)
         await apply_transition(s, run, RunTrigger.COMPLETE, Actor.RECONCILER)
         await apply_transition(s, run, RunTrigger.VERIFIED, Actor.FINALIZER)
-    result = await _score_result(ctx, run_id)
+    result = await score_result(ctx, run_id)
     assert result.done and result.run.state is RunState.SUCCEEDED
     assert [o.name for o in result.outputs] == ["result.json"]
