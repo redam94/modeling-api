@@ -247,6 +247,7 @@ class Client:
                     json=call.json,
                     headers=headers,
                     timeout=call_timeout(self.config, call.server_wait),
+                    auth=None if call.public else httpx.USE_CLIENT_DEFAULT,
                 )
             except httpx.TransportError as exc:
                 wait = self._retry.plan(call, state, None)
