@@ -44,10 +44,10 @@ instructions into an agent. Tokens and scopes work as for any other client.
 
 ## Optimisation and sweeps as jobs
 
-- **`optimize` runs.** Atlas runs *next to the model* in the sandbox instead of calling the
-  endpoint once per candidate from your machine (today's
-  [RemoteModel](../guides/atlas.md) path), so long optimisations no longer pay a run start-up
-  per batch.
+- **`optimize` runs** (delivered in v0.5). Budgets are optimised *next to the model* in the
+  sandbox with mmm-framework's planning module, from the posterior's response curves
+  ([Optimise a budget](../tutorials/optimise-a-budget.md)); the v0.4 Atlas adapter was
+  removed.
 - **`Sweep`, `Backtest` and `SBC`** as one parent run that fans out and aggregates: a
   sensitivity sweep over a prior, an as-of backtest across forecast origins, simulation-based
   calibration of a new plugin.

@@ -61,7 +61,7 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
 public calls sent without credentials. `mapi_client.webhooks.verify(headers, body, secret)`
 checks a delivery's `Mapi-Signature` ([Receiving webhooks](../guides/webhook-receivers.md));
 `mapi_client.atlas.RemoteModel` is an Atlas model backed by an endpoint
-([Atlas](../guides/atlas.md)); `mapi_client.xrjson` encodes and decodes inline payloads.
+([Atlas](../tutorials/optimise-a-budget.md)); `mapi_client.xrjson` encodes and decodes inline payloads.
 Every operation of the v0.4 endpoint table has a request builder, checked against the
 contract by the client's tests.
 

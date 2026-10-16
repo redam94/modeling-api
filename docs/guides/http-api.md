@@ -35,8 +35,8 @@ authorization. See [authentication](../operations/authentication.md).
 
 ```text
 {"status":"ok","version":"0.4.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
-mmm.hierarchical_geo@1.3.0  draws
-mmm.pymc_marketing@1.0.0  draws
+mmm.bayesian@1.0.0  draws
+mmm.frequentist@1.0.0  draws
 sklearn.tabular_bootstrap@1.0.0  draws
 …
 ts.hsgp_trend@1.0.0  draws
@@ -205,7 +205,7 @@ which wait the server used. Over HTTP the `ScoreRequest` needs its `apiVersion` 
 {
   "status": 422,
   "code": "MODE_NOT_SUPPORTED",
-  "detail": "validation failed with 2 errors; first at /mode: model 'mmm.hierarchical_geo@1.3.0' does not support mode 'filter'"
+  "detail": "validation failed with 2 errors; first at /mode: model 'mmm.bayesian@1.0.0' does not support mode 'filter'"
 }
 ```
 

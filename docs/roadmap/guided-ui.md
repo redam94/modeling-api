@@ -46,7 +46,7 @@ journey
 | Generated snippets: Python, TypeScript, curl, R, Apps Script, Atlas, a notebook cell | [The Integrations hub](../guides/integrations-hub.md#an-endpoints-page), [Connect Google Sheets](../tutorials/google-sheets.md) |
 | Signed webhooks with an outbox, retries, a delivery log, replays and an SSRF guard | [Receive webhooks](../guides/webhook-receivers.md) |
 | Saved plots, PNG/SVG/PDF renders in the sandbox and expiring embed links | [Embed a chart](../tutorials/embed-a-chart.md), [Sharing plots](../guides/sharing-plots.md) |
-| The Python client's endpoints and the Atlas `RemoteModel`; the CLI's `endpoints`, `webhooks`, `plots`, `guided`, `priors` and `tenant` commands | [Optimise a budget with Atlas](../guides/atlas.md), [The Python client](../guides/python-client.md) |
+| The Python client's endpoints and the Atlas `RemoteModel`; the CLI's `endpoints`, `webhooks`, `plots`, `guided`, `priors` and `tenant` commands | Optimise a budget with Atlas (removed in v0.5: [Optimise a budget](../tutorials/optimise-a-budget.md)), [The Python client](../guides/python-client.md) |
 
 ## Trust and the data lifecycle
 

@@ -46,7 +46,7 @@ settings, the scorecard checks that apply and `x-ui-level` hints for every field
 
 | Template | Plugin | For | What-if | Forecast | Business priors |
 |---|---|---|---|---|---|
-| `geo_mmm` - Geo marketing mix | `mmm.hierarchical_geo` | What each channel adds in each market; moving budget | yes | yes | yes, and lift tests |
+| `geo_mmm` - Geo marketing mix | `mmm.bayesian` (mmm-framework) | What each channel adds in each market; moving budget | yes | yes | yes, and lift tests |
 | `weekly_forecast` - Weekly forecast | `ts.hsgp_trend` | One series, weeks or months ahead, with a range | — | yes | — |
 | `store_demand` - Demand by store | `tabular.regressor` | Units per store and week from prices and promotions (low/median/high) | — | yes | — |
 | `customer_choice` - Customer choice | `choice.multinomial_logit` | Which product customers pick and how price shifts the choice | presets | — | — |

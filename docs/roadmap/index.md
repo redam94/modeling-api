@@ -42,8 +42,8 @@ timeline
 - [x] **Signed webhooks** with an outbox, retries, a delivery log, replays and an SSRF guard
       ([Receive webhooks](../guides/webhook-receivers.md))
 - [x] **Saved plots, static renders and embed links** ([Embed a chart](../tutorials/embed-a-chart.md))
-- [x] The Python client's endpoints and **Atlas `RemoteModel`**
-      ([Optimise a budget](../guides/atlas.md)); new CLI commands
+- [x] The Python client's endpoints and **Atlas `RemoteModel`** (removed in v0.5)
+      ([Optimise a budget](../tutorials/optimise-a-budget.md)); new CLI commands
 - [x] **Sign-up** with e-mail verification and abuse controls, **tenant deletion**, the
       **GDPR export**, and a **Cloud Armor** policy
 - [x] The Integrations hub, trust pages and admin additions in the web app
@@ -60,8 +60,8 @@ and DNS.
 **Allow-listed teams upload their own model plugins**: built into hash-pinned overlays (with
 native wheels from a curated mirror), checked by the contract kit on upload, with fast dev
 overlays and a vetted tier of ported sibling models. A **curated MCP server** gives agents a
-small, injection-safe set of tools. Atlas optimisations run as **in-sandbox `optimize`
-jobs**, and **`Sweep`, `Backtest` and `SBC`** run as one parent each.
+small, injection-safe set of tools. Budget optimisations run as **in-sandbox `optimize`
+jobs** (delivered in v0.5, on mmm-framework), and **`Sweep`, `Backtest` and `SBC`** run as one parent each.
 [More](expert-plugins.md).
 
 ## After v0.5

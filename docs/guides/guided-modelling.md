@@ -2,7 +2,8 @@
 
 This guide explains what happens behind the Guided-mode tasks of
 [Guided mode](../concepts/guided-mode.md) when the model is a marketing-mix model
-(`mmm.hierarchical_geo`): how beliefs in business units become model-space priors, how
+(`mmm.bayesian`, on [mmm-framework](../models/mmm-framework.md)): how beliefs in
+business units become model-space priors, how
 experiment results calibrate a fit, how the sanity scorecard is measured, and which views
 the what-if sliders, forecasts and counterfactuals read. Everything that touches data runs
 in the sandbox; the control plane only validates JSON.
@@ -10,7 +11,7 @@ in the sandbox; the control plane only validates JSON.
 | Task | Where it runs | What it writes |
 |---|---|---|
 | Business priors → model-space priors | a `translate_priors` run | `priors.json` (`PriorTranslationResult`), `plots.json` |
-| Lift-test calibration | inside the fit | the posterior (`lift_tests__model`), `learned.calibration` |
+| Lift-test calibration | inside the fit | mmm-framework experiment likelihoods, `learned.calibration` |
 | Sanity scorecard | at the end of the fit | `scorecard.json` (`Scorecard`), stored on the model version |
 | What-if sliders | at the end of the fit | `ui/grids/response_curves.json` (`ResponseGridView`) |
 | Forecast | a `forecast` score run | `ui/guided/forecast.json` (`ForecastView`) and a fan chart with the split line |
@@ -31,67 +32,52 @@ calibration:
 
 ### From beliefs to priors: the math
 
-The model's contribution of channel `c` over the fit window, in KPI units, is
+`mmm.bayesian` states each channel's effect as its **return on spend**: a channel with an
+ROI prior samples
 
 ```text
-C[c] = sum over geos g and periods t of  kpi_scale[g, t] * beta[g, c] * S[g, c, t]
+roi[c]  ~ LogNormal(mu[c], sigma[c])
+beta[c] = roi[c] * spend[c] / (y_std * sum over observations of S[c](x))
 ```
 
-where `kpi_scale` converts model units to KPI units (the pipeline's fitted scaling, read
-through its inverse), `beta[g, c]` is the channel effect in geo `g` and `S` the carried-over,
-saturated spend, a function of the adstock and saturation parameters. The two business
-quantities are
+where `S[c]` is the channel's carried-over, saturated spend (mmm-framework's adstock and
+saturation, with the same parameters) and `y_std` the KPI's scale. On the observed data the
+channel's contribution over the fit window, divided by its spend, *is* `roi[c]` - exactly
+the quantity a business ROI belief is about. The translation is therefore closed form:
 
-```text
-ROI[c]   = C[c] / spend[c]       spend[c]: the channel's total spend over the window
-share[c] = C[c] / Y              Y:        the observed KPI total over the window
-```
+- an ROI range `[L, H]` held with credibility `p` is the log-normal whose central `p`
+  interval it is: `mu = (log L + log H) / 2`, `sigma = (log H - log L) / (2 z)` with `z` the
+  standard normal's `(1 + p) / 2` quantile;
+- a contribution-share range `[l, h]` is the ROI range `[l Y / spend[c], h Y / spend[c]]`,
+  because `share[c] = roi[c] * spend[c] / Y` (`Y` the observed KPI total over the window);
+- business units convert to model units with the pipeline's fitted factors (the model owns
+  scaling, so these are usually 1).
 
-The translation gives the median channel effect a log-normal prior,
-`beta_channel[c] = exp(mu[c] + sigma[c] * eps[c])`. With partial pooling
-`beta[g, c] = beta_channel[c] * exp(beta_sigma[c] * z[g, c])`, so
+Edge cases are reported as issues, never hidden:
 
-```text
-log ROI[c] = mu[c] + sigma[c] * eps[c] + log K[c] - log spend[c]
-K[c]       = sum over g, t of  kpi_scale[g, t] * exp(beta_sigma[c] * z[g, c]) * S[g, c, t]
-```
-
-(Without pooling every geo draws its own effect and the log-sum runs over geos; with complete
-pooling `z = 0`.) Two facts make the solve exact up to Monte Carlo error:
-
-- `mu[c]` only **shifts** `log ROI[c]`: every term is proportional to `exp(mu[c])`;
-- `K[c]` depends only on the *other* priors (adstock, saturation, pooling spread), which are
-  independent of `beta_channel`, so it is sampled once, with common random numbers.
-
-The stated range `[L, H]` held with credibility `p` fixes the `q = (1 - p) / 2` and `1 - q`
-quantiles of `log ROI[c]`. Write `R(sigma)` for `log ROI[c]` with `mu[c] = 0`. Then
-
-1. `sigma[c]` solves `Q[1 - q](R(sigma)) - Q[q](R(sigma)) = log(H / L)` by bisection,
-   vectorised over channels (the interval widens with `sigma`);
-2. `mu[c] = (log L + log H) / 2 - (Q[q] + Q[1 - q])(R(sigma[c])) / 2` centres it.
-
-A share range works the same way with `Y` in place of `spend[c]`. Edge cases are reported as
-issues, never hidden:
-
-- if the other priors alone already make the interval wider than stated, `sigma[c]` stops at
-  its floor (0.02) and a warning says so - the reported **coverage** shows by how much the
-  range is missed;
 - a range starting at 0 is read as `[H / 20, H]` (a log-normal has no mass at zero);
-- a channel the data does not have, or a ROI for a channel without spend, is an error.
+- a range narrower or wider than a prior can usefully state has its spread clamped to
+  `[0.02, 4]` on the log scale, with a warning;
+- a channel the data does not have, or a share for a channel without spend, is an error.
 
-Channels without a belief keep their prior, refitted as the log-normal with the same 5% and
-95% quantiles, so `beta_channel` stays one per-channel log-normal.
+Channels without a belief keep their prior (`priors.roi_default`, or mmm-framework's
+default). The result is written as `priors.roi.<channel> = {mu, sigma}`.
 
-The **baseline share** (intercepts plus controls) is linear in the population mean of the
-geo intercepts `m`: `B = a * (m + s * eps) + E`, so the same two-step solve runs in linear
-space and gives `intercept: {distribution: Normal, mu: m, sigma: s}`. When the geo
-spread and the control effects alone are wider than the stated range, their priors
-(`intercept_sigma`, `gamma_control`) are narrowed by a common factor first, and an `info`
-issue says by how much.
+The **baseline share** - the KPI that happens without media: intercept, trend,
+seasonality, panel levels and controls - is linear in the intercept `Normal(m, s)` (in KPI
+standard deviations): `B = a (m + s eps) + E` with `a = n y_std / Y` and `E` the rest of the
+baseline, drawn from mmm-framework's own prior of the model. `s` is solved by bisection so
+the central interval of `B` has the stated width, then `m` centres it; when the rest alone
+is already wider than the stated range, `s` stops at its floor and a warning says so. The
+result is `priors.intercept = {mu, sigma}`.
 
-Amounts only translate through *linear* preprocessing (`mean_scale`, `max_abs_scale`,
-currency conversion). A `log1p` or `standardize` step on the KPI or spend refuses the
-translation with `CALIBRATION_UNSUPPORTED`.
+The preview then samples the translated model's **prior predictive** - mmm-framework's
+own graph, with another seed - and reports ROI, contribution share, baseline share and a
+KPI fan in business units, plus the prior mass inside each stated range (`coverage`).
+
+Amounts only translate through *linear* preprocessing (currency conversion; the model owns
+scaling). A non-linear step on the KPI or spend refuses the translation with
+`CALIBRATION_UNSUPPORTED`.
 
 ### The prior-translation run
 
@@ -131,37 +117,6 @@ A spec that carries `business_priors` **without** a recorded translation run is 
 fit time instead, with the same solve over the training data's scales; the priors used are in
 the model's `learned.calibration.translated_priors`.
 
-### Business priors for `mmm.pymc_marketing`
-
-The pymc-marketing adapter takes business priors too. pymc-marketing scales the KPI by its
-maximum (`target_scale`) and each channel by its maximum, and every curve it offers here is
-`beta * g(adstock(x))` (or `adstock(beta * g(x))` with `adstock_first: false`), `beta` being
-its `saturation_beta` prior over `(*dims, channel)`. A channel's contribution in KPI units is
-therefore
-
-```text
-C_c = target_scale * sum over panel cells k of beta[k, c] * A[k, c],
-A[k, c] = sum over periods t of g(...)[t, k, c]
-```
-
-and `A` depends on the adstock and curve priors only. The translation draws `A` from
-**pymc-marketing's own model** - prior draws of `channel_contribution / beta` - so its scaling,
-carry-over padding and curves are exactly the fit's, and then solves as above for a
-log-normal `saturation_beta` with one `mu` and `sigma` per channel (drawn independently per
-panel cell, as pymc-marketing draws it): a bisection on `sigma` matches the range's width at
-its credibility, `mu` centres it. The baseline share is linear in the intercept
-(`intercept ~ Normal(m, s)` per cell, `B = a (m + s zbar) + E` with `a = target_scale * T *
-cells / Y` and `E` the controls' and seasonality's share). pymc-marketing's default
-seasonality prior (`Laplace(0, 1)` on the scaled KPI) is wide, so when `E` alone spreads the
-baseline share over more than 80% of the range, the `gamma_control` and `gamma_fourier`
-priors are narrowed by a common factor first - their contributions are linear in them, so the
-spread shrinks by the same factor - and an `info` issue says by how much.
-
-The priors land in the adapter's `settings.priors` (`saturation_beta`, `intercept`,
-`gamma_control`, `gamma_fourier`, in pymc-marketing's scaled units), which it hands to
-pymc-marketing as `model_config` priors; the preview, coverage and plots are the same as for
-the geo MMM.
-
 ## Lift tests
 
 A lift test is calibration data: extra spend on one channel (optionally in one geo) during a
@@ -181,39 +136,36 @@ calibration:
       ci_level: 0.9
 ```
 
-The fit adds one observation per test,
+The fit adds each test to mmm-framework as an **experiment likelihood**
+(`BayesianMMM.add_experiment_calibration`): a likelihood term on the model-implied
+estimand, which updates the channel's effect, its saturation curve and its adstock kernel
+jointly:
 
-```text
-kpi_delta ~ Normal(lift, se)
-lift      = sum over the test's geos g and periods t in W of
-            kpi_scale[g, t] * beta[g, c] * (S[g, c, t](x + dx) - S[g, c, t](x))
-```
+| The test | mmm-framework measurement |
+|---|---|
+| extra spend (`spend_delta > 0`) | marginal ROAS: the lift from scaling the window's spend by `100 x spend_delta / window spend` percent, per extra unit of spend, against `kpi_delta / spend_delta` |
+| a holdout removing (nearly) all of the channel's spend in the window | the channel's contribution over the window, against `-kpi_delta` |
+| a partial cut of at most 25% | marginal ROAS of the same size (the symmetric finite difference) |
+| a larger partial cut | skipped (it cannot be expressed), with the reason |
 
-where `W` are the model periods whose label lies in the window and `dx` is the extra spend in
-model units, spread over the window's cells in proportion to the channel's
-actual spend there (evenly when there was none) and **carried over through the lag tensor**
-within the window. Carry-over after the window is not counted: tests report the lift measured
-during the test. (pymc-marketing's `add_lift_test_measurements` uses the saturation curve
-alone; this version also carries the extra spend over.) The model's implied lift per draw is
-kept as `lift_tests__model(lift_test)`; the KPI likelihood alone stays in
-`log_likelihood`, so `elpd_loo` is unchanged in meaning.
+`geo` restricts the measurement to that geo's observations; `se` (or the half-width of
+`ci` over the normal quantile) is the measurement's standard error. Carry-over after the
+window is not counted: tests report the lift measured during the test. The KPI likelihood
+alone stays in `log_likelihood`, so `elpd_loo` is unchanged in meaning; which tests were
+used or skipped, and why, is in `learned.calibration.lift_tests`.
 
 Tests are checked three times, each time where the information is:
 
 1. **at submit**, against the dataset version's summary: the channel and geo exist and the
    window lies inside the data (`SCHEMA_INVALID` at `/calibration/lift_tests/<i>/…`);
 2. **in the sandbox, before fitting**, against the raw data itself;
-3. **at the model stage**: the window must cover at least one model period, and a holdout
-   (negative `spend_delta`) may remove at most the spend the data shows.
+3. **at the model stage**: the window must cover at least one model period, a holdout
+   (negative `spend_delta`) may remove at most the spend the data shows, and the time
+   labels must be dates.
 
 During `evaluate_then_refit`, a test whose window lies after the training periods, or that
 the end of the training periods cuts, is skipped
 by the evaluation fit (logged) and used by the production refit.
-
-`mmm.pymc_marketing` accepts lift tests too, through pymc-marketing's own
-`add_lift_test_measurements`: each test becomes rows of its window's average spend, extra
-spend, lift and sigma *per period*, conditioned on the saturation curve (a Gamma on the
-absolute lift, pymc-marketing's model). With panel `dims`, a test must name its `geo`.
 
 ## The sanity scorecard
 

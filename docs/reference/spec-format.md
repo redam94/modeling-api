@@ -21,11 +21,11 @@ data:
 pipeline:
   - {id: to_eur, use: core.fx_convert@^1, with: {vars: [y, spend], table: fx, to: EUR}}
   - {id: weekly, use: core.resample@^1,   with: {dim: time, freq: W-SUN, how: sum}}
-  - {id: scale,  use: core.mean_scale@^1, with: {vars: [spend], over: [time]}}
 
 model:
-  use: mmm.hierarchical_geo@^1.3
+  use: mmm.bayesian@^1              # mmm-framework scales and carries spend over itself
   settings:
+    hierarchy: {pool_over: [geo]}
     dim_policies: {geo: fixed}      # may only tighten the plugin's policy
   fit: {mode: evaluate_then_refit, draws: 1000, chains: 4, seed: 7}
 

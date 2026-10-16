@@ -1,5 +1,5 @@
 ---
-description: Step-by-step tutorials for v0.4 - your first MMM in Guided mode, Google Sheets, embedded charts, webhook receivers, and budget optimisation with Atlas.
+description: Step-by-step tutorials for v0.4 - your first MMM in Guided mode, Google Sheets, embedded charts, webhook receivers, and budget optimisation on mmm-framework.
 ---
 
 # Tutorials
@@ -46,14 +46,14 @@ Apps Scripts run against stand-ins for Google's services.
 
     *For developers.* [:octicons-arrow-right-24: Start](../guides/webhook-receivers.md)
 
--   :material-target:{ .lg .middle } **Optimise a budget with Atlas**
+-   :material-target:{ .lg .middle } **Optimise a budget**
 
     ---
 
-    Turn an endpoint into an Atlas model and let an optimiser split a fixed budget across
-    channels, with batching, caching and back-off.
+    Ask a fitted marketing-mix model how to split a budget across channels: bounds, groups,
+    cautious objectives, the uplift and the chance it helps, and the efficient frontier.
 
-    *For data scientists.* [:octicons-arrow-right-24: Start](../guides/atlas.md)
+    *For data scientists.* [:octicons-arrow-right-24: Start](../tutorials/optimise-a-budget.md)
 
 </div>
 

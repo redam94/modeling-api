@@ -200,13 +200,13 @@ dataset and reference it.
 api "$API/v1/endpoints/geo-mmm-prod/snippets?language=python&language=curl"
 ```
 
-returns ready-to-run code for Python, TypeScript, curl, R, Google Sheets (Apps Script) and
-Atlas, with this server's address and the endpoint's example payload. `base_url=` puts
+returns ready-to-run code for Python, TypeScript, curl, R, Google Sheets (Apps Script) and a
+notebook cell, with this server's address and the endpoint's example payload. `base_url=` puts
 another address in (a public one, behind a proxy). Snippets read the token from `MAPI_TOKEN`
 and never contain a secret. From Python, `Client().endpoint("geo-mmm-prod").score(ds)`
 sends an `xr.Dataset` and returns one
 ([The Python client](python-client.md#endpoints-webhooks-and-sharing)); the CLI has
-`mapi endpoints score`, and [Atlas](atlas.md) optimises budgets against an endpoint.
+`mapi endpoints score`; budgets are optimised from the model version itself ([Optimise a budget](../tutorials/optimise-a-budget.md)).
 
 ### Tokens for integrations
 
