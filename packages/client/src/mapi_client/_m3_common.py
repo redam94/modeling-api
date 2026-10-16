@@ -29,6 +29,7 @@ from mapi_spec.calibration import BusinessPriors, LiftTest
 from mapi_spec.endpoints import EvaluationPolicy
 from mapi_spec.errors import IntegrityFailure
 from mapi_spec.resources import ResourceClass
+from mapi_spec.schema import DataSchema
 from mapi_spec.sharing import ModelPlotRef
 from mapi_spec.webhooks import WebhookEventType
 from pydantic import BaseModel, JsonValue
@@ -43,6 +44,7 @@ __all__ = [
     "Deadline",
     "UrlSink",
     "as_model",
+    "conform",
     "export_done",
     "promote_body",
     "render_body",
@@ -132,6 +134,24 @@ class Deadline:
     @property
     def expired(self) -> bool:
         return self.timeout is not None and time.monotonic() - self.started >= self.timeout
+
+
+def conform(ds: xr.Dataset, schema: DataSchema) -> xr.Dataset:
+    """``ds`` with every variable the schema knows in the schema's dim order.
+
+    The server checks each inline variable's dims *in order* (``['time', 'scenario']`` is not
+    ``['scenario', 'time']``); xarray operations such as ``concat`` reorder them freely.
+    Variables whose dims differ as a set are left alone for the server to report.
+    """
+    out = ds.copy()
+    for name, var in schema.vars.items():
+        if name not in out.data_vars:
+            continue
+        want = tuple(var.dims)
+        have = tuple(str(d) for d in out[name].dims)
+        if have != want and set(have) == set(want):
+            out[name] = out[name].transpose(*want)
+    return out
 
 
 def result_dataset(tree: xr.DataTree, group: str = "summary") -> xr.Dataset:

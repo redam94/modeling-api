@@ -44,17 +44,24 @@ mapi tokens create budget-optimiser -s score:budget-planner --rate-limit 600
 8634.97622707262
 ```
 
-- **KPI.** `predict` returns the endpoint's target variable (set `kpi=` to pick another
-  output) at the posterior mean, summed over every other dim (`reduce="sum"`; `"mean"` and
-  `"none"` too). With `output="draws"` (and `draws=100`, at most 300) it returns posterior
-  draws along a `sample` dim instead, for risk-aware objectives (a quantile, an expected
+- **KPI.** `predict` returns the endpoint's output variable - the only one, or the one
+  named like the target; set `kpi=` (e.g. `"y_hat"`) when there are several - summed over
+  every other dim (`reduce="sum"`; `"mean"` and `"none"` too). It reads one summary
+  statistic, chosen by the endpoint's representation: the `mean` of a Bayesian (draws),
+  point or moments model, the `median` of a quantile model such as `tabular.regressor`,
+  the `point` of an interval model (`stat=` overrides it). Summing per-cell medians is an
+  approximation; prefer endpoints with draws for totals across many cells. With
+  `output="draws"` (and `draws=100`, at most 300) a draws endpoint returns posterior draws
+  along a `sample` dim instead, for risk-aware objectives (a quantile, an expected
   shortfall).
 - **Allocations.** `allocation({"tv": 4000, ...})` builds the payload from a budget per
   channel (`spend_var=` and `channel_dim=` name them; by default the endpoint's only spend
   variable along `channel`). With `base=` - a dataset holding the other inputs (controls,
   prices, the weeks of the plan) - each channel's flighting across weeks and markets is kept
   and rescaled to its budget, and every input the allocation lacks is sent from the base.
-- **Scoring.** Candidates go inline as XrJSON in the call's `data` (`payload_field="scenario"`
+- **Scoring.** Every payload is first transposed to the dim order of the endpoint's input
+  schema (the server checks each variable's dims in order; `Client.endpoint(alias)` does the
+  same unless `conform=False`). Candidates go inline as XrJSON in the call's `data` (`payload_field="scenario"`
   for counterfactual endpoints); `call={"mode": "forecast", "horizon": {...}}` adds any other
   `EndpointScoreCall` field. Each call waits with `Prefer: wait=60` and collects slow runs
   with the same idempotency key.
@@ -116,6 +123,11 @@ Atlas optimisers can then return Atlas's own `OptimizationResult`. In this repos
 `make test-atlas` runs the adapter's tests with Atlas installed from a sibling checkout
 (`ATLAS_DIR=../optimizer-framework`) into a throwaway environment overlay - Atlas is never a
 locked dependency of the platform.
+
+Against a running stack (a `tabular.regressor` fitted on 1,800 rows of the same concave
+response, promoted to an endpoint), this optimiser found `tv 5534, search 2233, social 2233`
+- the closed form is `5750 / 2500 / 1750`; the gap is the gradient-boosted model's own
+error - from 98 candidate allocations in 14 batched score requests, in about 140 seconds.
 
 !!! note "Optimising in the sandbox"
     `RemoteModel` drives the optimiser from your machine, one score run per batch. For long

@@ -73,6 +73,7 @@ from mapi_client._m3_common import (
     Deadline,
     UrlSink,
     as_model,
+    conform,
     export_done,
     promote_body,
     render_body,
@@ -87,6 +88,7 @@ from mapi_client._m3_common import (
 from mapi_client.errors import TransportError, raise_for_response
 from mapi_client.pagination import AsyncPaginator
 from mapi_client.transfer import datatree_from_bytes, require_xarray, xarray_available
+from mapi_client.xrjson import is_dataset
 
 if TYPE_CHECKING:
     import xarray as xr
@@ -454,6 +456,7 @@ class AsyncRemoteEndpoint:
         m3.get_endpoint(alias)  # validates the alias as a path segment
         self._c = client
         self.alias = alias
+        self._schema: EndpointSchema | None = None
 
     def __repr__(self) -> str:
         return f"AsyncRemoteEndpoint({self.alias!r}, project={self._c.project!r})"
@@ -463,7 +466,16 @@ class AsyncRemoteEndpoint:
         return await self._c.endpoints.get(self.alias)
 
     async def schema(self) -> EndpointSchema:
-        return await self._c.endpoints.schema(self.alias)
+        """What to send (fetched afresh; also kept to conform later payloads)."""
+        self._schema = await self._c.endpoints.schema(self.alias)
+        return self._schema
+
+    async def _conformed(self, data: Payload | None, enabled: bool) -> Payload | None:
+        """An ``xr.Dataset`` transposed to the endpoint's input dim order."""
+        if not enabled or not is_dataset(data):
+            return data
+        schema = self._schema or await self.schema()
+        return conform(data, schema.snapshot.input_schema)
 
     def history(self, *, limit: int | None = None) -> AsyncPaginator[EndpointRevision]:
         return self._c.endpoints.history(self.alias, limit=limit)
@@ -473,8 +485,11 @@ class AsyncRemoteEndpoint:
     ) -> SnippetSet:
         return await self._c.endpoints.snippets(self.alias, languages)
 
-    async def validate(self, data: Payload | None = None, **fields: Any) -> EndpointValidation:
+    async def validate(
+        self, data: Payload | None = None, *, conform: bool = True, **fields: Any
+    ) -> EndpointValidation:
         """Static checks of scoring ``data`` (and any call fields) without running it."""
+        data = await self._conformed(data, conform)
         return await self._c.endpoints.validate(self.alias, None, data=data, **fields)
 
     async def score_result(self, data: Payload | None = None, **options: Any) -> ScoreResult:
@@ -488,6 +503,7 @@ class AsyncRemoteEndpoint:
         group: str = "summary",
         wait: int = MAX_PREFER_WAIT_SECONDS,
         timeout: float | None = None,
+        conform: bool = True,
         **fields: Any,
     ) -> xr.Dataset:
         """Score ``data`` and return one group of the result as an ``xr.Dataset``.
@@ -495,9 +511,12 @@ class AsyncRemoteEndpoint:
         ``fields`` are :class:`EndpointScoreCall` fields (``mode``, ``horizon``,
         ``scenario``, ``output``, ``interventions``, ...). ``group`` picks the result group:
         ``summary`` (a ``stat`` dim: ``mean``, ``hdi_90_lower``, ...), ``draws`` (a
-        ``sample`` dim), ``delta/summary`` for counterfactuals.
+        ``sample`` dim), ``delta/summary`` for counterfactuals. With ``conform`` (default)
+        a dataset's variables are transposed to the endpoint's input dim order first (the
+        schema is fetched once).
         """
         require_xarray()
+        data = await self._conformed(data, conform)
         result = await self._c.endpoints.score(
             self.alias, None, data=data, wait=wait, timeout=timeout, download=True, **fields
         )

@@ -282,6 +282,51 @@ def test_allocation_keeps_the_base_flighting(
     assert "price" in payload  # the template's other inputs are sent too
 
 
+def test_quantile_endpoints_are_read_at_the_median(
+    api_client: Client,
+    fake_endpoint: Callable[..., Any],
+    scenario_snapshot: dict[str, Any],
+) -> None:
+    """Quantile models (tabular.regressor) have no mean: the default stat follows the
+    endpoint's representation, and draws are refused up front."""
+    ep = fake_endpoint(concave, snapshot=scenario_snapshot | {"representation": "quantiles"})
+    model = RemoteModel(api_client, "plan-prod", kpi="revenue")
+    budget = {"tv": 500.0, "search": 500.0, "social": 500.0}
+    assert float(model.predict(model.allocation(budget))) == pytest.approx(
+        1.01 * revenue_of(budget)
+    )
+    assert ep.bodies[-1]["output"]["summary"] == ["median"]
+    pinned = RemoteModel(api_client, "plan-prod", kpi="revenue", stat="mean")
+    assert float(pinned.predict(pinned.allocation(budget))) == pytest.approx(revenue_of(budget))
+    with pytest.raises(ValueError, match="needs an endpoint with draws"):
+        RemoteModel(api_client, "plan-prod", output="draws").predict(model.allocation(budget))
+
+
+def test_payloads_follow_the_schema_dim_order(
+    api_client: Client,
+    fake_endpoint: Callable[..., Any],
+    scenario_snapshot: dict[str, Any],
+) -> None:
+    """The server checks each variable's dims in order; stacking a batch puts the batch dim
+    first, so the payload is transposed to the endpoint's order."""
+    scenario_snapshot["input_schema"]["vars"]["spend"]["dims"] = ["channel", "scenario"]
+    ep = fake_endpoint(concave, snapshot=scenario_snapshot)
+    model = RemoteModel(api_client, "plan-prod", batch_dim="scenario")
+    budgets = [{"tv": 10.0 * i, "search": 1.0, "social": 2.0} for i in range(3)]
+    values = model.predict_batch([model.allocation(b) for b in budgets])
+    assert [float(v) for v in values] == pytest.approx([revenue_of(b) for b in budgets])
+    assert ep.bodies[-1]["data"]["data_vars"]["spend"]["dims"] == ["channel", "scenario"]
+    remote = api_client.endpoint("plan-prod")
+    ds = xr.Dataset(
+        {"spend": (("scenario", "channel"), [[1.0, 2.0, 3.0]])},
+        coords={"scenario": ["a"], "channel": list(CHANNELS)},
+    )
+    remote.validate(ds)
+    assert ep.bodies[-1]["data"]["data_vars"]["spend"]["dims"] == ["channel", "scenario"]
+    remote.validate(ds, conform=False)
+    assert ep.bodies[-1]["data"]["data_vars"]["spend"]["dims"] == ["scenario", "channel"]
+
+
 def test_invalid_options() -> None:
     api = Client(BASE)
     for bad in ({"output": "median"}, {"reduce": "max"}, {"max_batch": 0}):

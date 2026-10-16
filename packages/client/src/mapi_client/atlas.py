@@ -41,7 +41,7 @@ from mapi_spec.api import MAX_PREFER_WAIT_SECONDS, EndpointSchema
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.schema import DimPolicy, Role
 
-from mapi_client._m3_common import result_dataset, score_call
+from mapi_client._m3_common import conform, result_dataset, score_call
 from mapi_client.errors import retry_after_of
 from mapi_client.transfer import require_xarray
 from mapi_client.xrjson import encode
@@ -51,11 +51,20 @@ if TYPE_CHECKING:
 
     from mapi_client._sync import Client
 
-__all__ = ["CacheInfo", "RemoteModel", "register_with_atlas"]
+__all__ = ["STAT_FOR", "CacheInfo", "RemoteModel", "register_with_atlas"]
 
 MODEL_TYPE: Final = "mapi.endpoint"
 MAX_DRAWS: Final = 300
 """Draws a score request returns at most on the default tier (plan Q2)."""
+STAT_FOR: Final[dict[str, str]] = {
+    "draws": "mean",
+    "point": "mean",
+    "moments": "mean",
+    "quantiles": "median",
+    "interval": "point",
+}
+"""The summary :class:`RemoteModel` optimises by default, per output representation (the
+summaries each representation supports differ: quantile models have no mean)."""
 _BATCHABLE: Final = {
     "categorical": DimPolicy.NEW_LEVELS,
     "integer": DimPolicy.EXTEND,
@@ -97,8 +106,12 @@ class RemoteModel:
         endpoint: The endpoint alias (``geo-mmm-prod``).
         kpi: The output variable to optimise (default: the endpoint's target variable, or
             the only output variable).
-        output: ``"mean"`` (the posterior mean) or ``"draws"`` (``draws`` posterior draws
-            along a ``sample`` dim, for risk-aware objectives).
+        output: ``"mean"`` (one summary statistic, see ``stat``) or ``"draws"`` (``draws``
+            posterior draws along a ``sample`` dim, for risk-aware objectives; endpoints
+            with a ``draws`` representation only).
+        stat: The summary ``output="mean"`` reads (default by the endpoint's representation:
+            ``mean`` for draws, point and moments, ``median`` for quantiles, ``point`` for
+            intervals; :data:`STAT_FOR`).
         draws: Draws per candidate with ``output="draws"`` (at most 300).
         kind: ``"expected"`` (the mean response) or ``"predictive"`` (with noise).
         reduce: How ``predict`` folds the KPI's dims (except ``sample``): ``"sum"`` (total
@@ -126,6 +139,7 @@ class RemoteModel:
         *,
         kpi: str | None = None,
         output: Literal["mean", "draws"] = "mean",
+        stat: str | None = None,
         draws: int = 100,
         kind: Literal["expected", "predictive"] = "expected",
         reduce: Literal["sum", "mean", "none"] = "sum",
@@ -159,6 +173,7 @@ class RemoteModel:
         self.endpoint = endpoint
         self.kpi = kpi
         self.output = output
+        self.stat = stat
         self.draws = draws
         self.kind = kind
         self.reduce = reduce
@@ -275,15 +290,26 @@ class RemoteModel:
         return spend[0]
 
     def _payload(self, x: xr.Dataset) -> xr.Dataset:
-        if self.base is None:
-            return x
-        merged = self.base.copy()
-        merged.update(x)
-        return merged
+        merged = x
+        if self.base is not None:
+            merged = self.base.copy()
+            merged.update(x)
+        return conform(merged, self.schema().snapshot.input_schema)
+
+    def _stat(self) -> str:
+        if self.stat is not None:
+            return self.stat
+        rep = self.schema().snapshot.representation
+        return STAT_FOR.get(rep.value if rep is not None else "draws", "mean")
 
     def _output(self) -> dict[str, Any]:
-        out: dict[str, Any] = {"kind": self.kind, "summary": ["mean"]}
+        out: dict[str, Any] = {"kind": self.kind, "summary": [self._stat()]}
         if self.output == "draws":
+            rep = self.schema().snapshot.representation
+            if rep is not None and rep.value != "draws":
+                raise ValueError(
+                    f"output='draws' needs an endpoint with draws; this one returns {rep.value}"
+                )
             out["draws"] = self.draws
         return out
 
@@ -342,6 +368,7 @@ class RemoteModel:
         return self._select(self._score(payload))
 
     def _score(self, payload: xr.Dataset) -> xr.DataTree:
+        payload = conform(payload, self.schema().snapshot.input_schema)
         body = score_call({**self.call, self.payload_field: payload, "output": self._output()}, {})
         key = str(uuid.uuid4())  # one key per logical request, reused by every retry
 
@@ -384,7 +411,7 @@ class RemoteModel:
             return result_dataset(tree, "draws")
         summary = result_dataset(tree, "summary")
         if "stat" in summary.dims:
-            summary = summary.sel(stat="mean", drop=True)
+            summary = summary.sel(stat=self._stat(), drop=True)
         return summary
 
     def _batch_labels(self, n: int) -> list[Any]:

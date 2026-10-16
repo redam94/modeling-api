@@ -168,10 +168,12 @@ class FakeEndpoint:
         payload = body.get("data") or body.get("scenario")
         ds = from_xrjson(payload) if isinstance(payload, dict) else xr.Dataset()
         out = self.respond(ds)
-        stats = ["mean", "hdi_90_lower", "hdi_90_upper"]
+        stats = ["mean", "median", "hdi_90_lower", "hdi_90_upper"]
         summary = xr.Dataset(
             {
-                str(n): xr.concat([v, v * 0.9, v * 1.1], dim="stat").assign_coords(stat=stats)
+                str(n): xr.concat([v, v * 1.01, v * 0.9, v * 1.1], dim="stat").assign_coords(
+                    stat=stats
+                )
                 for n, v in out.data_vars.items()
             }
         )
