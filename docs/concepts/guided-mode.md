@@ -12,15 +12,26 @@ and the client share. The endpoints are listed in the
 
 !!! info "Status"
     v0.4 defines these contracts first; the server, runner and web app implement them in
-    parallel. Anything not yet served says so in the reference.
+    parallel. Anything not yet served says so in the reference. The data path - templates,
+    role detection, drafts, the sandboxed ingest presets, the BayesInsight import and the
+    persona lock - is served; [From a spreadsheet to a Guided draft](../guides/guided-data.md)
+    walks through it.
 
 ## The persona lock
 
 Every user picks Guided or Expert in the header, and the choice is remembered. A project admin
 can **lock a project to Guided mode** (`Project.guided_locked`, set with
-`PATCH /v1/tenants/{tenant_id}/projects/{project_id}`): members below admin then only see
-Guided screens. The lock is a presentation policy - the API still accepts any valid spec from
-integrations - and changing it is audited (`project.guided_lock`).
+`PATCH /v1/tenants/{tenant_id}/projects/{project_id}`, audited as `project.guided_lock`):
+members below admin then only see Guided screens.
+
+The API holds those members to the same line when they **write specs**
+(`mapi_spec.guided.guided_lock_issues`): a stored spec must be a Guided spec - its
+`metadata.labels.guided` names a template and `model.use` is that template's plugin - and
+the fields the template marks `advanced` or `hidden` keep their values (a revision keeps its
+parent's, a new spec the template's). Answers, `basic` settings, business priors and lift
+tests stay editable. Anything else is `403 FORBIDDEN` with one issue per JSON pointer.
+Admins, static validation, runs and scoring - and so integrations calling endpoints - are not
+affected.
 
 ## 1. "What do you want to learn?" - templates
 
@@ -35,12 +46,15 @@ settings, the scorecard checks that apply and `x-ui-level` hints for every field
 | `store_demand` - Demand by store | `tabular.regressor` | Units per store and week from prices and promotions (low/median/high) | — | yes | — |
 | `customer_choice` - Customer choice | `choice.multinomial_logit` | Which product customers pick and how price shifts the choice | presets | — | — |
 
-!!! warning "Customer choice needs a new built-in model"
-    `customer_choice` targets `choice.multinomial_logit`, a built-in multinomial choice model
-    (alternative-specific utilities over price and promotion, household random effects, a
-    `draws` representation, `predict` and `simulate` modes) that is **not shipped yet**. The
-    template is published (`plugin_available: false`) so its question flow and data contract
-    can be reviewed; drafts made from it carry a `REF_UNRESOLVED` warning.
+!!! tip "Customer choice: a conditional logit with household effects"
+    `customer_choice` targets the built-in `choice.multinomial_logit`: alternative-specific
+    utilities over price and promotion, household-specific product preferences (a
+    random-intercept logit fitted at its posterior mode) and Bayesian-bootstrap draws over
+    households, so shares, counterfactual deltas and sums over trips keep their uncertainty.
+    A product without a price on a trip was not on the shelf; new households draw their
+    preferences from the fitted spread. Choice values must name products the way the price
+    columns do (`price_cola` goes with the choice `cola`). See
+    [Built-in models](../reference/models.md#choicemultinomial_logit-which-product-customers-pick).
 
 Every template fits with `fit.mode: evaluate_then_refit`: the model is first fitted without
 the latest periods to measure its forecast error, then refitted on everything, which is what
@@ -70,10 +84,18 @@ range, detected date frequency. `POST /v1/guided/detect-roles` (or the pure func
 - types must fit (a date question wants dates; spend wants numbers, preferably never negative);
 - label-like columns (few repeated values) suit dim questions; mostly empty columns lose points.
 
+- dates in order and trip numbers that count up suit ordered dims; spend with negative values
+  and columns that never change lose points.
+
 Every candidate comes with a `confidence` between 0 and 1 and a `reason_plain` such as "named
 like a revenue column; never negative". Answers are pre-filled at confidence 0.5 or more, a
 column answers at most one question, and the data frequency is read from the chosen date
 column. Required questions left without a candidate come back as warnings.
+
+Detection also works on a **stored dataset version** (`dataset` instead of `columns`): its
+ingest run wrote `columns.json`, the sandbox's profile of every uploaded column (for MFF
+uploads: of the pivoted variables), and versions without one are profiled from their stored
+schema and summary - the API only ever reads that JSON.
 
 ### Drafts and "View as YAML"
 
@@ -87,8 +109,10 @@ column. Required questions left without a candidate come back as warnings.
   lift tests in its `calibration` block;
 - the same spec as YAML.
 
-Nothing is stored: upload the data as a dataset version with the mapping and save the spec
-with `POST /v1/specs`. Wrong answers come back as `GUIDED_ANSWERS_INVALID` pointing at
+The server validates the draft statically against the catalog, with the schema the mapping
+promises (`mapi_spec.guided.draft_schema`), and returns the findings in `issues`. Nothing is
+stored: upload the data as a dataset version with the mapping and save the spec with
+`POST /v1/specs`. Wrong answers come back as `GUIDED_ANSWERS_INVALID` pointing at
 `/answers/<question>`.
 
 ## File formats and presets
@@ -114,14 +138,26 @@ variable - the columns BayesInsight uses (`mapi_spec.ingest.MFF_COLUMNS`):
 | `VariableName` | The variable (`Sales`, `TV_Spend`, ...) |
 | `VariableValue` | The value |
 
+MFF tables can also be pivoted and then mapped like a CSV (the variables become columns),
+`MffOptions.combine` joins key columns into one dim, and the BayesInsight preset keeps only
+what `metadata.json` allows. The ingest enforces caps on rows, columns, cell length and
+decompression and explains every refusal; see
+[File formats and presets](../guides/guided-data.md#file-formats-and-presets).
+
 ### BayesInsight models
 
-A BayesInsight project imports as a draft (`POST /v1/guided/import/bayesinsight`): the data
-with the `bayesinsight` preset, and a spec for the built-in `mmm.bayesinsight` plugin that
-carries `model_def.json` verbatim. The single `exog` variable is the KPI; analytic variable
-names such as `Promotion_Total_Total_Total` (the variable plus the values of the key columns
-not in `row_ids`) are mapped back to the ingested variables. Models without exactly one KPI
-are refused with `IMPORT_UNSUPPORTED`.
+A BayesInsight project imports as a draft (`POST /v1/guided/import/bayesinsight`,
+`mapi_spec.bayesinsight.import_bayesinsight`) for the built-in geo MMM
+`mmm.hierarchical_geo` (Q8): the data with the `bayesinsight` preset - media variables
+gathered into `spend` along `channel`, the `row_ids` key columns joined into one `geo` dim -
+and a spec that carries every feature with an equivalent (delayed or geometric adstock and
+its Beta/Exponential priors per channel, Hill saturation, pooling, standardised controls,
+Fourier seasonality). Features without one - non-Normal likelihoods, coefficient priors in
+KPI units, Weibull adstock, S-shaped curves, sign constraints - are listed as
+`IMPORT_UNSUPPORTED` warnings; models that cannot run (no single `exog` KPI, no media,
+names that do not match `row_ids`) are refused with `IMPORT_UNSUPPORTED`.
+`target: mmm.bayesinsight` keeps `model_def.json` verbatim for the planned dedicated plugin
+instead.
 
 ## 3. Business priors and lift tests
 

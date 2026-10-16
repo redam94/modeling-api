@@ -35,6 +35,48 @@ milestone releases are tagged on `main`.
     actions, problem codes and `Project.guided_locked`.
 - **docs**: Guided mode and Integrations concept pages; the v0.4 section of the HTTP API
   reference.
+- **server**: the Guided data path. `GET /v1/guided/templates` (paged) and
+  `/{template_id}`; `POST /v1/guided/detect-roles` from browser profiles or a stored dataset
+  version; `POST /v1/guided/drafts` and `POST /v1/guided/import/bayesinsight`, validated
+  statically against the catalog with the schema the draft's mapping promises. Every
+  operation documents its RFC 7807 problems in the OpenAPI document.
+  - Migration `0007_guided`: `projects.guided_locked` and `dataset_versions.columns`.
+  - The persona lock is persisted, audited (`project.guided_lock`) and enforced: in a locked
+    project, members below admin store Guided specs only, and only their `basic` fields may
+    change (`403 FORBIDDEN` with the pointers otherwise).
+  - The finalizer validates and stores an ingest's `columns.json`, which detection reads and
+    `…/artifacts/columns.json` serves.
+- **runner**: sandboxed ingest for Guided mode: wide variables (one column per channel or
+  product), the Meridian preset, MFF tables mapped like a CSV after the pivot,
+  `MffOptions.combine`, and the BayesInsight preset (`allowed_*` values, period range,
+  necessary variables). Caps on rows, columns, cell and name length, and decompression (gzip
+  CSV streamed under a budget, Parquet, zip and netCDF by their declared sizes) are checked
+  before a parser allocates; every refusal is a plain message with a suggested action.
+  Ingest writes `columns.json`, the profile of every uploaded column.
+- **plugins**: `choice.multinomial_logit` in `mapi-plugin-tabular`, a conditional logit
+  with household product effects and Bayesian-bootstrap draws, so the `customer_choice`
+  template is real. The `e84_lite` conformance fixture replaces the corpus deferral.
+- **spec**: `mapi_spec.bayesinsight.import_bayesinsight` maps `model_def.json` onto
+  `mmm.hierarchical_geo` - adstock, Hill saturation and pooling with BayesInsight's own
+  priors where they have equivalents, controls, seasonality, trends - and reports every
+  feature without one as an `IMPORT_UNSUPPORTED` warning (`BayesInsightImport.target`
+  keeps the `mmm.bayesinsight` draft). Role detection gains `ColumnProfile.monotonic` and
+  `origin`, `profiles_from_dataset`, `draft_schema` and `guided_lock_issues`;
+  `GuidedAnswers.format` accepts `mff`; `IngestJob` gains the ingest caps.
+- **docs**: the "From a spreadsheet to a Guided draft" guide; the Guided mode
+  concept page, the built-in models and the conformance guide describe the served parts.
+
+### Changed
+- **spec**: the `customer_choice` template (1.1.0) targets the built-in
+  `choice.multinomial_logit`; wide column labels drop the question's keywords
+  (`price_cola` → `cola`); a draft refuses answers that would give two columns the same
+  dataset name.
+
+### Fixed
+- **spec**: `index` dims extend contiguously (their coordinates have ordinals), so scoring an
+  `index` dim with an `extend` policy no longer fails with `NON_CONTIGUOUS_EXTENSION`.
+- **sdk**: cell-level splits treat an empty text target as missing and hold text targets out
+  with `''`, so a choice panel's chosen product can be held out.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

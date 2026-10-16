@@ -517,18 +517,25 @@ Project-scoped M3 routes take the project from `X-Mapi-Project`, like every v0.3
 questions, the built-in plugin they target, a `ModelSpec` template with `{{placeholder}}`
 strings, default settings, the scorecard checks that apply and `x-ui-level` hints. Role
 detection (`POST /v1/guided/detect-roles`) ranks the columns of an upload for every question
-from `ColumnProfile`s computed in the browser (or from a stored dataset version) and returns
-`RoleSuggestions`, each candidate with a confidence and a `reason_plain`. A draft
-(`POST /v1/guided/drafts`) turns `GuidedAnswers` into an `IngestMapping` for the upload, a
-`ModelSpec` document and its YAML ("View as YAML") without storing anything; save it with
-`POST /v1/specs`. `POST /v1/guided/import/bayesinsight` does the same for a BayesInsight
-`model_def.json` and `metadata.json` (`BayesInsightImport`). Business priors become
+from `ColumnProfile`s computed in the browser (or from a stored dataset version: its ingest's
+`columns.json`, else its schema and summary) and returns `RoleSuggestions`, each candidate
+with a confidence and a `reason_plain`. A draft (`POST /v1/guided/drafts`) turns
+`GuidedAnswers` into an `IngestMapping` for the upload, a `ModelSpec` document and its YAML
+("View as YAML") without storing anything, with the static validator's findings in `issues`;
+save it with `POST /v1/specs`. `POST /v1/guided/import/bayesinsight` does the same for a
+BayesInsight `model_def.json` and `metadata.json` (`BayesInsightImport`), for the built-in
+geo MMM unless `target` says `mmm.bayesinsight`. Business priors become
 model-space priors in a sandboxed `translate_priors` run (`PriorTranslationRequest` →
 `PriorTranslation`, whose `result` is a `PriorTranslationResult` with a prior-predictive
 preview in business units). `POST /v1/guided/requests:compile` turns a what-if scenario, a
 forecast or an intervention preset (`GuidedCompile`) into the `ScoreRequest` it stands for, so
 "Run exact" submits a real score run. The persona lock is `Project.guided_locked`, changed
-with `PATCH /v1/tenants/{tenant_id}/projects/{project_id}` (`ProjectUpdate.guided_locked`).
+with `PATCH /v1/tenants/{tenant_id}/projects/{project_id}` (`ProjectUpdate.guided_locked`);
+in a locked project, `POST /v1/specs` and `POST /v1/specs/{spec_id}/revisions` by members
+below admin answer `403 FORBIDDEN` for anything but Guided specs that keep their template's
+advanced and hidden fields. Served in this release: the templates, role detection, drafts,
+the BayesInsight import and the lock (see
+[From a spreadsheet to a Guided draft](../guides/guided-data.md)).
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
@@ -536,7 +543,7 @@ with `PATCH /v1/tenants/{tenant_id}/projects/{project_id}` (`ProjectUpdate.guide
 | `GET /v1/guided/templates/{template_id}` | One template: questions, spec template, scorecard checks, UI levels | — | `GuidedTemplate` | 200 | `NOT_FOUND` |
 | `POST /v1/guided/detect-roles` | Suggest a column for every question from column profiles | `DetectRolesRequest` | `RoleSuggestions` | 200 | `SCHEMA_INVALID`, `NOT_FOUND` |
 | `POST /v1/guided/drafts` | Answers → ingest mapping + ModelSpec draft (+ YAML); stores nothing | `GuidedAnswers` | `GuidedDraft` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `GUIDED_ANSWERS_INVALID` |
-| `POST /v1/guided/import/bayesinsight` | BayesInsight model_def.json + metadata.json → draft for mmm.bayesinsight | `BayesInsightImport` | `GuidedDraft` | 200 | `SCHEMA_INVALID`, `IMPORT_UNSUPPORTED` |
+| `POST /v1/guided/import/bayesinsight` | BayesInsight model_def.json + metadata.json → draft for the geo MMM | `BayesInsightImport` | `GuidedDraft` | 200 | `SCHEMA_INVALID`, `IMPORT_UNSUPPORTED` |
 | `POST /v1/guided/requests:compile` | What-if scenario, forecast or preset → the ScoreRequest it stands for ('Run exact') | `GuidedCompile` | `ScoreRequest` | 200 | `SCHEMA_INVALID`, `MISSING_FUTURE_COVARIATE` |
 | `POST /v1/guided/prior-translations` | Business priors → model-space priors + prior predictive (a translate_priors run) | `PriorTranslationRequest` | `PriorTranslation` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `BUSINESS_PRIORS_INVALID`, `CALIBRATION_UNSUPPORTED`, `QUOTA_EXCEEDED` |
 | `GET /v1/guided/prior-translations/{run_id}` | The translation run and, once done, its priors and preview | — | `PriorTranslation` | 200 | `NOT_FOUND` |
