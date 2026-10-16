@@ -230,3 +230,16 @@ async def test_a_receiver_that_does_not_answer_times_out() -> None:
     finally:
         server.close()
     assert result.status is None and "in time" in (result.error or "")
+
+
+async def test_the_system_resolver_explains_an_unknown_host_in_plain_words() -> None:
+    """The message reaches people (the web app shows it under the URL): no exception names."""
+    from mapi_server.services.webhooks.ssrf import ResolutionFailed, SystemResolver
+
+    with pytest.raises(ResolutionFailed) as err:
+        await SystemResolver(timeout_s=5).resolve("no-such-host.invalid", 443)
+    assert str(err.value) in (
+        "the host did not resolve: no such name",
+        "the host did not answer in time (DNS)",
+    )
+    assert "gaierror" not in str(err.value)

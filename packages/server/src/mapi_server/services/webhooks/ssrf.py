@@ -76,8 +76,12 @@ class SystemResolver:
                 loop.getaddrinfo(host, port, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP),
                 self.timeout_s,
             )
-        except (OSError, TimeoutError, UnicodeError) as exc:
-            raise ResolutionFailed(f"the host did not resolve ({type(exc).__name__})") from None
+        except TimeoutError:
+            raise ResolutionFailed("the host did not answer in time (DNS)") from None
+        except (OSError, UnicodeError):
+            # plain words for the people who read it (the web app shows it at the URL field);
+            # the exception class (gaierror, ...) means nothing to them
+            raise ResolutionFailed("the host did not resolve: no such name") from None
         out: list[str] = []
         for _family, _type, _proto, _canon, sockaddr in infos:
             addr = str(sockaddr[0])
