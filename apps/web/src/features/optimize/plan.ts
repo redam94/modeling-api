@@ -122,6 +122,7 @@ export function planProblems(f: PlanForm, current: Record<string, number>): stri
     if (l.locked) continue;
     if ((l.min !== null && l.min < 0) || (l.max !== null && l.max < 0)) out.push(`${ch}: limits cannot be negative.`);
     if (l.min !== null && l.max !== null && l.min > l.max) out.push(`${ch}: the minimum is above the maximum.`);
+    else if (l.unit === "multiplier" && l.min !== null && l.max === null && l.min > 2) out.push(`${ch}: the minimum (${l.min}×) is above the usual maximum (2×); set a maximum too.`);
     if (l.unit === "multiplier" && ((l.min ?? 0) > 100 || (l.max ?? 0) > 100)) out.push(`${ch}: multiples of today's spend go up to 100×.`);
   }
   for (const g of f.groups) {

@@ -95,7 +95,7 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
                   <td className="px-3 py-1.5 font-medium">{ch}</td>
                   <td className="px-3 py-1.5 text-right tabular">{amount(current[ch] ?? 0, units)}</td>
                   <td className="px-3 py-1.5">
-                    <NativeSelect aria-label={`Limits for ${ch} in`} value={l.unit} disabled={l.locked} onChange={(e) => setLimit(ch, { unit: e.target.value as ChannelLimit["unit"], min: null, max: null })} className="h-8 w-36 text-[13px]">
+                    <NativeSelect aria-label={`Limits for ${ch} in`} value={l.unit} disabled={l.locked} onChange={(e) => setLimit(ch, { unit: e.target.value as ChannelLimit["unit"], min: null, max: null })} className="h-8 w-44 text-[13px]">
                       <option value="multiplier">× today&apos;s spend</option>
                       <option value="money">{units ?? "money"}</option>
                     </NativeSelect>
@@ -229,13 +229,15 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
       ) : null}
 
       {problems.length ? (
-        <ul role="alert" className="grid gap-1 rounded-lg border border-warning/40 bg-warning/8 p-3 text-[13px]" aria-label="Problems with the plan">
-          {problems.map((p) => (
-            <li key={p} className="flex items-start gap-2">
-              <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-warning" /> {p}
-            </li>
-          ))}
-        </ul>
+        <div role="alert" className="rounded-lg border border-warning/40 bg-warning/8 p-3 text-[13px]">
+          <ul className="grid gap-1" aria-label="Problems with the plan">
+            {problems.map((p) => (
+              <li key={p} className="flex items-start gap-2">
+                <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-warning" /> {p}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" size="lg" disabled={pending || problems.length > 0 || !canRun}>

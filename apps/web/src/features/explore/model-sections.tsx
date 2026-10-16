@@ -202,6 +202,30 @@ export function FitSection({ view, expert }: P<FitVsActualView>) {
 
 // ------------------------------------------------------------------------------ residuals
 
+/**
+ * One plain line per test across the series of a panel: the verdict of a series that failed
+ * it (with how many did), else the passing verdict (with "every series").
+ */
+export function groupTests(tests: readonly StatTestResult[]): { test: string; text: string; rejected: number }[] {
+  const order: string[] = [];
+  const by = new Map<string, StatTestResult[]>();
+  for (const t of tests) {
+    if ((t.status ?? "ok") !== "ok") continue;
+    if (!by.has(t.test)) {
+      by.set(t.test, []);
+      order.push(t.test);
+    }
+    by.get(t.test)!.push(t);
+  }
+  return order.map((test) => {
+    const all = by.get(test)!;
+    const failed = all.filter((t) => t.reject);
+    const lead = failed[0] ?? all[0]!;
+    const tail = all.length > 1 ? (failed.length ? ` (${failed.length} of ${all.length} series)` : " (every series)") : "";
+    return { test, text: `${lead.verdict_plain.replace(/\.$/, "")}${tail}.`, rejected: failed.length };
+  });
+}
+
 export function ResidualsSection({ view, expert }: P<ResidualDiagnosticsView>) {
   const series = useMemo(() => view.series ?? [], [view.series]);
   const labels = useMemo(() => series.map((s) => facetLabel(s.facet)), [series]);
@@ -221,10 +245,10 @@ export function ResidualsSection({ view, expert }: P<ResidualDiagnosticsView>) {
       <PlainSummary tone={failing.length ? "warn" : tests.length ? "good" : "neutral"}>
         {tests.length ? (
           <ul className="grid gap-1">
-            {tests.map((t, i) => (
-              <li key={`${t.test}-${i}`} className="flex items-start gap-2">
-                {t.reject ? <AlertTriangle aria-hidden className="mt-1 size-3.5 shrink-0 text-warning" /> : <CheckCircle2 aria-hidden className="mt-1 size-3.5 shrink-0 text-success" />}
-                <span>{t.verdict_plain}</span>
+            {groupTests(tests).map((g) => (
+              <li key={g.test} className="flex items-start gap-2">
+                {g.rejected ? <AlertTriangle aria-hidden className="mt-1 size-3.5 shrink-0 text-warning" /> : <CheckCircle2 aria-hidden className="mt-1 size-3.5 shrink-0 text-success" />}
+                <span>{g.text}</span>
               </li>
             ))}
           </ul>
@@ -393,6 +417,23 @@ export function FevdSection({ view, expert }: P<FevdView>) {
 
 // ------------------------------------------------------------------------------ forecast
 
+/** "By 2025-12-28, revenue is most likely about 1.2M (90% likely between 1.1M and 1.3M)." */
+export function endOfHorizon(f: { kpi: string; units?: string | null; fan: { coords: (string | number)[]; quantiles: number[]; values: (number | null)[][] } }): string {
+  const j = f.fan.coords.length - 1;
+  const qs = f.fan.quantiles;
+  const at = (target: number) => {
+    const i = qs.findIndex((q) => Math.abs(q - target) < 1e-6);
+    return i >= 0 ? (f.fan.values[i]?.[j] ?? null) : null;
+  };
+  const mid = at(0.5) ?? f.fan.values[Math.floor(qs.length / 2)]?.[j] ?? null;
+  const lo = f.fan.values[0]?.[j] ?? null;
+  const hi = f.fan.values[qs.length - 1]?.[j] ?? null;
+  if (j < 0 || mid === null) return `The forecast of ${f.kpi} after the history, with its likely range.`;
+  const level = Math.round(((qs.at(-1) ?? 0.95) - (qs[0] ?? 0.05)) * 100);
+  const units = f.units ? ` ${f.units}` : "";
+  return `By ${String(f.fan.coords[j])}, ${f.kpi} is most likely about ${num(mid, 3)}${units}${lo !== null && hi !== null ? ` (${level}% likely between ${num(lo, 3)} and ${num(hi, 3)})` : ""}.`;
+}
+
 export function ForecastSection({ view, expert }: P<ModelForecastView>) {
   const items = useMemo(() => view.forecasts ?? [], [view.forecasts]);
   const labels = useMemo(() => items.map((f, i) => (items.length > 1 ? `${f.kpi} (${i + 1})` : f.kpi)), [items]);
@@ -410,7 +451,7 @@ export function ForecastSection({ view, expert }: P<ModelForecastView>) {
         <p>
           {total
             ? `Over the forecast, ${f.kpi} adds up to about ${num(total.mean, 3)}${f.units ? ` ${f.units}` : ""}${q("0.05") !== undefined && q("0.95") !== undefined ? ` (90% likely between ${num(q("0.05"), 3)} and ${num(q("0.95"), 3)})` : ""}.`
-            : `The forecast of ${f.kpi} after the history, with its likely range.`}
+            : endOfHorizon(f)}
         </p>
         {f.summed_over?.length ? <p className="text-[13px] text-muted-foreground">Summed over {f.summed_over.join(" and ")}.</p> : null}
       </PlainSummary>

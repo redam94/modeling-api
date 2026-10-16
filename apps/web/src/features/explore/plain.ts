@@ -175,10 +175,10 @@ export function acfReading(acf: LagProfile | undefined, suggested: Record<string
 }
 
 const VERDICT_TEXT = {
-  stable: "returns to a stable level",
-  difference: "wanders (model its changes)",
-  trend_stable: "is stable around a trend",
-  unclear: "is unclear (the tests disagree)",
+  stable: ["returns to a stable level", "return to a stable level"],
+  difference: ["wanders (model its changes)", "wander (model their changes)"],
+  trend_stable: ["is stable around a trend", "are stable around a trend"],
+  unclear: ["is unclear (the tests disagree)", "are unclear (the tests disagree)"],
 } as const;
 
 export function stationarityReading(v: StationarityView): Reading {
@@ -186,7 +186,7 @@ export function stationarityReading(v: StationarityView): Reading {
   if (!rows.length) return { text: "No series were tested.", tone: "neutral" };
   const counts = new Map<string, number>();
   for (const r of rows) counts.set(r.verdict, (counts.get(r.verdict) ?? 0) + 1);
-  const parts = (["stable", "trend_stable", "difference", "unclear"] as const).filter((k) => counts.get(k)).map((k) => `${plural(counts.get(k)!, "series", "series")} ${VERDICT_TEXT[k]}`);
+  const parts = (["stable", "trend_stable", "difference", "unclear"] as const).filter((k) => counts.get(k)).map((k) => `${plural(counts.get(k)!, "series", "series")} ${VERDICT_TEXT[k][counts.get(k) === 1 ? 0 : 1]}`);
   const wander = (counts.get("difference") ?? 0) + (counts.get("unclear") ?? 0);
   return { text: `${listWords(parts)}.`, tone: wander ? "warn" : "good" };
 }
@@ -337,5 +337,5 @@ export function suggestionKey(variable: string, facet: Record<string, unknown> |
 }
 
 export function verdictText(verdict: keyof typeof VERDICT_TEXT): string {
-  return VERDICT_TEXT[verdict];
+  return VERDICT_TEXT[verdict][0];
 }

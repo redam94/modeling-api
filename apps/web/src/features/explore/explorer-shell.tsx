@@ -5,7 +5,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, BarChart3, CheckCircle2, Circle, Loader2, MinusCircle } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { ErrorNotice, ProblemNotice, StateBadge } from "@/components/common";
 import { Progress, Skeleton } from "@/components/ui/primitives";
@@ -147,20 +147,25 @@ export function SectionGate({ state, isPending, error, notComputed, children }: 
  * Model/Data Explorer API serves), for experts who want every series at once.
  */
 export function RecipePlots({ target, state, runId, expert }: { target: ExplorerTarget; state: SectionState | undefined; runId: string | null; expert: boolean }) {
-  const plots = useSectionPlots(target, state, runId, expert);
+  // Fetched and rendered only once opened (plot frames in a closed disclosure never load).
+  const [open, setOpen] = useState(false);
+  const plots = useSectionPlots(target, state, runId, expert && open);
   if (!expert || !state?.hasPlots) return null;
   return (
-    <details className="group rounded-lg border">
+    <details className="group rounded-lg border" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium select-none hover:bg-accent/40">All series (platform plots, export-ready)</summary>
-      <div className="grid gap-4 border-t p-4">
-        {plots.isError ? <ErrorNotice error={plots.error} title="The plots could not be loaded" /> : null}
-        {(plots.data ?? []).map((p) => (
-          <figure key={p.id} className="grid gap-1">
-            <PlotFrame kind="vega-lite" spec={recipeBody(p)} datasets={{}} title={p.title} exportName={p.id} />
-            {p.caption_plain ? <figcaption className="text-xs text-muted-foreground">{p.caption_plain}</figcaption> : null}
-          </figure>
-        ))}
-      </div>
+      {open ? (
+        <div className="grid gap-4 border-t p-4">
+          {plots.isError ? <ErrorNotice error={plots.error} title="The plots could not be loaded" /> : null}
+          {plots.isPending ? <Skeleton className="h-60" /> : null}
+          {(plots.data ?? []).map((p) => (
+            <div key={p.id} className="grid gap-1">
+              <PlotFrame kind="vega-lite" spec={recipeBody(p)} datasets={{}} title={p.title} exportName={p.id} />
+              {p.caption_plain ? <p className="text-xs text-muted-foreground">{p.caption_plain}</p> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
     </details>
   );
 }

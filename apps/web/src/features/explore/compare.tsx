@@ -6,7 +6,7 @@
  */
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Plus, Trophy, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
 import { useModels, useModelVersions, useProjectScope, modelArtifactLink } from "@/api/queries";
 import type { Model } from "@/api/types";
@@ -53,28 +53,33 @@ function VersionAdder({ models, onAdd, exclude }: { models: Model[]; onAdd: (ref
   const options = (versions.data?.items ?? []).filter((v) => !exclude.includes(v.ref)).sort((a, b) => b.version - a.version);
   const [ref, setRef] = useState("");
   const chosen = options.find((v) => v.ref === ref)?.ref ?? options[0]?.ref ?? "";
+  const id = useId();
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <label className="grid gap-1 text-xs font-medium text-muted-foreground">
-        Model
-        <NativeSelect value={modelId} onChange={(e) => setModelId(e.target.value)} className="h-8 w-56 text-[13px]">
+      <div className="grid gap-1">
+        <label htmlFor={`${id}-model`} className="text-xs font-medium text-muted-foreground">
+          Model
+        </label>
+        <NativeSelect id={`${id}-model`} value={modelId} onChange={(e) => setModelId(e.target.value)} className="h-8 w-56 text-[13px]">
           {models.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
             </option>
           ))}
         </NativeSelect>
-      </label>
-      <label className="grid gap-1 text-xs font-medium text-muted-foreground">
-        Version
-        <NativeSelect value={chosen} onChange={(e) => setRef(e.target.value)} className="h-8 w-28 text-[13px]" disabled={!options.length}>
+      </div>
+      <div className="grid gap-1">
+        <label htmlFor={`${id}-version`} className="text-xs font-medium text-muted-foreground">
+          Version
+        </label>
+        <NativeSelect id={`${id}-version`} value={chosen} onChange={(e) => setRef(e.target.value)} className="h-8 w-28 text-[13px]" disabled={!options.length}>
           {options.map((v) => (
             <option key={v.ref} value={v.ref}>
               v{v.version}
             </option>
           ))}
         </NativeSelect>
-      </label>
+      </div>
       <Button size="sm" variant="outline" disabled={!chosen} onClick={() => chosen && onAdd(chosen)}>
         <Plus /> Add
       </Button>

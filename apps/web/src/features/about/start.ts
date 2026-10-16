@@ -31,7 +31,8 @@ export function startTarget(kind: AboutKind, id: string, hasRoute: (path: string
       return { kind: "spec", to: "/build/new", search: { model: id }, label: "Start a spec with this model" };
     case "workflow_template":
       if (hasRoute(WORKFLOW_FROM_TEMPLATE_PATH)) {
-        return { kind: "href", href: `${WORKFLOW_FROM_TEMPLATE_PATH}?template=${encodeURIComponent(id)}`, label: "Start a workflow from this template" };
+        // About ids of workflow templates are `workflow.<template id>`.
+        return { kind: "href", href: `${WORKFLOW_FROM_TEMPLATE_PATH}?template=${encodeURIComponent(id.replace(/^workflow\./, ""))}`, label: "Start a workflow from this template" };
       }
       return { kind: "catalog", to: "/catalog", search: { about: aboutKey(kind, id) }, label: "See the workflow template" };
     default:

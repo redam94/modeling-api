@@ -59,7 +59,7 @@ export function OverviewSection({ view, expert }: P<DataOverviewView>) {
   const vars = view.vars ?? [];
   const plot = useMemo(() => {
     const all = view.vars ?? [];
-    return all.some((v) => (v.missing_share ?? 0) > 0) ? barsPlot(all.map((v) => ({ label: v.name, value: v.missing_share ?? 0, group: v.role ?? "other" })), { title: "Share missing", format: ".0%" }) : null;
+    return all.some((v) => (v.missing_share ?? 0) > 0) ? barsPlot(all.map((v) => ({ label: v.name, value: v.missing_share ?? 0, group: v.role ?? "other" })), { title: "Share missing", format: ".1~%" }) : null;
   }, [view.vars]);
   return (
     <>

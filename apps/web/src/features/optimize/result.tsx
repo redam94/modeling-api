@@ -29,13 +29,15 @@ export function planHeadline(r: OptimizeResult): { text: string; tone: "good" | 
   if (r.mode === "free") parts.push(`The model suggests spending ${amount(r.total_budget, r.spend_units)} in all (today ${amount(r.current_total, r.spend_units)}).`);
   else if (Math.abs(r.total_budget - r.current_total) > 1e-6 * Math.max(1, r.current_total)) parts.push(`With ${amount(r.total_budget, r.spend_units)} instead of ${amount(r.current_total, r.spend_units)}:`);
   if (up.length || down.length) {
-    const words = (xs: typeof moves) => xs.map((m) => `${m.ch} (${signedAmount(m.delta, r.spend_units)})`).join(", ");
-    parts.push(`${down.length ? `move money from ${words(down)}` : "keep every channel"}${up.length ? ` ${down.length ? "to" : "and add to"} ${words(up)}` : ""}.`.replace(/^./, (c) => c.toUpperCase()));
+    const words = (xs: typeof moves) => xs.map((m) => `${m.ch} (${signedAmount(Math.round(m.delta), r.spend_units)})`).join(", ");
+    const sentence = down.length && up.length ? `move money from ${words(down)} to ${words(up)}` : down.length ? `spend less on ${words(down)}` : `spend more on ${words(up)}`;
+    parts.push(`${parts.length ? sentence : sentence.replace(/^./, (c) => c.toUpperCase())}.`);
   } else parts.push("Today's split is already about the best.");
   let tone: "good" | "neutral" | "warn" = "neutral";
   if (r.uplift) {
     const b = band(r.uplift.quantiles);
-    parts.push(`That adds about ${signedAmount(r.uplift.mean, r.kpi_units)} to ${r.kpi}${b ? ` (90% likely between ${signedAmount(b[0], r.kpi_units)} and ${signedAmount(b[1], r.kpi_units)})` : ""}.`);
+    const round = (v: number) => (Math.abs(v) >= 100 ? Math.round(v) : v);
+    parts.push(`That adds about ${signedAmount(round(r.uplift.mean), r.kpi_units)} to ${r.kpi}${b ? ` (90% likely between ${signedAmount(round(b[0]), r.kpi_units)} and ${signedAmount(round(b[1]), r.kpi_units)})` : ""}.`);
     if (r.prob_positive_uplift != null) {
       parts.push(`The chance it beats today's plan is ${pct(r.prob_positive_uplift)}.`);
       tone = r.prob_positive_uplift >= 0.8 ? "good" : r.prob_positive_uplift < 0.6 ? "warn" : "neutral";

@@ -68,11 +68,13 @@ export function histogramPlot(h: Histogram, opts: { title: string }): BuiltPlot 
     spec: {
       data: { name: "bins" },
       height: 220,
-      mark: { type: "bar", cornerRadiusEnd: 1 },
+      // Explicit rectangles (x..x2 by 0..count) from the precomputed bins.
+      mark: { type: "rect", opacity: 0.9 },
       encoding: {
-        x: { field: "lo", type: "quantitative", bin: { binned: true }, title: opts.title },
+        x: { field: "lo", type: "quantitative", title: opts.title, scale: { zero: false } },
         x2: { field: "hi" },
         y: { field: "count", type: "quantitative", title: "Count" },
+        y2: { datum: 0 },
         tooltip: [
           { field: "lo", title: "From", format: ",.4~g" },
           { field: "hi", title: "To", format: ",.4~g" },

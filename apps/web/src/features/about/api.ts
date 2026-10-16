@@ -83,10 +83,18 @@ export function useChooser() {
 }
 
 
-/** Answers without empty questions, in a stable key order (query keys and URLs). */
+/** The chooser's question order (`CHOOSER_QUESTIONS`); the server lists reasons in query order. */
+const QUESTION_ORDER = ["goal", "data_shape", "frequency", "history", "drivers", "uncertainty", "experience", "speed"];
+
+function questionRank(id: string): number {
+  const i = QUESTION_ORDER.indexOf(id);
+  return i < 0 ? QUESTION_ORDER.length : i;
+}
+
+/** Answers without empty questions, in the questionnaire's order (query keys and URLs). */
 export function normaliseAnswers(answers: ChooserAnswers): ChooserAnswers {
   const out: ChooserAnswers = {};
-  for (const key of Object.keys(answers).sort()) {
+  for (const key of Object.keys(answers).sort((a, b) => questionRank(a) - questionRank(b) || a.localeCompare(b))) {
     const values = [...new Set(answers[key] ?? [])].filter(Boolean);
     if (values.length) out[key] = values;
   }
