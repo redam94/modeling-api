@@ -2728,7 +2728,7 @@ M35_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     ),
     EndpointDecl(
         "GET", "/v1/catalog/recommendations", "recommend_catalog_items",
-        "Ranked recommendations for chooser answers (query: <question>=<answer>[,...])",
+        "Ranked recommendations for chooser answers (query: one parameter per question)",
         "ChooserResult", 200, errors=(_E.CHOOSER_ANSWER_INVALID,),
         query=("kind", "limit", "goal", "data_shape", "frequency", "history", "drivers",
                "uncertainty", "experience", "speed"),

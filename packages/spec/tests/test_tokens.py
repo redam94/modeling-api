@@ -229,7 +229,10 @@ SCOPE_EXPECTED["workflows:run"] = {
     ("workflow", "read"), ("workflow", "run"), ("workflow", "cancel"), ("workflow", "update"),
     ("run", "read"), ("run", "create"), ("run", "cancel"), ("model", "run"), ("dataset", "read"),
 }  # fmt: skip
-SCOPE_EXPECTED["models:validate"] = {("model", "read"), ("model", "validate"), ("policy", "read")}
+SCOPE_EXPECTED["models:validate"] = {
+    ("model", "read"), ("model", "validate"), ("policy", "read"), ("run", "read"),
+    ("run", "create"),
+}  # fmt: skip
 SCOPE_EXPECTED["policies:manage"] = {
     ("policy", "read"), ("policy", "create"), ("policy", "update"), ("policy", "delete"),
 }  # fmt: skip

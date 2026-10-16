@@ -229,17 +229,26 @@ class Catalog(StrictModel):
         return catalog_about_issues(self, extra_ids=extra_ids)
 
 
-def catalog_about_issues(catalog: Catalog, *, extra_ids: Iterable[str] = ()) -> list[Issue]:
-    """``ABOUT_INCOMPLETE`` errors for every non-yanked step and model of ``catalog`` whose
-    About is missing or incomplete (:func:`mapi_spec.about.about_issues`), located by a JSON
-    pointer into the catalog document. ``related`` ids must name catalog items or
-    ``extra_ids`` (templates, workflow nodes, governance checks)."""
+def catalog_about_issues(
+    catalog: Catalog, *, extra_ids: Iterable[str] = (), builtins: bool = True
+) -> list[Issue]:
+    """The catalog rule (M3.5): an ``ABOUT_INCOMPLETE`` **error** for every non-yanked step
+    and model of ``catalog`` whose About is missing or incomplete
+    (:func:`mapi_spec.about.about_issues`), and a **warning** for each ``related`` id that
+    names no known item, located by JSON pointers into the catalog document.
+
+    Known ids are the catalog's own, ``extra_ids`` and (``builtins``) every built-in card's id
+    (:func:`mapi_spec.abouts.builtin_abouts`: splits, templates, workflow nodes, checks)."""
     known = (
         {e.id for e in catalog.steps}
         | {e.id for e in catalog.models}
         | {e.id for e in catalog.plots}
         | set(extra_ids)
     )
+    if builtins:
+        from mapi_spec.abouts import builtin_abouts
+
+        known |= set(builtin_abouts())
     out: list[Issue] = []
     entries: list[tuple[str, int, str, About | None, bool]] = [
         ("steps", i, e.ref, e.about, e.yanked) for i, e in enumerate(catalog.steps)
@@ -252,7 +261,7 @@ def catalog_about_issues(catalog: Catalog, *, extra_ids: Iterable[str] = ()) -> 
             if group == "steps"
             else json_pointer(group, i, "manifest", "about")
         )
-        for problem in about_issues(about, known_ids=known):
+        for problem in about_issues(about):
             out.append(
                 Issue(
                     code=ErrorCode.ABOUT_INCOMPLETE,
@@ -261,6 +270,16 @@ def catalog_about_issues(catalog: Catalog, *, extra_ids: Iterable[str] = ()) -> 
                     message=f"{ref}: {problem}",
                     suggested_action="Write the About card in plain language (see "
                     "docs/concepts/about-and-choosing.md).",
+                )
+            )
+        unknown = [r for r in (about.related if about else []) if r not in known]
+        if unknown:
+            out.append(
+                Issue(
+                    code=ErrorCode.ABOUT_INCOMPLETE,
+                    severity=Severity.WARNING,
+                    pointer=pointer + "/related",
+                    message=f"{ref}: related names items that are not installed: {unknown}",
                 )
             )
     return out

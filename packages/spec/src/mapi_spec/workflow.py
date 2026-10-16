@@ -779,11 +779,13 @@ def _check_params(
     schema = _without(dict(impl.params_schema), deferred)
     props = schema.get("properties", {})
     if schema.get("additionalProperties") is False:
-        for key in sorted(deferred - set(props)):
+        for key in sorted((deferred | set(instance)) - set(props)):
             issues.append(_issue(
                 ErrorCode.WORKFLOW_INVALID, base + json_pointer("with", key),
-                f"node {n.id!r} ({impl.id}): unknown parameter {key!r}",
+                f"node {n.id!r} ({impl.id}): unknown parameter {key!r} (known: "
+                f"{', '.join(sorted(props)) or 'none'})",
             ))  # fmt: skip
+            instance.pop(key, None)
     for err in sorted(
         Draft202012Validator(schema).iter_errors(instance), key=lambda e: list(e.path)
     )[:20]:

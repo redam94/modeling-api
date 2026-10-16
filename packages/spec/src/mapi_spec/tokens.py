@@ -301,7 +301,8 @@ def scope_allows(
     ``workflows:run``      ``read``/``run``/``cancel``/``update`` workflow (schedules,
                            triggers), ``read``/``create``/``cancel`` run, ``run``
                            model, ``read`` dataset
-    ``models:validate``    ``read``/``validate`` model, ``read`` policy
+    ``models:validate``    ``read``/``validate`` model, ``read`` policy, ``read``/
+                           ``create`` run (the governance checks run)
     ``policies:manage``    ``read``/``create``/``update``/``delete`` policy
     =====================  =======================================================
 
@@ -391,7 +392,13 @@ _SCOPE_GRANTS: dict[ScopeName, frozenset[tuple[str, str]]] = {
         }
     ),
     ScopeName.MODELS_VALIDATE: frozenset(
-        {("model", "read"), ("model", "validate"), ("policy", "read")}
+        {
+            ("model", "read"),
+            ("model", "validate"),
+            ("policy", "read"),
+            ("run", "read"),
+            ("run", "create"),
+        }
     ),
     ScopeName.POLICIES_MANAGE: frozenset(
         {("policy", "read"), ("policy", "create"), ("policy", "update"), ("policy", "delete")}
