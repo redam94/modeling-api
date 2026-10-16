@@ -23,7 +23,6 @@ from mapi_spec.errors import ErrorCode, MapiError
 from pydantic import Field, model_validator
 
 from mapi_plugin_statsmodels._common import (
-    TARGET,
     Cell,
     CellFit,
     ExogMixin,
@@ -221,22 +220,8 @@ def ardl_predict(
         )
         pred = res.get_prediction(start=cell.n, end=cell.n + horizon - 1, exog_oos=xf)
         mean = np.asarray(pred.predicted_mean, dtype=float)
-        var = _ardl_forecast_variance(res, horizon, sigma2)
+        var = np.asarray(pred.var_pred_mean, dtype=float)
     return q_in, normal_quantiles(mean, var, quantiles)
-
-
-def _ardl_forecast_variance(res: Any, horizon: int, sigma2: float) -> np.ndarray:
-    """``sigma2 * sum_{j<h} psi_j^2`` from the AR polynomial of ``y`` (drivers are known)."""
-    params = dict(zip(map(str, res.params.index), np.asarray(res.params, dtype=float), strict=True))
-    ar_lags = [int(lag) for lag in (res.model.ar_lags or [])]
-    phi = np.zeros(max(ar_lags, default=0))
-    for lag in ar_lags:
-        phi[lag - 1] = params.get(f"{TARGET}.L{lag}", 0.0)
-    psi = np.zeros(horizon)
-    psi[0] = 1.0
-    for j in range(1, horizon):
-        psi[j] = sum(phi[i] * psi[j - 1 - i] for i in range(min(j, phi.size)))
-    return sigma2 * np.cumsum(psi**2)
 
 
 def _verify(got: Mapping[str, float], want: Mapping[str, float]) -> None:

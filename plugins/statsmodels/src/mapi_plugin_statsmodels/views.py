@@ -84,7 +84,7 @@ def _cells(ds: xr.Dataset, dims: list[str]) -> Iterator[dict[str, Any]]:
         yield {d: labels[i][j].item() for i, (d, j) in enumerate(zip(dims, idx, strict=True))}
 
 
-def _facet(key: Mapping[str, Any]) -> dict[str, str | int | float | bool]:
+def _facet(key: Mapping[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in ((k, _scalar(v)) for k, v in key.items()) if v is not None}
 
 
@@ -160,28 +160,28 @@ def residual_test_results(fitted: Fitted, alpha: float = 0.05) -> list[StatTestR
         )
         reject = share >= 0.5
         d = TEST_DEFINITIONS[test]
-        out.append(
-            head.model_copy(
-                update={
-                    "reject": reject,
-                    "decision": d.reject_decision if reject else d.keep_decision,
-                    "verdict_plain": d.reject_plain if reject else d.keep_plain,
-                    "lags": rows[0][2] or None,
-                    "n_obs": None,
-                    "reject_share": share,
-                    "per_series": [
-                        {
-                            "coords": _facet(k),
-                            "statistic": r.statistic,
-                            "p_value": r.p_value,
-                            "reject": r.reject,
-                            "decision": r.decision,
-                        }
-                        for k, r, _ in rows
-                    ][:10_000],
-                }
-            )
+        doc = head.model_dump(mode="json")
+        doc.update(
+            {
+                "reject": reject,
+                "decision": d.reject_decision if reject else d.keep_decision,
+                "verdict_plain": d.reject_plain if reject else d.keep_plain,
+                "lags": rows[0][2] or None,
+                "n_obs": None,
+                "reject_share": share,
+                "per_series": [
+                    {
+                        "coords": _facet(k),
+                        "statistic": r.statistic,
+                        "p_value": r.p_value,
+                        "reject": r.reject,
+                        "decision": r.decision,
+                    }
+                    for k, r, _ in rows
+                ][:10_000],
+            }
         )
+        out.append(StatTestResult.model_validate(doc))
     return out
 
 
@@ -291,7 +291,7 @@ def diagnostics_view(fitted: Fitted) -> ModelDiagnosticsView:
             {
                 "kind": "fit_stats",
                 "coords": _facet(key),
-                **{n: _num(cell[n]) for n in ds.data_vars},
+                **{str(n): _num(cell[n]) for n in ds.data_vars},
             }
         )
     johansen = johansen_result(fitted)
@@ -402,7 +402,7 @@ def irf_view(fitted: Fitted) -> IrfView | None:
     def arr(name: str) -> list[list[list[float]]] | None:
         if name not in cell:
             return None
-        return np.asarray(cell[name].transpose(*order).values, dtype=float).tolist()  # type: ignore[no-any-return]
+        return np.asarray(cell[name].transpose(*order).values, dtype=float).tolist()
 
     values = arr("irf")
     assert values is not None

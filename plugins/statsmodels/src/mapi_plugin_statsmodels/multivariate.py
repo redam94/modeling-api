@@ -27,7 +27,7 @@ from typing import Any, Literal
 import numpy as np
 import xarray as xr
 from mapi_sdk.models import FitContext
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from scipy import stats
 
 from mapi_plugin_statsmodels._common import (
@@ -341,6 +341,13 @@ _DET_ORDER = {"n": -1, "co": 0, "ci": 0, "lo": 1, "li": 1, "cili": 1, "colo": 1}
 class VecmSettings(_IrfMixin, ExogMixin):
     """Settings of ``ts.vecm``."""
 
+    @field_validator("rank_signif")
+    @classmethod
+    def _signif(cls, v: float) -> float:
+        if v not in (0.01, 0.05, 0.1):
+            raise ValueError("rank_signif must be 0.01, 0.05 or 0.1 (tabulated critical values)")
+        return v
+
     k_ar_diff: int = Field(1, ge=0, le=12, description="Lagged differences in each equation")
     coint_rank: int | None = Field(
         None,
@@ -350,7 +357,7 @@ class VecmSettings(_IrfMixin, ExogMixin):
         "Johansen test",
     )
     rank_test: Literal["trace", "maxeig"] = Field("trace", description="Johansen test statistic")
-    rank_signif: Literal[0.01, 0.05, 0.1] = Field(0.05, description="Significance of the rank test")
+    rank_signif: float = Field(0.05, description="Significance of the rank test: 0.01, 0.05 or 0.1")
     deterministic: Deterministic = Field(
         "ci",
         description="Constant/trend: n none, co outside / ci inside the long-run relation, "

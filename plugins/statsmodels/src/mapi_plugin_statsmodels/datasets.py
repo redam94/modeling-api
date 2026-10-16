@@ -23,6 +23,7 @@ from mapi_spec.schema import DataSchema
 __all__ = [
     "ECM_SCHEMA",
     "ECM_SPEC_YAML",
+    "GROWTH_SCHEMA",
     "MACRO_SCHEMA",
     "MACRO_SERIES",
     "REGIME_SCHEMA",
@@ -33,6 +34,8 @@ __all__ = [
     "VECM_SPEC_YAML",
     "ecm_dataset",
     "macro_dataset",
+    "macro_growth",
+    "macro_schema",
     "regime_dataset",
     "sales_dataset",
     "sales_schema",
@@ -95,7 +98,7 @@ def sales_dataset(
     """
     rng = np.random.default_rng(seed)
     date = pd.date_range(start, periods=periods, freq="W-SUN").as_unit("ns")
-    cells = geos or [None]
+    cells: list[str | None] = list(geos) if geos else [None]
     sales, price, promo = [], [], []
     for g, _ in enumerate(cells):
         p = 10.0 + np.cumsum(rng.normal(0, 0.15, periods)) * 0.5 + rng.normal(0, 0.3, periods)
@@ -156,22 +159,31 @@ outputs: {plots: [core.ppc_fan, core.fit_vs_actual]}
 MACRO_SERIES = ("realgdp", "realcons", "realinv")
 """The ``macrodata`` columns used by :func:`macro_dataset`."""
 
-MACRO_SCHEMA = DataSchema.model_validate(
-    {
-        "dims": {
-            "quarter": {"kind": "time", "policy": "extend", "freq": "QS-JAN"},
-            "series": {"kind": "categorical", "policy": "fixed"},
-        },
-        "vars": {
-            "value": {
-                "dims": ["series", "quarter"],
-                "dtype": "float64",
-                "role": "target",
-                "units": "bn USD (2005)",
-            }
-        },
-    }
-)
+
+def macro_schema(units: str = "log bn USD (2005)") -> DataSchema:
+    """Raw schema of :func:`macro_dataset` (``units`` of ``value``)."""
+    return DataSchema.model_validate(
+        {
+            "dims": {
+                "quarter": {"kind": "time", "policy": "extend", "freq": "QS-JAN"},
+                "series": {"kind": "categorical", "policy": "fixed"},
+            },
+            "vars": {
+                "value": {
+                    "dims": ["series", "quarter"],
+                    "dtype": "float64",
+                    "role": "target",
+                    "units": units,
+                }
+            },
+        }
+    )
+
+
+MACRO_SCHEMA = macro_schema()
+"""Raw schema of the log levels from :func:`macro_dataset`."""
+GROWTH_SCHEMA = macro_schema("percent")
+"""Raw schema of quarterly growth rates (100 x differenced logs)."""
 
 
 def macro_dataset(*, quarters: int | None = None, log: bool = True) -> xr.Dataset:
@@ -194,6 +206,14 @@ def macro_dataset(*, quarters: int | None = None, log: bool = True) -> xr.Datase
         {"value": (("series", "quarter"), values, {"units": "log bn USD" if log else "bn USD"})},
         coords={"series": list(MACRO_SERIES), "quarter": pd.DatetimeIndex(dates).as_unit("ns")},
     )
+
+
+def macro_growth(*, quarters: int | None = None) -> xr.Dataset:
+    """Quarterly growth in percent, ``100 * diff(log value)`` (one quarter shorter)."""
+    levels = macro_dataset(quarters=None if quarters is None else quarters + 1)
+    growth = levels.diff("quarter") * 100.0
+    growth["value"].attrs = {"units": "percent"}
+    return growth
 
 
 VECM_SPEC_YAML = """

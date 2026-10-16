@@ -160,7 +160,7 @@ class EtsModel(StatsmodelsModel[EtsSettings]):
                 start=cell.n,
                 end=cell.n + horizon - 1,
                 simulate_repetitions=s.simulate_repetitions,
-                random_state=np.random.default_rng(seed).integers(2**31 - 1),
+                rng=np.random.default_rng(seed),
             )
             q_out = np.stack([_ets_quantile(pred, level) for level in q])
         return q_in, q_out

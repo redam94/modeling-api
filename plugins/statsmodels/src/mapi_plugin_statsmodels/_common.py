@@ -28,7 +28,7 @@ import xarray as xr
 from mapi_sdk.models import ModelSettings
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.errors import ErrorCode, MapiError
-from pydantic import Field, JsonValue, field_validator
+from pydantic import Field, field_validator
 from scipy import stats
 
 __all__ = [
@@ -252,7 +252,7 @@ class CellFit:
     table: dict[str, dict[str, float]]
     stats: dict[str, float]
     resid: np.ndarray
-    learned: dict[str, JsonValue] = field(default_factory=dict)
+    learned: dict[str, Any] = field(default_factory=dict)
     groups: dict[str, xr.Dataset] = field(default_factory=dict)
     diagnostics: list[Diagnostic] = field(default_factory=list)
     converged: bool = True
@@ -318,7 +318,7 @@ def normal_quantiles(mean: np.ndarray, var: np.ndarray, quantiles: Sequence[floa
     return mean[None, ...] + z.reshape((-1,) + (1,) * mean.ndim) * sd[None, ...]
 
 
-def sample_quantiles(samples: np.ndarray, quantiles: Sequence[float]) -> np.ndarray:
+def sample_quantiles(samples: np.ndarray, quantiles: Sequence[float] | np.ndarray) -> np.ndarray:
     """``(Q, ...)`` quantiles over the first axis of simulated paths."""
     return np.quantile(np.asarray(samples, dtype=float), np.asarray(quantiles), axis=0)
 

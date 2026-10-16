@@ -24,6 +24,7 @@ point (``statsmodels = mapi_plugin_statsmodels:PLUGINS``).
 """
 
 from importlib import metadata as _metadata
+from typing import Any
 
 from mapi_plugin_statsmodels.ardl import ArdlModel, ArdlSettings, EcmModel, EcmSettings
 from mapi_plugin_statsmodels.base import StatsmodelsModel
@@ -53,7 +54,7 @@ try:
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
     __version__ = "0.4.0"
 
-PLUGINS: tuple[type[StatsmodelsModel], ...] = (  # type: ignore[type-arg]
+PLUGINS: tuple[type[StatsmodelsModel[Any]], ...] = (
     SarimaxModel,
     ArimaModel,
     UnobservedComponentsModel,

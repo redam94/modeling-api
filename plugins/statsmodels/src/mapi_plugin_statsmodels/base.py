@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 import numpy as np
 import xarray as xr
@@ -414,11 +414,14 @@ class StatsmodelsModel[S: StatsmodelsSettings](CustomModel[S]):
         shape.append(labels.size)
         out = np.full(shape, np.nan)
         params = fitted.group("params")
-        cells_learned = {
-            tuple(c["key"].get(d) for d in series): c for c in fitted.learned.get("cells", [])
-        }
-        if not isinstance(fitted.learned.get("cells"), list):
+        raw_cells = fitted.learned.get("cells")
+        if not isinstance(raw_cells, list):
             raise MapiError("the fitted model has no cell state", code=ErrorCode.INTEGRITY_FAILURE)
+        cells_learned: dict[tuple[Any, ...], dict[str, Any]] = {}
+        for c in raw_cells:
+            if isinstance(c, dict) and isinstance(c.get("key"), dict):
+                key_doc = cast(dict[str, Any], c["key"])
+                cells_learned[tuple(key_doc.get(d) for d in series)] = cast(dict[str, Any], c)
         names = self.exog_names(s)
         for idx in np.ndindex(*(coords[d].size for d in series)):
             ctx.check_cancelled()
