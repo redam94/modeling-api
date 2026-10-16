@@ -144,8 +144,8 @@ draft's mapping.
 
 Seen and left for later (not blocking the flow, noted for the testers' sessions):
 
-- the fit chart facets markets under the dim name `geo`, and the forecast chart's y axis
-  starts at zero, which flattens the fan;
+- the fit chart facets markets under the dim name `geo` (the forecast chart's y axis no
+  longer starts at zero, which flattened the fan: fixed in the M3 review);
 - the endpoint page shows who promoted a version as a user id, not a name;
 - the header showed Expert mode on the Integrations hub: that test runs in a new browser
   context, and the default tenant (not a self-service one) started in Expert mode there.

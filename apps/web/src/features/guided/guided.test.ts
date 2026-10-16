@@ -313,6 +313,16 @@ describe("Guided usability fixes (M3 tester run)", () => {
   });
 });
 
+describe("the fan chart's y axis (M3 review)", () => {
+  it("fits the band instead of starting at zero", () => {
+    const fan = { dim: "time", coords: ["2025-01-05", "2025-01-12"], quantiles: [0.05, 0.25, 0.5, 0.75, 0.95], values: [[350, 360], [370, 375], [380, 385], [390, 395], [400, 410]], observed: [382, null] };
+    const layers = (fanPlot(fan, { title: "Results", splitAt: "2025-01-12" }).spec.layer ?? []) as { encoding?: { y?: { field?: string; scale?: unknown } } }[];
+    const ys = layers.map((l) => l.encoding?.y).filter((y) => y?.field);
+    expect(ys.length).toBeGreaterThanOrEqual(4);
+    for (const y of ys) expect(y?.scale).toEqual({ zero: false, nice: true });
+  });
+});
+
 describe("the forecast panel's horizon (M3 review)", () => {
   it("names the data's period", async () => {
     const { periodUnit, periodWords } = await import("./session");

@@ -455,6 +455,8 @@ milestone releases are tagged on `main`.
   horizons up to the template's limit (520), past the horizon a weekly forecast was fitted
   for, which then failed. It names the data's period (days, weeks, months) and stops at the
   fitted horizon (`max_extension`), saying a longer one needs a new fit.
+- **web**: Guided fan charts (forecast, prior predictive) started their y axis at zero, which
+  squeezed the bands into slivers; the axis now fits the data (`zero: false`).
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 
