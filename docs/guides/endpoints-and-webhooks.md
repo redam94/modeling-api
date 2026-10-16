@@ -143,7 +143,10 @@ endpoint and nothing else.
 
 `data` and `scenario` can be `dataset://` references, or small datasets sent inline as XrJSON
 (the shape of `xr.Dataset.to_dict()`, up to 5 MB each), so scripts and spreadsheets need no
-upload:
+upload. A caller that cannot read datasets (a `score:<alias>` token) sends data inline or
+names the dataset the endpoint's model was fitted on; any other reference, and a missing one,
+gets the same `403 FORBIDDEN`, so such a token can neither score the project's other
+datasets nor find out which exist:
 
 ```json
 {

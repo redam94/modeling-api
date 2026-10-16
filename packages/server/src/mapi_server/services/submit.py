@@ -366,6 +366,11 @@ async def _fit_dataset(session: AsyncSession, mv: m.ModelVersion) -> m.DatasetVe
     return dv
 
 
+async def fit_dataset_version(session: AsyncSession, mv: m.ModelVersion) -> m.DatasetVersion:
+    """The ready dataset version ``mv`` was fitted on (``REF_UNRESOLVED`` otherwise)."""
+    return await _fit_dataset(session, mv)
+
+
 async def fit_dataset_ref(session: AsyncSession, mv: m.ModelVersion) -> str:
     """``dataset://<project>/<name>@v<n>``: the dataset version ``mv`` was fitted on
     (``REF_UNRESOLVED`` when it is not recorded or no longer ready)."""

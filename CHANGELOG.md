@@ -444,6 +444,10 @@ milestone releases are tagged on `main`.
   tiers 500) are refused with `QUOTA_EXCEEDED` at `/output/draws`, and the score job carries
   the cap (`ScoreJob.max_draws`: score runs now store a `{request, max_draws}` payload) so the
   runner enforces it too.
+- **server**: a `score:<alias>` token could score any dataset of the project by
+  `dataset://` reference (and probe which exist through `…/validate`) without dataset read
+  access. Callers without it now send inline data or name the endpoint's own fit dataset;
+  any other reference, existing or not, gets the same `403 FORBIDDEN`.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

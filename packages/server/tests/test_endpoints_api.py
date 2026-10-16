@@ -546,6 +546,43 @@ async def test_score_alias_tokens_authorize_exactly_their_endpoint(
     assert r.status_code == 429 and r.json()["code"] == "QUOTA_EXCEEDED"
 
 
+async def test_score_tokens_cannot_score_or_probe_other_datasets(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """A ``score:<alias>`` token has no dataset read access: it sends inline data, or
+    names the endpoint's own fit dataset, and learns nothing about other datasets."""
+    from mapi_server_testkit.builders import ready_dataset
+
+    await fitted_version(ctx)  # fitted on dataset://default/co2
+    await ready_dataset(ctx, "secret")
+    assert (
+        await client.put("/v1/endpoints/p", json={"model": "model://default/trend@v1"})
+    ).status_code == 200
+    async with ctx.db.session() as s:
+        owner = await s.get(m.User, LOCAL_USER_ID)
+        assert owner is not None
+    tok = token_caller(client, await make_token(ctx, owner, "default", "default", ["score:p"]))
+    assert (await tok.get("/v1/datasets/secret")).status_code == 403
+
+    def call(ref: str) -> dict[str, Any]:
+        return {"mode": "predict", "data": ref}
+
+    answers = []
+    for ref in ("dataset://default/secret", "dataset://default/nonexistent"):
+        for path in ("/v1/endpoints/p/validate", "/v1/endpoints/p/score"):
+            r = await tok.post(path, json=call(ref))
+            assert r.status_code == 403 and r.json()["code"] == "FORBIDDEN", (path, r.text)
+            answers.append(r.json()["detail"])
+    assert len(set(answers)) == 1  # the same answer whether or not the dataset exists
+    side = {"mode": "predict", "side_tables": {"prices": "dataset://default/secret"}}
+    assert (await tok.post("/v1/endpoints/p/validate", json=side)).status_code == 403
+    # the endpoint's own fit dataset is fine, and a caller with dataset read may name any
+    r = await tok.post("/v1/endpoints/p/validate", json=call("dataset://default/co2"))
+    assert r.status_code == 200 and r.json()["valid"], r.text
+    r = await client.post("/v1/endpoints/p/validate", json=call("dataset://default/secret"))
+    assert r.status_code == 200
+
+
 def test_openapi_documents_the_endpoint_operations() -> None:
     from mapi_server.app import openapi_document
     from mapi_spec.api import M3_ENDPOINTS

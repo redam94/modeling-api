@@ -28,8 +28,9 @@ from mapi_spec.endpoints import (
 )
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity, ValidationFailed
 from mapi_spec.executor import RunKind
+from mapi_spec.refs import DatasetRef
 from mapi_spec.snippets import SnippetContext, SnippetLanguage, SnippetSet, render_snippets
-from mapi_spec.tenancy import ResourceKind
+from mapi_spec.tenancy import Action, ResourceKind
 from mapi_spec.xrjson import MAX_XRJSON_BYTES
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,8 +62,8 @@ from mapi_server.services.endpoints import (
     score_request_for,
     store_inline_inputs,
 )
-from mapi_server.services.specs import check_score_request
-from mapi_server.services.submit import submit_model_run
+from mapi_server.services.specs import check_score_request, resolve_dataset
+from mapi_server.services.submit import fit_dataset_version, submit_model_run
 
 __all__ = ["SCORE_BODY_MAX_BYTES", "SCORE_BODY_PATHS", "router"]
 
@@ -321,8 +322,43 @@ async def _static_checks(
             f"the version endpoint {row.alias!r} serves is no longer available",
             code=ErrorCode.CONFLICT,
         )
+    await _check_dataset_refs(session, ctx, mv, body)
     await check_score_request(session, ctx.scope, request, mv, issues, inline=summary)
     return issues, request, summary
+
+
+async def _check_dataset_refs(
+    session: AsyncSession, ctx: ServerContext, mv: m.ModelVersion, body: EndpointScoreCall
+) -> None:
+    """A caller without dataset read access (a ``score:<alias>`` token) sends inline data or
+    names the endpoint's own fit dataset: it may neither score other datasets of the project
+    nor learn which exist. The refusal is the same for a missing and a forbidden dataset."""
+    if ctx.request is None or ctx.request.allows(Action.READ, ResourceKind.DATASET):
+        return
+    refs = [r for r in (body.data, body.scenario) if isinstance(r, DatasetRef)]
+    refs.extend(body.side_tables.values())
+    if not refs:
+        return
+    try:
+        fit = await fit_dataset_version(session, mv)
+    except MapiError:
+        fit = None
+    for ref in refs:
+        dv, _ = await resolve_dataset(session, ctx.scope, ref)
+        if (
+            fit is None
+            or dv is None
+            or (dv.dataset_id, dv.version)
+            != (
+                fit.dataset_id,
+                fit.version,
+            )
+        ):
+            raise MapiError(
+                "this caller cannot read datasets: send the data inline, or name the "
+                "dataset the endpoint's model was fitted on",
+                code=ErrorCode.FORBIDDEN,
+            )
 
 
 def _dedupe(issues: list[Issue]) -> list[Issue]:
