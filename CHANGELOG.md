@@ -432,6 +432,12 @@ milestone releases are tagged on `main`.
   now needs a signed-in endpoint admin, like an override (`403 FORBIDDEN` otherwise, audited
   as a denial), and the promotion's audit event records the policy before and after
   (`mapi_spec.endpoints.policy_relaxations`).
+- **server**: the per-domain (25 a day) and platform (500 an hour) sign-up caps counted
+  unverified sign-ups, so made-up addresses could lock a whole e-mail domain, or everyone,
+  out of sign-up. They now count verified sign-ups only (the per-address limit still counts
+  every request), and large free-mail domains (`MAPI_SIGNUP_SHARED_EMAIL_DOMAINS`, default
+  `mapi_spec.trust.SHARED_EMAIL_DOMAINS`) have no per-domain cap and never trip the
+  `domain_burst` Sybil flag.
 
 ## [0.3.0] — M2: cloud & multi-tenant core — 2026-10-15
 

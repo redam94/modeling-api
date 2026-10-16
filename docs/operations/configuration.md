@@ -255,8 +255,9 @@ server secret makes every webhook secret unusable (rotate them afterwards).
 | `MAPI_SIGNUP_BLOCKED_DOMAINS` | none | E-mail domains refused besides the built-in disposable list (comma-separated; subdomains included) |
 | `MAPI_SIGNUP_BLOCKLIST_PATH` | unset | A file of disposable domains, one per line (`#` comments), for example a maintained public list |
 | `MAPI_SIGNUP_PER_IP_PER_HOUR` | `5` | Sign-ups accepted per client address and hour |
-| `MAPI_SIGNUP_PER_DOMAIN_PER_DAY` | `25` | Sign-ups accepted per e-mail domain and day |
-| `MAPI_SIGNUP_GLOBAL_PER_HOUR` | `500` | Sign-ups accepted per hour on the whole platform |
+| `MAPI_SIGNUP_PER_DOMAIN_PER_DAY` | `25` | Verified sign-ups per e-mail domain and day (unverified ones do not count; the shared free-mail domains are exempt) |
+| `MAPI_SIGNUP_GLOBAL_PER_HOUR` | `500` | Verified sign-ups per hour on the whole platform (unverified ones do not count) |
+| `MAPI_SIGNUP_SHARED_EMAIL_DOMAINS` | built-in list (`gmail.com`, `outlook.com`, ...) | Free-mail domains shared by unrelated people (comma-separated; replaces the built-in list): no per-domain cap and no `domain_burst` flag |
 | `MAPI_VERIFY_PER_IP_PER_MINUTE` | `20` | E-mail verification attempts per client address and minute |
 | `MAPI_SIGNUP_SYBIL_WINDOW_DAYS` | `30` | Look-back of the Sybil heuristics |
 | `MAPI_SIGNUP_SYBIL_THRESHOLD` | `3` | Workspaces from one client address, browser or e-mail within the window before the next one is flagged for review (a domain is flagged at twice as many within an hour) |

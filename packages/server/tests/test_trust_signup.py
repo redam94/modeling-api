@@ -196,6 +196,12 @@ async def test_blocklist_file(tmp_path: Path, settings: Settings) -> None:
     assert not policy.is_disposable("acme.example")
 
 
+async def _elsewhere(ctx: ServerContext) -> None:
+    """Pretend every sign-up so far came from other client addresses."""
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Signup).values(ip_hash="elsewhere"))
+
+
 async def test_rate_limits_per_ip_domain_and_platform(
     ctx: ServerContext, client: httpx.AsyncClient, mailer: RecordingMailer
 ) -> None:
@@ -208,19 +214,49 @@ async def test_rate_limits_per_ip_domain_and_platform(
     assert r.status_code == 429 and r.json()["code"] == "RATE_LIMITED"
     assert 0 < int(r.headers["retry-after"]) <= 3601
     assert "network address" in r.json()["detail"]
-    # another client address: the per-domain limit (3 a day) still holds
-    async with ctx.db.session() as s:
-        await s.execute(update(m.Signup).values(ip_hash="elsewhere"))
-    assert (await _signup(client, "u4@one.example")).status_code == 202
-    async with ctx.db.session() as s:
-        await s.execute(update(m.Signup).values(ip_hash="elsewhere"))
-    r = await _signup(client, "u5@one.example")
+    # made-up, never verified addresses do not use up a domain's (or the platform's) cap:
+    # anyone could otherwise lock a whole domain out of sign-up for a day
+    for i in range(4, 8):
+        await _elsewhere(ctx)
+        assert (await _signup(client, f"u{i}@one.example")).status_code == 202
+    # verified sign-ups do (3 a day for this domain)
+    for i in range(3):
+        await _elsewhere(ctx)
+        await _verify(client, mailer, f"real{i}@one.example")
+    await _elsewhere(ctx)
+    r = await _signup(client, "u9@one.example")
     assert r.status_code == 429 and "domain" in r.json()["detail"]
-    ctx.settings = ctx.settings.model_copy(update={"signup_global_per_hour": 3})
+    assert 0 < int(r.headers["retry-after"]) <= 86401
+    # shared free-mail domains have no per-domain cap (their users are unrelated people)
+    for i in range(4):
+        await _elsewhere(ctx)
+        await _verify(client, mailer, f"someone{i}@gmail.com")
+    await _elsewhere(ctx)
+    assert (await _signup(client, "another@gmail.com")).status_code == 202
+    ctx.settings = ctx.settings.model_copy(update={"signup_global_per_hour": 7})
+    await _elsewhere(ctx)
     r = await _signup(client, "u6@three.example")
     assert r.status_code == 429 and "platform" in r.json()["detail"]
-    assert len(mailer.sent) == 3
     assert await _audit(ctx, "auth.signup_rejected")
+
+
+async def test_shared_mail_domains_do_not_trip_the_domain_burst_flag(
+    ctx: ServerContext, client: httpx.AsyncClient, mailer: RecordingMailer
+) -> None:
+    ctx.settings = ctx.settings.model_copy(
+        update={"signup_sybil_threshold": 1, "signup_per_ip_per_hour": 100}
+    )
+    for i in range(3):
+        await _elsewhere(ctx)
+        await _verify(client, mailer, f"user{i}@gmail.com")
+    for i in range(3):
+        await _elsewhere(ctx)
+        await _verify(client, mailer, f"user{i}@farm.example")
+    async with ctx.db.session() as s:
+        rows = (await s.execute(select(m.Signup).order_by(m.Signup.created_at))).scalars().all()
+        flags = {r.email: set(r.flags) for r in rows}
+    assert all("domain_burst" not in flags[f"user{i}@gmail.com"] for i in range(3))
+    assert "domain_burst" in flags["user2@farm.example"]
 
 
 async def test_links_expire_and_only_the_newest_works(

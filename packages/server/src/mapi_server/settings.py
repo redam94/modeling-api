@@ -27,6 +27,7 @@ from mapi_spec.localdev import (
 )
 from mapi_spec.storage import Buckets
 from mapi_spec.tenancy import DEFAULT_RESIDENCY, TrustTier, residency_of_region
+from mapi_spec.trust import SHARED_EMAIL_DOMAINS
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
@@ -650,10 +651,18 @@ class Settings(BaseSettings):
         5, ge=1, description="Sign-ups accepted per client address and hour"
     )
     signup_per_domain_per_day: int = Field(
-        25, ge=1, description="Sign-ups accepted per e-mail domain and day"
+        25,
+        ge=1,
+        description="Verified sign-ups per e-mail domain and day (shared free-mail domains "
+        "are exempt)",
     )
     signup_global_per_hour: int = Field(
-        500, ge=1, description="Sign-ups accepted per hour on the whole platform"
+        500, ge=1, description="Verified sign-ups per hour on the whole platform"
+    )
+    signup_shared_email_domains: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: list(SHARED_EMAIL_DOMAINS),
+        description="Free-mail domains shared by unrelated people (comma-separated; replaces "
+        "the built-in list): no per-domain sign-up cap and no domain-burst Sybil flag",
     )
     verify_per_ip_per_minute: int = Field(
         20, ge=1, description="E-mail verification attempts per client address and minute"
@@ -758,6 +767,7 @@ class Settings(BaseSettings):
         "dispatch_tiers",
         "webhook_dev_allowlist",
         "signup_blocked_domains",
+        "signup_shared_email_domains",
         mode="before",
     )
     @classmethod

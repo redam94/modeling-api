@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import secrets
+from collections.abc import Iterable
 from datetime import timedelta
 from enum import StrEnum
 from typing import Final, Literal, Protocol, runtime_checkable
@@ -36,6 +37,7 @@ __all__ = [
     "DELETION_TRANSITIONS",
     "EMAIL_VERIFICATION_TTL",
     "RETAINED_RECORDS",
+    "SHARED_EMAIL_DOMAINS",
     "SYBIL_FLAGS",
     "TENANT_DELETION_GRACE",
     "TERMS_VERSION",
@@ -62,6 +64,7 @@ __all__ = [
     "check_signup",
     "email_domain",
     "generate_verification_token",
+    "is_shared_email_domain",
     "next_deletion_state",
     "uploaded_code_allowed",
 ]
@@ -118,6 +121,40 @@ class BlocklistEmailPolicy:
     def is_disposable(self, domain: str) -> bool:
         labels = domain.lower().rstrip(".").split(".")
         return any(".".join(labels[i:]) in self.domains for i in range(len(labels) - 1))
+
+
+SHARED_EMAIL_DOMAINS: Final = (
+    "aol.com",
+    "gmail.com",
+    "gmx.de",
+    "gmx.net",
+    "googlemail.com",
+    "hotmail.com",
+    "icloud.com",
+    "live.com",
+    "mail.com",
+    "me.com",
+    "msn.com",
+    "outlook.com",
+    "pm.me",
+    "proton.me",
+    "protonmail.com",
+    "qq.com",
+    "web.de",
+    "yahoo.com",
+    "yandex.com",
+    "zoho.com",
+)
+"""Large free-mail providers: their users are unrelated people, so sign-ups are not capped
+per domain and a burst of them is no Sybil signal (``MAPI_SIGNUP_SHARED_EMAIL_DOMAINS``)."""
+
+
+def is_shared_email_domain(domain: str | None, shared: Iterable[str]) -> bool:
+    """Is ``domain`` one of the ``shared`` free-mail domains (exact, case-insensitive)?"""
+    if not domain:
+        return False
+    d = domain.lower().rstrip(".")
+    return any(d == x.strip().lower().rstrip(".") for x in shared)
 
 
 def email_domain(email: str) -> str:
