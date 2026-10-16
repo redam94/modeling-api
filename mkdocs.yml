@@ -157,6 +157,7 @@ nav:
           - Marketing-mix models: guides/mmm.md
           - Forecasting and sequential models: guides/time-series.md
           - Plots, recipes and templates: guides/plots.md
+          - Sharing plots: guides/sharing-plots.md
           - Conformance corpus: guides/conformance.md
   - Reference:
       - Spec format: reference/spec-format.md

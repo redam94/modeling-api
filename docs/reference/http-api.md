@@ -594,7 +594,8 @@ A `SavedPlot` keeps a model version's plot or a user-authored `PlotSpec`. Render
 (`PlotEmbedCreate` → `PlotEmbedCreated`, listed as `PlotEmbed`) are tokenised, read-only and
 expire; only plots of platform recipes can be embedded (`422 EMBED_NOT_ALLOWED`). The public
 `GET /v1/embeds/{embed_token}` returns an `EmbedView` with every dataset inline, or
-`410 LINK_EXPIRED`.
+`410 LINK_EXPIRED`; it reads no credential and answers cross-origin reads from the plot
+sandbox origin only. See [Sharing plots](../guides/sharing-plots.md).
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
@@ -602,7 +603,7 @@ expire; only plots of platform recipes can be embedded (`422 EMBED_NOT_ALLOWED`)
 | `GET /v1/plots` | Saved plots | — | `Page[SavedPlot]` | 200 | — |
 | `GET /v1/plots/{plot_id}` | A saved plot with its sanitized spec | — | `SavedPlot` | 200 | `NOT_FOUND` |
 | `DELETE /v1/plots/{plot_id}` | Delete a saved plot (revokes its embeds) | — | — | 204 | `NOT_FOUND`, `FORBIDDEN` |
-| `POST /v1/plots:render` | PNG, SVG or PDF in the sandbox (Prefer: wait=N → 200 if done, else 202) | `PlotRenderRequest` | `PlotRender` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `PLOT_UNSAFE`, `QUOTA_EXCEEDED` |
+| `POST /v1/plots:render` | PNG, SVG or PDF in the sandbox (Prefer: wait=N → 200 if done, else 202) | `PlotRenderRequest` | `PlotRender` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `PLOT_UNSAFE`, `MODE_NOT_SUPPORTED`, `QUOTA_EXCEEDED` |
 | `GET /v1/plots/renders/{run_id}` | A render run and links to its files | — | `PlotRender` | 200 | `NOT_FOUND` |
 | `POST /v1/plots/{plot_id}/embeds` | Tokenised read-only link (platform recipes only; shown once) | `PlotEmbedCreate` | `PlotEmbedCreated` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `EMBED_NOT_ALLOWED` |
 | `GET /v1/plots/{plot_id}/embeds` | Embed links of a plot | — | `Page[PlotEmbed]` | 200 | `NOT_FOUND` |

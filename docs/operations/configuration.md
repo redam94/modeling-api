@@ -122,6 +122,19 @@ field is the variable `MAPI_<FIELD>`. Besides the topology above:
 | `MAPI_EXECUTOR_REPORT_INTERVAL_S` | `10` | How often each dispatcher reports executor health for `/v1/admin/executors` |
 | `MAPI_EXECUTOR_EVIDENCE_MAX_AGE_S` | `259200` (3 days) | How long a recorded conformance or security-suite report lets an executor take `verified` and `public` tenants ([the shared-tier gate](cloud-run.md#the-shared-tier-gate)) |
 
+**Plot rendering and embed links (v0.4)**
+
+See [Sharing plots](../guides/sharing-plots.md).
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_RENDER_TIMEOUT_S` | `300` | Wall-clock limit of a `POST /v1/plots:render` run; the sandbox stops it after this |
+| `MAPI_RENDER_PLOTLY_ENABLED` | `false` | Accept Plotly plots for static rendering. This needs kaleido and a Chrome or Chromium in the runner image, which the base images do not ship. While it is off, Plotly renders are refused with `MODE_NOT_SUPPORTED` |
+| `MAPI_EMBED_RATE_PER_MINUTE` | `300` | Public views per minute of one embed link (`429 RATE_LIMITED` beyond) |
+| `MAPI_EMBED_IP_RATE_PER_MINUTE` | `120` | Public embed requests per minute from one client address, valid or not (slows down token guessing) |
+| `MAPI_EMBED_CACHE_S` | `60` | How long an API instance reuses an embed's resolved plot. It is also the response's `max-age`. Expiry and revocation are still checked on every request |
+| `MAPI_EMBED_IMAGE_URL_TTL_S` | `900` | Lifetime of the signed URL of an embed's PNG fallback |
+
 **Object storage**
 
 | Variable | Default | Meaning |
