@@ -38,7 +38,7 @@ from mapi_spec._dto import RequestModel, ResponseModel, dto_examples
 from mapi_spec._types import Slug
 from mapi_spec.calibration import BusinessPriors, LiftTest
 from mapi_spec.coords import DataSummary
-from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
+from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity, parse_pointer
 from mapi_spec.ingest import (
     BAYESINSIGHT_PLUGIN,
     BayesInsightMetadata,
@@ -60,6 +60,7 @@ from mapi_spec.views import ProfileView
 
 __all__ = [
     "BUILDER_VALUES",
+    "GUIDED_LABEL",
     "GUIDED_TEMPLATES",
     "BayesInsightImport",
     "ColumnKind",
@@ -80,6 +81,7 @@ __all__ = [
     "draft_from_bayesinsight",
     "draft_schema",
     "get_template",
+    "guided_lock_issues",
     "profiles_from_dataset",
     "render_template",
     "safe_name",
@@ -1103,6 +1105,21 @@ def build_draft(
     wide: dict[str, WideVarMapping] = {}
     used: dict[str, str] = {}
     issues: list[Issue] = []
+    taken: dict[str, tuple[str, bool]] = {}  # dataset name -> (question, shared wide dim)
+
+    def claim(name: str, qid: str, column: str, *, shared: bool = False) -> str:
+        """Reserve a dataset name; two answers may not become the same name (a shared
+        wide dim such as ``product`` is the exception)."""
+        other = taken.get(name)
+        if other is not None and not (shared and other[1]):
+            raise _bad(
+                qid,
+                f"column {column[:64]!r} would be named {name!r}, which the answer to "
+                f"{other[0]!r} already uses; rename one of the columns",
+            )
+        taken[name] = (qid, shared)
+        return name
+
     for q in template.questions:
         value = answers.answers.get(q.id, q.default)
         if value is None or value == []:
@@ -1129,7 +1146,7 @@ def build_draft(
                         )
                     )
             if q.dim is not None:
-                name = safe_name(cols[0])
+                name = claim(safe_name(cols[0]), q.id, cols[0])
                 spec = q.dim_spec or DimSpec(kind="categorical")
                 prof = profiles.get(cols[0])
                 if spec.kind == "time" and prof is not None and prof.detected_freq:
@@ -1140,6 +1157,8 @@ def build_draft(
                 labels = [channel_label(c, q.keywords) for c in cols]
                 if len(set(labels)) != len(labels):
                     labels = [safe_name(c) for c in cols]
+                claim(q.as_var, q.id, cols[0])
+                claim(q.wide_dim, q.id, cols[0], shared=True)
                 wide[q.as_var] = WideVarMapping(
                     dim=q.wide_dim,
                     columns=dict(zip(labels, cols, strict=True)),
@@ -1148,7 +1167,7 @@ def build_draft(
                 )
                 values[q.id] = q.as_var
             else:
-                names = [safe_name(c) for c in cols]
+                names = [claim(safe_name(c), q.id, c) for c in cols]
                 for c, n in zip(cols, names, strict=True):
                     vars_[n] = VarMapping(
                         column=c, role=q.role or Role.COVARIATE, missing=q.missing or "forbid"
@@ -1219,6 +1238,121 @@ def build_draft(
         yaml=dump_yaml(model_spec),
         issues=issues,
     )
+
+
+# ============================================================================ persona lock
+
+GUIDED_LABEL: Final = "guided"
+"""``metadata.labels`` key naming the template a Guided spec was drafted from."""
+
+_ABSENT: Final = object()
+
+
+def _at(doc: Any, pointer: str) -> Any:
+    node = doc
+    for part in parse_pointer(pointer):
+        if isinstance(node, dict) and part in node:
+            node = node[part]
+        elif isinstance(node, list) and part.isdigit() and int(part) < len(node):
+            node = node[int(part)]
+        else:
+            return _ABSENT
+    return node
+
+
+def _normal(spec: ModelSpec) -> dict[str, Any]:
+    out: dict[str, Any] = spec.model_dump(mode="json", by_alias=True)
+    return out
+
+
+def _reference(template: GuidedTemplate, name: str, project: str) -> ModelSpec:
+    """The spec a template drafts from placeholder answers (only its fixed parts matter)."""
+    answers: dict[str, JsonValue] = {}
+    for q in template.questions:
+        if q.kind == "column":
+            answers[q.id] = f"__{q.id}"
+        elif q.kind == "columns":
+            answers[q.id] = [f"__{q.id}"] if q.required else []
+        elif q.default is not None:
+            answers[q.id] = q.default
+        elif q.kind == "choice":
+            answers[q.id] = q.choices[0].value
+        elif q.kind == "number":
+            answers[q.id] = q.minimum if q.minimum is not None else 1
+        else:
+            answers[q.id] = "x"
+    req = GuidedAnswers(template_id=template.id, name=name, dataset="x", answers=answers)
+    return ModelSpec.model_validate(build_draft(template, req, project=project).spec)
+
+
+def _lock_issue(pointer: str, message: str) -> Issue:
+    return Issue(
+        code=ErrorCode.FORBIDDEN,
+        pointer=pointer,
+        message=message,
+        suggested_action="Ask a project admin to make this change, or to unlock the project "
+        "from Guided mode.",
+    )
+
+
+def guided_lock_issues(
+    document: Mapping[str, Any], parent: Mapping[str, Any] | None = None
+) -> list[Issue]:
+    """Why a member below project admin may not store ``document`` in a Guided-locked
+    project (empty: allowed). ``parent`` is the revision it replaces (``None``: a new spec).
+
+    The policy (``Project.guided_locked``):
+
+    * only Guided specs are stored: a valid ``ModelSpec`` whose ``metadata.labels.guided``
+      names a built-in template and whose ``model.use`` is that template's plugin;
+    * fields the template marks ``advanced`` or ``hidden`` (``GuidedTemplate.ui_levels``)
+      keep their values: a revision may not change them from its parent, and a new spec
+      must have what the template drafts wherever the template fixes the value (pointers
+      whose template value has no ``{{placeholder}}``);
+    * everything else - answers, ``basic`` settings, business priors and lift tests in
+      ``calibration`` - may change. ``POST /v1/specs:validate`` and runs are unaffected.
+    """
+    try:
+        spec = ModelSpec.model_validate(dict(document))
+    except ValueError:
+        return [_lock_issue("", "this project is locked to Guided mode: only valid Guided "
+                                "specs can be stored")]  # fmt: skip
+    label = spec.metadata.labels.get(GUIDED_LABEL)
+    template = GUIDED_TEMPLATES.get(label or "")
+    if template is None:
+        return [
+            _lock_issue(
+                f"/metadata/labels/{GUIDED_LABEL}",
+                "this project is locked to Guided mode: specs must come from a Guided "
+                "template (metadata.labels.guided)",
+            )
+        ]
+    issues: list[Issue] = []
+    if spec.model.use.id != template.plugin.split("@", 1)[0]:
+        issues.append(_lock_issue("/model/use", f"a {template.id} spec uses {template.plugin}"))
+    doc = _normal(spec)
+    base: dict[str, Any] | None = None
+    if parent is not None:
+        try:
+            base = _normal(ModelSpec.model_validate(dict(parent)))
+        except ValueError:
+            base = None
+    if base is None:
+        base = _normal(_reference(template, spec.metadata.name, spec.metadata.project))
+    for pointer, level in sorted(template.ui_levels.items()):
+        if level == "basic":
+            continue
+        if parent is None and template_placeholders(_at(template.spec_template, pointer)):
+            continue
+        if _at(doc, pointer) != _at(base, pointer):
+            issues.append(
+                _lock_issue(
+                    pointer,
+                    f"{pointer} is an {level} setting of the {template.title!r} template; "
+                    "in a Guided-locked project only project admins change it",
+                )
+            )
+    return issues
 
 
 # ============================================================================== BayesInsight

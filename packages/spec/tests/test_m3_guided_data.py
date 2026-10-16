@@ -22,6 +22,7 @@ from mapi_spec.guided import (
     build_draft,
     channel_label,
     draft_schema,
+    guided_lock_issues,
     profiles_from_dataset,
     suggest_roles,
 )
@@ -432,3 +433,49 @@ def test_national_models_keep_a_geo_dim() -> None:
     assert draft.mapping.effective_mff is not None
     assert draft.mapping.effective_mff.combine == {"geo": ["Geography"]}
     assert not [i for i in draft.issues if i.pointer == "/metadata/row_ids"]
+
+
+# ======================================================================== persona lock
+
+
+def _geo_draft() -> dict[str, Any]:
+    answers = _answers("geo_mmm", MMM_COLUMNS)
+    req = GuidedAnswers(template_id="geo_mmm", name="mmm", dataset="media", answers=answers)
+    return copy.deepcopy(dict(build_draft(GUIDED_TEMPLATES["geo_mmm"], req, project="growth").spec))
+
+
+@pytest.mark.parametrize("template", sorted(GUIDED_TEMPLATES))
+def test_every_draft_passes_the_guided_lock(template: str) -> None:
+    answers = {
+        "geo_mmm": _answers("geo_mmm", MMM_COLUMNS),
+        "weekly_forecast": {"kpi": "sales", "date": "week"},
+        "store_demand": {"kpi": "units", "date": "week", "store": "store_id"},
+        "customer_choice": _answers("customer_choice", CHOICE_COLUMNS),
+    }[template]
+    req = GuidedAnswers(template_id=template, name="n", dataset="d", answers=answers)
+    draft = build_draft(GUIDED_TEMPLATES[template], req, project="p")
+    assert guided_lock_issues(draft.spec) == []
+    assert guided_lock_issues(draft.spec, parent=draft.spec) == []
+
+
+def test_the_guided_lock_keeps_advanced_and_hidden_fields() -> None:
+    doc = _geo_draft()
+    basic = copy.deepcopy(doc)
+    basic["model"]["settings"]["pooling"] = "complete"  # a basic setting
+    basic["calibration"] = {"business_priors": {"channels": {"tv": {"roi": [1.0, 3.0]}}}}
+    assert guided_lock_issues(basic, parent=doc) == []
+    fit = copy.deepcopy(doc)
+    fit["model"]["fit"] = {**fit["model"].get("fit", {}), "draws": 50}
+    [issue] = guided_lock_issues(fit, parent=doc)
+    assert issue.pointer == "/model/fit" and issue.code is ErrorCode.FORBIDDEN
+    assert "advanced setting" in issue.message and issue.suggested_action
+    hidden = copy.deepcopy(doc)
+    hidden["pipeline"] = hidden["pipeline"][:-1]
+    assert [i.pointer for i in guided_lock_issues(hidden)] == ["/pipeline"]  # a new spec too
+    plain = copy.deepcopy(doc)
+    del plain["metadata"]["labels"]["guided"]
+    assert [i.pointer for i in guided_lock_issues(plain)] == ["/metadata/labels/guided"]
+    other = copy.deepcopy(doc)
+    other["model"]["use"] = "mmm.pymc_marketing@^1"
+    assert "/model/use" in {i.pointer for i in guided_lock_issues(other)}
+    assert guided_lock_issues({"kind": "nonsense"})[0].pointer == ""
