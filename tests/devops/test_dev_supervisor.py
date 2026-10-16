@@ -88,6 +88,37 @@ class TestConfig:
         assert "MAPI_OUTBOX_DIR" not in single
         assert dev.main(["status"], {"MAPI_STACK_PROFILE": "nope"}) == 2
 
+    def test_the_dev_profile_trusts_a_local_webhook_receiver(
+        self, dev: ModuleType, tmp_path: Path
+    ) -> None:
+        import ssl
+
+        from cryptography import x509
+
+        cfg = _cfg(dev, tmp_path)
+        env = cfg.service_env(None)
+        tls = cfg.webhook_tls_dir
+        assert env["MAPI_WEBHOOK_CA_FILE"] == str(tls / "ca.pem")
+        assert env["MAPI_WEBHOOK_DEV_ALLOWLIST"] == "127.0.0.1,localhost"
+        assert (tls / "key.pem").stat().st_mode & 0o777 == 0o600
+        # the receiver's certificate verifies against the CA for both names, and is reused
+        cert = x509.load_pem_x509_certificate((tls / "cert.pem").read_bytes())
+        sans = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+        assert {str(v) for v in sans.get_values_for_type(x509.IPAddress)} == {"127.0.0.1"}
+        assert sans.get_values_for_type(x509.DNSName) == ["localhost"]
+        ctx = ssl.create_default_context(cafile=str(tls / "ca.pem"))
+        ctx.load_cert_chain(tls / "cert.pem", tls / "key.pem")  # the pair matches
+        before = (tls / "cert.pem").read_bytes()
+        cfg.service_env(None)
+        assert (tls / "cert.pem").read_bytes() == before
+        # the caller's own settings win, and other profiles get none of it
+        mine = _cfg(
+            dev, tmp_path, MAPI_WEBHOOK_CA_FILE="/etc/ca.pem", MAPI_WEBHOOK_DEV_ALLOWLIST=""
+        ).service_env(None)
+        assert "MAPI_WEBHOOK_CA_FILE" not in mine and "MAPI_WEBHOOK_DEV_ALLOWLIST" not in mine
+        multi = _cfg(dev, tmp_path, MAPI_STACK_PROFILE="multi-tenant").service_env(None)
+        assert "MAPI_WEBHOOK_CA_FILE" not in multi and "MAPI_WEBHOOK_DEV_ALLOWLIST" not in multi
+
     def test_outbox_prints_the_newest_links(
         self, dev: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
