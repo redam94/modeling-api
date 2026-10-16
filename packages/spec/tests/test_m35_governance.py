@@ -189,6 +189,59 @@ def test_policies_match_merge_and_require_validation() -> None:
         _policy("x", "growth", [{"check": "convergence"}], scope="tenant")
 
 
+def test_a_project_policy_cannot_relax_tenant_check_params() -> None:
+    """Regression: the project's params used to overwrite the tenant's, so a project admin
+    could switch off tenant-mandated data limits and sign constraints."""
+    tenant = _policy(
+        "pol_floor",
+        None,
+        [
+            {"check": "data.quality", "params": {"max_missing": 0.01, "min_history_periods": 104}},
+            {"check": "plausibility.signs", "params": {"expected": {"tv": "positive"}}},
+            {"check": "null.permutation_target", "params": {"n_permutations": 50, "metric": "mae"}},
+            {"check": "baseline.beats_naive", "params": {"methods": ["seasonal_naive"]}},
+            {"check": "null.noise_regressors", "params": {"n_noise": 5}},
+            {"check": "null.placebo_time_shift", "params": {"shifts": [-26]}},
+            {"check": "stability.rolling_params", "params": {"window": 52, "params": ["tv"]}},
+        ],
+    )
+    project = _policy(
+        "pol_proj",
+        "growth",
+        [
+            {"check": "data.quality", "params": {"max_missing": 1.0, "min_history_periods": 1}},
+            {
+                "check": "plausibility.signs",
+                "params": {"expected": {"tv": "negative", "price": "negative"}},
+            },
+            {
+                "check": "null.permutation_target",
+                "params": {"n_permutations": 5, "metric": "crps", "block": 4},
+            },
+            {"check": "baseline.beats_naive", "params": {"methods": ["naive"]}},
+            {"check": "null.noise_regressors", "params": {"n_noise": 1}},
+            {"check": "null.placebo_time_shift", "params": {"shifts": [52]}},
+            {"check": "stability.rolling_params", "params": {"window": 8, "params": []}},
+        ],
+    )
+    got = policies_for([project, tenant], project_id="growth", family="mmm", model_id="mmm.x")
+    merged = {c.check: c.params for c in effective_checks(got)}
+    assert merged["data.quality"] == {"max_missing": 0.01, "min_history_periods": 104}
+    # the tenant's sign wins a conflict; the project may add expectations
+    assert merged["plausibility.signs"] == {"expected": {"tv": "positive", "price": "negative"}}
+    # more permutations is stricter; the tenant's metric stays; a key the tenant left
+    # unset may be added by the project
+    assert merged["null.permutation_target"] == {
+        "n_permutations": 50,
+        "metric": "mae",
+        "block": 4,
+    }
+    assert merged["baseline.beats_naive"] == {"methods": ["seasonal_naive", "naive"]}
+    assert merged["null.noise_regressors"] == {"n_noise": 5}
+    assert merged["null.placebo_time_shift"] == {"shifts": [-26, 52]}
+    assert merged["stability.rolling_params"] == {"window": 52, "params": ["tv"]}
+
+
 @pytest.mark.parametrize(
     ("check", "message"),
     [

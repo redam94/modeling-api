@@ -38,7 +38,13 @@ an endpoint can refuse to serve a model that is not validated.
 - **Scope.** A policy belongs to a project, or to the whole tenant
   (`/v1/tenants/{tenant_id}/governance/policies`). Tenant-wide policies are a floor: every
   project inherits them, and a project's own policy can add checks or tighten thresholds but
-  never loosen them (`effective_checks` keeps the stricter severity and thresholds).
+  never loosen them (`effective_checks` keeps the stricter severity and thresholds). Check
+  parameters merge the same way: the stricter number wins (`max_missing` the lower,
+  `min_history_periods`, `n_permutations`, `n_noise`, `n_sims` and `lags` the higher), lists
+  are combined (`methods`, `shifts`, `params`, `scales`), expected signs are combined with the
+  tenant's sign winning a conflict, and any other parameter set by the tenant (a metric, a
+  block length) keeps the tenant's value; a project can only add parameters the tenant left
+  unset.
 - **Matching.** `applies_to` narrows a policy to model families (`mmm`, `ts`, `tabular`,
   `choice`, ...), model ids or guided templates; empty lists match everything. A family
   matches the family a model declares (the statsmodels forecasters declare `forecast`,

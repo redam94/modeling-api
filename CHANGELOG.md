@@ -392,6 +392,12 @@ milestone releases are tagged on `main`.
   the hour, which was already in the past. It now returns only times strictly after the
   given instant (a repeated local time still fires once), and the schedule loop refuses a
   `next_run_at` that is not in the future.
+- **spec** (security): a project policy could weaken a tenant policy's check parameters
+  (for example `data.quality` `max_missing: 1.0`, or an empty `plausibility.signs`
+  `expected`): parameters of a check named by both were overwritten by the project's.
+  Parameters now merge by strictness (the stricter number, the union of lists and of
+  expected signs, the tenant's value otherwise), so tenant policies are a floor for
+  parameters too.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

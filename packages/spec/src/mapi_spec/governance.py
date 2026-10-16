@@ -678,11 +678,52 @@ def policies_for(
     return sorted(out, key=lambda p: (p.project_id is not None, p.id))
 
 
+_ParamRule = Literal["max", "min", "union", "union_map"]
+_PARAM_RULES: Final[dict[str, dict[str, _ParamRule]]] = {
+    "null.permutation_target": {"n_permutations": "max"},
+    "null.noise_regressors": {"n_noise": "max"},
+    "null.placebo_time_shift": {"shifts": "union"},
+    "baseline.beats_naive": {"methods": "union"},
+    "residuals.whiteness": {"lags": "max"},
+    "stability.rolling_params": {"params": "union"},
+    "plausibility.signs": {"expected": "union_map"},
+    "sensitivity.prior": {"scales": "union"},
+    "recovery.simulated": {"n_sims": "max", "params": "union"},
+    "data.quality": {"max_missing": "min", "min_history_periods": "max"},
+}
+"""How a check parameter set by two policies merges: ``max``/``min`` keep the stricter
+number, ``union`` keeps every list item (more benchmarks, shifts, watched parameters) and
+``union_map`` keeps every key with the earlier policy winning a conflict. A parameter
+without a rule (a metric, a block length, a seed) keeps the earlier policy's value; a
+later policy may only add parameters the earlier ones left unset."""
+
+
+def _merge_params(check: str, first: Mapping[str, Any], later: Mapping[str, Any]) -> dict[str, Any]:
+    rules = _PARAM_RULES.get(check, {})
+    out = dict(first)
+    for key, value in later.items():
+        if key not in out:
+            out[key] = value
+            continue
+        rule, prev = rules.get(key), out[key]
+        if rule == "max":
+            out[key] = max(prev, value)
+        elif rule == "min":
+            out[key] = min(prev, value)
+        elif rule == "union" and isinstance(prev, list) and isinstance(value, list):
+            out[key] = [*prev, *(v for v in value if v not in prev)]
+        elif rule == "union_map" and isinstance(prev, dict) and isinstance(value, dict):
+            out[key] = {**value, **prev}
+    return out
+
+
 def effective_checks(policies: Sequence[GovernancePolicy]) -> list[PolicyCheck]:
-    """The union of the policies' checks: for a check named twice, the stricter severity
-    and the stricter thresholds win (tenant policies are a floor projects cannot lower)."""
+    """The union of the policies' checks: for a check named twice, the stricter severity,
+    the stricter thresholds and the stricter parameters win (tenant policies are a floor
+    projects cannot lower; see :data:`_PARAM_RULES`). Tenant policies are merged first
+    whatever order ``policies`` comes in."""
     merged: dict[str, PolicyCheck] = {}
-    for p in policies:
+    for p in sorted(policies, key=lambda p: p.project_id is not None):
         for c in p.checks:
             prev = merged.get(c.check)
             if prev is None:
@@ -693,7 +734,7 @@ def effective_checks(policies: Sequence[GovernancePolicy]) -> list[PolicyCheck]:
                 update={
                     "severity": sev,
                     "thresholds": _stricter(c.check, prev.thresholds, c.thresholds),
-                    "params": {**prev.params, **c.params},
+                    "params": _merge_params(c.check, prev.params, c.params),
                 }
             )
     return list(merged.values())
