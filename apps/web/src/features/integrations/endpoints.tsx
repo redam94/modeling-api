@@ -22,6 +22,7 @@ import { Badge, Field, Input, NativeSelect, Textarea } from "@/components/ui/pri
 import { useWorkspace } from "@/features/auth/workspace";
 import { absoluteTime, relativeTime } from "@/lib/format";
 import { GATE_META, GATE_REASON_LABEL, gateFromProblem, previewGate } from "@/lib/gate";
+import { NotValidatedNotice } from "@/features/governance/model-validations";
 import { ALIAS_RE } from "@/lib/integrations";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
@@ -339,7 +340,9 @@ export function PromoteDialog({ endpoint, onClose, onPromoted }: { endpoint?: En
                   </span>
                 </div>
                 <ScorecardSummary scorecard={mv.data.scorecard} />
-                {decision ? (
+                {decision?.reasons?.some((r) => r.code === "NOT_VALIDATED") ? (
+                  <NotValidatedNotice modelId={mv.data.model_id} version={mv.data.version} />
+                ) : decision ? (
                   <div className={cn("grid gap-2 rounded-md border p-3", decision.outcome === "blocked" ? "border-destructive/35 bg-destructive/6" : "border-warning/40 bg-warning/8")} role="alert">
                     <p className="font-medium">{decision.outcome === "blocked" ? "This version cannot be promoted" : "The gate needs an admin override"}</p>
                     <GateReasons decision={decision} />

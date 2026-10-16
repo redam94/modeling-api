@@ -16,7 +16,8 @@ const PORT = 5173;
  */
 const ENTRY_BUDGET = {
   maxEntryBytes: 640 * 1024,
-  forbidden: [/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:monaco-editor|monaco-yaml|apache-arrow)\//],
+  // M3.5: React Flow (the workflow canvas) loads only with the workflow editor and run graph.
+  forbidden: [/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:monaco-editor|monaco-yaml|apache-arrow|@xyflow)\//],
 };
 
 function cspMeta(opts: AppCspOptions): Plugin {

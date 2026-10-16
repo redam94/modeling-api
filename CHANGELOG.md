@@ -201,6 +201,36 @@ milestone releases are tagged on `main`.
     TypeScript types of the explorer views; the guides' screenshots
     (`make docs-screenshots-explorers`).
 
+- **web**: workflows and governance screens (both personas).
+  - Workflows: the list and the template gallery with About cards; a "use this template"
+    wizard (name, parameter defaults, bound data); a Guided "run this recipe on my data"
+    flow. The visual editor (React Flow 12.12.0, MIT, lazy-loaded with the editor and
+    the run graph) has a node palette grouped by kind with About cards, typed ports that
+    refuse an incompatible edge with the reason, branch arms that gate nodes, a node editor
+    whose settings form is generated from each node's JSON Schema (values, workflow
+    parameters or expressions) with catalog pickers for models, checks and sub-workflows,
+    a branch condition editor checked live by the server (never evaluated in the
+    browser), and a YAML/JSON view kept in sync. Problems are pinned to nodes by their
+    JSON pointers; revisions are saved with `expected_revision` and compared side by side.
+  - The run monitor follows the SSE stream with `Last-Event-ID` resume and shows the graph
+    by status, the steps in plain words, decisions with the values they read, outputs and
+    events, cancel and cost. A node drawer shows test verdicts, cached-vs-ran, outputs
+    (tables, scores, folds, reports, evidence, charts in the plot sandbox, file
+    downloads), child runs and logs. Schedules use a cron editor with presets and a preview
+    of the next firing times that matches `mapi_spec.cron`; triggers fire on new dataset
+    versions.
+  - Governance: the policy editor (project and tenant-wide; covers, checks with About
+    cards, severity, limits checked like the server, parameters; approval and promotion
+    switches; versions with a diff; retire), the check catalog, validations with the
+    status path and history, per-check evidence with plain messages, what to do and the
+    shuffled-result distribution, approve/reject (never the submitter; hidden without the
+    reviewer capability), resubmit, cancel, deprecate and the evidence-pack export. Model
+    versions have a Validation page, Members a reviewer column, and the promotion dialog
+    explains a `NOT_VALIDATED` refusal with a link to the validation.
+  - Mock API (`--mode mock`, tests): workflows, runs replayed live, schedules, triggers,
+    policies, validations and approvals. `apps/web/scripts/gen_workflow_fixtures.py`
+    writes their data from `mapi_spec` and a real local run of the canonical template and
+    two governed fits (checked by `make web-check` and CI).
 ### Changed
 - **spec**: a dataset's generated summary shows dates without a midnight time
   ("from 2023-01-01", not "from 2023-01-01T00:00:00").

@@ -33,6 +33,7 @@ import type {
   KillSwitchUpdate,
   Me,
   MembershipCreate,
+  MembershipUpdate,
   ProjectCreate,
   ProjectRole,
   ProjectUpdate,
@@ -837,20 +838,23 @@ export function useAddMember(tenantId: string, projectId: string | null) {
 export function useUpdateMember(tenantId: string, projectId: string | null) {
   const invalidate = useInvalidateMembers(tenantId);
   return useMutation({
-    mutationFn: ({ principalId, role }: { principalId: string; role: ProjectRole }) =>
-      projectId
+    // M3.5: `capabilities` grants on top of the role (`reviewer` approves validations).
+    mutationFn: ({ principalId, role, capabilities }: { principalId: string; role?: ProjectRole; capabilities?: MembershipUpdate["capabilities"] }) => {
+      const body: MembershipUpdate = { ...(role ? { role } : {}), ...(capabilities ? { capabilities } : {}) };
+      return projectId
         ? unwrap(
             api.PATCH("/v1/tenants/{tenant_id}/projects/{project_id}/members/{principal_id}", {
               params: { path: { tenant_id: tenantId, project_id: projectId, principal_id: principalId } },
-              body: { role },
+              body,
             }),
           )
         : unwrap(
             api.PATCH("/v1/tenants/{tenant_id}/members/{principal_id}", {
               params: { path: { tenant_id: tenantId, principal_id: principalId } },
-              body: { role },
+              body,
             }),
-          ),
+          );
+    },
     onSuccess: invalidate,
   });
 }

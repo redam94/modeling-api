@@ -10,10 +10,12 @@ import { env } from "@/env";
 
 import * as fx from "./fixtures";
 import { createExploreHandlers, createExploreState } from "./explore";
+import { createGovernanceHandlers, createGovernanceState, notValidatedProblem } from "./governance";
 import { createGuidedHandlers } from "./guided";
 import { createIntegrationHandlers, createIntegrationsState } from "./integrations";
 import { createTenancyHandlers, createTenancyState } from "./tenancy";
 import { createTrustHandlers, createTrustState } from "./trust";
+import { createWorkflowHandlers, createWorkflowsState } from "./workflows";
 
 const API = env.apiBase;
 const API_RE = API.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -33,6 +35,8 @@ interface MockState {
   integrations: ReturnType<typeof createIntegrationsState>;
   trust: ReturnType<typeof createTrustState>;
   explore: ReturnType<typeof createExploreState>;
+  workflows: ReturnType<typeof createWorkflowsState>;
+  governance: ReturnType<typeof createGovernanceState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -47,6 +51,8 @@ export function createState(): MockState {
     integrations: createIntegrationsState(),
     trust: createTrustState(),
     explore: createExploreState(),
+    workflows: createWorkflowsState(),
+    governance: createGovernanceState(),
     runs: new Map(fx.runs.map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
@@ -135,6 +141,14 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     // M3 Guided mode: answers for the resources a Guided session creates, falls through otherwise.
     ...createGuidedHandlers(state),
     ...explore.late,
+    // M3.5: workflows (mocks/workflows.ts) and governance (mocks/governance.ts); the promotion
+    // gate refuses unvalidated versions when a policy says so, before the endpoint routes run.
+    ...createWorkflowHandlers(state.workflows, { artifacts: state.artifacts }),
+    ...createGovernanceHandlers(state.governance, { members: () => state.tenancy.members, artifacts: state.artifacts }),
+    http.put(`${API}/v1/endpoints/:alias`, async ({ request }) => {
+      const body = (await request.clone().json()) as { model_version_id?: string | null };
+      return (body.model_version_id && notValidatedProblem(state.governance, body.model_version_id)) || undefined;
+    }),
     // v0.4: endpoints, webhooks, sharing (mocks/integrations.ts) and the trust lifecycle (mocks/trust.ts).
     ...createIntegrationHandlers(state.integrations, { artifacts: state.artifacts }),
     ...createTrustHandlers(state.trust, { tenancy: state.tenancy, artifacts: state.artifacts }),

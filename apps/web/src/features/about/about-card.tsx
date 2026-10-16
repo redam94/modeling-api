@@ -109,22 +109,51 @@ export interface AboutCardProps {
   /** Buttons under the card ("Start with this", "Use this model"). */
   actions?: ReactNode;
   /** Heading level of the title (cards inside a page section use h3). */
-  as?: "h2" | "h3";
+  as?: "h2" | "h3" | "h4";
+  /** The same as `as`, by number (`headingLevel={2}` is `as="h2"`). */
+  headingLevel?: 2 | 3 | 4;
+  /** Replaces the title text (e.g. the title with an id or tags beside it). */
+  heading?: ReactNode;
+  /** Only the plain summary, the badges and the expert detail (side panels, pickers). */
+  compact?: boolean;
+  /** Draw the card's own border and padding (lists of cards); off inside dialogs and panels. */
+  framed?: boolean;
   className?: string;
 }
 
+const HEADING_TAG = { 2: "h2", 3: "h3", 4: "h4" } as const;
+
 /** The full card. */
-export function AboutCard({ about, kind, id, expertOpen = false, onRelated, actions, as: Heading = "h3", className }: AboutCardProps) {
+export function AboutCard({
+  about,
+  kind,
+  id,
+  expertOpen = false,
+  onRelated,
+  actions,
+  as,
+  headingLevel,
+  heading,
+  compact = false,
+  framed = false,
+  className,
+}: AboutCardProps) {
   const titleId = useId();
+  const Heading = as ?? (headingLevel ? HEADING_TAG[headingLevel] : "h3");
   const refs = (about.references ?? []).map((r) => ({ ...r, href: safeHttps(r.url) }));
-  const hasExpert = Boolean(about.expert_notes) || refs.length > 0;
+  const hasExpert = Boolean(about.expert_notes) || refs.length > 0 || (compact && about.assumptions.length > 0);
   return (
-    <article aria-labelledby={titleId} className={cn("grid gap-4", className)} data-about={id}>
+    <article
+      aria-labelledby={titleId}
+      data-testid="about-card"
+      className={cn(compact ? "grid gap-3" : "grid gap-4", framed && "rounded-lg border bg-card p-4", className)}
+      data-about={id}
+    >
       <header className="grid gap-2">
         {kind ? <p className="text-xs font-medium text-muted-foreground">{KIND_META[kind].label}</p> : null}
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-          <Heading id={titleId} className="text-[17px] leading-snug font-semibold tracking-tight">
-            {about.title}
+          <Heading id={titleId} className={cn("leading-snug font-semibold tracking-tight", compact ? "text-[15px]" : "text-[17px]")}>
+            {heading ?? about.title}
           </Heading>
           <div className="flex flex-wrap items-center gap-1.5">
             <DifficultyBadge difficulty={about.difficulty} />
@@ -132,8 +161,9 @@ export function AboutCard({ about, kind, id, expertOpen = false, onRelated, acti
           </div>
         </div>
         {id ? <p className="font-mono text-[11px] text-muted-foreground">{id}</p> : null}
-        <p className="max-w-[72ch] text-[15px] leading-relaxed">{about.summary_plain}</p>
+        <p className={cn("max-w-[72ch] leading-relaxed", compact ? "text-[13px]" : "text-[15px]")}>{about.summary_plain}</p>
       </header>
+      {compact ? null : (
       <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
         <Section icon={<CheckCircle2 />} title="Use it when" items={about.use_when} tone="good" />
         <Section icon={<XCircle />} title="Avoid it when" items={about.avoid_when} tone="bad" />
@@ -147,13 +177,24 @@ export function AboutCard({ about, kind, id, expertOpen = false, onRelated, acti
           <p className="rounded-md border-l-2 border-primary/50 bg-muted/40 px-3 py-2 text-[13px] italic">{about.example}</p>
         </section>
       </div>
-      <RelatedChips ids={about.related ?? []} onRelated={onRelated} />
+      )}
+      {compact ? null : <RelatedChips ids={about.related ?? []} onRelated={onRelated} />}
       {hasExpert ? (
         <details className="group rounded-lg border bg-muted/20 px-4 py-2" open={expertOpen}>
           <summary className="flex cursor-pointer items-center gap-2 py-1 text-[13px] font-medium select-none">
             <BookOpen aria-hidden className="size-4 text-muted-foreground" /> For experts: how it works
           </summary>
           <div className="grid gap-3 pt-2 pb-2">
+            {compact && about.assumptions.length ? (
+              <div className="grid gap-1">
+                <p className="text-xs font-semibold text-muted-foreground">It assumes</p>
+                <ul className="grid list-disc gap-0.5 pl-4 text-[13px]">
+                  {about.assumptions.map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {about.expert_notes ? <p className="text-[13px] leading-relaxed whitespace-pre-line text-foreground/90">{about.expert_notes}</p> : null}
             {refs.length ? (
               <div className="grid gap-1">

@@ -1,6 +1,6 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Boxes, Columns2, Gauge, Telescope, Wallet } from "lucide-react";
+import { Boxes, Columns2, Gauge, ShieldCheck, Telescope, Wallet } from "lucide-react";
 
 import { useModel, useModels, useModelVersion, useModelVersions } from "@/api/queries";
 import type { Model, ModelVersion } from "@/api/types";
@@ -157,6 +157,12 @@ export function ModelVersionPage() {
                 </Link>
               </Button>
             ) : null}
+            {/* M3.5: governance validation of this version (policies, checks, approval). */}
+            <Button variant="outline" asChild>
+              <Link to="/models/$modelId/versions/$version/validations" params={{ modelId, version: String(v) }}>
+                <ShieldCheck /> Validation
+              </Link>
+            </Button>
             <Button asChild>
               <Link to="/score" search={{ model: modelId, version: v }}>
                 <Gauge /> Score

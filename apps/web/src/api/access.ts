@@ -7,7 +7,7 @@
 import generated from "./access.gen.json";
 import type { ProjectRole, ResourceKind, TenantStatus } from "./types";
 
-export type Action = "read" | "create" | "update" | "delete" | "run" | "cancel" | "promote" | "manage";
+export type Action = "read" | "create" | "update" | "delete" | "run" | "cancel" | "promote" | "manage" | "validate" | "approve";
 type Level = "project" | "tenant" | "platform" | "internal";
 
 interface Rule {

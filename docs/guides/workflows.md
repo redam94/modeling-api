@@ -16,6 +16,7 @@ ports, parameters and result fields.
 | You want to | Go to |
 |---|---|
 | Run a ready-made analysis | [Start from the gallery](#start-from-the-gallery) |
+| Build, run and watch workflows in the browser | [In the web app](#in-the-web-app) |
 | Understand the canonical example | [The canonical workflow](#the-canonical-workflow) |
 | Build your own | [Cookbook](#cookbook) |
 | Know what runs where and what it costs | [Where nodes run](#where-nodes-run) |
@@ -57,6 +58,86 @@ run is reproducible: `GET /v1/workflow-runs/{run_id}` shows `dataset://growth/we
 
 A run answers `202` with the run's view. Starting one with an `Idempotency-Key` that was
 already used returns the first run (`200`) instead of starting another.
+
+## In the web app
+
+**Workflows** in the sidebar (++g++ then ++w++) opens the project's workflows and the
+gallery. Everything below uses the same endpoints as the rest of this guide.
+
+### Recipes for Guided users
+
+In Guided mode the page opens on **Recipes**: the gallery templates as About cards (what each
+does in plain words, when to use it and when not, what it needs and gives, a tiny example).
+**Run on my data** asks for a dataset and, only when the recipe needs them, the settings it
+cannot guess (the drivers of the marketing-mix recipe); the rest sit under *Fine-tune*. The
+first run creates the project's workflow from the template; later runs reuse it. The run
+page then shows each step in plain words as it finishes, with the decisions taken and the
+report's summary.
+
+### Start from a template (Expert)
+
+**Use this template** opens a three-step wizard: the template's About card and the workflow's
+name, its parameters (saved as the workflow's defaults; every run can still change them) and
+the data it runs on by default (saved as the input's default reference, so schedules and runs
+started without data use it). The workflow is created as revision 1.
+
+### The editor
+
+A workflow's **Editor** tab has three panes, side by side on wide screens and stacked on
+narrow ones:
+
+| Pane | What it does |
+|---|---|
+| **Nodes** (the palette) | Every node of `GET /v1/catalog/workflow-nodes`, grouped by kind, each kind and node with its About card; search by name, id or what it is for. Drag a node onto the canvas, or pick it and press **Add** (the keyboard path). |
+| **Canvas** | The graph. Data edges are coloured by port type and numbered when a port has alternatives (*alt 1*, *alt 2*); dashed edges run from a branch's **then**/**else** arm to the top edge of the nodes it gates; dotted edges show results a condition or `$expr` reads. Drag from an output to an input to bind it: an edge between ports of different types, a node feeding itself or a cycle is refused, with the reason above the canvas. Select a node or edge and press ++delete++ to remove it. Problems are counted on the nodes they concern. Node positions are remembered in your browser only (**Tidy layout** forgets them); the document never stores them. |
+| **Node editor** | The selected node's About card, its id and label, each input port with its type and its sources in order (add one, reorder alternatives, disconnect), the branch arm that gates it (**When it runs**), its settings - a form generated from the node's JSON Schema, where each field can also take a workflow **parameter** or an **expression** - and how it runs (retries, time limit, failure handling, caching). A model node picks its model from the catalog with the model's About card; `governance.check` picks a check; `subworkflow.run` picks a saved workflow and revision, whose inputs and outputs become the node's ports. With no node selected, the pane edits the workflow's description, parameters, inputs, outputs and run limits. |
+
+A **branch** node gets a condition editor: write the condition, insert results of upstream
+nodes (`nodes.adf.reject`) or parameters from the list, and the server checks it as you type
+(`POST /v1/workflows:validate`, the issue at `/nodes/<i>/with/condition`). The browser never
+evaluates a condition.
+
+**YAML** and **JSON** show the same document in the code editor, with the server's problems
+as markers. An edit there updates the canvas as soon as the text reads as a workflow; until
+then the canvas keeps the last readable version and says why. Every change is checked live
+(the status reads *Ready to run* or *N problems*; the **Problems** list jumps to the node of
+each one), undo and redo work across all three views, and **Save revision** (++cmd+s++)
+stores the next revision with a message. A revision with problems is saved too, but cannot
+run. If someone saved a newer revision meanwhile, the save is refused and your draft is
+kept. **Revisions** lists every revision with its verdict; open one in the editor or compare
+two side by side.
+
+### Running and watching
+
+**Run workflow** binds the inputs (a dataset from the project, the latest version when it
+runs or an exact one), adjusts the parameters for this run only and starts it with an
+`Idempotency-Key`. The run page follows `GET /v1/workflow-runs/{run_id}/events` live and
+resumes with `Last-Event-ID` after a dropped connection:
+
+- **Graph**: the canvas with each node's status (waiting, queued, running, done, reused,
+  skipped, failed, cancelled).
+- **Steps**: every node in plain words: its verdict, the arm a decision took, why a node was
+  skipped, how long it took.
+- **Decisions**: each branch's condition, the values it read and which nodes ran or were
+  skipped because of it.
+- **Outputs** and **Events**: the run's outputs (the report, rendered) and the event log.
+
+Select a step to open its drawer: whether it ran or reused an earlier result (with a link to
+the run it came from), its test verdict (the statistic, p-value and decision, per series for
+panels), its outputs (tables, scores, train/test folds, reports, governance evidence, charts
+in the plot sandbox, and a download for file outputs such as derived datasets), the settings
+it ran with, its sandbox run, fits or child workflow runs with their logs, and its cost.
+**Cancel run** stops a running workflow and its children; the run's cost is shown when it
+finishes.
+
+### Schedules and triggers in the app
+
+**Schedules and triggers** adds a schedule from presets or a cron expression, in a time zone,
+and previews the next five firing times exactly as the server computes them (daylight-saving
+gaps skipped, repeats fired once); an expression that would fire more often than every 15
+minutes is refused before it is sent. Schedules can be paused and deleted. A **trigger**
+runs the workflow whenever a chosen dataset gets a new version, bound to one of its dataset
+inputs, after a debounce.
 
 ## The canonical workflow
 
@@ -433,5 +514,7 @@ security, like everything else.
   tables and results are.
 - Detrending, STL adjustment and lag/lead features are not separate nodes: use
   `transform.steps` with the catalog's preprocessing steps.
-- The CLI, the Python client and the web editor do not have workflow commands yet; use the
-  HTTP API.
+- The CLI and the Python client do not have workflow commands yet; use the HTTP API or the
+  web app.
+- In the web editor, node positions are a per-browser view preference (the document has no
+  place for them), and a sub-workflow's ports appear once its revision is loaded.
