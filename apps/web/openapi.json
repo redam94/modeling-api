@@ -2408,6 +2408,17 @@
         "title": "DatasetVersionStatus",
         "type": "string"
       },
+      "DeliveryStatus": {
+        "enum": [
+          "pending",
+          "succeeded",
+          "retrying",
+          "failed",
+          "blocked"
+        ],
+        "title": "DeliveryStatus",
+        "type": "string"
+      },
       "DerivedDecl": {
         "additionalProperties": false,
         "description": "A derived quantity (contributions, response curves, ...).",
@@ -2717,6 +2728,1118 @@
         "title": "DimSpec",
         "type": "object"
       },
+      "Endpoint": {
+        "description": "A stable alias and the model version it serves now.",
+        "examples": [
+          {
+            "alias": "geo-mmm-prod",
+            "created_at": "2026-09-01T08:00:00Z",
+            "description": "Weekly EU MMM used by the budget planner",
+            "evaluation_policy": {
+              "fit_mode": "evaluate_then_refit",
+              "schema_change": "block"
+            },
+            "gate": {
+              "outcome": "allowed",
+              "scorecard_overall": "pass"
+            },
+            "id": "ep_01jaf3g1h2j3k4m5n6p7q8r9s0",
+            "model_id": "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0",
+            "model_ref": "model://growth/eu-geo-mmm@v3",
+            "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+            "overridden": false,
+            "project_id": "growth",
+            "promoted_at": "2026-10-15T09:30:00Z",
+            "promoted_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+            "ref": "endpoint://growth/geo-mmm-prod",
+            "revision": 4,
+            "schema_snapshot": {
+              "fit_coords": {
+                "channel": {
+                  "kind": "categorical",
+                  "size": 2,
+                  "values": [
+                    "search",
+                    "tv"
+                  ]
+                },
+                "date": {
+                  "end": "2025-12-30",
+                  "freq": "D",
+                  "kind": "time",
+                  "size": 730,
+                  "start": "2024-01-01"
+                },
+                "market": {
+                  "kind": "categorical",
+                  "size": 2,
+                  "values": [
+                    "de",
+                    "fr"
+                  ]
+                }
+              },
+              "future_required": [
+                "spend_local"
+              ],
+              "horizon_dim": "time",
+              "input_schema": {
+                "dims": {
+                  "channel": {
+                    "kind": "categorical"
+                  },
+                  "date": {
+                    "freq": "D",
+                    "kind": "time",
+                    "policy": "extend"
+                  },
+                  "market": {
+                    "kind": "categorical",
+                    "new_level_strategy": "pooled",
+                    "policy": "new_levels"
+                  }
+                },
+                "vars": {
+                  "revenue_local": {
+                    "dims": [
+                      "market",
+                      "date"
+                    ],
+                    "dtype": "float64",
+                    "role": "target"
+                  },
+                  "spend_local": {
+                    "dims": [
+                      "market",
+                      "channel",
+                      "date"
+                    ],
+                    "dtype": "float64",
+                    "future_required": true,
+                    "role": "spend"
+                  }
+                }
+              },
+              "inputs_stage": "raw",
+              "representation": "draws",
+              "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+              "score_modes": [
+                "counterfactual",
+                "evaluate",
+                "forecast",
+                "predict"
+              ]
+            },
+            "tenant_id": "acme",
+            "updated_at": "2026-10-15T09:30:00Z"
+          }
+        ],
+        "properties": {
+          "alias": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "title": "Alias",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "evaluation_policy": {
+            "$ref": "#/components/schemas/EvaluationPolicy"
+          },
+          "gate": {
+            "$ref": "#/components/schemas/PromotionGateDecision"
+          },
+          "id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "model_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Model Id",
+            "type": "string"
+          },
+          "model_ref": {
+            "description": "model://project/name@vN",
+            "title": "Model Ref",
+            "type": "string"
+          },
+          "model_version_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Model Version Id",
+            "type": "string"
+          },
+          "overridden": {
+            "default": false,
+            "description": "The current version was promoted by override",
+            "title": "Overridden",
+            "type": "boolean"
+          },
+          "project_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "promoted_at": {
+            "format": "date-time",
+            "title": "Promoted At",
+            "type": "string"
+          },
+          "promoted_by": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promoted By"
+          },
+          "ref": {
+            "description": "endpoint://project/alias",
+            "title": "Ref",
+            "type": "string"
+          },
+          "revision": {
+            "description": "Increases with every promotion and rollback",
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "schema_snapshot": {
+            "$ref": "#/components/schemas/EndpointSchemaSnapshot"
+          },
+          "tenant_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "alias",
+          "tenant_id",
+          "project_id",
+          "ref",
+          "model_id",
+          "model_version_id",
+          "model_ref",
+          "revision",
+          "schema_snapshot",
+          "gate",
+          "promoted_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "Endpoint",
+        "type": "object"
+      },
+      "EndpointPromote": {
+        "additionalProperties": false,
+        "description": "``PUT /v1/endpoints/{alias}``: create the alias or point it at another version.\n\nName the version by id or by ``model://project/name@vN`` (exactly one). A version whose\ngate says ``needs_override`` needs ``override=true`` and a ``reason`` from a signed-in\nproject admin (audited); ``blocked`` versions cannot be promoted. ``expected_revision``\nguards against concurrent promotions (``409 CONFLICT`` when stale).",
+        "examples": [
+          {
+            "expected_revision": 3,
+            "model": "model://growth/eu-geo-mmm@v3"
+          },
+          {
+            "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+            "override": true,
+            "reason": "Holdout MAPE is high because of the strike in week 41; accepted by CMO."
+          }
+        ],
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "evaluation_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_revision": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0: the alias must be new",
+            "title": "Expected Revision"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "pattern": "^model://[a-z0-9_-]+/[a-z0-9_-]+@v[0-9]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "model_version_id": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version Id"
+          },
+          "override": {
+            "default": false,
+            "title": "Override",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "EndpointPromote",
+        "type": "object"
+      },
+      "EndpointRevision": {
+        "description": "One entry of an endpoint's history (newest first in ``GET …/history``).",
+        "examples": [
+          {
+            "action": "promote",
+            "actor_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+            "alias": "geo-mmm-prod",
+            "created_at": "2026-10-15T09:30:00Z",
+            "gate": {
+              "failing_checks": [
+                "holdout.mape"
+              ],
+              "outcome": "needs_override",
+              "reasons": [
+                {
+                  "check": "holdout.mape",
+                  "code": "SCORECARD_WARN",
+                  "message_plain": "Holdout error: forecasts were off by 14%.",
+                  "outcome": "needs_override"
+                }
+              ],
+              "scorecard_overall": "warn"
+            },
+            "model_ref": "model://growth/eu-geo-mmm@v3",
+            "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+            "overridden": true,
+            "previous_model_version_id": "mv_01jaf3e0f0g0h0j0k0m0n0p0q0",
+            "reason": "Holdout MAPE is high because of the strike in week 41.",
+            "revision": 4
+          }
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "promote",
+              "rollback"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "alias": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "title": "Alias",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "gate": {
+            "$ref": "#/components/schemas/PromotionGateDecision"
+          },
+          "model_ref": {
+            "title": "Model Ref",
+            "type": "string"
+          },
+          "model_version_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Model Version Id",
+            "type": "string"
+          },
+          "overridden": {
+            "default": false,
+            "title": "Overridden",
+            "type": "boolean"
+          },
+          "previous_model_version_id": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Model Version Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "token_id": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Id"
+          }
+        },
+        "required": [
+          "alias",
+          "revision",
+          "action",
+          "model_version_id",
+          "model_ref",
+          "gate",
+          "created_at"
+        ],
+        "title": "EndpointRevision",
+        "type": "object"
+      },
+      "EndpointRollback": {
+        "additionalProperties": false,
+        "description": "``POST /v1/endpoints/{alias}/rollback``: point the alias back at the version of an\nearlier revision (default: the one before the current). The gate is not re-run - the\nversion was promoted before - but the rollback is audited with its reason.",
+        "examples": [
+          {
+            "reason": "v3 over-forecasts after the price change"
+          }
+        ],
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "to_revision": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Revision"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "EndpointRollback",
+        "type": "object"
+      },
+      "EndpointSchema": {
+        "description": "``GET /v1/endpoints/{alias}/schema``: what to send, with a ready example payload.",
+        "examples": [
+          {
+            "alias": "geo-mmm-prod",
+            "example": {
+              "future_covariates": "carry_last",
+              "horizon": {
+                "dim": "time",
+                "periods": 8
+              },
+              "mode": "forecast",
+              "output": {
+                "kind": "expected",
+                "summary": [
+                  "mean",
+                  "hdi_90"
+                ]
+              }
+            },
+            "model_ref": "model://growth/eu-geo-mmm@v3",
+            "ref": "endpoint://growth/geo-mmm-prod",
+            "revision": 4,
+            "snapshot": {
+              "fit_coords": {
+                "channel": {
+                  "kind": "categorical",
+                  "size": 2,
+                  "values": [
+                    "search",
+                    "tv"
+                  ]
+                },
+                "date": {
+                  "end": "2025-12-30",
+                  "freq": "D",
+                  "kind": "time",
+                  "size": 730,
+                  "start": "2024-01-01"
+                },
+                "market": {
+                  "kind": "categorical",
+                  "size": 2,
+                  "values": [
+                    "de",
+                    "fr"
+                  ]
+                }
+              },
+              "future_required": [
+                "spend_local"
+              ],
+              "horizon_dim": "time",
+              "input_schema": {
+                "dims": {
+                  "channel": {
+                    "kind": "categorical"
+                  },
+                  "date": {
+                    "freq": "D",
+                    "kind": "time",
+                    "policy": "extend"
+                  },
+                  "market": {
+                    "kind": "categorical",
+                    "new_level_strategy": "pooled",
+                    "policy": "new_levels"
+                  }
+                },
+                "vars": {
+                  "revenue_local": {
+                    "dims": [
+                      "market",
+                      "date"
+                    ],
+                    "dtype": "float64",
+                    "role": "target"
+                  },
+                  "spend_local": {
+                    "dims": [
+                      "market",
+                      "channel",
+                      "date"
+                    ],
+                    "dtype": "float64",
+                    "future_required": true,
+                    "role": "spend"
+                  }
+                }
+              },
+              "inputs_stage": "raw",
+              "representation": "draws",
+              "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+              "score_modes": [
+                "counterfactual",
+                "evaluate",
+                "forecast",
+                "predict"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "alias": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "title": "Alias",
+            "type": "string"
+          },
+          "example": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "description": "An EndpointScoreCall body that validates against this endpoint",
+            "title": "Example",
+            "type": "object"
+          },
+          "max_inline_bytes": {
+            "default": 5242880,
+            "title": "Max Inline Bytes",
+            "type": "integer"
+          },
+          "model_ref": {
+            "title": "Model Ref",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/EndpointSchemaSnapshot"
+          }
+        },
+        "required": [
+          "alias",
+          "ref",
+          "model_ref",
+          "revision",
+          "snapshot",
+          "example"
+        ],
+        "title": "EndpointSchema",
+        "type": "object"
+      },
+      "EndpointSchemaSnapshot": {
+        "description": "The input contract of the promoted version, frozen at promotion: what callers send.\n\n``input_schema`` is the raw (dataset-name) schema at ``inputs_stage``; ``horizon_dim``\nthe canonical name of the dim a forecast extends.",
+        "examples": [
+          {
+            "fit_coords": {
+              "channel": {
+                "kind": "categorical",
+                "size": 2,
+                "values": [
+                  "search",
+                  "tv"
+                ]
+              },
+              "date": {
+                "end": "2025-12-30",
+                "freq": "D",
+                "kind": "time",
+                "size": 730,
+                "start": "2024-01-01"
+              },
+              "market": {
+                "kind": "categorical",
+                "size": 2,
+                "values": [
+                  "de",
+                  "fr"
+                ]
+              }
+            },
+            "future_required": [
+              "spend_local"
+            ],
+            "horizon_dim": "time",
+            "input_schema": {
+              "dims": {
+                "channel": {
+                  "kind": "categorical"
+                },
+                "date": {
+                  "freq": "D",
+                  "kind": "time",
+                  "policy": "extend"
+                },
+                "market": {
+                  "kind": "categorical",
+                  "new_level_strategy": "pooled",
+                  "policy": "new_levels"
+                }
+              },
+              "vars": {
+                "revenue_local": {
+                  "dims": [
+                    "market",
+                    "date"
+                  ],
+                  "dtype": "float64",
+                  "role": "target"
+                },
+                "spend_local": {
+                  "dims": [
+                    "market",
+                    "channel",
+                    "date"
+                  ],
+                  "dtype": "float64",
+                  "future_required": true,
+                  "role": "spend"
+                }
+              }
+            },
+            "inputs_stage": "raw",
+            "representation": "draws",
+            "schema_hash": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "score_modes": [
+              "counterfactual",
+              "evaluate",
+              "forecast",
+              "predict"
+            ]
+          }
+        ],
+        "properties": {
+          "fit_coords": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CoordSummary"
+            },
+            "title": "Fit Coords",
+            "type": "object"
+          },
+          "future_required": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Future Required",
+            "type": "array"
+          },
+          "horizon_dim": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon Dim"
+          },
+          "input_schema": {
+            "$ref": "#/components/schemas/DataSchema"
+          },
+          "inputs_stage": {
+            "default": "raw",
+            "title": "Inputs Stage",
+            "type": "string"
+          },
+          "representation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Representation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_hash": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Schema Hash",
+            "type": "string"
+          },
+          "score_modes": {
+            "items": {
+              "enum": [
+                "predict",
+                "forecast",
+                "counterfactual",
+                "simulate",
+                "filter",
+                "evaluate"
+              ],
+              "type": "string"
+            },
+            "title": "Score Modes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "input_schema",
+          "schema_hash"
+        ],
+        "title": "EndpointSchemaSnapshot",
+        "type": "object"
+      },
+      "EndpointScoreCall": {
+        "additionalProperties": false,
+        "description": "``POST /v1/endpoints/{alias}/score`` (and ``…/validate``): a score request for the\nendpoint's current version.\n\n``data``/``scenario`` are ``dataset://`` references or inline XrJSON datasets (up to\n5 MB; :mod:`mapi_spec.xrjson`). Send ``Prefer: wait=N`` (N ≤ 60) to wait: 200 with the\nresult when the run finishes in time, else 202 with the run.",
+        "examples": [
+          {
+            "future_covariates": "carry_last",
+            "horizon": {
+              "dim": "time",
+              "periods": 8
+            },
+            "mode": "forecast",
+            "output": {
+              "kind": "expected",
+              "summary": [
+                "mean",
+                "hdi_90"
+              ]
+            }
+          },
+          {
+            "data": {
+              "coords": {
+                "channel": {
+                  "data": [
+                    "search",
+                    "tv"
+                  ],
+                  "dims": [
+                    "channel"
+                  ]
+                },
+                "date": {
+                  "data": [
+                    "2025-12-30"
+                  ],
+                  "dims": [
+                    "date"
+                  ]
+                },
+                "market": {
+                  "data": [
+                    "de"
+                  ],
+                  "dims": [
+                    "market"
+                  ]
+                }
+              },
+              "data_vars": {
+                "spend_local": {
+                  "data": [
+                    [
+                      [
+                        1200.0
+                      ],
+                      [
+                        5300.0
+                      ]
+                    ]
+                  ],
+                  "dims": [
+                    "market",
+                    "channel",
+                    "date"
+                  ]
+                }
+              }
+            },
+            "mode": "predict"
+          }
+        ],
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "description": "Dataset reference dataset://project/name@version",
+                "examples": [
+                  "dataset://growth/eu_media_daily@latest"
+                ],
+                "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/XrJsonDataset"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "future_covariates": {
+            "$ref": "#/components/schemas/FutureCovariates",
+            "default": "supplied"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Horizon"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inputs_stage": {
+            "default": "raw",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Inputs Stage",
+            "type": "string"
+          },
+          "interventions": {
+            "items": {
+              "$ref": "#/components/schemas/Intervention"
+            },
+            "maxItems": 256,
+            "title": "Interventions",
+            "type": "array"
+          },
+          "labels": {
+            "maxProperties": 64,
+            "patternProperties": {
+              "^[a-z0-9]([a-z0-9_.\\-/]{0,62})$": {
+                "maxLength": 63,
+                "pattern": "^[A-Za-z0-9_.\\-]*$",
+                "type": "string"
+              }
+            },
+            "title": "Labels",
+            "type": "object"
+          },
+          "mode": {
+            "default": "predict",
+            "enum": [
+              "predict",
+              "forecast",
+              "counterfactual",
+              "simulate",
+              "filter",
+              "evaluate"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "output": {
+            "$ref": "#/components/schemas/OutputSelector"
+          },
+          "resource_class": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResourceClass"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "description": "Dataset reference dataset://project/name@version",
+                "examples": [
+                  "dataset://growth/eu_media_daily@latest"
+                ],
+                "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/XrJsonDataset"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 4294967296.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "select": {
+            "maxProperties": 64,
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            },
+            "title": "Select",
+            "type": "object"
+          },
+          "side_tables": {
+            "maxProperties": 32,
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "description": "Dataset reference dataset://project/name@version",
+                "examples": [
+                  "dataset://growth/eu_media_daily@latest"
+                ],
+                "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+                "type": "string"
+              }
+            },
+            "title": "Side Tables",
+            "type": "object"
+          },
+          "timeout": {
+            "anyOf": [
+              {
+                "description": "Duration such as '45m', '1h30m' or '90s'.",
+                "examples": [
+                  "45m",
+                  "1h30m"
+                ],
+                "pattern": "^(?=.)(\\d+h)?(\\d+m)?(\\d+s)?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout"
+          }
+        },
+        "title": "EndpointScoreCall",
+        "type": "object"
+      },
+      "EndpointValidation": {
+        "description": "``POST /v1/endpoints/{alias}/validate``: the static checks of a score call (CoordPlan,\ncapabilities, inline payload envelope) without running it.",
+        "examples": [
+          {
+            "issues": [
+              {
+                "code": "MISSING_FUTURE_COVARIATE",
+                "message": "forecasting needs future values of ['spend'] at stage 'raw'",
+                "pointer": "/scenario",
+                "severity": "error",
+                "suggested_action": "Provide them in a scenario dataset."
+              }
+            ],
+            "valid": false
+          }
+        ],
+        "properties": {
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid"
+        ],
+        "title": "EndpointValidation",
+        "type": "object"
+      },
       "ErrorCode": {
         "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
         "enum": [
@@ -2832,6 +3955,34 @@
           }
         },
         "title": "EvaluateCall",
+        "type": "object"
+      },
+      "EvaluationPolicy": {
+        "additionalProperties": false,
+        "description": "What a model version must satisfy to be promoted to the endpoint (Q13).\n\n``fit_mode = evaluate_then_refit`` (default) requires versions whose production bundle\nwas refitted on all data after the holdout evaluation; ``train_only`` also accepts\nexploration fits. ``schema_change`` decides what happens when the new version expects\ninput the endpoint's callers do not send (:func:`schema_breaks`).",
+        "examples": [
+          {
+            "fit_mode": "evaluate_then_refit",
+            "schema_change": "block"
+          }
+        ],
+        "properties": {
+          "fit_mode": {
+            "$ref": "#/components/schemas/FitMode",
+            "default": "evaluate_then_refit"
+          },
+          "schema_change": {
+            "default": "block",
+            "enum": [
+              "block",
+              "warn",
+              "allow"
+            ],
+            "title": "Schema Change",
+            "type": "string"
+          }
+        },
+        "title": "EvaluationPolicy",
         "type": "object"
       },
       "ExecutorAttestation": {
@@ -3499,6 +4650,14 @@
         "title": "FailureClass",
         "type": "string"
       },
+      "FitMode": {
+        "enum": [
+          "evaluate_then_refit",
+          "train_only"
+        ],
+        "title": "FitMode",
+        "type": "string"
+      },
       "FutureCovariates": {
         "description": "Where future values of ``future_required`` covariates come from in a forecast (M3).\n\n``supplied`` (default) needs them in the request's data or scenario\n(``MISSING_FUTURE_COVARIATE`` otherwise). The other policies let the runner extend them\nover the horizon, per series, inside the sandbox: ``carry_last`` repeats the last\nobserved value, ``seasonal_naive`` repeats the value one season earlier (the time dim's\nyearly period), ``zero`` sets them to zero (e.g. \"no spend planned\").",
         "enum": [
@@ -3509,6 +4668,58 @@
         ],
         "title": "FutureCovariates",
         "type": "string"
+      },
+      "GateOutcome": {
+        "enum": [
+          "allowed",
+          "needs_override",
+          "blocked"
+        ],
+        "title": "GateOutcome",
+        "type": "string"
+      },
+      "GateReason": {
+        "description": "Why the gate is not plainly ``allowed``: a stable code, plain text, and the check.",
+        "properties": {
+          "check": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check"
+          },
+          "code": {
+            "enum": [
+              "SCORECARD_WARN",
+              "SCORECARD_FAIL",
+              "NO_SCORECARD",
+              "TRAIN_ONLY",
+              "PARTIAL_MODEL",
+              "SCHEMA_CHANGE"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message_plain": {
+            "maxLength": 500,
+            "title": "Message Plain",
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/GateOutcome"
+          }
+        },
+        "required": [
+          "code",
+          "outcome",
+          "message_plain"
+        ],
+        "title": "GateReason",
+        "type": "object"
       },
       "GlobalSpend": {
         "description": "Platform spend in the current window of the global spend cap: what the kill switch\ncompares against ``global_spend_cap_micros`` (``actual`` and ``adjustment`` entries in\n``spend_cap_currency``). ``fraction`` is ``spent / cap``; null without a cap.",
@@ -6157,6 +7368,72 @@
         "title": "Page[Dataset]",
         "type": "object"
       },
+      "Page_EndpointRevision_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointRevision"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[EndpointRevision]",
+        "type": "object"
+      },
+      "Page_Endpoint_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Endpoint"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[Endpoint]",
+        "type": "object"
+      },
       "Page_ExecutorHealth_": {
         "examples": [
           {
@@ -6716,6 +7993,72 @@
           "items"
         ],
         "title": "Page[Tenant]",
+        "type": "object"
+      },
+      "Page_WebhookDelivery_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookDelivery"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[WebhookDelivery]",
+        "type": "object"
+      },
+      "Page_Webhook_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Webhook"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[Webhook]",
         "type": "object"
       },
       "PlotBindings": {
@@ -7683,6 +9026,66 @@
           }
         },
         "title": "ProjectUpdate",
+        "type": "object"
+      },
+      "PromotionGateDecision": {
+        "description": "The gate's decision for promoting one model version to an endpoint.",
+        "examples": [
+          {
+            "failing_checks": [
+              "holdout.mape"
+            ],
+            "outcome": "needs_override",
+            "reasons": [
+              {
+                "check": "holdout.mape",
+                "code": "SCORECARD_WARN",
+                "message_plain": "Holdout error: forecasts were off by 14%.",
+                "outcome": "needs_override"
+              }
+            ],
+            "scorecard_overall": "warn"
+          }
+        ],
+        "properties": {
+          "failing_checks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Failing Checks",
+            "type": "array"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/GateOutcome"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/GateReason"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "scorecard_overall": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pass",
+                  "warn",
+                  "fail"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scorecard Overall"
+          }
+        },
+        "required": [
+          "outcome"
+        ],
+        "title": "PromotionGateDecision",
         "type": "object"
       },
       "QuotaLimitStatus": {
@@ -9992,6 +11395,96 @@
         "title": "SignedPut",
         "type": "object"
       },
+      "Snippet": {
+        "description": "Ready-to-run code. ``code`` is platform-generated; it embeds the example payload.",
+        "examples": [
+          {
+            "code": "curl -sS -X POST 'https://api.example.com/v1/endpoints/geo-mmm-prod/score' \\\n  -H \"Authorization: Bearer $MAPI_TOKEN\" \\\n  ...",
+            "language": "curl",
+            "title": "curl"
+          }
+        ],
+        "properties": {
+          "code": {
+            "maxLength": 200000,
+            "title": "Code",
+            "type": "string"
+          },
+          "language": {
+            "$ref": "#/components/schemas/SnippetLanguage"
+          },
+          "requires": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What to install first",
+            "title": "Requires"
+          },
+          "title": {
+            "maxLength": 200,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "language",
+          "title",
+          "code"
+        ],
+        "title": "Snippet",
+        "type": "object"
+      },
+      "SnippetLanguage": {
+        "enum": [
+          "python",
+          "typescript",
+          "curl",
+          "r",
+          "apps_script",
+          "atlas"
+        ],
+        "title": "SnippetLanguage",
+        "type": "string"
+      },
+      "SnippetSet": {
+        "description": "``GET /v1/endpoints/{alias}/snippets`` (``?language=`` narrows it).",
+        "examples": [
+          {
+            "alias": "geo-mmm-prod",
+            "items": [
+              {
+                "code": "curl -sS -X POST 'https://api.example.com/v1/endpoints/geo-mmm-prod/score' \\\n  -H \"Authorization: Bearer $MAPI_TOKEN\" \\\n  ...",
+                "language": "curl",
+                "title": "curl"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "alias": {
+            "title": "Alias",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Snippet"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "alias"
+        ],
+        "title": "SnippetSet",
+        "type": "object"
+      },
       "SpecCreate": {
         "additionalProperties": false,
         "description": "Create a spec document with its first revision (YAML 1.2 or JSON text).",
@@ -11991,6 +13484,479 @@
         "title": "WarningPayload",
         "type": "object"
       },
+      "Webhook": {
+        "description": "A webhook as listed (never its secret; ``secret_hint`` shows its last 4 characters).",
+        "examples": [
+          {
+            "active": true,
+            "created_at": "2026-10-01T08:00:00Z",
+            "events": [
+              "run.succeeded",
+              "run.failed",
+              "endpoint.promoted"
+            ],
+            "failure_count": 0,
+            "id": "whk_01jaf3h1j2k3m4n5p6q7r8s9t0",
+            "last_delivery_at": "2026-10-15T09:30:00Z",
+            "last_success_at": "2026-10-15T09:30:00Z",
+            "project_id": "growth",
+            "secret_hint": "whsec_…Q2x9",
+            "tenant_id": "acme",
+            "updated_at": "2026-10-15T09:30:00Z",
+            "url": "https://hooks.example.com/mapi"
+          }
+        ],
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "disabled_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disabled Reason"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookEventType"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "failure_count": {
+            "default": 0,
+            "description": "Consecutive failed events",
+            "minimum": 0.0,
+            "title": "Failure Count",
+            "type": "integer"
+          },
+          "id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_delivery_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Delivery At"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "project_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "secret_hint": {
+            "pattern": "^whsec_…[A-Za-z0-9_-]{4}$",
+            "title": "Secret Hint",
+            "type": "string"
+          },
+          "tenant_id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "project_id",
+          "url",
+          "events",
+          "active",
+          "secret_hint",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "Webhook",
+        "type": "object"
+      },
+      "WebhookCreate": {
+        "additionalProperties": false,
+        "description": "``POST /v1/webhooks``: the secret is generated by the server and shown once.\n\nThe server applies the SSRF policy to ``url`` (static checks, then every address the\nhost resolves to): ``422 WEBHOOK_URL_BLOCKED``. ``https`` only, ports 443 and 8443.",
+        "examples": [
+          {
+            "description": "Notify the planning service",
+            "events": [
+              "run.succeeded",
+              "run.failed",
+              "endpoint.promoted"
+            ],
+            "url": "https://hooks.example.com/mapi"
+          }
+        ],
+        "properties": {
+          "active": {
+            "default": true,
+            "title": "Active",
+            "type": "boolean"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookEventType"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Events",
+            "type": "array"
+          },
+          "url": {
+            "maxLength": 2048,
+            "minLength": 9,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "events"
+        ],
+        "title": "WebhookCreate",
+        "type": "object"
+      },
+      "WebhookCreated": {
+        "description": "``201`` of ``POST /v1/webhooks`` and ``200`` of ``…:rotate-secret``: the only time the\nsecret is returned. After a rotation the previous secret keeps signing for 24 h.",
+        "examples": [
+          {
+            "secret": "whsec_b3dE5gH7jK9mN1pQ3sT5vW7yZ9bC1dE3fG5hJ7kQ2x9",
+            "webhook": {
+              "active": true,
+              "created_at": "2026-10-01T08:00:00Z",
+              "events": [
+                "run.succeeded",
+                "run.failed",
+                "endpoint.promoted"
+              ],
+              "failure_count": 0,
+              "id": "whk_01jaf3h1j2k3m4n5p6q7r8s9t0",
+              "last_delivery_at": "2026-10-15T09:30:00Z",
+              "last_success_at": "2026-10-15T09:30:00Z",
+              "project_id": "growth",
+              "secret_hint": "whsec_…Q2x9",
+              "tenant_id": "acme",
+              "updated_at": "2026-10-15T09:30:00Z",
+              "url": "https://hooks.example.com/mapi"
+            }
+          }
+        ],
+        "properties": {
+          "secret": {
+            "pattern": "^whsec_[A-Za-z0-9_-]{43}$",
+            "title": "Secret",
+            "type": "string"
+          },
+          "webhook": {
+            "$ref": "#/components/schemas/Webhook"
+          }
+        },
+        "required": [
+          "webhook",
+          "secret"
+        ],
+        "title": "WebhookCreated",
+        "type": "object"
+      },
+      "WebhookDelivery": {
+        "description": "One delivery attempt chain of one event to one webhook (``attempt`` counts tries).\n\n``error`` is platform-authored; ``response_excerpt`` is the first bytes of the receiver's\nanswer (untrusted text: render as text only).",
+        "examples": [
+          {
+            "attempt": 2,
+            "created_at": "2026-10-15T09:30:00Z",
+            "duration_ms": 412,
+            "error": "the receiver answered 503",
+            "event_id": "evt_01jaf3k1m2n3p4q5r6s7t8v9w0",
+            "event_type": "run.succeeded",
+            "id": "whd_01jaf3m1n2p3q4r5s6t7v8w9x0",
+            "next_retry_at": "2026-10-15T09:40:00Z",
+            "response_code": 503,
+            "status": "retrying",
+            "updated_at": "2026-10-15T09:35:00Z",
+            "webhook_id": "whk_01jaf3h1j2k3m4n5p6q7r8s9t0"
+          }
+        ],
+        "properties": {
+          "attempt": {
+            "minimum": 1.0,
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "event_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/WebhookEventType"
+          },
+          "id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "next_retry_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Retry At"
+          },
+          "replay_of": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replay Of"
+          },
+          "response_code": {
+            "anyOf": [
+              {
+                "maximum": 599.0,
+                "minimum": 100.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Code"
+          },
+          "response_excerpt": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Excerpt"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeliveryStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "webhook_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Webhook Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "webhook_id",
+          "event_id",
+          "event_type",
+          "status",
+          "attempt",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "WebhookDelivery",
+        "type": "object"
+      },
+      "WebhookEventType": {
+        "enum": [
+          "run.succeeded",
+          "run.failed",
+          "model.version.ready",
+          "endpoint.promoted",
+          "score.completed",
+          "tenant.deletion.completed"
+        ],
+        "title": "WebhookEventType",
+        "type": "string"
+      },
+      "WebhookUpdate": {
+        "additionalProperties": false,
+        "description": "``PATCH /v1/webhooks/{webhook_id}`` (re-activating resets the failure count).",
+        "examples": [
+          {
+            "active": true
+          },
+          {
+            "events": [
+              "score.completed"
+            ]
+          }
+        ],
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "events": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WebhookEventType"
+                },
+                "maxItems": 16,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Events"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 9,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "WebhookUpdate",
+        "type": "object"
+      },
       "WideVarMapping": {
         "additionalProperties": false,
         "description": "One variable read from several columns, one per label of ``dim`` (a wide table).\n\n``{\"dim\": \"channel\", \"columns\": {\"tv\": \"tv_spend\", \"search\": \"search_spend\"}}`` gives a\nvariable along ``channel`` (plus the table's other dims) with coords ``tv`` and\n``search``. Several wide variables may share a dim; their labels must then agree.",
@@ -12070,6 +14036,161 @@
           "columns"
         ],
         "title": "WideVarMapping",
+        "type": "object"
+      },
+      "XrJsonDataset": {
+        "additionalProperties": false,
+        "description": "An inline dataset (``xr.Dataset.to_dict()`` shape). Dim lengths must agree across\nvariables; every dim of a data variable should have a coord (checked in the sandbox\nagainst the model's schema).",
+        "examples": [
+          {
+            "coords": {
+              "channel": {
+                "data": [
+                  "tv",
+                  "search"
+                ],
+                "dims": [
+                  "channel"
+                ]
+              },
+              "time": {
+                "data": [
+                  "2026-11-01",
+                  "2026-11-08"
+                ],
+                "dims": [
+                  "time"
+                ]
+              }
+            },
+            "data_vars": {
+              "spend": {
+                "data": [
+                  [
+                    1000.0,
+                    1200.0
+                  ],
+                  [
+                    400.0,
+                    380.0
+                  ]
+                ],
+                "dims": [
+                  "channel",
+                  "time"
+                ]
+              }
+            }
+          }
+        ],
+        "properties": {
+          "attrs": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maxProperties": 64,
+            "title": "Attrs",
+            "type": "object"
+          },
+          "coords": {
+            "maxProperties": 64,
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "$ref": "#/components/schemas/XrJsonVariable"
+              }
+            },
+            "title": "Coords",
+            "type": "object"
+          },
+          "data_vars": {
+            "maxProperties": 256,
+            "minProperties": 1,
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "$ref": "#/components/schemas/XrJsonVariable"
+              }
+            },
+            "title": "Data Vars",
+            "type": "object"
+          },
+          "dims": {
+            "maxProperties": 16,
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "type": "integer"
+              }
+            },
+            "title": "Dims",
+            "type": "object"
+          }
+        },
+        "required": [
+          "data_vars"
+        ],
+        "title": "XrJsonDataset",
+        "type": "object"
+      },
+      "XrJsonVariable": {
+        "additionalProperties": false,
+        "description": "A coord or data variable: ``data`` nested ``len(dims)`` deep (a scalar for no dims).",
+        "properties": {
+          "attrs": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maxProperties": 64,
+            "title": "Attrs",
+            "type": "object"
+          },
+          "data": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "dims": {
+            "items": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Dims",
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "XrJsonVariable",
         "type": "object"
       }
     }
@@ -14088,6 +16209,1844 @@
         "summary": "Redirect Dataset View",
         "tags": [
           "datasets"
+        ]
+      }
+    },
+    "/v1/endpoints": {
+      "get": {
+        "description": "Endpoints of the project, by alias.",
+        "operationId": "list_endpoints",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_Endpoint_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Endpoints of the project",
+        "tags": [
+          "endpoints"
+        ]
+      }
+    },
+    "/v1/endpoints/{alias}": {
+      "delete": {
+        "operationId": "delete_endpoint",
+        "parameters": [
+          {
+            "description": "The endpoint alias (a slug)",
+            "in": "path",
+            "name": "alias",
+            "required": true,
+            "schema": {
+              "description": "The endpoint alias (a slug)",
+              "examples": [
+                "geo-mmm-prod"
+              ],
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "title": "Alias",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Delete the alias (model versions stay)",
+        "tags": [
+          "endpoints"
+        ]
+      },
+      "get": {
+        "operationId": "get_endpoint",
+        "parameters": [
+          {
+            "description": "The endpoint alias (a slug)",
+            "in": "path",
+            "name": "alias",
+            "required": true,
+            "schema": {
+              "description": "The endpoint alias (a slug)",
+              "examples": [
+                "geo-mmm-prod"
+              ],
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "title": "Alias",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Endpoint"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "An endpoint and the version it serves",
+        "tags": [
+          "endpoints"
+        ]
+      },
+      "put": {
+        "description": "Point the alias at a model version (creating the alias if needed).\n\nThe promotion gate decides: a version whose scorecard passes, that was fitted with\n``evaluate_then_refit`` (unless the endpoint's policy allows ``train_only``) and whose\ninput contract does not break the endpoint's callers is promoted. A ``warn`` scorecard\n(or no scorecard) needs ``override=true`` with a ``reason`` from a signed-in project admin\n(``409 OVERRIDE_REQUIRED`` otherwise; API tokens can never override); a ``fail``\nscorecard, an interrupted fit or a ``train_only`` fit is ``409 PROMOTION_BLOCKED``.\nThe problem's ``errors`` list the gate's reasons.",
+        "operationId": "promote_endpoint",
+        "parameters": [
+          {
+            "description": "The endpoint alias (a slug)",
+            "in": "path",
+            "name": "alias",
+            "required": true,
+            "schema": {
+              "description": "The endpoint alias (a slug)",
+              "examples": [
+                "geo-mmm-prod"
+              ],
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "title": "Alias",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndpointPromote"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Endpoint"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  },
+                  "OVERRIDE_REQUIRED": {
+                    "summary": "Promotion needs an administrator override with a reason",
+                    "value": {
+                      "code": "OVERRIDE_REQUIRED",
+                      "detail": "Promotion needs an administrator override with a reason",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Promotion needs an administrator override with a reason",
+                      "type": "urn:mapi:error:OVERRIDE_REQUIRED"
+                    }
+                  },
+                  "PROMOTION_BLOCKED": {
+                    "summary": "Promotion blocked by the scorecard",
+                    "value": {
+                      "code": "PROMOTION_BLOCKED",
+                      "detail": "Promotion blocked by the scorecard",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Promotion blocked by the scorecard",
+                      "type": "urn:mapi:error:PROMOTION_BLOCKED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT, PROMOTION_BLOCKED, OVERRIDE_REQUIRED"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Create or promote (gated on the scorecard; override = admin + reason, audited)",
+        "tags": [
+          "endpoints"
+        ]
+      }
+    },
+    "/v1/endpoints/{alias}/history": {
+      "get": {
+        "operationId": "list_endpoint_history",
+        "parameters": [
+          {
+            "description": "The endpoint alias (a slug)",
+            "in": "path",
+            "name": "alias",
+            "required": true,
+            "schema": {
+              "description": "The endpoint alias (a slug)",
+              "examples": [
+                "geo-mmm-prod"
+              ],
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "title": "Alias",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_EndpointRevision_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Promotions and rollbacks, newest first",
+        "tags": [
+          "endpoints"
+        ]
+      }
+    },
+    "/v1/endpoints/{alias}/rollback": {
+      "post": {
+        "operationId": "rollback_endpoint",
+        "parameters": [
+          {
+            "description": "The endpoint alias (a slug)",
+            "in": "path",
+            "name": "alias",
+            "required": true,
+            "schema": {
+              "description": "The endpoint alias (a slug)",
+              "examples": [
+                "geo-mmm-prod"
+              ],
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "title": "Alias",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndpointRollback"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Endpoint"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Point the alias back at an earlier revision's version (audited)",
+        "tags": [
+          "endpoints"
+        ]
+      }
+    },
+    "/v1/endpoints/{alias}/schema": {
+      "get": {
+        "description": "What to send: the input contract frozen at promotion and an example call body that\nvalidates against it.",
+        "operationId": "get_endpoint_schema",
+        "parameters": [
+          {
+            "description": "The endpoint alias (a slug)",
+            "in": "path",
+            "name": "alias",
+            "required": true,
+            "schema": {
+              "description": "The endpoint alias (a slug)",
+              "examples": [
+                "geo-mmm-prod"
+              ],
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "title": "Alias",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EndpointSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Input schema of the current version and an example payload",
+        "tags": [
+          "endpoints"
+        ]
+      }
+    },
+    "/v1/endpoints/{alias}/score": {
+      "post": {
+        "description": "Score the version the alias serves now, with replayed preprocessing.\n\n``data``/``scenario`` are ``dataset://`` references or inline XrJSON (up to 5 MB each).\n``Prefer: wait=N`` (N <= 60) waits up to N seconds: ``200`` with links to the outputs if\nthe run finished, else ``202`` with the run. Repeat the call with the same\n``Idempotency-Key`` (and ``Prefer: wait``) to collect the result later: tokens scoped to\n``score:<alias>`` need nothing else. Per-token rate limits and vCPU budgets apply.",
+        "operationId": "score_endpoint",
+        "parameters": [
+          {
+            "description": "The endpoint alias (a slug)",
+            "in": "path",
+            "name": "alias",
+            "required": true,
+            "schema": {
+              "description": "The endpoint alias (a slug)",
+              "examples": [
+                "geo-mmm-prod"
+              ],
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "title": "Alias",
+              "type": "string"
+            }
+          },
+          {
+            "description": "wait=N (N <= 60): wait up to N s for the result",
+            "in": "header",
+            "name": "Prefer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "wait=N (N <= 60): wait up to N s for the result",
+              "title": "Prefer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndpointScoreCall"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreCallResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreCallResult"
+                }
+              }
+            },
+            "description": "Still running: the run"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "HORIZON_EXCEEDS_FIT": {
+                    "summary": "Horizon exceeds the fitted range",
+                    "value": {
+                      "code": "HORIZON_EXCEEDS_FIT",
+                      "detail": "Horizon exceeds the fitted range",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Horizon exceeds the fitted range",
+                      "type": "urn:mapi:error:HORIZON_EXCEEDS_FIT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: HORIZON_EXCEEDS_FIT"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "The document exceeds a size limit",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "detail": "The document exceeds a size limit",
+                      "errors": [],
+                      "status": 413,
+                      "title": "The document exceeds a size limit",
+                      "type": "urn:mapi:error:PAYLOAD_TOO_LARGE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CAPABILITY_UNSUPPORTED": {
+                    "summary": "The model lacks this capability",
+                    "value": {
+                      "code": "CAPABILITY_UNSUPPORTED",
+                      "detail": "The model lacks this capability",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The model lacks this capability",
+                      "type": "urn:mapi:error:CAPABILITY_UNSUPPORTED"
+                    }
+                  },
+                  "COORD_NOT_ALLOWED": {
+                    "summary": "Coordinates not allowed by dim policy",
+                    "value": {
+                      "code": "COORD_NOT_ALLOWED",
+                      "detail": "Coordinates not allowed by dim policy",
+                      "errors": [],
+                      "status": 422,
+                      "title": "Coordinates not allowed by dim policy",
+                      "type": "urn:mapi:error:COORD_NOT_ALLOWED"
+                    }
+                  },
+                  "MISSING_FUTURE_COVARIATE": {
+                    "summary": "A future covariate is missing",
+                    "value": {
+                      "code": "MISSING_FUTURE_COVARIATE",
+                      "detail": "A future covariate is missing",
+                      "errors": [],
+                      "status": 422,
+                      "title": "A future covariate is missing",
+                      "type": "urn:mapi:error:MISSING_FUTURE_COVARIATE"
+                    }
+                  },
+                  "MODE_NOT_SUPPORTED": {
+                    "summary": "Score mode not supported",
+                    "value": {
+                      "code": "MODE_NOT_SUPPORTED",
+                      "detail": "Score mode not supported",
+                      "errors": [],
+                      "status": 422,
+                      "title": "Score mode not supported",
+                      "type": "urn:mapi:error:MODE_NOT_SUPPORTED"
+                    }
+                  },
+                  "NON_CONTIGUOUS_EXTENSION": {
+                    "summary": "Extension is not contiguous",
+                    "value": {
+                      "code": "NON_CONTIGUOUS_EXTENSION",
+                      "detail": "Extension is not contiguous",
+                      "errors": [],
+                      "status": 422,
+                      "title": "Extension is not contiguous",
+                      "type": "urn:mapi:error:NON_CONTIGUOUS_EXTENSION"
+                    }
+                  },
+                  "RECURSIVE_UNSUPPORTED": {
+                    "summary": "Recursive forecasting unsupported",
+                    "value": {
+                      "code": "RECURSIVE_UNSUPPORTED",
+                      "detail": "Recursive forecasting unsupported",
+                      "errors": [],
+                      "status": 422,
+                      "title": "Recursive forecasting unsupported",
+                      "type": "urn:mapi:error:RECURSIVE_UNSUPPORTED"
+                    }
+                  },
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  },
+                  "UNSEEN_LEVELS": {
+                    "summary": "Unseen levels on a dim that forbids them",
+                    "value": {
+                      "code": "UNSEEN_LEVELS",
+                      "detail": "Unseen levels on a dim that forbids them",
+                      "errors": [],
+                      "status": 422,
+                      "title": "Unseen levels on a dim that forbids them",
+                      "type": "urn:mapi:error:UNSEEN_LEVELS"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID, MODE_NOT_SUPPORTED, UNSEEN_LEVELS, COORD_NOT_ALLOWED, MISSING_FUTURE_COVARIATE, NON_CONTIGUOUS_EXTENSION, CAPABILITY_UNSUPPORTED, RECURSIVE_UNSUPPORTED"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "QUOTA_EXCEEDED": {
+                    "summary": "Quota exceeded",
+                    "value": {
+                      "code": "QUOTA_EXCEEDED",
+                      "detail": "Quota exceeded",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Quota exceeded",
+                      "type": "urn:mapi:error:QUOTA_EXCEEDED"
+                    }
+                  },
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED, QUOTA_EXCEEDED"
+          }
+        },
+        "summary": "Score the current version (Prefer: wait=N -> 200 if done, else 202 with the run)",
+        "tags": [
+          "endpoints"
+        ]
+      }
+    },
+    "/v1/endpoints/{alias}/snippets": {
+      "get": {
+        "description": "Ready-to-run code that scores the endpoint with its example payload. The API token is\nread from ``MAPI_TOKEN`` (an Apps Script property): snippets never contain a secret.",
+        "operationId": "list_endpoint_snippets",
+        "parameters": [
+          {
+            "description": "The endpoint alias (a slug)",
+            "in": "path",
+            "name": "alias",
+            "required": true,
+            "schema": {
+              "description": "The endpoint alias (a slug)",
+              "examples": [
+                "geo-mmm-prod"
+              ],
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "title": "Alias",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only these languages (repeatable)",
+            "in": "query",
+            "name": "language",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/SnippetLanguage"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only these languages (repeatable)",
+              "title": "Language"
+            }
+          },
+          {
+            "description": "The API base URL to embed (default: this server's)",
+            "in": "query",
+            "name": "base_url",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The API base URL to embed (default: this server's)",
+              "title": "Base Url"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnippetSet"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Python, TypeScript, curl, R, Apps Script and Atlas code for the endpoint",
+        "tags": [
+          "endpoints"
+        ]
+      }
+    },
+    "/v1/endpoints/{alias}/validate": {
+      "post": {
+        "description": "The checks ``…/score`` runs before it submits anything: the inline payload against the\nendpoint's input contract (variables, dims, coordinates), CoordPlan (modes, horizon,\nunseen levels, future covariates) and dataset references. ``200`` even when invalid.",
+        "operationId": "validate_endpoint_request",
+        "parameters": [
+          {
+            "description": "The endpoint alias (a slug)",
+            "in": "path",
+            "name": "alias",
+            "required": true,
+            "schema": {
+              "description": "The endpoint alias (a slug)",
+              "examples": [
+                "geo-mmm-prod"
+              ],
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "title": "Alias",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndpointScoreCall"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EndpointValidation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "The document exceeds a size limit",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "detail": "The document exceeds a size limit",
+                      "errors": [],
+                      "status": 413,
+                      "title": "The document exceeds a size limit",
+                      "type": "urn:mapi:error:PAYLOAD_TOO_LARGE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Static checks of a score call without running it",
+        "tags": [
+          "endpoints"
         ]
       }
     },
@@ -17627,6 +21586,1283 @@
           "usage"
         ]
       }
+    },
+    "/v1/webhooks": {
+      "get": {
+        "operationId": "list_webhooks",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_Webhook_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Webhooks of the project",
+        "tags": [
+          "webhooks"
+        ]
+      },
+      "post": {
+        "description": "Subscribe ``url`` to ``events`` of this project. The answer holds the signing secret\n(``whsec_…``) - the only time it is returned; deliveries are signed with it\n(``Mapi-Signature: t=…,v1=…``). At most ``MAPI_WEBHOOK_MAX_PER_PROJECT`` webhooks per\nproject (``409 CONFLICT``).",
+        "operationId": "create_webhook",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  },
+                  "WEBHOOK_URL_BLOCKED": {
+                    "summary": "The webhook URL is not allowed by the egress policy",
+                    "value": {
+                      "code": "WEBHOOK_URL_BLOCKED",
+                      "detail": "The webhook URL is not allowed by the egress policy",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The webhook URL is not allowed by the egress policy",
+                      "type": "urn:mapi:error:WEBHOOK_URL_BLOCKED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID, WEBHOOK_URL_BLOCKED"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Add a webhook (the secret is shown once)",
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/v1/webhooks/{webhook_id}": {
+      "delete": {
+        "operationId": "delete_webhook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "webhook_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "whk_01jaf3h1j2k3m4n5p6q7r8s9t0"
+              ],
+              "pattern": "^whk_[0-9a-z]{26}$",
+              "title": "Webhook Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Delete a webhook and its delivery log",
+        "tags": [
+          "webhooks"
+        ]
+      },
+      "get": {
+        "operationId": "get_webhook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "webhook_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "whk_01jaf3h1j2k3m4n5p6q7r8s9t0"
+              ],
+              "pattern": "^whk_[0-9a-z]{26}$",
+              "title": "Webhook Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Webhook"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "A webhook (never its secret)",
+        "tags": [
+          "webhooks"
+        ]
+      },
+      "patch": {
+        "description": "Re-activating a webhook (``active: true``) resets its consecutive-failure count and\nclears the reason it was disabled for.",
+        "operationId": "update_webhook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "webhook_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "whk_01jaf3h1j2k3m4n5p6q7r8s9t0"
+              ],
+              "pattern": "^whk_[0-9a-z]{26}$",
+              "title": "Webhook Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Webhook"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  },
+                  "WEBHOOK_URL_BLOCKED": {
+                    "summary": "The webhook URL is not allowed by the egress policy",
+                    "value": {
+                      "code": "WEBHOOK_URL_BLOCKED",
+                      "detail": "The webhook URL is not allowed by the egress policy",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The webhook URL is not allowed by the egress policy",
+                      "type": "urn:mapi:error:WEBHOOK_URL_BLOCKED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID, WEBHOOK_URL_BLOCKED"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Change URL, events or active",
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/v1/webhooks/{webhook_id}/deliveries": {
+      "get": {
+        "description": "``response_excerpt`` is the start of the receiver's answer: untrusted text.",
+        "operationId": "list_webhook_deliveries",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "webhook_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "whk_01jaf3h1j2k3m4n5p6q7r8s9t0"
+              ],
+              "pattern": "^whk_[0-9a-z]{26}$",
+              "title": "Webhook Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DeliveryStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_WebhookDelivery_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Delivery log, newest first (filter: status)",
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/v1/webhooks/{webhook_id}/deliveries/{delivery_id}:replay": {
+      "post": {
+        "description": "A new delivery of the same event (same event id, so receivers can deduplicate), sent\nby the worker within seconds; the webhook must be active.",
+        "operationId": "replay_webhook_delivery",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "webhook_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "whk_01jaf3h1j2k3m4n5p6q7r8s9t0"
+              ],
+              "pattern": "^whk_[0-9a-z]{26}$",
+              "title": "Webhook Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "delivery_id",
+            "required": true,
+            "schema": {
+              "pattern": "^whd_[0-9a-z]{26}$",
+              "title": "Delivery Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookDelivery"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "WEBHOOK_URL_BLOCKED": {
+                    "summary": "The webhook URL is not allowed by the egress policy",
+                    "value": {
+                      "code": "WEBHOOK_URL_BLOCKED",
+                      "detail": "The webhook URL is not allowed by the egress policy",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The webhook URL is not allowed by the egress policy",
+                      "type": "urn:mapi:error:WEBHOOK_URL_BLOCKED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: WEBHOOK_URL_BLOCKED"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Send an event again (a new delivery, replay_of set)",
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/v1/webhooks/{webhook_id}:rotate-secret": {
+      "post": {
+        "description": "While the previous secret is still valid, deliveries carry two ``v1`` signatures.",
+        "operationId": "rotate_webhook_secret",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "webhook_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "whk_01jaf3h1j2k3m4n5p6q7r8s9t0"
+              ],
+              "pattern": "^whk_[0-9a-z]{26}$",
+              "title": "Webhook Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "New secret (shown once); the old one signs too for 24 h",
+        "tags": [
+          "webhooks"
+        ]
+      }
     }
   },
   "tags": [
@@ -17668,6 +22904,12 @@
     },
     {
       "name": "models"
+    },
+    {
+      "name": "endpoints"
+    },
+    {
+      "name": "webhooks"
     },
     {
       "name": "plots"
