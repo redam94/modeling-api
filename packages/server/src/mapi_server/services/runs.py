@@ -38,6 +38,7 @@ from mapi_server.observability import metrics as obs_metrics
 from mapi_server.services.audit import add_audit
 from mapi_server.services.cost import bill_attempts, fold_cost
 from mapi_server.services.notify import notify_run
+from mapi_server.services.webhooks.outbox import run_finished
 
 __all__ = [
     "Scope",
@@ -267,6 +268,9 @@ async def apply_transition(
     if rule.target.terminal or rule.new_attempt or rule.target is RunState.FINALIZING:
         # an attempt's execution is over: meter it into the cost ledger (idempotent)
         await bill_attempts(session, run)
+    if rule.target.terminal:
+        # webhook events go to the outbox in this transaction: they exist iff it commits
+        await run_finished(session, run, rule.target)
     await notify_run(session, run.id, "run")
     return rule
 

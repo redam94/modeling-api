@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from mapi_server.auth.request import RequestAuth
     from mapi_server.devidp import DevIdP
     from mapi_server.services.pubsub import PushVerifier
+    from mapi_server.services.webhooks.ssrf import Resolver
 
 __all__ = ["FinalizeQueue", "NoProjectScope", "ServerContext"]
 
@@ -62,6 +63,9 @@ class ServerContext:
     """Pub/Sub push OIDC verifier (built on first use when push auth is configured)."""
     request: RequestAuth | None = None
     """The authenticated caller (request views only; ``None`` in the orchestrator)."""
+    webhook_resolver: Resolver | None = None
+    """DNS for webhook URL checks and deliveries (``None``: the system resolver; tests
+    install a :class:`~mapi_server.services.webhooks.ssrf.StaticResolver`)."""
 
     @property
     def buckets(self) -> Buckets:
