@@ -301,11 +301,19 @@ def test_missing_future_covariate(e33_meta: ScoreMetadata) -> None:
 
 
 def test_future_covariate_coverage(e33_meta: ScoreMetadata) -> None:
+    # a payload that lists periods after the fit forecasts exactly those (horizon.periods is
+    # unused, with a warning): the drivers only have to cover them
     short = _plan_inputs(coords={"time": _time("2026-07-05", "2026-11-29", 22)})
-    err = _errors(validate_score_request(_req(), e33_meta, short))[
+    issues = validate_score_request(_req(), e33_meta, short)
+    assert "MISSING_FUTURE_COVARIATE@/scenario" not in _errors(issues)
+    warn = next(i for i in issues if i.pointer == "/horizon/periods")
+    assert "lists 22 period(s) after the fit" in warn.message
+    # a payload that ends inside the fit leaves the horizon uncovered
+    past = _plan_inputs(coords={"time": _time("2026-05-03", "2026-06-28", 9)})
+    err = _errors(validate_score_request(_req(), e33_meta, past))[
         "MISSING_FUTURE_COVARIATE@/scenario"
     ]
-    assert "cover 22 of the 26" in err.message
+    assert "cover 0 of the 26" in err.message
 
 
 # ----------------------------------------------------------------------------- coordinates

@@ -25,7 +25,7 @@ import hashlib
 import itertools
 import json
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Final
 
 from mapi_spec._types import RESERVED_STAGE
 from mapi_spec.api import new_id
@@ -210,8 +210,14 @@ def snapshot_for(mv: m.ModelVersion) -> EndpointSchemaSnapshot:
         horizon_dim=horizon,
         future_required=sorted(n for n, v in raw.vars.items() if v.future_required),
         fit_coords=dict(meta.fit_coords.get(RESERVED_STAGE, {})),
-        conditions_on_actuals=caps.conditions_on_actuals,
+        conditions_on_actuals=_conditions(caps, meta),
     )
+
+
+def _conditions(caps: Capabilities, meta: ScoreMetadata) -> bool:
+    """Whether the version conditions forecasts on actuals: its plugin build can, and it was
+    not fitted in a transformed space (``ScoreMetadata.data_space``)."""
+    return caps.conditions_on_actuals and meta.data_space is None
 
 
 async def live_snapshot(
@@ -227,9 +233,10 @@ async def live_snapshot(
     meta = ScoreMetadata.model_validate(mv.score_meta)
     live = await live_capabilities(session, catalogs, meta)
     caps = live if live is not None else meta.resolved.model.capabilities
-    if caps.conditions_on_actuals == snapshot.conditions_on_actuals:
+    conditions = _conditions(caps, meta)
+    if conditions == snapshot.conditions_on_actuals:
         return snapshot
-    return snapshot.model_copy(update={"conditions_on_actuals": caps.conditions_on_actuals})
+    return snapshot.model_copy(update={"conditions_on_actuals": conditions})
 
 
 async def evaluate_gate(
@@ -251,9 +258,9 @@ async def evaluate_gate(
     if ctx is not None and mv.score_meta is not None:
         meta = ScoreMetadata.model_validate(mv.score_meta)
         live = await live_capabilities(session, ctx.catalogs, meta)
-        if live is not None and live.conditions_on_actuals != snapshot.conditions_on_actuals:
+        if live is not None and _conditions(live, meta) != snapshot.conditions_on_actuals:
             snapshot = snapshot.model_copy(
-                update={"conditions_on_actuals": live.conditions_on_actuals}
+                update={"conditions_on_actuals": _conditions(live, meta)}
             )
     breaks = schema_breaks(current.input_schema, snapshot.input_schema) if current else []
     if current is not None:
@@ -776,16 +783,19 @@ def inline_summary(
     """The :class:`DataSummary` of an inline payload, from its coordinates (JSON scalars),
     for the static CoordPlan checks.
 
-    Data values are never decoded; only the targets of ``schema`` are null-checked
-    (:func:`~mapi_spec.xrjson.observed_labels`) so ``observed`` says, per dim, the labels at
-    which a target holds a value - the actuals of a forecast (:mod:`mapi_spec.actuals`), which
-    the checks then refuse or validate before a run starts."""
+    Data values are never decoded; the targets of ``schema`` and the drivers a forecast needs
+    (``future_required``) are null-checked (:func:`~mapi_spec.xrjson.observed_labels`) so
+    ``observed`` says, per dim, the labels at which they hold a value - the actuals of a
+    forecast and the drivers on its rows (:mod:`mapi_spec.actuals`), which the checks then
+    refuse or validate before a run starts. Text where the schema wants numbers (a number
+    stored as text in a spreadsheet, ``#N/A``) is refused (``SCHEMA_INVALID``)."""
     coords: dict[str, CoordSummary] = {}
     sizes: dict[str, int] = dict(payload.dims)
     for var in [*payload.coords.values(), *payload.data_vars.values()]:
         shape = _shape(var)
         for d, size in zip(var.dims, shape, strict=False):
             sizes.setdefault(d, size)
+    unreadable: set[str] = set()
     for name, var in payload.coords.items():
         if list(var.dims) != [name]:
             continue  # non-index coordinates are checked in the sandbox
@@ -793,13 +803,27 @@ def inline_summary(
         cs = _coord_summary(name, var, dim, f"{pointer}/coords/{name}", issues)
         if cs is not None:
             coords[name] = cs
+        else:
+            unreadable.add(name)  # reported; a stand-in summary would add false issues
     for d, size in sizes.items():
-        if d not in coords:
+        if d not in coords and d not in unreadable:
             coords[d] = CoordSummary(
                 kind="index", size=size, start=0 if size else None, end=size - 1 if size else None
             )
+    if schema is not None:
+        for name, var in payload.data_vars.items():
+            vs = schema.vars.get(name)
+            if vs is not None and vs.dtype in _NUMERIC:
+                _refuse_text(name, var, payload, f"{pointer}/data_vars/{name}", issues)
     observed: dict[str, dict[str, CoordSummary]] = {}
-    for target in schema.targets if schema is not None else []:
+    checked = list(schema.targets) if schema is not None else []
+    if schema is not None:
+        checked += [
+            n
+            for n, v in schema.vars.items()
+            if v.future_required and v.role is not Role.TARGET and n not in checked
+        ]
+    for target in checked:
         spec = payload.data_vars.get(target)
         if spec is None:
             continue
@@ -816,6 +840,45 @@ def inline_summary(
         if per_dim:
             observed[target] = per_dim
     return DataSummary(vars=list(payload.data_vars), coords=coords, observed=observed)
+
+
+_NUMERIC: Final = frozenset({"float64", "float32", "int64", "int32", "bool"})
+
+
+def _refuse_text(
+    name: str, var: XrJsonVariable, payload: XrJsonDataset, pointer: str, issues: list[Issue]
+) -> None:
+    """A ``SCHEMA_INVALID`` issue naming the first text cell of a numeric variable."""
+
+    def first(node: Any, at: tuple[int, ...]) -> tuple[tuple[int, ...], str] | None:
+        if isinstance(node, list):
+            for k, child in enumerate(node):
+                hit = first(child, (*at, k))
+                if hit is not None:
+                    return hit
+            return None
+        return (at, node) if isinstance(node, str) else None
+
+    hit = first(var.data, ())
+    if hit is None:
+        return
+    at, text = hit
+    where: list[str] = []
+    for dim, k in zip(var.dims, at, strict=False):
+        coord = payload.coords.get(dim)
+        labels = coord.data if coord is not None and isinstance(coord.data, list) else None
+        label = labels[k] if labels is not None and k < len(labels) else k
+        where.append(f"{dim}={label}")
+    issues.append(
+        _issue(
+            ErrorCode.SCHEMA_INVALID,
+            pointer,
+            f"{name!r} holds text where it needs numbers (at {', '.join(where) or 'its cell'})",
+            suggested_action="Send numbers (not text) for this variable, and leave a cell empty "
+            "(null) where there is no value.",
+            untrusted_text=repr(text)[:200],
+        )
+    )
 
 
 def _shape(var: XrJsonVariable) -> list[int]:

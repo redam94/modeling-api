@@ -65,7 +65,10 @@ forecasting endpoint, the periods after the fit as empty rows. Every client read
 exactly those are forecast; `horizon.periods` is not used (a warning in `issues` says so when
 it differs). When the payload ends with an actual, `horizon.periods` periods after it are
 forecast - or after the end of the fit when the actuals only revise fitted periods (the
-fitted periods in between keep their values and get one-step-ahead predictions). `horizon.dim` always names the time dim.
+fitted periods in between keep their values and get one-step-ahead predictions). A payload
+with no period after the fit and no actual - no rows at all, or only fitted periods with the
+target empty - forecasts `horizon.periods` periods after the fit, as a call without data does.
+`horizon.dim` always names the time dim.
 
 **Actuals continue the fitted history.** The first actual may be the period right after the
 fit, or earlier: actuals inside the fitted range **replace** the fitted values for those
@@ -73,7 +76,13 @@ periods (revised data) and the forecast is conditioned on the revision; an empty
 keeps the fitted value. An empty target *between* the end of the fit and the last actual is a
 gap: `ACTUALS_INVALID`, unless the model accepts missing observations (its input schema allows
 a missing target - the state-space models do), which then filters the gap as missing.
-Coordinates that skip periods are `NON_CONTIGUOUS_EXTENSION`, as for any score request.
+Empty targets inside the fitted range are never gaps, so revisions of separate fitted periods
+(with or without new actuals after the fit) are fine for every model. Coordinates that skip
+periods are `NON_CONTIGUOUS_EXTENSION`, as for any score request.
+
+**Only what you sent is an actual.** A pipeline step that fills missing targets
+(`core.impute` with `ffill` or `mean`, which fills the gaps of the fitted history) never turns
+an empty target you sent into an actual: the periods you left blank are forecast.
 
 **Drivers.** A model with drivers needs them on the actual periods after the fit (the values
 observed with the actuals; `ACTUALS_INVALID` otherwise). On the periods to forecast, empty
@@ -82,9 +91,11 @@ drivers follow `future_covariates`: `supplied` (the default) refuses them
 fitted history *and the drivers of the actual periods*, so `carry_last` repeats the latest value
 you sent. Values you send are never changed.
 
-**Panels.** Each series (a cell of the target's other dims: a store, a geo, a variable of a
-VAR) is conditioned on its own actuals and forecast from its own last actual, so series may end
-at different dates.
+**Panels.** For a univariate model, each series (a cell of the target's other dims: a store,
+a geo) is conditioned on its own actuals and forecast from its own last actual, so series may
+end at different dates. Jointly modelled series - the variables of `ts.var`, `ts.vecm`,
+`ts.varmax` and `ts.dynamic_factor` - are one system: every series needs a value on each
+actual period after the fit (`ACTUALS_INVALID` otherwise).
 
 **Parameters stay fixed.** Conditioning is filtering, not fitting: for a state-space model it is
 statsmodels' `results.append(new, refit=False)` (or `apply` when actuals revise the fitted
@@ -156,15 +167,32 @@ Every other model refuses a forecast whose payload holds a target value:
 ```
 
 Only `forecast` requests read targets as actuals: `predict` and `evaluate` payloads carry
-targets for other reasons (metrics, features) and are unaffected.
+targets for other reasons (metrics, features) and are unaffected. A `predict` payload with
+target values after the fitted history gets a warning in `issues` that they are not used (use
+`mode: forecast` to condition on them).
+
+**Models fitted in a transformed space.** A workflow model fitted on the output of
+`transform.log`, `transform.box_cox` or `transform.difference` - transforms without a
+preprocessing-step equivalent, so the endpoint cannot apply them to what you send - is
+labelled `mapi.io/data-space: transformed`. It refuses actuals with `ACTUALS_NOT_SUPPORTED`
+(they would be read as transformed values), `snapshot.conditions_on_actuals` is false, and
+every answer carries a warning that its predictions are in the transformed space. Put the
+transform in the model instead (an ARIMA order `d`) or in its pipeline (`core.log1p` through
+`transform.steps`): then actuals are transformed and forecasts come back in the data's units.
 
 | Code | HTTP | Raised when | What to do |
 |---|---|---|---|
 | `ACTUALS_NOT_SUPPORTED` | 422 | The payload has target values and the model cannot condition on them | Refit with the new data, or leave the target empty |
 | `ACTUALS_INVALID` | 422 | Actuals leave a gap after the fit (and the model needs a complete history), or actuals after the fit lack their drivers | Fill the gap or send only the actuals before it; send the drivers |
+| `MISSING_FUTURE_COVARIATE` | 422 | A driver is empty on a period to forecast and `future_covariates` is `supplied` | Fill it, or set `future_covariates` to `carry_last`, `seasonal_naive` or `zero` |
+| `SCHEMA_INVALID` | 422 | A target or driver cell holds text where the schema wants a number (`"#N/A"`, a number stored as text by a client that sends it as is) | Send numbers; leave the cell empty for no value |
 
-The API checks inline payloads before starting a run (a null check of the JSON; values are
-never decoded outside the sandbox) and the sandbox checks every series again.
+The API checks inline payloads before starting a run: a null check of the JSON for the target
+and the drivers a forecast needs, and a type check for text (values are never decoded outside
+the sandbox). Those checks see the union over series. The sandbox checks every series again,
+so a problem only one series of a panel has (one store without its driver on an actual month)
+fails the run with the same code: the answer is then `200` with the problem in `run.problem`,
+not a `422`.
 
 ## For plugin authors
 

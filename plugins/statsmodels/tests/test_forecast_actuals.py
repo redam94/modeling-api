@@ -1016,3 +1016,164 @@ def test_a_jump_in_the_actuals_moves_the_forecast(
         if model_id != "ts.markov_switching":
             assert float(moves[1.0].reshape(-1)[0]) > 0
         assert float(moves[-1.0].reshape(-1)[0]) < 0
+
+
+# ============================================================== review: nothing is fabricated
+
+
+def _score_tree(
+    registry: Registry, bundle: Bundle, payload: xr.Dataset | None, body: str
+) -> xr.DataTree:
+    return score_bundle(
+        bundle, load_score_request(HEADER + body), payload, registry=registry, return_full=True
+    )
+
+
+def _issues(tree: xr.DataTree) -> list[dict[str, Any]]:
+    out = json.loads(str(tree.attrs.get("issues", "[]")))
+    assert isinstance(out, list)
+    return out
+
+
+@pytest.mark.parametrize("method", ["ffill", "mean"])
+def test_a_target_imputing_pipeline_never_turns_empty_rows_into_actuals(
+    registry: Registry, sales: xr.Dataset, method: str
+) -> None:
+    """``core.impute`` on the target fills the gaps of the fitted history; at score time it
+    must not fill the rows the caller left empty (the periods to forecast) and score them as
+    actuals. The forecast equals the same model fitted on data imputed beforehand."""
+    data, schema = only(sales)
+    doc = schema.model_dump()
+    doc["vars"]["sales"]["missing"] = "allow"
+    schema = DataSchema.model_validate(doc)
+    train = data.isel(date=slice(0, 80)).copy(deep=True)
+    train["sales"].values[10] = np.nan
+    how = "along: t" if method == "ffill" else "over: [t]"
+    pipe = (
+        'pipeline:\n  - {id: imp, use: "core.impute@^1", '
+        f"with: {{vars: [y], {how}, method: {method}}}}}\n"
+    )
+    b = fit(registry, "ts.ets", "{error: add}", train, schema, pipeline=pipe)
+    filled = pd.Series(train["sales"].values)
+    filled = filled.ffill() if method == "ffill" else filled.fillna(filled.mean())
+    pre = fit(
+        registry, "ts.ets", "{error: add}", train.assign(sales=("date", filled.values)), schema
+    )
+    new = data.isel(date=slice(80, 83))
+    future = blank(data.isel(date=slice(83, 86)), "sales")
+    payload = xr.concat([new, future], dim="date")
+    fc, record = forecast(registry, b, payload, periods=3)
+    ref, _ = forecast(registry, pre, payload, periods=3)
+    assert record["n_actuals"] == 3 and record["periods"] == 3
+    assert record["series"][0]["n_forecast"] == 3
+    for level in (0.05, 0.5, 0.95):
+        np.testing.assert_allclose(q(fc, level), q(ref, level), rtol=RTOL)
+    lower = q(fc, 0.05)[3:]
+    assert lower[0] > lower[1] > lower[2]  # the band widens over the forecast periods
+    # only dates to forecast: nothing was supplied, nothing is conditioned on
+    dates = blank(data.isel(date=slice(80, 83)), "sales")
+    fc, record = forecast(registry, b, dates, periods=3)
+    ref, _ = forecast(registry, pre, dates, periods=3)
+    assert record["conditioned"] is False and record["n_actuals"] == 0
+    assert "no actuals were supplied" in record["message"]
+    np.testing.assert_allclose(q(fc, 0.5), q(ref, 0.5), rtol=RTOL)
+    np.testing.assert_allclose(q(fc, 0.95), q(ref, 0.95), rtol=RTOL)
+
+
+def test_one_actual_on_an_integer_axis_keeps_the_fitted_step(registry: Registry) -> None:
+    from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+    rng = np.random.default_rng(0)
+    t = np.arange(0, 120, 2)
+    y = 50 + np.cumsum(rng.normal(0, 1, t.size))
+    ds = xr.Dataset({"y": (("t",), y)}, coords={"t": t})
+    schema = DataSchema.model_validate(
+        {
+            "dims": {"t": {"kind": "integer", "policy": "extend"}},
+            "vars": {"y": {"dims": ["t"], "dtype": "float64", "role": "target"}},
+        }
+    )
+    settings = "{order: [1, 0, 0], time_kind: integer}"
+    b = fit(registry, "ts.sarimax", settings, ds.isel(t=slice(0, 50)), schema, bind="{}")
+    fc, record = forecast(registry, b, ds.isel(t=slice(50, 51)), periods=3)
+    np.testing.assert_array_equal(fc["t"].values, [100, 102, 104, 106])
+    assert record["n_actuals"] == 1 and record["periods"] == 3
+    _, est = params_of(b)
+    direct = SARIMAX(series(y[:50], 0), order=(1, 0, 0), trend="c").filter(est)
+    ref = direct.append(series(y[50:51], 50), refit=False).get_forecast(3)
+    np.testing.assert_allclose(q(fc, 0.5)[1:], np.asarray(ref.predicted_mean), rtol=RTOL)
+
+
+def test_revisions_spread_over_the_fit_for_a_model_that_needs_a_complete_history(
+    registry: Registry, sales: xr.Dataset
+) -> None:
+    """ts.ets (missing targets forbidden): a revision inside the fit, empty fitted periods
+    after it and new actuals after the fit. The empty fitted periods keep their fitted
+    values: the same as sending those values."""
+    data, schema = only(sales)
+    train = data.isel(date=slice(0, 80))
+    b = fit(registry, "ts.ets", "{error: add}", train, schema)
+    sent = data.isel(date=slice(74, 83)).copy(deep=True)
+    sent["sales"].values[0] += 30.0
+    gaps = sent.copy(deep=True)
+    gaps["sales"].values[1:6] = np.nan  # 75..79, inside the fit
+    fc, record = forecast(registry, b, gaps, periods=3)
+    ref, _ = forecast(registry, b, sent, periods=3)
+    assert record["n_actuals"] == 4 and record["revised"] == 1
+    np.testing.assert_allclose(q(fc, 0.5)[-3:], q(ref, 0.5)[-3:], rtol=RTOL)
+    np.testing.assert_allclose(q(fc, 0.95)[-3:], q(ref, 0.95)[-3:], rtol=RTOL)
+    # two separate revisions inside the fit, nothing after it
+    two = train.isel(date=slice(70, 76)).copy(deep=True)
+    two["sales"].values[1:5] = np.nan
+    two["sales"].values[[0, 5]] += 20.0
+    _, record = forecast(registry, b, two, periods=3)
+    assert record["revised"] == 2 and record["periods"] == 3
+
+
+def test_predict_says_target_values_after_the_fit_are_not_used(
+    registry: Registry, sales: xr.Dataset
+) -> None:
+    data, schema = only(sales)
+    train = data.isel(date=slice(0, 80))
+    b = fit(registry, "ts.sarimax", "{order: [2, 0, 0]}", train, schema)
+    payload = xr.concat(
+        [data.isel(date=slice(80, 83)), blank(data.isel(date=slice(83, 86)), "sales")], dim="date"
+    )
+    tree = _score_tree(registry, b, payload, "mode: predict\n")
+    warn = [i for i in _issues(tree) if "not used in predict mode" in i["message"]]
+    assert warn and "mode: forecast" in warn[0]["suggested_action"]
+    inside = _score_tree(registry, b, train.isel(date=slice(60, 70)), "mode: predict\n")
+    assert not any("not used" in i["message"] for i in _issues(inside))
+
+
+def test_a_forecast_payload_with_no_period_after_the_fit_forecasts_the_horizon(
+    registry: Registry, sales: xr.Dataset
+) -> None:
+    data, schema = only(sales)
+    train = data.isel(date=slice(0, 80))
+    b = fit(registry, "ts.sarimax", "{order: [2, 0, 0]}", train, schema)
+    plain, plain_record = forecast(registry, b, None, periods=4)
+    # an empty payload (a header-only sheet) is a forecast without data
+    empty = data.isel(date=slice(0, 0))
+    fc, record = forecast(registry, b, empty, periods=4)
+    assert record["periods"] == 4 and record["horizon_source"] == "horizon"
+    np.testing.assert_allclose(q(fc, 0.5), q(plain, 0.5), rtol=RTOL)
+    assert record["message"] == plain_record["message"]
+    # rows with an empty target inside the fit only: the horizon follows the fit
+    inside = blank(train.isel(date=slice(70, 73)), "sales")
+    fc, record = forecast(registry, b, inside, periods=4)
+    assert record["periods"] == 4 and record["conditioned"] is False
+    np.testing.assert_allclose(q(fc, 0.5)[-4:], q(plain, 0.5), rtol=RTOL)
+    np.testing.assert_array_equal(fc["date"].values[-4:], plain["date"].values)
+
+
+def test_listed_dates_with_supplied_drivers_forecast_exactly_those(
+    registry: Registry, sales: xr.Dataset
+) -> None:
+    data, schema = only(sales, "price")
+    train = data.isel(date=slice(0, 80))
+    b = fit(registry, "ts.sarimax", "{order: [1, 0, 0], exog: [price]}", train, schema)
+    rows = blank(data.isel(date=slice(80, 82)), "sales")
+    fc, record = forecast(registry, b, rows, periods=4, future_covariates="supplied")
+    assert record["periods"] == 2 and record["horizon_source"] == "rows"
+    assert fc.sizes["date"] == 2

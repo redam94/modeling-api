@@ -49,6 +49,12 @@ describe("forecasts with actuals", () => {
     expect(forecastPeriods(TABLE, dates)).toBe(2);
   });
 
+  it("sends no data when no row is left, so the horizon follows the fitted history", () => {
+    const call = tableForecastCall(TABLE, [[null, null, null]], { horizon: { dim: "t", periods: 6 } });
+    expect(call).toEqual({ mode: "forecast", horizon: { dim: "t", periods: 6 }, future_covariates: "carry_last", data: null });
+    expect(tableForecastCall(TABLE, [], {}).horizon).toEqual({ dim: "t", periods: 8 });
+  });
+
   it("explains a malformed table", () => {
     expect(() => tableToXr(TABLE, [[null, 417, null], ["1961-01-01", 1, 2]])).toThrow('row 1 has no "t"');
     expect(() => tableToXr(TABLE, [["1961-01-01", 1, null], ["1961-01-01", 2, null]])).toThrow("two different values");

@@ -32,9 +32,11 @@ import pandas as pd
 import xarray as xr
 from mapi_spec.actuals import (
     CONDITIONING_ATTR,
+    DataSpace,
     ForecastConditioning,
     HorizonSource,
     actuals_not_supported,
+    data_space_of,
 )
 from mapi_spec.calibration import Calibration
 from mapi_spec.capabilities import (
@@ -72,6 +74,7 @@ from mapi_sdk.actuals import (
     drivers_along,
     entry_fit_end,
     future_mask,
+    keep_sent_targets,
     label_text,
     model_actuals,
     observed_mask,
@@ -946,10 +949,12 @@ def _forecast_payload(
     entry_schema: DataSchema | None,
     *,
     payload_given: bool,
+    data_space: DataSpace | None = None,
 ) -> tuple[xr.Dataset, list[Issue], HorizonSource, bool]:
     """A forecast payload at the entry stage, ready for the pipeline (:mod:`mapi_spec.actuals`):
     actuals found (and refused when the model cannot condition on them), the horizon
-    appended after a payload that ends with an actual, empty future drivers filled.
+    appended after a payload that ends with an actual - or that has no period after the fit -
+    and empty future drivers filled.
 
     Returns the payload, the fill issues, where the forecast periods come from and whether
     the payload carries actuals.
@@ -960,8 +965,35 @@ def _forecast_payload(
     entry_targets = list(entry_schema.targets) if entry_schema is not None else []
     fit_end = entry_fit_end(bundle.fit_coords, stage, hdim)
     drivers = drivers_along(entry_schema, hdim, entry_targets)
+    sfreq = None
+    if entry_schema is not None and hdim in entry_schema.dims:
+        sfreq = entry_schema.dims[hdim].freq
+    fit_coords = bundle.fit_coords.get(stage)
+    fit_labels = (
+        np.asarray(fit_coords[hdim].values)
+        if fit_coords is not None and hdim in fit_coords.coords
+        else np.asarray([])
+    )
     mask = observed_mask(data, entry_targets, hdim) if payload_given else None
     if mask is None or not bool(mask.any()):
+        source: HorizonSource = "rows" if payload_given else "horizon"
+        model_end = entry_fit_end(bundle.fit_coords, bundle.resolved.model_stage, hdim)
+        same_end = model_end is None or bool(model_end == fit_end)
+        if payload_given and fit_end is not None and same_end and hdim in data.coords:
+            labels = np.asarray(data[hdim].values)
+            if labels.size and labels.max() <= fit_end:
+                # no period after the fit to forecast: the horizon follows the fit (unless a
+                # split after the entry stage fitted the model on fewer periods: then these
+                # rows are after the model's history)
+                data = append_horizon(
+                    data,
+                    hdim,
+                    req.horizon.periods,
+                    freq=sfreq,
+                    step=_int_step(fit_labels, labels),
+                    after=fit_end,
+                )
+                source = "horizon"
         data, filled = fill_future_covariates(
             data,
             req.future_covariates,
@@ -970,7 +1002,6 @@ def _forecast_payload(
             history=hist,
             targets=entry_targets,
         )
-        source: HorizonSource = "rows" if payload_given else "horizon"
         if payload_given and fit_end is not None and hdim in data.dims:
             blank = xr.zeros_like(data[hdim], dtype=bool)
             data, extra = fill_future_rows(
@@ -984,7 +1015,7 @@ def _forecast_payload(
             )
             filled = filled + extra
         return data, filled, source, False
-    if not live_caps.conditions_on_actuals:
+    if not live_caps.conditions_on_actuals or data_space is not None:
         others = [d for d in mask.dims if d != hdim]
         rows = np.asarray((mask.any(others) if others else mask).values, dtype=bool)
         seen = np.asarray(mask[hdim].values)[rows]
@@ -995,16 +1026,12 @@ def _forecast_payload(
             first=label_text(seen.min()),
             last=label_text(seen.max()),
             fit_end=label_text(fit_end) if fit_end is not None else None,
+            data_space=data_space,
         )
     source = "rows"
     if bool(mask.isel({hdim: -1}).any()):  # the payload ends with an actual
-        sfreq = None
-        if entry_schema is not None and hdim in entry_schema.dims:
-            sfreq = entry_schema.dims[hdim].freq
         labels = np.asarray(data[hdim].values)
-        step: Any = 1
-        if labels.dtype.kind in "iu" and labels.size > 1:
-            step = int(np.diff(np.sort(labels)).min())
+        step = _int_step(fit_labels, labels)
         data = append_horizon(data, hdim, req.horizon.periods, freq=sfreq, step=step, after=fit_end)
         appended = observed_mask(data, entry_targets, hdim)
         assert appended is not None
@@ -1022,6 +1049,15 @@ def _forecast_payload(
             schema=entry_schema,
         )
     return data, filled, source, True
+
+
+def _int_step(*labels: np.ndarray) -> int:
+    """The step of an integer axis from its fitted and requested labels (1 otherwise)."""
+    arrays = [np.asarray(a).ravel() for a in labels if np.asarray(a).size]
+    if not arrays or any(a.dtype.kind not in "iu" for a in arrays):
+        return 1
+    values = np.unique(np.concatenate(arrays))
+    return int(np.diff(values).min()) if values.size > 1 else 1
 
 
 def _model_actuals(
@@ -1168,6 +1204,20 @@ def score_bundle(
         data = _horizon_payload(bundle, req)
     entry_schema = rs.stages.get(req.inputs_stage)
     data = _order_payload(binding.apply(normalise_dataset(data), missing="ignore"), entry_schema)
+    forecast = req.mode == "forecast" and req.horizon is not None
+    if (
+        forecast
+        and payload_given
+        and req.horizon is not None
+        and data.sizes.get(req.horizon.dim, -1) == 0
+    ):
+        # an empty payload (a sheet with only its header row) is a forecast without data
+        payload_given = False
+        data = _order_payload(
+            binding.apply(normalise_dataset(_horizon_payload(bundle, req)), missing="ignore"),
+            entry_schema,
+        )
+    data_space = data_space_of(bundle.spec.metadata.labels)
     # pinned tables always replay the version stored at fit; callers only supply the others
     tables = {
         **{
@@ -1180,9 +1230,9 @@ def score_bundle(
     seed = req.seed if req.seed is not None else (bundle.model.fit_config.seed or 0)
     filled: list[Issue] = []
     live_caps = plugin_cls.manifest().capabilities  # the build that scores (may be newer)
-    forecast = req.mode == "forecast" and req.horizon is not None
     horizon_source: HorizonSource = "horizon"
     has_actuals = False
+    sent: xr.DataArray | None = None  # where the caller sent target values (entry stage)
     if forecast:
         assert req.horizon is not None
         hist = None
@@ -1202,10 +1252,26 @@ def score_bundle(
                     log=hooks.log,
                 ).data
         data, filled, horizon_source, has_actuals = _forecast_payload(
-            bundle, req, data, hist, live_caps, entry_schema, payload_given=payload_given
+            bundle,
+            req,
+            data,
+            hist,
+            live_caps,
+            entry_schema,
+            payload_given=payload_given,
+            data_space=data_space,
         )
+        entry_targets = list(entry_schema.targets) if entry_schema is not None else []
+        sent = observed_mask(data, entry_targets, req.horizon.dim)
 
-    plan = CoordPlan(req, rs, bundle.fit_coords, max_draws=max_draws, live_capabilities=live_caps)
+    plan = CoordPlan(
+        req,
+        rs,
+        bundle.fit_coords,
+        max_draws=max_draws,
+        live_capabilities=live_caps,
+        data_space=data_space,
+    )
     issues = filled + plan.check(data)
     derived = _requested_derived(bundle, req)
     if scenario is not None:
@@ -1265,6 +1331,10 @@ def score_bundle(
         )
         actuals: ForecastActuals | None = None
         if forecast:
+            assert req.horizon is not None
+            # a step that fills the target (core.impute) must not turn the rows the caller
+            # left empty - the periods to forecast - into actuals
+            canon = keep_sent_targets(canon, sent, targets, req.horizon.dim)
             actuals, record = _model_actuals(bundle, req, canon, trace, horizon_source)
             if record is not None:
                 conditioning.append(record)

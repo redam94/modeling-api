@@ -107,8 +107,8 @@ the target empty:
 --8<-- "statsmodels_models.py:actuals"
 ```
 
-Each series is updated with its own actuals, so panel series may end at different dates. The
-answer covers every period you sent: one-step-ahead predictions on the actuals, the forecast
+Each series of a univariate model is updated with its own actuals, so panel series may end
+at different dates. The answer covers every period you sent: one-step-ahead predictions on the actuals, the forecast
 after each series' last actual. Actuals for periods inside the fitted range replace the fitted
 values (revised data). The fitted parameters - and the fitted noise variance, so the band
 widths - never change; how each model takes the new data in:
@@ -125,8 +125,12 @@ widths - never change; how each model takes the new data in:
 Jointly modelled series (`ts.var`, `ts.vecm`, `ts.varmax`, `ts.dynamic_factor`) need a value
 of every series on each period with actuals after the fit (`ACTUALS_INVALID` otherwise).
 Preprocessing steps of the spec (a `core.log1p`, a standardisation) are replayed on the actuals
-before the update and undone on the forecast, as for any payload. Refit from time to time so
-the parameters learn from the new data.
+before the update and undone on the forecast, as for any payload. A workflow's
+`transform.log`, `transform.box_cox` or `transform.difference` is not such a step: a model
+fitted on its output refuses actuals (see
+[Forecasts with actuals](../concepts/forecasting-with-actuals.md#which-models-can)); difference
+inside the model (`order` `d`, seasonal `D`) instead. Refit from time to time so the
+parameters learn from the new data.
 
 ## The models
 

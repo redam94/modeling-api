@@ -228,3 +228,26 @@ def test_a_table_call_needs_a_forecasting_endpoint() -> None:
     no_horizon = _table().model_copy(update={"horizon_dim": None})
     with pytest.raises(ValueError, match="no dim a forecast extends"):
         table_forecast_call(no_horizon, [{"t": "1961-01-01", "y": 1}])
+
+
+def test_numbers_stored_as_text_become_numbers_in_value_columns() -> None:
+    ds = xrjson_from_rows(
+        [{"t": "1961-01-01", "y": " 450 ", "x": "1,250.5"},
+         {"t": "1961-02-01", "y": " ", "x": "-2e3"},
+         {"t": "1961-03-01", "y": "#N/A", "x": ""}],
+        {"y": ["t"], "x": ["t"]},
+    )  # fmt: skip
+    assert ds.data_vars["y"].data == [450, None, "#N/A"]  # text stays text: the API refuses it
+    assert ds.data_vars["x"].data == [1250.5, -2000.0, None]
+    assert table_cell("450", numeric=True) == 450 and table_cell("450") == "450"
+    assert table_cell("4.5", numeric=True) == 4.5 and table_cell("nan", numeric=True) == "nan"
+    # coordinate columns keep their text
+    assert xrjson_from_rows([{"t": "007", "y": 1}], {"y": ["t"]}).coords["t"].data == ["007"]
+
+
+def test_timezone_aware_dates_are_sent_without_an_offset() -> None:
+    pd = pytest.importorskip("pandas")
+    days = pd.date_range("2024-07-14", periods=2, freq="W-SUN", tz="America/New_York")
+    assert [table_cell(d) for d in days] == ["2024-07-14", "2024-07-21"]  # local midnight
+    noon = pd.Timestamp("2024-07-14 12:00", tz="Europe/Berlin")
+    assert table_cell(noon) == "2024-07-14T10:00:00"  # otherwise naive UTC

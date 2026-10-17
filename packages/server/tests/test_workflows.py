@@ -787,3 +787,30 @@ async def test_workflows_of_another_tenant_are_invisible(
             )
             await s.flush()
     assert RunState
+
+
+async def test_a_model_fitted_on_a_non_replayable_transform_is_labelled(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """transform.log has no preprocessing-step equivalent: the model the server fits on its
+    output carries the data-space label, and its version's score metadata says so (actuals
+    are refused, every score warns)."""
+    from mapi_spec.actuals import DATA_SPACE_LABEL, TRANSFORMED_SPACE
+
+    await put_dataset(ctx, "sales", weekly_series(120, random_walk=True))
+    nodes = [
+        {"id": "logged", "use": "transform.log", "inputs": {"data": "inputs.data"},
+         "with": {"vars": ["sales"]}},
+        {"id": "fit", "use": "model.fit", "inputs": {"data": "logged.data"},
+         "with": {"model": "ts.sarimax@^1", "settings": {"order": [1, 0, 0]}}},
+    ]  # fmt: skip
+    wf = await _create(client, _doc(nodes, name="logfit"))
+    run = await _start(client, wf["id"])
+    assert await drive(ctx, run["run_id"], max_rounds=40) is WorkflowRunStatus.SUCCEEDED
+    async with ctx.db.session() as s:
+        spec = (await s.execute(select(m.Spec).where(m.Spec.name == "wf-logfit-fit"))).scalar_one()
+        rev = await s.get(m.SpecRevision, (spec.id, spec.latest_revision))
+        assert rev is not None
+        assert rev.document["metadata"]["labels"][DATA_SPACE_LABEL] == TRANSFORMED_SPACE
+        mv = (await s.execute(select(m.ModelVersion))).scalars().one()
+        assert mv.score_meta is not None and mv.score_meta["data_space"] == "transformed"

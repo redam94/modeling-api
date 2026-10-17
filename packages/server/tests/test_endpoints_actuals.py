@@ -222,3 +222,44 @@ async def test_promoting_a_version_that_cannot_use_actuals_is_a_breaking_change(
         ALIAS, json={"model_version_id": v2.id, "evaluation_policy": {"schema_change": "allow"}}
     )
     assert r.status_code == 200 and not r.json()["schema_snapshot"]["conditions_on_actuals"]
+
+
+async def test_text_in_a_numeric_target_is_refused_before_a_run(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    await _endpoint(client, ctx)
+    await _capable(ctx)
+    before = await _runs(ctx)
+    r = await client.post(f"{ALIAS}/score", json=_call(["417", None]))
+    assert r.status_code == 422 and r.json()["code"] == "SCHEMA_INVALID", r.text
+    assert "'y' holds text" in r.json()["errors"][0]["message"]
+    assert await _runs(ctx) == before
+
+
+async def test_a_model_fitted_in_a_transformed_space_refuses_actuals(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """A spec labelled as fitted on non-replayable transform output (a workflow's
+    transform.log): the version's score metadata says so, the endpoint does not offer actuals
+    even when its plugin build could condition on them, and they are refused before a run."""
+    from mapi_server_testkit.builders import TREND_SPEC
+    from mapi_spec.actuals import DATA_SPACE_LABEL, TRANSFORMED_SPACE
+
+    labelled = TREND_SPEC.replace(
+        "metadata: {name: trend, project: default}",
+        f"metadata: {{name: trend, project: default, labels: {{{DATA_SPACE_LABEL}: "
+        f"{TRANSFORMED_SPACE}}}}}",
+    )
+    mv = await fitted_version(ctx, yaml=labelled)
+    assert mv.score_meta is not None and mv.score_meta["data_space"] == "transformed"
+    await _capable(ctx)
+    r = await client.put(ALIAS, json={"model": "model://default/trend@v1"})
+    assert r.status_code == 200, r.text
+    schema = EndpointSchema.model_validate((await client.get(f"{ALIAS}/schema")).json())
+    assert not schema.snapshot.conditions_on_actuals and schema.actuals_example is None
+    v = (await client.post(f"{ALIAS}/validate", json=_call([417.0]))).json()
+    [err] = [i for i in v["issues"] if i["code"] == "ACTUALS_NOT_SUPPORTED"]
+    assert "transform" in err["message"]
+    plain = (await client.post(f"{ALIAS}/validate", json=_call([None] * 8))).json()
+    assert plain["valid"]
+    assert any("transformed space" in i["message"] for i in plain["issues"])

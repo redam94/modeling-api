@@ -101,6 +101,51 @@ milestone releases are tagged on `main`.
   dates are formatted in the spreadsheet's time zone, two rows with different values for one
   cell are an error, and a refused call is written into **Result** before the script throws.
 
+### Fixed
+- Forecasts with actuals never score values a pipeline step filled as actuals: with a
+  target-imputing step (`core.impute` with `ffill` or `mean`) the blank rows of a payload used
+  to be filled and scored as actuals, so nothing was forecast (or blank future dates were
+  reported as "updated with N actuals").
+- A model a workflow fitted on `transform.log`, `transform.box_cox` or `transform.difference`
+  output (no preprocessing-step equivalent; e.g. the VAR-on-differences branch of
+  `var_vecm_cointegration`) is labelled `mapi.io/data-space: transformed`
+  (`mapi_spec.actuals.DATA_SPACE_LABEL`, `ScoreMetadata.data_space`): it refuses actuals with
+  `ACTUALS_NOT_SUPPORTED` instead of reading original-unit values as transformed ones, its
+  endpoints do not offer actuals, and every score warns that its predictions are in the
+  transformed space.
+- Empty targets inside the fitted range are no longer counted as gaps between actuals, so
+  separate revisions of fitted periods are accepted for models that need a complete history
+  (`ts.ets`, `ts.theta`, `ts.ardl`, `ts.ecm`, the multivariate models).
+- A forecast payload with no period after the fit and no actual (no rows - a header-only
+  Input sheet - or only fitted periods) forecasts `horizon.periods` after the fit instead of
+  answering with zero forecast periods; the Apps Script and the web editor send `data: null`
+  when no row is left.
+- One actual on an integer time axis with a step above 1 appends the horizon with the fitted
+  step (it was refused with a misleading gap).
+- `predict` calls warn that target values after the fitted history are not used (they were
+  ignored silently).
+- A payload that lists the dates to forecast is checked for drivers on exactly those dates
+  (with `future_covariates: supplied` it was refused against `horizon.periods`); inline
+  payloads are null-checked for the drivers a forecast needs, so an empty driver on an actual
+  row (`ACTUALS_INVALID`) or on a supplied future row (`MISSING_FUTURE_COVARIATE`) is a `422`
+  before any run.
+- Text where a number is needed (`"#N/A"`, a number stored as text, a cell of spaces) is
+  refused with `SCHEMA_INVALID` naming the variable and the period before a run, instead of
+  failing inside it. `xrjson_from_rows`/`table_forecast_call` (the Python client's
+  `forecast`) and the Apps Script turn numbers stored as text into numbers and blank text into
+  empty cells.
+- The Apps Script matches the Input sheet's headers trimmed and ignoring case, and refuses a
+  sheet whose target column it cannot find but which has unknown columns instead of sending a
+  plain forecast without the actuals.
+- Timezone-aware dates from a DataFrame are sent as dates (local midnight) or naive UTC, not
+  with an offset; an off-grid time coordinate no longer also reports "start before the fitted
+  range".
+- The workflow orchestrator read a dataset node's lineage from the persisted row, which a
+  model node started in the same tick did not see yet.
+- Docs: jointly modelled series (VAR, VECM, VARMAX, DynamicFactor) need every series on each
+  actual period; the Sheets troubleshooting table says which problems are a `422` and which a
+  failed run.
+
 ## [0.5.0] — M3.5: Workflows, governance, explorers, mmm-framework — 2026-10-16
 
 Analyses can now be automated and models held to written rules before anyone relies on

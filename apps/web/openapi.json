@@ -3610,7 +3610,7 @@
       },
       "DataSummary": {
         "additionalProperties": false,
-        "description": "Summary of a dataset (or score payload): variable names and coordinate summaries.\n\n``observed`` (forecasts conditioned on actuals, :mod:`mapi_spec.actuals`) maps a target\nvariable to, per ordered dim, the summary of the labels at which it holds at least one\nvalue. Only summarisers that read the values set it (the sandbox, and the control plane\nfor inline JSON payloads, where it is a null check); empty means unknown.",
+        "description": "Summary of a dataset (or score payload): variable names and coordinate summaries.\n\n``observed`` (forecasts conditioned on actuals, :mod:`mapi_spec.actuals`) maps a target\nvariable - and a driver the forecast needs (``future_required``) - to, per ordered dim,\nthe summary of the labels at which it holds at least one value. Only summarisers that\nread the values set it (the sandbox, and the control plane for inline JSON payloads,\nwhere it is a null check); a variable left out is unknown.",
         "properties": {
           "coords": {
             "additionalProperties": {

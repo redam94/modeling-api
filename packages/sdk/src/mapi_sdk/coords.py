@@ -20,6 +20,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import xarray as xr
+from mapi_spec.actuals import DataSpace
 from mapi_spec.capabilities import Capabilities
 from mapi_spec.coords import CoordSummary
 from mapi_spec.errors import CoordPlanError, ErrorCode, Issue, Severity
@@ -68,18 +69,22 @@ class CoordPlan:
         *,
         max_draws: int | None = None,
         live_capabilities: Capabilities | None = None,
+        data_space: DataSpace | None = None,
     ) -> None:
         self.request = request
         self.resolved = resolved
         self.fit_coords = dict(fit_coords)
         self.max_draws = max_draws
         self.live_capabilities = live_capabilities
+        self.data_space: DataSpace | None = data_space
 
     def metadata(self) -> ScoreMetadata:
         summaries: dict[str, dict[str, CoordSummary]] = {}
         for stage, coords in self.fit_coords.items():
             summaries[stage] = summarize_coords(coords, self.resolved.stages.get(stage))
-        return ScoreMetadata(resolved=self.resolved, fit_coords=summaries)
+        return ScoreMetadata(
+            resolved=self.resolved, fit_coords=summaries, data_space=self.data_space
+        )
 
     def check(self, inputs: xr.Dataset | None = None) -> list[Issue]:
         """Run the checks; ``inputs`` is the payload at ``inputs_stage`` (canonical names)."""
