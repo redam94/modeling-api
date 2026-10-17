@@ -43,9 +43,14 @@ function scoreSalesForecast() {
     const zone = book.getSpreadsheetTimeZone
       ? book.getSpreadsheetTimeZone()
       : Session.getScriptTimeZone();
-    payload[key] = mapiSheetToXr_(input.getDataRange().getValues(), payload[key], inputs, zone);
+    const sent = mapiSheetToXr_(input.getDataRange().getValues(), payload[key], inputs, zone);
+    const noRows = Object.values(sent.coords).every((c) => !c.data.length);
     if (key === "data" && payload.mode === "forecast" && payload.horizon) {
-      payload.horizon.periods = mapiForecastPeriods_(payload, payload.horizon.periods);
+      // no row left: forecast the horizon's periods after the fitted history
+      payload.data = noRows ? null : sent;
+      if (!noRows) payload.horizon.periods = mapiForecastPeriods_(payload, payload.horizon.periods);
+    } else {
+      payload[key] = sent;
     }
   }
   const response = UrlFetchApp.fetch("https://api.mapi.example/v1/endpoints/sales-forecast/score", {
@@ -146,8 +151,9 @@ function mapiProblemRows_(text) {
 
 // A long table (a header row, then rows) as an inline dataset: columns named like a dim
 // hold coordinates, columns named like an input variable (`inputs`, else the example's
-// variables) hold values; empty cells become null - in a forecast an empty target is a
-// period to forecast. Dates are sent as yyyy-MM-dd.
+// variables) hold values (headers are matched trimmed and ignoring case); empty cells
+// become null - in a forecast an empty target is a period to forecast - and numbers stored
+// as text are numbers. Dates are sent as yyyy-MM-dd.
 function mapiSheetToXr_(values, example, inputs, zone) {
   let vars = inputs;
   if (!vars && example && example.data_vars) {
@@ -155,18 +161,37 @@ function mapiSheetToXr_(values, example, inputs, zone) {
     for (const [name, spec] of Object.entries(example.data_vars)) vars[name] = spec.dims;
   }
   if (!vars) throw new Error("this endpoint's example call sends no inline data to replace");
-  const header = values[0].map(String);
-  const rows = values.slice(1).filter((r) => r.some((c) => c !== ""));
-  const used = Object.keys(vars).filter((name) => header.indexOf(name) >= 0);
+  const norm = (h) => String(h).trim().toLowerCase();
+  const header = values[0].map(norm);
+  const rows = values.slice(1).filter((r) => r.some((c) => String(c).trim() !== ""));
+  const used = Object.keys(vars).filter((name) => header.indexOf(norm(name)) >= 0);
   if (!used.length) {
     throw new Error("the Input sheet needs a column named one of: " + Object.keys(vars).join(", "));
   }
+  const targets = ["sales"];
+  const dims = [...new Set(Object.values(vars).flat())];
+  const known = new Set(Object.keys(vars).concat(dims).map(norm));
+  const unknown = values[0].filter((h) => norm(h) !== "" && !known.has(norm(h)));
+  if (targets.length && !targets.some((t) => used.indexOf(t) >= 0) && unknown.length) {
+    throw new Error(
+      "the Input sheet has no column for " + targets.join(", ") + " (the actuals) but has " +
+        unknown.map((h) => '"' + String(h).trim() + '"').join(", ") +
+        "; the columns are: " + dims.concat(Object.keys(vars)).join(", ")
+    );
+  }
   const column = (name) => {
-    const i = header.indexOf(name);
+    const i = header.indexOf(norm(name));
     if (i < 0) throw new Error('the Input sheet needs a column named "' + name + '"');
     return i;
   };
   const cell = (v) => (v instanceof Date ? Utilities.formatDate(v, zone, "yyyy-MM-dd") : v);
+  const number = (v) => {
+    if (typeof v !== "string") return cell(v);
+    const text = v.trim();
+    if (text === "") return null;
+    if (/^[-+]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(text)) return Number(text.replace(/,/g, ""));
+    return /^[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$/.test(text) ? Number(text) : text;
+  };
   const coords = {};
   const index = {};
   for (const name of used) {
@@ -192,7 +217,7 @@ function mapiSheetToXr_(values, example, inputs, zone) {
   for (const name of used) {
     const dims = vars[name];
     const i = column(name);
-    const value = (r) => (r[i] === "" ? null : cell(r[i]));
+    const value = (r) => (r[i] === "" ? null : number(r[i]));
     if (!dims.length) {
       data_vars[name] = { dims: [], data: rows.length ? value(rows[0]) : null };
       continue;

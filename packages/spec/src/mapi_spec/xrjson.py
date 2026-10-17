@@ -17,8 +17,9 @@ sandbox (``mapi_sdk`` wire format), which also checks dtypes and the schema.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterable, Mapping, Sequence
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Final
 
 from pydantic import Field, JsonValue, field_validator, model_validator
@@ -195,14 +196,38 @@ _EPOCH_NS_THRESHOLD: Final = 10**15
 """numpy ``datetime64[ns]`` scalars unbox to integers (nanoseconds) above this."""
 
 
-def table_cell(value: Any) -> Leaf:
+_NUMBER: Final = re.compile(r"[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?")
+_GROUPED: Final = re.compile(r"[-+]?\d{1,3}(,\d{3})+(\.\d+)?")
+"""Numbers as spreadsheets and CSV files write them (``1,250.5`` with thousands groups)."""
+
+
+def _number_text(text: str) -> int | float | None:
+    if _GROUPED.fullmatch(text):
+        text = text.replace(",", "")
+    elif not _NUMBER.fullmatch(text):
+        return None
+    if "." in text or "e" in text.lower():
+        return float(text)
+    return int(text)
+
+
+def table_cell(value: Any, *, numeric: bool = False) -> Leaf:
     """A table cell as an XrJSON leaf: empty (``None``, blank text, NaN, NaT) is ``null``;
-    dates are ISO text (the date alone at midnight); numpy and pandas scalars are unboxed.
-    Raises ``TypeError`` for anything else."""
+    dates are ISO text (the date alone at local midnight - a timezone-aware value at local
+    midnight is its local date, other aware values naive UTC); numpy and pandas scalars are
+    unboxed. With ``numeric`` (a value column) text is trimmed and text holding a number
+    (``" 450"``, ``"1,250.5"``) is that number; other text stays text. Raises ``TypeError``
+    for anything else."""
     if value is None:
         return None
     if isinstance(value, str):
-        return value if value.strip() else None
+        text = value.strip()
+        if not text:
+            return None
+        if numeric:
+            number = _number_text(text)
+            return number if number is not None else text
+        return value
     if isinstance(value, bool | int):
         return value
     if isinstance(value, float):
@@ -213,14 +238,16 @@ def table_cell(value: Any) -> Leaf:
     except (TypeError, ValueError):  # pragma: no cover - exotic comparisons
         pass
     if isinstance(value, datetime):
-        if value.tzinfo is None and value.time() == datetime.min.time():
-            return value.date().isoformat()
+        if value.time() == datetime.min.time():
+            return value.date().isoformat()  # local midnight: the date (as a sheet shows it)
+        if value.tzinfo is not None:
+            value = value.astimezone(UTC).replace(tzinfo=None)
         return value.isoformat()
     if isinstance(value, date):
         return value.isoformat()
     to_py = getattr(value, "to_pydatetime", None)  # pandas Timestamp
     if callable(to_py):
-        return table_cell(to_py())
+        return table_cell(to_py(), numeric=numeric)
     item = getattr(value, "item", None)  # numpy scalars
     if callable(item):
         unboxed = item()
@@ -228,7 +255,7 @@ def table_cell(value: Any) -> Leaf:
         if kind == "M" and isinstance(unboxed, int) and unboxed > _EPOCH_NS_THRESHOLD:
             seconds, ns = divmod(unboxed, 10**9)
             unboxed = datetime(1970, 1, 1) + timedelta(seconds=seconds, microseconds=ns // 1000)
-        return table_cell(unboxed)
+        return table_cell(unboxed, numeric=numeric)
     raise TypeError(
         f"a table cell must be a number, text, a date or empty, not {type(value).__name__}"
     )
@@ -242,7 +269,8 @@ def xrjson_from_rows(
     ``variables`` maps each value column to its dims; the dims' columns hold the
     coordinates, in the order they first appear. A variable no row has a column for is left
     out; empty cells (``None``, blank, NaN) are ``null`` - in a forecast an empty target
-    marks a period to forecast (:mod:`mapi_spec.actuals`). Two rows that give one cell
+    marks a period to forecast (:mod:`mapi_spec.actuals`) - and numbers stored as text in a
+    value column are numbers. Two rows that give one cell
     different values are an error. It is the layout of the Apps Script snippet's Input sheet
     (:mod:`mapi_spec.snippets`) and of ``EndpointSchema.input_table``.
 
@@ -278,7 +306,7 @@ def xrjson_from_rows(
         for row in table:
             if name not in row:
                 continue
-            value = table_cell(row[name])
+            value = table_cell(row[name], numeric=True)
             if value is None:
                 continue
             at = tuple(index[d][table_cell(row.get(d))] for d in dims)

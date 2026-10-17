@@ -327,3 +327,41 @@ def test_the_input_sheet_function_lays_out_the_table() -> None:
     assert cells["9,1"] == "1961-08-01" and "10,1" not in cells
     again = _run(CTX, [["t"]], _answer(), entry="scoreSalesForecastInputSheet")
     assert "already" in again["error"]
+
+
+@needs_node
+def test_a_sheet_with_only_its_header_forecasts_from_the_fit() -> None:
+    payload = _run(CTX, [["t", "y", "price"], ["", "", ""]], _answer())["sent"][0]["payload"]
+    assert payload["data"] is None and payload["horizon"] == {"dim": "t", "periods": 8}
+    EndpointScoreCall.model_validate(payload)
+
+
+@needs_node
+def test_numbers_stored_as_text_and_blank_text_cells() -> None:
+    sheet = [
+        ["t", "y", "price"],
+        ["date:1961-01-01", "450", " 10.5"],
+        ["date:1961-02-01", " ", "1,250"],
+        ["date:1961-03-01", "", "#N/A"],
+    ]
+    payload = _run(CTX, sheet, _answer())["sent"][0]["payload"]
+    assert payload["data"]["data_vars"]["y"]["data"] == [450, None, None]
+    assert payload["data"]["data_vars"]["price"]["data"] == [10.5, 1250, "#N/A"]
+    assert payload["horizon"]["periods"] == 2  # the blank-text row is a period to forecast
+
+
+@needs_node
+def test_headers_are_matched_trimmed_and_ignoring_case() -> None:
+    sheet = [["T ", "y ", "Price"], ["date:1961-01-01", 450, 1], ["date:1961-02-01", "", 1]]
+    payload = _run(CTX, sheet, _answer())["sent"][0]["payload"]
+    assert payload["data"]["data_vars"]["y"]["data"] == [450, None]
+    assert payload["data"]["coords"]["t"]["data"] == ["1961-01-01", "1961-02-01"]
+    assert payload["horizon"]["periods"] == 1
+
+
+@needs_node
+def test_an_unrecognised_target_column_is_an_error_not_a_plain_forecast() -> None:
+    sheet = [["t", "sales", "price"], ["date:1961-01-01", 450, 1], ["date:1961-02-01", "", 1]]
+    run = _run(CTX, sheet, _answer())
+    assert run["sent"] == []
+    assert '"sales"' in run["error"] and "y" in run["error"]
