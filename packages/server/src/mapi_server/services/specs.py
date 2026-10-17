@@ -107,12 +107,12 @@ def data_cap_issue(
     if total <= cap:
         return None
     message = (
-        f"the input data ({_gb(total)}) exceeds the {_gb(cap)} dataset cap of resource "
+        f"the input data ({_gb(total)}) is more than the {_gb(cap)} dataset cap of resource "
         f"class {resource_class.value}"
     )
     need = class_for_size(total)
     if need is not None:
-        message += f"; use resource class {need.value} or larger"
+        message += f". Use resource class {need.value} or larger"
     return _issue(ErrorCode.PAYLOAD_TOO_LARGE, pointer, message)
 
 
@@ -403,7 +403,7 @@ async def check_score_request(
             _issue(
                 ErrorCode.SCHEMA_INVALID,
                 "/data",
-                "the score request has no data; give data or a scenario dataset, or a "
+                "the score request has no data. Give data, a scenario dataset or a "
                 "forecast horizon",
             )
         )

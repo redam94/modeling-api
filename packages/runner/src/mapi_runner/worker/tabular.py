@@ -159,16 +159,16 @@ def check_zip_archive(path: Path, limits: IngestLimits) -> None:
         raise problem(
             ErrorCode.SCHEMA_INVALID,
             "the upload is not a readable zip archive",
-            action="Upload the .zarr.zip written by mapi_sdk.wire.write_zarr_zip (or xarray's "
-            "to_zarr into a ZipStore) without changing it.",
+            action="Upload the .zarr.zip that mapi_sdk.wire.write_zarr_zip (or the xarray "
+            "to_zarr into a ZipStore) wrote. Do not change the file.",
             untrusted=str(exc),
         ) from None
     declared = sum(i.file_size for i in infos)
     if declared > limits.expansion_budget(stored):
         raise _too_large(
             f"the archive expands to {declared:,} bytes from {stored:,} "
-            f"(at most {limits.max_decompression_ratio:g} times its size and "
-            f"{limits.max_uncompressed_bytes:,} bytes are allowed)",
+            f"(the maximum is {limits.max_decompression_ratio:g} times its size and "
+            f"{limits.max_uncompressed_bytes:,} bytes)",
             "Upload the data with less compression, or split it into several datasets.",
         )
 
@@ -184,8 +184,8 @@ def _gunzip(path: Path, limits: IngestLimits) -> Path:
                 written += len(chunk)
                 if written > budget:
                     raise _too_large(
-                        f"the gzip file expands to more than {budget:,} bytes (at most "
-                        f"{limits.max_decompression_ratio:g} times its size)",
+                        f"the gzip file expands to more than {budget:,} bytes (the maximum "
+                        f"is {limits.max_decompression_ratio:g} times its size)",
                         "Upload the CSV uncompressed, or split it into several files.",
                     )
                 dst.write(chunk)
@@ -193,7 +193,7 @@ def _gunzip(path: Path, limits: IngestLimits) -> Path:
         out.unlink(missing_ok=True)
         raise problem(
             ErrorCode.SCHEMA_INVALID,
-            "the upload looks gzip-compressed but cannot be decompressed",
+            "the upload looks gzip-compressed, but the server cannot decompress it",
             action="Upload the CSV file itself, or a complete .csv.gz file.",
             untrusted=str(exc),
         ) from None
@@ -210,23 +210,22 @@ def _check_header(names: Sequence[Any], limits: IngestLimits) -> list[str]:
     cols = [str(c).strip() for c in names]
     if len(cols) > limits.max_columns:
         raise _too_large(
-            f"the upload has {len(cols):,} columns; at most {limits.max_columns:,} are allowed",
-            "Drop the columns the model does not need, or split the table.",
+            f"the upload has {len(cols):,} columns. The maximum is {limits.max_columns:,}",
+            "Remove the columns that the model does not need, or split the table.",
         )
     long = next((c for c in cols if len(c) > MAX_HEADER_NAME), None)
     if long is not None:
         raise problem(
             ErrorCode.SCHEMA_INVALID,
-            f"a column name is {len(long):,} characters long; at most {MAX_HEADER_NAME} are "
-            "allowed",
-            action="Shorten the column names in the first row.",
+            f"a column name has {len(long):,} characters. The maximum is {MAX_HEADER_NAME}",
+            action="Make the column names in the first row shorter.",
             untrusted=long[:200],
         )
     if not all(cols):
         raise problem(
             ErrorCode.SCHEMA_INVALID,
             f"column {cols.index('') + 1} has no name",
-            action="Give every column a name in the first row (or delete empty columns).",
+            action="Give each column a name in the first row (or delete empty columns).",
         )
     seen: set[str] = set()
     for c in cols:
@@ -234,7 +233,7 @@ def _check_header(names: Sequence[Any], limits: IngestLimits) -> list[str]:
             raise problem(
                 ErrorCode.SCHEMA_INVALID,
                 f"the column name {c[:64]!r} appears twice",
-                action="Give every column a different name in the first row.",
+                action="Give each column a different name in the first row.",
             )
         seen.add(c)
     return cols
@@ -274,7 +273,7 @@ def _read_csv(path: Path, limits: IngestLimits) -> pd.DataFrame:
         raise problem(
             ErrorCode.SCHEMA_INVALID,
             "the upload is empty",
-            action="Upload the file again; it arrived with no content.",
+            action="Upload the file again. The server got the file with no content.",
         )
     sep = _delimiter(path)
     _check_header(_raw_header(path, sep), limits)
@@ -303,8 +302,8 @@ def _read_csv(path: Path, limits: IngestLimits) -> pd.DataFrame:
         raise problem(
             ErrorCode.SCHEMA_INVALID,
             "the upload is not a readable CSV file",
-            action="Check that every row has the same number of fields and that quoted text "
-            "is closed.",
+            action="Make sure that each row has the same number of fields, and that each "
+            "quoted text is closed.",
             untrusted=str(exc),
         ) from None
     return df
@@ -327,7 +326,7 @@ def _read_parquet(path: Path, limits: IngestLimits) -> pd.DataFrame:
         ) from None
     if meta.num_rows > limits.max_rows:
         raise _too_large(
-            f"the upload has {meta.num_rows:,} rows; at most {limits.max_rows:,} are allowed",
+            f"the upload has {meta.num_rows:,} rows. The maximum is {limits.max_rows:,}",
             "Aggregate the data (for example to weeks) or split it into several datasets.",
         )
     _check_header(meta.schema.names, limits)
@@ -340,9 +339,9 @@ def _read_parquet(path: Path, limits: IngestLimits) -> pd.DataFrame:
             declared += max(rg.column(j).total_uncompressed_size, rg.num_rows * 8)
     if declared > limits.expansion_budget(path.stat().st_size):
         raise _too_large(
-            f"the Parquet file expands to {declared:,} bytes (at most "
+            f"the Parquet file expands to {declared:,} bytes (the maximum is "
             f"{limits.max_decompression_ratio:g} times its size and "
-            f"{limits.max_uncompressed_bytes:,} bytes are allowed)",
+            f"{limits.max_uncompressed_bytes:,} bytes)",
             "Write it with less compression, or split it into several files.",
         )
     try:
@@ -350,7 +349,7 @@ def _read_parquet(path: Path, limits: IngestLimits) -> pd.DataFrame:
     except Exception as exc:
         raise problem(
             ErrorCode.SCHEMA_INVALID,
-            "the Parquet file could not be decoded",
+            "the server cannot decode the Parquet file",
             action="Write the file again with pandas.DataFrame.to_parquet or pyarrow.",
             untrusted=f"{type(exc).__name__}: {exc}",
         ) from None
@@ -369,7 +368,7 @@ def read_table(
     if kind in ("bzip2", "xz", "zstd"):
         raise problem(
             ErrorCode.CAPABILITY_UNSUPPORTED,
-            f"{kind} compressed uploads are not supported",
+            f"{kind} compressed uploads are not supported (the server cannot read them)",
             action="Upload the file uncompressed or as gzip (.csv.gz).",
         )
     if kind in ("zarr_zip", "netcdf"):
@@ -378,8 +377,8 @@ def read_table(
             ErrorCode.SCHEMA_INVALID,
             f"the upload is {what}, not a {fmt} table",
             pointer="/mapping/format",
-            action="Unzip a zipped CSV before uploading, or set the mapping's format to "
-            "zarr_zip / netcdf for labelled datasets.",
+            action="Unzip a zipped CSV before you upload it. For labelled datasets, set the "
+            "format of the mapping to zarr_zip or netcdf.",
         )
     if kind == "parquet":
         df = _read_parquet(path, limits)
@@ -395,7 +394,7 @@ def read_table(
                 ErrorCode.SCHEMA_INVALID,
                 "the upload is not a Parquet file",
                 pointer="/mapping/format",
-                action="Set the mapping's format to csv, or upload the .parquet file.",
+                action="Set the format of the mapping to csv, or upload the .parquet file.",
             )
         df = _read_csv(path, limits)
     if len(df) > limits.max_rows:
@@ -419,7 +418,7 @@ def _check_cells(df: pd.DataFrame, limits: IngestLimits) -> None:
             raise problem(
                 ErrorCode.SCHEMA_INVALID,
                 f"column {str(col)[:64]!r} has a cell of {int(lengths.max()):,} characters "
-                f"(row {row + 2}); at most {limits.max_cell_chars:,} are allowed",
+                f"(row {row + 2}). The maximum is {limits.max_cell_chars:,}",
                 action="Remove long free text (notes, descriptions) from the table.",
             )
 

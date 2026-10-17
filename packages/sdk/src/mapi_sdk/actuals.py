@@ -175,8 +175,8 @@ def _refuse_filled(da: xr.DataArray, sent: xr.DataArray, dim: str) -> None:
     filled = np.isin(labels, asked) & ~np.isin(labels, given) & has
     if bool(filled.any()):
         text = (
-            f"a pipeline step filled the target on {int(filled.sum())} period(s) the payload "
-            "left empty; they cannot be told apart from actuals"
+            f"a pipeline step filled the target on {int(filled.sum())} period(s) that the "
+            "payload left empty. The server cannot tell these values from actuals"
         )
         raise ActualsInvalid(
             text,
@@ -186,8 +186,8 @@ def _refuse_filled(da: xr.DataArray, sent: xr.DataArray, dim: str) -> None:
                     code=ErrorCode.ACTUALS_INVALID,
                     pointer="/data",
                     message=text,
-                    suggested_action="Fill the target yourself where you have values, or "
-                    "refit without a step that fills the target.",
+                    suggested_action="Fill the target yourself where you have values. Or fit "
+                    "the model again without a step that fills the target.",
                 )
             ],
         )
@@ -329,7 +329,7 @@ def model_actuals(
                         message=f"the target is empty for {n} period(s) between the end of "
                         "the fitted history and the last actual",
                         suggested_action="Fill the empty periods, or send only the actuals "
-                        "up to the first empty period.",
+                        "before the first empty period.",
                     )
                 ],
             )
@@ -339,8 +339,8 @@ def model_actuals(
     if lacking:
         among = " and the empty periods among them" if bool(gap.any()) else ""
         text = (
-            f"the actuals after the fitted history{among} need the drivers {sorted(lacking)} "
-            "observed with them"
+            f"the actuals after the fitted history{among} need the observed values of the "
+            f"drivers {sorted(lacking)}"
         )
         raise ActualsInvalid(
             text,
@@ -351,7 +351,7 @@ def model_actuals(
                     pointer="/data",
                     message=text,
                     suggested_action="Send the drivers for the periods with actuals and for "
-                    "any empty period between them.",
+                    "each empty period between them.",
                 )
             ],
         )

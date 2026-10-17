@@ -74,7 +74,7 @@ def check_channel_labels(
                     code=ErrorCode.BUSINESS_PRIORS_INVALID,
                     pointer=f"{pointer}/channels/{label.replace('~', '~0').replace('/', '~1')}",
                     message=f"the data has no channel {label!r}",
-                    suggested_action="Use the channel names exactly as they appear in the data.",
+                    suggested_action="Use the channel names exactly as they are in the data.",
                 )
             )
     return out

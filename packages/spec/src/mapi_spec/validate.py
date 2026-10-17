@@ -219,7 +219,7 @@ _KEYWORD_MESSAGES = {
     "uniqueItems": "items must be unique",
     "minLength": "text is too short",
     "maxLength": "text is too long",
-    "pattern": "text does not match the required pattern",
+    "pattern": "text does not match the necessary pattern",
     "oneOf": "value matches none (or several) of the allowed shapes",
     "anyOf": "value matches none of the allowed shapes",
     "multipleOf": "value is not an allowed multiple",
@@ -260,7 +260,7 @@ def validate_settings(
             Issue(
                 code=code,
                 pointer=ptr,
-                message=_KEYWORD_MESSAGES.get(str(err.validator), "value is invalid"),
+                message=_KEYWORD_MESSAGES.get(str(err.validator), "value is not correct"),
                 untrusted_text=str(err.message)[:2000],
             )
         )
@@ -286,7 +286,7 @@ def _apply_binding(bind: Binding, raw: DataSchema, issues: list[Issue]) -> DataS
                     Issue(
                         code=ErrorCode.BINDING_INVALID,
                         pointer=ptr,
-                        message=f"dataset has no {what} named {ds!r}{hint}",
+                        message=f"the dataset has no {what} with the name {ds!r}{hint}",
                     )
                 )
     bound_sources = set(bind.dims.values()) | set(bind.vars.values())
@@ -298,8 +298,8 @@ def _apply_binding(bind: Binding, raw: DataSchema, issues: list[Issue]) -> DataS
                     code=ErrorCode.BINDING_INVALID,
                     pointer=json_pointer("data", "bind", section, canon),
                     message=(
-                        f"canonical name {canon!r} collides with an unbound dataset name; "
-                        "bind or drop that name first"
+                        f"the canonical name {canon!r} is the same as an unbound dataset name. "
+                        "Bind or remove that dataset name first."
                     ),
                 )
             )
@@ -410,9 +410,9 @@ def _check_owned(
                 Issue(
                     code=ErrorCode.CAPABILITY_UNSUPPORTED,
                     pointer=json_pointer("pipeline", idx),
-                    message=f"the model owns {what}; step {step_id!r} would apply {what} to "
+                    message=f"the model owns {what}. Step {step_id!r} would apply {what} to "
                     f"{sorted(touched)} a second time",
-                    suggested_action=f"Remove the step: the model does its own {what}.",
+                    suggested_action=f"Remove the step. The model does its own {what}.",
                 )
             )
 
@@ -440,8 +440,8 @@ def _mark_targets(schema: DataSchema, targets: Sequence[str], issues: list[Issue
                 code=ErrorCode.SCHEMA_INVALID,
                 severity=Severity.INFO,
                 pointer="/model",
-                message=f"variable {n!r} is the model's target; it is treated as role "
-                f"'target' (the data declares {schema.vars[n].role.value!r})",
+                message=f"variable {n!r} is the target of the model. The server uses the role "
+                f"'target' for it (the data declares {schema.vars[n].role.value!r})",
             )
         )
         data["vars"][n]["role"] = Role.TARGET
@@ -605,8 +605,8 @@ def _check_calibration(spec: ModelSpec, caps: Capabilities, issues: list[Issue])
                     ErrorCode.CALIBRATION_UNSUPPORTED,
                     ptr,
                     f"model {spec.model.use.id!r} does not use {kind.replace('_', ' ')}",
-                    suggested_action="Remove this calibration data or choose a model that "
-                    "supports it.",
+                    suggested_action="Remove this calibration data, or select a model that "
+                    "can use it.",
                 )
             )
 
@@ -625,9 +625,10 @@ def _check_split(
                     code=ErrorCode.SPLIT_INVALID,
                     severity=Severity.WARNING,
                     pointer="/data",
-                    message="fit.mode is evaluate_then_refit but no split is declared; "
-                    "there is no holdout to evaluate on",
-                    suggested_action="Add data.split (e.g. time_holdout) or use train_only.",
+                    message="fit.mode is evaluate_then_refit, but the spec declares no split. "
+                    "There is no holdout for the evaluation",
+                    suggested_action="Add data.split (for example time_holdout), or use "
+                    "train_only.",
                 )
             )
         return None
@@ -658,9 +659,9 @@ def _check_split(
                     else "/data/split",
                     message=(
                         f"stateful step {s.id!r} (pipeline[{j}]) runs before the split at "
-                        f"stage {stage.name!r}; its state would be learned from holdout data"
+                        f"stage {stage.name!r}. The step would learn its state from holdout data"
                     ),
-                    suggested_action="Move the split earlier (after_step) or move the step "
+                    suggested_action="Move the split earlier (after_step), or move the step "
                     "after the split.",
                 )
             )
@@ -683,7 +684,7 @@ def _check_split(
                         message=f"split dim {d!r} does not exist at stage {stage.name!r}",
                         context={"stage": stage.name, "dims": sorted(schema.dims)},
                         suggested_action="Set data.split.after_step to the stage where the dim "
-                        "exists (e.g. after a resample step).",
+                        "exists (for example, after a resample step).",
                     )
                 )
         fdim = split.forecast_dim
@@ -694,7 +695,8 @@ def _check_split(
                     Issue(
                         code=ErrorCode.SPLIT_INVALID,
                         pointer="/data/split/dim",
-                        message=f"split {split.kind!r} needs an ordered dim; {fdim!r} is not",
+                        message=f"split {split.kind!r} needs an ordered dim. {fdim!r} is not "
+                        "ordered",
                     )
                 )
     return stage.name
@@ -761,9 +763,9 @@ def _check_model(
                         code=ErrorCode.RECURSIVE_UNSUPPORTED,
                         severity=Severity.WARNING,
                         pointer=json_pointer("pipeline", idx),
-                        message=f"step {s.id!r} lags the target along {s.context.along!r}; the "
-                        "holdout length is not static, so recursive forecasting cannot be ruled "
-                        "out",
+                        message=f"step {s.id!r} lags the target along {s.context.along!r}. The "
+                        "holdout length is not static, thus the forecast can possibly need "
+                        "recursion",
                     )
                 )
             elif periods > min_lag:
@@ -773,11 +775,11 @@ def _check_model(
                         pointer=json_pointer("pipeline", idx),
                         message=(
                             f"step {s.id!r} lags the target by {min_lag} along "
-                            f"{s.context.along!r} but the holdout spans {periods} periods; "
-                            "recursive forecasting is not supported in v1"
+                            f"{s.context.along!r}, but the holdout has {periods} periods. "
+                            "Version 1 cannot do recursive forecasts"
                         ),
-                        suggested_action="Lag the target by at least the holdout length, "
-                        "shorten the holdout, or use a model that owns recursion.",
+                        suggested_action="Lag the target by the holdout length or more, make "
+                        "the holdout shorter, or use a model that owns recursion.",
                     )
                 )
 
@@ -811,8 +813,8 @@ def _check_model(
                     code=ErrorCode.CAPABILITY_UNSUPPORTED,
                     pointer=json_pointer("outputs", "plots", j),
                     message=f"plot {plot.id!r} needs representation "
-                    f"{'/'.join(r.value for r in pentry.requires_representation)}; the model "
-                    f"produces {caps.representation.value}",
+                    f"{'/'.join(r.value for r in pentry.requires_representation)}. The model "
+                    f"gives {caps.representation.value}",
                 )
             )
     for j, metric in enumerate(spec.evaluate.metrics):
@@ -823,8 +825,8 @@ def _check_model(
                     code=ErrorCode.SCHEMA_INVALID,
                     severity=Severity.WARNING,
                     pointer=ptr,
-                    message=f"unknown metric {metric!r}; it will be ignored unless the model "
-                    "computes it",
+                    message=f"unknown metric {metric!r}. The server ignores it if the model "
+                    "does not calculate it",
                 )
             )
         if metric == "elpd_loo" and not caps.loo_valid:
@@ -841,7 +843,7 @@ def _check_model(
                 Issue(
                     code=ErrorCode.CAPABILITY_UNSUPPORTED,
                     pointer=ptr,
-                    message=f"metric {metric!r} needs uncertainty; the model only produces "
+                    message=f"metric {metric!r} needs uncertainty. The model gives only "
                     "point predictions",
                 )
             )
@@ -897,8 +899,8 @@ def _effective_schema(
                 Issue(
                     code=ErrorCode.DIM_POLICY_LOOSENED,
                     pointer=ptr,
-                    message=f"dim {name!r} policy {effective[name].value!r} may only be tightened"
-                    f", not changed to {wanted.value!r}",
+                    message=f"you can only make the policy {effective[name].value!r} of dim "
+                    f"{name!r} stricter. You cannot change it to {wanted.value!r}",
                 )
             )
             continue
@@ -931,7 +933,7 @@ def _compare_schemas(model: DataSchema, final: DataSchema, issues: list[Issue]) 
                 Issue(
                     code=ErrorCode.SCHEMA_INVALID,
                     pointer="/model",
-                    message=f"the model needs dim {name!r}, which the pipeline does not produce",
+                    message=f"the model needs dim {name!r}, but the pipeline does not make it",
                     context={"pipeline_dims": sorted(final.dims)},
                 )
             )
@@ -942,8 +944,8 @@ def _compare_schemas(model: DataSchema, final: DataSchema, issues: list[Issue]) 
                 Issue(
                     code=ErrorCode.SCHEMA_INVALID,
                     pointer="/model",
-                    message=f"dim {name!r}: the model needs kind {mdim.kind!r}, the pipeline "
-                    f"produces {fdim.kind!r}",
+                    message=f"dim {name!r}: the model needs kind {mdim.kind!r}, but the pipeline "
+                    f"makes {fdim.kind!r}",
                 )
             )
         if mdim.freq is not None and fdim.freq is not None and mdim.freq != fdim.freq:
@@ -951,8 +953,8 @@ def _compare_schemas(model: DataSchema, final: DataSchema, issues: list[Issue]) 
                 Issue(
                     code=ErrorCode.SCHEMA_INVALID,
                     pointer="/model",
-                    message=f"dim {name!r}: the model needs frequency {mdim.freq!r}, the "
-                    f"pipeline produces {fdim.freq!r}",
+                    message=f"dim {name!r}: the model needs frequency {mdim.freq!r}, but the "
+                    f"pipeline makes {fdim.freq!r}",
                 )
             )
     for name, mvar in model.vars.items():
@@ -962,8 +964,7 @@ def _compare_schemas(model: DataSchema, final: DataSchema, issues: list[Issue]) 
                 Issue(
                     code=ErrorCode.SCHEMA_INVALID,
                     pointer="/model",
-                    message=f"the model needs variable {name!r}, which the pipeline does not "
-                    "produce",
+                    message=f"the model needs variable {name!r}, but the pipeline does not make it",
                     suggested_action="Bind a dataset variable to this name in data.bind.vars.",
                     context={"pipeline_vars": sorted(final.vars)[:100]},
                 )
@@ -974,8 +975,8 @@ def _compare_schemas(model: DataSchema, final: DataSchema, issues: list[Issue]) 
                 Issue(
                     code=ErrorCode.SCHEMA_INVALID,
                     pointer="/model",
-                    message=f"variable {name!r}: the model needs dims {list(mvar.dims)}, the "
-                    f"pipeline produces {list(fvar.dims)}",
+                    message=f"variable {name!r}: the model needs dims {list(mvar.dims)}, but the "
+                    f"pipeline makes {list(fvar.dims)}",
                 )
             )
         if _dtype_family(mvar.dtype) != _dtype_family(fvar.dtype):
@@ -983,8 +984,8 @@ def _compare_schemas(model: DataSchema, final: DataSchema, issues: list[Issue]) 
                 Issue(
                     code=ErrorCode.SCHEMA_INVALID,
                     pointer="/model",
-                    message=f"variable {name!r}: the model needs dtype {mvar.dtype}, the "
-                    f"pipeline produces {fvar.dtype}",
+                    message=f"variable {name!r}: the model needs dtype {mvar.dtype}, but the "
+                    f"pipeline makes {fvar.dtype}",
                 )
             )
         if mvar.role != fvar.role:
@@ -993,7 +994,7 @@ def _compare_schemas(model: DataSchema, final: DataSchema, issues: list[Issue]) 
                     code=ErrorCode.SCHEMA_INVALID,
                     severity=Severity.WARNING,
                     pointer="/model",
-                    message=f"variable {name!r}: the model expects role {mvar.role.value!r}, "
+                    message=f"variable {name!r}: the model expects role {mvar.role.value!r}, but "
                     f"the data declares {fvar.role.value!r}",
                 )
             )
@@ -1111,10 +1112,10 @@ def validate_score_request(
                 _issue(
                     ErrorCode.SIDE_TABLE_COVERAGE,
                     json_pointer("side_tables", name),
-                    f"side table {name!r} has score_policy 'pinned': scoring replays the "
-                    "version used at fit, so it cannot be supplied",
-                    suggested_action="Drop it from side_tables, or refit with score_policy "
-                    "'latest' or 'supplied'.",
+                    f"side table {name!r} has score_policy 'pinned'. The score uses the "
+                    "version of the fit again, thus you cannot supply it",
+                    suggested_action="Remove it from side_tables, or fit again with "
+                    "score_policy 'latest' or 'supplied'.",
                 )
             )
     for name in sorted(needed):
@@ -1123,10 +1124,10 @@ def validate_score_request(
                 _issue(
                     ErrorCode.SIDE_TABLE_COVERAGE,
                     json_pointer("side_tables", name),
-                    f"side table {name!r} has score_policy 'supplied' and must be provided for "
+                    f"side table {name!r} has score_policy 'supplied'. You must supply it for "
                     f"stage {req.inputs_stage!r}",
-                    suggested_action="Supply it in side_tables, or enter at a later "
-                    "inputs_stage that skips the step using it.",
+                    suggested_action="Supply it in side_tables, or use a later "
+                    "inputs_stage that is after the step that uses it.",
                 )
             )
 
@@ -1147,7 +1148,7 @@ def validate_score_request(
                 _issue(
                     ErrorCode.COORD_NOT_ALLOWED,
                     "/horizon/dim",
-                    f"dim {hdim!r} has policy {dspec.policy.value!r}; only 'extend' dims "
+                    f"dim {hdim!r} has policy {dspec.policy.value!r}. Only 'extend' dims "
                     "accept a horizon",
                 )
             )
@@ -1156,9 +1157,9 @@ def validate_score_request(
                 _issue(
                     ErrorCode.HORIZON_EXCEEDS_FIT,
                     "/horizon/periods",
-                    f"horizon of {periods} exceeds the {dspec.max_extension} periods this fit "
-                    f"supports along {hdim!r}; a refit is required",
-                    suggested_action="Refit with a larger anticipated range.",
+                    f"the horizon of {periods} is more than the {dspec.max_extension} periods that "
+                    f"this fit supports along {hdim!r}. You must fit the model again",
+                    suggested_action="Fit the model again with a larger expected range.",
                 )
             )
         if "recursion" not in caps.owns:
@@ -1172,8 +1173,9 @@ def validate_score_request(
                         _issue(
                             ErrorCode.RECURSIVE_UNSUPPORTED,
                             "/horizon/periods",
-                            f"step {step.id!r} lags the target by {min_lag}; a horizon of "
-                            f"{periods} would need recursive forecasting (unsupported in v1)",
+                            f"step {step.id!r} lags the target by {min_lag}. A horizon of "
+                            f"{periods} would need a recursive forecast (version 1 cannot "
+                            "do this)",
                         )
                     )
 
@@ -1202,9 +1204,9 @@ def validate_score_request(
                     _issue(
                         ErrorCode.RECURSIVE_UNSUPPORTED,
                         inputs_ptr,
-                        f"step {step.id!r} lags the target by {min_lag}; input data reaching "
-                        f"{periods} periods past the fit along {ctx.along!r} would need "
-                        "recursive forecasting (unsupported in v1)",
+                        f"step {step.id!r} lags the target by {min_lag}. Input data that goes "
+                        f"{periods} periods after the fit along {ctx.along!r} would need "
+                        "a recursive forecast (version 1 cannot do this)",
                     )
                 )
 
@@ -1256,8 +1258,9 @@ def validate_score_request(
                 code=ErrorCode.SCHEMA_INVALID,
                 severity=Severity.WARNING,
                 pointer="/horizon/periods",
-                message=f"horizon.periods ({req.horizon.periods}) is not used: the payload "
-                f"lists {listed} period(s) after the fit, and exactly those are forecast",
+                message=f"the server does not use horizon.periods ({req.horizon.periods}). The "
+                f"payload lists {listed} period(s) after the fit, and the server forecasts "
+                "only those periods",
             )
         )
 
@@ -1282,8 +1285,8 @@ def validate_score_request(
                 _issue(
                     ErrorCode.MISSING_FUTURE_COVARIATE,
                     inputs_ptr,
-                    f"forecasting needs future values of {missing} at stage {req.inputs_stage!r}",
-                    suggested_action="Provide them in a scenario dataset.",
+                    f"the forecast needs future values of {missing} at stage {req.inputs_stage!r}",
+                    suggested_action="Supply them in a scenario dataset.",
                 )
             )
         elif required and inputs is not None and req.horizon is not None:
@@ -1298,11 +1301,11 @@ def validate_score_request(
                     _issue(
                         ErrorCode.MISSING_FUTURE_COVARIATE,
                         inputs_ptr,
-                        f"the payload ends with an actual ({actuals.through}), so the "
-                        f"{req.horizon.periods} horizon periods are appended after it without "
+                        f"the payload ends with an actual ({actuals.through}). Thus the server "
+                        f"adds the {req.horizon.periods} horizon periods after it without "
                         f"values of {sorted(required)}",
-                        suggested_action="List the periods to forecast in the payload (target "
-                        "empty) with their driver values, or set future_covariates "
+                        suggested_action="In the payload, list the periods to forecast with "
+                        "their driver values and an empty target. Or set future_covariates "
                         "(carry_last, seasonal_naive or zero).",
                     )
                 )
@@ -1319,7 +1322,7 @@ def validate_score_request(
                     _issue(
                         ErrorCode.COORD_NOT_ALLOWED,
                         ptr,
-                        f"input has dim {dim!r}, which does not exist at stage "
+                        f"the input has dim {dim!r}, but this dim does not exist at stage "
                         f"{req.inputs_stage!r}",
                     )
                 )
@@ -1364,8 +1367,8 @@ def validate_score_request(
                 _issue(
                     ErrorCode.UNSEEN_LEVELS,
                     ptr,
-                    f"{len(unseen)} selected level(s) of {dim!r} were not seen at fit and the "
-                    f"dim's policy is {sdim.policy.value!r}",
+                    f"the fit did not see {len(unseen)} selected level(s) of {dim!r}, and the "
+                    f"policy of the dim is {sdim.policy.value!r}",
                     untrusted_text=_preview(unseen),
                 )
             )
@@ -1388,7 +1391,11 @@ def validate_score_request(
             continue
         if vspec.role is Role.TARGET:
             issues.append(
-                _issue(ErrorCode.SCHEMA_INVALID, f"{ptr}/var", "cannot intervene on the target")
+                _issue(
+                    ErrorCode.SCHEMA_INVALID,
+                    f"{ptr}/var",
+                    "you cannot make an intervention on the target",
+                )
             )
         fit_stage = meta.fit_coords.get(req.inputs_stage, {})
         for raw_dim, sel in iv.sel.items():
@@ -1425,7 +1432,7 @@ def validate_score_request(
             _issue(
                 ErrorCode.CAPABILITY_UNSUPPORTED,
                 "/output/draws",
-                f"draws were requested but the model's representation is "
+                f"the request asks for draws, but the representation of the model is "
                 f"{caps.representation.value!r}",
             )
         )
@@ -1434,7 +1441,7 @@ def validate_score_request(
             _issue(
                 ErrorCode.QUOTA_EXCEEDED,
                 "/output/draws",
-                f"at most {max_draws} draws may be returned on this tier",
+                f"this tier can return a maximum of {max_draws} draws",
             )
         )
     if out.summary is not None:
@@ -1444,7 +1451,7 @@ def validate_score_request(
                     _issue(
                         ErrorCode.CAPABILITY_UNSUPPORTED,
                         json_pointer("output", "summary", j),
-                        f"summary {name!r} cannot be computed from "
+                        f"the server cannot calculate summary {name!r} from "
                         f"{caps.representation.value!r} output",
                         suggested_action=rules.note,
                     )
@@ -1455,7 +1462,7 @@ def validate_score_request(
                 ErrorCode.CAPABILITY_UNSUPPORTED,
                 "/output/kind",
                 "predictive output (with observation noise) needs an uncertainty "
-                "representation; this model produces point predictions",
+                "representation. This model gives point predictions",
             )
         )
     if out.aggregate is not None:
@@ -1578,10 +1585,10 @@ def _check_actuals(
             _issue(
                 ErrorCode.ACTUALS_INVALID,
                 pointer,
-                f"the actuals of {var!r} start {s - fe - 1} period(s) after the fitted history "
-                f"ends ({format_label(fit.end)}); they must continue it",
-                suggested_action="Send the target for the periods in between, or refit "
-                "with the new data.",
+                f"the actuals of {var!r} start {s - fe - 1} period(s) after the end of the "
+                f"fitted history ({format_label(fit.end)}). They must continue it",
+                suggested_action="Send the target for the periods between them, or fit "
+                "the model again with the new data.",
                 untrusted_text=f"first actual {obs.start}",
             )
         )
@@ -1595,7 +1602,7 @@ def _check_actuals(
                 pointer,
                 f"the target {var!r} is empty for {e - s + 1 - obs.size} period(s) between "
                 "its first and last actual, and the model needs a complete history",
-                suggested_action="Fill the empty periods, or send only the actuals up to "
+                suggested_action="Fill the empty periods, or send only the actuals before "
                 "the first empty period.",
             )
         )
@@ -1618,8 +1625,8 @@ def _check_actuals(
                 _issue(
                     ErrorCode.ACTUALS_INVALID,
                     pointer,
-                    f"the actuals after the fitted history need the drivers {lacking} observed "
-                    "with them",
+                    f"the actuals after the fitted history need the observed values of the "
+                    f"drivers {lacking}",
                     suggested_action="Send the drivers for the periods with actuals.",
                 )
             )
@@ -1639,9 +1646,8 @@ def _check_actuals(
                 ErrorCode.HORIZON_EXCEEDS_FIT,
                 "/horizon/periods" if appended else pointer,
                 f"the forecast reaches {total} period(s) past the fit along {hdim!r} "
-                f"(actuals included); at most {dspec.max_extension} are supported without a "
-                "refit",
-                suggested_action="Refit with the new data.",
+                f"(with the actuals). Without a new fit, the maximum is {dspec.max_extension}",
+                suggested_action="Fit the model again with the new data.",
             )
         )
     if not appended and future != periods and same:
@@ -1650,9 +1656,9 @@ def _check_actuals(
                 code=ErrorCode.SCHEMA_INVALID,
                 severity=Severity.WARNING,
                 pointer="/horizon/periods",
-                message=f"horizon.periods ({periods}) is not used: the payload lists {future} "
-                f"period(s) after the last actual ({through}), and exactly those are "
-                "forecast",
+                message=f"the server does not use horizon.periods ({periods}). The payload lists "
+                f"{future} period(s) after the last actual ({through}), and the server "
+                "forecasts only those periods",
             )
         )
     return _Actuals(through, appended=appended, end=e)
@@ -1728,8 +1734,8 @@ def _check_future_rows(
             _issue(
                 ErrorCode.MISSING_FUTURE_COVARIATE,
                 pointer,
-                f"the forecast needs values of {empty} on every period to forecast{span}; "
-                "some of them are empty",
+                f"the forecast needs values of {empty} on each period to forecast{span}. "
+                "Some of these values are empty",
                 suggested_action="Fill the drivers on the periods to forecast, or set "
                 "future_covariates (carry_last, seasonal_naive or zero).",
             )
@@ -1768,11 +1774,11 @@ def _check_unused_targets(
             if e is None or fe is None or e <= fe:
                 continue
             action = (
-                "Use mode: forecast to update the forecast with them (the model conditions on "
-                "actuals without a refit)."
+                "Use mode: forecast to update the forecast with them. The model conditions on "
+                "actuals and does not fit again."
                 if supported
-                else "Leave the target empty in a predict call; to use the new values, refit "
-                "the model with them."
+                else "Leave the target empty in a predict call. To use the new values, fit "
+                "the model again with them."
             )
             issues.append(
                 Issue(
@@ -1780,7 +1786,7 @@ def _check_unused_targets(
                     severity=Severity.WARNING,
                     pointer=pointer,
                     message=f"the target {var!r} has values after the fitted history (through "
-                    f"{format_label(obs.end)}); they are not used in predict mode",
+                    f"{format_label(obs.end)}). The predict mode does not use these values",
                     suggested_action=action,
                 )
             )
@@ -1853,8 +1859,8 @@ def _check_coord(
                 _issue(
                     ErrorCode.UNSEEN_LEVELS,
                     ptr,
-                    f"{len(unseen)} level(s) of {dim!r} were not seen at fit and the dim's "
-                    f"policy is {policy.value!r}"
+                    f"the fit did not see {len(unseen)} level(s) of {dim!r}, and the policy of "
+                    f"the dim is {policy.value!r}"
                     + ("" if policy is DimPolicy.FIXED else " with strategy 'error'"),
                     untrusted_text=_preview(unseen),
                 )
@@ -1882,8 +1888,8 @@ def _check_coord(
                 code=ErrorCode.NON_CONTIGUOUS_EXTENSION,
                 severity=Severity.ERROR if None in (s, e) else Severity.WARNING,
                 pointer=ptr,
-                message=f"coords of {dim!r} are not aligned to its frequency/step; contiguity "
-                "cannot be checked",
+                message=f"the coords of {dim!r} do not align with its frequency or step. The "
+                "server cannot do a check for gaps",
             )
         )
         return issues
@@ -1921,8 +1927,8 @@ def _check_coord(
                 _issue(
                     ErrorCode.HORIZON_EXCEEDS_FIT,
                     ptr,
-                    f"input extends {e - fe} period(s) past the fit along {dim!r}; at most "
-                    f"{max_ext} are supported without a refit",
+                    f"the input goes {e - fe} period(s) after the fit along {dim!r}. Without a "
+                    f"new fit, the maximum is {max_ext}",
                 )
             )
     elif mode == "forecast" and e <= fe:

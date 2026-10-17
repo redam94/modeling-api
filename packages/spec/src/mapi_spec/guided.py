@@ -308,8 +308,8 @@ _FREQ = GuidedQuestion(
 _HOLDOUT = GuidedQuestion(
     id="holdout_periods",
     prompt_plain="How many of the latest periods should we hold back to test the model?",
-    help_plain="The model is fitted without them first, to measure its forecast error, then "
-    "refitted on everything.",
+    help_plain="The server first fits the model without these periods to measure its "
+    "forecast error. Then it fits the model again on all the periods.",
     kind="number",
     default=8,
     minimum=1,
@@ -343,8 +343,8 @@ GEO_MMM = GuidedTemplate(
     id="geo_mmm",
     version="2.0.0",
     title="Geo marketing mix",
-    description_plain="Find out how much each marketing channel adds to your results in each "
-    "market, and what happens if you move budget between channels.",
+    description_plain="Find how much each marketing channel adds to your results in each "
+    "market. See what occurs when you move budget from one channel to a different channel.",
     family="mmm",
     plugin=f"{MMM_MODEL_ID}@^1",
     questions=[
@@ -365,13 +365,13 @@ GEO_MMM = GuidedTemplate(
         ),
         GuidedQuestion(
             id="spend", prompt_plain="Which columns are media spend (one per channel)?",
-            help_plain="Pick every column that holds money spent on a channel.",
+            help_plain="Select each column that shows the money spent on a channel.",
             kind="columns", role=Role.SPEND, wide_dim="channel", as_var="spend",
             accepts=["number", "integer"], keywords=_SPEND_WORDS,
         ),
         GuidedQuestion(
             id="controls",
-            prompt_plain="Which other columns might move the result (price, promotions)?",
+            prompt_plain="Which other columns can change the result (price, promotions)?",
             kind="columns", role=Role.CONTROL, required=False, accepts=["number", "integer"],
             keywords=["price", "promo", "promotion", "discount", "weather", "temperature",
                       "holiday", "competitor", "distribution"],
@@ -423,8 +423,8 @@ GEO_MMM = GuidedTemplate(
 WEEKLY_FORECAST = GuidedTemplate(
     id="weekly_forecast",
     title="Weekly forecast",
-    description_plain="Forecast one series - sales, visits, demand - a few weeks or months "
-    "ahead, with a range of likely values.",
+    description_plain="Forecast one series (for example sales, visits or demand) some weeks "
+    "or months ahead. The forecast also gives a range of probable values.",
     family="forecast",
     plugin="ts.hsgp_trend@^1",
     questions=[
@@ -476,8 +476,8 @@ WEEKLY_FORECAST = GuidedTemplate(
 STORE_DEMAND = GuidedTemplate(
     id="store_demand",
     title="Demand by store",
-    description_plain="Predict how much each store will sell each week, with a low and a high "
-    "estimate, from prices, promotions and the calendar.",
+    description_plain="Predict the sales of each store for each week from prices, promotions "
+    "and the calendar. You get a low and a high estimate.",
     family="tabular",
     plugin="tabular.regressor@^1",
     questions=[
@@ -539,15 +539,15 @@ CUSTOMER_CHOICE = GuidedTemplate(
     id="customer_choice",
     version="1.2.0",
     title="Customer choice",
-    description_plain="Understand which product customers pick on each shopping trip, and how "
-    "price and promotions shift the choice.",
+    description_plain="Find which product customers select on each shopping trip. See how "
+    "price and promotions change the choice.",
     family="choice",
     plugin="choice.multinomial_logit@^1",
     questions=[
         GuidedQuestion(
-            id="choice", prompt_plain="Which column says which product was chosen?",
-            help_plain="Each value must name a product the same way as the price columns do "
-            "(a column price_coke goes with the choice coke).",
+            id="choice", prompt_plain="Which column shows the product that the customer chose?",
+            help_plain="Each value must name a product as the price columns do. For example, "
+            "the column price_coke goes with the choice coke.",
             kind="column", role=Role.TARGET, accepts=["string"], missing="allow",
             keywords=["choice", "chosen", "brand", "product", "purchase", "bought"],
         ),
@@ -560,7 +560,8 @@ CUSTOMER_CHOICE = GuidedTemplate(
         ),
         GuidedQuestion(
             id="occasion", prompt_plain="Which column numbers each customer's shopping trips?",
-            help_plain="Number every customer's trips 1, 2, 3, ... in the order they happened.",
+            help_plain="Give the trips of each customer the numbers 1, 2, 3 and so on, in the "
+            "sequence that they occurred.",
             kind="column", dim="trip", accepts=["integer"],
             keywords=["trip", "visit", "occasion", "basket", "purchase", "number"],
             dim_spec=DimSpec(kind="index", policy="extend"),
@@ -571,7 +572,7 @@ CUSTOMER_CHOICE = GuidedTemplate(
             accepts=["number", "integer"], keywords=["price", "cost"], missing="allow",
         ),
         GuidedQuestion(
-            id="promos", prompt_plain="Which columns flag a promotion for each product?",
+            id="promos", prompt_plain="Which columns show a promotion for each product?",
             kind="columns", role=Role.COVARIATE, wide_dim="product", as_var="promo",
             required=False, accepts=["number", "integer", "boolean"], missing="allow",
             keywords=["promo", "promotion", "display", "feature", "deal"],
@@ -876,7 +877,7 @@ def suggest_roles(template: GuidedTemplate, columns: Sequence[ColumnProfile]) ->
             code=ErrorCode.GUIDED_ANSWERS_INVALID,
             severity=Severity.WARNING,
             pointer=f"/answers/{s.question_id}",
-            message="no column looks like an answer to this question; please pick one",
+            message="no column looks like an answer to this question. Select a column.",
         )
         for s, q in zip(out, template.questions, strict=True)
         if q.required and q.kind in ("column", "columns") and not s.answer
@@ -1113,7 +1114,8 @@ def _wide_label_issues(wide: Mapping[str, WideVarMapping]) -> list[Issue]:
                     severity=Severity.WARNING,
                     pointer=f"/mapping/wide/{var}",
                     message=f"{var!r} and {other!r} label {w.dim!r} differently "
-                    f"({sorted(labels ^ theirs)[:5]}); pick one column per label for both",
+                    f"({sorted(labels ^ theirs)[:5]}). Select one column for each label in the "
+                    "two answers.",
                 )
             )
         by_dim.setdefault(w.dim, (var, labels))
@@ -1150,7 +1152,7 @@ def build_draft(
             raise _bad(
                 qid,
                 f"column {column[:64]!r} would be named {name!r}, which the answer to "
-                f"{other[0]!r} already uses; rename one of the columns",
+                f"{other[0]!r} already uses. Rename one of the columns.",
             )
         taken[name] = (qid, shared)
         return name
@@ -1167,7 +1169,7 @@ def build_draft(
             cols = _columns_answer(q, value)
             for c in cols:
                 if c in used:
-                    raise _bad(q.id, f"column {c!r} already answers {used[c]!r}")
+                    raise _bad(q.id, f"column {c!r} is already the answer to {used[c]!r}")
                 used[c] = q.id
                 prof = profiles.get(c)
                 if prof is not None and q.accepts and prof.dtype not in q.accepts:
@@ -1176,8 +1178,8 @@ def build_draft(
                             code=ErrorCode.GUIDED_ANSWERS_INVALID,
                             severity=Severity.WARNING,
                             pointer=f"/answers/{q.id}",
-                            message=f"column {c!r} looks like {prof.dtype}, expected "
-                            f"{' or '.join(q.accepts)}",
+                            message=f"column {c!r} looks like {prof.dtype}. The question "
+                            f"accepts {' or '.join(q.accepts)}.",
                         )
                     )
             if q.dim is not None:
@@ -1210,15 +1212,15 @@ def build_draft(
                 values[q.id] = names[0] if q.kind == "column" else names
         elif q.kind == "choice":
             if value not in {ch.value for ch in q.choices}:
-                raise _bad(q.id, f"choose one of {[ch.value for ch in q.choices]}")
+                raise _bad(q.id, f"select one of {[ch.value for ch in q.choices]}")
             values[q.id] = value
         elif q.kind == "number":
             if not isinstance(value, int | float) or isinstance(value, bool):
-                raise _bad(q.id, "answer with a number")
+                raise _bad(q.id, "give a number")
             if (q.minimum is not None and value < q.minimum) or (
                 q.maximum is not None and value > q.maximum
             ):
-                raise _bad(q.id, f"answer between {q.minimum} and {q.maximum}")
+                raise _bad(q.id, f"give a number from {q.minimum} to {q.maximum}")
             values[q.id] = value
         else:
             values[q.id] = str(value)
@@ -1251,7 +1253,7 @@ def build_draft(
         model_spec = ModelSpec.model_validate(doc)
     except ValueError as exc:
         raise MapiError(
-            "the answers do not make a valid spec",
+            "the answers do not make a correct spec",
             code=ErrorCode.GUIDED_ANSWERS_INVALID,
             untrusted_text=str(exc)[:4000],
         ) from None
@@ -1350,15 +1352,15 @@ def guided_lock_issues(
     try:
         spec = ModelSpec.model_validate(dict(document))
     except ValueError:
-        return [_lock_issue("", "this project is locked to Guided mode: only valid Guided "
-                                "specs can be stored")]  # fmt: skip
+        return [_lock_issue("", "this project is locked to Guided mode. You can save only "
+                                "correct Guided specs")]  # fmt: skip
     label = spec.metadata.labels.get(GUIDED_LABEL)
     template = GUIDED_TEMPLATES.get(label or "")
     if template is None:
         return [
             _lock_issue(
                 f"/metadata/labels/{GUIDED_LABEL}",
-                "this project is locked to Guided mode: specs must come from a Guided "
+                "this project is locked to Guided mode. Specs must come from a Guided "
                 "template (metadata.labels.guided)",
             )
         ]
@@ -1383,8 +1385,9 @@ def guided_lock_issues(
             issues.append(
                 _lock_issue(
                     pointer,
-                    f"{pointer} is an {level} setting of the {template.title!r} template; "
-                    "in a Guided-locked project only project admins change it",
+                    f"{pointer} is an {level} setting of the {template.title!r} template. "
+                    "In a project that is locked to Guided mode, only project admins can "
+                    "change it.",
                 )
             )
     return issues

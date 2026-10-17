@@ -224,8 +224,8 @@ def canonicalise_coords(
             case DimPolicy.FIXED:
                 if unseen.size:
                     raise CoordPlanError(
-                        f"{unseen.size} level(s) of {dim!r} were not seen at fit and the dim's "
-                        "policy is 'fixed'",
+                        f"the fit did not see {unseen.size} level(s) of {dim!r}, and the policy "
+                        "of the dim is 'fixed'",
                         code=ErrorCode.UNSEEN_LEVELS,
                         untrusted_text=_preview(unseen),
                     )
@@ -233,7 +233,7 @@ def canonicalise_coords(
             case DimPolicy.NEW_LEVELS:
                 if unseen.size and spec.new_level_strategy == "error":
                     raise CoordPlanError(
-                        f"{unseen.size} level(s) of {dim!r} were not seen at fit and its "
+                        f"the fit did not see {unseen.size} level(s) of {dim!r}, and its "
                         "new-level strategy is 'error'",
                         code=ErrorCode.UNSEEN_LEVELS,
                         untrusted_text=_preview(unseen),
@@ -280,7 +280,7 @@ def _extend_order(
         step = _step_of(fit)
         if fit.dtype.kind == "M" and freq is None:
             raise CoordPlanError(
-                f"cannot check the extension of {dim!r}: its frequency is unknown",
+                f"cannot do a check of the extension of {dim!r}. Its frequency is unknown",
                 code=ErrorCode.NON_CONTIGUOUS_EXTENSION,
             )
         expected = np.array(
@@ -291,15 +291,15 @@ def _extend_order(
             first = expected[0]
             gap = "a gap" if beyond[0] != first else "gaps"
             raise CoordPlanError(
-                f"score coords of {dim!r} extend the fitted range with {gap}; they must start "
-                f"right after it and be contiguous",
+                f"score coords of {dim!r} extend the fitted range with {gap}. They must start "
+                "immediately after the fitted range and have no gaps",
                 code=ErrorCode.NON_CONTIGUOUS_EXTENSION,
                 untrusted_text=f"expected {py_scalar(first)}, got {py_scalar(beyond[0])}",
             )
         if max_extension is not None and beyond.size > max_extension:
             raise CoordPlanError(
-                f"score coords extend {beyond.size} period(s) past the fit along {dim!r}; at most "
-                f"{max_extension} are supported without a refit",
+                f"score coords go {beyond.size} period(s) after the fit along {dim!r}. Without a "
+                f"new fit, the maximum is {max_extension}",
                 code=ErrorCode.HORIZON_EXCEEDS_FIT,
             )
     if pad_extend:

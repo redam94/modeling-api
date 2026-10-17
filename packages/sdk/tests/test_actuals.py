@@ -227,7 +227,7 @@ def test_listed_future_periods_are_forecast_exactly(bundle: Bundle, data: xr.Dat
     rec = _record(tree)
     assert rec.horizon_source == "rows" and rec.periods == 2
     warned = [i for i in _issues(tree) if i["pointer"] == "/horizon/periods"]
-    assert warned and "horizon.periods (8) is not used" in warned[0]["message"]
+    assert warned and "does not use horizon.periods (8)" in warned[0]["message"]
 
 
 def test_empty_future_drivers_follow_the_policy_from_the_actuals(
@@ -241,7 +241,7 @@ def test_empty_future_drivers_follow_the_policy_from_the_actuals(
     tree = _score(bundle, _req(1), ds, data)
     expected = _recursion(bundle, "north", 120.0, [42.0])  # carried from the actual's month
     np.testing.assert_allclose(_point(tree).sel(region="north").values[1], expected[0])
-    assert any("filled with 'carry_last'" in i["message"] for i in _issues(tree))
+    assert any("with 'carry_last'" in i["message"] for i in _issues(tree))
     with pytest.raises(MapiError) as err:
         _score(bundle, _req(1, policy=None), ds, data)
     assert err.value.code is ErrorCode.MISSING_FUTURE_COVARIATE
@@ -298,7 +298,7 @@ def test_a_model_without_the_capability_refuses_actuals(data: xr.Dataset) -> Non
     assert exc.code is ErrorCode.ACTUALS_NOT_SUPPORTED and exc.status == 422
     issue = exc.to_problem().errors[0]
     assert "2 periods" not in issue.message and "1 period (2023-01-01)" in issue.message
-    assert issue.suggested_action is not None and "Refit" in issue.suggested_action
+    assert issue.suggested_action is not None and "Fit the model again" in issue.suggested_action
     # an empty target is no actual: the same model forecasts the listed periods
     blank = _payload("2023-01-01", [[np.nan], [np.nan]], [[11.0], [9.0]])
     rec = _record(_score(plain, _req(1), blank, data))

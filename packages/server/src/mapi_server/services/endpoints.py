@@ -184,8 +184,8 @@ def snapshot_for(mv: m.ModelVersion) -> EndpointSchemaSnapshot:
     """The input contract of ``mv`` (raw stage), from its stored score metadata."""
     if mv.score_meta is None:
         raise MapiError(
-            f"model version {mv.id} has no stored score metadata, so it cannot serve an "
-            "endpoint (refit it on this platform version)",
+            f"model version {mv.id} has no stored score metadata. Thus it cannot serve an "
+            "endpoint (fit it again on this platform version)",
             code=ErrorCode.CAPABILITY_UNSUPPORTED,
         )
     meta = ScoreMetadata.model_validate(mv.score_meta)
@@ -425,9 +425,10 @@ async def promote(
             details={"alias": alias, "model_version_id": mv.id, "relaxes": list(relaxed)},
         )
         raise MapiError(
-            "relaxing the endpoint's evaluation policy ("
+            "only a signed-in endpoint admin can make the evaluation policy of the endpoint less "
+            "strict ("
             + "; ".join(relaxed)
-            + ") needs a signed-in endpoint admin, like a gate override; API tokens never can",
+            + "), as for a gate override. API tokens cannot do this",
             code=ErrorCode.FORBIDDEN,
         )
     if (
@@ -638,7 +639,7 @@ async def rollback(
         # M3.5: a rollback serves an earlier version again, so it meets the same policy
         state = (governance.validation_status or "not submitted").replace("_", " ")
         raise MapiError(
-            f"the governance policy requires a validated model; the version of revision "
+            f"the governance policy needs a validated model. The version of revision "
             f"{target.revision} is {state}",
             code=ErrorCode.NOT_VALIDATED,
         )
@@ -745,7 +746,7 @@ def _coord_summary(
                         _issue(
                             ErrorCode.NON_CONTIGUOUS_EXTENSION,
                             pointer,
-                            f"{name!r} has values off its {freq!r} grid",
+                            f"{name!r} has values that are not on its {freq!r} grid",
                         )
                     )
                     return None
@@ -786,7 +787,7 @@ def _coord_summary(
         return CoordSummary(kind="categorical", size=n, values=levels)
     except (TypeError, ValueError) as exc:
         issues.append(
-            _issue(ErrorCode.SCHEMA_INVALID, pointer, f"coordinate {name!r} is invalid: {exc}")
+            _issue(ErrorCode.SCHEMA_INVALID, pointer, f"coordinate {name!r} is not correct: {exc}")
         )
         return None
 
@@ -969,9 +970,9 @@ def endpoint_schema_issues(
                         _issue(
                             ErrorCode.SCHEMA_INVALID,
                             f"{pointer}/data_vars",
-                            f"inputs missing from the payload: {missing}",
-                            suggested_action="Send every input variable the "
-                            "endpoint's schema lists (GET …/schema).",
+                            f"the payload does not have these inputs: {missing}",
+                            suggested_action="Send each input variable that the "
+                            "schema of the endpoint lists (GET …/schema).",
                         )
                     )
         current = inline_summary(payload, schema, pointer, issues)
@@ -985,7 +986,7 @@ def score_request_for(call: EndpointScoreCall, project: str, alias: str) -> Scor
         return call.to_score_request(endpoint_ref(project, alias))
     except ValueError as exc:
         raise MapiError(
-            f"the call is not a valid score request: {exc}"[:2000], code=ErrorCode.SCHEMA_INVALID
+            f"the call is not a correct score request: {exc}"[:2000], code=ErrorCode.SCHEMA_INVALID
         ) from None
 
 

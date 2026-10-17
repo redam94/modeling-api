@@ -114,7 +114,7 @@ export function suggestRoles(template: GuidedTemplate, columns: ColumnProfile[])
   const issues: Issue[] = template.questions
     .map((q, i) => [q, out[i]] as const)
     .filter(([q, s]) => q.required !== false && (q.kind === "column" || q.kind === "columns") && (!s?.answer || (Array.isArray(s.answer) && !s.answer.length)))
-    .map(([q]) => ({ code: "GUIDED_ANSWERS_INVALID", severity: "warning", pointer: `/answers/${q.id}`, message: "no column looks like an answer to this question; please pick one" }));
+    .map(([q]) => ({ code: "GUIDED_ANSWERS_INVALID", severity: "warning", pointer: `/answers/${q.id}`, message: "no column looks like an answer to this question. Select a column." }));
   return { template_id: template.id, questions: out, unassigned: columns.map((c) => c.name).filter((c) => !used.has(c)), issues };
 }
 
@@ -186,11 +186,11 @@ export function buildDraft(template: GuidedTemplate, body: GuidedAnswers, projec
       const cols = q.kind === "column" ? (typeof value === "string" ? [value] : null) : Array.isArray(value) && value.every((v) => typeof v === "string") ? (value) : null;
       if (!cols) throw new DraftError(`/answers/${q.id}`, q.kind === "column" ? "answer with one column name" : "answer with a list of column names");
       for (const c of cols) {
-        if (used.has(c)) throw new DraftError(`/answers/${q.id}`, `column '${c}' already answers '${used.get(c)}'`);
+        if (used.has(c)) throw new DraftError(`/answers/${q.id}`, `column '${c}' is already the answer to '${used.get(c)}'`);
         used.set(c, q.id);
         const p = profiles.get(c);
         if (p && q.accepts?.length && !q.accepts.includes(p.dtype)) {
-          issues.push({ code: "GUIDED_ANSWERS_INVALID", severity: "warning", pointer: `/answers/${q.id}`, message: `column '${c}' looks like ${p.dtype}, expected ${q.accepts.join(" or ")}` });
+          issues.push({ code: "GUIDED_ANSWERS_INVALID", severity: "warning", pointer: `/answers/${q.id}`, message: `column '${c}' looks like ${p.dtype}. The question accepts ${q.accepts.join(" or ")}.` });
         }
       }
       if (q.dim) {
@@ -213,11 +213,11 @@ export function buildDraft(template: GuidedTemplate, body: GuidedAnswers, projec
         values[q.id] = q.kind === "column" ? names[0] : names;
       }
     } else if (q.kind === "choice") {
-      if (!(q.choices ?? []).some((c) => c.value === value)) throw new DraftError(`/answers/${q.id}`, `choose one of ${(q.choices ?? []).map((c) => c.value).join(", ")}`);
+      if (!(q.choices ?? []).some((c) => c.value === value)) throw new DraftError(`/answers/${q.id}`, `select one of ${(q.choices ?? []).map((c) => c.value).join(", ")}`);
       values[q.id] = value;
     } else if (q.kind === "number") {
-      if (typeof value !== "number") throw new DraftError(`/answers/${q.id}`, "answer with a number");
-      if ((q.minimum != null && value < q.minimum) || (q.maximum != null && value > q.maximum)) throw new DraftError(`/answers/${q.id}`, `answer between ${q.minimum} and ${q.maximum}`);
+      if (typeof value !== "number") throw new DraftError(`/answers/${q.id}`, "give a number");
+      if ((q.minimum != null && value < q.minimum) || (q.maximum != null && value > q.maximum)) throw new DraftError(`/answers/${q.id}`, `give a number from ${q.minimum} to ${q.maximum}`);
       values[q.id] = value;
     } else values[q.id] = typeof value === "string" ? value : JSON.stringify(value);
   }
