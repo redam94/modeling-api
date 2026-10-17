@@ -763,6 +763,9 @@ def _granger(ctx: NodeContext) -> NodeOutcome:
     if not y or not x:
         raise data_error("test.granger needs 'y' and 'x'")
     maxlag = int(_int(ctx.params.get("maxlag")) or 4)
+    one_lag = _int(ctx.params.get("lag"))
+    if one_lag is not None and one_lag > maxlag:
+        maxlag = one_lag
     mat, _ = variable_matrix(ctx, [y, x])
     if mat.shape[0] < 3 * maxlag + 10:
         raise data_error(f"test.granger needs more observations for {maxlag} lags")
@@ -770,22 +773,36 @@ def _granger(ctx: NodeContext) -> NodeOutcome:
         warnings.simplefilter("ignore")
         out = grangercausalitytests(mat, maxlag=maxlag)
     p_values: dict[str, JsonValue] = {}
-    best_lag, best_p, best_f = 1, 1.0, None
+    raw: dict[int, tuple[float, float]] = {}
+    best_lag, best_p = 1, 1.0
     for lag, (tests, _models) in out.items():
         f, p = float(tests["ssr_ftest"][0]), float(tests["ssr_ftest"][1])
         p_values[str(lag)] = p
+        raw[int(lag)] = (f, p)
         if p < best_p:
-            best_lag, best_p, best_f = int(lag), p, f
+            best_lag, best_p = int(lag), p
+    if one_lag is not None:
+        # one prespecified lag: its own F test, exact at alpha
+        tested = int(one_lag)
+        stat, p_value = raw[tested]
+        correction = "none"
+    else:
+        # every lag 1..maxlag was tried: the smallest p-value, Holm-corrected for the number
+        # of lags (for "does any lag help" Holm's first step is Bonferroni), so the verdict
+        # keeps its size instead of about doubling it
+        tested, stat = best_lag, raw[best_lag][0]
+        p_value, correction = min(1.0, best_p * len(raw)), "holm"
     o = SeriesOutcome(
-        best_f,
-        _p(best_p),
+        stat,
+        _p(p_value),
         {},
-        best_lag,
+        tested,
         int(mat.shape[0]),
         {
             "min_p_value": best_p,
             "best_lag": best_lag,
             "p_values": p_values,
+            "correction": correction,
             "y": y,
             "x": x,
         },

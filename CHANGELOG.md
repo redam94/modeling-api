@@ -431,6 +431,12 @@ milestone releases are tagged on `main`.
   test windows: `search.arma_order` now takes `D` and `period` (it fits
   ARIMA(p,d,q)(0,D,0)s, the model that is fitted) and an optional `split` plan (it searches
   only before the plan's first test window), and the template uses both.
+- **workflows** (statistics): `test.granger` decided on the smallest p-value over lags
+  1..`maxlag` without correction, so an unrelated driver "helped predict" the result about
+  twice as often as the stated alpha (0.11 at 0.05 in simulation). The verdict's p-value is
+  now Holm-corrected for the lags tried (size 0.05 in simulation; `correction: holm`), or
+  the exact F test at one prespecified `lag` (new parameter); the per-lag p-values and the
+  uncorrected `min_p_value` stay as descriptive results.
 
 ## [0.4.0] — M3: Guided mode and integrations — 2026-10-16
 

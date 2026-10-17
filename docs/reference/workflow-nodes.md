@@ -222,11 +222,12 @@ Checks whether past values of a driver help predict a result beyond what the res
 | `y` | string | **required** | The result |
 | `x` | string | **required** | The candidate driver |
 | `maxlag` | integer | `4` | Largest lag tested |
+| `lag` | integer |  | Test only this lag (no correction needed) |
 
-Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number), `min_p_value` (number), `best_lag` (integer), `p_values` (object).
+Result fields (`nodes.<id>.<field>` in conditions): `statistic` (number), `p_value` (number), `alpha` (number), `reject` (boolean), `decision` (string), `verdict_plain` (string), `critical_values` (object), `n_obs` (integer), `lags` (integer), `details` (object), `per_series` (array), `reject_share` (number), `min_p_value` (number), `best_lag` (integer), `p_values` (object), `correction` (string).
 
 ??? note "Expert detail"
-    Granger causality F-tests for lags 1..maxlag (statsmodels grangercausalitytests, ssr F test); H0: the driver's lags have zero coefficients.
+    Granger causality F-tests for lags 1..maxlag (statsmodels grangercausalitytests, ssr F test); H0: the driver's lags have zero coefficients. The verdict uses the smallest p-value Holm-corrected for the maxlag lags tried (an uncorrected minimum about doubles the false-positive rate), or the F test at one prespecified `lag`; the per-lag p-values are descriptive.
 
 ### `test.jarque_bera` — Bell-shaped errors? (Jarque-Bera)
 

@@ -248,6 +248,36 @@ def test_granger_matches_statsmodels() -> None:
         assert out.result["p_values"][str(lag)] == pytest.approx(ref[lag][0]["ssr_ftest"][1])
     assert out.result["best_lag"] in (2, 3)
     assert out.result["decision"] == "predictive"
+    # the verdict's p-value is the smallest one corrected for the lags tried (Holm)
+    assert out.result["p_value"] == pytest.approx(min(1.0, 3 * out.result["min_p_value"]))
+    assert out.result["correction"] == "holm"
+    one = run_node(
+        "test.granger",
+        {"y": "y", "x": "x", "maxlag": 3, "lag": 2},
+        data=series_ds(y, extra={"x": x}),
+    )
+    assert one.result["p_value"] == pytest.approx(ref[2][0]["ssr_ftest"][1])
+    assert one.result["lags"] == 2 and one.result["correction"] == "none"
+
+
+def test_granger_keeps_its_size_over_several_lags() -> None:
+    """Regression (simulation): the verdict used the smallest p-value over lags 1..maxlag
+    with no correction, so an unrelated driver "helped predict" about twice as often as
+    alpha. With 120 draws of an AR(1) result and an independent driver the rejection rate
+    stays near 5% (it was about 10%)."""
+    reps, n, rejected = 120, 100, 0
+    for seed in range(reps):
+        rng = np.random.default_rng(1000 + seed)
+        e = rng.normal(size=n)
+        y = np.zeros(n)
+        for t in range(1, n):
+            y[t] = 0.6 * y[t - 1] + e[t]
+        x = rng.normal(size=n)
+        out = run_node(
+            "test.granger", {"y": "y", "x": "x", "maxlag": 4}, data=series_ds(y, extra={"x": x})
+        )
+        rejected += out.result["reject"] is True
+    assert rejected / reps <= 0.08, rejected / reps
 
 
 # ============================================================================== ACF/PACF

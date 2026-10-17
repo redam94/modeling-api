@@ -595,19 +595,25 @@ _test("test.granger", _a(
     ["Proving cause and effect (it only shows predictive help)"],
     ["Two numeric series over time"],
     ["Both series are stable (difference them first if not)"],
-    ["p-value per lag and the smallest p-value"],
+    ["A p-value corrected for the number of lags tried", "p-value per lag"],
     _I, _SEC,
     "Search interest helps predict sales two weeks later (p = 0.004).",
     related=["ts.var", "test.adf"],
     expert="Granger causality F-tests for lags 1..maxlag (statsmodels "
-    "grangercausalitytests, ssr F test); H0: the driver's lags have zero coefficients.",
-    refs=[_SM, ("Granger (1969)", None)],
+    "grangercausalitytests, ssr F test); H0: the driver's lags have zero coefficients. "
+    "The verdict uses the smallest p-value Holm-corrected for the maxlag lags tried (an "
+    "uncorrected minimum about doubles the false-positive rate), or the F test at one "
+    "prespecified `lag`; the per-lag p-values are descriptive.",
+    refs=[_SM, ("Granger (1969)", None),
+          ("Holm (1979), A simple sequentially rejective multiple test procedure", None)],
     fits={"goal": ["compare_series", "explain_drivers"], "data_shape": ["several_series"]},
 ), {"y": _var("The result"), "x": _var("The candidate driver"),
-    "maxlag": _int("Largest lag tested", 4, 1, 52)},
-    {"min_p_value": _f("number", "Smallest p-value over the lags"),
+    "maxlag": _int("Largest lag tested", 4, 1, 52),
+    "lag": _int("Test only this lag (no correction needed)", None, 1, 52)},
+    {"min_p_value": _f("number", "Smallest uncorrected p-value over the lags"),
      "best_lag": _f("integer", "Lag with the smallest p-value"),
-     "p_values": _f("object", "p-value by lag")},
+     "p_values": _f("object", "Uncorrected p-value by lag (descriptive)"),
+     "correction": _f("string", "holm (lags 1..maxlag) or none (one lag)")},
     required=["y", "x"])  # fmt: skip
 
 _test("test.acf_pacf", _a(
