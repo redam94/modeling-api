@@ -1,18 +1,19 @@
 # Guided mode and integrations <span class="mapi-badge">v0.4</span>
 
 !!! success "Status: available in v0.4 (milestone M3), the first public launch"
-    With the multi-tenant core in place ([v0.3](cloud.md)), v0.4 lets analysts go from a
-    spreadsheet to a trustworthy report and a what-if scenario without writing YAML, and lets
-    other applications call fitted models through stable endpoints. It is the first public
-    launch, **cut line A**: anyone may sign up and run declarative specs and the built-in
-    models on their own data; uploaded code stays with trusted tiers.
-    To use it: [the Guided tutorial](../guides/guided-tutorial.md),
-    [the Integrations hub](../guides/integrations-hub.md), [Tutorials](../tutorials/index.md).
+    v0.4 builds on the multi-tenant core of [v0.3](cloud.md). With v0.4, analysts go from a
+    spreadsheet to a trustworthy report and a what-if scenario. They do not write YAML. Other
+    applications can call fitted models through stable endpoints. v0.4 is the first public
+    launch, **cut line A**. All persons can sign up and run declarative specs and the
+    built-in models on their own data. Only trusted tiers can upload code.
+    For instructions, read [the Guided tutorial](../guides/guided-tutorial.md),
+    [the Integrations hub](../guides/integrations-hub.md) and [Tutorials](../tutorials/index.md).
 
 ## Guided mode: organised around tasks
 
-One app, two modes over the **same** `ModelSpec`. A header toggle switches between Guided and
-Expert; every Guided screen has "View as YAML", and Expert edits round-trip back.
+The app has two modes over the **same** `ModelSpec`. A toggle in the header changes between
+Guided and Expert. Each Guided screen has "View as YAML". Edits in Expert mode go back to
+Guided mode.
 
 ```mermaid
 journey
@@ -61,9 +62,9 @@ journey
 
 | Criterion | Where it stands |
 |---|---|
-| Five non-technical testers go from upload to report to scenario unaided in under 30 minutes | Prepared: an automated run takes 135 s of system time, six usability defects it found are fixed, and the [protocol for the testers](../operations/m3-verification.md#protocol-for-the-five-non-technical-testers) is written. The sessions themselves are still to run |
-| An external optimiser works against an endpoint | Met on a laptop: +0.22 % revenue at the same budget against the live endpoint ([details](../operations/m3-verification.md#an-external-optimiser-against-the-live-endpoint)). Since v0.5 budgets are optimised next to the model instead, in a sandboxed `optimize` run on mmm-framework planning ([Optimise a budget](../tutorials/optimise-a-budget.md)); the external-optimiser adapter was removed |
-| Cut line A: public launch of declarative specs and built-ins | Met for admission: sign-up workspaces are `public`, uploaded code is refused; public runs need an executor that enforces egress and DNS (`docker-gvisor` or Cloud Run Jobs), which this laptop could not run |
+| Five non-technical testers go from upload to report to scenario without help in less than 30 minutes | Prepared. An automated run takes 135 s of system time. We repaired the six usability defects that it found. We wrote the [protocol for the testers](../operations/m3-verification.md#protocol-for-the-five-non-technical-testers). The sessions are not done yet. |
+| An external optimiser works against an endpoint | Met on a laptop: +0.22 % revenue at the same budget against the live endpoint ([details](../operations/m3-verification.md#an-external-optimiser-against-the-live-endpoint)). From v0.5, the platform optimises budgets next to the model, in a sandboxed `optimize` run on mmm-framework planning ([Optimise a budget](../tutorials/optimise-a-budget.md)). We removed the external-optimiser adapter. |
+| Cut line A: public launch of declarative specs and built-ins | Met for admission. Sign-up workspaces are `public`, and the platform refuses uploaded code. Public runs need an executor that enforces egress and DNS (`docker-gvisor` or Cloud Run Jobs). This laptop could not run these executors. |
 
-Everything was verified locally; see [M3 verification](../operations/m3-verification.md) for
-the numbers and for what still needs real people, Docker or Google Cloud.
+We verified all items locally. [M3 verification](../operations/m3-verification.md) gives the
+numbers. It also tells which items still need real persons, Docker or Google Cloud.

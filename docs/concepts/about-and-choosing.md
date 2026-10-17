@@ -6,13 +6,13 @@ description: Every model, step, template, workflow node and governance check car
 
 !!! tip "Just want to pick a model?"
     [Choosing a model](../guides/choosing-a-model.md) shows Help me choose in the web app,
-    the terminal (`mapi choose`) and Python (`api.catalog.recommend`), and compares the model
-    families.
+    the terminal (`mapi choose`) and Python (`api.catalog.recommend`). It also compares the
+    model families.
 
-People who do not do statistics for a living still have to pick a model, a preprocessing
-step or a workflow. Every item they can pick from a catalog therefore carries an **About
-card** in plain language, and the **Help me choose** chooser turns a few questions about
-their goal and their data into a ranked list with the reasons.
+Many persons who are not statisticians must select a model, a preprocessing step or a
+workflow. Thus each item that they can select from a catalog has an **About card** in plain
+language. The **Help me choose** chooser asks some questions about their goal and their data.
+Then it gives a ranked list with the reasons.
 
 ## The About card
 
@@ -35,38 +35,51 @@ their goal and their data into a ranked list with the reasons.
 
 | Field | What it holds |
 |---|---|
-| `title` | A human name |
-| `summary_plain` | One or two sentences, no jargon: what it does for you |
-| `use_when` / `avoid_when` | When it fits and when to pick something else |
-| `data_needs` | The data it needs |
-| `assumptions` | What it takes for granted |
-| `outputs` | What you get out |
+| `title` | A name for persons |
+| `summary_plain` | One or two sentences without jargon. They tell what the item does for you. |
+| `use_when` / `avoid_when` | When the item fits, and when to select a different item |
+| `data_needs` | The data that the item needs |
+| `assumptions` | What the item accepts as true |
+| `outputs` | What you get from the item |
 | `difficulty` | `beginner`, `intermediate` or `expert` |
 | `typical_runtime` | `instant`, `seconds`, `minutes` or `long` |
-| `example` | A tiny example of it at work |
+| `example` | A small example of how the item works |
 | `related` | Ids of related catalog items |
-| `expert_notes`, `references` | The maths and the sources, kept apart |
-| `fits` | Chooser tags: the answers this item suits |
+| `expert_notes`, `references` | The maths and the sources, in a separate place |
+| `fits` | Chooser tags: the answers that agree with this item |
 
-Cards are attached to model manifests and catalog entries (`ModelManifest.about`,
-`StepCatalogEntry.about`), guided templates (`GuidedTemplate.about`), workflow templates,
-node kinds and node implementations, and governance checks. Your own specs, pipelines and
-workflows can carry one too, in `metadata.about`, so colleagues know when to reuse them.
-`GET /v1/catalog/abouts` lists the cards of everything a user can pick (filter with
-`kind`): the installed models and preprocessing steps, the splits, guided templates,
-workflow templates, workflow node kinds and nodes, and the governance checks. Datasets have a `DatasetAbout`: the owner's own description
-plus a summary generated from the schema and coordinate summary, for example *"Weekly data
-from 2023-01-01 to 2024-12-29 (104 weeks) for 10 geos and 3 channels, with 3 measures:
-revenue (the result you want to explain), spend (marketing spend), price."*
+These items have cards:
+
+- model manifests and catalog entries (`ModelManifest.about`, `StepCatalogEntry.about`)
+- guided templates (`GuidedTemplate.about`)
+- workflow templates, node kinds and node implementations
+- governance checks.
+
+Your own specs, pipelines and workflows can also have a card, in `metadata.about`. Then
+colleagues know when to use them again. `GET /v1/catalog/abouts` lists the cards of all items
+that a user can select (filter with `kind`). These items are the installed models and
+preprocessing steps, the splits, guided templates, workflow templates, workflow node kinds
+and nodes, and the governance checks.
+
+Datasets have a `DatasetAbout`. It contains the description from the owner and a summary.
+The platform makes the summary from the schema and the coordinate summary. For example:
+*"Weekly data from 2023-01-01 to 2024-12-29 (104 weeks) for 10 geos and 3 channels, with 3
+measures: revenue (the result you want to explain), spend (marketing spend), price."*
 
 ### Complete cards are enforced
 
-`mapi_spec.about.about_issues` is the editorial rule: every required field filled, the
-summary one or two sentences without jargon words (such as "posterior", "stationarity",
-"autoregressive"), chooser tags that name real questions and answers, and `related` ids that
-exist. The catalog rule (`Catalog.about_issues`, problem code `ABOUT_INCOMPLETE` with a JSON
-pointer) and the contract kit (`mapi_sdk.testing.check_about`) apply it, so a plugin without a
-complete card fails its checks. The built-in cards live in `mapi_spec.abouts`.
+`mapi_spec.about.about_issues` is the editorial rule. A card must agree with these
+conditions:
+
+- All necessary fields have a value.
+- The summary is one or two sentences without jargon words (for example "posterior",
+  "stationarity" or "autoregressive").
+- The chooser tags name real questions and answers.
+- The `related` ids exist.
+
+The catalog rule (`Catalog.about_issues`, problem code `ABOUT_INCOMPLETE` with a JSON pointer)
+and the contract kit (`mapi_sdk.testing.check_about`) apply this rule. Thus a plugin without
+a complete card fails its checks. The built-in cards are in `mapi_spec.abouts`.
 
 ## Help me choose
 
@@ -84,49 +97,70 @@ complete card fails its checks. The built-in cards live in `mapi_spec.abouts`.
 | `speed` | within seconds, within minutes, can wait |
 
 `GET /v1/catalog/recommendations?goal=forecast&data_shape=one_series&experience=beginner&kind=model`
-returns a `ChooserResult`: the candidates ranked best first, each with a score between 0 and
-1, the reasons it fits ("Suits: forecast the future") and cautions ("Needs expert-level
-statistics knowledge", "Usually takes long"). Several answers to one question are separated
-by commas. The ranking (`mapi_spec.about.recommend`) is deterministic: a matching answer adds
-the question's weight (the goal counts most), a mismatch subtracts it, items that do not mind
-a question are neutral, and items harder than your experience or slower than your patience
-lose points. At the same score, an item made for more of your answers comes first (one
-silent on a question ranks below one that says it fits). When some items match your goal,
-the others are left out.
-Without `kind` the candidates are the places a user starts from: models, guided templates
-and workflow templates; `kind=step`, `kind=node` or `kind=check` ranks one kind of
-building block. A question or answer the chooser does not know is `422
+returns a `ChooserResult`. The result has the candidates ranked from the best. Each candidate
+has a score between 0 and 1, the reasons that it fits ("Suits: forecast the future") and
+cautions ("Needs expert-level statistics knowledge", "Usually takes long"). To give more than
+one answer to a question, put commas between the answers.
+
+The ranking (`mapi_spec.about.recommend`) is deterministic. It uses these rules:
+
+- An answer that agrees adds the weight of the question. The goal has the most weight.
+- An answer that does not agree subtracts the weight.
+- If an item does not use a question, that question has no effect on the item.
+- An item loses points if it is more difficult than your experience, or slower than your
+  answer for speed.
+- At the same score, an item for more of your answers comes first. An item that says
+  nothing about a question ranks below an item that says it fits.
+- If some items agree with your goal, the chooser does not show the other items.
+
+Without `kind`, the candidates are the start points for a user: models, guided templates and
+workflow templates. `kind=step`, `kind=node` or `kind=check` ranks one kind of building
+block. If the chooser does not know a question or an answer, it returns `422
 CHOOSER_ANSWER_INVALID`.
 
 ## In the web app
 
-**About cards everywhere.** Every place you pick something shows its card, plain language
-first: the catalog's **Browse** tab lists every item a user can pick (filter by kind -
-Guided analyses, models, workflow templates, preparation steps, splits, governance checks,
-workflow nodes and node kinds - by difficulty or by text), and a card opens with its
-uses, limits, data needs, assumptions, outputs, an example and related items. The maths and
-the references sit under *For experts: how it works*, collapsed. The same cards appear on
-the Guided template cards (**About**), in the spec editor (an **About** tab for the model,
-an About button on every pipeline step) and in the Model Explorer (*About this kind of
-model*). Datasets show their About (owner description and generated summary) on the dataset
-page and in the [Data Explorer](../guides/data-explorer.md).
+**About cards everywhere.** Each place where you select an item shows its card, with plain
+language first. The **Browse** tab of the catalog lists all items that a user can select.
+You can filter by kind, by difficulty or by text. The kinds are Guided analyses, models,
+workflow templates, preparation steps, splits, governance checks, workflow nodes and node
+kinds. A card shows the uses, limits, data needs, assumptions, outputs, an example and related
+items. The maths and the references are under *For experts: how it works*, which is
+collapsed.
 
-![An About card: plain language first, the expert notes collapsed](../assets/screenshots/explorer-about-card.png){ .mapi-shot }
+The same cards show in these locations:
 
-**Help me choose** (`/choose`, and the "Not sure where to start?" panel on Home and at the
-top of Guided mode) asks the questions one at a time - each a set of large, keyboard-friendly
-choices, any of which can be skipped - and ranks the matches as you answer, with the reasons
-("Suits: forecast the future") and cautions ("Needs expert-level statistics knowledge").
-**Start with this** opens a new Guided analysis for a guided template, a new spec in the
-editor with that model (and its About as comments), a workflow template as a recipe run on
-your data (Guided mode) or in the "use this template" wizard (Expert mode), or a governance
-check in the governance check catalog.
-In Guided mode a model starts the guided template built on it instead (*Demand by store and
-week* opens the store demand analysis, *Marketing mix model* the geo marketing mix one). A
-model with no guided template says so and offers **Set up in Expert mode**, which switches
-to Expert mode only when clicked; in a project locked to Guided mode it reads *Needs Expert
-mode* and offers nothing.
-The answers live in the address, so a suggestion can be shared; the switch at the top ranks
-models, preparation steps, governance checks or workflow nodes instead of starting points.
+- on the Guided template cards (**About**)
+- in the spec editor: an **About** tab for the model, and an About button on each pipeline
+  step
+- in the Model Explorer (*About this kind of model*).
 
-![Help me choose: one question at a time, live ranked matches with reasons](../assets/screenshots/explorer-chooser.png){ .mapi-shot }
+Datasets show their About (the description from the owner and the generated summary) on the
+dataset page and in the [Data Explorer](../guides/data-explorer.md).
+
+![An About card. Plain language is first and the expert notes are collapsed.](../assets/screenshots/explorer-about-card.png){ .mapi-shot }
+
+**Help me choose** is at `/choose`. It is also in the "Not sure where to start?" panel on
+Home and at the top of Guided mode. It asks the questions one at a time. Each question has a
+set of large choices that you can use with the keyboard. You can skip each question. The
+chooser ranks the matches while you answer. It shows the reasons ("Suits: forecast the
+future") and cautions ("Needs expert-level statistics knowledge").
+
+**Start with this** opens the selected item:
+
+- For a guided template, it opens a new Guided analysis.
+- For a model, it opens a new spec in the editor with that model, and its About as comments.
+- For a workflow template, it opens a recipe run on your data (Guided mode), or the "use this
+  template" wizard (Expert mode).
+- For a governance check, it opens the check in the governance check catalog.
+
+In Guided mode, a model starts the guided template that uses the model. For example, *Demand
+by store and week* opens the store demand analysis. *Marketing mix model* opens the geo
+marketing mix analysis. If a model has no guided template, the app tells you. It shows **Set
+up in Expert mode**. The app changes to Expert mode only when you click it. In a project that
+is locked to Guided mode, the app shows *Needs Expert mode* and gives no action.
+
+The answers are in the address, so you can share a suggestion. The switch at the top ranks
+models, preparation steps, governance checks or workflow nodes, not start points.
+
+![Help me choose. It asks one question at a time and shows live ranked matches with reasons.](../assets/screenshots/explorer-chooser.png){ .mapi-shot }

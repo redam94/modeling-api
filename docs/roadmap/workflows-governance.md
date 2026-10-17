@@ -1,13 +1,18 @@
 # Workflows, governance and explorers <span class="mapi-badge">v0.5</span>
 
 !!! success "Status: available in v0.5 (milestone M3.5)"
-    v0.4 made one model easy to fit, read and share. v0.5 makes the analysis around it
-    repeatable and defensible: workflows that run the statistics a careful analyst would,
-    governance policies that hold every model to null tests before anyone uses it, Data and
-    Model Explorers, mmm-framework as the marketing-mix engine with budget optimisation,
-    twelve statsmodels time-series models, and an About card on everything a user can pick.
-    To use it: [What's new in 0.5](../whats-new-0.5.md), [the workflow cookbook](../guides/workflow-cookbook.md),
-    [Can you trust this model?](../guides/null-tests.md).
+    v0.4 made one model easy to fit, read and share. v0.5 makes the analysis around the
+    model repeatable and defensible. v0.5 has these parts:
+
+    - workflows that run the statistics that a careful analyst runs
+    - governance policies that make each model pass null tests before a person uses it
+    - Data and Model Explorers
+    - mmm-framework as the marketing-mix engine, with budget optimisation
+    - twelve statsmodels time-series models
+    - an About card on each item that a user can select.
+
+    For instructions, read [What's new in 0.5](../whats-new-0.5.md), [the workflow cookbook](../guides/workflow-cookbook.md)
+    and [Can you trust this model?](../guides/null-tests.md).
 
 ## Workflows
 
@@ -42,9 +47,16 @@
 
 ## Verification
 
-The five v0.5 journeys - the canonical workflow, governance with a second person, an
-mmm-framework fit with a budget plan, the explorers and the chooser, and the CLI - pass
-through a live local stack, with real fits in the runner and the real orchestrator; the runs
-found eight defects that no unit or mocked test could see, each fixed with a regression test
-([M3.5 verification](../operations/m35-verification.md)). As for v0.4, nothing in v0.5 has
-run on real Google Cloud or in Docker yet.
+The five journeys of v0.5 pass on a live local stack, with real fits in the runner and the
+real orchestrator. The journeys are:
+
+- the canonical workflow
+- governance with a second person
+- an mmm-framework fit with a budget plan
+- the explorers and the chooser
+- the CLI.
+
+The runs found eight defects that unit tests and mocked tests could not find. We repaired
+each defect and added a regression test
+([M3.5 verification](../operations/m35-verification.md)). The same as for v0.4, no part of
+v0.5 ran on real Google Cloud or in Docker yet.

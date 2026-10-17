@@ -1,18 +1,19 @@
 # Expert plugins and MCP <span class="mapi-badge mapi-badge--soon">next: v0.6</span>
 
 !!! abstract "Status: next (milestone M4)"
-    v0.4 opened the hosted platform to declarative specs and built-in models; v0.5 added
-    workflows, governance, the explorers and in-sandbox budget optimisation
-    ([what's new](../whats-new-0.5.md)). v0.6 lets **allow-listed experts upload their own
-    model plugins** and gives AI assistants and agents a curated **MCP server**; sweeps and
-    simulation-based calibration become single parent runs. Public code upload for everyone
-    comes after it, behind its own controls (see the [roadmap](index.md#after-v06)).
+    v0.4 opened the hosted platform to declarative specs and built-in models. v0.5 added
+    workflows, governance, the explorers and budget optimisation in the sandbox
+    ([what's new](../whats-new-0.5.md)). In v0.6, **allow-listed experts can upload their own
+    model plugins**. v0.6 also gives AI assistants and agents a curated **MCP server**.
+    Sweeps and simulation-based calibration become single parent runs. Public code upload
+    for all users comes after v0.6, with its own controls (see the [roadmap](index.md#after-v06)).
 
 ## Plugin upload for allow-listed experts
 
-Today a data scientist's own `PyMCModel` or `SklearnModel` runs on a deployment they control,
-installed into the runner's environment. v0.6 makes it a product feature of a shared
-deployment, for tenants an operator has allow-listed:
+Now, a data scientist can run their own `PyMCModel` or `SklearnModel` only on a deployment
+that they control. They install it into the environment of the runner. v0.6 makes this a
+product feature of a shared deployment. It is available to tenants that an operator put on
+the allow list:
 
 ```mermaid
 flowchart LR
@@ -23,42 +24,43 @@ flowchart LR
     D -->|no| F["Readable report<br/>of what to fix"]
 ```
 
-- **Overlays, not images.** A plugin is built into a hash-pinned overlay (its source plus
-  wheels resolved in advance, including native wheels from a curated mirror) on top of one
-  base-image version. Runs never install anything.
-- **The contract kit runs on upload.** The same checks you run locally with
-  `mapi plugin test` decide whether a version becomes runnable, and its report is kept with
-  the version, next to its SBOM.
-- **Schema sanitizer.** A plugin's settings schemas are sanitized before the web app renders
-  forms from them.
-- **Dev overlays** for fast iteration: the target is under five minutes from `push` to a
-  runnable version.
-- **A vetted tier**: the sibling marketing-mix and HMM models ported as plugins, as the proof
-  that real models fit the contract.
+- **Overlays, not images.** The platform builds a plugin into a hash-pinned overlay on top
+  of one base-image version. The overlay has the source and wheels that were resolved
+  before, including native wheels from a curated mirror. Runs never install software.
+- **The contract kit runs on upload.** The kit does the same checks as `mapi plugin test`
+  on your computer. These checks decide if a version becomes runnable. The platform keeps
+  the report with the version, next to its SBOM.
+- **Schema sanitizer.** The platform sanitizes the settings schemas of a plugin before the
+  web app makes forms from them.
+- **Dev overlays** for fast iteration. The target is less than five minutes from `push` to
+  a runnable version.
+- **A vetted tier.** We ported the sibling marketing-mix and HMM models as plugins. They
+  are the proof that real models agree with the contract.
 
 ## An MCP server for agents
 
-A curated set of tools, such as listing and describing models, scoring an endpoint, reading a
-run and fetching a plot, for AI assistants and agents. Every string that came from a user or
-a plugin is returned as clearly delimited untrusted text, so a model name cannot smuggle
-instructions into an agent. Tokens and scopes work as for any other client.
+The MCP server gives a curated set of tools to AI assistants and agents. For example, the
+tools list and describe models, score an endpoint, read a run and get a plot. The server
+returns each string from a user or a plugin as clearly delimited untrusted text. Thus a model
+name cannot put hidden instructions into an agent. Tokens and scopes work the same as for
+other clients.
 
 ## Sweeps as jobs, and what v0.5 already delivered
 
-- **`optimize` runs** (delivered in v0.5). Budgets are optimised *next to the model* in the
-  sandbox with mmm-framework's planning module, from the posterior's response curves
-  ([Optimise a budget](../tutorials/optimise-a-budget.md)).
+- **`optimize` runs** (delivered in v0.5). The sandbox optimises budgets *next to the
+  model* with the planning module of mmm-framework. It uses the response curves of the
+  posterior ([Optimise a budget](../tutorials/optimise-a-budget.md)).
 - **Backtests** (delivered in v0.5) run as workflow nodes on rolling-origin and
   expanding-window plans ([cookbook](../guides/workflow-cookbook.md)).
-- **`Sweep` and `SBC`** as one parent run that fans out and aggregates: a sensitivity sweep
-  over a prior, simulation-based calibration of a new plugin (v0.5's governance has a
-  parametric-bootstrap version, `recovery.simulated`).
+- **`Sweep` and `SBC`** as one parent run that fans out and aggregates the results. For
+  example, a sensitivity sweep over a prior, or simulation-based calibration of a new
+  plugin. (The governance of v0.5 has a parametric-bootstrap version, `recovery.simulated`.)
 
 ## Exit criteria
 
-- Three sibling models packaged as plugins and passing the contract kit.
-- A dev overlay pushed and runnable in under five minutes.
+- Three sibling models are packaged as plugins and pass the contract kit.
+- A dev overlay is pushed and becomes runnable in less than five minutes.
 - An as-of backtest and a sensitivity sweep each run as a single parent.
 
-Releases are cut when their exit criteria pass; follow the
+We cut a release when it passes its exit criteria. Read the
 [changelog](../project/changelog.md).
